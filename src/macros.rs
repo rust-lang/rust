@@ -30,7 +30,7 @@ use syntax::util::ThinVec;
 use Shape;
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
-use expr::{rewrite_call, rewrite_array, rewrite_pair};
+use expr::{rewrite_call, rewrite_array};
 use comment::{FindUncommented, contains_comment};
 use utils::mk_sp;
 
@@ -192,15 +192,28 @@ pub fn rewrite_macro(
                 } else {
                     ("[", "]")
                 };
-                rewrite_pair(
-                    &*expr_vec[0],
-                    &*expr_vec[1],
-                    lbr,
-                    "; ",
-                    rbr,
-                    context,
-                    mac_shape,
-                ).map(|s| format!("{}{}", macro_name, s))
+                // 6 = `vec!` + `; `
+                let total_overhead = lbr.len() + rbr.len() + 6;
+                let lhs = try_opt!(expr_vec[0].rewrite(context, mac_shape));
+                let rhs = try_opt!(expr_vec[1].rewrite(context, mac_shape));
+                if !lhs.contains('\n') && !rhs.contains('\n') &&
+                    lhs.len() + rhs.len() + total_overhead <= shape.width
+                {
+                    Some(format!("{}{}{}; {}{}", macro_name, lbr, lhs, rhs, rbr))
+                } else {
+                    let nested_indent = shape.indent.block_indent(context.config);
+                    Some(format!(
+                        "{}{}\n{}{};\n{}{}\n{}{}",
+                        macro_name,
+                        lbr,
+                        nested_indent.to_string(context.config),
+                        lhs,
+                        nested_indent.to_string(context.config),
+                        rhs,
+                        shape.indent.to_string(context.config),
+                        rbr
+                    ))
+                }
             } else {
                 // Format macro invocation as array literal.
                 let rewrite = try_opt!(rewrite_array(
