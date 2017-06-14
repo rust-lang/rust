@@ -36,10 +36,12 @@ extern "C" {
 // #1652
 fn deconstruct(
     foo: Bar,
-) -> (SocketAddr,
-      Header,
-      Method,
-      RequestUri,
-      HttpVersion,
-      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
+) -> (
+    SocketAddr,
+    Header,
+    Method,
+    RequestUri,
+    HttpVersion,
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+) {
 }

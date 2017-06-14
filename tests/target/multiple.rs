@@ -152,23 +152,27 @@ fn main() {
 }
 
 fn deconstruct()
-    -> (SocketAddr,
-        Method,
-        Headers,
-        RequestUri,
-        HttpVersion,
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA)
+    -> (
+    SocketAddr,
+    Method,
+    Headers,
+    RequestUri,
+    HttpVersion,
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+)
 {
 }
 
 fn deconstruct(
     foo: Bar,
-) -> (SocketAddr,
-      Method,
-      Headers,
-      RequestUri,
-      HttpVersion,
-      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA) {
+) -> (
+    SocketAddr,
+    Method,
+    Headers,
+    RequestUri,
+    HttpVersion,
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+) {
 }
 
 #[rustfmt_skip]
