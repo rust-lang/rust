@@ -12,7 +12,7 @@
 
 
 extern crate log;
-extern crate rustfmt;
+extern crate rustfmt_nightly as rustfmt;
 extern crate toml;
 extern crate env_logger;
 extern crate getopts;

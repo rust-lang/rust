@@ -1,7 +1,7 @@
 [package]
 
-name = "rustfmt"
-version = "0.9.0"
+name = "rustfmt-nightly"
+version = "0.1.0"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang-nursery/rustfmt"
@@ -13,6 +13,9 @@ categories = ["development-tools"]
 
 [lib]
 doctest = false
+
+[[bin]]
+name = "rustfmt"
 
 [features]
 default = ["cargo-fmt"]
@@ -28,8 +31,6 @@ regex = "0.2"
 term = "0.4"
 strings = "0.1"
 diff = "0.1"
-syntex_syntax = "0.59"
-syntex_errors = "0.59"
 log = "0.3"
 env_logger = "0.4"
 getopts = "0.2"

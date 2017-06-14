@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// TODO we're going to allocate a whole bunch of temp Strings, is it worth
-// keeping some scratch mem for this and running our own StrPool?
-// TODO for lint violations of names, emit a refactor script
+#![feature(rustc_private)]
 
 #[macro_use]
 extern crate log;
@@ -20,8 +18,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-extern crate syntex_syntax as syntax;
-extern crate syntex_errors as errors;
+extern crate syntax;
+extern crate rustc_errors as errors;
 
 extern crate strings;
 
