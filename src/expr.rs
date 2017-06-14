@@ -1650,7 +1650,9 @@ fn rewrite_guard(
                 s.rewrite(context, cond_shape)
             })
             {
-                return Some(format!(" if {}", cond_str));
+                if !cond_str.contains('\n') {
+                    return Some(format!(" if {}", cond_str));
+                }
             }
         }
 
