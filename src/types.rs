@@ -23,7 +23,7 @@ use items::{format_generics_item_list, generics_shape_from_config};
 use lists::{itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp, last_line_width};
-use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple_type};
+use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use config::{Style, TypeDensity};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -689,9 +689,7 @@ impl Rewrite for ast::Ty {
                         format!("[{}]", ty_str)
                     })
             }
-            ast::TyKind::Tup(ref items) => {
-                rewrite_tuple_type(context, items.iter().map(|x| &**x), self.span, shape)
-            }
+            ast::TyKind::Tup(ref items) => rewrite_tuple(context, items, self.span, shape),
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
