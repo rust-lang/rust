@@ -49,9 +49,7 @@ pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                     }
                 }
                 (Some(o), Some(n)) => {
-                    if let Some(change) = diff_items(tcx, o, n) {
-                        changes.add_change(change);
-                    }
+                    diff_items(&mut changes, tcx, o, n);
                 }
                 (Some(old), None) => {
                     changes.add_change(Change::new_removal(old));
@@ -71,8 +69,13 @@ pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 ///
 /// If the two items can't be meaningfully compared because they are of different kinds,
 /// we return that difference directly.
-fn diff_items(tcx: &TyCtxt, old: Export, new: Export) -> Option<Change> {
-    match (old.def, new.def) {
+fn diff_items(changes: &mut ChangeSet, tcx: &TyCtxt, old: Export, new: Export) {
+    let mut generics_changes = diff_generics(tcx, old.def.def_id(), new.def.def_id());
+    for change_type in generics_changes.drain(..) {
+        changes.add_change(Change::new_binary(change_type, old, new));
+    }
+
+    let change = match (old.def, new.def) {
         (Struct(_), Struct(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Union(_), Union(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Enum(_), Enum(_)) => Some(Change::new_binary(Unknown, old, new)),
@@ -85,10 +88,63 @@ fn diff_items(tcx: &TyCtxt, old: Export, new: Export) -> Option<Change> {
         (Method(_), Method(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Macro(_, _), Macro(_, _)) => Some(Change::new_binary(Unknown, old, new)),
         _ => Some(Change::new_binary(KindDifference, old, new)),
+    };
+
+    if let Some(c) = change {
+        changes.add_change(c);
     }
 }
 
+fn diff_generics(tcx: &TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
+    use std::cmp::max;
+
+    let mut ret = Vec::new();
+
+    let old_gen = tcx.generics_of(old);
+    let new_gen = tcx.generics_of(new);
+
+    for i in 0..max(old_gen.regions.len(), new_gen.regions.len()) {
+        match (old_gen.regions.get(i), new_gen.regions.get(i)) {
+            (Some(_ /* old_region */), Some(_ /* new_region */)) => {
+                // TODO: handle name changes?
+            },
+            (Some(_ /* old_region */), None) => {
+                ret.push(RegionParameterRemoved);
+            },
+            (None, Some(_ /* new_region */)) => {
+                ret.push(RegionParameterAdded);
+            },
+            (None, None) => unreachable!(),
+        }
+    }
+
+    for i in 0..max(old_gen.types.len(), new_gen.types.len()) {
+        match (old_gen.types.get(i), new_gen.types.get(i)) {
+            (Some(old_type), Some(new_type)) => {
+                if old_type.has_default && !new_type.has_default {
+                    // TODO: major for sure
+                } else if !old_type.has_default && new_type.has_default {
+                    // TODO: minor, I guess?
+                }
+            },
+            (Some(old_type), None) => {
+                ret.push(TypeParameterRemoved { defaulted: old_type.has_default });
+            },
+            (None, Some(new_type)) => {
+                ret.push(TypeParameterAdded { defaulted: new_type.has_default });
+            },
+            (None, None) => unreachable!(),
+        }
+    }
+
+    ret
+}
+
+/// Given two type aliases' definitions, compare their types.
 fn diff_tyaliases(tcx: &TyCtxt, old: DefId, new: DefId) -> Option<BinaryChangeType> {
-    println!("matching TyAlias'es found");
+    // let cstore = &tcx.sess.cstore;
+    /* println!("matching TyAlias'es found");
+    println!("old: {:?}", tcx.type_of(old));
+    println!("new: {:?}", tcx.type_of(new));*/
     None
 }

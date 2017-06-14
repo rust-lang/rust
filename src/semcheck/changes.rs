@@ -49,6 +49,10 @@ impl<'a> From<&'a BinaryChangeType> for ChangeCategory {
     fn from(type_: &BinaryChangeType) -> ChangeCategory {
         match *type_ {
             KindDifference |
+            RegionParameterAdded |
+            RegionParameterRemoved |
+            TypeParameterAdded { .. } |
+            TypeParameterRemoved { .. } |
             TypeSpecialization |
             StructFieldAdded { .. } |
             StructFieldRemoved { .. } |
@@ -87,6 +91,14 @@ impl<'a> From<&'a Change> for ChangeCategory {
 pub enum BinaryChangeType {
     /// An item has changed it's kind.
     KindDifference,
+    /// A region parameter has been added to an item.
+    RegionParameterAdded,
+    /// A region parameter has been removed from an item.
+    RegionParameterRemoved,
+    /// A type parameter has been added to an item.
+    TypeParameterAdded { defaulted: bool },
+    /// A type parameter has been removed from an item.
+    TypeParameterRemoved { defaulted: bool },
     /// An item has changed it's type (signature) to be more general.
     TypeGeneralization,
     /// An item has changed it's type (signature) to be less general.

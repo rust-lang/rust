@@ -1,0 +1,16 @@
+max: Breaking
+  RegionParameterAdded: B
+warning: change
+
+  RegionParameterRemoved: C
+warning: change
+
+  TypeParameterAdded { defaulted: true }: D
+warning: change
+
+  TypeParameterAdded { defaulted: false }: E
+warning: change
+
+  TypeParameterRemoved { defaulted: false }: F
+warning: change
+
