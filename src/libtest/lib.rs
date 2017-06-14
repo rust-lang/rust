@@ -1726,8 +1726,11 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrFailedMsg, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc,
                TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
-               DynTestFn, ShouldPanic};
+               DynTestFn, ShouldPanic, TestResult};
+    use super::{TestEvent, run_tests};
     use std::sync::mpsc::channel;
+    use std::sync::{Arc, RwLock};
+    use std::thread::sleep;
     use bench;
     use Bencher;
 
@@ -2015,9 +2018,6 @@ mod tests {
 
     #[test]
     pub fn stress_test_serial_tests() {
-        use super::{TestEvent, TestResult, run_tests};
-        use std::sync::{Arc, RwLock};
-
         let mut opts = TestOpts::new();
         opts.run_tests = true;
         opts.test_threads = Some(100);
@@ -2060,10 +2060,7 @@ mod tests {
 
     #[test]
     pub fn run_concurrent_tests_concurrently() {
-        use super::{TestEvent, TestResult, run_tests};
-        use std::thread::sleep;
         use std::time::Duration;
-        use std::sync::mpsc::channel;
 
         let mut opts = TestOpts::new();
         opts.run_tests = true;
