@@ -429,7 +429,7 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
 
 /// A sequence of these messages induce a trace of query-based incremental compilation.
 /// TODO(matthewhammer): Determine whether we should include cycle detection here or not.
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub enum ProfileQueriesMsg {
     /// begin a new query
     QueryBegin(Span,QueryMsg),

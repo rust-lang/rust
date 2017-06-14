@@ -59,6 +59,7 @@ use std::fs::File;
 use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
+use rustc::ty::ProfileQueriesMsg;
 
 pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
@@ -66,7 +67,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     if tcx.sess.profile_queries() {
         tcx.profile_queries_sender.borrow().as_ref().unwrap()
             .send(
-                ProfileQueriesMsg::Dump("dep-graph")
+                ProfileQueriesMsg::Dump("dep-graph".to_string())
             ).unwrap()
     }
 

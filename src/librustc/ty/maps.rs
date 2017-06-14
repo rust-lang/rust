@@ -22,7 +22,7 @@ use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
-use ty::context::ProfileQueriesMsg;
+use ty::ProfileQueriesMsg;
 use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -485,6 +485,8 @@ macro_rules! define_maps {
                     profile_queries_msg!(tcx, ProfileQueriesMsg::CacheHit);
                     return Ok(f(result));
                 }
+                // else, we are going to run the provider:
+                profile_queries_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
 
                 // FIXME(eddyb) Get more valid Span's on queries.
                 // def_span guard is necesary to prevent a recursive loop,
@@ -495,7 +497,6 @@ macro_rules! define_maps {
 
                 let _task = tcx.dep_graph.in_task(Self::to_dep_node(&key));
 
-                profile_queries_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
                 let result = tcx.cycle_check(span, Query::$name(key), || {
                     let provider = tcx.maps.providers[key.map_crate()].$name;
                     provider(tcx.global_tcx(), key)
