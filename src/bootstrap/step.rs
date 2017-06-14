@@ -666,12 +666,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .target(&build.config.build)
               .stage(0)
          })
-         .dep(move |s| {
-             s.name("doc-unstable-book-gen")
-              .host(&build.config.build)
-              .target(&build.config.build)
-              .stage(0)
-         })
+         .dep(move |s| s.name("doc-unstable-book-gen"))
          .default(build.config.docs)
          .run(move |s| doc::rustbook_src(build,
                                          s.target,
@@ -693,8 +688,13 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .run(move |s| doc::error_index(build, s.target));
     rules.doc("doc-unstable-book-gen", "src/tools/unstable-book-gen")
-         .dep(move |s| s.name("tool-unstable-book-gen").target(&build.config.build).stage(0))
-         .dep(move |s| s.name("librustc-link"))
+         .dep(move |s| {
+             s.name("tool-unstable-book-gen")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
+         .dep(move |s| s.name("libstd-link"))
          .default(build.config.docs)
          .host(true)
          .run(move |s| doc::unstable_book_gen(build, s.target));
