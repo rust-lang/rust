@@ -19,13 +19,9 @@ impl Drop for Foo {
     }
 }
 
-struct Fat<T: ?Sized> {
-    f: T
-}
-
 pub fn main() {
     {
-        let _x: Box<Fat<[Foo]>> = Box::<Fat<[Foo; 3]>>::new(Fat { f: [Foo, Foo, Foo] });
+        let _x: Box<(i32, [Foo])> = Box::<(i32, [Foo; 3])>::new((42, [Foo, Foo, Foo]));
     }
     unsafe {
         assert_eq!(DROP_RAN, 3);

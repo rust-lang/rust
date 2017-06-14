@@ -28,8 +28,7 @@ struct Fat<T: ?Sized> {
 
 pub fn main() {
     {
-        let _x: Box<(i32, Fat<Trait>)> =
-            Box::<(i32, Fat<Foo>)>::new((42, Fat { f: Foo }));
+        let _x: Box<Fat<Trait>> = Box::<Fat<Foo>>::new(Fat { f: Foo });
     }
     unsafe {
         assert!(DROP_RAN);
