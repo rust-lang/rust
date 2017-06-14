@@ -108,6 +108,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                 // can't be implemented by default
                 return;
             }
+            if !sig.generics.ty_params.is_empty() {
+                // when the result of `new()` depends on a type parameter we should not require an
+                // impl of `Default`
+                return;
+            }
             if decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
                 let self_ty = cx.tcx
                     .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));

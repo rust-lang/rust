@@ -76,4 +76,11 @@ struct Const;
 impl Const {
     pub const fn new() -> Const { Const } // const fns can't be implemented via Default
 }
+
+pub struct IgnoreGenericNew;
+
+impl IgnoreGenericNew {
+    pub fn new<T>() -> Self { IgnoreGenericNew } // the derived Default does not make sense here as the result depends on T
+}
+
 fn main() {}
