@@ -574,7 +574,6 @@ extern "C" {
     pub fn LLVMVectorType(ElementType: TypeRef, ElementCount: c_uint) -> TypeRef;
 
     pub fn LLVMGetElementType(Ty: TypeRef) -> TypeRef;
-    pub fn LLVMGetArrayLength(ArrayTy: TypeRef) -> c_uint;
     pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
     // Operations on other types
