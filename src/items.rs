@@ -1831,7 +1831,17 @@ fn rewrite_fn_base(
     result.push_str(&ident.to_string());
 
     // Generics.
-    let shape = Shape::indented(indent + last_line_width(&result), context.config);
+    let overhead = if has_braces && !newline_brace {
+        // 4 = `() {`
+        4
+    } else {
+        // 2 = `()`
+        2
+    };
+    let shape = try_opt!(
+        Shape::indented(indent + last_line_width(&result), context.config)
+            .sub_width(overhead)
+    );
     let g_span = mk_sp(span.lo, span_for_return(&fd.output).lo);
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
     result.push_str(&generics_str);
