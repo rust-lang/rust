@@ -17,6 +17,9 @@ doctest = false
 [[bin]]
 name = "rustfmt"
 
+[[bin]]
+name = "cargo-fmt"
+
 [features]
 default = ["cargo-fmt"]
 cargo-fmt = []
