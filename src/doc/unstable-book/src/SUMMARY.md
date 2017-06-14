@@ -165,6 +165,7 @@
     - [n16](library-features/n16.md)
     - [never_type_impls](library-features/never-type-impls.md)
     - [nonzero](library-features/nonzero.md)
+    - [ord_max_min](library-features/ord-max-min.md)
     - [offset_to](library-features/offset-to.md)
     - [once_poison](library-features/once-poison.md)
     - [oom](library-features/oom.md)

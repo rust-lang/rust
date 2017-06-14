@@ -4152,6 +4152,27 @@ println!("x: {}, y: {}", variable.x, variable.y);
 For more information see The Rust Book: https://doc.rust-lang.org/book/
 "##,
 
+E0617: r##"
+Attempted to pass an invalid type of variable into a variadic function.
+
+Erroneous code example:
+
+```compile_fail,E0617
+extern {
+    fn printf(c: *const i8, ...);
+}
+
+unsafe {
+    printf(::std::ptr::null(), 0f32);
+    // error: can't pass an `f32` to variadic function, cast to `c_double`
+}
+```
+
+To fix this error, you need to pass variables corresponding to C types as much
+as possible. For better explanations, see The Rust Book:
+https://doc.rust-lang.org/book/
+"##,
+
 }
 
 register_diagnostics! {
