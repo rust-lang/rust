@@ -299,6 +299,10 @@ pub fn compiletest(build: &Build,
         cmd.env("SANITIZER_SUPPORT", "1");
     }
 
+    if build.config.profiler {
+        cmd.env("PROFILER_SUPPORT", "1");
+    }
+
     cmd.arg("--adb-path").arg("adb");
     cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
     if target.contains("android") {

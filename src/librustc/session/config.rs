@@ -1033,6 +1033,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
         "extra arguments to prepend to the linker invocation (space separated)"),
+    profile: bool = (false, parse_bool, [TRACKED],
+                     "insert profiling code"),
 }
 
 pub fn default_lib_output() -> CrateType {

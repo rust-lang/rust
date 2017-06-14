@@ -7,7 +7,7 @@ environment:
   matrix:
   # 32/64 bit MSVC tests
   - MSYS_BITS: 64
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc
@@ -48,12 +48,14 @@ environment:
   - RUST_CONFIGURE_ARGS: >
       --build=x86_64-pc-windows-msvc
       --enable-extended
+      --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY: 1
   - RUST_CONFIGURE_ARGS: >
       --build=i686-pc-windows-msvc
       --target=i586-pc-windows-msvc
       --enable-extended
+      --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY: 1
   - MSYS_BITS: 32

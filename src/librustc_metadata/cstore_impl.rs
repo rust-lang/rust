@@ -245,6 +245,10 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).is_sanitizer_runtime(&self.dep_graph)
     }
 
+    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool {
+        self.get_crate_data(cnum).is_profiler_runtime(&self.dep_graph)
+    }
+
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         self.get_crate_data(cnum).panic_strategy(&self.dep_graph)
     }

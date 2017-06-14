@@ -701,6 +701,10 @@ pub fn run_passes(sess: &Session,
         }
     }
 
+    if sess.opts.debugging_opts.profile {
+        modules_config.passes.push("insert-gcov-profiling".to_owned())
+    }
+
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
     modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));
 

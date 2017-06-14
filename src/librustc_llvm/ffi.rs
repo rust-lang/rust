@@ -591,7 +591,9 @@ extern "C" {
     pub fn LLVMIsUndef(Val: ValueRef) -> Bool;
 
     // Operations on metadata
+    pub fn LLVMMDStringInContext(C: ContextRef, Str: *const c_char, SLen: c_uint) -> ValueRef;
     pub fn LLVMMDNodeInContext(C: ContextRef, Vals: *const ValueRef, Count: c_uint) -> ValueRef;
+    pub fn LLVMAddNamedMetadataOperand(M: ModuleRef, Name: *const c_char, Val: ValueRef);
 
     // Operations on scalar constants
     pub fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool) -> ValueRef;
@@ -1331,6 +1333,8 @@ extern "C" {
     pub fn LLVMRustVersionMinor() -> u32;
 
     pub fn LLVMRustAddModuleFlag(M: ModuleRef, name: *const c_char, value: u32);
+
+    pub fn LLVMRustMetadataAsValue(C: ContextRef, MD: MetadataRef) -> ValueRef;
 
     pub fn LLVMRustDIBuilderCreate(M: ModuleRef) -> DIBuilderRef;
 

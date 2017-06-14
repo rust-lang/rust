@@ -23,7 +23,7 @@ use monomorphize::Instance;
 use partitioning::CodegenUnit;
 use type_::Type;
 use rustc_data_structures::base_n;
-use rustc::session::config::{self, NoDebugInfo};
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -81,6 +81,8 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     check_overflow: bool,
 
     use_dll_storage_attrs: bool,
+
+    output_filenames: &'a OutputFilenames,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -264,7 +266,8 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                exported_symbols: NodeSet,
-               check_overflow: bool)
+               check_overflow: bool,
+               output_filenames: &'b OutputFilenames)
                -> SharedCrateContext<'b, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -316,6 +319,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             tcx: tcx,
             check_overflow: check_overflow,
             use_dll_storage_attrs: use_dll_storage_attrs,
+            output_filenames: output_filenames,
         }
     }
 
@@ -349,6 +353,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.use_dll_storage_attrs
+    }
+
+    pub fn output_filenames(&self) -> &OutputFilenames {
+        self.output_filenames
     }
 }
 

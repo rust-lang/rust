@@ -258,6 +258,7 @@ pub trait CrateStore {
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
+    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool;
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
     fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
     /// The name of the crate as it is referred to in source code of the current
@@ -381,6 +382,7 @@ impl CrateStore for DummyCrateStore {
     fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
     fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
+    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool { bug!("is_profiler_runtime") }
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool { bug!("is_sanitizer_runtime") }
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         bug!("panic_strategy")

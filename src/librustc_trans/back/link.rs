@@ -1101,6 +1101,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum.as_usize() - 1] {
+            _ if sess.cstore.is_profiler_runtime(cnum) => {
+                add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
+            }
             _ if sess.cstore.is_sanitizer_runtime(cnum) => {
                 link_sanitizer_runtime(cmd, sess, tmpdir, cnum);
             }

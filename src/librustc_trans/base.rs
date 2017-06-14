@@ -43,7 +43,7 @@ use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use rustc::session::config::{self, NoDebugInfo};
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
 use rustc_incremental::IncrementalHashesMap;
 use abi;
@@ -1049,7 +1049,8 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              analysis: ty::CrateAnalysis,
-                             incremental_hashes_map: &IncrementalHashesMap)
+                             incremental_hashes_map: &IncrementalHashesMap,
+                             output_filenames: &OutputFilenames)
                              -> CrateTranslation {
     // Be careful with this krate: obviously it gives access to the
     // entire contents of the krate. So if you push any subtasks of
@@ -1066,7 +1067,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              exported_symbols,
-                                             check_overflow);
+                                             check_overflow,
+                                             output_filenames);
     // Translate the metadata.
     let (metadata_llcx, metadata_llmod, metadata) =
         time(tcx.sess.time_passes(), "write metadata", || {
