@@ -2190,14 +2190,16 @@ impl<'a> LoweringContext<'a> {
 
                 let next_ident = self.str_to_ident("next");
                 let next_pat = self.pat_ident(e.span, next_ident);
-                
+
                 // `::std::option::Option::Some(val) => next = val`
                 let pat_arm = {
                     let val_ident = self.str_to_ident("val");
                     let val_pat = self.pat_ident(e.span, val_ident);
                     let val_expr = P(self.expr_ident(e.span, val_ident, val_pat.id));
                     let next_expr = P(self.expr_ident(e.span, next_ident, next_pat.id));
-                    let assign = P(self.expr(e.span, hir::ExprAssign(next_expr, val_expr), ThinVec::new()));
+                    let assign = P(self.expr(e.span,
+                                             hir::ExprAssign(next_expr, val_expr),
+                                             ThinVec::new()));
                     let some_pat = self.pat_some(e.span, val_pat);
                     self.arm(hir_vec![some_pat], assign)
                 };
@@ -2232,7 +2234,7 @@ impl<'a> LoweringContext<'a> {
                 let match_stmt = respan(e.span, hir::StmtExpr(match_expr, self.next_id()));
 
                 let next_expr = P(self.expr_ident(e.span, next_ident, next_pat.id));
-                
+
                 // `let next`
                 let next_let = self.stmt_let_pat(e.span,
                     None,
@@ -2251,7 +2253,12 @@ impl<'a> LoweringContext<'a> {
                 let body_expr = P(self.expr_block(body_block, ThinVec::new()));
                 let body_stmt = respan(e.span, hir::StmtExpr(body_expr, self.next_id()));
 
-                let loop_block = P(self.block_all(e.span, hir_vec![next_let, match_stmt, pat_let, body_stmt], None));
+                let loop_block = P(self.block_all(e.span,
+                                                  hir_vec![next_let,
+                                                           match_stmt,
+                                                           pat_let,
+                                                           body_stmt],
+                                                  None));
 
                 // `[opt_ident]: loop { ... }`
                 let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident),
