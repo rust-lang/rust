@@ -47,8 +47,9 @@ fn main() {
 impl<'a, 'b> ResolveGeneratedContentFragmentMutator<'a, 'b> {
     fn mutate_fragment(&mut self, fragment: &mut Fragment) {
         match **info {
-            GeneratedContentInfo::ContentItem(ContentItem::Counter(ref counter_name,
-                                                                   counter_style)) => {}
+            GeneratedContentInfo::ContentItem(
+                ContentItem::Counter(ref counter_name, counter_style),
+            ) => {}
         }
     }
 }

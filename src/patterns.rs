@@ -265,6 +265,7 @@ pub fn can_be_overflowed_pat(context: &RewriteContext, pat: &TuplePatField, len:
     match pat {
         &TuplePatField::Pat(ref pat) => {
             match pat.node {
+                ast::PatKind::Path(..) |
                 ast::PatKind::Tuple(..) |
                 ast::PatKind::Struct(..) => context.use_block_indent() && len == 1,
                 ast::PatKind::Ref(ref p, _) |

@@ -802,7 +802,10 @@ pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &Vec<Strin
 
 pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize) -> bool {
     match ty.node {
+        ast::TyKind::Path(..) |
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
+        ast::TyKind::Rptr(_, ref mutty) |
+        ast::TyKind::Ptr(ref mutty) => can_be_overflowed_type(context, &*mutty.ty, len),
         _ => false,
     }
 }
