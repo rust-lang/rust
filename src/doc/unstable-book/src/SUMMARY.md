@@ -87,7 +87,6 @@
     - [start](language-features/start.md)
     - [static_nobundle](language-features/static-nobundle.md)
     - [stmt_expr_attributes](language-features/stmt-expr-attributes.md)
-    - [struct_field_attributes](language-features/struct-field-attributes.md)
     - [structural_match](language-features/structural-match.md)
     - [target_feature](language-features/target-feature.md)
     - [thread_local](language-features/thread-local.md)
