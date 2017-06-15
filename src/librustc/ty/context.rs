@@ -428,7 +428,7 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 /// A sequence of these messages induce a trace of query-based incremental compilation.
-/// TODO(matthewhammer): Determine whether we should include cycle detection here or not.
+/// FIXME(matthewhammer): Determine whether we should include cycle detection here or not.
 #[derive(Clone,Debug)]
 pub enum ProfileQueriesMsg {
     /// begin a new query
@@ -440,7 +440,7 @@ pub enum ProfileQueriesMsg {
     /// query is satisfied by a provider terminating with a value
     ProviderEnd,
     /// dump a record of the queries to the given path
-    Dump(String),    
+    Dump(String),
     /// stop the profilequeriesmsg service
     Halt
 }

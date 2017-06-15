@@ -833,7 +833,7 @@ mod trace {
     use syntax_pos::Span;
     use self::ty::maps::QueryMsg;
     use std::fs::File;
-    
+
     #[derive(Debug,Clone,Eq,PartialEq)]
     pub struct Query {
         pub span: Span,
@@ -842,7 +842,7 @@ mod trace {
     pub enum Effect {
         QueryBegin(Query,CacheCase),
     }
-    pub enum CacheCase { 
+    pub enum CacheCase {
         Hit, Miss
     }
     /// Recursive trace structure
@@ -868,9 +868,9 @@ mod trace {
         assert!(cons.len() > 0 && cons[0] != "");
         cons[0].to_string()
     }
-    
+
     // First return value is text; second return value is a CSS class
-    pub fn html_of_effect(eff:&Effect) -> (String, String) {        
+    pub fn html_of_effect(eff:&Effect) -> (String, String) {
         match *eff {
             Effect::QueryBegin(ref qmsg, ref cc) => {
                 let cons = cons_of_query_msg(qmsg);
@@ -889,9 +889,9 @@ mod trace {
         for t in traces {
             let (eff_text, eff_css_classes) = html_of_effect(&t.effect);
             write!(file, "<div class=\"depth-{} extent-{}{} {}\">\n",
-                   depth, 
+                   depth,
                    t.extent.len(),
-                   if t.extent.len() > 5 { 
+                   if t.extent.len() > 5 {
                        // query symbol_name     has extent 5, and is very common
                        // query def_symbol_name has extent 6, and is somewhat common
                        " extent-big"
@@ -905,7 +905,8 @@ mod trace {
     }
 
     pub fn write_traces(html_file:&mut File, _counts_file:&mut File, traces:&Vec<Rec>) {
-        // XXX/TODO: Populate counts_file with counts for each constructor (a histogram of constructor occurrences)
+        // FIXME(matthewhammer): Populate counts_file with counts for
+        // each constructor (a histogram of constructor occurrences)
         write_traces_rec(html_file, traces, 0)
     }
 
@@ -959,12 +960,12 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
     loop {
         let msg = r.recv();
         if let Err(_recv_err) = msg {
-            // TODO: Perhaps do something smarter than simply quitting?
-            break 
+            // FIXME: Perhaps do something smarter than simply quitting?
+            break
         };
         let msg = msg.unwrap();
         debug!("profile_queries_thread: {:?}", msg);
-        
+
         // Meta-level versus _actual_ queries messages
         match msg {
             ProfileQueriesMsg::Halt => return,
@@ -974,12 +975,13 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                 { // write HTML file
                     let html_path = format!("{}.html", path);
                     let mut html_file = File::create(&html_path).unwrap();
-                    
+
                     let counts_path = format!("{}.counts.txt", path);
                     let mut counts_file = File::create(&counts_path).unwrap();
 
                     write!(html_file, "<html>\n").unwrap();
-                    write!(html_file, "<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", 
+                    write!(html_file,
+                           "<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n",
                            "profile_queries.css").unwrap();
                     write!(html_file, "<style>\n").unwrap();
                     trace::write_style(&mut html_file);
@@ -1015,30 +1017,32 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                      ProfileQueriesMsg::ProviderEnd) => {
                         let provider_extent = frame.traces;
                         match stack.pop() {
-                            None => panic!("parse error: expected a stack frame; found an empty stack"),
+                            None =>
+                                panic!("parse error: expected a stack frame; found an empty stack"),
                             Some(old_frame) => {
                                 match old_frame.parse_st {
-                                    ParseState::NoQuery => panic!("parse error: expected a stack frame for a query"),
+                                    ParseState::NoQuery =>
+                                        panic!("parse error: expected a stack frame for a query"),
                                     ParseState::HaveQuery(q) => {
-                                        frame = StackFrame{ 
+                                        frame = StackFrame{
                                             parse_st:ParseState::NoQuery,
                                             traces:old_frame.traces
                                         };
                                         let trace = Rec {
                                             effect: Effect::QueryBegin(q, CacheCase::Miss),
-                                            extent: Box::new(provider_extent) 
+                                            extent: Box::new(provider_extent)
                                         };
                                         frame.traces.push( trace );
                                     }
                                 }
                             }
-                        }                    
+                        }
                     }
 
                     // Parse State: HaveQuery
                     (ParseState::HaveQuery(q),
                      ProfileQueriesMsg::CacheHit) => {
-                        let trace : Rec = Rec{ 
+                        let trace : Rec = Rec{
                             effect: Effect::QueryBegin(q, CacheCase::Hit),
                             extent: Box::new(vec![])
                         };
@@ -1046,17 +1050,19 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                         frame.parse_st = ParseState::NoQuery;
                     },
                     (ParseState::HaveQuery(_q),
-                     ProfileQueriesMsg::ProviderBegin) => { 
+                     ProfileQueriesMsg::ProviderBegin) => {
                         stack.push(frame);
                         frame = StackFrame{parse_st:ParseState::NoQuery, traces:vec![]};
                     },
                     (ParseState::HaveQuery(q),
                      ProfileQueriesMsg::ProviderEnd) => {
-                        panic!("parse error: unexpected ProviderEnd; expected something else to follow BeginQuery for {:?}", q)
+                        panic!("parse error: unexpected ProviderEnd;
+expected something else to follow BeginQuery for {:?}", q)
                     },
                     (ParseState::HaveQuery(q1),
                      ProfileQueriesMsg::QueryBegin(span2,querymsg2)) => {
-                        panic!("parse error: unexpected QueryBegin; earlier query is unfinished: {:?} and now {:?}",
+                        panic!("parse error: unexpected QueryBegin;
+earlier query is unfinished: {:?} and now {:?}",
                                q1, Query{span:span2, msg:querymsg2})
                     },
                 }
@@ -1191,9 +1197,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              index,
                              name,
                              |tcx| {
-    
+
         if tcx.sess.profile_queries() {
-            use std::thread;            
+            use std::thread;
             use std::sync::mpsc::{channel};
             let (tx, rx) = channel();
             *tcx.profile_queries_sender.borrow_mut() = Some(tx);
