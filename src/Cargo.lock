@@ -36,6 +36,7 @@ name = "alloc"
 version = "0.0.0"
 dependencies = [
  "core 0.0.0",
+ "std_unicode 0.0.0",
 ]
 
 [[package]]
@@ -248,15 +249,6 @@ version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.50 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "collections"
-version = "0.0.0"
-dependencies = [
- "alloc 0.0.0",
- "core 0.0.0",
- "std_unicode 0.0.0",
 ]
 
 [[package]]
@@ -1594,7 +1586,6 @@ dependencies = [
  "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
- "collections 0.0.0",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
  "gcc 0.3.50 (registry+https://github.com/rust-lang/crates.io-index)",

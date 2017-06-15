@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(collections)]
+#![feature(alloc)]
 
-extern crate collections;
-//~^ NOTE previous import of `collections` here
+extern crate alloc;
+//~^ NOTE previous import of `alloc` here
 
-mod collections {
-//~^ ERROR `collections` has already been imported in this module [E0260]
-//~| NOTE `collections` already imported
+mod alloc {
+//~^ ERROR `alloc` has already been imported in this module [E0260]
+//~| NOTE `alloc` already imported
     pub trait MyTrait {
         fn do_something();
     }

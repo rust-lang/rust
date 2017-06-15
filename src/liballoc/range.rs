@@ -27,14 +27,14 @@ pub trait RangeArgument<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(alloc)]
     /// #![feature(collections_range)]
     ///
-    /// extern crate collections;
+    /// extern crate alloc;
     ///
     /// # fn main() {
-    /// use collections::range::RangeArgument;
-    /// use collections::Bound::*;
+    /// use alloc::range::RangeArgument;
+    /// use alloc::Bound::*;
     ///
     /// assert_eq!((..10).start(), Unbounded);
     /// assert_eq!((3..10).start(), Included(&3));
@@ -49,14 +49,14 @@ pub trait RangeArgument<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(alloc)]
     /// #![feature(collections_range)]
     ///
-    /// extern crate collections;
+    /// extern crate alloc;
     ///
     /// # fn main() {
-    /// use collections::range::RangeArgument;
-    /// use collections::Bound::*;
+    /// use alloc::range::RangeArgument;
+    /// use alloc::Bound::*;
     ///
     /// assert_eq!((3..).end(), Unbounded);
     /// assert_eq!((3..10).end(), Excluded(&10));

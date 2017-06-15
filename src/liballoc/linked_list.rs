@@ -22,7 +22,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use alloc::boxed::{Box, IntermediateBox};
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
@@ -32,6 +31,7 @@ use core::mem;
 use core::ops::{BoxPlace, InPlace, Place, Placer};
 use core::ptr::{self, Shared};
 
+use boxed::{Box, IntermediateBox};
 use super::SpecExtend;
 
 /// A doubly-linked list with owned nodes.

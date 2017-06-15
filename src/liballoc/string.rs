@@ -56,8 +56,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use alloc::str as alloc_str;
-
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
@@ -70,7 +68,7 @@ use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use borrow::{Cow, ToOwned};
 use range::RangeArgument;
 use Bound::{Excluded, Included, Unbounded};
-use str::{self, FromStr, Utf8Error, Chars};
+use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
 
@@ -1464,7 +1462,7 @@ impl String {
     #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
-        unsafe { alloc_str::from_boxed_utf8_unchecked(slice) }
+        unsafe { from_boxed_utf8_unchecked(slice) }
     }
 }
 

@@ -97,7 +97,6 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
-use alloc::boxed::Box;
 use core::cmp::Ordering::{self, Less};
 use core::mem::size_of;
 use core::mem;
@@ -105,6 +104,7 @@ use core::ptr;
 use core::slice as core_slice;
 
 use borrow::{Borrow, BorrowMut, ToOwned};
+use boxed::Box;
 use vec::Vec;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -141,7 +141,7 @@ pub use self::hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
-    use alloc::boxed::Box;
+    use boxed::Box;
     use core::mem;
 
     #[cfg(test)]

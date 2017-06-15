@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-#![feature(collections)]
-
 fn main() {
     let args = vec!["foobie", "asdf::asdf"];
     let arr: Vec<&str> = args[1].split("::").collect();

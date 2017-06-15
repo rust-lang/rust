@@ -2015,7 +2015,7 @@ mod traits {
            issue = "32110")]
 pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
-    // libcollections, not here.
+    // liballoc, not here.
 
     #[stable(feature = "core", since = "1.6.0")]
     fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;

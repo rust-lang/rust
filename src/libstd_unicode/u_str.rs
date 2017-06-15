@@ -32,7 +32,7 @@ pub struct SplitWhitespace<'a> {
 }
 
 /// Methods for Unicode string slices
-#[allow(missing_docs)] // docs in libcollections
+#[allow(missing_docs)] // docs in liballoc
 pub trait UnicodeStr {
     fn split_whitespace<'a>(&'a self) -> SplitWhitespace<'a>;
     fn is_whitespace(&self) -> bool;

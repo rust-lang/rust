@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
-  <Type Name="collections::vec::Vec&lt;*&gt;">
+  <Type Name="alloc::vec::Vec&lt;*&gt;">
     <DisplayString>{{ size={len} }}</DisplayString>
     <Expand>
       <Item Name="[size]" ExcludeView="simple">len</Item>
@@ -11,7 +11,7 @@
       </ArrayItems>
     </Expand>
   </Type>
-  <Type Name="collections::vec_deque::VecDeque&lt;*&gt;">
+  <Type Name="alloc::vec_deque::VecDeque&lt;*&gt;">
     <DisplayString>{{ size={tail &lt;= head ? head - tail : buf.cap - tail + head} }}</DisplayString>
     <Expand>
       <Item Name="[size]" ExcludeView="simple">tail &lt;= head ? head - tail : buf.cap - tail + head</Item>
@@ -30,18 +30,18 @@
       </CustomListItems>
     </Expand>
   </Type>
-  <Type Name="collections::linked_list::LinkedList&lt;*&gt;">
+  <Type Name="alloc::linked_list::LinkedList&lt;*&gt;">
     <DisplayString>{{ size={len} }}</DisplayString>
     <Expand>
       <LinkedListItems>
         <Size>len</Size>
-        <HeadPointer>*(collections::linked_list::Node&lt;$T1&gt; **)&amp;head</HeadPointer>
-        <NextPointer>*(collections::linked_list::Node&lt;$T1&gt; **)&amp;next</NextPointer>
+        <HeadPointer>*(alloc::linked_list::Node&lt;$T1&gt; **)&amp;head</HeadPointer>
+        <NextPointer>*(alloc::linked_list::Node&lt;$T1&gt; **)&amp;next</NextPointer>
         <ValueNode>element</ValueNode>
       </LinkedListItems>
     </Expand>
   </Type>
-  <Type Name="collections::string::String">
+  <Type Name="alloc::string::String">
     <DisplayString>{*(char**)this,[vec.len]}</DisplayString>
     <StringView>*(char**)this,[vec.len]</StringView>
     <Expand>

@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-#![feature(collections)]
-
 fn main() {
     let mut escaped = String::from("");
     for c in '\u{10401}'.escape_unicode() {

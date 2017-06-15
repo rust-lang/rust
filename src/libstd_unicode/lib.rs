@@ -52,7 +52,7 @@ pub mod str {
     pub use u_str::Utf16Encoder;
 }
 
-// For use in libcollections, not re-exported in libstd.
+// For use in liballoc, not re-exported in libstd.
 pub mod derived_property {
     pub use tables::derived_property::{Case_Ignorable, Cased};
 }

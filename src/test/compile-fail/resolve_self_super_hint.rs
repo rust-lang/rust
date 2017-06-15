@@ -8,25 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(collections)]
+#![feature(alloc)]
 
 mod a {
-    extern crate collections;
-    use collections::HashMap;
-    //~^ ERROR unresolved import `collections::HashMap` [E0432]
-    //~| Did you mean `self::collections`?
+    extern crate alloc;
+    use alloc::HashMap;
+    //~^ ERROR unresolved import `alloc::HashMap` [E0432]
+    //~| Did you mean `self::alloc`?
     mod b {
-        use collections::HashMap;
-        //~^ ERROR unresolved import `collections::HashMap` [E0432]
-        //~| Did you mean `a::collections`?
+        use alloc::HashMap;
+        //~^ ERROR unresolved import `alloc::HashMap` [E0432]
+        //~| Did you mean `a::alloc`?
         mod c {
-            use collections::HashMap;
-            //~^ ERROR unresolved import `collections::HashMap` [E0432]
-            //~| Did you mean `a::collections`?
+            use alloc::HashMap;
+            //~^ ERROR unresolved import `alloc::HashMap` [E0432]
+            //~| Did you mean `a::alloc`?
             mod d {
-                use collections::HashMap;
-                //~^ ERROR unresolved import `collections::HashMap` [E0432]
-                //~| Did you mean `a::collections`?
+                use alloc::HashMap;
+                //~^ ERROR unresolved import `alloc::HashMap` [E0432]
+                //~| Did you mean `a::alloc`?
             }
         }
     }
