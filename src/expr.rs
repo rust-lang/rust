@@ -2212,7 +2212,35 @@ fn rewrite_last_arg_with_overflow<'a, T>(
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
-    let rewrite = last_arg.rewrite(context, shape);
+    let rewrite = if let Some(expr) = last_arg.to_expr() {
+        match expr.node {
+            // When overflowing the closure which consists of a single control flow expression,
+            // force to use block if its condition uses multi line.
+            ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
+                if rewrite_cond(context, body, shape).map_or(false, |cond| cond.contains('\n')) {
+                    rewrite_closure_fn_decl(capture, fn_decl, body, expr.span, context, shape)
+                        .and_then(|(prefix, extra_offset)| {
+                            // 1 = space between `|...|` and body.
+                            shape.offset_left(extra_offset).and_then(|body_shape| {
+                                let body = match body.node {
+                                    ast::ExprKind::Block(ref block) => {
+                                        stmt_expr(&block.stmts[0]).unwrap()
+                                    }
+                                    _ => body,
+                                };
+                                rewrite_closure_with_block(context, body_shape, &prefix, body)
+                            })
+                        })
+                        .or_else(|| expr.rewrite(context, shape))
+                } else {
+                    expr.rewrite(context, shape)
+                }
+            }
+            _ => expr.rewrite(context, shape),
+        }
+    } else {
+        last_arg.rewrite(context, shape)
+    };
     let orig_last = last_item.item.clone();
 
     if let Some(rewrite) = rewrite {
