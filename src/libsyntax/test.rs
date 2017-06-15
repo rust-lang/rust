@@ -54,6 +54,7 @@ struct Test {
     ignore: bool,
     should_panic: ShouldPanic,
     allow_fail: bool,
+    serial: bool,
 }
 
 struct TestCtxt<'a> {
@@ -136,6 +137,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         ignore: is_ignored(&i),
                         should_panic: should_panic(&i, &self.cx),
                         allow_fail: is_allowed_fail(&i),
+                        serial: is_serial(&i),
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
@@ -387,6 +389,10 @@ fn is_ignored(i: &ast::Item) -> bool {
 
 fn is_allowed_fail(i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| attr.check_name("allow_fail"))
+}
+
+fn is_serial(i: &ast::Item) -> bool {
+    i.attrs.iter().any(|attr| attr.check_name("serial"))
 }
 
 fn should_panic(i: &ast::Item, cx: &TestCtxt) -> ShouldPanic {
@@ -661,6 +667,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     let should_panic_path = |name| {
         ecx.path(span, vec![self_id, test_id, ecx.ident_of("ShouldPanic"), ecx.ident_of(name)])
     };
+    let serial_expr = ecx.expr_bool(span, test.serial);
     let fail_expr = match test.should_panic {
         ShouldPanic::No => ecx.expr_path(should_panic_path("No")),
         ShouldPanic::Yes(msg) => {
@@ -683,8 +690,8 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
         vec![field("name", name_expr),
              field("ignore", ignore_expr),
              field("should_panic", fail_expr),
-             field("allow_fail", allow_fail_expr)]);
-
+             field("allow_fail", allow_fail_expr),
+             field("serial", serial_expr)]);
 
     let mut visible_path = match cx.toplevel_reexport {
         Some(id) => vec![id],

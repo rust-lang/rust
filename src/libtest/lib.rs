@@ -213,6 +213,7 @@ pub struct TestDesc {
     pub ignore: bool,
     pub should_panic: ShouldPanic,
     pub allow_fail: bool,
+    pub serial: bool,
 }
 
 #[derive(Clone)]
@@ -425,7 +426,10 @@ Test Attributes:
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
-                     tests."#,
+                     tests.
+    #[serial]      - When applied to a function which is already attributed as a
+                     test, then the test runner will not run these tests in
+                     parallel with any other tests."#,
              usage = options.usage(&message));
 }
 
@@ -970,6 +974,7 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        serial: false,
     };
 
     let test_b = TestDesc {
@@ -977,6 +982,7 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        serial: false,
     };
 
     let mut st = ConsoleTestState {
@@ -1091,7 +1097,9 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
         None => get_concurrency(),
     };
 
-    let mut remaining = filtered_tests;
+    let (serial, mut remaining): (Vec<_>, Vec<_>) = filtered_tests
+        .into_iter()
+        .partition(|t| t.desc.serial);
     remaining.reverse();
     let mut pending = 0;
 
@@ -1159,6 +1167,34 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
         }
         callback(TeResult(desc, result, stdout))?;
         pending -= 1;
+    }
+
+    for test in serial {
+        callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
+        let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
+        running_tests.insert(test.desc.clone(), timeout);
+        run_test(opts, !opts.run_tests, test, tx.clone());
+
+        let mut res;
+        loop {
+            if let Some(timeout) = calc_timeout(&running_tests) {
+                res = rx.recv_timeout(timeout);
+                for test in get_timed_out_tests(&mut running_tests) {
+                    callback(TeTimeout(test))?;
+                }
+                if res != Err(RecvTimeoutError::Timeout) {
+                    break;
+                }
+            } else {
+                res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
+                break;
+            }
+        }
+
+        let (desc, result, stdout) = res.unwrap();
+        running_tests.remove(&desc);
+
+        callback(TeResult(desc, result, stdout))?;
     }
 
     if opts.bench_benchmarks {
@@ -1723,8 +1759,11 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrFailedMsg, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc,
                TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
-               DynTestFn, ShouldPanic};
+               DynTestFn, ShouldPanic, TestResult};
+    use super::{TestEvent, run_tests};
     use std::sync::mpsc::channel;
+    use std::sync::{Arc, RwLock};
+    use std::thread::sleep;
     use bench;
     use Bencher;
 
@@ -1739,6 +1778,7 @@ mod tests {
                 ignore: true,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1757,6 +1797,7 @@ mod tests {
                 ignore: true,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1777,6 +1818,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1797,6 +1839,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage("error message"),
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1819,6 +1862,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage(expected),
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1837,6 +1881,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1871,6 +1916,7 @@ mod tests {
                                  ignore: true,
                                  should_panic: ShouldPanic::No,
                                  allow_fail: false,
+                                 serial: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          },
@@ -1880,6 +1926,7 @@ mod tests {
                                  ignore: false,
                                  should_panic: ShouldPanic::No,
                                  allow_fail: false,
+                                 serial: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          }];
@@ -1904,6 +1951,7 @@ mod tests {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
+                    serial: false,
                 },
                 testfn: DynTestFn(Box::new(move |()| {}))
             })
@@ -1986,6 +2034,7 @@ mod tests {
                         ignore: false,
                         should_panic: ShouldPanic::No,
                         allow_fail: false,
+                        serial: false,
                     },
                     testfn: DynTestFn(Box::new(move |()| testfn())),
                 };
@@ -2008,6 +2057,98 @@ mod tests {
         for (a, b) in expected.iter().zip(filtered) {
             assert!(*a == b.desc.name.to_string());
         }
+    }
+
+    #[test]
+    pub fn stress_test_serial_tests() {
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.test_threads = Some(100);
+
+        let limit = 100;
+
+        let lock = Arc::new(RwLock::new(0));
+
+        let tests = (0..limit)
+            .map(|n| {
+                let lock = lock.clone();
+
+                TestDescAndFn {
+                    desc: TestDesc {
+                        name: DynTestName(format!("stress_{:?}", n)),
+                        ignore: false,
+                        should_panic: ShouldPanic::No,
+                        allow_fail: false,
+                        serial: true,
+                    },
+                    testfn: DynTestFn(Box::new(move |()| {
+                        let mut c = lock.write().unwrap();
+                        *c += 1;
+                    }))
+                }
+            })
+            .collect::<Vec<_>>();
+
+        run_tests(&opts, tests, |e| {
+            match e {
+                TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
+                TestEvent::TeTimeout(_) => panic!("timeout"),
+                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk =>
+                    panic!("result not okay"),
+                _ => Ok(())
+            }
+        }).unwrap();
+
+        assert_eq!(*(*lock).read().unwrap(), limit);
+    }
+
+    #[test]
+    pub fn run_concurrent_tests_concurrently() {
+        use std::time::Duration;
+
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.test_threads = Some(2);
+
+        let (tx, rx) = channel::<()>();
+
+        let tests = vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: DynTestName("first".to_string()),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: false,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    rx.recv_timeout(Duration::from_secs(1)).unwrap();
+                }))
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: DynTestName("second".to_string()),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: false,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    sleep(Duration::from_millis(100));
+                    tx.send(()).unwrap();
+                }))
+            },
+        ];
+
+        run_tests(&opts, tests, |e| {
+            match e {
+                TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
+                TestEvent::TeTimeout(_) => panic!("timeout"),
+                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk =>
+                    panic!("result not okay"),
+                _ => Ok(())
+            }
+        }).unwrap();
     }
 
     #[test]
