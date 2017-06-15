@@ -499,6 +499,7 @@ impl Collector {
                 ignore: should_ignore,
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
+                serial: false,
             },
             testfn: testing::DynTestFn(box move |()| {
                 let panic = io::set_panic(None);
