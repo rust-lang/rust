@@ -63,19 +63,21 @@ pub struct Layout {
 //  overflowing_mul as necessary).
 
 impl Layout {
-    /// Constructs a `Layout` from a given `size` and `align`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if any of the following conditions are not met:
+    /// Constructs a `Layout` from a given `size` and `align`,
+    /// or returns `None` if either of the following conditions
+    /// are not met:
     ///
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
     ///    must not overflow (i.e. the rounded value must be less than
     ///    `usize::MAX`).
-    pub fn from_size_align(size: usize, align: usize) -> Layout {
-        assert!(align.is_power_of_two()); // (this implies align != 0.)
+    pub fn from_size_align(size: usize, align: usize) -> Option<Layout> {
+        if !align.is_power_of_two() {
+            return None;
+        }
+
+        // (power-of-two implies align != 0.)
 
         // Rounded up size is:
         //   size_rounded_up = (size + align - 1) & !(align - 1);
@@ -89,9 +91,11 @@ impl Layout {
         //
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
-        assert!(size <= usize::MAX - (align - 1));
+        if size > usize::MAX - (align - 1) {
+            return None;
+        }
 
-        Layout { size: size, align: align }
+        Some(Layout { size: size, align: align })
     }
 
     /// The minimum size in bytes for a memory block of this layout.
@@ -103,7 +107,7 @@ impl Layout {
     /// Constructs a `Layout` suitable for holding a value of type `T`.
     pub fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
-        Layout::from_size_align(size, align)
+        Layout::from_size_align(size, align).unwrap()
     }
 
     /// Produces layout describing a record that could be used to
@@ -111,7 +115,7 @@ impl Layout {
     /// or other unsized type like a slice).
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
-        Layout::from_size_align(size, align)
+        Layout::from_size_align(size, align).unwrap()
     }
 
     /// Creates a layout describing the record that can hold a value
@@ -128,10 +132,10 @@ impl Layout {
     ///
     /// # Panics
     ///
-    /// Panics if `align` is not a power of two.
+    /// Panics if the combination of `self.size` and the given `align`
+    /// violates the conditions listed in `from_size_align`.
     pub fn align_to(&self, align: usize) -> Self {
-        assert!(align.is_power_of_two());
-        Layout::from_size_align(self.size, cmp::max(self.align, align))
+        Layout::from_size_align(self.size, cmp::max(self.align, align)).unwrap()
     }
 
     /// Returns the amount of padding we must insert after `self`
@@ -193,7 +197,12 @@ impl Layout {
             None => return None,
             Some(alloc_size) => alloc_size,
         };
-        Some((Layout::from_size_align(alloc_size, self.align), padded_size))
+
+        // We can assume that `self.align` is a power-of-two.
+        // Furthermore, `alloc_size` has alreayd been rounded up
+        // to a multiple of `self.align`; therefore, the call
+        // to `Layout::from_size_align` below should never panic.
+        Some((Layout::from_size_align(alloc_size, self.align).unwrap(), padded_size))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -209,8 +218,13 @@ impl Layout {
     /// On arithmetic overflow, returns `None`.
     pub fn extend(&self, next: Self) -> Option<(Self, usize)> {
         let new_align = cmp::max(self.align, next.align);
-        let realigned = Layout::from_size_align(self.size, new_align);
+        let realigned = match Layout::from_size_align(self.size, new_align) {
+            None => return None,
+            Some(l) => l,
+        };
+
         let pad = realigned.padding_needed_for(next.align);
+
         let offset = match self.size.checked_add(pad) {
             None => return None,
             Some(offset) => offset,
@@ -219,7 +233,12 @@ impl Layout {
             None => return None,
             Some(new_size) => new_size,
         };
-        Some((Layout::from_size_align(new_size, new_align), offset))
+
+        let layout = match Layout::from_size_align(new_size, new_align) {
+            None => return None,
+            Some(l) => l,
+        };
+        Some((layout, offset))
     }
 
     /// Creates a layout describing the record for `n` instances of
@@ -239,7 +258,8 @@ impl Layout {
             None => return None,
             Some(scaled) => scaled,
         };
-        Some(Layout::from_size_align(size, self.align))
+
+        Layout::from_size_align(size, self.align)
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -262,7 +282,11 @@ impl Layout {
             None => return None,
             Some(new_size) => new_size,
         };
-        Some((Layout::from_size_align(new_size, self.align), self.size()))
+        let layout = match Layout::from_size_align(new_size, self.align) {
+            None => return None,
+            Some(l) => l,
+        };
+        Some((layout, self.size()))
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
