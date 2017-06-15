@@ -67,6 +67,7 @@ use ich::Fingerprint;
 use ty::TyCtxt;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
+use std::fmt;
 use std::hash::Hash;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
@@ -145,7 +146,7 @@ macro_rules! define_dep_nodes {
             ),*
         }
 
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
                  RustcEncodable, RustcDecodable)]
         pub struct DepNode {
             pub kind: DepKind,
@@ -166,10 +167,22 @@ macro_rules! define_dep_nodes {
                                 let tupled_args = ( $($tuple_arg,)* );
                                 let hash = DepNodeParams::to_fingerprint(&tupled_args,
                                                                          tcx);
-                                return DepNode {
+                                let dep_node = DepNode {
                                     kind: DepKind::$variant,
                                     hash
                                 };
+
+                                if cfg!(debug_assertions) &&
+                                   !dep_node.kind.can_reconstruct_query_key() &&
+                                   (tcx.sess.opts.debugging_opts.incremental_info ||
+                                    tcx.sess.opts.debugging_opts.query_dep_graph)
+                                {
+                                    tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
+                                        tupled_args.to_debug_str(tcx)
+                                    });
+                                }
+
+                                return dep_node;
                             })*
 
                             // struct args
@@ -177,10 +190,22 @@ macro_rules! define_dep_nodes {
                                 let tupled_args = ( $($struct_arg_name,)* );
                                 let hash = DepNodeParams::to_fingerprint(&tupled_args,
                                                                          tcx);
-                                return DepNode {
+                                let dep_node = DepNode {
                                     kind: DepKind::$variant,
                                     hash
                                 };
+
+                                if cfg!(debug_assertions) &&
+                                   !dep_node.kind.can_reconstruct_query_key() &&
+                                   (tcx.sess.opts.debugging_opts.incremental_info ||
+                                    tcx.sess.opts.debugging_opts.query_dep_graph)
+                                {
+                                    tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
+                                        tupled_args.to_debug_str(tcx)
+                                    });
+                                }
+
+                                return dep_node;
                             })*
 
                             DepNode {
@@ -266,6 +291,36 @@ macro_rules! define_dep_nodes {
         }
     );
 }
+
+impl fmt::Debug for DepNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.kind)?;
+
+        if !self.kind.has_params() {
+            return Ok(());
+        }
+
+        write!(f, "(")?;
+
+        ::ty::tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx {
+                if let Some(def_id) = self.extract_def_id(tcx) {
+                    write!(f, "{}", tcx.item_path_str(def_id))?;
+                } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*self) {
+                    write!(f, "{}", s)?;
+                } else {
+                    write!(f, "{:?}", self.hash)?;
+                }
+            } else {
+                write!(f, "{:?}", self.hash)?;
+            }
+            Ok(())
+        })?;
+
+        write!(f, ")")
+    }
+}
+
 
 impl DefPathHash {
     #[inline]
@@ -426,10 +481,11 @@ define_dep_nodes!(
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
     const CAN_RECONSTRUCT_QUERY_KEY: bool;
     fn to_fingerprint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Fingerprint;
+    fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String;
 }
 
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a, T> DepNodeParams<'a, 'gcx, 'tcx> for T
-    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + fmt::Debug
 {
     default const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 
@@ -441,6 +497,10 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a, T> DepNodeParams<'a, 'gcx, 'tcx> for T
 
         hasher.finish()
     }
+
+    default fn to_debug_str(&self, _: TyCtxt<'a, 'gcx, 'tcx>) -> String {
+        format!("{:?}", *self)
+    }
 }
 
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId,) {
@@ -448,6 +508,68 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId,) {
 
     fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
         tcx.def_path_hash(self.0).0
+    }
+
+    fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
+        tcx.item_path_str(self.0)
+    }
+}
+
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefId, DefId) {
+    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+
+    // We actually would not need to specialize the implementation of this
+    // method but it's faster to combine the hashes than to instantiate a full
+    // hashing context and stable-hashing state.
+    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+        let (def_id_0, def_id_1) = *self;
+
+        let def_path_hash_0 = tcx.def_path_hash(def_id_0);
+        let def_path_hash_1 = tcx.def_path_hash(def_id_1);
+
+        def_path_hash_0.0.combine(def_path_hash_1.0)
+    }
+
+    fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
+        let (def_id_0, def_id_1) = *self;
+
+        format!("({}, {})",
+                tcx.def_path(def_id_0).to_string(tcx),
+                tcx.def_path(def_id_1).to_string(tcx))
+    }
+}
+
+
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefIdList,) {
+    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+
+    // We actually would not need to specialize the implementation of this
+    // method but it's faster to combine the hashes than to instantiate a full
+    // hashing context and stable-hashing state.
+    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+        let mut fingerprint = Fingerprint::zero();
+
+        for &def_id in self.0.iter() {
+            let def_path_hash = tcx.def_path_hash(def_id);
+            fingerprint = fingerprint.combine(def_path_hash.0);
+        }
+
+        fingerprint
+    }
+
+    fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String {
+        use std::fmt::Write;
+
+        let mut s = String::new();
+        write!(&mut s, "[").unwrap();
+
+        for &def_id in self.0.iter() {
+            write!(&mut s, "{}", tcx.def_path(def_id).to_string(tcx)).unwrap();
+        }
+
+        write!(&mut s, "]").unwrap();
+
+        s
     }
 }
 

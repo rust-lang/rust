@@ -37,6 +37,8 @@ struct DepGraphData {
 
     /// Work-products that we generate in this run.
     work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
+
+    dep_node_debug: RefCell<FxHashMap<DepNode, String>>,
 }
 
 impl DepGraph {
@@ -46,6 +48,7 @@ impl DepGraph {
                 thread: DepGraphThreadData::new(enabled),
                 previous_work_products: RefCell::new(FxHashMap()),
                 work_products: RefCell::new(FxHashMap()),
+                dep_node_debug: RefCell::new(FxHashMap()),
             })
         }
     }
@@ -151,6 +154,22 @@ impl DepGraph {
     /// used during saving of the dep-graph.
     pub fn previous_work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
         self.data.previous_work_products.borrow()
+    }
+
+    #[inline(always)]
+    pub(super) fn register_dep_node_debug_str<F>(&self,
+                                                 dep_node: DepNode,
+                                                 debug_str_gen: F)
+        where F: FnOnce() -> String
+    {
+        let mut dep_node_debug = self.data.dep_node_debug.borrow_mut();
+
+        dep_node_debug.entry(dep_node)
+                      .or_insert_with(debug_str_gen);
+    }
+
+    pub(super) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
+        self.data.dep_node_debug.borrow().get(&dep_node).cloned()
     }
 }
 
