@@ -88,7 +88,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         if let Some(simple_name) = var.pat.simple_name() {
             struct_span_err!(self.tcx.sess,
-                             var.pat.span,
+                             span,
                              E0611,
                              "explicit lifetime required in the type of `{}`",
                              simple_name)
@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         } else {
             struct_span_err!(self.tcx.sess,
-                             var.pat.span,
+                             span,
                              E0611,
                              "explicit lifetime required in parameter type")
                     .span_label(var.pat.span,
