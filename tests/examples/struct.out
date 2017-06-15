@@ -1,0 +1,6 @@
+old_ty: oldandnew::old::Abc<B>
+new_ty: oldandnew::new::Abc<B>
+max: Breaking
+  Unknown: Abc
+warning: change
+

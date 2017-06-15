@@ -1,11 +1,12 @@
 use semcheck::changes::BinaryChangeType;
 use semcheck::changes::BinaryChangeType::*;
-use semcheck::changes::{Change, ChangeSet};
+use semcheck::changes::{Change, ChangeCategory, ChangeSet};
 
 use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::Visibility::Public;
 
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -94,8 +95,13 @@ fn diff_items(changes: &mut ChangeSet,
               tcx: &TyCtxt,
               old: Export,
               new: Export) {
+    let mut check_type = true;
     let mut generics_changes = diff_generics(tcx, old.def.def_id(), new.def.def_id());
     for change_type in generics_changes.drain(..) {
+        if ChangeCategory::from(&change_type) == ChangeCategory::Breaking {
+            check_type = false;
+        }
+
         changes.add_change(Change::new_binary(change_type, old, new));
     }
 
@@ -111,12 +117,33 @@ fn diff_items(changes: &mut ChangeSet,
         (Static(_, _), Static(_, _)) => Some(Change::new_binary(Unknown, old, new)),
         (Method(_), Method(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Macro(_, _), Macro(_, _)) => Some(Change::new_binary(Unknown, old, new)),
-        _ => Some(Change::new_binary(KindDifference, old, new)),
+        _ => {
+            check_type = false;
+            Some(Change::new_binary(KindDifference, old, new))
+        },
     };
+
+    if check_type {
+        let _ = diff_type(id_mapping, tcx, old.def.def_id(), new.def.def_id());
+    }
 
     if let Some(c) = change {
         changes.add_change(c);
     }
+}
+
+fn diff_type(id_mapping: &IdMapping, tcx: &TyCtxt, old: DefId, new: DefId)
+    -> Vec<BinaryChangeType>
+{
+    let res = Vec::new();
+
+    let new_ty = tcx.type_of(new);
+    let old_ty = tcx.type_of(old).subst(*tcx, Substs::identity_for_item(*tcx, new));
+
+    println!("old_ty: {:?}", old_ty);
+    println!("new_ty: {:?}", new_ty);
+
+    res
 }
 
 fn diff_generics(tcx: &TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
@@ -129,15 +156,13 @@ fn diff_generics(tcx: &TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> 
 
     for i in 0..max(old_gen.regions.len(), new_gen.regions.len()) {
         match (old_gen.regions.get(i), new_gen.regions.get(i)) {
-            (Some(_ /* old_region */), Some(_ /* new_region */)) => {
-                // TODO: handle name changes?
-            },
             (Some(_ /* old_region */), None) => {
                 ret.push(RegionParameterRemoved);
             },
             (None, Some(_ /* new_region */)) => {
                 ret.push(RegionParameterAdded);
             },
+            (Some(_), Some(_)) => (),
             (None, None) => unreachable!(),
         }
     }

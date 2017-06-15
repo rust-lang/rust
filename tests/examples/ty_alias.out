@@ -1,3 +1,5 @@
+old_ty: u8
+new_ty: u16
 max: Breaking
   RegionParameterAdded: B
 warning: change
