@@ -54,7 +54,7 @@ macro_rules! panic {
 ///
 /// [`panic!`]: macro.panic.html
 /// [`debug_assert!`]: macro.debug_assert.html
-/// [testing]: ../book/testing.html
+/// [testing]: ../book/first-edition/testing.html
 ///
 /// # Examples
 ///

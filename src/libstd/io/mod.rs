@@ -263,7 +263,7 @@
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
-//! [`?` operator]: ../../book/syntax-index.html
+//! [`?` operator]: ../../book/first-edition/syntax-index.html
 //! [`Read::read`]: trait.Read.html#tymethod.read
 
 #![stable(feature = "rust1", since = "1.0.0")]

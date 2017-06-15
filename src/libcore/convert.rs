@@ -71,7 +71,7 @@ use str::FromStr;
 ///
 /// See [the book][book] for a more detailed comparison.
 ///
-/// [book]: ../../book/borrow-and-asref.html
+/// [book]: ../../book/first-edition/borrow-and-asref.html
 /// [`Borrow`]: ../../std/borrow/trait.Borrow.html
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a
@@ -305,7 +305,7 @@ pub trait Into<T>: Sized {
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Into<U>`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
-/// [book]: ../../book/error-handling.html
+/// [book]: ../../book/first-edition/error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {
     /// Performs the conversion.

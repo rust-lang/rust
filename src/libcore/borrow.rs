@@ -31,7 +31,7 @@
 /// `Borrow` is very similar to, but different than, `AsRef`. See
 /// [the book][book] for more.
 ///
-/// [book]: ../../book/borrow-and-asref.html
+/// [book]: ../../book/first-edition/borrow-and-asref.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.

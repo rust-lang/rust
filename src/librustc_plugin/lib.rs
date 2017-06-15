@@ -47,8 +47,8 @@
 //! #![plugin(myplugin)]
 //! ```
 //!
-//! See the [Plugins Chapter](../../book/compiler-plugins.html) of the book
-//! for more examples.
+//! See the [`plugin` feature](../../unstable-book/language-features/plugin.html) of
+//! the Unstable Book for more examples.
 
 #![crate_name = "rustc_plugin"]
 #![crate_type = "dylib"]

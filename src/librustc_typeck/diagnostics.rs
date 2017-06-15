@@ -1642,7 +1642,7 @@ fn f<T>() {}
 
 It is not possible to declare type parameters on a function that has the `start`
 attribute. Such a function must have the following type signature (for more
-information: http://doc.rust-lang.org/stable/book/no-stdlib.html):
+information: http://doc.rust-lang.org/stable/book/first-edition/no-stdlib.html):
 
 ```ignore
 fn(isize, *const *const u8) -> isize;
@@ -3186,7 +3186,7 @@ impl Baz for Bar { } // Note: This is OK
 E0374: r##"
 A struct without a field containing an unsized type cannot implement
 `CoerceUnsized`. An
-[unsized type](https://doc.rust-lang.org/book/unsized-types.html)
+[unsized type](https://doc.rust-lang.org/book/first-edition/unsized-types.html)
 is any type that the compiler doesn't know the length or alignment of at
 compile time. Any struct containing an unsized type is also unsized.
 
@@ -3245,9 +3245,9 @@ A struct with more than one field containing an unsized type cannot implement
 `CoerceUnsized`. This only occurs when you are trying to coerce one of the
 types in your struct to another type in the struct. In this case we try to
 impl `CoerceUnsized` from `T` to `U` which are both types that the struct
-takes. An [unsized type](https://doc.rust-lang.org/book/unsized-types.html)
-is any type that the compiler doesn't know the length or alignment of at
-compile time. Any struct containing an unsized type is also unsized.
+takes. An [unsized type] is any type that the compiler doesn't know the length
+or alignment of at compile time. Any struct containing an unsized type is also
+unsized.
 
 Example of erroneous code:
 
@@ -3292,6 +3292,7 @@ fn coerce_foo<T: CoerceUnsized<U>, U>(t: T) -> Foo<U> {
 }
 ```
 
+[unsized type]: https://doc.rust-lang.org/book/first-edition/unsized-types.html
 "##,
 
 E0376: r##"
@@ -3300,7 +3301,7 @@ The type you are trying to impl `CoerceUnsized` for is not a struct.
 already able to be coerced without an implementation of `CoerceUnsized`
 whereas a struct containing an unsized type needs to know the unsized type
 field it's containing is able to be coerced. An
-[unsized type](https://doc.rust-lang.org/book/unsized-types.html)
+[unsized type](https://doc.rust-lang.org/book/first-edition/unsized-types.html)
 is any type that the compiler doesn't know the length or alignment of at
 compile time. Any struct containing an unsized type is also unsized.
 
