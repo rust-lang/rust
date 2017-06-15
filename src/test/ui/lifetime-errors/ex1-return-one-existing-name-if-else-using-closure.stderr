@@ -14,16 +14,16 @@ note: ...so that reference does not outlive borrowed content
    |
 19 |     invoke(&x, |a, b| if a > b { a } else { b });
    |                                             ^
-note: but, the lifetime must be valid for the call at 19:5...
+note: but, the lifetime must be valid for the expression at 19:5...
   --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:5
    |
 19 |     invoke(&x, |a, b| if a > b { a } else { b });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...so that argument is valid for the call
-  --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:12
+   |     ^^^^^^
+note: ...so that a type/lifetime parameter is in scope here
+  --> $DIR/ex1-return-one-existing-name-if-else-using-closure.rs:19:5
    |
 19 |     invoke(&x, |a, b| if a > b { a } else { b });
-   |            ^^
+   |     ^^^^^^
 
 error: aborting due to previous error(s)
 
