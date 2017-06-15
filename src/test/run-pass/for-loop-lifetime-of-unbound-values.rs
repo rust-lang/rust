@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test when destructors run in a for loop. The intention is
+// that the value for each iteration is dropped *after* the loop
+// body has executed. This is true even when the value is assigned
+// to a `_` pattern (and hence ignored).
+
 use std::cell::Cell;
 
 struct Flag<'a>(&'a Cell<bool>);
