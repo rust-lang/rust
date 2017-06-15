@@ -590,6 +590,7 @@ fn rewrite_closure_fn_decl(
     };
     let list_str = try_opt!(write_list(&item_vec, &fmt));
     let mut prefix = format!("{}|{}|", mover, list_str);
+    // 1 = space between `|...|` and body.
     let extra_offset = extra_offset(&prefix, shape) + 1;
 
     if !ret_str.is_empty() {
@@ -682,6 +683,7 @@ fn rewrite_closure(
     }
 }
 
+// Rewrite closure with a single expression wrapping its body with block.
 fn rewrite_closure_with_block(
     context: &RewriteContext,
     shape: Shape,
@@ -703,6 +705,7 @@ fn rewrite_closure_with_block(
     rewrite_closure_block(&block, prefix, context, shape)
 }
 
+// Rewrite closure with a single expression without wrapping its body with block.
 fn rewrite_closure_expr(
     expr: &ast::Expr,
     prefix: &str,
@@ -716,6 +719,7 @@ fn rewrite_closure_expr(
     rewrite.map(|rw| format!("{} {}", prefix, rw))
 }
 
+// Rewrite closure whose body is block.
 fn rewrite_closure_block(
     block: &ast::Block,
     prefix: &str,
@@ -2217,24 +2221,29 @@ where
             // When overflowing the closure which consists of a single control flow expression,
             // force to use block if its condition uses multi line.
             ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
-                if rewrite_cond(context, body, shape).map_or(false, |cond| cond.contains('\n')) {
-                    rewrite_closure_fn_decl(capture, fn_decl, body, expr.span, context, shape)
-                        .and_then(|(prefix, extra_offset)| {
-                            // 1 = space between `|...|` and body.
-                            shape.offset_left(extra_offset).and_then(|body_shape| {
-                                let body = match body.node {
-                                    ast::ExprKind::Block(ref block) => {
-                                        stmt_expr(&block.stmts[0]).unwrap()
-                                    }
-                                    _ => body,
-                                };
-                                rewrite_closure_with_block(context, body_shape, &prefix, body)
-                            })
-                        })
-                        .or_else(|| expr.rewrite(context, shape))
-                } else {
-                    expr.rewrite(context, shape)
-                }
+                let try_closure_with_block = || {
+                    let body = match body.node {
+                        ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
+                            try_opt!(stmt_expr(&block.stmts[0]))
+                        }
+                        _ => body,
+                    };
+                    let (prefix, extra_offset) = try_opt!(rewrite_closure_fn_decl(
+                        capture,
+                        fn_decl,
+                        body,
+                        expr.span,
+                        context,
+                        shape,
+                    ));
+                    let shape = try_opt!(shape.offset_left(extra_offset));
+                    rewrite_cond(context, body, shape).map_or(None, |cond| if cond.contains('\n') {
+                        rewrite_closure_with_block(context, shape, &prefix, body)
+                    } else {
+                        None
+                    })
+                };
+                try_closure_with_block().or_else(|| expr.rewrite(context, shape))
             }
             _ => expr.rewrite(context, shape),
         }

@@ -1,7 +1,9 @@
 // rustfmt-max_width: 80
 
+// We would like to surround closure body with block when overflowing the last
+// argument of function call if the last argument has condition and without
+// block it may go multi lines.
 fn foo() {
-    // This is where it gets good
     refmut_map_result(self.cache.borrow_mut(), |cache| {
         match cache.entry(cache_key) {
             Occupied(entry) => Ok(entry.into_mut()),
@@ -13,7 +15,6 @@ fn foo() {
 
                 Ok(entry.insert(try!(statement)))
             }
-            // and now, casually call a method on this
         }
     }).map(MaybeCached::Cached)
 }
