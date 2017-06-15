@@ -535,23 +535,15 @@ where
     Some(result)
 }
 
-// This functions is pretty messy because of the rules around closures and blocks:
-// FIXME - the below is probably no longer true in full.
-//   * if there is a return type, then there must be braces,
-//   * given a closure with braces, whether that is parsed to give an inner block
-//     or not depends on if there is a return type and if there are statements
-//     in that block,
-//   * if the first expression in the body ends with a block (i.e., is a
-//     statement without needing a semi-colon), then adding or removing braces
-//     can change whether it is treated as an expression or statement.
-fn rewrite_closure(
+// Return type is (prefix, extra_offset)
+fn rewrite_closure_fn_decl(
     capture: ast::CaptureBy,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
     span: Span,
     context: &RewriteContext,
     shape: Shape,
-) -> Option<String> {
+) -> Option<(String, usize)> {
     let mover = if capture == ast::CaptureBy::Value {
         "move "
     } else {
@@ -598,6 +590,7 @@ fn rewrite_closure(
     };
     let list_str = try_opt!(write_list(&item_vec, &fmt));
     let mut prefix = format!("{}|{}|", mover, list_str);
+    let extra_offset = extra_offset(&prefix, shape) + 1;
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
@@ -609,8 +602,35 @@ fn rewrite_closure(
         prefix.push_str(&ret_str);
     }
 
+    Some((prefix, extra_offset))
+}
+
+// This functions is pretty messy because of the rules around closures and blocks:
+// FIXME - the below is probably no longer true in full.
+//   * if there is a return type, then there must be braces,
+//   * given a closure with braces, whether that is parsed to give an inner block
+//     or not depends on if there is a return type and if there are statements
+//     in that block,
+//   * if the first expression in the body ends with a block (i.e., is a
+//     statement without needing a semi-colon), then adding or removing braces
+//     can change whether it is treated as an expression or statement.
+fn rewrite_closure(
+    capture: ast::CaptureBy,
+    fn_decl: &ast::FnDecl,
+    body: &ast::Expr,
+    span: Span,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
+    let (prefix, extra_offset) = try_opt!(rewrite_closure_fn_decl(
+        capture,
+        fn_decl,
+        body,
+        span,
+        context,
+        shape,
+    ));
     // 1 = space between `|...|` and body.
-    let extra_offset = extra_offset(&prefix, shape) + 1;
     let body_shape = try_opt!(shape.offset_left(extra_offset));
 
     if let ast::ExprKind::Block(ref block) = body.node {
@@ -625,7 +645,12 @@ fn rewrite_closure(
             block_contains_comment(block, context.codemap) ||
             prefix.contains('\n');
 
-        if ret_str.is_empty() && !needs_block {
+        let no_return_type = if let ast::FunctionRetTy::Default(_) = fn_decl.output {
+            true
+        } else {
+            false
+        };
+        if no_return_type && !needs_block {
             // lock.stmts.len() == 1
             if let Some(ref expr) = stmt_expr(&block.stmts[0]) {
                 if let Some(rw) = rewrite_closure_expr(expr, &prefix, context, body_shape) {
@@ -647,15 +672,22 @@ fn rewrite_closure(
         }
 
         // Either we require a block, or tried without and failed.
-        return rewrite_closure_block(&block, prefix, context, body_shape);
+        rewrite_closure_block(&block, &prefix, context, body_shape)
+    } else {
+        rewrite_closure_expr(body, &prefix, context, body_shape).or_else(|| {
+            // The closure originally had a non-block expression, but we can't fit on
+            // one line, so we'll insert a block.
+            rewrite_closure_with_block(context, body_shape, &prefix, body)
+        })
     }
+}
 
-    if let Some(rw) = rewrite_closure_expr(body, &prefix, context, body_shape) {
-        return Some(rw);
-    }
-
-    // The closure originally had a non-block expression, but we can't fit on
-    // one line, so we'll insert a block.
+fn rewrite_closure_with_block(
+    context: &RewriteContext,
+    shape: Shape,
+    prefix: &str,
+    body: &ast::Expr,
+) -> Option<String> {
     let block = ast::Block {
         stmts: vec![
             ast::Stmt {
@@ -668,48 +700,48 @@ fn rewrite_closure(
         rules: ast::BlockCheckMode::Default,
         span: body.span,
     };
-    return rewrite_closure_block(&block, prefix, context, body_shape);
+    rewrite_closure_block(&block, prefix, context, shape)
+}
 
-    fn rewrite_closure_expr(
-        expr: &ast::Expr,
-        prefix: &str,
-        context: &RewriteContext,
-        shape: Shape,
-    ) -> Option<String> {
-        let mut rewrite = expr.rewrite(context, shape);
-        if classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(expr)) {
-            rewrite = and_one_line(rewrite);
-        }
-        rewrite.map(|rw| format!("{} {}", prefix, rw))
+fn rewrite_closure_expr(
+    expr: &ast::Expr,
+    prefix: &str,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
+    let mut rewrite = expr.rewrite(context, shape);
+    if classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(expr)) {
+        rewrite = and_one_line(rewrite);
     }
+    rewrite.map(|rw| format!("{} {}", prefix, rw))
+}
 
-    fn rewrite_closure_block(
-        block: &ast::Block,
-        prefix: String,
-        context: &RewriteContext,
-        shape: Shape,
-    ) -> Option<String> {
-        // Start with visual indent, then fall back to block indent if the
-        // closure is large.
-        let block_threshold = context.config.closure_block_indent_threshold();
-        if block_threshold >= 0 {
-            if let Some(block_str) = block.rewrite(&context, shape) {
-                if block_str.matches('\n').count() <= block_threshold as usize &&
-                    !need_block_indent(&block_str, shape)
-                {
-                    if let Some(block_str) = block_str.rewrite(context, shape) {
-                        return Some(format!("{} {}", prefix, block_str));
-                    }
+fn rewrite_closure_block(
+    block: &ast::Block,
+    prefix: &str,
+    context: &RewriteContext,
+    shape: Shape,
+) -> Option<String> {
+    // Start with visual indent, then fall back to block indent if the
+    // closure is large.
+    let block_threshold = context.config.closure_block_indent_threshold();
+    if block_threshold >= 0 {
+        if let Some(block_str) = block.rewrite(&context, shape) {
+            if block_str.matches('\n').count() <= block_threshold as usize &&
+                !need_block_indent(&block_str, shape)
+            {
+                if let Some(block_str) = block_str.rewrite(context, shape) {
+                    return Some(format!("{} {}", prefix, block_str));
                 }
             }
         }
-
-        // The body of the closure is big enough to be block indented, that
-        // means we must re-format.
-        let block_shape = shape.block().with_max_width(context.config);
-        let block_str = try_opt!(block.rewrite(&context, block_shape));
-        Some(format!("{} {}", prefix, block_str))
     }
+
+    // The body of the closure is big enough to be block indented, that
+    // means we must re-format.
+    let block_shape = shape.block().with_max_width(context.config);
+    let block_str = try_opt!(block.rewrite(&context, block_shape));
+    Some(format!("{} {}", prefix, block_str))
 }
 
 fn and_one_line(x: Option<String>) -> Option<String> {
