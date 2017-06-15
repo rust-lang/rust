@@ -684,13 +684,15 @@ fn format_impl_ref_and_type(
     item: &ast::Item,
     offset: Indent,
 ) -> Option<String> {
-    if let ast::ItemKind::Impl(unsafety,
-                               polarity,
-                               _,
-                               ref generics,
-                               ref trait_ref,
-                               ref self_ty,
-                               _) = item.node
+    if let ast::ItemKind::Impl(
+        unsafety,
+        polarity,
+        _,
+        ref generics,
+        ref trait_ref,
+        ref self_ty,
+        _,
+    ) = item.node
     {
         let mut result = String::new();
 

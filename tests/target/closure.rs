@@ -128,18 +128,20 @@ fn issue470() {
     {
         {
             {
-                let explicit_arg_decls = explicit_arguments.into_iter().enumerate().map(|(index,
-                  (ty,
-                   pattern))| {
-                    let lvalue = Lvalue::Arg(index as u32);
-                    block = this.pattern(
-                        block,
-                        argument_extent,
-                        hair::PatternRef::Hair(pattern),
-                        &lvalue,
-                    );
-                    ArgDecl { ty: ty }
-                });
+                let explicit_arg_decls =
+                    explicit_arguments.into_iter().enumerate().map(|(
+                        index,
+                        (ty, pattern),
+                    )| {
+                        let lvalue = Lvalue::Arg(index as u32);
+                        block = this.pattern(
+                            block,
+                            argument_extent,
+                            hair::PatternRef::Hair(pattern),
+                            &lvalue,
+                        );
+                        ArgDecl { ty: ty }
+                    });
             }
         }
     }

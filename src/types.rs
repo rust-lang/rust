@@ -371,11 +371,11 @@ impl Rewrite for ast::WherePredicate {
         // TODO: dead spans?
         let result = match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                                                    ref bound_lifetimes,
-                                                    ref bounded_ty,
-                                                    ref bounds,
-                                                    ..
-                                                }) => {
+                ref bound_lifetimes,
+                ref bounded_ty,
+                ref bounds,
+                ..
+            }) => {
                 let type_str = try_opt!(bounded_ty.rewrite(context, shape));
 
                 let colon = type_bound_colon(context);
@@ -428,10 +428,10 @@ impl Rewrite for ast::WherePredicate {
                 }
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
-                                                     ref lifetime,
-                                                     ref bounds,
-                                                     ..
-                                                 }) => {
+                ref lifetime,
+                ref bounds,
+                ..
+            }) => {
                 try_opt!(rewrite_bounded_lifetime(
                     lifetime,
                     bounds.iter(),
@@ -440,10 +440,10 @@ impl Rewrite for ast::WherePredicate {
                 ))
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                                                 ref lhs_ty,
-                                                 ref rhs_ty,
-                                                 ..
-                                             }) => {
+                ref lhs_ty,
+                ref rhs_ty,
+                ..
+            }) => {
                 let lhs_ty_str = try_opt!(lhs_ty.rewrite(context, shape));
                 // 3 = " = ".len()
                 let used_width = 3 + lhs_ty_str.len();
@@ -689,7 +689,14 @@ impl Rewrite for ast::Ty {
                         format!("[{}]", ty_str)
                     })
             }
-            ast::TyKind::Tup(ref items) => rewrite_tuple(context, items, self.span, shape),
+            ast::TyKind::Tup(ref items) => {
+                rewrite_tuple(
+                    context,
+                    &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
+                    self.span,
+                    shape,
+                )
+            }
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
@@ -790,5 +797,15 @@ pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &Vec<Strin
         type_strs.join(&joiner)
     } else {
         result
+    }
+}
+
+pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize) -> bool {
+    match ty.node {
+        ast::TyKind::Path(..) |
+        ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
+        ast::TyKind::Rptr(_, ref mutty) |
+        ast::TyKind::Ptr(ref mutty) => can_be_overflowed_type(context, &*mutty.ty, len),
+        _ => false,
     }
 }

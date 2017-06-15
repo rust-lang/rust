@@ -262,10 +262,12 @@ fn issue507() {
 
 fn issue508() {
     match s.type_id() {
-        Some(NodeTypeId::Element(ElementTypeId::HTMLElement(
-                    HTMLElementTypeId::HTMLCanvasElement))) => true,
-        Some(NodeTypeId::Element(ElementTypeId::HTMLElement(
-                        HTMLElementTypeId::HTMLObjectElement))) => s.has_object_data(),
+        Some(
+            NodeTypeId::Element(ElementTypeId::HTMLElement(HTMLElementTypeId::HTMLCanvasElement)),
+        ) => true,
+        Some(
+            NodeTypeId::Element(ElementTypeId::HTMLElement(HTMLElementTypeId::HTMLObjectElement)),
+        ) => s.has_object_data(),
         Some(NodeTypeId::Element(_)) => false,
     }
 }
