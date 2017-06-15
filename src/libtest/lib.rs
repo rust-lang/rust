@@ -1171,29 +1171,8 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
 
     for test in serial {
         callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
-        let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
-        running_tests.insert(test.desc.clone(), timeout);
         run_test(opts, !opts.run_tests, test, tx.clone());
-
-        let mut res;
-        loop {
-            if let Some(timeout) = calc_timeout(&running_tests) {
-                res = rx.recv_timeout(timeout);
-                for test in get_timed_out_tests(&mut running_tests) {
-                    callback(TeTimeout(test))?;
-                }
-                if res != Err(RecvTimeoutError::Timeout) {
-                    break;
-                }
-            } else {
-                res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
-                break;
-            }
-        }
-
-        let (desc, result, stdout) = res.unwrap();
-        running_tests.remove(&desc);
-
+        let (desc, result, stdout) = rx.recv().unwrap();
         callback(TeResult(desc, result, stdout))?;
     }
 
