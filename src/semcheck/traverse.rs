@@ -123,16 +123,16 @@ fn diff_items(changes: &mut ChangeSet,
         },
     };
 
-    if check_type {
-        let _ = diff_type(id_mapping, tcx, old.def.def_id(), new.def.def_id());
-    }
-
     if let Some(c) = change {
         changes.add_change(c);
     }
+
+    if check_type {
+        let _ = diff_type(id_mapping, tcx, old.def.def_id(), new.def.def_id());
+    }
 }
 
-fn diff_type(id_mapping: &IdMapping, tcx: &TyCtxt, old: DefId, new: DefId)
+fn diff_type(_: &IdMapping, tcx: &TyCtxt, old: DefId, new: DefId)
     -> Vec<BinaryChangeType>
 {
     let res = Vec::new();
@@ -172,8 +172,12 @@ fn diff_generics(tcx: &TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> 
             (Some(old_type), Some(new_type)) => {
                 if old_type.has_default && !new_type.has_default {
                     // TODO: major for sure
+                    ret.push(TypeParameterRemoved { defaulted: true });
+                    ret.push(TypeParameterAdded { defaulted: false });
                 } else if !old_type.has_default && new_type.has_default {
                     // TODO: minor, I guess?
+                    ret.push(TypeParameterRemoved { defaulted: false });
+                    ret.push(TypeParameterAdded { defaulted: true });
                 }
             },
             (Some(old_type), None) => {
