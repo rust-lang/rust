@@ -348,7 +348,7 @@ fn rewrite_last_child_with_overflow(
 ) -> bool {
     if let Some(shape) = shape.shrink_left(almost_total) {
         if let Some(ref mut rw) = rewrite_chain_subexpr(expr, span, context, shape) {
-            if almost_total + first_line_width(rw) <= one_line_budget {
+            if almost_total + first_line_width(rw) <= one_line_budget && rw.lines().count() > 3 {
                 ::std::mem::swap(last_child, rw);
                 return true;
             }
