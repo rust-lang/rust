@@ -151,41 +151,17 @@ fn format_expr(
                 shape,
             )
         }
-        ast::ExprKind::While(ref cond, ref block, label) => {
-            ControlFlow::new_while(None, cond, block, label, expr.span).rewrite(context, shape)
-        }
-        ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
-            ControlFlow::new_while(Some(pat), cond, block, label, expr.span).rewrite(context, shape)
-        }
-        ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
-            ControlFlow::new_for(pat, cond, block, label, expr.span).rewrite(context, shape)
-        }
-        ast::ExprKind::Loop(ref block, label) => {
-            ControlFlow::new_loop(block, label, expr.span).rewrite(context, shape)
+        ast::ExprKind::If(..) |
+        ast::ExprKind::IfLet(..) |
+        ast::ExprKind::ForLoop(..) |
+        ast::ExprKind::Loop(..) |
+        ast::ExprKind::While(..) |
+        ast::ExprKind::WhileLet(..) => {
+            to_control_flow(expr, expr_type).and_then(|control_flow| {
+                control_flow.rewrite(context, shape)
+            })
         }
         ast::ExprKind::Block(ref block) => block.rewrite(context, shape),
-        ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
-            ControlFlow::new_if(
-                cond,
-                None,
-                if_block,
-                else_block.as_ref().map(|e| &**e),
-                expr_type == ExprType::SubExpression,
-                false,
-                expr.span,
-            ).rewrite(context, shape)
-        }
-        ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
-            ControlFlow::new_if(
-                cond,
-                Some(pat),
-                if_block,
-                else_block.as_ref().map(|e| &**e),
-                expr_type == ExprType::SubExpression,
-                false,
-                expr.span,
-            ).rewrite(context, shape)
-        }
         ast::ExprKind::Match(ref cond, ref arms) => {
             rewrite_match(context, cond, arms, shape, expr.span)
         }
@@ -856,6 +832,32 @@ impl Rewrite for ast::Stmt {
     }
 }
 
+// Rewrite condition if the given expression has one.
+fn rewrite_cond(context: &RewriteContext, expr: &ast::Expr, shape: Shape) -> Option<String> {
+    match expr.node {
+        ast::ExprKind::Match(ref cond, _) => {
+            // `match `cond` {`
+            let cond_shape = match context.config.control_style() {
+                Style::Legacy => try_opt!(shape.shrink_left(6).and_then(|s| s.sub_width(2))),
+                Style::Rfc => try_opt!(shape.offset_left(8)),
+            };
+            cond.rewrite(context, cond_shape)
+        }
+        ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
+            stmt_expr(&block.stmts[0]).and_then(|e| rewrite_cond(context, e, shape))
+        }
+        _ => {
+            to_control_flow(expr, ExprType::SubExpression).and_then(|control_flow| {
+                let alt_block_sep = String::from("\n") +
+                    &shape.indent.block_only().to_string(context.config);
+                control_flow
+                    .rewrite_cond(context, shape, &alt_block_sep)
+                    .and_then(|rw| Some(rw.0))
+            })
+        }
+    }
+}
+
 // Abstraction over control flow expressions
 #[derive(Debug)]
 struct ControlFlow<'a> {
@@ -871,6 +873,56 @@ struct ControlFlow<'a> {
     // True if this is an `if` expression in an `else if` :-( hacky
     nested_if: bool,
     span: Span,
+}
+
+fn to_control_flow<'a>(expr: &'a ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'a>> {
+    match expr.node {
+        ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
+            Some(ControlFlow::new_if(
+                cond,
+                None,
+                if_block,
+                else_block.as_ref().map(|e| &**e),
+                expr_type == ExprType::SubExpression,
+                false,
+                expr.span,
+            ))
+        }
+        ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
+            Some(ControlFlow::new_if(
+                cond,
+                Some(pat),
+                if_block,
+                else_block.as_ref().map(|e| &**e),
+                expr_type == ExprType::SubExpression,
+                false,
+                expr.span,
+            ))
+        }
+        ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
+            Some(ControlFlow::new_for(pat, cond, block, label, expr.span))
+        }
+        ast::ExprKind::Loop(ref block, label) => Some(
+            ControlFlow::new_loop(block, label, expr.span),
+        ),
+        ast::ExprKind::While(ref cond, ref block, label) => Some(ControlFlow::new_while(
+            None,
+            cond,
+            block,
+            label,
+            expr.span,
+        )),
+        ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
+            Some(ControlFlow::new_while(
+                Some(pat),
+                cond,
+                block,
+                label,
+                expr.span,
+            ))
+        }
+        _ => None,
+    }
 }
 
 impl<'a> ControlFlow<'a> {
@@ -1021,9 +1073,13 @@ impl<'a> ControlFlow<'a> {
     }
 }
 
-impl<'a> Rewrite for ControlFlow<'a> {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
+impl<'a> ControlFlow<'a> {
+    fn rewrite_cond(
+        &self,
+        context: &RewriteContext,
+        shape: Shape,
+        alt_block_sep: &str,
+    ) -> Option<(String, usize)> {
         let constr_shape = if self.nested_if {
             // We are part of an if-elseif-else chain. Our constraints are tightened.
             // 7 = "} else " .len()
@@ -1067,37 +1123,12 @@ impl<'a> Rewrite for ControlFlow<'a> {
         if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
             let trial = self.rewrite_single_line(&pat_expr_string, context, shape.width);
 
-            if trial.is_some() &&
-                trial.as_ref().unwrap().len() <= context.config.single_line_if_else_max_width()
-            {
-                return trial;
+            if let Some(cond_str) = trial {
+                if cond_str.len() <= context.config.single_line_if_else_max_width() {
+                    return Some((cond_str, 0));
+                }
             }
         }
-
-        let used_width = if pat_expr_string.contains('\n') {
-            last_line_width(&pat_expr_string)
-        } else {
-            // 2 = spaces after keyword and condition.
-            label_string.len() + self.keyword.len() + pat_expr_string.len() + 2
-        };
-
-        let block_width = shape.width.checked_sub(used_width).unwrap_or(0);
-        // This is used only for the empty block case: `{}`. So, we use 1 if we know
-        // we should avoid the single line case.
-        let block_width = if self.else_block.is_some() || self.nested_if {
-            min(1, block_width)
-        } else {
-            block_width
-        };
-
-        let block_shape = Shape {
-            width: block_width,
-            ..shape
-        };
-        let mut block_context = context.clone();
-        block_context.is_if_else_block = self.else_block.is_some();
-
-        let block_str = try_opt!(self.block.rewrite(&block_context, block_shape));
 
         let cond_span = if let Some(cond) = self.cond {
             cond.span
@@ -1123,34 +1154,75 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let after_cond_comment =
             extract_comment(mk_sp(cond_span.hi, self.block.span.lo), context, shape);
 
-        let alt_block_sep = String::from("\n") +
-            &shape.indent.block_only().to_string(context.config);
         let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
             ""
         } else if context.config.control_brace_style() == ControlBraceStyle::AlwaysNextLine ||
                    force_newline_brace
         {
-            alt_block_sep.as_str()
+            alt_block_sep
         } else {
             " "
         };
 
-        let mut result =
-            format!("{}{}{}{}{}{}",
-                                 label_string,
-                                 self.keyword,
-                                 between_kwd_cond_comment
-                                     .as_ref()
-                                     .map_or(if pat_expr_string.is_empty() ||
-                                                pat_expr_string.starts_with('\n') {
-                                                 ""
-                                             } else {
-                                                 " "
-                                             },
-                                             |s| &**s),
-                                 pat_expr_string,
-                                 after_cond_comment.as_ref().map_or(block_sep, |s| &**s),
-                                 block_str);
+        let used_width = if pat_expr_string.contains('\n') {
+            last_line_width(&pat_expr_string)
+        } else {
+            // 2 = spaces after keyword and condition.
+            label_string.len() + self.keyword.len() + pat_expr_string.len() + 2
+        };
+
+        Some((
+            format!(
+                "{}{}{}{}{}",
+                label_string,
+                self.keyword,
+                between_kwd_cond_comment.as_ref().map_or(
+                    if pat_expr_string.is_empty() ||
+                        pat_expr_string.starts_with('\n')
+                    {
+                        ""
+                    } else {
+                        " "
+                    },
+                    |s| &**s,
+                ),
+                pat_expr_string,
+                after_cond_comment.as_ref().map_or(block_sep, |s| &**s)
+            ),
+            used_width,
+        ))
+    }
+}
+
+impl<'a> Rewrite for ControlFlow<'a> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
+
+        let alt_block_sep = String::from("\n") +
+            &shape.indent.block_only().to_string(context.config);
+        let (cond_str, used_width) = try_opt!(self.rewrite_cond(context, shape, &alt_block_sep));
+        // If `used_width` is 0, it indicates that whole control flow is written in a single line.
+        if used_width == 0 {
+            return Some(cond_str);
+        }
+
+        let block_width = shape.width.checked_sub(used_width).unwrap_or(0);
+        // This is used only for the empty block case: `{}`. So, we use 1 if we know
+        // we should avoid the single line case.
+        let block_width = if self.else_block.is_some() || self.nested_if {
+            min(1, block_width)
+        } else {
+            block_width
+        };
+        let block_shape = Shape {
+            width: block_width,
+            ..shape
+        };
+        let mut block_context = context.clone();
+        block_context.is_if_else_block = self.else_block.is_some();
+        let block_str = try_opt!(self.block.rewrite(&block_context, block_shape));
+
+        let mut result = format!("{}{}", cond_str, block_str);
 
         if let Some(else_block) = self.else_block {
             let shape = Shape::indented(shape.indent, context.config);
