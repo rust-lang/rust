@@ -22,9 +22,6 @@ REPO_DIR="$1"
 CACHE_DIR="$2"
 
 cache_src_dir="$CACHE_DIR/src"
-# If the layout of the cache directory changes, bump the number here
-# (and anywhere else this file is referenced) so the cache is wiped
-cache_valid_file="$CACHE_DIR/cache_valid1"
 
 if [ ! -d "$REPO_DIR" -o ! -d "$REPO_DIR/.git" ]; then
     echo "Error: $REPO_DIR does not exist or is not a git repo"
@@ -36,46 +33,18 @@ if [ ! -d "$CACHE_DIR" ]; then
     exit 1
 fi
 
-# Wipe the cache if it's not valid, or mark it as invalid while we update it
-if [ ! -f "$cache_valid_file" ]; then
-    echo "Invalid cache, wiping ($cache_valid_file missing)"
-    rm -rf "$CACHE_DIR"
-    mkdir "$CACHE_DIR"
-else
-    # Ignore errors while gathering information about the possible brokenness
-    # of the git repo since our gathered info will tell us something is wrong
-    set +o errexit
-    stat_lines=$(cd "$cache_src_dir" && git status --porcelain | wc -l)
-    stat_ec=$(cd "$cache_src_dir" && git status >/dev/null 2>&1; echo $?)
-    set -o errexit
-    if [ ! -d "$cache_src_dir/.git" -o $stat_lines != 0 -o $stat_ec != 0 ]; then
-        # Something is badly wrong - the cache valid file is here, but something
-        # about the git repo is fishy. Nuke it all, just in case
-        echo "WARNING: $cache_valid_file exists but bad repo: l:$stat_lines, ec:$stat_ec"
-        rm -rf "$CACHE_DIR"
-        mkdir "$CACHE_DIR"
-    else
-        echo "Valid cache ($cache_valid_file exists)"
-        rm "$cache_valid_file"
-    fi
-fi
+rm -rf "$CACHE_DIR"
+mkdir "$CACHE_DIR"
 
 travis_fold start update_cache
 travis_time_start
 
 # Update the cache (a pristine copy of the rust source master)
-if [ ! -d "$cache_src_dir/.git" ]; then
-    retry sh -c "rm -rf $cache_src_dir && mkdir -p $cache_src_dir && \
-        git clone https://github.com/rust-lang/rust.git $cache_src_dir"
-fi
-retry sh -c "cd $cache_src_dir && git reset --hard && git pull"
+retry sh -c "rm -rf $cache_src_dir && mkdir -p $cache_src_dir && \
+    git clone --depth 1 https://github.com/rust-lang/rust.git $cache_src_dir"
 (cd $cache_src_dir && git rm src/llvm)
 retry sh -c "cd $cache_src_dir && \
     git submodule deinit -f . && git submodule sync && git submodule update --init"
-
-# Cache was updated without errors, mark it as valid
-echo "Refreshed cache (touch $cache_valid_file)"
-touch "$cache_valid_file"
 
 travis_fold end update_cache
 travis_time_finish
