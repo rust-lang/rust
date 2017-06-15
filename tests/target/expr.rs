@@ -353,8 +353,8 @@ fn issue1106() {
         {}
     }
 
-    for entry in WalkDir::new(path).into_iter().filter_entry(|entry| {
-        exclusions.filter_entry(entry)
-    })
+    for entry in WalkDir::new(path)
+        .into_iter()
+        .filter_entry(|entry| exclusions.filter_entry(entry))
     {}
 }

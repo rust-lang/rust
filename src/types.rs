@@ -311,9 +311,9 @@ where
         context.codemap,
         // FIXME Would be nice to avoid this allocation,
         // but I couldn't get the types to work out.
-        inputs.map(|i| ArgumentKind::Regular(Box::new(i))).chain(
-            variadic_arg,
-        ),
+        inputs
+            .map(|i| ArgumentKind::Regular(Box::new(i)))
+            .chain(variadic_arg),
         ")",
         |arg| match *arg {
             ArgumentKind::Regular(ref ty) => ty.span().lo,
@@ -718,9 +718,8 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Mac(..) => None,
             ast::TyKind::ImplicitSelf => Some(String::from("")),
             ast::TyKind::ImplTrait(ref it) => {
-                it.rewrite(context, shape).map(|it_str| {
-                    format!("impl {}", it_str)
-                })
+                it.rewrite(context, shape)
+                    .map(|it_str| format!("impl {}", it_str))
             }
             ast::TyKind::Err |
             ast::TyKind::Typeof(..) => unreachable!(),

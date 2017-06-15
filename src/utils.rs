@@ -44,9 +44,9 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.to_string());
             if path.is_global() {
-                segments_iter.next().expect(
-                    "Non-global path in pub(restricted)?",
-                );
+                segments_iter
+                    .next()
+                    .expect("Non-global path in pub(restricted)?");
             }
             let is_keyword = |s: &str| s == "self" || s == "super";
             let path = segments_iter.collect::<Vec<_>>().join("::");
@@ -129,9 +129,9 @@ fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
 
 #[inline]
 pub fn contains_skip(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(
-        |a| a.meta().map_or(false, |a| is_skip(&a)),
-    )
+    attrs
+        .iter()
+        .any(|a| a.meta().map_or(false, |a| is_skip(&a)))
 }
 
 // Find the end of a TyParam

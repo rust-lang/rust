@@ -132,9 +132,9 @@ impl ListItem {
     }
 
     pub fn has_line_pre_comment(&self) -> bool {
-        self.pre_comment.as_ref().map_or(false, |comment| {
-            comment.starts_with("//")
-        })
+        self.pre_comment
+            .as_ref()
+            .map_or(false, |comment| comment.starts_with("//"))
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
@@ -160,9 +160,10 @@ where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
 {
-    let pre_line_comments = items.clone().into_iter().any(|item| {
-        item.as_ref().has_line_pre_comment()
-    });
+    let pre_line_comments = items
+        .clone()
+        .into_iter()
+        .any(|item| item.as_ref().has_line_pre_comment());
 
     let limit = match tactic {
         _ if pre_line_comments => return DefinitiveListTactic::Vertical,

@@ -196,9 +196,11 @@ impl<'a> FmtVisitor<'a> {
             .map(|p_i| {
                 cmp::max(
                     self.last_pos,
-                    p_i.attrs.iter().map(|attr| attr.span.lo).min().unwrap_or(
-                        p_i.span.lo,
-                    ),
+                    p_i.attrs
+                        .iter()
+                        .map(|attr| attr.span.lo)
+                        .min()
+                        .unwrap_or(p_i.span.lo),
                 )
             })
             .unwrap_or(self.last_pos);
@@ -399,9 +401,9 @@ pub fn rewrite_use_list(
 
 // Returns true when self item was found.
 fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
-    match items.iter().position(|item| {
-        item.item.as_ref().map(|x| &x[..]) == Some("self")
-    }) {
+    match items
+        .iter()
+        .position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self")) {
         Some(pos) => {
             items[0] = items.remove(pos);
             true
