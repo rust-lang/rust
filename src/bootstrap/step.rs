@@ -1407,13 +1407,20 @@ mod tests {
     fn build(args: &[&str],
              extra_host: &[&str],
              extra_target: &[&str]) -> Build {
+        build_(args, extra_host, extra_target, true)
+    }
+
+    fn build_(args: &[&str],
+              extra_host: &[&str],
+              extra_target: &[&str],
+              docs: bool) -> Build {
         let mut args = args.iter().map(|s| s.to_string()).collect::<Vec<_>>();
         args.push("--build".to_string());
         args.push("A".to_string());
         let flags = Flags::parse(&args);
 
         let mut config = Config::default();
-        config.docs = true;
+        config.docs = docs;
         config.build = "A".to_string();
         config.host = vec![config.build.clone()];
         config.host.extend(extra_host.iter().map(|s| s.to_string()));
@@ -1767,5 +1774,23 @@ mod tests {
         assert!(plan.iter().any(|s| s.name.contains("test-all")));
         assert!(!plan.iter().any(|s| s.name.contains("tidy")));
         assert!(plan.iter().any(|s| s.name.contains("valgrind")));
+    }
+
+    #[test]
+    fn test_disable_docs() {
+        let build = build_(&["test"], &[], &[], false);
+        let rules = super::build_rules(&build);
+        let plan = rules.plan();
+        println!("rules: {:#?}", plan);
+        assert!(!plan.iter().any(|s| {
+            s.name.contains("doc-") || s.name.contains("default:doc")
+        }));
+        // none of the dependencies should be a doc rule either
+        assert!(!plan.iter().any(|s| {
+            rules.rules[s.name].deps.iter().any(|dep| {
+                let dep = dep(&rules.sbuild.name(s.name));
+                dep.name.contains("doc-") || dep.name.contains("default:doc")
+            })
+        }));
     }
 }
