@@ -892,7 +892,7 @@ impl<'a, 'tcx> CrateMetadata {
         if def_key.disambiguated_data.data == DefPathData::StructCtor {
             item = self.entry(def_key.parent.unwrap());
         }
-        let result = Rc::__from_array(self.get_attributes(&item).into_boxed_slice());
+        let result: Rc<[ast::Attribute]> = Rc::from(self.get_attributes(&item));
         let vec_ = &mut self.attribute_cache.borrow_mut()[node_as];
         if vec_.len() < node_index + 1 {
             vec_.resize(node_index + 1, None);
