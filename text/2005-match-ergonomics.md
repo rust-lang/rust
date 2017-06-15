@@ -174,10 +174,13 @@ compiler starts from the outside of the pattern and works inwards.
 Each time a reference is matched using a _non-reference pattern_,
 it will automatically dereference the value and update the default binding mode:
 
-1. If the reference encountered is `&Pat`, set the default binding mode to `ref`.
-2. If the reference encountered is `&mut Pat`: if the current default
+1. If the reference encountered is `&val`, set the default binding mode to `ref`.
+2. If the reference encountered is `&mut val`: if the current default
 binding mode is `ref`, it should remain `ref`. Otherwise, set the current binding
 mode to `ref mut`.
+
+If the automatically dereferenced value is still a reference, it is dereferenced
+and this process repeats.
 
 ```
                         Start                                
@@ -189,7 +192,7 @@ mode to `ref mut`.
                 +-----------------------+                     
                /                        \                     
 Encountered   /                          \  Encountered       
-  &mut Pat   /                            \     &Pat
+  &mut val   /                            \     &val
             v                              v                  
 +-----------------------+        +-----------------------+    
 | Default Binding Mode: |        | Default Binding Mode: |    
@@ -197,7 +200,7 @@ Encountered   /                          \  Encountered
 +-----------------------+        +-----------------------+    
                           ----->                              
                         Encountered                           
-                            &Pat                              
+                            &val
 ```
 
 Note that there is no exit from the `ref` binding mode. This is because an
@@ -309,6 +312,24 @@ match y {
 }
 ```
 
+Example with nested references:
+```rust
+let x = &Some(5);
+let y = &x;
+match y {
+    Some(z) => { ... }
+    _ => { ... }
+}
+
+// Desugared:
+let x = &Some(5);
+let y = &x;
+match y {
+    &&Some(ref z) => { ... }
+    _ => { ... }
+}
+```
+
 Example of new mutable reference behavior:
 ```rust
 match &mut x {
@@ -392,6 +413,26 @@ updated to phase-out `ref` and `ref mut` in favor of the new, simpler syntax.
 The major downside of this proposal is that it complicates the pattern-matching
 logic. However, doing so allows common cases to "just work", making the beginner
 experience more straightforward and requiring fewer manual reference gymnastics.
+
+# Future Extensions
+[future extensions]: #future_extensions
+In the future, this RFC could be extended to add support for autodereferencing
+custom smart-pointer types using the `Deref` and `DerefMut` traits.
+
+```rust
+let x: Box<Option<i32>> = Box::new(Some(0));
+match &x {
+    Some(y) => { ... }, // y: &i32
+    None => { ... },
+}
+```
+
+This feature has been omitted from this RFC. A few of the details of this
+feature are unclear, especially when considering interactions with a
+future `DerefMove` trait or similar.
+
+Nevertheless, a followup RFC should be able to backwards-compatibly add support
+for custom autodereferencable types.
 
 # Alternatives
 [alternatives]: #alternatives
