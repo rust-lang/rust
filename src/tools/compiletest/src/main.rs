@@ -475,6 +475,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             ignore: ignore,
             should_panic: should_panic,
             allow_fail: false,
+            serial: false,
         },
         testfn: make_test_closure(config, testpaths),
     }
