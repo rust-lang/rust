@@ -99,6 +99,7 @@ pub fn last_line_width(s: &str) -> usize {
         None => s.len(),
     }
 }
+
 #[inline]
 pub fn trimmed_last_line_width(s: &str) -> usize {
     match s.rfind('\n') {
