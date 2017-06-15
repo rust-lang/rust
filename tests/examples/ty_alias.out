@@ -11,6 +11,9 @@ warning: change
   TypeParameterAdded { defaulted: false }: E
 warning: change
 
-  TypeParameterRemoved { defaulted: false }: F
+  TypeParameterRemoved { defaulted: true }: F
+warning: change
+
+  TypeParameterRemoved { defaulted: false }: G
 warning: change
 

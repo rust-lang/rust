@@ -10,6 +10,21 @@ use rustc::ty::Visibility::Public;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+#[derive(Default)]
+struct IdMapping {
+    pub mapping: HashMap<DefId, (DefId, Export, Export)>,
+}
+
+impl IdMapping {
+    pub fn add(&mut self, old: Export, new: Export) {
+        self.mapping.insert(old.def.def_id(), (new.def.def_id(), old, new));
+    }
+
+    pub fn get_new_id(&self, old: DefId) -> DefId {
+        self.mapping[&old].0
+    }
+}
+
 /// Traverse the two root modules in an interleaved manner.
 ///
 /// Match up pairs of modules from the two crate versions and compare for changes.
@@ -17,6 +32,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     let cstore = &tcx.sess.cstore;
     let mut changes = ChangeSet::default();
+    let mut id_mapping = IdMapping::default();
     let mut visited = HashSet::new();
     let mut children = HashMap::new();
     let mut mod_queue = VecDeque::new();
@@ -49,7 +65,7 @@ pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                     }
                 }
                 (Some(o), Some(n)) => {
-                    diff_items(&mut changes, tcx, o, n);
+                    id_mapping.add(o, n);
                 }
                 (Some(old), None) => {
                     changes.add_change(Change::new_removal(old));
@@ -62,6 +78,10 @@ pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
         }
     }
 
+    for &(_, old, new) in id_mapping.mapping.values() {
+        diff_items(&mut changes, &id_mapping, tcx, old, new);
+    }
+
     changes
 }
 
@@ -69,7 +89,11 @@ pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 ///
 /// If the two items can't be meaningfully compared because they are of different kinds,
 /// we return that difference directly.
-fn diff_items(changes: &mut ChangeSet, tcx: &TyCtxt, old: Export, new: Export) {
+fn diff_items(changes: &mut ChangeSet,
+              id_mapping: &IdMapping,
+              tcx: &TyCtxt,
+              old: Export,
+              new: Export) {
     let mut generics_changes = diff_generics(tcx, old.def.def_id(), new.def.def_id());
     for change_type in generics_changes.drain(..) {
         changes.add_change(Change::new_binary(change_type, old, new));
@@ -141,7 +165,8 @@ fn diff_generics(tcx: &TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> 
 }
 
 /// Given two type aliases' definitions, compare their types.
-fn diff_tyaliases(tcx: &TyCtxt, old: DefId, new: DefId) -> Option<BinaryChangeType> {
+fn diff_tyaliases(/*tcx*/ _: &TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId)
+    -> Option<BinaryChangeType> {
     // let cstore = &tcx.sess.cstore;
     /* println!("matching TyAlias'es found");
     println!("old: {:?}", tcx.type_of(old));

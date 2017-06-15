@@ -1,5 +1,5 @@
-#![feature(rustc_private)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(rustc_private)]
 
 #[cfg(test)]
 #[macro_use]
