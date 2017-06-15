@@ -305,7 +305,6 @@ define_dep_nodes!(
     // Represents the metadata for a given HIR node, typically found
     // in an extern crate.
     MetaData(DefId),
-    MetaDataByCrateNum(CrateNum),
 
     // Represents some artifact that we save to disk. Note that these
     // do not have a def-id as part of their identifier.

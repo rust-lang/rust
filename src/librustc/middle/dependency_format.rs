@@ -172,7 +172,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if src.dylib.is_some() {
             info!("adding dylib: {}", name);
             add_library(sess, cnum, RequireDynamic, &mut formats);
-            let deps = tcx.dylib_dependency_formats(cnum);
+            let deps = tcx.dylib_dependency_formats(cnum.as_def_id());
             for &(depnum, style) in deps.iter() {
                 info!("adding {:?}: {}", style,
                       sess.cstore.crate_name(depnum));
@@ -215,9 +215,9 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Things like allocators and panic runtimes may not have been activated
     // quite yet, so do so here.
     activate_injected_dep(sess.injected_allocator.get(), &mut ret,
-                          &|cnum| tcx.is_allocator(cnum));
+                          &|cnum| tcx.is_allocator(cnum.as_def_id()));
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
-                          &|cnum| tcx.is_panic_runtime(cnum));
+                          &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -296,9 +296,9 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
     // explicitly linked, which is the case for any injected dependency. Handle
     // that here and activate them.
     activate_injected_dep(sess.injected_allocator.get(), &mut ret,
-                          &|cnum| tcx.is_allocator(cnum));
+                          &|cnum| tcx.is_allocator(cnum.as_def_id()));
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
-                          &|cnum| tcx.is_panic_runtime(cnum));
+                          &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
 
     Some(ret)
 }
@@ -345,7 +345,7 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
             continue
         }
         let cnum = CrateNum::new(i + 1);
-        if tcx.is_allocator(cnum) {
+        if tcx.is_allocator(cnum.as_def_id()) {
             if let Some(prev) = allocator {
                 let prev_name = sess.cstore.crate_name(prev);
                 let cur_name = sess.cstore.crate_name(cnum);
@@ -356,7 +356,7 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
             allocator = Some(cnum);
         }
 
-        if tcx.is_panic_runtime(cnum) {
+        if tcx.is_panic_runtime(cnum.as_def_id()) {
             if let Some((prev, _)) = panic_runtime {
                 let prev_name = sess.cstore.crate_name(prev);
                 let cur_name = sess.cstore.crate_name(cnum);

@@ -484,25 +484,25 @@ impl<'tcx> QueryDescription for queries::is_const_fn<'tcx> {
 }
 
 impl<'tcx> QueryDescription for queries::dylib_dependency_formats<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt, _: DefId) -> String {
         "dylib dependency formats of crate".to_string()
     }
 }
 
 impl<'tcx> QueryDescription for queries::is_allocator<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt, _: DefId) -> String {
         "checking if the crate is_allocator".to_string()
     }
 }
 
 impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt, _: DefId) -> String {
         "checking if the crate is_panic_runtime".to_string()
     }
 }
 
 impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
+    fn describe(_: TyCtxt, _: DefId) -> String {
         "getting crate's ExternCrateData".to_string()
     }
 }
@@ -964,13 +964,13 @@ define_maps! { <'tcx>
     [] layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
 
-    [] dylib_dependency_formats: MetaDataByCrateNum(CrateNum)
+    [] dylib_dependency_formats: MetaData(DefId)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
 
-    [] is_allocator: MetaDataByCrateNum(CrateNum) -> bool,
-    [] is_panic_runtime: MetaDataByCrateNum(CrateNum) -> bool,
+    [] is_allocator: MetaData(DefId) -> bool,
+    [] is_panic_runtime: MetaData(DefId) -> bool,
 
-    [] extern_crate: MetaDataByCrateNum(CrateNum) -> Rc<Option<ExternCrate>>,
+    [] extern_crate: MetaData(DefId) -> Rc<Option<ExternCrate>>,
 }
 
 fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {
