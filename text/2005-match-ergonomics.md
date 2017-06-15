@@ -420,9 +420,9 @@ In the future, this RFC could be extended to add support for autodereferencing
 custom smart-pointer types using the `Deref` and `DerefMut` traits.
 
 ```rust
-let x: Box<i32> = Box::new(0);
+let x: Box<Option<i32>> = Box::new(Some(0));
 match &x {
-    Some(y) => { ... },
+    Some(y) => { ... }, // y: &i32
     None => { ... },
 }
 ```
