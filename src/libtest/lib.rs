@@ -1764,6 +1764,8 @@ mod tests {
     use std::sync::mpsc::channel;
     use std::sync::{Arc, RwLock};
     use std::thread::sleep;
+    use std::time::Duration;
+
     use bench;
     use Bencher;
 
@@ -2063,31 +2065,43 @@ mod tests {
     pub fn stress_test_serial_tests() {
         let mut opts = TestOpts::new();
         opts.run_tests = true;
-        opts.test_threads = Some(100);
-
-        let limit = 100;
+        opts.test_threads = Some(2);
 
         let lock = Arc::new(RwLock::new(0));
+        let lock2 = lock.clone();
+        let lock3 = lock.clone();
 
-        let tests = (0..limit)
-            .map(|n| {
-                let lock = lock.clone();
-
-                TestDescAndFn {
-                    desc: TestDesc {
-                        name: DynTestName(format!("stress_{:?}", n)),
-                        ignore: false,
-                        should_panic: ShouldPanic::No,
-                        allow_fail: false,
-                        serial: true,
-                    },
-                    testfn: DynTestFn(Box::new(move |()| {
-                        let mut c = lock.write().unwrap();
-                        *c += 1;
-                    }))
-                }
-            })
-            .collect::<Vec<_>>();
+        let tests = vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("first"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: true
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    let mut c = lock2.write().unwrap();
+                    sleep(Duration::from_millis(200));
+                    *c += 1;
+                    assert_eq!(*c, 1);
+                }))
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("second"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: true
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    let mut c = lock3.write().unwrap();
+                    assert_eq!(*c, 1);
+                    *c += 1;
+                }))
+            }
+        ];
 
         run_tests(&opts, tests, |e| {
             match e {
@@ -2099,13 +2113,11 @@ mod tests {
             }
         }).unwrap();
 
-        assert_eq!(*(*lock).read().unwrap(), limit);
+        assert_eq!(*(*lock).read().unwrap(), 2);
     }
 
     #[test]
     pub fn run_concurrent_tests_concurrently() {
-        use std::time::Duration;
-
         let mut opts = TestOpts::new();
         opts.run_tests = true;
         opts.test_threads = Some(2);
@@ -2115,7 +2127,7 @@ mod tests {
         let tests = vec![
             TestDescAndFn {
                 desc: TestDesc {
-                    name: DynTestName("first".to_string()),
+                    name: StaticTestName("first"),
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
@@ -2127,7 +2139,7 @@ mod tests {
             },
             TestDescAndFn {
                 desc: TestDesc {
-                    name: DynTestName("second".to_string()),
+                    name: StaticTestName("second"),
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
