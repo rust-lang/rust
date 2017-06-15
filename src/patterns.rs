@@ -13,10 +13,9 @@ use codemap::SpanUtils;
 use config::{IndentStyle, MultilineStyle};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability, mk_sp};
-use lists::{DefinitiveListTactic, SeparatorTactic, format_item_list, itemize_list, ListItem,
-            struct_lit_shape, struct_lit_tactic, shape_for_tactic, struct_lit_formatting,
-            write_list};
-use expr::{rewrite_unary_prefix, rewrite_pair};
+use lists::{DefinitiveListTactic, SeparatorTactic, itemize_list, struct_lit_shape,
+            struct_lit_tactic, shape_for_tactic, struct_lit_formatting, write_list};
+use expr::{rewrite_call_inner, rewrite_unary_prefix, rewrite_pair, can_be_overflowed_expr};
 use types::{rewrite_path, PathContext};
 use super::Spanned;
 use comment::FindUncommented;
@@ -239,7 +238,7 @@ impl Rewrite for FieldPat {
     }
 }
 
-enum TuplePatField<'a> {
+pub enum TuplePatField<'a> {
     Pat(&'a ptr::P<ast::Pat>),
     Dotdot(Span),
 }
@@ -259,6 +258,24 @@ impl<'a> Spanned for TuplePatField<'a> {
             TuplePatField::Pat(ref p) => p.span(),
             TuplePatField::Dotdot(span) => span,
         }
+    }
+}
+
+pub fn can_be_overflowed_pat(context: &RewriteContext, pat: &TuplePatField, len: usize) -> bool {
+    match pat {
+        &TuplePatField::Pat(ref pat) => {
+            match pat.node {
+                ast::PatKind::Tuple(..) |
+                ast::PatKind::Struct(..) => context.use_block_indent() && len == 1,
+                ast::PatKind::Ref(ref p, _) |
+                ast::PatKind::Box(ref p) => {
+                    can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
+                }
+                ast::PatKind::Lit(ref expr) => can_be_overflowed_expr(context, expr, len),
+                _ => false,
+            }
+        }
+        &TuplePatField::Dotdot(..) => false,
     }
 }
 
@@ -286,76 +303,72 @@ fn rewrite_tuple_pat(
         let dot_span = mk_sp(prev, next);
         let snippet = context.snippet(dot_span);
         let lo = dot_span.lo + BytePos(snippet.find_uncommented("..").unwrap() as u32);
-        let span = Span {
+        let dotdot = TuplePatField::Dotdot(Span {
             lo: lo,
             // 2 == "..".len()
             hi: lo + BytePos(2),
             ctxt: codemap::NO_EXPANSION,
-        };
-        let dotdot = TuplePatField::Dotdot(span);
+        });
         pat_vec.insert(pos, dotdot);
     }
 
     if pat_vec.is_empty() {
         return Some(format!("{}()", try_opt!(path_str)));
     }
+
+    let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
+    let (pat_vec, span) =
+        if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2 {
+            let new_item_count = 1 + pat_vec.len() - wildcard_suffix_len;
+            let sp = pat_vec[new_item_count - 1].span();
+            let snippet = context.snippet(sp);
+            let lo = sp.lo + BytePos(snippet.find_uncommented("_").unwrap() as u32);
+            pat_vec[new_item_count - 1] = TuplePatField::Dotdot(mk_sp(lo, lo + BytePos(1)));
+            (&pat_vec[..new_item_count], mk_sp(span.lo, lo + BytePos(1)))
+        } else {
+            (&pat_vec[..], span)
+        };
+
     // add comma if `(x,)`
     let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
+    let mut context = context.clone();
+    if let Some(&TuplePatField::Dotdot(..)) = pat_vec.last() {
+        context.inside_macro = true;
+    }
+    let path_str = path_str.unwrap_or(String::new());
+    let mut pat_ref_vec = Vec::with_capacity(pat_vec.len());
+    for pat in pat_vec {
+        pat_ref_vec.push(pat);
+    }
+    return rewrite_call_inner(
+        &context,
+        &path_str,
+        &pat_ref_vec[..],
+        span,
+        shape,
+        shape.width,
+        add_comma,
+    ).ok();
+}
 
-    let path_len = path_str.as_ref().map(|p| p.len()).unwrap_or(0);
-    // 2 = "()".len(), 3 = "(,)".len()
-    let nested_shape = try_opt!(shape.sub_width(path_len + if add_comma { 3 } else { 2 }));
-    // 1 = "(".len()
-    let nested_shape = nested_shape.visual_indent(path_len + 1);
-    let mut items: Vec<_> = itemize_list(
+fn count_wildcard_suffix_len(
+    context: &RewriteContext,
+    patterns: &[TuplePatField],
+    span: Span,
+    shape: Shape,
+) -> usize {
+    let mut suffix_len = 0;
+
+    let items: Vec<_> = itemize_list(
         context.codemap,
-        pat_vec.iter(),
-        if add_comma { ",)" } else { ")" },
+        patterns.iter(),
+        ")",
         |item| item.span().lo,
         |item| item.span().hi,
-        |item| item.rewrite(context, nested_shape),
+        |item| item.rewrite(context, shape),
         context.codemap.span_after(span, "("),
         span.hi - BytePos(1),
     ).collect();
-
-    // Condense wildcard string suffix into a single ..
-    let wildcard_suffix_len = count_wildcard_suffix_len(&items);
-
-    let list = if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2 {
-        let new_item_count = 1 + pats.len() - wildcard_suffix_len;
-        items[new_item_count - 1].item = Some("..".to_owned());
-
-        let da_iter = items.into_iter().take(new_item_count);
-        try_opt!(format_item_list(da_iter, nested_shape, context.config))
-    } else {
-        try_opt!(format_item_list(
-            items.into_iter(),
-            nested_shape,
-            context.config,
-        ))
-    };
-
-    match path_str {
-        Some(path_str) => {
-            Some(if context.config.spaces_within_parens() {
-                format!("{}( {} )", path_str, list)
-            } else {
-                format!("{}({})", path_str, list)
-            })
-        }
-        None => {
-            let comma = if add_comma { "," } else { "" };
-            Some(if context.config.spaces_within_parens() {
-                format!("( {}{} )", list, comma)
-            } else {
-                format!("({}{})", list, comma)
-            })
-        }
-    }
-}
-
-fn count_wildcard_suffix_len(items: &[ListItem]) -> usize {
-    let mut suffix_len = 0;
 
     for item in items.iter().rev().take_while(|i| match i.item {
         Some(ref internal_string) if internal_string == "_" => true,

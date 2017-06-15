@@ -689,7 +689,14 @@ impl Rewrite for ast::Ty {
                         format!("[{}]", ty_str)
                     })
             }
-            ast::TyKind::Tup(ref items) => rewrite_tuple(context, items, self.span, shape),
+            ast::TyKind::Tup(ref items) => {
+                rewrite_tuple(
+                    context,
+                    &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
+                    self.span,
+                    shape,
+                )
+            }
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
@@ -790,5 +797,12 @@ pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &Vec<Strin
         type_strs.join(&joiner)
     } else {
         result
+    }
+}
+
+pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize) -> bool {
+    match ty.node {
+        ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
+        _ => false,
     }
 }
