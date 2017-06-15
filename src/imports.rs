@@ -159,9 +159,9 @@ impl Rewrite for ast::ViewPath {
     // Returns an empty string when the ViewPath is empty (like foo::bar::{})
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
-            ast::ViewPath_::ViewPathList(_, ref path_list) if path_list.is_empty() => {
-                Some(String::new())
-            }
+            ast::ViewPath_::ViewPathList(_, ref path_list) if path_list.is_empty() => Some(
+                String::new(),
+            ),
             ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                 rewrite_use_list(shape, path, path_list, self.span, context)
             }

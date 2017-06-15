@@ -750,14 +750,14 @@ fn and_one_line(x: Option<String>) -> Option<String> {
 
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
     debug!("nop_block_collapse {:?} {}", block_str, budget);
-    block_str.map(|block_str| if block_str.starts_with('{') && budget >= 2 &&
-        (block_str[1..]
-             .find(|c: char| !c.is_whitespace())
-             .unwrap() == block_str.len() - 2)
-    {
-        "{}".to_owned()
-    } else {
-        block_str.to_owned()
+    block_str.map(|block_str| {
+        if block_str.starts_with('{') && budget >= 2 &&
+            (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2)
+        {
+            "{}".to_owned()
+        } else {
+            block_str.to_owned()
+        }
     })
 }
 
