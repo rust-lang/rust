@@ -40,7 +40,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         match self.tcx.hir.find(node_id) {
                             Some(hir_map::NodeItem(..)) |
-                            Some(hir_map::NodeImplItem(..)) |
                             Some(hir_map::NodeTraitItem(..)) => { /* proceed ahead */ }
                             _ => return false, // inapplicable
                             // we target only top-level functions
