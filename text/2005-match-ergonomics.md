@@ -8,21 +8,33 @@
 
 Better ergonomics for pattern-matching on references.
 
-Currently:
+Currently, matching on references requires a bit of a dance using
+`ref` and `&` patterns:
 
 ```
+let x: &Option<_> = &Some(0);
+
+match x {
+    &Some(ref y) => { ... },
+    &None => { ... },
+}
+
+// or using `*`:
+
 match *x {
-    Foo(ref x) => { ... }
-    Bar(ref mut y, z) => { ... }
+    Some(ref x) => { ... },
+    None => { ... },
 }
 ```
 
-Proposed:
+After this RFC, the above form still works, but now we also allow a simpler form:
 
 ```
+let x: &Option<_> = &Some(0);
+
 match x {
-    Foo(x) => { ... }
-    Bar(y, z) => { ... }
+    Some(y) => { ... }, // `y` is a reference to `0`
+    None => { ... },
 }
 ```
 
