@@ -67,7 +67,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     if tcx.sess.profile_queries() {
         tcx.profile_queries_sender.borrow().as_ref().unwrap()
             .send(
-                ProfileQueriesMsg::Dump("dep-graph".to_string())
+                ProfileQueriesMsg::Dump("profile_queries".to_string())
             ).unwrap()
     }
 

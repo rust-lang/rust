@@ -909,6 +909,42 @@ mod trace {
         write_traces_rec(html_file, traces, 0)
     }
 
+    pub fn write_style(html_file:&mut File) {
+        write!(html_file,"{}", "
+body {
+    font-family: sans-serif;
+    background: black;
+}
+div {
+    color: black;
+    display: inline-block;
+    border-style: solid;
+    border-color: red;
+    border-width: 1px;
+    border-radius: 5px;
+    padding: 0px;
+    margin: 1px;
+    font-size: 0px;
+}
+.miss {
+    border-color: red;
+    border-width: 1px;
+}
+.extent-0 {
+    padding: 2px;
+}
+.extent-big {
+    border-width: 3px;
+    font-size: 12px;
+    color: white;
+}
+.hit {
+    padding: 0px;
+    border-color: blue;
+    border-width: 3px;
+}
+").unwrap();
+    }
 }
 
 
@@ -943,8 +979,12 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     let mut counts_file = File::create(&counts_path).unwrap();
 
                     write!(html_file, "<html>\n").unwrap();
-                    write!(html_file, "<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n</head>", 
-                           "dep-graph.css").unwrap();
+                    write!(html_file, "<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", 
+                           "profile_queries.css").unwrap();
+                    write!(html_file, "<style>\n").unwrap();
+                    trace::write_style(&mut html_file);
+                    write!(html_file, "</style>\n").unwrap();
+                    write!(html_file, "</head>\n").unwrap();
                     write!(html_file, "<body>\n").unwrap();
                     trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
                     write!(html_file, "</body>\n</html>\n").unwrap();
