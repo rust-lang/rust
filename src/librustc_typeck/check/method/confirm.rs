@@ -446,9 +446,13 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // overloaded lvalue ops, and will be fixed by them in order to get
             // the correct region.
             let mut source = self.node_ty(expr.id);
-            if let Some(adjustments) = self.tables.borrow_mut().adjustments.get_mut(&expr.id) {
+            // Do not mutate adjustments in place, but rather take them,
+            // and replace them after mutating them, to avoid having the
+            // tables borrowed during (`deref_mut`) method resolution.
+            let previous_adjustments = self.tables.borrow_mut().adjustments.remove(&expr.id);
+            if let Some(mut adjustments) = previous_adjustments {
                 let pref = LvaluePreference::PreferMutLvalue;
-                for adjustment in adjustments {
+                for adjustment in &mut adjustments {
                     if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
                         if let Some(ok) = self.try_overloaded_deref(expr.span, source, pref) {
                             let method = self.register_infer_ok_obligations(ok);
@@ -462,6 +466,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     }
                     source = adjustment.target;
                 }
+                self.tables.borrow_mut().adjustments.insert(expr.id, adjustments);
             }
 
             match expr.node {
