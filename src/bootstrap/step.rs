@@ -463,7 +463,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.test("check-linkchecker", "src/tools/linkchecker")
          .dep(|s| s.name("tool-linkchecker").stage(0))
          .dep(|s| s.name("default:doc"))
-         .default(true)
+         .default(build.config.docs)
          .host(true)
          .run(move |s| check::linkcheck(build, s.target));
     rules.test("check-cargotest", "src/tools/cargotest")
