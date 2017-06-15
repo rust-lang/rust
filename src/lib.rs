@@ -7,6 +7,7 @@ extern crate quickcheck;
 
 extern crate rustc;
 extern crate rustc_errors;
+extern crate semver;
 extern crate syntax;
 extern crate syntax_pos;
 

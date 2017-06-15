@@ -6,6 +6,7 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_metadata;
+extern crate semver;
 extern crate semverver;
 extern crate syntax;
 
@@ -26,7 +27,7 @@ use syntax::ast;
 ///
 /// To compare the two well-typed crates, we first find the aptly named crates `new` and `old`,
 /// find their root modules and then proceed to walk their module trees.
-fn callback(state: &driver::CompileState) {
+fn callback(state: &driver::CompileState, version: &str) {
     let tcx = state.tcx.unwrap();
     let cstore = &tcx.sess.cstore;
 
@@ -105,17 +106,21 @@ fn callback(state: &driver::CompileState) {
 
     let changes = traverse_modules(&tcx, old_did, new_did);
 
-    changes.output(tcx.sess);
+    changes.output(tcx.sess, version);
 }
 
 /// Our wrapper to control compilation.
 struct SemVerVerCompilerCalls {
     default: RustcDefaultCalls,
+    version: String,
 }
 
 impl SemVerVerCompilerCalls {
-    pub fn new() -> SemVerVerCompilerCalls {
-        SemVerVerCompilerCalls { default: RustcDefaultCalls }
+    pub fn new(version: String) -> SemVerVerCompilerCalls {
+        SemVerVerCompilerCalls {
+            default: RustcDefaultCalls,
+            version: version,
+        }
     }
 }
 
@@ -161,8 +166,9 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
         let mut controller = self.default.build_controller(sess, matches);
 
         let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
+        let version = self.version.clone();
         controller.after_analysis.callback = box move |state| {
-                                                     callback(state);
+                                                     callback(state, &version);
                                                      old_callback(state);
                                                  };
         controller.after_analysis.stop = Compilation::Stop;
@@ -204,7 +210,13 @@ fn main() {
                 .collect()
         };
 
-        let mut cc = SemVerVerCompilerCalls::new();
+        let version = if let Ok(ver) = std::env::var("RUST_SEMVER_CRATE_VERSION") {
+            ver
+        } else {
+            std::process::exit(1);
+        };
+
+        let mut cc = SemVerVerCompilerCalls::new(version);
         let (result, _) = rustc_driver::run_compiler(&args, &mut cc, None, None);
         if let Err(count) = result {
             if count > 0 {

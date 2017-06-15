@@ -38,6 +38,7 @@ fn examples() {
                     .env("RUST_SEMVERVER_TEST", "1")
                     .env("RUST_LOG", "debug")
                     .env("RUST_BACKTRACE", "full")
+                    .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
                     .stdin(Stdio::piped())
                     .stdout(out)
                     .stderr(err)

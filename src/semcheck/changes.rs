@@ -1,6 +1,8 @@
 use rustc::hir::def::Export;
 use rustc::session::Session;
 
+use semver::Version;
+
 use std::collections::BTreeSet;
 use std::cmp::Ordering;
 
@@ -306,8 +308,18 @@ impl ChangeSet {
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self, session: &Session) {
-        println!("max: {:?}", self.max);
+    pub fn output(&self, session: &Session, version: &str) {
+        if let Ok(mut new_version) = Version::parse(version) {
+            match self.max {
+                Patch => new_version.increment_patch(),
+                NonBreaking | TechnicallyBreaking => new_version.increment_minor(),
+                Breaking => new_version.increment_major(),
+            }
+
+            println!("version bump: {} -> ({:?}) -> {}", version, self.max, new_version);
+        } else {
+            println!("max change: {} (could not parse) -> {:?}", version, self.max);
+        }
 
         for change in &self.changes {
             match *change {

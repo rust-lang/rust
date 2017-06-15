@@ -6,6 +6,7 @@ use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
+use rustc::ty::fold::TypeFolder;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::Visibility::Public;
 
@@ -130,6 +131,14 @@ fn diff_items(changes: &mut ChangeSet,
     if check_type {
         let _ = diff_type(id_mapping, tcx, old.def.def_id(), new.def.def_id());
     }
+}
+
+struct ComparisonFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+}
+
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ComparisonFolder<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 }
 
 fn diff_type(_: &IdMapping, tcx: &TyCtxt, old: DefId, new: DefId)

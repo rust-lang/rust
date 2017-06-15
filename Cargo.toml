@@ -17,6 +17,7 @@ path = "src/bin/rust_semverver.rs"
 [dependencies]
 cargo = "^0.18.0"
 crates-io = "^0.7.0"
+semver = "^0.7.0"
 
 [dev-dependencies]
 quickcheck = "^0.4.1"

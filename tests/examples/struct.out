@@ -1,6 +1,6 @@
 old_ty: oldandnew::old::Abc<B>
 new_ty: oldandnew::new::Abc<B>
-max: Breaking
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
   Unknown: Abc
 warning: change
 
