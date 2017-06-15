@@ -10,7 +10,9 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+crossbeam = "0.2"
 flate2 = "0.2"
+jobserver = "0.1.5"
 log = "0.3"
 owning_ref = "0.3.3"
 rustc = { path = "../librustc" }

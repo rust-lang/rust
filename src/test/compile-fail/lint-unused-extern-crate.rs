@@ -9,34 +9,34 @@
 // except according to those terms.
 
 // aux-build:lint_unused_extern_crate.rs
+// aux-build:lint_unused_extern_crate2.rs
+// aux-build:lint_unused_extern_crate3.rs
+// aux-build:lint_unused_extern_crate4.rs
 
 #![deny(unused_extern_crates)]
 #![allow(unused_variables)]
 #![allow(deprecated)]
-#![feature(alloc)]
-#![feature(libc)]
-#![feature(rand)]
 
-extern crate libc; //~ ERROR: unused extern crate
+extern crate lint_unused_extern_crate4; //~ ERROR: unused extern crate
 
-extern crate alloc as collecs; // no error, it is used
+extern crate lint_unused_extern_crate3; // no error, it is used
 
-extern crate rand; // no error, the use marks it as used
-                   // even if imported objects aren't used
+extern crate lint_unused_extern_crate2; // no error, the use marks it as used
+                                        // even if imported objects aren't used
 
 extern crate lint_unused_extern_crate as other; // no error, the use * marks it as used
 
 #[allow(unused_imports)]
-use rand::isaac::IsaacRng;
+use lint_unused_extern_crate2::foo as bar;
 
 use other::*;
 
 mod foo {
-    // Test that this is unused even though an earler `extern crate rand` is used.
-    extern crate rand; //~ ERROR unused extern crate
+    // Test that this is unused even though an earler `extern crate` is used.
+    extern crate lint_unused_extern_crate2; //~ ERROR unused extern crate
 }
 
 fn main() {
-    let x: collecs::vec::Vec<usize> = Vec::new();
+    lint_unused_extern_crate3::foo();
     let y = foo();
 }

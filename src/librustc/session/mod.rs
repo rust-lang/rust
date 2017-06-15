@@ -38,14 +38,16 @@ use syntax_pos::{Span, MultiSpan};
 use rustc_back::{LinkerFlavor, PanicStrategy};
 use rustc_back::target::Target;
 use rustc_data_structures::flock;
+use jobserver::Client;
 
-use std::path::{Path, PathBuf};
 use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
-use std::io::Write;
-use std::rc::Rc;
 use std::fmt;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
 
 mod code_stats;
@@ -134,6 +136,10 @@ pub struct Session {
     pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
     pub print_fuel: Cell<u64>,
+
+    /// Loaded up early on in the initialization of this `Session` to avoid
+    /// false positives about a job server in our environment.
+    pub jobserver_from_env: Option<Client>,
 }
 
 pub struct PerfStats {
@@ -697,6 +703,24 @@ pub fn build_session_(sopts: config::Options,
         print_fuel_crate: print_fuel_crate,
         print_fuel: print_fuel,
         out_of_fuel: Cell::new(false),
+
+        // Note that this is unsafe because it may misinterpret file descriptors
+        // on Unix as jobserver file descriptors. We hopefully execute this near
+        // the beginning of the process though to ensure we don't get false
+        // positives, or in other words we try to execute this before we open
+        // any file descriptors ourselves.
+        //
+        // Also note that we stick this in a global because there could be
+        // multiple `Session` instances in this process, and the jobserver is
+        // per-process.
+        jobserver_from_env: unsafe {
+            static mut GLOBAL_JOBSERVER: *mut Option<Client> = 0 as *mut _;
+            static INIT: Once = ONCE_INIT;
+            INIT.call_once(|| {
+                GLOBAL_JOBSERVER = Box::into_raw(Box::new(Client::from_env()));
+            });
+            (*GLOBAL_JOBSERVER).clone()
+        },
     };
 
     sess

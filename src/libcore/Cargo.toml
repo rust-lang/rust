@@ -9,6 +9,9 @@ path = "lib.rs"
 test = false
 bench = false
 
+[dev-dependencies]
+rand = { path = "../librand" }
+
 [[test]]
 name = "coretests"
 path = "../libcore/tests/lib.rs"

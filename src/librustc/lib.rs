@@ -61,6 +61,7 @@ extern crate rustc_errors as errors;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
+extern crate jobserver;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

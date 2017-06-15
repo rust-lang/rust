@@ -293,6 +293,9 @@ dependencies = [
 [[package]]
 name = "core"
 version = "0.0.0"
+dependencies = [
+ "rand 0.0.0",
+]
 
 [[package]]
 name = "crates-io"
@@ -1099,6 +1102,7 @@ dependencies = [
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
+ "jobserver 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_back 0.0.0",
@@ -1394,8 +1398,10 @@ dependencies = [
 name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
+ "crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jobserver 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
