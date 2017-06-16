@@ -233,7 +233,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                                      blk])
         }
 
-        EnumMatching(idx, variant, ref fields) => {
+        EnumMatching(idx, _, variant, ref fields) => {
             // We're not generating an AST that the borrow checker is expecting,
             // so we need to generate a unique local variable to take the
             // mutable loan out on, otherwise we get conflicts which don't
