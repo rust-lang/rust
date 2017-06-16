@@ -964,13 +964,13 @@ define_maps! { <'tcx>
     [] layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
 
-    [] dylib_dependency_formats: MetaData(DefId)
+    [] dylib_dependency_formats: DylibDepFormats(DefId)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
 
-    [] is_allocator: MetaData(DefId) -> bool,
-    [] is_panic_runtime: MetaData(DefId) -> bool,
+    [] is_allocator: IsAllocator(DefId) -> bool,
+    [] is_panic_runtime: IsPanicRuntime(DefId) -> bool,
 
-    [] extern_crate: MetaData(DefId) -> Rc<Option<ExternCrate>>,
+    [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 }
 
 fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {
