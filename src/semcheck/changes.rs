@@ -53,7 +53,7 @@ impl<'a> From<&'a BinaryChangeType> for ChangeCategory {
             KindDifference |
             RegionParameterAdded |
             RegionParameterRemoved |
-            TypeParameterAdded { .. } |
+            TypeParameterAdded { defaulted: false } |
             TypeParameterRemoved { .. } |
             TypeSpecialization |
             StructFieldAdded { .. } |
@@ -68,6 +68,7 @@ impl<'a> From<&'a BinaryChangeType> for ChangeCategory {
             TraitImplItemRemoved |
             Unknown => Breaking,
             TypeGeneralization => TechnicallyBreaking,
+            TypeParameterAdded { defaulted: true } => NonBreaking,
         }
     }
 }

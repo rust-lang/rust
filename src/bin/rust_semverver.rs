@@ -104,7 +104,7 @@ fn callback(state: &driver::CompileState, version: &str) {
         }
     };
 
-    let changes = traverse_modules(&tcx, old_did, new_did);
+    let changes = traverse_modules(tcx, old_did, new_did);
 
     changes.output(tcx.sess, version);
 }

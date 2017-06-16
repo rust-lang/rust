@@ -6,7 +6,7 @@ use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
-use rustc::ty::fold::TypeFolder;
+use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::Visibility::Public;
 
@@ -31,7 +31,7 @@ impl IdMapping {
 ///
 /// Match up pairs of modules from the two crate versions and compare for changes.
 /// Matching children get processed in the same fashion.
-pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
+pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     let cstore = &tcx.sess.cstore;
     let mut changes = ChangeSet::default();
     let mut id_mapping = IdMapping::default();
@@ -93,7 +93,7 @@ pub fn traverse_modules(tcx: &TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 /// we return that difference directly.
 fn diff_items(changes: &mut ChangeSet,
               id_mapping: &IdMapping,
-              tcx: &TyCtxt,
+              tcx: TyCtxt,
               old: Export,
               new: Export) {
     let mut check_type = true;
@@ -107,7 +107,7 @@ fn diff_items(changes: &mut ChangeSet,
     }
 
     let change = match (old.def, new.def) {
-        (Struct(_), Struct(_)) => Some(Change::new_binary(Unknown, old, new)),
+        (Struct(_), Struct(_)) => None, // Some(Change::new_binary(Unknown, old, new)),
         (Union(_), Union(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Enum(_), Enum(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Trait(_), Trait(_)) => Some(Change::new_binary(Unknown, old, new)),
@@ -133,29 +133,48 @@ fn diff_items(changes: &mut ChangeSet,
     }
 }
 
-struct ComparisonFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-}
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ComparisonFolder<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
-}
-
-fn diff_type(_: &IdMapping, tcx: &TyCtxt, old: DefId, new: DefId)
+fn diff_type(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
     -> Vec<BinaryChangeType>
 {
+    use rustc::ty::AdtDef;
+    use rustc::ty::TypeVariants::*;
+
     let res = Vec::new();
 
     let new_ty = tcx.type_of(new);
-    let old_ty = tcx.type_of(old).subst(*tcx, Substs::identity_for_item(*tcx, new));
+    let old_ty = tcx.type_of(old).subst(tcx, Substs::identity_for_item(tcx, new));
 
-    println!("old_ty: {:?}", old_ty);
+    let old_ty_cmp = old_ty.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
+        match ty.sty {
+            TyAdt(&AdtDef { ref did, .. }, substs) => {
+                let new_did = id_mapping.get_new_id(*did);
+                let new_adt = tcx.adt_def(new_did);
+                tcx.mk_adt(new_adt, substs) // TODO: error if mismatch?
+            },
+            /* TyDynamic(predicates, region) => {
+
+            }, TyClosure, TyRef (because of region?), TyProjection, TyAnon
+            TyProjection(projection_ty) => {
+
+            }, */
+            _ => ty,
+        }
+    }});
+
+    println!("old_ty: {:?}", old_ty_cmp);
     println!("new_ty: {:?}", new_ty);
+
+    if let Result::Err(err) = tcx.global_tcx().infer_ctxt()
+        .enter(|infcx| infcx.can_eq(tcx.param_env(new), old_ty_cmp, new_ty))
+    {
+        println!("diff: {}", err);
+    }
 
     res
 }
 
-fn diff_generics(tcx: &TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
+fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
     use std::cmp::max;
 
     let mut ret = Vec::new();
@@ -203,7 +222,7 @@ fn diff_generics(tcx: &TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> 
 }
 
 /// Given two type aliases' definitions, compare their types.
-fn diff_tyaliases(/*tcx*/ _: &TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId)
+fn diff_tyaliases(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId)
     -> Option<BinaryChangeType> {
     // let cstore = &tcx.sess.cstore;
     /* println!("matching TyAlias'es found");

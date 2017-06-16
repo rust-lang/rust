@@ -1,6 +1,10 @@
-old_ty: oldandnew::old::Abc<B>
+old_ty: oldandnew::new::Def
+new_ty: oldandnew::new::Def<A>
+old_ty: oldandnew::new::Efg
+new_ty: oldandnew::new::Efg
+old_ty: oldandnew::new::Abc<B>
 new_ty: oldandnew::new::Abc<B>
-version bump: 1.0.0 -> (Breaking) -> 2.0.0
-  Unknown: Abc
+version bump: 1.0.0 -> (NonBreaking) -> 1.1.0
+  TypeParameterAdded { defaulted: true }: Def
 warning: change
 

@@ -1,5 +1,9 @@
 old_ty: u8
 new_ty: u16
+diff: expected u8, found u16
+old_ty: &'a T
+new_ty: (&'a T, U)
+diff: expected reference, found tuple
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
   RegionParameterAdded: B
 warning: change
