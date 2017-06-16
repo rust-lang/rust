@@ -15,6 +15,7 @@ import os
 import sys
 rust_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
+os.chdir(rust_dir)
 
 import bootstrap
 bootstrap.main()
