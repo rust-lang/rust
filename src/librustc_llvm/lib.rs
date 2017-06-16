@@ -389,6 +389,11 @@ pub fn initialize_available_targets() {
                  LLVMInitializeHexagonTargetMC,
                  LLVMInitializeHexagonAsmPrinter,
                  LLVMInitializeHexagonAsmParser);
+    init_target!(llvm_component = "webassembly",
+                 LLVMInitializeWebAssemblyTargetInfo,
+                 LLVMInitializeWebAssemblyTarget,
+                 LLVMInitializeWebAssemblyTargetMC,
+                 LLVMInitializeWebAssemblyAsmPrinter);
 }
 
 pub fn last_error() -> Option<String> {
