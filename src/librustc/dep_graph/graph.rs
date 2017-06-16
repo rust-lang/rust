@@ -13,7 +13,7 @@ use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
-use super::dep_node::{DepNode, WorkProductId};
+use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
 use super::raii;
 use super::safe::DepGraphSafe;
@@ -113,6 +113,21 @@ impl DepGraph {
     {
         let _task = self.in_task(key);
         task(cx, arg)
+    }
+
+    /// Execute something within an "anonymous" task, that is, a task the
+    /// DepNode of which is determined by the list of inputs it read from.
+    pub fn with_anon_task<OP,R>(&self, dep_kind: DepKind, op: OP) -> (R, DepNode)
+        where OP: FnOnce() -> R
+    {
+        if let Some(ref data) = self.data {
+            data.edges.borrow_mut().push_anon_task();
+            let result = op();
+            let dep_node = data.edges.borrow_mut().pop_anon_task(dep_kind);
+            (result, dep_node)
+        } else {
+            (op(), DepNode::new_no_params(DepKind::Krate))
+        }
     }
 
     #[inline]
