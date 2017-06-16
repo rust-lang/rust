@@ -169,6 +169,7 @@ test_impl_from! { test_u16f64, u16, f64 }
 test_impl_from! { test_u32f64, u32, f64 }
 
 // Float -> Float
+#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn test_f32f64() {
     use core::f32;
