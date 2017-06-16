@@ -213,9 +213,8 @@ struct JsonSpan {
 impl JsonSpan {
     fn into_tuple(self) -> Result<(String, Range), String> {
         let (lo, hi) = self.range;
-        let canonical = canonicalize_path_string(&self.file).ok_or_else(|| {
-            format!("Can't canonicalize {}", &self.file)
-        })?;
+        let canonical = canonicalize_path_string(&self.file)
+            .ok_or_else(|| format!("Can't canonicalize {}", &self.file))?;
         Ok((canonical, Range::new(lo, hi)))
     }
 }

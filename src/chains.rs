@@ -167,9 +167,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let child_shape_iter = Some(first_child_shape).into_iter().chain(
         ::std::iter::repeat(
             other_child_shape,
-        ).take(
-            subexpr_list.len() - 1,
-        ),
+        ).take(subexpr_list.len() - 1),
     );
     let iter = subexpr_list.iter().rev().zip(child_shape_iter);
     let mut rewrites = try_opt!(
@@ -180,9 +178,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     // Total of all items excluding the last.
     let last_non_try_index = rewrites.len() - (1 + trailing_try_num);
-    let almost_total = rewrites[..last_non_try_index].iter().fold(0, |a, b| {
-        a + first_line_width(b)
-    }) + parent_rewrite.len();
+    let almost_total = rewrites[..last_non_try_index]
+        .iter()
+        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
         parent_rewrite.len();
 
@@ -320,9 +318,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 fn is_extendable_parent(context: &RewriteContext, parent_str: &str) -> bool {
     context.config.chain_indent() == IndentStyle::Block &&
         parent_str.lines().last().map_or(false, |s| {
-            s.trim().chars().all(|c| {
-                c == ')' || c == ']' || c == '}' || c == '?'
-            })
+            s.trim()
+                .chars()
+                .all(|c| c == ')' || c == ']' || c == '}' || c == '?')
         })
 }
 
@@ -348,7 +346,7 @@ fn rewrite_last_child_with_overflow(
 ) -> bool {
     if let Some(shape) = shape.shrink_left(almost_total) {
         if let Some(ref mut rw) = rewrite_chain_subexpr(expr, span, context, shape) {
-            if almost_total + first_line_width(rw) <= one_line_budget {
+            if almost_total + first_line_width(rw) <= one_line_budget && rw.lines().count() > 3 {
                 ::std::mem::swap(last_child, rw);
                 return true;
             }

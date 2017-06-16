@@ -69,11 +69,9 @@ impl<'a> FmtVisitor<'a> {
         );
 
         // FIXME(#434): Move this check to somewhere more central, eg Rewrite.
-        if !self.config.file_lines().intersects(
-            &self.codemap.lookup_line_range(
-                stmt.span,
-            ),
-        )
+        if !self.config
+            .file_lines()
+            .intersects(&self.codemap.lookup_line_range(stmt.span))
         {
             return;
         }
@@ -292,9 +290,10 @@ impl<'a> FmtVisitor<'a> {
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
                 let snippet = self.get_context().snippet(item.span);
-                let where_span_end = snippet.find_uncommented("{").map(|x| {
-                    (BytePos(x as u32)) + source!(self, item.span).lo
-                });
+                let where_span_end =
+                    snippet
+                        .find_uncommented("{")
+                        .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo);
                 if let Some(impl_str) = format_impl(
                     &self.get_context(),
                     item,
@@ -727,9 +726,11 @@ impl Rewrite for ast::MetaItem {
             ast::MetaItemKind::List(ref list) => {
                 let name = self.name.as_str();
                 // 3 = `#[` and `(`, 2 = `]` and `)`
-                let item_shape = try_opt!(shape.shrink_left(name.len() + 3).and_then(
-                    |s| s.sub_width(2),
-                ));
+                let item_shape = try_opt!(
+                    shape
+                        .shrink_left(name.len() + 3)
+                        .and_then(|s| s.sub_width(2))
+                );
                 let hi = self.span.hi +
                     BytePos(count_missing_closing_parens(&context.snippet(self.span)));
                 let items = itemize_list(

@@ -84,9 +84,9 @@ fn assert_output(source: &str, expected_filename: &str) {
 
     let mut expected_file = fs::File::open(&expected_filename).expect("Couldn't open target");
     let mut expected_text = String::new();
-    expected_file.read_to_string(&mut expected_text).expect(
-        "Failed reading target",
-    );
+    expected_file
+        .read_to_string(&mut expected_text)
+        .expect("Failed reading target");
 
     let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
     if compare.len() > 0 {
@@ -285,9 +285,9 @@ fn get_config(config_file: Option<&str>) -> Config {
 
     let mut def_config_file = fs::File::open(config_file_name).expect("Couldn't open config");
     let mut def_config = String::new();
-    def_config_file.read_to_string(&mut def_config).expect(
-        "Couldn't read config",
-    );
+    def_config_file
+        .read_to_string(&mut def_config)
+        .expect("Couldn't read config");
 
     Config::from_toml(&def_config).expect("Invalid toml")
 }

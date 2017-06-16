@@ -160,9 +160,8 @@ impl<'a> FmtVisitor<'a> {
                         if let Some('{') = last_char {
                             self.buffer.push_str("\n");
                         }
-                        self.buffer.push_str(
-                            &self.block_indent.to_string(self.config),
-                        );
+                        self.buffer
+                            .push_str(&self.block_indent.to_string(self.config));
                     } else {
                         self.buffer.push_str(" ");
                     }
@@ -184,9 +183,10 @@ impl<'a> FmtVisitor<'a> {
 
                     if let Some('/') = subslice.chars().skip(1).next() {
                         // check that there are no contained block comments
-                        if !subslice.split('\n').map(|s| s.trim_left()).any(|s| {
-                            s.len() >= 2 && &s[0..2] == "/*"
-                        })
+                        if !subslice
+                            .split('\n')
+                            .map(|s| s.trim_left())
+                            .any(|s| s.len() >= 2 && &s[0..2] == "/*")
                         {
                             // Add a newline after line comments
                             self.buffer.push_str("\n");
