@@ -21,10 +21,12 @@ to be a bit out of date). Version 0.1 of rustfmt-nightly is forked from version
 
 ## Quick start
 
+You must be using a nightly compiler toolchain.
+
 To install:
 
 ```
-cargo install rustfmt
+cargo install rustfmt-nightly
 ```
 
 to run on a cargo project in the current working directory:
@@ -35,24 +37,36 @@ cargo fmt
 
 ## Installation
 
-> **Note:** this method currently requires you to be running cargo 0.6.0 or
-> newer.
-
 ```
-cargo install rustfmt
+cargo install rustfmt-nightly
 ```
 
-or if you're using [`rustup.rs`](https://www.rustup.rs/)
+or if you're using [Rustup](https://www.rustup.rs/)
 
 ```
-rustup run nightly cargo install rustfmt
+rustup run nightly cargo install rustfmt-nightly
 ```
+
+If you don't have a nightly toolchain, you can add it using rustup:
+
+```
+rustup install nightly
+```
+
+You can make the nightly toolchain the default by running:
+
+```
+rustup default nightly
+```
+
+If you choose not to do that you'll have to run rustfmt using `rustup run ...`
+or by adding `+nightly` to the cargo invocation.
 
 Usually cargo-fmt, which enables usage of Cargo subcommand `cargo fmt`, is
 installed alongside rustfmt. To only install rustfmt run
 
 ```
-cargo install --no-default-features rustfmt
+cargo install --no-default-features rustfmt-nightly
 ```
 ## Installing from source
 
@@ -60,8 +74,10 @@ To install from source, first checkout to the tag or branch you want to install,
 ```
 cargo install --path  .
 ```
+
 This will install `rustfmt` in your `~/.cargo/bin`. Make sure to add `~/.cargo/bin` directory to
 your PATH variable.
+
 
 ## Running
 
@@ -132,6 +148,10 @@ To keep your code base consistently formatted, it can be helpful to fail the CI 
 when a pull request contains unformatted code. Using `--write-mode=diff` instructs
 rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences.
+
+(These instructions use the Syntex version of Rustfmt. If you want to use the
+nightly version replace `install rustfmt` with `install rustfmt-nightly`,
+however you must then only run this with the nightly toolchain).
 
 A minimal Travis setup could look like this:
 
