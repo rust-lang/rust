@@ -245,7 +245,6 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo.env("CFG_RELEASE", build.rust_release())
-         .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", build.rust_version())
          .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()));
 
@@ -460,8 +459,6 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
         cargo.env("OPENSSL_DIR", dir);
         cargo.env("LIBZ_SYS_STATIC", "1");
     }
-
-    cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
 
     let info = GitInfo::new(&dir);
     if let Some(sha) = info.sha() {
