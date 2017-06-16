@@ -6,9 +6,8 @@
 # Summary
 [summary]: #summary
 
-This is a proposal for the rust grammar to support verts `|` *both*
-at the beginning of the pattern and at the end. Consider the following
-example:
+This is a proposal for the rust grammar to support a vert `|` at the
+beginning of the pattern. Consider the following example:
 
 ```rust
 use E::*;
@@ -22,7 +21,7 @@ match foo {
 
 // This is an example of what this proposal should allow.
 match foo {
-    | A | B | C | D | => (),
+    | A | B | C | D => (),
 }
 ```
 
@@ -61,20 +60,13 @@ match foo with
 
 ## Maximizing `|` alignment
 
-In Rust, about the best we can do is an inconsistent alignment:
+In Rust, about the best we can do is an inconsistent alignment with one of the
+following two options:
 
 ```rust
 use E::*;
 
 enum E { A, B, C, D }
-
-match foo {
-    A |
-    B |
-    C |
-    D => (),
-//    ^ Inconsistently missing a `|`
-}
 
 match foo {
 //  |
@@ -84,9 +76,18 @@ match foo {
     | C
     | D => (),
 }
+
+match foo {
+    A |
+    B |
+    C |
+    D => (),
+//    ^ Also inconsistent but since this is the last in the sequence, not having 
+//    | a followup vert could be considered sensible given that no more follow.
+}
 ```
 
-Allowing this proposal would allow this example to take one of the following forms:
+This proposal would allow the example to have the following form:
 
 ```rust
 use E::*;
@@ -94,19 +95,11 @@ use E::*;
 enum E { A, B, C, D }
 
 match foo {
-    A |
-    B |
-    C |
-    D | => (),
-//    ^ Gained consistency by having a vert.
-}
-
-match foo {
     | A
     | B
     | C
     | D => (),
-//  ^ Also gained consistency.
+//  ^ Gained consistency by having a matching vert.
 }
 ```
 
@@ -119,28 +112,18 @@ use E::*;
 
 enum E { A, B, C, D }
 
-// Only trailing `|`.
-match foo {
-    A | B | C | D | => (),
-}
-
-// Only preceding `|`.
+// A preceding vert
 match foo {
     | A | B | C | D => (),
 }
 
-// Both preceding and trailing `|`.
-match foo {
-    | A | B | C | D | => (),
-}
-
-// Neither preceding nor trailing `|`.
+// A match as is currently allowed
 match foo {
     A | B | C | D => (),
 }
 ```
 
-> There should be no ambiguity about what each of these mean. Preference
+> There should be no ambiguity about what either of these means. Preference
 between these should just come down to a choice of style.
 
 ## Benefits to macros
@@ -179,13 +162,6 @@ match foo {
     C | D =>
         println!("Give me C | D!"),
 }
-
-match foo {
-    A |
-    B | => println!("Give me A | B!"),
-    C |
-    D | => println!("Give me C | D!"),
-}
 ```
 
 ## Comparing misalignment
@@ -223,15 +199,15 @@ grammar should need updating.
 // Before
 match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
 // After
-match_pat : '|' ? pat [ '|' pat ] * '|' ? [ "if" expr ] ? ;
+match_pat : '|' ? pat [ '|' pat ] * [ "if" expr ] ? ;
 ```
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
 Adding examples for this are straightforward. You just include an example pointing
-out that leading and trailing verts are allowed. Simple examples such as below should
-be easy to add to all different resources.
+out that leading verts are allowed. Simple examples such as below should be easy
+to add to all different resources.
 
 ```rust
 use Letter::*;
@@ -261,19 +237,6 @@ fn main() {
         | B
         | C
         | D => "B, C, or D",
-    }
-
-    match c {
-        A | => "A",
-        // Trailing `|` is allowed.
-        B |
-        C |
-        D | => "B, C, or D",
-    }
-
-    match d {
-        // Both are allowed.
-        | A | B | C | D | => "Got a letter",
     }
 }
 ```
