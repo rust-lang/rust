@@ -1,4 +1,4 @@
-error: cannot index a value of type `({integer},)`
+error[E0608]: cannot index into a value of type `({integer},)`
   --> $DIR/suggestion-non-ascii.rs:14:21
    |
 14 |     println!("☃{}", tup[0]);
