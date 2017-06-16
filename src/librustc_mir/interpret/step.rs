@@ -127,6 +127,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.deallocate_local(old_val)?;
             }
 
+            // Validity checks.  Not yet implemented.
+            Validate(_, _) => {}
+
             // Just a borrowck thing
             EndRegion(..) => {}
 
