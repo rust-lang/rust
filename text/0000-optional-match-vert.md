@@ -192,8 +192,8 @@ match value {
 [design]: #detailed-design
 
 I don't know about the implementation but the grammar could be updated so that
-an optional `|` is allowed at the beginning and the end. Nothing else in the
-grammar should need updating.
+an optional `|` is allowed at the beginning. Nothing else in the grammar should
+need updating.
 
 ```text
 // Before
