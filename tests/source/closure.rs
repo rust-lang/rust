@@ -143,3 +143,7 @@ fn issue1329() {
 fn issue325() {
     let f = || unsafe { xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx };
 }
+
+fn issue1697() {
+    Test.func_a(A_VERY_LONG_CONST_VARIABLE_NAME, move |arg1, arg2, arg3, arg4| arg1 + arg2 + arg3 + arg4)
+}
