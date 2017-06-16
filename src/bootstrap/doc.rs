@@ -27,18 +27,26 @@ use {Build, Compiler, Mode};
 use util::{cp_r, symlink_dir};
 use build_helper::up_to_date;
 
-/// Invoke `rustbook` as compiled in `stage` for `target` for the doc book
-/// `name` into the `out` path.
+/// Invoke `rustbook` for `target` for the doc book `name`.
 ///
 /// This will not actually generate any documentation if the documentation has
 /// already been generated.
 pub fn rustbook(build: &Build, target: &str, name: &str) {
+    let src = build.src.join("src/doc");
+    rustbook_src(build, target, name, &src);
+}
+
+/// Invoke `rustbook` for `target` for the doc book `name` from the `src` path.
+///
+/// This will not actually generate any documentation if the documentation has
+/// already been generated.
+pub fn rustbook_src(build: &Build, target: &str, name: &str, src: &Path) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
 
     let out = out.join(name);
     let compiler = Compiler::new(0, &build.config.build);
-    let src = build.src.join("src/doc").join(name);
+    let src = src.join(name);
     let index = out.join("index.html");
     let rustbook = build.tool(&compiler, "rustbook");
     if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
@@ -352,6 +360,19 @@ pub fn error_index(build: &Build, target: &str) {
     index.env("CFG_BUILD", &build.config.build);
 
     build.run(&mut index);
+}
+
+pub fn unstable_book_gen(build: &Build, target: &str) {
+    println!("Generating unstable book md files ({})", target);
+    let out = build.md_doc_out(target).join("unstable-book");
+    t!(fs::create_dir_all(&out));
+    t!(fs::remove_dir_all(&out));
+    let compiler = Compiler::new(0, &build.config.build);
+    let mut cmd = build.tool_cmd(&compiler, "unstable-book-gen");
+    cmd.arg(build.src.join("src"));
+    cmd.arg(out);
+
+    build.run(&mut cmd);
 }
 
 fn symlink_dir_force(src: &Path, dst: &Path) -> io::Result<()> {

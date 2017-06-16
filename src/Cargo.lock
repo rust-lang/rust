@@ -1893,6 +1893,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "unstable-book-gen"
+version = "0.1.0"
+dependencies = [
+ "tidy 0.1.0",
+]
+
+[[package]]
 name = "url"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

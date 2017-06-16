@@ -548,6 +548,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
+    rules.build("tool-unstable-book-gen", "src/tools/unstable-book-gen")
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
     rules.build("tool-tidy", "src/tools/tidy")
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
@@ -662,8 +666,12 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .target(&build.config.build)
               .stage(0)
          })
+         .dep(move |s| s.name("doc-unstable-book-gen"))
          .default(build.config.docs)
-         .run(move |s| doc::rustbook(build, s.target, "unstable-book"));
+         .run(move |s| doc::rustbook_src(build,
+                                         s.target,
+                                         "unstable-book",
+                                         &build.md_doc_out(s.target)));
     rules.doc("doc-standalone", "src/doc")
          .dep(move |s| {
              s.name("rustc")
@@ -679,6 +687,17 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .default(build.config.docs)
          .host(true)
          .run(move |s| doc::error_index(build, s.target));
+    rules.doc("doc-unstable-book-gen", "src/tools/unstable-book-gen")
+         .dep(move |s| {
+             s.name("tool-unstable-book-gen")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
+         .dep(move |s| s.name("libstd-link"))
+         .default(build.config.docs)
+         .host(true)
+         .run(move |s| doc::unstable_book_gen(build, s.target));
     for (krate, path, default) in krates("std") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libstd-link"))

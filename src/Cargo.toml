@@ -9,6 +9,7 @@ members = [
   "tools/error_index_generator",
   "tools/linkchecker",
   "tools/rustbook",
+  "tools/unstable-book-gen",
   "tools/tidy",
   "tools/build-manifest",
   "tools/remote-test-client",

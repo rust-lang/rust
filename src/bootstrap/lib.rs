@@ -680,6 +680,11 @@ impl Build {
         self.out.join(target).join("doc")
     }
 
+    /// Output directory for some generated md crate documentation for a target (temporary)
+    fn md_doc_out(&self, target: &str) -> PathBuf {
+        self.out.join(target).join("md-doc")
+    }
+
     /// Output directory for all crate documentation for a target (temporary)
     ///
     /// The artifacts here are then copied into `doc_out` above.

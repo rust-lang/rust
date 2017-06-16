@@ -11,26 +11,28 @@
 use std::collections::HashSet;
 use std::fs;
 use std::path;
-use features::{collect_lang_features, collect_lib_features, Status};
+use features::{collect_lang_features, collect_lib_features, Features, Status};
 
-const PATH_STR: &'static str = "doc/unstable-book/src";
+pub const PATH_STR: &str = "doc/unstable-book/src";
 
-const LANG_FEATURES_DIR: &'static str = "language-features";
+pub const COMPILER_FLAGS_DIR: &str = "compiler-flags";
 
-const LIB_FEATURES_DIR: &'static str = "library-features";
+pub const LANG_FEATURES_DIR: &str = "language-features";
+
+pub const LIB_FEATURES_DIR: &str = "library-features";
 
 /// Build the path to the Unstable Book source directory from the Rust 'src' directory
-fn unstable_book_path(base_src_path: &path::Path) -> path::PathBuf {
+pub fn unstable_book_path(base_src_path: &path::Path) -> path::PathBuf {
     base_src_path.join(PATH_STR)
 }
 
 /// Directory where the features are documented within the Unstable Book source directory
-fn unstable_book_lang_features_path(base_src_path: &path::Path) -> path::PathBuf {
+pub fn unstable_book_lang_features_path(base_src_path: &path::Path) -> path::PathBuf {
     unstable_book_path(base_src_path).join(LANG_FEATURES_DIR)
 }
 
 /// Directory where the features are documented within the Unstable Book source directory
-fn unstable_book_lib_features_path(base_src_path: &path::Path) -> path::PathBuf {
+pub fn unstable_book_lib_features_path(base_src_path: &path::Path) -> path::PathBuf {
     unstable_book_path(base_src_path).join(LIB_FEATURES_DIR)
 }
 
@@ -42,27 +44,16 @@ fn dir_entry_is_file(dir_entry: &fs::DirEntry) -> bool {
         .is_file()
 }
 
-/// Retrieve names of all lang-related unstable features
-fn collect_unstable_lang_feature_names(base_src_path: &path::Path) -> HashSet<String> {
-    collect_lang_features(base_src_path)
-        .into_iter()
+/// Retrieve names of all unstable features
+pub fn collect_unstable_feature_names(features: &Features) -> HashSet<String> {
+    features
+        .iter()
         .filter(|&(_, ref f)| f.level == Status::Unstable)
-        .map(|(ref name, _)| name.to_owned())
+        .map(|(name, _)| name.to_owned())
         .collect()
 }
 
-/// Retrieve names of all lib-related unstable features
-fn collect_unstable_lib_feature_names(base_src_path: &path::Path) -> HashSet<String> {
-    let mut bad = true;
-    let lang_features = collect_lang_features(base_src_path);
-    collect_lib_features(base_src_path, &mut bad, &lang_features)
-        .into_iter()
-        .filter(|&(_, ref f)| f.level == Status::Unstable)
-        .map(|(ref name, _)| name.to_owned())
-        .collect()
-}
-
-fn collect_unstable_book_section_file_names(dir: &path::Path) -> HashSet<String> {
+pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> HashSet<String> {
     fs::read_dir(dir)
         .expect("could not read directory")
         .into_iter()
@@ -95,18 +86,12 @@ pub fn check(path: &path::Path, bad: &mut bool) {
 
     // Library features
 
-    let unstable_lib_feature_names = collect_unstable_lib_feature_names(path);
+    let lang_features = collect_lang_features(path);
+    let lib_features = collect_lib_features(path, bad, &lang_features);
+
+    let unstable_lib_feature_names = collect_unstable_feature_names(&lib_features);
     let unstable_book_lib_features_section_file_names =
         collect_unstable_book_lib_features_section_file_names(path);
-
-    // Check for unstable features that don't have Unstable Book sections
-    for feature_name in &unstable_lib_feature_names -
-                        &unstable_book_lib_features_section_file_names {
-        tidy_error!(bad,
-                    "Unstable library feature '{}' needs to have a section within the \
-                     'library features' section of The Unstable Book",
-                    feature_name);
-    }
 
     // Check for Unstable Book sections that don't have a corresponding unstable feature
     for feature_name in &unstable_book_lib_features_section_file_names -
@@ -119,17 +104,9 @@ pub fn check(path: &path::Path, bad: &mut bool) {
 
     // Language features
 
-    let unstable_lang_feature_names = collect_unstable_lang_feature_names(path);
+    let unstable_lang_feature_names = collect_unstable_feature_names(&lang_features);
     let unstable_book_lang_features_section_file_names =
         collect_unstable_book_lang_features_section_file_names(path);
-
-    for feature_name in &unstable_lang_feature_names -
-                        &unstable_book_lang_features_section_file_names {
-        tidy_error!(bad,
-                    "Unstable language feature '{}' needs to have a section within the \
-                     'language features' section of The Unstable Book",
-                    feature_name);
-    }
 
     // Check for Unstable Book sections that don't have a corresponding unstable feature
     for feature_name in &unstable_book_lang_features_section_file_names -
@@ -139,4 +116,20 @@ pub fn check(path: &path::Path, bad: &mut bool) {
                      correspond to an unstable language feature",
                     feature_name)
     }
+
+    // List unstable features that don't have Unstable Book sections
+    // Remove the comment marker if you want the list printed
+    /*
+    println!("Lib features without unstable book sections:");
+    for feature_name in &unstable_lang_feature_names -
+                        &unstable_book_lang_features_section_file_names {
+        println!("    * {} {:?}", feature_name, lib_features[&feature_name].tracking_issue);
+    }
+
+    println!("Lang features without unstable book sections:");
+    for feature_name in &unstable_lib_feature_names-
+                        &unstable_book_lib_features_section_file_names {
+        println!("    * {} {:?}", feature_name, lang_features[&feature_name].tracking_issue);
+    }
+    // */
 }
