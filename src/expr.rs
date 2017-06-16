@@ -2207,6 +2207,48 @@ fn last_arg_shape(
     })
 }
 
+// Rewriting closure which is placed at the end of the function call's arg.
+// Returns `None` if the reformatted closure 'looks bad'.
+fn rewrite_last_closure(
+    context: &RewriteContext,
+    expr: &ast::Expr,
+    shape: Shape,
+) -> Option<String> {
+    if let ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) = expr.node {
+        let body = match body.node {
+            ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
+                stmt_expr(&block.stmts[0]).unwrap_or(body)
+            }
+            _ => body,
+        };
+        let (prefix, extra_offset) = try_opt!(rewrite_closure_fn_decl(
+            capture,
+            fn_decl,
+            body,
+            expr.span,
+            context,
+            shape,
+        ));
+        // If the closure goes multi line before its body, do not overflow the closure.
+        if prefix.contains('\n') {
+            return None;
+        }
+        let body_shape = try_opt!(shape.offset_left(extra_offset));
+        // When overflowing the closure which consists of a single control flow expression,
+        // force to use block if its condition uses multi line.
+        if rewrite_cond(context, body, body_shape)
+            .map(|cond| cond.contains('\n'))
+            .unwrap_or(false)
+        {
+            return rewrite_closure_with_block(context, body_shape, &prefix, body);
+        }
+
+        // Seems fine, just format the closure in usual manner.
+        return expr.rewrite(context, shape);
+    }
+    None
+}
+
 fn rewrite_last_arg_with_overflow<'a, T>(
     context: &RewriteContext,
     last_arg: &T,
@@ -2220,31 +2262,7 @@ where
         match expr.node {
             // When overflowing the closure which consists of a single control flow expression,
             // force to use block if its condition uses multi line.
-            ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
-                let try_closure_with_block = || {
-                    let body = match body.node {
-                        ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
-                            try_opt!(stmt_expr(&block.stmts[0]))
-                        }
-                        _ => body,
-                    };
-                    let (prefix, extra_offset) = try_opt!(rewrite_closure_fn_decl(
-                        capture,
-                        fn_decl,
-                        body,
-                        expr.span,
-                        context,
-                        shape,
-                    ));
-                    let shape = try_opt!(shape.offset_left(extra_offset));
-                    rewrite_cond(context, body, shape).map_or(None, |cond| if cond.contains('\n') {
-                        rewrite_closure_with_block(context, shape, &prefix, body)
-                    } else {
-                        None
-                    })
-                };
-                try_closure_with_block().or_else(|| expr.rewrite(context, shape))
-            }
+            ast::ExprKind::Closure(..) => rewrite_last_closure(context, expr, shape),
             _ => expr.rewrite(context, shape),
         }
     } else {
