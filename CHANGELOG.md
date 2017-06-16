@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.140 - 2017-06-16
+* Update to *rustc 1.19.0-nightly (258ae6dd9 2017-06-15)*
+
 ## 0.0.139 — 2017-06-10
 * Update to *rustc 1.19.0-nightly (4bf5c99af 2017-06-10)*
 * Fix bugs with for loop desugaring
