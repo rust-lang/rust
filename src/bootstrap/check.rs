@@ -245,6 +245,9 @@ pub fn compiletest(build: &Build,
     let llvm_config = build.llvm_config(target);
     let llvm_version = output(Command::new(&llvm_config).arg("--version"));
     cmd.arg("--llvm-version").arg(llvm_version);
+    if !build.is_rust_llvm(target) {
+        cmd.arg("--system-llvm");
+    }
 
     cmd.args(&build.flags.cmd.test_args());
 
