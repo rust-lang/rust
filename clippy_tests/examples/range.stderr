@@ -1,11 +1,3 @@
-error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
-  --> range.rs:13:5
-   |
-13 |     (0..1).step_by(0);
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D range-step-by-zero` implied by `-D warnings`
-
 error: use of deprecated item: replaced by `Iterator::step_by`
   --> range.rs:13:12
    |
@@ -22,14 +14,6 @@ error: use of deprecated item: replaced by `Iterator::step_by`
    |
    = note: `-D deprecated` implied by `-D warnings`
 
-error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
-  --> range.rs:17:5
-   |
-17 |     (1..).step_by(0);
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = note: `-D range-step-by-zero` implied by `-D warnings`
-
 error: use of deprecated item: replaced by `Iterator::step_by`
   --> range.rs:17:11
    |
@@ -38,14 +22,6 @@ error: use of deprecated item: replaced by `Iterator::step_by`
    |
    = note: `-D deprecated` implied by `-D warnings`
 
-error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
-  --> range.rs:18:5
-   |
-18 |     (1...2).step_by(0);
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D range-step-by-zero` implied by `-D warnings`
-
 error: use of deprecated item: replaced by `Iterator::step_by`
   --> range.rs:18:13
    |
@@ -53,14 +29,6 @@ error: use of deprecated item: replaced by `Iterator::step_by`
    |             ^^^^^^^
    |
    = note: `-D deprecated` implied by `-D warnings`
-
-error: Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` instead
-  --> range.rs:21:5
-   |
-21 |     x.step_by(0);
-   |     ^^^^^^^^^^^^
-   |
-   = note: `-D range-step-by-zero` implied by `-D warnings`
 
 error: use of deprecated item: replaced by `Iterator::step_by`
   --> range.rs:21:7
