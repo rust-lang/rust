@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-struct_field_attributes
-
-struct Foo {
-    present: (),
+enum X {
+    Entry,
 }
 
 fn main() {
-    let foo = Foo { #[cfg(all())] present: () };
-    //~^ ERROR attributes on struct pattern or literal fields are unstable
-    let Foo { #[cfg(all())] present: () } = foo;
-    //~^ ERROR attributes on struct pattern or literal fields are unstable
+    X::Entry(); //~ ERROR expected function, found `X::Entry` [E0618]
+                //~| HELP did you mean to write `X::Entry`?
+    let x = 0i32;
+    x(); //~ ERROR expected function, found `i32` [E0618]
 }
