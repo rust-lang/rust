@@ -132,9 +132,10 @@ impl ListItem {
     }
 
     pub fn has_line_pre_comment(&self) -> bool {
-        self.pre_comment
-            .as_ref()
-            .map_or(false, |comment| comment.starts_with("//"))
+        self.pre_comment.as_ref().map_or(
+            false,
+            |comment| comment.starts_with("//"),
+        )
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
@@ -419,10 +420,9 @@ where
                     }
                 }
                 None => {
-                    post_snippet.find_uncommented(self.terminator).unwrap_or(
-                        post_snippet
-                            .len(),
-                    )
+                    post_snippet
+                        .find_uncommented(self.terminator)
+                        .unwrap_or(post_snippet.len())
                 }
             };
 
@@ -435,10 +435,9 @@ where
                 let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
                 // From the end of the first line of comments.
                 let test_snippet = &test_snippet[first_newline..];
-                let first = test_snippet.find(|c: char| !c.is_whitespace()).unwrap_or(
-                    test_snippet
-                        .len(),
-                );
+                let first = test_snippet
+                    .find(|c: char| !c.is_whitespace())
+                    .unwrap_or(test_snippet.len());
                 // From the end of the first line of comments to the next non-whitespace char.
                 let test_snippet = &test_snippet[..first];
 

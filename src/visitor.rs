@@ -782,8 +782,8 @@ impl Rewrite for ast::MetaItem {
 
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        try_opt!(self.meta()).rewrite(context, shape).map(|rw| {
-            if rw.starts_with("///") {
+        try_opt!(self.meta()).rewrite(context, shape).map(
+            |rw| if rw.starts_with("///") {
                 rw
             } else {
                 let original = context.snippet(self.span);
@@ -793,7 +793,7 @@ impl Rewrite for ast::Attribute {
                     format!("#[{}]", rw)
                 }
             }
-        })
+        )
     }
 }
 

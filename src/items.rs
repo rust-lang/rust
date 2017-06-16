@@ -803,10 +803,9 @@ fn format_impl_ref_and_type(
             Style::Legacy => new_line_offset + trait_ref_overhead,
             Style::Rfc => new_line_offset,
         };
-        result.push_str(&*try_opt!(self_ty.rewrite(
-            context,
-            Shape::legacy(budget, type_offset),
-        )));
+        result.push_str(&*try_opt!(
+            self_ty.rewrite(context, Shape::legacy(budget, type_offset))
+        ));
         Some(result)
     } else {
         unreachable!();
@@ -967,8 +966,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             where_density,
             "{",
             !has_body,
-            trait_bound_str.is_empty() &&
-                last_line_width(&generics_str) == 1,
+            trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
             None,
         ));
         // If the where clause cannot fit on the same line,
@@ -1260,10 +1258,12 @@ fn format_tuple_struct(
             context.codemap.span_after(span, "("),
             span.hi,
         );
-        let body_budget = try_opt!(context.config.max_width().checked_sub(
-            offset.block_only().width() +
-                result.len() + 3,
-        ));
+        let body_budget = try_opt!(
+            context
+                .config
+                .max_width()
+                .checked_sub(offset.block_only().width() + result.len() + 3)
+        );
         let body = try_opt!(list_helper(
             items,
             // TODO budget is wrong in block case
@@ -1548,8 +1548,7 @@ pub fn rewrite_static(
     let ty_str = try_opt!(ty.rewrite(
         context,
         Shape::legacy(
-            context.config.max_width() - offset.block_indent -
-                prefix.len() - 2,
+            context.config.max_width() - offset.block_indent - prefix.len() - 2,
             offset.block_only(),
         ),
     ));
@@ -1613,8 +1612,7 @@ pub fn rewrite_associated_type(
         let ty_str = try_opt!(ty.rewrite(
             context,
             Shape::legacy(
-                context.config.max_width() - indent.block_indent -
-                    prefix.len() - 2,
+                context.config.max_width() - indent.block_indent - prefix.len() - 2,
                 indent.block_only(),
             ),
         ));
@@ -1857,8 +1855,7 @@ fn rewrite_fn_base(
         2
     };
     let shape = try_opt!(
-        Shape::indented(indent + last_line_width(&result), context.config)
-            .sub_width(overhead)
+        Shape::indented(indent + last_line_width(&result), context.config).sub_width(overhead)
     );
     let g_span = mk_sp(span.lo, span_for_return(&fd.output).lo);
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
@@ -1979,10 +1976,10 @@ fn rewrite_fn_base(
         }
         // If the last line of args contains comment, we cannot put the closing paren
         // on the same line.
-        if arg_str
-            .lines()
-            .last()
-            .map_or(false, |last_line| last_line.contains("//"))
+        if arg_str.lines().last().map_or(
+            false,
+            |last_line| last_line.contains("//"),
+        )
         {
             args_last_line_contains_comment = true;
             result.push('\n');
@@ -2055,13 +2052,14 @@ fn rewrite_fn_base(
             let snippet_hi = span.hi;
             let snippet = context.snippet(mk_sp(snippet_lo, snippet_hi));
             // Try to preserve the layout of the original snippet.
-            let original_starts_with_newline =
-                snippet
-                    .find(|c| c != ' ')
-                    .map_or(false, |i| snippet[i..].starts_with('\n'));
-            let original_ends_with_newline = snippet
-                .rfind(|c| c != ' ')
-                .map_or(false, |i| snippet[i..].ends_with('\n'));
+            let original_starts_with_newline = snippet.find(|c| c != ' ').map_or(
+                false,
+                |i| snippet[i..].starts_with('\n'),
+            );
+            let original_ends_with_newline = snippet.rfind(|c| c != ' ').map_or(
+                false,
+                |i| snippet[i..].ends_with('\n'),
+            );
             let snippet = snippet.trim();
             if !snippet.is_empty() {
                 result.push(if original_starts_with_newline {
