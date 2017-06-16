@@ -736,6 +736,49 @@ error: foo
 }
 
 #[test]
+fn multiple_labels_secondary_without_message_3() {
+    test_harness(r#"
+fn foo() {
+  a  bc  d
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "a",
+                count: 1,
+            },
+            end: Position {
+                string: "b",
+                count: 1,
+            },
+            label: "`a` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "c",
+                count: 1,
+            },
+            end: Position {
+                string: "d",
+                count: 1,
+            },
+            label: "",
+        },
+    ],
+    r#"
+error: foo
+ --> test.rs:3:3
+  |
+3 |   a  bc  d
+  |   ^^^^----
+  |   |
+  |   `a` is a good letter
+
+"#);
+}
+
+#[test]
 fn multiple_labels_without_message() {
     test_harness(r#"
 fn foo() {
