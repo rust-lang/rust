@@ -1657,6 +1657,16 @@ impl Rewrite for ast::FunctionRetTy {
     }
 }
 
+fn is_empty_infer(context: &RewriteContext, ty: &ast::Ty) -> bool {
+    match ty.node {
+        ast::TyKind::Infer => {
+            let original = context.snippet(ty.span);
+            original != "_"
+        }
+        _ => false,
+    }
+}
+
 impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if is_named_arg(self) {
@@ -1665,7 +1675,7 @@ impl Rewrite for ast::Arg {
                 Shape::legacy(shape.width, shape.indent),
             ));
 
-            if self.ty.node != ast::TyKind::Infer {
+            if !is_empty_infer(context, &*self.ty) {
                 if context.config.space_before_type_annotation() {
                     result.push_str(" ");
                 }
@@ -1750,8 +1760,9 @@ pub fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
     }
 }
 
-pub fn span_hi_for_arg(arg: &ast::Arg) -> BytePos {
+pub fn span_hi_for_arg(context: &RewriteContext, arg: &ast::Arg) -> BytePos {
     match arg.ty.node {
+        ast::TyKind::Infer if context.snippet(arg.ty.span) == "_" => arg.ty.span.hi,
         ast::TyKind::Infer if is_named_arg(arg) => arg.pat.span.hi,
         _ => arg.ty.span.hi,
     }

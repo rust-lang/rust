@@ -174,3 +174,11 @@ fn issue1697() {
         move |arg1, arg2, arg3, arg4| arg1 + arg2 + arg3 + arg4,
     )
 }
+
+fn issue1694() {
+    foooooo(
+        |_referencefffffffff: _, _target_reference: _, _oid: _, _target_oid: _| {
+            format!("refs/pull/{}/merge", pr_id)
+        },
+    )
+}

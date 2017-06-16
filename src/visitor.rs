@@ -792,7 +792,7 @@ impl Rewrite for ast::Attribute {
                 } else {
                     format!("#[{}]", rw)
                 }
-            }
+            },
         )
     }
 }
