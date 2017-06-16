@@ -45,4 +45,8 @@ fn main() {
         //~| HELP did you mean to compare equality?
         println!("{}", x);
     }
+    if (if true { x = 4 } else { x = 5 }) {
+        //~^ ERROR mismatched types
+        println!("{}", x);
+    }
 }

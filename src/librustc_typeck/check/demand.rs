@@ -29,7 +29,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.demand_suptype_diag(sp, expected, actual).map(|mut e| e.emit());
     }
 
-    pub fn demand_suptype_diag(&self, sp: Span,
+    pub fn demand_suptype_diag(&self,
+                               sp: Span,
                                expected: Ty<'tcx>,
                                actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
         let cause = &self.misc(sp);

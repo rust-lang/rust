@@ -345,7 +345,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
             ExpectIfCondition => Some(fcx.tcx.types.bool),
-            _ => None
+            NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) => None,
         }
     }
 
@@ -2647,15 +2647,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.demand_eqtype(expr.span, expected, ty);
     }
 
-    pub fn check_expr_has_type(&self,
-                               expr: &'gcx hir::Expr,
-                               expected: Ty<'tcx>) -> Ty<'tcx> {
-        self.check_expr_expect_type(expr, ExpectHasType(expected))
+    pub fn check_expr_has_type_or_error(&self,
+                                        expr: &'gcx hir::Expr,
+                                        expected: Ty<'tcx>) -> Ty<'tcx> {
+        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected))
     }
 
-    fn check_expr_expect_type(&self,
-                              expr: &'gcx hir::Expr,
-                              expected: Expectation<'tcx>) -> Ty<'tcx> {
+    fn check_expr_meets_expectation_or_error(&self,
+                                             expr: &'gcx hir::Expr,
+                                             expected: Expectation<'tcx>) -> Ty<'tcx> {
         let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
         let mut ty = self.check_expr_with_expectation(expr, expected);
 
@@ -2865,7 +2865,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        opt_else_expr: Option<&'gcx hir::Expr>,
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_expect_type(cond_expr, ExpectIfCondition);
+        let cond_ty = self.check_expr_meets_expectation_or_error(cond_expr, ExpectIfCondition);
         let cond_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
@@ -3352,7 +3352,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
-            self.check_expr_has_type(base_expr, struct_ty);
+            self.check_expr_has_type_or_error(base_expr, struct_ty);
             match struct_ty.sty {
                 ty::TyAdt(adt, substs) if adt.is_struct() => {
                     let fru_field_types = adt.struct_variant().fields.iter().map(|f| {
@@ -3668,7 +3668,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
 
             match expected {
-                ExpectIfCondition => (),
+                ExpectIfCondition => {
+                    self.tcx.sess.delay_span_bug(lhs.span, "invalid lhs expression in if;\
+                                                            expected error elsehwere");
+                }
                 _ => {
                     // Only check this if not in an `if` condition, as the
                     // mistyped comparison help is more appropriate.
@@ -3704,7 +3707,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               };
 
               self.with_breakable_ctxt(expr.id, ctxt, || {
-                  self.check_expr_has_type(&cond, tcx.types.bool);
+                  self.check_expr_has_type_or_error(&cond, tcx.types.bool);
                   let cond_diverging = self.diverges.get();
                   self.check_block_no_value(&body);
 
@@ -3842,7 +3845,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 None => {
                     let t: Ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
-                    let element_ty = self.check_expr_has_type(&element, t);
+                    let element_ty = self.check_expr_has_type_or_error(&element, t);
                     (element_ty, t)
                 }
             };
@@ -4097,7 +4100,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             hir::StmtExpr(ref expr, _) => {
                 // Check with expected type of ()
-                self.check_expr_has_type(&expr, self.tcx.mk_nil());
+                self.check_expr_has_type_or_error(&expr, self.tcx.mk_nil());
             }
             hir::StmtSemi(ref expr, _) => {
                 self.check_expr(&expr);
