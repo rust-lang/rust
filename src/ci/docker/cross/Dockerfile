@@ -1,29 +1,10 @@
-FROM ubuntu:16.04
+FROM rust-ci-base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
-  ca-certificates \
-  python2.7 \
-  git \
-  cmake \
-  sudo \
-  xz-utils \
-  zlib1g-dev \
   g++-arm-linux-gnueabi \
   g++-arm-linux-gnueabihf \
   gcc-sparc64-linux-gnu \
-  libc6-dev-sparc64-cross \
-  bzip2 \
-  patch \
-  libssl-dev \
-  pkg-config
-
-# dumb-init
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
+  libc6-dev-sparc64-cross
 
 WORKDIR /tmp
 
@@ -63,10 +44,3 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-armhf=/usr/local/arm-linux-musleabihf \
       --musl-root-armv7=/usr/local/armv7-linux-musleabihf
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
-
-# sccache
-COPY scripts/sccache.sh /scripts/
-RUN sh /scripts/sccache.sh
-
-# init
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]

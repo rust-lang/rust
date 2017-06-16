@@ -24,6 +24,20 @@ source "$ci_dir/shared.sh"
 travis_fold start build_docker
 travis_time_start
 
+if [[ "$image" == base* ]]; then
+    echo "Cannot run $image image!"
+    exit 1
+fi
+
+if grep -q "FROM rust-ci-base" "$docker_dir/$image/Dockerfile"; then
+    retry docker \
+      build \
+      --rm \
+      -t rust-ci-base \
+      -f "$docker_dir/base/Dockerfile" \
+      "$docker_dir"
+fi
+
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
     retry docker \
       build \
