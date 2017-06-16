@@ -220,8 +220,9 @@ macro_rules! create_config {
         #[derive(Clone)]
         pub struct Config {
             // For each config item, we store a bool indicating whether it has
-            // been accessed and the value.
-            $($i: (Cell<bool>, $ty)),+
+            // been accessed and the value, and a bool whether the option was
+            // manually initialised, or taken from the default,
+            $($i: (Cell<bool>, bool, $ty)),+
         }
 
         // Just like the Config struct but with each property wrapped
@@ -255,7 +256,19 @@ macro_rules! create_config {
         impl<'a> ConfigSetter<'a> {
             $(
             pub fn $i(&mut self, value: $ty) {
-                (self.0).$i.1 = value;
+                (self.0).$i.2 = value;
+            }
+            )+
+        }
+
+        // Query each option, returns true if the user set the option, false if
+        // a default was used.
+        pub struct ConfigWasSet<'a>(&'a Config);
+
+        impl<'a> ConfigWasSet<'a> {
+            $(
+            pub fn $i(&self) -> bool {
+                (self.0).$i.1
             }
             )+
         }
@@ -265,7 +278,7 @@ macro_rules! create_config {
             $(
             pub fn $i(&self) -> $ty {
                 self.$i.0.set(true);
-                self.$i.1.clone()
+                self.$i.2.clone()
             }
             )+
 
@@ -273,10 +286,15 @@ macro_rules! create_config {
                 ConfigSetter(self)
             }
 
+            pub fn was_set<'a>(&'a self) -> ConfigWasSet<'a> {
+                ConfigWasSet(self)
+            }
+
             fn fill_from_parsed_config(mut self, parsed: PartialConfig) -> Config {
             $(
                 if let Some(val) = parsed.$i {
-                    self.$i.1 = val;
+                    self.$i.1 = true;
+                    self.$i.2 = val;
                 }
             )+
                 self
@@ -320,7 +338,7 @@ macro_rules! create_config {
                 PartialConfig {
                     $(
                         $i: if self.$i.0.get() {
-                                Some(self.$i.1.clone())
+                                Some(self.$i.2.clone())
                             } else {
                                 None
                             },
@@ -331,7 +349,7 @@ macro_rules! create_config {
             pub fn all_options(&self) -> PartialConfig {
                 PartialConfig {
                     $(
-                        $i: Some(self.$i.1.clone()),
+                        $i: Some(self.$i.2.clone()),
                     )+
                 }
             }
@@ -341,7 +359,7 @@ macro_rules! create_config {
                 match key {
                     $(
                         stringify!($i) => {
-                            self.$i.1 = val.parse::<$ty>()
+                            self.$i.2 = val.parse::<$ty>()
                                 .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
                                                  stringify!($i),
                                                  val,
@@ -444,7 +462,7 @@ macro_rules! create_config {
             fn default() -> Config {
                 Config {
                     $(
-                        $i: (Cell::new(false), $def),
+                        $i: (Cell::new(false), false, $def),
                     )+
                 }
             }
@@ -609,5 +627,13 @@ mod test {
             toml,
             format!("verbose = {}\nskip_children = {}\n", verbose, skip_children)
         );
+    }
+
+    #[test]
+    fn test_was_set() {
+        let config = Config::from_toml("hard_tabs = true").unwrap();
+
+        assert_eq!(config.was_set().hard_tabs(), true);
+        assert_eq!(config.was_set().verbose(), false);
     }
 }
