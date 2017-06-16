@@ -428,7 +428,7 @@ impl Rc<str> {
     #[doc(hidden)]
     #[unstable(feature = "rustc_private",
                reason = "for internal use in rustc",
-               issue = "0")]
+               issue = "27812")]
     pub fn __from_str(value: &str) -> Rc<str> {
         unsafe {
             // Allocate enough space for `RcBox<str>`.
@@ -453,7 +453,7 @@ impl<T> Rc<[T]> {
     #[doc(hidden)]
     #[unstable(feature = "rustc_private",
                reason = "for internal use in rustc",
-               issue = "0")]
+               issue = "27812")]
     pub fn __from_array(value: Box<[T]>) -> Rc<[T]> {
         unsafe {
             let ptr: *mut RcBox<[T]> =

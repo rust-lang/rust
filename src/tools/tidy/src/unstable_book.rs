@@ -87,7 +87,7 @@ pub fn check(path: &path::Path, bad: &mut bool) {
     // Library features
 
     let lang_features = collect_lang_features(path);
-    let lib_features = collect_lib_features(path, bad, &lang_features);
+    let lib_features = collect_lib_features(path);
 
     let unstable_lib_feature_names = collect_unstable_feature_names(&lib_features);
     let unstable_book_lib_features_section_file_names =
