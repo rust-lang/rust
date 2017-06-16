@@ -2558,7 +2558,12 @@ fn shape_from_fn_call_style(
     offset: usize,
 ) -> Option<Shape> {
     if context.use_block_indent() {
-        Some(shape.block().block_indent(context.config.tab_spaces()))
+        // 1 = ","
+        shape
+            .block()
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config)
+            .sub_width(1)
     } else {
         shape.visual_indent(offset).sub_width(overhead)
     }
