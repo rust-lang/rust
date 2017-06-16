@@ -1755,6 +1755,35 @@ impl<T> Take<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn limit(&self) -> u64 { self.limit }
 
+    /// Sets the number of bytes that can be read before this instance will
+    /// return EOF. This is the same as constructing a new `Take` instance, so
+    /// the amount of bytes read and the previous limit value don't matter when
+    /// calling this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(take_set_limit)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let f = File::open("foo.txt")?;
+    ///
+    /// // read at most five bytes
+    /// let mut handle = f.take(5);
+    /// handle.set_limit(10);
+    ///
+    /// assert_eq!(handle.limit(), 10);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "take_set_limit", issue = "42781")]
+    pub fn set_limit(&mut self, limit: u64) {
+        self.limit = limit;
+    }
+
     /// Consumes the `Take`, returning the wrapped reader.
     ///
     /// # Examples
