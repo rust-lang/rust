@@ -19,7 +19,7 @@ use strings::string_buffer::StringBuffer;
 use {Indent, Shape};
 use utils::{self, mk_sp};
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::FindUncommented;
+use comment::{contains_comment, FindUncommented};
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
@@ -761,7 +761,7 @@ impl Rewrite for ast::MetaItem {
             ast::MetaItemKind::NameValue(ref literal) => {
                 let name = self.name.as_str();
                 let value = context.snippet(literal.span);
-                if &*name == "doc" && value.starts_with("///") {
+                if &*name == "doc" && contains_comment(&value) {
                     let doc_shape = Shape {
                         width: cmp::min(shape.width, context.config.comment_width())
                             .checked_sub(shape.indent.width())
@@ -786,7 +786,12 @@ impl Rewrite for ast::Attribute {
             if rw.starts_with("///") {
                 rw
             } else {
-                format!("#[{}]", rw)
+                let original = context.snippet(self.span);
+                if contains_comment(&original) {
+                    original
+                } else {
+                    format!("#[{}]", rw)
+                }
             }
         })
     }
