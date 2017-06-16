@@ -1,4 +1,4 @@
-- Feature Name: `match_vert_prefix
+- Feature Name: `match_vert_prefix`
 - Start Date: 2017-02-23
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
