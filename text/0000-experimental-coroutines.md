@@ -188,7 +188,7 @@ targeted at generating the state machine we wanted to write by hand above,
 solving our problem!
 
 Coroutines are, however, a little lower level than futures themselves. The
-stackless coroutine feature can be used not only future futures but also other
+stackless coroutine feature can be used not only for futures but also other
 language primitives like iterators. As a result let's take a look at what a
 hypothetical translation of our original `#[async]` function might look like.
 Keep in mind that this is not a specification of syntax, it's just a strawman
@@ -213,7 +213,7 @@ fn print_lines() -> impl Future<Item = (), Error = io::Error> {
 
         let mut stream = io.lines();
         loop {
-            let item = {
+            let line = {
                 match stream.poll()? {
                     Async::Ready(Some(e)) => e,
                     Async::Ready(None) => break,
@@ -347,7 +347,7 @@ landing are much more minimal than a new stable language feature being added.
 Despite this, however, there is also a desire to think early on about corner
 cases that language features run into and plan for a sort of reference test
 suite to exist ahead of time. Along those lines this RFC proposes a list of
-tests accompany any initial implementation of coroutines in the compiler,
+tests accompanying any initial implementation of coroutines in the compiler,
 covering:
 
 ##### Basic usage
