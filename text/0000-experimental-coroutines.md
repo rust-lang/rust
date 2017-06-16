@@ -328,6 +328,22 @@ driving factor for stabilization is the real-world and high-impact use case of
 async/await, and zero-cost futures will be an overall theme of the continued
 work here.
 
+It's worth briefly mentioning, however, some high-level design goals of the
+concept of stackless coroutines:
+
+* Coroutines should be compatible with libcore. That is, they should not require
+  any runtime support along the lines of allocations, intrinsics, etc.
+* As a result, coroutines will roughly compile down to a state machine that's
+  advanced forward as its resumed. Whenever a coroutine yields it'll leave
+  itself in a state that can be later resumed from the yield statement.
+* Coroutines should work similarly to closures in that they allow for capturing
+  variables and don't impose dynamic dispatch costs. Each coroutine will be
+  compiled separately (monomorphized) in the way that closures are today.
+* Coroutines should also support some method of communicating arguments in and
+  out of itself. For example when yielding a coroutine should be able to yield a
+  value. Additionally when resuming a coroutine may wish to require a value is
+  passed in on resumption.
+
 [RFC 1823]: https://github.com/rust-lang/rfcs/pull/1823
 [RFC 1832]: https://github.com/rust-lang/rfcs/pull/1832
 
@@ -348,9 +364,31 @@ Despite this, however, there is also a desire to think early on about corner
 cases that language features run into and plan for a sort of reference test
 suite to exist ahead of time. Along those lines this RFC proposes a list of
 tests accompanying any initial implementation of coroutines in the compiler,
-covering:
+covering. Finally this RFC also proposes a list of unanswered questions related
+to coroutines which likely wish to be considered before stabilization
 
-##### Basic usage
+##### Open Questions - coroutines
+
+* What is the precise syntax for coroutines?
+* How are coroutines syntactically and functionally constructed?
+* What do the traits related to coroutines look like?
+* Is "coroutine" the best name?
+* Are coroutines sufficient for implementing iterators?
+* How do various traits like "the coroutine trait", the `Future` trait, and
+  `Iterator` all interact? Does coherence require "wrapper struct" instances to
+  exist?
+
+##### Open Questions - async/await
+
+* Is using a syntax extension too much considered to be creating a
+  "sub-language"? Does async/await usage feel natural in Rust?
+* What precisely do you write in a signature of an async function? Do you
+  mention the future aspect?
+* Can `Stream` implementations be created with similar syntax? Is async/await
+  with coroutines too specific to futures?
+*
+
+##### Tests - Basic usage
 
 * Coroutines which don't yield at all and immediately return results
 * Coroutines that yield once and then return a result
@@ -361,26 +399,26 @@ covering:
 * Coroutines are `Send` and `Sync` like closures are wrt captured variables
 * Create a coroutine on one thread, run it on another
 
-##### Basic compile failures
+##### Tests - Basic compile failures
 
 * Coroutines cannot close over data that is destroyed before the coroutine is
   itself destroyed.
 * Coroutines closing over non-`Send` data are not `Send`
 
-##### Interesting control flow
+##### Test - Interesting control flow
 
 * Yield inside of a `for` loop a set number of times
 * Yield on one branch of an `if` but not the other (take both branches here)
 * Yield on one branch of an `if` inside of a `for` loop
 * Yield inside of the condition expression of an `if`
 
-##### Panic safety
+##### Tests - Panic safety
 
 * Panicking in a coroutine doesn't kill everything
 * Resuming a panicked coroutine is memory safe
 * Panicking drops local variables correctly
 
-##### Debuginfo
+##### Tests - Debuginfo
 
 * Inspecting variables before/after yield points works
 * Breaking before/after yield points works
