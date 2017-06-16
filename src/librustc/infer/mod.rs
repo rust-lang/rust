@@ -36,7 +36,7 @@ use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
-use util::nodemap::{FxHashMap, FxHashSet};
+use util::nodemap::FxHashMap;
 use arena::DroplessArena;
 
 use self::combine::CombineFields;
@@ -110,7 +110,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     // the set of predicates on which errors have been reported, to
     // avoid reporting the same error twice.
-    pub reported_trait_errors: RefCell<FxHashSet<traits::TraitErrorKey<'tcx>>>,
+    pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
 
     // When an error occurs, we want to avoid reporting "derived"
     // errors that are due to this original failure. Normally, we
@@ -350,6 +350,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             global_tcx: self,
             arena: DroplessArena::new(),
             fresh_tables: None,
+
         }
     }
 }
@@ -381,7 +382,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             region_vars: RegionVarBindings::new(tcx),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            reported_trait_errors: RefCell::new(FxHashSet()),
+            reported_trait_errors: RefCell::new(FxHashMap()),
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
             in_snapshot: Cell::new(false),

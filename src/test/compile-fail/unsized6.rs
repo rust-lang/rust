@@ -12,15 +12,15 @@
 
 trait T {}
 
-fn f1<X: ?Sized>(x: &X) {
-    let _: X; // <-- this is OK, no bindings created, no initializer.
+fn f1<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized>(x: &X) {
+    let _: W; // <-- this is OK, no bindings created, no initializer.
     let _: (isize, (X, isize)); //~ERROR `X: std::marker::Sized` is not satisfie
-    let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
-    let y: (isize, (X, usize));
+    let y: Y; //~ERROR `Y: std::marker::Sized` is not satisfied
+    let y: (isize, (Z, usize)); //~ERROR `Z: std::marker::Sized` is not satisfied
 }
-fn f2<X: ?Sized + T>(x: &X) {
+fn f2<X: ?Sized, Y: ?Sized>(x: &X) {
     let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
-    let y: (isize, (X, isize)); //~ERROR `X: std::marker::Sized` is not satisfied
+    let y: (isize, (Y, isize)); //~ERROR `Y: std::marker::Sized` is not satisfied
 }
 
 fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {

@@ -1101,7 +1101,10 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
             }
 
             let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
-                      format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
+                      format!("we would appreciate a bug report: {}", BUG_REPORT_URL),
+                      format!("rustc {} running on {}",
+                              option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+                              config::host_triple())];
             for note in &xs {
                 handler.emit(&MultiSpan::new(),
                              &note,
