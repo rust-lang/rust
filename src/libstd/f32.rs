@@ -46,8 +46,6 @@ mod cmath {
         pub fn erfcf(n: c_float) -> c_float;
         pub fn expm1f(n: c_float) -> c_float;
         pub fn fdimf(a: c_float, b: c_float) -> c_float;
-        pub fn fmaxf(a: c_float, b: c_float) -> c_float;
-        pub fn fminf(a: c_float, b: c_float) -> c_float;
         pub fn fmodf(a: c_float, b: c_float) -> c_float;
         pub fn ilogbf(n: c_float) -> c_int;
         pub fn logbf(n: c_float) -> c_float;
@@ -673,7 +671,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn max(self, other: f32) -> f32 {
-        unsafe { cmath::fmaxf(self, other) }
+        num::Float::max(self, other)
     }
 
     /// Returns the minimum of the two numbers.
@@ -689,7 +687,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn min(self, other: f32) -> f32 {
-        unsafe { cmath::fminf(self, other) }
+        num::Float::min(self, other)
     }
 
     /// The positive difference of two numbers.

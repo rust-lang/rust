@@ -2459,6 +2459,13 @@ pub trait Float: Sized {
     /// Convert degrees to radians.
     #[stable(feature = "deg_rad_conversions", since="1.7.0")]
     fn to_radians(self) -> Self;
+
+    /// Returns the maximum of the two numbers.
+    #[stable(feature = "core_float_min_max", since="1.20.0")]
+    fn max(self, other: Self) -> Self;
+    /// Returns the minimum of the two numbers.
+    #[stable(feature = "core_float_min_max", since="1.20.0")]
+    fn min(self, other: Self) -> Self;
 }
 
 macro_rules! from_str_radix_int_impl {
