@@ -1,4 +1,4 @@
-#![feature(plugin, collections)]
+#![feature(plugin, alloc)]
 #![feature(associated_type_defaults)]
 #![feature(associated_consts)]
 
@@ -6,8 +6,8 @@
 #![warn(clippy)]
 #![allow(dead_code, needless_pass_by_value)]
 
-extern crate collections;
-use collections::linked_list::LinkedList;
+extern crate alloc;
+use alloc::linked_list::LinkedList;
 
 trait Foo {
     type Baz = LinkedList<u8>;

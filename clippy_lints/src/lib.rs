@@ -1,7 +1,7 @@
 // error-pattern:cargo-clippy
 
 #![feature(box_syntax)]
-#![feature(collections)]
+#![feature(alloc)]
 #![feature(custom_attribute)]
 #![feature(i128_type)]
 #![feature(i128)]
@@ -22,7 +22,7 @@ extern crate toml;
 
 // Only for the compile time checking of paths
 extern crate core;
-extern crate collections;
+extern crate alloc;
 
 // for unicode nfc normalization
 extern crate unicode_normalization;
