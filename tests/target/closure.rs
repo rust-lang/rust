@@ -128,11 +128,8 @@ fn issue470() {
     {
         {
             {
-                let explicit_arg_decls =
-                    explicit_arguments.into_iter().enumerate().map(|(
-                        index,
-                        (ty, pattern),
-                    )| {
+                let explicit_arg_decls = explicit_arguments.into_iter().enumerate().map(
+                    |(index, (ty, pattern))| {
                         let lvalue = Lvalue::Arg(index as u32);
                         block = this.pattern(
                             block,
@@ -141,7 +138,8 @@ fn issue470() {
                             &lvalue,
                         );
                         ArgDecl { ty: ty }
-                    });
+                    },
+                );
             }
         }
     }

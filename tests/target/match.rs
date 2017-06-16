@@ -79,14 +79,7 @@ fn main() {
         ),
         Variantttttttttttttttttttttttt => (
             "variant",
-            vec![
-                "id",
-                "name",
-                "qualname",
-                "type",
-                "value",
-                "scopeid",
-            ],
+            vec!["id", "name", "qualname", "type", "value", "scopeid"],
             true,
             true,
         ),
