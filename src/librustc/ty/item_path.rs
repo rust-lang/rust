@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 //
                 // Returns `None` for the local crate.
                 if cnum != LOCAL_CRATE {
-                    let opt_extern_crate = self.sess.cstore.extern_crate(cnum);
+                    let opt_extern_crate = self.extern_crate(cnum.as_def_id());
                     let opt_extern_crate = opt_extern_crate.and_then(|extern_crate| {
                         if extern_crate.direct {
                             Some(extern_crate.def_id)
@@ -136,8 +136,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // If `cur_def` is a direct or injected extern crate, push the path to the crate
             // followed by the path to the item within the crate and return.
             if cur_def.index == CRATE_DEF_INDEX {
-                match self.sess.cstore.extern_crate(cur_def.krate) {
-                    Some(extern_crate) if extern_crate.direct => {
+                match *self.extern_crate(cur_def) {
+                    Some(ref extern_crate) if extern_crate.direct => {
                         self.push_item_path(buffer, extern_crate.def_id);
                         cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
                         return true;

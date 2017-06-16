@@ -107,7 +107,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let mut result = Vec::new();
 
         for n in self.tcx.sess.cstore.crates() {
-            let span = match self.tcx.sess.cstore.extern_crate(n) {
+            let span = match *self.tcx.extern_crate(n.as_def_id()) {
                 Some(ref c) => c.span,
                 None => {
                     debug!("Skipping crate {}, no data", n);

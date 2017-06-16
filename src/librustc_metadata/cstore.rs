@@ -34,7 +34,7 @@ pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePrefere
 pub use rustc::middle::cstore::NativeLibraryKind::*;
 pub use rustc::middle::cstore::{CrateSource, LinkMeta, LibSource};
 
-pub use cstore_impl::provide;
+pub use cstore_impl::{provide, provide_local};
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external

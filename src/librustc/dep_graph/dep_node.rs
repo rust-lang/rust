@@ -81,7 +81,7 @@ macro_rules! define_dep_nodes {
     ($(
         $variant:ident $(( $($tuple_arg:tt),* ))*
                        $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
-      ),*
+      ,)*
     ) => (
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
                  RustcEncodable, RustcDecodable)]
@@ -394,6 +394,7 @@ define_dep_nodes!(
     ItemSignature(DefId),
     ItemVarianceConstraints(DefId),
     ItemVariances(DefId),
+    IsConstFn(DefId),
     IsForeignItem(DefId),
     TypeParamPredicates { item_id: DefId, param_id: DefId },
     SizedConstraint(DefId),
@@ -475,7 +476,11 @@ define_dep_nodes!(
     IsExportedSymbol(DefId),
     IsMirAvailable(DefId),
     ItemAttrs(DefId),
-    FnArgNames(DefId)
+    FnArgNames(DefId),
+    DylibDepFormats(DefId),
+    IsAllocator(DefId),
+    IsPanicRuntime(DefId),
+    ExternCrate(DefId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {

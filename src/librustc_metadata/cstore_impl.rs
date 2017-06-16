@@ -14,7 +14,7 @@ use schema;
 
 use rustc::dep_graph::DepTrackingMapConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
-                            ExternCrate, NativeLibrary, MetadataLoader, LinkMeta,
+                            NativeLibrary, MetadataLoader, LinkMeta,
                             LinkagePreference, LoadedMacro, EncodedMetadata};
 use rustc::hir::def;
 use rustc::middle::lang_items;
@@ -23,6 +23,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
 use rustc_back::PanicStrategy;
@@ -39,7 +40,7 @@ use rustc::hir::svh::Svh;
 use rustc::hir;
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident $($name:ident => $compute:block)*) => {
+    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident, $($name:ident => $compute:block)*) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
                                     -> <ty::queries::$name<$lt> as
@@ -65,7 +66,7 @@ macro_rules! provide {
     }
 }
 
-provide! { <'tcx> tcx, def_id, cdata
+provide! { <'tcx> tcx, def_id, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
     generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
     predicates_of => { cdata.get_predicates(def_id.index, tcx) }
@@ -81,7 +82,8 @@ provide! { <'tcx> tcx, def_id, cdata
     variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
         let mut result = vec![];
-        cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()), tcx.sess);
+        cdata.each_child_of_item(def_id.index,
+          |child| result.push(child.def.def_id()), tcx.sess);
         Rc::new(result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
@@ -106,6 +108,7 @@ provide! { <'tcx> tcx, def_id, cdata
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    is_const_fn => { cdata.is_const_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     is_default_impl => { cdata.is_default_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
@@ -129,6 +132,29 @@ provide! { <'tcx> tcx, def_id, cdata
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
+
+    dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats(&tcx.dep_graph)) }
+    is_allocator => { cdata.is_allocator(&tcx.dep_graph) }
+    is_panic_runtime => { cdata.is_panic_runtime(&tcx.dep_graph) }
+    extern_crate => { Rc::new(cdata.extern_crate.get()) }
+}
+
+pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
+    fn is_const_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+        let node_id = tcx.hir.as_local_node_id(def_id)
+                             .expect("Non-local call to local provider is_const_fn");
+
+        if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(node_id)) {
+            fn_like.constness() == hir::Constness::Const
+        } else {
+            false
+        }
+    }
+
+    *providers = Providers {
+        is_const_fn,
+        ..*providers
+    };
 }
 
 impl CrateStore for cstore::CStore {
@@ -172,12 +198,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_associated_item(def.index)
     }
 
-    fn is_const_fn(&self, did: DefId) -> bool
-    {
-        self.read_dep_node(did);
-        self.get_crate_data(did.krate).is_const_fn(did.index)
-    }
-
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
     {
         self.do_is_statically_included_foreign_item(def_id)
@@ -190,12 +210,6 @@ impl CrateStore for cstore::CStore {
             self.get_crate_data(def_id.krate)
                 .is_dllimport_foreign_item(def_id.index, &self.dep_graph)
         }
-    }
-
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                -> Vec<(CrateNum, LinkagePreference)>
-    {
-        self.get_crate_data(cnum).get_dylib_dependency_formats(&self.dep_graph)
     }
 
     fn dep_kind(&self, cnum: CrateNum) -> DepKind
@@ -227,16 +241,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
     }
 
-    fn is_allocator(&self, cnum: CrateNum) -> bool
-    {
-        self.get_crate_data(cnum).is_allocator(&self.dep_graph)
-    }
-
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool
-    {
-        self.get_crate_data(cnum).is_panic_runtime(&self.dep_graph)
-    }
-
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool {
         self.get_crate_data(cnum).is_compiler_builtins(&self.dep_graph)
     }
@@ -261,11 +265,6 @@ impl CrateStore for cstore::CStore {
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name()
-    }
-
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>
-    {
-        self.get_crate_data(cnum).extern_crate.get()
     }
 
     fn crate_hash(&self, cnum: CrateNum) -> Svh

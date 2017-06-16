@@ -351,7 +351,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 signal!(e, TypeckError)
             }
           } else {
-            if tcx.sess.cstore.is_const_fn(def_id) {
+            if tcx.is_const_fn(def_id) {
                 tcx.sess.cstore.item_body(tcx, def_id)
             } else {
                 signal!(e, TypeckError)

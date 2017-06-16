@@ -243,24 +243,18 @@ pub trait CrateStore {
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool;
     fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                    -> Vec<(CrateNum, LinkagePreference)>;
     fn dep_kind(&self, cnum: CrateNum) -> DepKind;
     fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_allocator(&self, cnum: CrateNum) -> bool;
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
     fn is_profiler_runtime(&self, cnum: CrateNum) -> bool;
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
@@ -365,29 +359,22 @@ impl CrateStore for DummyCrateStore {
         { bug!("associated_item_cloned") }
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
     fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                    -> Vec<(CrateNum, LinkagePreference)>
-        { bug!("dylib_dependency_formats") }
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
         { bug!("lang_items") }
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
         { bug!("missing_lang_items") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
     fn is_profiler_runtime(&self, cnum: CrateNum) -> bool { bug!("is_profiler_runtime") }
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool { bug!("is_sanitizer_runtime") }
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         bug!("panic_strategy")
     }
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
     fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
         bug!("original_crate_name")

@@ -13,6 +13,7 @@ use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
 use middle::const_val;
+use middle::cstore::{ExternCrate, LinkagePreference};
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
@@ -476,6 +477,36 @@ impl<'tcx> QueryDescription for queries::is_object_safe<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::is_const_fn<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("checking if item is const fn: `{}`", tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::dylib_dependency_formats<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "dylib dependency formats of crate".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_allocator<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate is_allocator".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate is_panic_runtime".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "getting crate's ExternCrateData".to_string()
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -791,6 +822,9 @@ define_maps! { <'tcx>
     [] adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
     [] adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
 
+    /// True if this is a const fn
+    [] is_const_fn: IsConstFn(DefId) -> bool,
+
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     [] is_foreign_item: IsForeignItem(DefId) -> bool,
 
@@ -929,6 +963,14 @@ define_maps! { <'tcx>
     [] needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
+
+    [] dylib_dependency_formats: DylibDepFormats(DefId)
+                                    -> Rc<Vec<(CrateNum, LinkagePreference)>>,
+
+    [] is_allocator: IsAllocator(DefId) -> bool,
+    [] is_panic_runtime: IsPanicRuntime(DefId) -> bool,
+
+    [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 }
 
 fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {
