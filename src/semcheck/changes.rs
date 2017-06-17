@@ -43,7 +43,7 @@ impl<'a> Default for ChangeCategory {
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the span of the associated item export. This allows us to sort them by appearance
 /// in the source, but possibly could create conflict later on.
-/// TODO: regard the origin of the span as well.
+// TODO: regard the origin of the span as well.
 pub enum UnaryChange {
     /// An item has been added.
     Addition(Export),
@@ -52,6 +52,7 @@ pub enum UnaryChange {
 }
 
 impl UnaryChange {
+    /// Get the change's category.
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
             UnaryChange::Addition(_) => TechnicallyBreaking,
@@ -106,7 +107,7 @@ impl Ord for UnaryChange {
 }
 
 /// The types of changes we identify between items present in both crate versions.
-/// TODO: this needs a lot of refinement still
+// TODO: this needs a lot of refinement still
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryChangeType {
     /// An item has changed it's kind.
@@ -152,7 +153,7 @@ pub enum BinaryChangeType {
 pub use self::BinaryChangeType::*;
 
 impl BinaryChangeType {
-    // TODO: this will need a lot of changes
+    // TODO: this will need a lot of changes (it's *very* conservative rn)
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
             KindDifference |
@@ -184,6 +185,7 @@ impl BinaryChangeType {
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the *new* span of the associated item export. This allows us to sort them
 /// by appearance in the *new* source, but possibly could create conflict later on.
+// TODO: we should an invariant that the two exports present are *always* tied together.
 pub struct BinaryChange {
     /// The type of the change affecting the item.
     changes: BTreeSet<BinaryChangeType>,
@@ -206,6 +208,7 @@ impl BinaryChange {
         }
     }
 
+    /// Add another change type to the change record.
     fn add(&mut self, type_: BinaryChangeType) {
         let cat = type_.to_category();
 
@@ -216,6 +219,7 @@ impl BinaryChange {
         self.changes.insert(type_);
     }
 
+    /// Get the change's category.
     fn to_category(&self) -> ChangeCategory {
         self.max.clone()
     }
@@ -264,18 +268,22 @@ pub enum Change {
 }
 
 impl Change {
+    /// Construct a new addition-change for the given export.
     fn new_addition(item: Export) -> Change {
         Change::Unary(UnaryChange::Addition(item))
     }
 
+    /// Construct a new removal-change for the given export.
     fn new_removal(item: Export) -> Change {
         Change::Unary(UnaryChange::Removal(item))
     }
 
+    /// Construct a new binary change for the given exports.
     fn new_binary(old: Export, new: Export) -> Change {
         Change::Binary(BinaryChange::new(old, new))
     }
 
+    /// Add a change type to a given binary change.
     fn add(&mut self, type_: BinaryChangeType) {
         match *self {
             Change::Unary(_) => panic!("can't add binary change types to unary change"),
@@ -283,6 +291,7 @@ impl Change {
         }
     }
 
+    /// Get the change's category.
     fn to_category(&self) -> ChangeCategory {
         match *self {
             Change::Unary(ref u) => u.to_category(),
@@ -312,15 +321,18 @@ pub struct ChangeSet {
 }
 
 impl ChangeSet {
+    /// Add a new addition-change for the given export.
     pub fn new_addition(&mut self, item: Export) {
-        self.new_change(Change::new_addition(item), ChangeKey::NewKey(item.def.def_id()));
+        self.new_unary_change(Change::new_addition(item), ChangeKey::NewKey(item.def.def_id()));
     }
 
+    /// Add a new removal-change for the given export.
     pub fn new_removal(&mut self, item: Export) {
-        self.new_change(Change::new_removal(item), ChangeKey::NewKey(item.def.def_id()));
+        self.new_unary_change(Change::new_removal(item), ChangeKey::NewKey(item.def.def_id()));
     }
 
-    fn new_change(&mut self, change: Change, key: ChangeKey) {
+    /// Add a new (unary) change for the given key.
+    fn new_unary_change(&mut self, change: Change, key: ChangeKey) {
         let cat = change.to_category();
 
         if cat > self.max {
@@ -330,6 +342,7 @@ impl ChangeSet {
         self.changes.insert(key, change);
     }
 
+    /// Add a new binary change for the given exports.
     pub fn new_binary(&mut self, type_: BinaryChangeType, old: Export, new: Export) {
         let key = ChangeKey::OldKey(old.def.def_id());
         let cat = type_.to_category();
@@ -345,6 +358,9 @@ impl ChangeSet {
         entry.add(type_);
     }
 
+    /// Check whether an item with the given id has undergone breaking changes.
+    ///
+    /// The expected `DefId` is obviously an *old* one.
     pub fn item_breaking(&self, key: DefId) -> bool {
         // we only care about items that were present before, since only those can get breaking
         // changes (additions don't count).
@@ -568,7 +584,7 @@ pub mod tests {
             for &(ref change, ref span) in changes.iter() {
                 let change = build_unary_change(change.clone(), span.clone().inner());
                 let key = ChangeKey::NewKey(change.export().def.def_id());
-                set.new_change(Change::Unary(change), key);
+                set.new_unary_change(Change::Unary(change), key);
             }
 
             set.max == max
@@ -586,7 +602,7 @@ pub mod tests {
                                         span1.clone().inner(),
                                         span2.clone().inner());
                 let key = ChangeKey::OldKey(change.old.def.def_id());
-                set.new_change(Change::Binary(change), key);
+                set.new_unary_change(Change::Binary(change), key);
             }
 
             set.max == max

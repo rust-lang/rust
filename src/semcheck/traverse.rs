@@ -12,23 +12,32 @@ use rustc::ty::Visibility::Public;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+/// A mapping from old to new `DefId`s, as well as exports.
+///
+/// Exports and simple `DefId` mappings are kept separate to record both kinds of correspondence
+/// losslessly. The *access* to the stored data happens through the same API, however.
 #[derive(Default)]
 struct IdMapping {
+    /// Toplevel items' old `DefId` mapped to new `DefId`, as well as old and new exports.
     toplevel_mapping: HashMap<DefId, (DefId, Export, Export)>,
+    /// Other item's old `DefId` mapped to new `DefId`.
     mapping: HashMap<DefId, DefId>,
 }
 
 impl IdMapping {
+    /// Register two exports representing the same item across versions.
     pub fn add_export(&mut self, old: Export, new: Export) -> bool {
         self.toplevel_mapping
             .insert(old.def.def_id(), (new.def.def_id(), old, new))
             .is_some()
     }
 
+    /// Add any other item pair's old and new `DefId`s.
     pub fn add_item(&mut self, old: DefId, new: DefId) {
         self.mapping.insert(old, new);
     }
 
+    /// Get the new `DefId` associated with the given old one.
     pub fn get_new_id(&self, old: DefId) -> DefId {
         if let Some(new) = self.toplevel_mapping.get(&old) {
             new.0
@@ -42,6 +51,8 @@ impl IdMapping {
 ///
 /// Match up pairs of modules from the two crate versions and compare for changes.
 /// Matching children get processed in the same fashion.
+///
+// TODO: describe the passes we do.
 pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     let cstore = &tcx.sess.cstore;
     let mut changes = ChangeSet::default();
@@ -139,7 +150,7 @@ fn diff_items(changes: &mut ChangeSet,
         (Method(_), Method(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Macro(_, _), Macro(_, _)) => Some(Change::new_binary(Unknown, old, new)),*/
         _ => {
-            vec![KindDifference]
+            vec![KindDifference] // TODO: move this to `diff_item_structures` as per docs
         },
     };
 
@@ -157,6 +168,7 @@ fn diff_items(changes: &mut ChangeSet,
 }
 
 
+/// Given two items, compare their types for equality.
 fn diff_types(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
     -> Vec<BinaryChangeType>
 {
@@ -198,6 +210,7 @@ fn diff_types(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
     res
 }
 
+/// Given two items, compare their type and region parameter sets.
 fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
     use std::cmp::max;
 
@@ -245,7 +258,7 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
     ret
 }
 
-/// Given two type aliases' definitions, compare their types.
+/// Given two type aliases' definitions, compare them.
 fn diff_tyaliases(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId)
     -> Vec<BinaryChangeType> {
     // let cstore = &tcx.sess.cstore;
@@ -255,6 +268,7 @@ fn diff_tyaliases(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId)
     Vec::new()
 }
 
+/// Given two structs' definitions, compare them.
 fn diff_structs(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId) -> Vec<BinaryChangeType> {
     Vec::new()
 }
