@@ -2085,7 +2085,7 @@ pub trait StrExt {
     fn is_char_boundary(&self, index: usize) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_bytes(&self) -> &[u8];
-    #[unstable(feature = "str_mut_extras", issue = "0")]
+    #[unstable(feature = "str_mut_extras", issue = "41119")]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8];
     #[stable(feature = "core", since = "1.6.0")]
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
