@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path;
 use features::{collect_lang_features, collect_lib_features, Features, Status};
@@ -45,7 +45,7 @@ fn dir_entry_is_file(dir_entry: &fs::DirEntry) -> bool {
 }
 
 /// Retrieve names of all unstable features
-pub fn collect_unstable_feature_names(features: &Features) -> HashSet<String> {
+pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
     features
         .iter()
         .filter(|&(_, ref f)| f.level == Status::Unstable)
@@ -53,7 +53,7 @@ pub fn collect_unstable_feature_names(features: &Features) -> HashSet<String> {
         .collect()
 }
 
-pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> HashSet<String> {
+pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<String> {
     fs::read_dir(dir)
         .expect("could not read directory")
         .into_iter()
@@ -69,7 +69,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> HashSet<Str
 /// * hyphens replaced by underscores
 /// * the markdown suffix ('.md') removed
 fn collect_unstable_book_lang_features_section_file_names(base_src_path: &path::Path)
-                                                          -> HashSet<String> {
+                                                          -> BTreeSet<String> {
     collect_unstable_book_section_file_names(&unstable_book_lang_features_path(base_src_path))
 }
 
@@ -78,7 +78,7 @@ fn collect_unstable_book_lang_features_section_file_names(base_src_path: &path::
 /// * hyphens replaced by underscores
 /// * the markdown suffix ('.md') removed
 fn collect_unstable_book_lib_features_section_file_names(base_src_path: &path::Path)
-                                                         -> HashSet<String> {
+                                                         -> BTreeSet<String> {
     collect_unstable_book_section_file_names(&unstable_book_lib_features_path(base_src_path))
 }
 
