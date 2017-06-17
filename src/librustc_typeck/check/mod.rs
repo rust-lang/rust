@@ -614,7 +614,8 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             .register_predicate_obligation(self, obligation);
     }
 
-    fn register_predicates(&self, obligations: Vec<traits::PredicateObligation<'tcx>>) {
+    fn register_predicates<I>(&self, obligations: I)
+    where I: IntoIterator<Item = traits::PredicateObligation<'tcx>> {
         for obligation in obligations {
             self.register_predicate(obligation);
         }
