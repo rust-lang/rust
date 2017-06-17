@@ -146,11 +146,9 @@ impl<'a> FmtVisitor<'a> {
                 let subslice_num_lines = subslice.chars().filter(|c| *c == '\n').count();
 
                 if rewrite_next_comment &&
-                    !self.config.file_lines().intersects_range(
-                        file_name,
-                        cur_line,
-                        cur_line + subslice_num_lines,
-                    )
+                    !self.config
+                        .file_lines()
+                        .intersects_range(file_name, cur_line, cur_line + subslice_num_lines)
                 {
                     rewrite_next_comment = false;
                 }

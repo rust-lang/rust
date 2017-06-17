@@ -183,10 +183,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     // Total of all items excluding the last.
     let last_non_try_index = rewrites.len() - (1 + trailing_try_num);
-    let almost_total = rewrites[..last_non_try_index].iter().fold(
-        0,
-        |a, b| a + first_line_width(b),
-    ) + parent_rewrite.len();
+    let almost_total = rewrites[..last_non_try_index]
+        .iter()
+        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
         parent_rewrite.len();
 

@@ -45,10 +45,9 @@ pub enum CommentStyle<'a> {
 
 fn custom_opener(s: &str) -> &str {
     s.lines().next().map_or("", |first_line| {
-        first_line.find(' ').map_or(
-            first_line,
-            |space_index| &first_line[0..space_index + 1],
-        )
+        first_line
+            .find(' ')
+            .map_or(first_line, |space_index| &first_line[0..space_index + 1])
     })
 }
 
