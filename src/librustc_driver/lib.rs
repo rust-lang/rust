@@ -505,9 +505,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         if save_analysis(sess) {
             control.after_analysis.callback = box |state| {
                 time(state.session.time_passes(), "save analysis", || {
+                    let borrow_analysis = state.borrow_analysis_map.take().unwrap();
                     save::process_crate(state.tcx.unwrap(),
                                         state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
+                                        borrow_analysis,
                                         state.crate_name.unwrap(),
                                         DumpHandler::new(save_analysis_format(state.session),
                                                          state.out_dir,

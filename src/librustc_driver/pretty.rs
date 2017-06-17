@@ -233,7 +233,7 @@ impl PpSourceMode {
                                                                  arena,
                                                                  arenas,
                                                                  id,
-                                                                 |tcx, _, _, _| {
+                                                                 |tcx, _, _, _, _| {
                     let empty_tables = ty::TypeckTables::empty();
                     let annotation = TypedAnnotation {
                         tcx: tcx,
@@ -992,7 +992,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      arena,
                                                      arenas,
                                                      crate_name,
-                                                     |tcx, _, _, _| {
+                                                     |tcx, _, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {

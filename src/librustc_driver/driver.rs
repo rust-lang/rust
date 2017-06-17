@@ -10,6 +10,7 @@
 
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
+use rustc::hir::def_id::DefId;
 use rustc::ich::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
@@ -27,6 +28,7 @@ use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
 use rustc_borrowck as borrowck;
+use rustc_borrowck::AnalysisResult;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
@@ -43,6 +45,7 @@ use super::Compilation;
 
 use serialize::json;
 
+use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsString, OsStr};
 use std::fs;
@@ -177,7 +180,7 @@ pub fn compile_input(sess: &Session,
                                     &arena,
                                     &arenas,
                                     &crate_name,
-                                    |tcx, analysis, incremental_hashes_map, result| {
+                                    |tcx, analysis, incremental_hashes_map, borrow_analysis_map, result| {
             {
                 // Eventually, we will want to track plugins.
                 let _ignore = tcx.dep_graph.in_ignore();
@@ -189,6 +192,7 @@ pub fn compile_input(sess: &Session,
                                                                    opt_crate,
                                                                    tcx.hir.krate(),
                                                                    &analysis,
+                                                                   borrow_analysis_map,
                                                                    tcx,
                                                                    &crate_name);
                 (control.after_analysis.callback)(&mut state);
@@ -354,6 +358,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub hir_map: Option<&'a hir_map::Map<'tcx>>,
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
+    pub borrow_analysis_map: Option<HashMap<DefId, AnalysisResult<'a, 'tcx>>>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
@@ -380,6 +385,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             hir_map: None,
             resolutions: None,
             analysis: None,
+            borrow_analysis_map: None,
             tcx: None,
             trans: None,
         }
@@ -455,11 +461,13 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                             krate: Option<&'a ast::Crate>,
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
+                            borrow_analysis_map: Option<HashMap<DefId, AnalysisResult<'a, 'tcx>>>,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             crate_name: &'a str)
                             -> Self {
         CompileState {
             analysis: Some(analysis),
+            borrow_analysis_map: borrow_analysis_map,
             tcx: Some(tcx),
             expanded_crate: krate,
             hir_crate: Some(hir_crate),
@@ -843,14 +851,15 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
                             ty::CrateAnalysis,
                             IncrementalHashesMap,
+                            Option<HashMap<DefId, AnalysisResult<'a, 'tcx>>>,
                             CompileResult) -> R
 {
     macro_rules! try_with_f {
-        ($e: expr, ($t: expr, $a: expr, $h: expr)) => {
+        ($e: expr, ($t: expr, $a: expr, $h: expr, $b: expr)) => {
             match $e {
                 Ok(x) => x,
                 Err(x) => {
-                    f($t, $a, $h, Err(x));
+                    f($t, $a, $h, $b, Err(x));
                     return Err(x);
                 }
             }
@@ -975,7 +984,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || stability::check_unstable_api_usage(tcx));
 
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
+        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map, None));
 
         time(time_passes,
              "const checking",
@@ -1004,9 +1013,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "liveness checking",
              || middle::liveness::check_crate(tcx));
 
-        time(time_passes,
+        let borrow_analysis_map = time(time_passes,
              "borrow checking",
-             || borrowck::check_crate(tcx));
+             || borrowck::check_crate(tcx, ::save_analysis(sess)));
 
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids
@@ -1015,7 +1024,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // lint warnings and so on -- kindck used to do this abort, but
         // kindck is gone now). -nmatsakis
         if sess.err_count() > 0 {
-            return Ok(f(tcx, analysis, incremental_hashes_map, Err(sess.err_count())));
+            return Ok(f(tcx, analysis, incremental_hashes_map, borrow_analysis_map, Err(sess.err_count())));
         }
 
         analysis.reachable =
@@ -1033,10 +1042,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         // The above three passes generate errors w/o aborting
         if sess.err_count() > 0 {
-            return Ok(f(tcx, analysis, incremental_hashes_map, Err(sess.err_count())));
+            return Ok(f(tcx, analysis, incremental_hashes_map, borrow_analysis_map, Err(sess.err_count())));
         }
 
-        Ok(f(tcx, analysis, incremental_hashes_map, Ok(())))
+        Ok(f(tcx, analysis, incremental_hashes_map, borrow_analysis_map, Ok(())))
     })
 }
 

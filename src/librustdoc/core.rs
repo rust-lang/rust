@@ -177,7 +177,7 @@ pub fn run_core(search_paths: SearchPaths,
                                                      &arena,
                                                      &arenas,
                                                      &name,
-                                                     |tcx, analysis, _, result| {
+                                                     |tcx, analysis, _, _, result| {
         if let Err(_) = result {
             sess.fatal("Compilation failed, aborting rustdoc");
         }

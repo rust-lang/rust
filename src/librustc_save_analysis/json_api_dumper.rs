@@ -14,7 +14,7 @@ use rustc_serialize::json::as_json;
 
 use Dump;
 
-use rls_data::{Analysis, Import, Def, CratePreludeData, Format, Relation};
+use rls_data::{Analysis, Import, Def, CratePreludeData, Format, Relation, BorrowData};
 
 
 // A dumper to dump a restricted set of JSON information, designed for use with
@@ -62,5 +62,8 @@ impl<'b, W: Write + 'b> Dump for JsonApiDumper<'b, W> {
             data.attributes = vec![];
             self.result.defs.push(data);
         }
+    }
+    fn dump_per_fn_borrow_data(&mut self, data: BorrowData) {
+        self.result.per_fn_borrows.push(data);
     }
 }

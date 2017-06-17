@@ -37,11 +37,12 @@ mod move_error;
 
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     body: hir::BodyId)
-                                    -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
+                                    -> (Vec<SafeLoan>, Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
     let def_id = bccx.tcx.hir.body_owner_def_id(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
+        safe_loans: Vec::new(),
         all_loans: Vec::new(),
         item_ub: region::CodeExtent::Misc(body.node_id),
         move_data: MoveData::new(),
@@ -53,14 +54,15 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         .consume_body(body);
 
     glcx.report_potential_errors();
-    let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
-    (all_loans, move_data)
+    let GatherLoanCtxt { safe_loans, all_loans, move_data, .. } = glcx;
+    (safe_loans, all_loans, move_data)
 }
 
 struct GatherLoanCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     move_data: move_data::MoveData<'tcx>,
     move_error_collector: move_error::MoveErrorCollector<'tcx>,
+    safe_loans: Vec<SafeLoan>,
     all_loans: Vec<Loan<'tcx>>,
     /// `item_ub` is used as an upper-bound on the lifetime whenever we
     /// ask for the scope of an expression categorized as an upvar.
@@ -343,7 +345,43 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         // Create the loan record (if needed).
         let loan = match restr {
             RestrictionResult::Safe => {
-                // No restrictions---no loan record necessary
+                let loan_scope = match *loan_region {
+                    ty::ReScope(scope) => scope,
+
+                    ty::ReEarlyBound(ref br) => {
+                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
+                    }
+
+                    ty::ReFree(ref fr) => {
+                        self.bccx.region_maps.free_extent(self.tcx(), fr)
+                    }
+
+                    ty::ReStatic => self.item_ub,
+
+                    ty::ReEmpty |
+                    ty::ReLateBound(..) |
+                    ty::ReVar(..) |
+                    ty::ReSkolemized(..) |
+                    ty::ReErased => {
+                        span_bug!(
+                            cmt.span,
+                            "invalid borrow lifetime: {:?}",
+                            loan_region);
+                    }
+                };
+                debug!("loan_scope = {:?}", loan_scope);
+
+                let borrow_scope = region::CodeExtent::Misc(borrow_id);
+                let loan_scope = self.compute_gen_scope(borrow_scope, loan_scope);
+
+                let safe_loan = SafeLoan {
+                    kind: req_kind,
+                    loan_scope: loan_scope,
+                    span: borrow_span,
+                };
+                self.safe_loans.push(safe_loan);
+
+                // No restrictions---no normal loan record necessary
                 return;
             }
 
