@@ -109,6 +109,15 @@ pub fn trimmed_last_line_width(s: &str) -> usize {
 }
 
 #[inline]
+pub fn last_line_extendable(s: &str) -> bool {
+    s.lines().last().map_or(false, |s| {
+        s.trim()
+            .chars()
+            .all(|c| c == ')' || c == ']' || c == '}' || c == '?')
+    })
+}
+
+#[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
         MetaItemKind::Word => meta_item.name == SKIP_ANNOTATION,

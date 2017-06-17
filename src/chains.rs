@@ -78,7 +78,7 @@
 
 use Shape;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{wrap_str, first_line_width, last_line_width, mk_sp};
+use utils::{wrap_str, first_line_width, last_line_width, mk_sp, last_line_extendable};
 use expr::rewrite_call;
 use config::IndentStyle;
 use macros::convert_try_mac;
@@ -322,12 +322,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 }
 
 fn is_extendable_parent(context: &RewriteContext, parent_str: &str) -> bool {
-    context.config.chain_indent() == IndentStyle::Block &&
-        parent_str.lines().last().map_or(false, |s| {
-            s.trim()
-                .chars()
-                .all(|c| c == ')' || c == ']' || c == '}' || c == '?')
-        })
+    context.config.chain_indent() == IndentStyle::Block && last_line_extendable(parent_str)
 }
 
 // True if the chain is only `?`s.
