@@ -238,7 +238,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     if !fits_single_line && context.use_block_indent() {
         let (init, last) = rewrites.split_at_mut(last_non_try_index);
         let almost_single_line = init.iter().all(|s| !s.contains('\n'));
-        if almost_single_line {
+        if almost_single_line && last[0].contains('\n') {
             let overflow_shape = Shape {
                 width: one_line_budget,
                 ..parent_shape
