@@ -18,18 +18,15 @@ fn main() {
     ));
 
     // chain
-    let x = yooooooooooooo.fooooooooooooooo.baaaaaaaaaaaaar(
-        hello,
-        world,
-    );
+    let x = yooooooooooooo
+        .fooooooooooooooo
+        .baaaaaaaaaaaaar(hello, world);
 
     // #1380
     {
         {
-            let creds = self.client.client_credentials(
-                &self.config.auth.oauth2.id,
-                &self.config.auth.oauth2.secret,
-            )?;
+            let creds = self.client
+                .client_credentials(&self.config.auth.oauth2.id, &self.config.auth.oauth2.secret)?;
         }
     }
 
