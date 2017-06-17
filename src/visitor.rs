@@ -298,8 +298,7 @@ impl<'a> FmtVisitor<'a> {
                     item,
                     self.block_indent,
                     where_span_end,
-                )
-                {
+                ) {
                     self.buffer.push_str(&impl_str);
                     self.last_pos = source!(self, item.span).hi;
                 }
@@ -310,8 +309,7 @@ impl<'a> FmtVisitor<'a> {
                     &self.get_context(),
                     item,
                     self.block_indent,
-                )
-                {
+                ) {
                     self.buffer.push_str(&trait_str);
                     self.last_pos = source!(self, item.span).hi;
                 }

@@ -588,8 +588,7 @@ pub fn format_impl(
             &result,
             &where_clause_str,
             &item,
-        ))
-        {
+        )) {
             result.push_str(&where_clause_str);
             if where_clause_str.contains('\n') {
                 let white_space = offset.to_string(context.config);
@@ -736,8 +735,7 @@ fn format_impl_ref_and_type(
                     true,
                     polarity_str,
                     result_len,
-                )
-            {
+                ) {
                 result.push_str(&trait_ref_str);
             } else {
                 let generics_str = try_opt!(rewrite_generics_inner(
@@ -2114,8 +2112,7 @@ fn rewrite_fn_base(
                 !has_braces,
                 put_args_in_block && ret_str.is_empty(),
                 Some(span.hi),
-            )
-        {
+            ) {
             if !where_clause_str.contains('\n') {
                 if last_line_width(&result) + where_clause_str.len() > context.config.max_width() {
                     result.push('\n');

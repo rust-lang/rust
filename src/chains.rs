@@ -226,8 +226,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                         total_span,
                         context,
                         shape,
-                    )
-                    {
+                    ) {
                         // If the first line of the last method does not fit into a single line
                         // after the others, allow new lines.
                         almost_total + first_line_width(&last[0]) < context.config.max_width()
