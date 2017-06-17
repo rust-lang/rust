@@ -96,7 +96,7 @@ fn do_main() -> CargoResult<()> {
         .args(&[format!("-L{}", local_compilation.deps_output.display())])
         .arg("-")
         .stdin(Stdio::piped())
-        .env("RUST_SEMVER_CRATE_VERSION", format!("{}", &remote_crate.max_version))
+        .env("RUST_SEMVER_CRATE_VERSION", &remote_crate.max_version)
         .spawn()
         .map_err(|e| human(format!("could not spawn rustc: {}", e)))?;
 

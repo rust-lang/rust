@@ -1,10 +1,4 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-  Removal: b
-warning: change
-
-  Removal: c
-warning: change
-
   Removal: Abc
-warning: change
-
+  Removal: b
+  Removal: c

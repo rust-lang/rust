@@ -1,4 +1,3 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-  KindDifference: Abc
-warning: change
-
+  Abc -
+    KindDifference

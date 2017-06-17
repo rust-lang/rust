@@ -1,9 +1,10 @@
 use rustc::hir::def::Export;
+use rustc::hir::def_id::DefId;
 use rustc::session::Session;
 
 use semver::Version;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::cmp::Ordering;
 
 use syntax::symbol::Ident;
@@ -17,7 +18,7 @@ use syntax_pos::Span;
 /// defines them as non-breaking when introduced to the standard libraries.
 ///
 /// [1]: https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChangeCategory {
     /// Patch change - no change to the public API of a crate.
     Patch,
@@ -37,135 +38,12 @@ impl<'a> Default for ChangeCategory {
     }
 }
 
-impl<'a> From<&'a UnaryChange> for ChangeCategory {
-    fn from(change: &UnaryChange) -> ChangeCategory {
-        match *change {
-            UnaryChange::Addition(_) => TechnicallyBreaking,
-            UnaryChange::Removal(_) => Breaking,
-        }
-    }
-}
-
-// TODO: this will need a lot of changes
-impl<'a> From<&'a BinaryChangeType> for ChangeCategory {
-    fn from(type_: &BinaryChangeType) -> ChangeCategory {
-        match *type_ {
-            KindDifference |
-            RegionParameterAdded |
-            RegionParameterRemoved |
-            TypeParameterAdded { defaulted: false } |
-            TypeParameterRemoved { .. } |
-            TypeSpecialization |
-            StructFieldAdded { .. } |
-            StructFieldRemoved { .. } |
-            StructStyleChanged { .. } |
-            EnumVariantAdded |
-            EnumVariantRemoved |
-            VariantFieldAdded |
-            VariantFieldRemoved |
-            VariantFieldStyleChanged { .. } |
-            TraitImplItemAdded { .. } |
-            TraitImplItemRemoved |
-            Unknown => Breaking,
-            TypeGeneralization => TechnicallyBreaking,
-            TypeParameterAdded { defaulted: true } => NonBreaking,
-        }
-    }
-}
-
-impl<'a> From<&'a BinaryChange> for ChangeCategory {
-    fn from(change: &BinaryChange) -> ChangeCategory {
-        From::from(change.type_())
-    }
-}
-
-impl<'a> From<&'a Change> for ChangeCategory {
-    fn from(change: &Change) -> ChangeCategory {
-        match *change {
-            Change::Unary(ref u) => From::from(u),
-            Change::Binary(ref b) => From::from(b),
-        }
-    }
-}
-
-/// The types of changes we identify between items present in both crate versions.
-/// TODO: this needs a lot of refinement still
-#[derive(Clone, Debug)]
-pub enum BinaryChangeType {
-    /// An item has changed it's kind.
-    KindDifference,
-    /// A region parameter has been added to an item.
-    RegionParameterAdded,
-    /// A region parameter has been removed from an item.
-    RegionParameterRemoved,
-    /// A type parameter has been added to an item.
-    TypeParameterAdded { defaulted: bool },
-    /// A type parameter has been removed from an item.
-    TypeParameterRemoved { defaulted: bool },
-    /// An item has changed it's type (signature) to be more general.
-    TypeGeneralization,
-    /// An item has changed it's type (signature) to be less general.
-    TypeSpecialization,
-    /// A field has been added to a struct.
-    StructFieldAdded { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAAIN!
-    /// A field has been removed from a struct.
-    StructFieldRemoved { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAIN!
-    /// A struct has changed it's style.
-    StructStyleChanged { now_tuple: bool, total_private: bool },
-    /// A variant has been added to an enum.
-    EnumVariantAdded,
-    /// A variant has been removed from an enum.
-    EnumVariantRemoved,
-    /// A field hasb been added to an enum variant.
-    VariantFieldAdded,
-    /// A field has been removed from an enum variant.
-    VariantFieldRemoved,
-    /// An enum variant has changed it's style.
-    VariantFieldStyleChanged { now_tuple: bool },
-    /// An impl item has been added.
-    TraitImplItemAdded { defaulted: bool }, // TODO: EXPLAAAIN!
-    /// An impl item has been removed.
-    TraitImplItemRemoved,
-    /// An unknown change is any change we don't yet explicitly handle.
-    Unknown,
-}
-
-pub use self::BinaryChangeType::*;
-
-/// A change record.
-///
-/// Consists of all information we need to compute semantic versioning properties of
-/// the change, as well as data we use to output it in a nice fashion.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum Change {
-    /// A wrapper around a unary change.
-    Unary(UnaryChange),
-    /// A wrapper around a binary change.
-    Binary(BinaryChange),
-}
-
-impl Change {
-    /// Construct a new addition change from it's export. 
-    pub fn new_addition(export: Export) -> Change {
-        Change::Unary(UnaryChange::Addition(export))
-    }
-
-    /// Construct a new removal change from it's export. 
-    pub fn new_removal(export: Export) -> Change {
-        Change::Unary(UnaryChange::Removal(export))
-    }
-
-    /// Construct a new binary change from it's exports and type. 
-    pub fn new_binary(type_: BinaryChangeType, old: Export, new: Export) -> Change {
-        Change::Binary(BinaryChange::new(type_, old, new))
-    }
-}
-
 /// A change record of a change that introduced or removed an item.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the span of the associated item export. This allows us to sort them by appearance
 /// in the source, but possibly could create conflict later on.
+/// TODO: regard the origin of the span as well.
 pub enum UnaryChange {
     /// An item has been added.
     Addition(Export),
@@ -174,6 +52,13 @@ pub enum UnaryChange {
 }
 
 impl UnaryChange {
+    pub fn to_category(&self) -> ChangeCategory {
+        match *self {
+            UnaryChange::Addition(_) => TechnicallyBreaking,
+            UnaryChange::Removal(_) => Breaking,
+        }
+    }
+
     /// Get the change item's sole export.
     fn export(&self) -> &Export {
         match *self {
@@ -220,14 +105,90 @@ impl Ord for UnaryChange {
     }
 }
 
-/// A change record of a change of an item between versions.
+/// The types of changes we identify between items present in both crate versions.
+/// TODO: this needs a lot of refinement still
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BinaryChangeType {
+    /// An item has changed it's kind.
+    KindDifference,
+    /// A region parameter has been added to an item.
+    RegionParameterAdded,
+    /// A region parameter has been removed from an item.
+    RegionParameterRemoved,
+    /// A type parameter has been added to an item.
+    TypeParameterAdded { defaulted: bool },
+    /// A type parameter has been removed from an item.
+    TypeParameterRemoved { defaulted: bool },
+    /// The bounds on a type parameter have been loosened.
+    TypeGeneralization,
+    /// The bounds on a type parameter have been tightened.
+    TypeSpecialization,
+    /// A field has been added to a struct.
+    StructFieldAdded { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAAIN!
+    /// A field has been removed from a struct.
+    StructFieldRemoved { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAIN!
+    /// A struct has changed it's style.
+    StructStyleChanged { now_tuple: bool, total_private: bool },
+    /// A variant has been added to an enum.
+    EnumVariantAdded,
+    /// A variant has been removed from an enum.
+    EnumVariantRemoved,
+    /// A field hasb been added to an enum variant.
+    VariantFieldAdded,
+    /// A field has been removed from an enum variant.
+    VariantFieldRemoved,
+    /// An enum variant has changed it's style.
+    VariantFieldStyleChanged { now_tuple: bool },
+    /// A field in a struct or enum has changed it's type.
+    FieldTypeChanged(String), // FIXME: terrible for obvious reasons
+    /// An impl item has been added.
+    TraitImplItemAdded { defaulted: bool }, // TODO: EXPLAAAIN!
+    /// An impl item has been removed.
+    TraitImplItemRemoved,
+    /// An unknown change is any change we don't yet explicitly handle.
+    Unknown,
+}
+
+pub use self::BinaryChangeType::*;
+
+impl BinaryChangeType {
+    // TODO: this will need a lot of changes
+    pub fn to_category(&self) -> ChangeCategory {
+        match *self {
+            KindDifference |
+            RegionParameterAdded |
+            RegionParameterRemoved |
+            TypeParameterAdded { defaulted: false } |
+            TypeParameterRemoved { .. } |
+            TypeSpecialization |
+            StructFieldAdded { .. } |
+            StructFieldRemoved { .. } |
+            StructStyleChanged { .. } |
+            EnumVariantAdded |
+            EnumVariantRemoved |
+            VariantFieldAdded |
+            VariantFieldRemoved |
+            VariantFieldStyleChanged { .. } |
+            FieldTypeChanged(_) |
+            TraitImplItemAdded { .. } |
+            TraitImplItemRemoved |
+            Unknown => Breaking,
+            TypeGeneralization => TechnicallyBreaking,
+            TypeParameterAdded { defaulted: true } => NonBreaking,
+        }
+    }
+}
+
+/// A change record of an item kept between versions.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the *new* span of the associated item export. This allows us to sort them
-/// by appearance in *new* the source, but possibly could create conflict later on.
+/// by appearance in the *new* source, but possibly could create conflict later on.
 pub struct BinaryChange {
     /// The type of the change affecting the item.
-    type_: BinaryChangeType,
+    changes: BTreeSet<BinaryChangeType>,
+    /// The most severe change category already recorded for the item.
+    max: ChangeCategory,
     /// The old export of the change item.
     old: Export,
     /// The new export of the change item.
@@ -235,32 +196,37 @@ pub struct BinaryChange {
 }
 
 impl BinaryChange {
-    /// Construct a new binary change record.
-    pub fn new(type_: BinaryChangeType, old: Export, new: Export) -> BinaryChange {
+    /// Construct a new empty change record for an item.
+    fn new(old: Export, new: Export) -> BinaryChange {
         BinaryChange {
-            type_: type_,
+            changes: BTreeSet::new(),
+            max: ChangeCategory::default(),
             old: old,
             new: new,
         }
     }
 
-    /// Get the change's type.
-    pub fn type_(&self) -> &BinaryChangeType {
-        &self.type_
+    fn add(&mut self, type_: BinaryChangeType) {
+        let cat = type_.to_category();
+
+        if cat > self.max {
+            self.max = cat;
+        }
+
+        self.changes.insert(type_);
+    }
+
+    fn to_category(&self) -> ChangeCategory {
+        self.max.clone()
     }
 
     /// Get the new span of the change item.
-    pub fn new_span(&self) -> &Span {
+    fn new_span(&self) -> &Span {
         &self.new.span
     }
 
-    /// Get the old span of the change item.
-    pub fn old_span(&self) -> &Span {
-        &self.old.span
-    }
-
     /// Get the ident of the change item.
-    pub fn ident(&self) -> &Ident {
+    fn ident(&self) -> &Ident {
         &self.old.ident
     }
 }
@@ -285,31 +251,113 @@ impl Ord for BinaryChange {
     }
 }
 
+/// A change record for any item.
+///
+/// Consists of all information we need to compute semantic versioning properties of
+/// the change(s) performed on it, as well as data we use to output it in a nice fashion.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum Change {
+    /// A wrapper around a unary change.
+    Unary(UnaryChange),
+    /// A wrapper around a binary change set.
+    Binary(BinaryChange),
+}
+
+impl Change {
+    fn new_addition(item: Export) -> Change {
+        Change::Unary(UnaryChange::Addition(item))
+    }
+
+    fn new_removal(item: Export) -> Change {
+        Change::Unary(UnaryChange::Removal(item))
+    }
+
+    fn new_binary(old: Export, new: Export) -> Change {
+        Change::Binary(BinaryChange::new(old, new))
+    }
+
+    fn add(&mut self, type_: BinaryChangeType) {
+        match *self {
+            Change::Unary(_) => panic!("can't add binary change types to unary change"),
+            Change::Binary(ref mut b) => b.add(type_),
+        }
+    }
+
+    fn to_category(&self) -> ChangeCategory {
+        match *self {
+            Change::Unary(ref u) => u.to_category(),
+            Change::Binary(ref b) => b.to_category(),
+        }
+    }
+}
+
+/// An identifier used to unambiguously refer to items we record changes for.
+#[derive(PartialEq, Eq, Hash)]
+pub enum ChangeKey {
+    /// An item referred to using the old definition's id.
+    /// This includes items that have been removed *or* changed.
+    OldKey(DefId),
+    /// An item referred to using the new definition's id.
+    /// This includes items that have been added *only*
+    NewKey(DefId),
+}
+
 /// The total set of changes recorded for two crate versions.
 #[derive(Default)]
 pub struct ChangeSet {
     /// The currently recorded changes.
-    changes: BTreeSet<Change>,
+    changes: HashMap<ChangeKey, Change>,
     /// The most severe change category already recorded.
     max: ChangeCategory,
 }
 
 impl ChangeSet {
-    /// Add a change to the set and record it's category for later use.
-    pub fn add_change(&mut self, change: Change) {
-        let cat: ChangeCategory = From::from(&change);
+    pub fn new_addition(&mut self, item: Export) {
+        self.new_change(Change::new_addition(item), ChangeKey::NewKey(item.def.def_id()));
+    }
+
+    pub fn new_removal(&mut self, item: Export) {
+        self.new_change(Change::new_removal(item), ChangeKey::NewKey(item.def.def_id()));
+    }
+
+    fn new_change(&mut self, change: Change, key: ChangeKey) {
+        let cat = change.to_category();
 
         if cat > self.max {
-            self.max = cat;
+            self.max = cat.clone();
         }
 
-        self.changes.insert(change);
+        self.changes.insert(key, change);
+    }
+
+    pub fn new_binary(&mut self, type_: BinaryChangeType, old: Export, new: Export) {
+        let key = ChangeKey::OldKey(old.def.def_id());
+        let cat = type_.to_category();
+
+        if cat > self.max {
+            self.max = cat.clone();
+        }
+
+        let entry = self.changes
+            .entry(key)
+            .or_insert_with(|| Change::new_binary(old, new));
+
+        entry.add(type_);
+    }
+
+    pub fn item_breaking(&self, key: DefId) -> bool {
+        // we only care about items that were present before, since only those can get breaking
+        // changes (additions don't count).
+        self.changes
+            .get(&ChangeKey::OldKey(key))
+            .map(|changes| changes.to_category() == Breaking)
+            .unwrap_or(false)
     }
 
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self, session: &Session, version: &str) {
+    pub fn output(&self, /*session*/ _: &Session, version: &str) {
         if let Ok(mut new_version) = Version::parse(version) {
             match self.max {
                 Patch => new_version.increment_patch(),
@@ -322,15 +370,18 @@ impl ChangeSet {
             println!("max change: {} (could not parse) -> {:?}", version, self.max);
         }
 
-        for change in &self.changes {
+        for change in self.changes.values() {
             match *change {
-                Change::Unary(ref c) => {
-                    println!("  {}: {}", c.type_(), c.ident().name.as_str());
-                    session.span_warn(*c.span(), "change");
+                Change::Unary(ref u) => {
+                    println!("  {}: {}", u.type_(), u.ident().name.as_str());
+                    // session.span_warn(*c.span(), "change");
                 },
-                Change::Binary(ref c) => {
-                    println!("  {:?}: {}", c.type_(), c.ident().name.as_str());
-                    session.span_warn(*c.new_span(), "change");
+                Change::Binary(ref b) => {
+                    println!("  {} -", b.ident().name.as_str());
+                    for change in &b.changes {
+                        println!("    {:?}", change);
+                        // session.span_warn(*c.new_span(), "change");
+                    }
                 },
             }
             // span_note!(session, change.span(), "S0001");
@@ -343,6 +394,7 @@ pub mod tests {
     use quickcheck::*;
     pub use super::*;
 
+    use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
     use rustc::hir::def::Def;
 
     use std::cmp::{max, min};
@@ -411,7 +463,10 @@ pub mod tests {
         };
         let export = Export {
             ident: ident,
-            def: Def::Err,
+            def: Def::Mod(DefId {
+                krate: LOCAL_CRATE,
+                index: CRATE_DEF_INDEX,
+            }),
             span: s,
         };
 
@@ -435,16 +490,25 @@ pub mod tests {
         };
         let export1 = Export {
             ident: ident1,
-            def: Def::Err,
+            def: Def::Mod(DefId {
+                krate: LOCAL_CRATE,
+                index: CRATE_DEF_INDEX,
+            }),
             span: s1,
         };
         let export2 = Export {
             ident: ident2,
-            def: Def::Err,
+            def: Def::Mod(DefId {
+                krate: LOCAL_CRATE,
+                index: CRATE_DEF_INDEX,
+            }),
             span: s2,
         };
 
-        BinaryChange::new(t, export1, export2)
+        let mut change = BinaryChange::new(export1, export2);
+        change.add(t);
+
+        change
     }
 
     quickcheck! {
@@ -502,8 +566,9 @@ pub mod tests {
             let max = changes.iter().map(|c| From::from(&c.0)).max().unwrap_or(Patch);
 
             for &(ref change, ref span) in changes.iter() {
-                set.add_change(
-                    Change::Unary(build_unary_change(change.clone(), span.clone().inner())));
+                let change = build_unary_change(change.clone(), span.clone().inner());
+                let key = ChangeKey::NewKey(change.export().def.def_id());
+                set.new_change(Change::Unary(change), key);
             }
 
             set.max == max
@@ -513,12 +578,15 @@ pub mod tests {
         fn max_bchange(changes: Vec<BinaryChange_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let max = changes.iter().map(|c| From::from(&c.0)).max().unwrap_or(Patch);
+            let max = changes.iter().map(|c| c.0.to_category()).max().unwrap_or(Patch);
 
             for &(ref change, ref span1, ref span2) in changes.iter() {
-                set.add_change(
-                    Change::Binary(build_binary_change(
-                            change.clone(), span1.clone().inner(), span2.clone().inner())));
+                let change =
+                    build_binary_change(change.clone(),
+                                        span1.clone().inner(),
+                                        span2.clone().inner());
+                let key = ChangeKey::OldKey(change.old.def.def_id());
+                set.new_change(Change::Binary(change), key);
             }
 
             set.max == max
@@ -545,8 +613,8 @@ pub mod tests {
             let s2 = c2.1.inner();
 
             if s1 != s2 {
-                let ch1 = build_binary_change(c1.0, s1, c1.2.inner());
-                let ch2 = build_binary_change(c2.0, s2, c2.2.inner());
+                let ch1 = build_binary_change(c1.0, c1.2.inner(), s1);
+                let ch2 = build_binary_change(c2.0, c2.2.inner(), s2);
 
                 ch1 != ch2
             } else {

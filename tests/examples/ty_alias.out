@@ -1,25 +1,16 @@
-old_ty: u8
-new_ty: u16
-diff: expected u8, found u16
-old_ty: &'a T
-new_ty: (&'a T, U)
-diff: expected reference, found tuple
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-  RegionParameterAdded: B
-warning: change
-
-  RegionParameterRemoved: C
-warning: change
-
-  TypeParameterAdded { defaulted: true }: D
-warning: change
-
-  TypeParameterAdded { defaulted: false }: E
-warning: change
-
-  TypeParameterRemoved { defaulted: true }: F
-warning: change
-
-  TypeParameterRemoved { defaulted: false }: G
-warning: change
-
+  G -
+    TypeParameterRemoved { defaulted: false }
+  C -
+    RegionParameterRemoved
+  A -
+    FieldTypeChanged("expected u8, found u16")
+  B -
+    RegionParameterAdded
+  E -
+    TypeParameterAdded { defaulted: false }
+  D -
+    TypeParameterAdded { defaulted: true }
+    FieldTypeChanged("expected reference, found tuple")
+  F -
+    TypeParameterRemoved { defaulted: true }

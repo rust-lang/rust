@@ -1,6 +1,6 @@
 use semcheck::changes::BinaryChangeType;
 use semcheck::changes::BinaryChangeType::*;
-use semcheck::changes::{Change, ChangeCategory, ChangeSet};
+use semcheck::changes::ChangeSet;
 
 use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
@@ -14,16 +14,27 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Default)]
 struct IdMapping {
-    pub mapping: HashMap<DefId, (DefId, Export, Export)>,
+    toplevel_mapping: HashMap<DefId, (DefId, Export, Export)>,
+    mapping: HashMap<DefId, DefId>,
 }
 
 impl IdMapping {
-    pub fn add(&mut self, old: Export, new: Export) {
-        self.mapping.insert(old.def.def_id(), (new.def.def_id(), old, new));
+    pub fn add_export(&mut self, old: Export, new: Export) -> bool {
+        self.toplevel_mapping
+            .insert(old.def.def_id(), (new.def.def_id(), old, new))
+            .is_some()
+    }
+
+    pub fn add_item(&mut self, old: DefId, new: DefId) {
+        self.mapping.insert(old, new);
     }
 
     pub fn get_new_id(&self, old: DefId) -> DefId {
-        self.mapping[&old].0
+        if let Some(new) = self.toplevel_mapping.get(&old) {
+            new.0
+        } else {
+            self.mapping[&old]
+        }
     }
 }
 
@@ -67,80 +78,92 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                     }
                 }
                 (Some(o), Some(n)) => {
-                    id_mapping.add(o, n);
+                    if !id_mapping.add_export(o, n) {
+                        diff_item_structures(&mut changes, &id_mapping, tcx, o, n);
+                    }
                 }
                 (Some(old), None) => {
-                    changes.add_change(Change::new_removal(old));
+                    changes.new_removal(old);
                 }
                 (None, Some(new)) => {
-                    changes.add_change(Change::new_addition(new));
+                    changes.new_addition(new);
                 }
                 (None, None) => unreachable!(),
             }
         }
     }
 
-    for &(_, old, new) in id_mapping.mapping.values() {
+    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
         diff_items(&mut changes, &id_mapping, tcx, old, new);
     }
 
     changes
 }
 
-/// Given two items, dispatch to further checks.
+/// Given two items, perform *structural* checks.
+///
+/// This establishes the needed correspondence relationship between non-toplevel items.
+/// For instance, struct fields, enum variants etc. are matched up against each other here.
 ///
 /// If the two items can't be meaningfully compared because they are of different kinds,
 /// we return that difference directly.
+fn diff_item_structures(changes: &mut ChangeSet,
+                        _: &IdMapping,
+                        tcx: TyCtxt,
+                        old: Export,
+                        new: Export) {
+    let mut generics_changes = diff_generics(tcx, old.def.def_id(), new.def.def_id());
+    for change_type in generics_changes.drain(..) {
+        changes.new_binary(change_type, old, new);
+    }
+}
+
+/// Given two items, perform *non-structural* checks.
+///
+/// This encompasses all checks for type and requires that the structural checks have already
+/// been performed.
 fn diff_items(changes: &mut ChangeSet,
               id_mapping: &IdMapping,
               tcx: TyCtxt,
               old: Export,
               new: Export) {
-    let mut check_type = true;
-    let mut generics_changes = diff_generics(tcx, old.def.def_id(), new.def.def_id());
-    for change_type in generics_changes.drain(..) {
-        if ChangeCategory::from(&change_type) == ChangeCategory::Breaking {
-            check_type = false;
-        }
-
-        changes.add_change(Change::new_binary(change_type, old, new));
-    }
-
-    let change = match (old.def, new.def) {
-        (Struct(_), Struct(_)) => None, // Some(Change::new_binary(Unknown, old, new)),
-        (Union(_), Union(_)) => Some(Change::new_binary(Unknown, old, new)),
+    let mut structural_changes = match (old.def, new.def) {
+        (Struct(o), Struct(n)) => diff_structs(tcx, o, n),
+        (TyAlias(o), TyAlias(n)) => diff_tyaliases(tcx, o, n),
+        /*(Union(_), Union(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Enum(_), Enum(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Trait(_), Trait(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (TyAlias(o), TyAlias(n)) =>
-            diff_tyaliases(tcx, o, n).map(|t| Change::new_binary(t, old, new)),
         (Fn(_), Fn(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Const(_), Const(_)) => Some(Change::new_binary(Unknown, old, new)),
         (Static(_, _), Static(_, _)) => Some(Change::new_binary(Unknown, old, new)),
         (Method(_), Method(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (Macro(_, _), Macro(_, _)) => Some(Change::new_binary(Unknown, old, new)),
+        (Macro(_, _), Macro(_, _)) => Some(Change::new_binary(Unknown, old, new)),*/
         _ => {
-            check_type = false;
-            Some(Change::new_binary(KindDifference, old, new))
+            vec![KindDifference]
         },
     };
 
-    if let Some(c) = change {
-        changes.add_change(c);
+    for change_type in structural_changes.drain(..) {
+        changes.new_binary(change_type, old, new);
     }
 
-    if check_type {
-        let _ = diff_type(id_mapping, tcx, old.def.def_id(), new.def.def_id());
+    if !changes.item_breaking(old.def.def_id()) {
+        let mut type_changes = diff_types(id_mapping, tcx, old.def.def_id(), new.def.def_id());
+
+        for change_type in type_changes.drain(..) {
+            changes.new_binary(change_type, old, new);
+        }
     }
 }
 
 
-fn diff_type(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
+fn diff_types(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
     -> Vec<BinaryChangeType>
 {
     use rustc::ty::AdtDef;
     use rustc::ty::TypeVariants::*;
 
-    let res = Vec::new();
+    let mut res = Vec::new();
 
     let new_ty = tcx.type_of(new);
     let old_ty = tcx.type_of(old).subst(tcx, Substs::identity_for_item(tcx, new));
@@ -162,13 +185,14 @@ fn diff_type(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
         }
     }});
 
-    println!("old_ty: {:?}", old_ty_cmp);
-    println!("new_ty: {:?}", new_ty);
+    // println!("old_ty: {:?}", old_ty_cmp);
+    // println!("new_ty: {:?}", new_ty);
 
     if let Result::Err(err) = tcx.global_tcx().infer_ctxt()
         .enter(|infcx| infcx.can_eq(tcx.param_env(new), old_ty_cmp, new_ty))
     {
-        println!("diff: {}", err);
+        // println!("diff: {}", err);
+        res.push(FieldTypeChanged(format!("{}", err))); // FIXME: this is obv a terrible hack
     }
 
     res
@@ -223,10 +247,14 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
 
 /// Given two type aliases' definitions, compare their types.
 fn diff_tyaliases(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId)
-    -> Option<BinaryChangeType> {
+    -> Vec<BinaryChangeType> {
     // let cstore = &tcx.sess.cstore;
     /* println!("matching TyAlias'es found");
     println!("old: {:?}", tcx.type_of(old));
     println!("new: {:?}", tcx.type_of(new));*/
-    None
+    Vec::new()
+}
+
+fn diff_structs(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId) -> Vec<BinaryChangeType> {
+    Vec::new()
 }
