@@ -308,6 +308,7 @@ impl CString {
     ///     let _ = CString::from_raw(ptr);
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub fn into_raw(self) -> *mut c_char {
         Box::into_raw(self.into_inner()) as *mut c_char
@@ -382,6 +383,7 @@ impl CString {
     /// let bytes = c_string.as_bytes();
     /// assert_eq!(bytes, &[b'f', b'o', b'o']);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner[..self.inner.len() - 1]
@@ -401,6 +403,7 @@ impl CString {
     /// let bytes = c_string.as_bytes_with_nul();
     /// assert_eq!(bytes, &[b'f', b'o', b'o', b'\0']);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
@@ -409,6 +412,7 @@ impl CString {
     /// Extracts a [`CStr`] slice containing the entire string.
     ///
     /// [`CStr`]: struct.CStr.html
+    #[inline]
     #[unstable(feature = "as_c_str", issue = "40380")]
     pub fn as_c_str(&self) -> &CStr {
         &*self
@@ -449,6 +453,7 @@ impl Drop for CString {
 impl ops::Deref for CString {
     type Target = CStr;
 
+    #[inline]
     fn deref(&self) -> &CStr {
         unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
     }
@@ -463,6 +468,7 @@ impl fmt::Debug for CString {
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl From<CString> for Vec<u8> {
+    #[inline]
     fn from(s: CString) -> Vec<u8> {
         s.into_bytes()
     }
@@ -498,6 +504,7 @@ impl Default for CString {
 
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
 impl Borrow<CStr> for CString {
+    #[inline]
     fn borrow(&self) -> &CStr { self }
 }
 
@@ -511,6 +518,7 @@ impl<'a> From<&'a CStr> for Box<CStr> {
 
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
 impl From<Box<CStr>> for CString {
+    #[inline]
     fn from(s: Box<CStr>) -> CString {
         s.into_c_string()
     }
@@ -518,6 +526,7 @@ impl From<Box<CStr>> for CString {
 
 #[stable(feature = "box_from_c_string", since = "1.18.0")]
 impl Into<Box<CStr>> for CString {
+    #[inline]
     fn into(self) -> Box<CStr> {
         self.into_boxed_c_str()
     }
@@ -730,6 +739,7 @@ impl CStr {
     ///     assert_eq!(cstr, &*cstring);
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         mem::transmute(bytes)
@@ -772,6 +782,7 @@ impl CStr {
     ///     *ptr;
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
@@ -789,6 +800,7 @@ impl CStr {
     /// > **Note**: This method is currently implemented as a 0-cost cast, but
     /// > it is planned to alter its definition in the future to perform the
     /// > length calculation whenever this method is called.
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
@@ -805,6 +817,7 @@ impl CStr {
     /// > length calculation whenever this method is called.
     ///
     /// [`to_bytes`]: #method.to_bytes
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
         unsafe { mem::transmute(&self.inner) }
@@ -908,6 +921,7 @@ impl ops::Index<ops::RangeFull> for CString {
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl AsRef<CStr> for CStr {
+    #[inline]
     fn as_ref(&self) -> &CStr {
         self
     }
@@ -915,6 +929,7 @@ impl AsRef<CStr> for CStr {
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl AsRef<CStr> for CString {
+    #[inline]
     fn as_ref(&self) -> &CStr {
         self
     }
