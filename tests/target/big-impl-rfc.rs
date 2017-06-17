@@ -75,3 +75,14 @@ impl<
     > {
     fn foo() {}
 }
+
+// #1689
+impl<M, S, F, X> SubSelectDirect<M, S, F, X>
+where
+    M: select::Selector,
+    S: event::Stream,
+    F: for<'t> FnMut(transform::Api<'t, Stream<ContentStream<S>>>)
+        -> transform::Api<'t, X>,
+    X: event::Stream,
+{
+}
