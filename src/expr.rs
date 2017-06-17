@@ -157,9 +157,8 @@ fn format_expr(
         ast::ExprKind::Loop(..) |
         ast::ExprKind::While(..) |
         ast::ExprKind::WhileLet(..) => {
-            to_control_flow(expr, expr_type).and_then(|control_flow| {
-                control_flow.rewrite(context, shape)
-            })
+            to_control_flow(expr, expr_type)
+                .and_then(|control_flow| control_flow.rewrite(context, shape))
         }
         ast::ExprKind::Block(ref block) => block.rewrite(context, shape),
         ast::ExprKind::Match(ref cond, ref arms) => {

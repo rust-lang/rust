@@ -184,7 +184,7 @@ pub fn rewrite_macro(
             )
         }
         MacroStyle::Brackets => {
-            let mac_shape = try_opt!(shape.shrink_left(macro_name.len()));
+            let mac_shape = try_opt!(shape.offset_left(macro_name.len()));
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
                 let (lbr, rbr) = if context.config.spaces_within_square_brackets() {
@@ -194,21 +194,21 @@ pub fn rewrite_macro(
                 };
                 // 6 = `vec!` + `; `
                 let total_overhead = lbr.len() + rbr.len() + 6;
-                let lhs = try_opt!(expr_vec[0].rewrite(context, mac_shape));
-                let rhs = try_opt!(expr_vec[1].rewrite(context, mac_shape));
+                let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
+                let lhs = try_opt!(expr_vec[0].rewrite(context, nested_shape));
+                let rhs = try_opt!(expr_vec[1].rewrite(context, nested_shape));
                 if !lhs.contains('\n') && !rhs.contains('\n') &&
                     lhs.len() + rhs.len() + total_overhead <= shape.width
                 {
                     Some(format!("{}{}{}; {}{}", macro_name, lbr, lhs, rhs, rbr))
                 } else {
-                    let nested_indent = shape.indent.block_indent(context.config);
                     Some(format!(
                         "{}{}\n{}{};\n{}{}\n{}{}",
                         macro_name,
                         lbr,
-                        nested_indent.to_string(context.config),
+                        nested_shape.indent.to_string(context.config),
                         lhs,
-                        nested_indent.to_string(context.config),
+                        nested_shape.indent.to_string(context.config),
                         rhs,
                         shape.indent.to_string(context.config),
                         rbr
