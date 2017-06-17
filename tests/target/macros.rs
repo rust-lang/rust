@@ -110,6 +110,12 @@ fn main() {
         not function like
     );
 
+    // #1712
+    let image = gray_image!(
+        00, 01, 02;
+        10, 11, 12;
+        20, 21, 22);
+
     // #1577
     let json = json!({
         "foo": "bar",
