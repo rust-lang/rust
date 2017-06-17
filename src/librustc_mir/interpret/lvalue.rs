@@ -211,7 +211,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
-            Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local },
+            Local(local) => Lvalue::Local { frame: self.cur_frame(), local },
 
             Static(ref static_) => {
                 let instance = ty::Instance::mono(self.tcx, static_.def_id);

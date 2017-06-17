@@ -1,14 +1,110 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{fmt, iter, ptr, mem, io};
+use std::{fmt, iter, ptr, mem, io, ops};
 
 use rustc::ty;
 use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
+use rustc::middle::region::CodeExtent;
 
 use error::{EvalError, EvalResult};
 use value::{PrimVal, Pointer};
 use eval_context::EvalContext;
+
+////////////////////////////////////////////////////////////////////////////////
+// Locks
+////////////////////////////////////////////////////////////////////////////////
+
+mod range {
+    use super::*;
+
+    // The derived `Ord` impl sorts first by the first field, then, if the fields are the same
+    // by the second field.
+    // This is exactly what we need for our purposes, since a range query on a BTReeSet/BTreeMap will give us all
+    // `MemoryRange`s whose `start` is <= than the one we're looking for, but not > the end of the range we're checking.
+    // At the same time the `end` is irrelevant for the sorting and range searching, but used for the check.
+    // This kind of search breaks, if `end < start`, so don't do that!
+    #[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
+    pub struct MemoryRange {
+        start: u64,
+        end: u64,
+    }
+
+    impl MemoryRange {
+        pub fn new(offset: u64, len: u64) -> MemoryRange {
+            assert!(len > 0);
+            MemoryRange {
+                start: offset,
+                end: offset + len,
+            }
+        }
+
+        pub fn range(offset: u64, len: u64) -> ops::Range<MemoryRange> {
+            assert!(len > 0);
+            // We select all elements that are within
+            // the range given by the offset into the allocation and the length.
+            // This is sound if "self.contains() || self.overlaps() == true" implies that self is in-range.
+            let left = MemoryRange {
+                start: 0,
+                end: offset,
+            };
+            let right = MemoryRange {
+                start: offset + len + 1,
+                end: 0,
+            };
+            left..right
+        }
+
+        pub fn contains(&self, offset: u64, len: u64) -> bool {
+            assert!(len > 0);
+            self.start <= offset && (offset + len) <= self.end
+        }
+
+        pub fn overlaps(&self, offset: u64, len: u64) -> bool {
+            assert!(len > 0);
+            //let non_overlap = (offset + len) <= self.start || self.end <= offset;
+            (offset + len) > self.start && self.end > offset
+        }
+    }
+}
+use self::range::*;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AccessKind {
+    Read,
+    Write,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct DynamicLifetime {
+    frame: usize,
+    region: CodeExtent,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum LockStatus {
+    Held,
+    RecoverAfter(DynamicLifetime),
+}
+
+/// Information about a lock that is or will be held.
+#[derive(Copy, Clone, Debug)]
+pub struct LockInfo {
+    kind: AccessKind,
+    lifetime: DynamicLifetime,
+    status: LockStatus,
+}
+
+impl LockInfo {
+    fn access_permitted(&self, frame: usize, access: AccessKind) -> bool {
+        use self::AccessKind::*;
+        match (self.kind, access) {
+            (Read, Read) => true, // Read access to read-locked region is okay, no matter who's holding the read lock.
+            (Write, _) if self.lifetime.frame == frame => true, // All access is okay when we hold the write lock.
+            _ => false, // Somebody else holding the write lock is not okay
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -41,6 +137,8 @@ pub struct Allocation {
     /// allocation is modified or deallocated in the future.
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
     pub kind: Kind,
+    /// Memory regions that are locked by some function
+    locks: BTreeMap<MemoryRange, LockInfo>,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -96,6 +194,10 @@ impl<'tcx> MemoryPointer {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Top-level interpreter memory
+////////////////////////////////////////////////////////////////////////////////
+
 pub type TlsKey = usize;
 
 #[derive(Copy, Clone, Debug)]
@@ -103,10 +205,6 @@ pub struct TlsEntry<'tcx> {
     data: Pointer, // Will eventually become a map from thread IDs to `Pointer`s, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Top-level interpreter memory
-////////////////////////////////////////////////////////////////////////////////
 
 pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
@@ -151,6 +249,9 @@ pub struct Memory<'a, 'tcx> {
     /// alignment checking is currently enforced for read and/or write accesses.
     reads_are_aligned: bool,
     writes_are_aligned: bool,
+
+    /// The current stack frame.  Used to check accesses against locks.
+    cur_frame: usize,
 }
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
@@ -169,6 +270,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             next_thread_local: 0,
             reads_are_aligned: true,
             writes_are_aligned: true,
+            cur_frame: usize::max_value(),
         }
     }
 
@@ -220,6 +322,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             align,
             kind,
             mutable: Mutability::Mutable,
+            locks: BTreeMap::new(),
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -259,6 +362,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         if alloc.kind != kind {
             return Err(EvalError::DeallocatedWrongMemoryKind(alloc.kind, kind));
+        }
+        if !alloc.locks.is_empty() {
+            return Err(EvalError::DeallocatedLockedMemory);
         }
         if let Some((size, align)) = size_and_align {
             if size != alloc.bytes.len() as u64 || align != alloc.align {
@@ -319,6 +425,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Err(EvalError::PointerOutOfBounds { ptr, access, allocation_size });
         }
         Ok(())
+    }
+
+    pub(crate) fn check_locks(&self, ptr: MemoryPointer, len: u64, access: AccessKind) -> EvalResult<'tcx> {
+        let alloc = self.get(ptr.alloc_id)?;
+        for (range, lock) in alloc.locks.range(MemoryRange::range(ptr.offset, len)) {
+            // Check if the lock is active, overlaps this access, and is in conflict with the access.
+            if let LockStatus::Held = lock.status {
+                if range.overlaps(ptr.offset, len) && !lock.access_permitted(self.cur_frame, access) {
+                    return Err(EvalError::MemoryLockViolation { ptr, len, access, lock: *lock });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn set_cur_frame(&mut self, cur_frame: usize) {
+        self.cur_frame = cur_frame;
     }
 
     pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
@@ -540,6 +663,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
+        self.check_locks(ptr, size, AccessKind::Read)?;
         self.check_bounds(ptr.offset(size, self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -556,6 +680,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&mut []);
         }
+        self.check_locks(ptr, size, AccessKind::Write)?;
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -694,6 +819,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     return Err(EvalError::ReadPointerAsBytes);
                 }
                 self.check_defined(ptr, (size + 1) as u64)?;
+                self.check_locks(ptr, (size + 1) as u64, AccessKind::Read)?;
                 Ok(&alloc.bytes[offset..offset + size])
             },
             None => Err(EvalError::UnterminatedCString(ptr)),

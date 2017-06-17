@@ -34,6 +34,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return Ok(false);
         }
 
+        let cur_frame = self.cur_frame();
+        self.memory.set_cur_frame(cur_frame);
+
         let block = self.frame().block;
         let stmt_id = self.frame().stmt;
         let mir = self.mir();
@@ -116,7 +119,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // Mark locals as dead or alive.
             StorageLive(ref lvalue) | StorageDead(ref lvalue)=> {
                 let (frame, local) = match self.eval_lvalue(lvalue)? {
-                    Lvalue::Local{ frame, local } if self.stack.len() == frame+1 => (frame, local),
+                    Lvalue::Local{ frame, local } if self.cur_frame() == frame => (frame, local),
                     _ => return Err(EvalError::Unimplemented("Storage annotations must refer to locals of the topmost stack frame.".to_owned())) // FIXME maybe this should get its own error type
                 };
                 let old_val = match stmt.kind {

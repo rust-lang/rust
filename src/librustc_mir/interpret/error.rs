@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
-use memory::{MemoryPointer, Kind};
+use memory::{MemoryPointer, LockInfo, AccessKind, Kind};
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
@@ -51,6 +51,12 @@ pub enum EvalError<'tcx> {
         required: u64,
         has: u64,
     },
+    MemoryLockViolation {
+        ptr: MemoryPointer,
+        len: u64,
+        access: AccessKind,
+        lock: LockInfo,
+    },
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
@@ -59,6 +65,7 @@ pub enum EvalError<'tcx> {
     TypeNotPrimitive(Ty<'tcx>),
     ReallocatedWrongMemoryKind(Kind, Kind),
     DeallocatedWrongMemoryKind(Kind, Kind),
+    DeallocatedLockedMemory,
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
     IncorrectAllocationInformation,
@@ -97,6 +104,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "pointer offset outside bounds of allocation",
             InvalidNullPointerUsage =>
                 "invalid use of NULL pointer",
+            MemoryLockViolation { .. } =>
+                "memory access conflicts with lock",
+            DeallocatedLockedMemory =>
+                "deallocated memory while a lock was held",
             ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             ReadBytesAsPointer =>
@@ -196,6 +207,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                        if access { "memory access" } else { "pointer computed" },
                        ptr.offset, ptr.alloc_id, allocation_size)
             },
+            MemoryLockViolation { ptr, len, access, lock } => {
+                write!(f, "{:?} access at {:?}, size {}, is in conflict with lock {:?}",
+                       access, ptr, len, lock)
+            }
             NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             FunctionPointerTyMismatch(sig, got) =>
                 write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),

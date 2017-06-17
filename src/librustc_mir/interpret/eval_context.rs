@@ -169,6 +169,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
+    #[inline]
+    pub fn cur_frame(&self) -> usize {
+        assert!(self.stack.len() > 0);
+        self.stack.len() - 1
+    }
+
     /// Returns true if the current frame or any parent frame is part of a ctfe.
     ///
     /// Used to disable features in const eval, which do not have a rfc enabling
@@ -1551,9 +1557,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         if let Lvalue::Local { frame, local } = lvalue {
             let mut allocs = Vec::new();
             let mut msg = format!("{:?}", local);
-            let last_frame = self.stack.len() - 1;
-            if frame != last_frame {
-                write!(msg, " ({} frames up)", last_frame - frame).unwrap();
+            if frame != self.cur_frame() {
+                write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
             }
             write!(msg, ":").unwrap();
 
