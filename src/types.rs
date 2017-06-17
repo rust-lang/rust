@@ -590,10 +590,7 @@ impl Rewrite for ast::PolyTraitRef {
             let max_path_width = try_opt!(shape.width.checked_sub(extra_offset));
             let path_str = try_opt!(self.trait_ref.rewrite(
                 context,
-                Shape::legacy(
-                    max_path_width,
-                    shape.indent + extra_offset,
-                ),
+                Shape::legacy(max_path_width, shape.indent + extra_offset),
             ));
 
             Some(if context.config.spaces_within_angle_brackets() &&
@@ -645,10 +642,7 @@ impl Rewrite for ast::Ty {
                             mut_str,
                             try_opt!(mt.ty.rewrite(
                                 context,
-                                Shape::legacy(
-                                    budget,
-                                    shape.indent + 2 + mut_len + lt_len,
-                                ),
+                                Shape::legacy(budget, shape.indent + 2 + mut_len + lt_len),
                             ))
                         )
                     }

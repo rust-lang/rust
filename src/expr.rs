@@ -298,9 +298,7 @@ fn format_expr(
             Some(format!(
                 "{}{}",
                 "do catch ",
-                try_opt!(
-                    block.rewrite(&context, Shape::legacy(budget, shape.indent))
-                )
+                try_opt!(block.rewrite(&context, Shape::legacy(budget, shape.indent)))
             ))
         }
     };
@@ -563,7 +561,7 @@ fn rewrite_closure_fn_decl(
         fn_decl.inputs.iter(),
         "|",
         |arg| span_lo_for_arg(arg),
-        |arg| span_hi_for_arg(arg),
+        |arg| span_hi_for_arg(context, arg),
         |arg| arg.rewrite(context, arg_shape),
         context.codemap.span_after(span, "|"),
         body.span.lo,
@@ -941,13 +939,9 @@ fn to_control_flow<'a>(expr: &'a ast::Expr, expr_type: ExprType) -> Option<Contr
         ast::ExprKind::Loop(ref block, label) => Some(
             ControlFlow::new_loop(block, label, expr.span),
         ),
-        ast::ExprKind::While(ref cond, ref block, label) => Some(ControlFlow::new_while(
-            None,
-            cond,
-            block,
-            label,
-            expr.span,
-        )),
+        ast::ExprKind::While(ref cond, ref block, label) => Some(
+            ControlFlow::new_while(None, cond, block, label, expr.span),
+        ),
         ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
             Some(ControlFlow::new_while(
                 Some(pat),
@@ -1302,14 +1296,13 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 }
             };
 
-            let between_kwd_else_block =
-                mk_sp(
-                    self.block.span.hi,
-                    context.codemap.span_before(
-                        mk_sp(self.block.span.hi, else_block.span.lo),
-                        "else",
-                    ),
-                );
+            let between_kwd_else_block = mk_sp(
+                self.block.span.hi,
+                context.codemap.span_before(
+                    mk_sp(self.block.span.hi, else_block.span.lo),
+                    "else",
+                ),
+            );
             let between_kwd_else_block_comment =
                 extract_comment(between_kwd_else_block, context, shape);
 
@@ -1434,10 +1427,9 @@ fn rewrite_match_arm_comment(
     result.push_str(&missed_str[..first_brk]);
     let missed_str = &missed_str[first_brk..]; // If missed_str had one newline, it starts with it
 
-    let first = missed_str.find(|c: char| !c.is_whitespace()).unwrap_or(
-        missed_str
-            .len(),
-    );
+    let first = missed_str
+        .find(|c: char| !c.is_whitespace())
+        .unwrap_or(missed_str.len());
     if missed_str[..first].chars().filter(|c| c == &'\n').count() >= 2 {
         // Excessive vertical whitespace before comment should be preserved
         // FIXME handle vertical whitespace better
@@ -2053,20 +2045,16 @@ where
     Ok(format!(
         "{}{}",
         callee_str,
-        wrap_args_with_parens(
-            context,
-            &list_str,
-            extendable,
-            args_shape,
-            nested_shape,
-        )
+        wrap_args_with_parens(context, &list_str, extendable, args_shape, nested_shape)
     ))
 }
 
 fn need_block_indent(s: &str, shape: Shape) -> bool {
     s.lines().skip(1).any(|s| {
-        s.find(|c| !char::is_whitespace(c))
-            .map_or(false, |w| w + 1 < shape.indent.width())
+        s.find(|c| !char::is_whitespace(c)).map_or(
+            false,
+            |w| w + 1 < shape.indent.width(),
+        )
     })
 }
 
@@ -2207,6 +2195,48 @@ fn last_arg_shape(
     })
 }
 
+// Rewriting closure which is placed at the end of the function call's arg.
+// Returns `None` if the reformatted closure 'looks bad'.
+fn rewrite_last_closure(
+    context: &RewriteContext,
+    expr: &ast::Expr,
+    shape: Shape,
+) -> Option<String> {
+    if let ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) = expr.node {
+        let body = match body.node {
+            ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
+                stmt_expr(&block.stmts[0]).unwrap_or(body)
+            }
+            _ => body,
+        };
+        let (prefix, extra_offset) = try_opt!(rewrite_closure_fn_decl(
+            capture,
+            fn_decl,
+            body,
+            expr.span,
+            context,
+            shape,
+        ));
+        // If the closure goes multi line before its body, do not overflow the closure.
+        if prefix.contains('\n') {
+            return None;
+        }
+        let body_shape = try_opt!(shape.offset_left(extra_offset));
+        // When overflowing the closure which consists of a single control flow expression,
+        // force to use block if its condition uses multi line.
+        if rewrite_cond(context, body, body_shape)
+            .map(|cond| cond.contains('\n'))
+            .unwrap_or(false)
+        {
+            return rewrite_closure_with_block(context, body_shape, &prefix, body);
+        }
+
+        // Seems fine, just format the closure in usual manner.
+        return expr.rewrite(context, shape);
+    }
+    None
+}
+
 fn rewrite_last_arg_with_overflow<'a, T>(
     context: &RewriteContext,
     last_arg: &T,
@@ -2220,31 +2250,7 @@ where
         match expr.node {
             // When overflowing the closure which consists of a single control flow expression,
             // force to use block if its condition uses multi line.
-            ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
-                let try_closure_with_block = || {
-                    let body = match body.node {
-                        ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
-                            try_opt!(stmt_expr(&block.stmts[0]))
-                        }
-                        _ => body,
-                    };
-                    let (prefix, extra_offset) = try_opt!(rewrite_closure_fn_decl(
-                        capture,
-                        fn_decl,
-                        body,
-                        expr.span,
-                        context,
-                        shape,
-                    ));
-                    let shape = try_opt!(shape.offset_left(extra_offset));
-                    rewrite_cond(context, body, shape).map_or(None, |cond| if cond.contains('\n') {
-                        rewrite_closure_with_block(context, shape, &prefix, body)
-                    } else {
-                        None
-                    })
-                };
-                try_closure_with_block().or_else(|| expr.rewrite(context, shape))
-            }
+            ast::ExprKind::Closure(..) => rewrite_last_closure(context, expr, shape),
             _ => expr.rewrite(context, shape),
         }
     } else {
@@ -2390,10 +2396,12 @@ fn rewrite_index(
     let indent = indent.to_string(&context.config);
     // FIXME this is not right, since we don't take into account that shape.width
     // might be reduced from max_width by something on the right.
-    let budget = try_opt!(context.config.max_width().checked_sub(
-        indent.len() + lbr.len() +
-            rbr.len(),
-    ));
+    let budget = try_opt!(
+        context
+            .config
+            .max_width()
+            .checked_sub(indent.len() + lbr.len() + rbr.len())
+    );
     let index_str = try_opt!(index.rewrite(context, Shape::legacy(budget, shape.indent)));
     Some(format!(
         "{}\n{}{}{}{}",
@@ -2558,7 +2566,12 @@ fn shape_from_fn_call_style(
     offset: usize,
 ) -> Option<Shape> {
     if context.use_block_indent() {
-        Some(shape.block().block_indent(context.config.tab_spaces()))
+        // 1 = ","
+        shape
+            .block()
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config)
+            .sub_width(1)
     } else {
         shape.visual_indent(offset).sub_width(overhead)
     }
@@ -2580,12 +2593,10 @@ where
         // 3 = "(" + ",)"
         let nested_shape = try_opt!(shape.sub_width(3)).visual_indent(1);
         return items.next().unwrap().rewrite(context, nested_shape).map(
-            |s| {
-                if context.config.spaces_within_parens() {
-                    format!("( {}, )", s)
-                } else {
-                    format!("({},)", s)
-                }
+            |s| if context.config.spaces_within_parens() {
+                format!("( {}, )", s)
+            } else {
+                format!("({},)", s)
             },
         );
     }

@@ -128,11 +128,8 @@ fn issue470() {
     {
         {
             {
-                let explicit_arg_decls =
-                    explicit_arguments.into_iter().enumerate().map(|(
-                        index,
-                        (ty, pattern),
-                    )| {
+                let explicit_arg_decls = explicit_arguments.into_iter().enumerate().map(
+                    |(index, (ty, pattern))| {
                         let lvalue = Lvalue::Arg(index as u32);
                         block = this.pattern(
                             block,
@@ -141,7 +138,8 @@ fn issue470() {
                             &lvalue,
                         );
                         ArgDecl { ty: ty }
-                    });
+                    },
+                );
             }
         }
     }
@@ -168,4 +166,19 @@ fn issue1329() {
 fn issue325() {
     let f =
         || unsafe { xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx };
+}
+
+fn issue1697() {
+    Test.func_a(
+        A_VERY_LONG_CONST_VARIABLE_NAME,
+        move |arg1, arg2, arg3, arg4| arg1 + arg2 + arg3 + arg4,
+    )
+}
+
+fn issue1694() {
+    foooooo(
+        |_referencefffffffff: _, _target_reference: _, _oid: _, _target_oid: _| {
+            format!("refs/pull/{}/merge", pr_id)
+        },
+    )
 }
