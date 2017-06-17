@@ -20,11 +20,12 @@ use syntax::symbol::keywords;
 use {Shape, Spanned};
 use codemap::SpanUtils;
 use items::{format_generics_item_list, generics_shape_from_config};
-use lists::{itemize_list, format_fn_args};
+use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
+            definitive_tactic};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp, last_line_width};
-use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
-use config::{Style, TypeDensity};
+use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple, wrap_args_with_parens};
+use config::{IndentStyle, Style, TypeDensity};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {
@@ -224,8 +225,12 @@ fn rewrite_segment(
                     ""
                 };
 
-                let generics_shape =
-                    generics_shape_from_config(context.config, shape, separator.len());
+                let generics_shape = try_opt!(generics_shape_from_config(
+                    context.config,
+                    shape,
+                    separator.len(),
+                ));
+                let one_line_width = try_opt!(shape.width.checked_sub(separator.len() + 2));
                 let items = itemize_list(
                     context.codemap,
                     param_list.into_iter(),
@@ -240,7 +245,7 @@ fn rewrite_segment(
                     context,
                     items,
                     generics_shape,
-                    generics_shape.width,
+                    one_line_width,
                 ));
 
                 // Update position of last bracket.
@@ -305,7 +310,16 @@ where
     // 2 for ()
     let budget = try_opt!(shape.width.checked_sub(2));
     // 1 for (
-    let offset = shape.indent + 1;
+    let offset = match context.config.fn_args_layout() {
+        IndentStyle::Block => {
+            shape
+                .block()
+                .block_indent(context.config.tab_spaces())
+                .indent
+        }
+        IndentStyle::Visual => shape.indent + 1,
+    };
+    let list_shape = Shape::legacy(budget, offset);
     let list_lo = context.codemap.span_after(span, "(");
     let items = itemize_list(
         context.codemap,
@@ -324,39 +338,64 @@ where
             ArgumentKind::Variadic(start) => start + BytePos(3),
         },
         |arg| match *arg {
-            ArgumentKind::Regular(ref ty) => ty.rewrite(context, Shape::legacy(budget, offset)),
+            ArgumentKind::Regular(ref ty) => ty.rewrite(context, list_shape),
             ArgumentKind::Variadic(_) => Some("...".to_owned()),
         },
         list_lo,
         span.hi,
     );
 
-    let list_str = try_opt!(format_fn_args(
-        items,
-        Shape::legacy(budget, offset),
-        context.config,
-    ));
+    let item_vec: Vec<_> = items.collect();
 
+    let tactic = definitive_tactic(&*item_vec, ListTactic::HorizontalVertical, budget);
+
+    let fmt = ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: if !context.use_block_indent() || variadic {
+            SeparatorTactic::Never
+        } else {
+            context.config.trailing_comma()
+        },
+        shape: list_shape,
+        ends_with_newline: false,
+        config: context.config,
+    };
+
+    let list_str = try_opt!(write_list(&item_vec, &fmt));
+
+    let ty_shape = match context.config.fn_args_layout() {
+        IndentStyle::Block => shape.block().block_indent(context.config.tab_spaces()),
+        IndentStyle::Visual => try_opt!(shape.block_left(4)),
+    };
     let output = match *output {
         FunctionRetTy::Ty(ref ty) => {
-            let budget = try_opt!(shape.width.checked_sub(4));
-            let type_str = try_opt!(ty.rewrite(context, Shape::legacy(budget, offset + 4)));
+            let type_str = try_opt!(ty.rewrite(context, ty_shape));
             format!(" -> {}", type_str)
         }
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let infix = if !output.is_empty() && output.len() + list_str.len() > shape.width {
-        format!("\n{}", (offset - 1).to_string(context.config))
+    let shape = try_opt!(shape.sub_width(output.len()));
+    let extendable = !list_str.contains('\n') || list_str.is_empty();
+    let args = wrap_args_with_parens(
+        context,
+        &list_str,
+        extendable,
+        shape,
+        Shape::indented(offset, context.config),
+    );
+    if last_line_width(&args) + output.len() > shape.width {
+        Some(format!(
+            "{}\n{}{}",
+            args,
+            offset.to_string(context.config),
+            output.trim_left()
+        ))
     } else {
-        String::new()
-    };
+        Some(format!("{}{}", args, output))
+    }
 
-    Some(if context.config.spaces_within_parens() {
-        format!("( {} ){}{}", list_str, infix, output)
-    } else {
-        format!("({}){}{}", list_str, infix, output)
-    })
 }
 
 fn type_bound_colon(context: &RewriteContext) -> &'static str {
@@ -422,7 +461,9 @@ impl Rewrite for ast::WherePredicate {
                             .map(|ty_bound| ty_bound.rewrite(context, ty_shape))
                             .collect()
                     );
-                    let bounds_str = join_bounds(context, ty_shape, &bounds);
+                    let overhead = type_str.len() + colon.len();
+                    let bounds_str =
+                        join_bounds(context, try_opt!(ty_shape.sub_width(overhead)), &bounds);
 
                     format!("{}{}{}", type_str, colon, bounds_str)
                 }
@@ -760,8 +801,7 @@ fn rewrite_bare_fn(
 
     result.push_str("fn");
 
-    let budget = try_opt!(shape.width.checked_sub(result.len()));
-    let indent = shape.indent + result.len();
+    let func_ty_shape = try_opt!(shape.offset_left(result.len()));
 
     let rewrite = try_opt!(format_function_type(
         bare_fn.decl.inputs.iter(),
@@ -769,7 +809,7 @@ fn rewrite_bare_fn(
         bare_fn.decl.variadic,
         span,
         context,
-        Shape::legacy(budget, indent),
+        func_ty_shape,
     ));
 
     result.push_str(&rewrite);

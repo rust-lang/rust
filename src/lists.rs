@@ -68,18 +68,6 @@ pub struct ListFormatting<'a> {
     pub config: &'a Config,
 }
 
-pub fn format_fn_args<I>(items: I, shape: Shape, config: &Config) -> Option<String>
-where
-    I: Iterator<Item = ListItem>,
-{
-    list_helper(
-        items,
-        shape,
-        config,
-        ListTactic::LimitedHorizontalVertical(config.fn_call_width()),
-    )
-}
-
 pub fn format_item_list<I>(items: I, shape: Shape, config: &Config) -> Option<String>
 where
     I: Iterator<Item = ListItem>,
