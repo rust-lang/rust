@@ -26,7 +26,7 @@
 #![deny(warnings)]
 
 #![cfg_attr(stage0, feature(staged_api))]
-#![feature(unicode)]
+#![feature(rustc_private)]
 
 pub use self::Piece::*;
 pub use self::Position::*;

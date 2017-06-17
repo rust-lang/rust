@@ -33,7 +33,6 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
-#![feature(unicode)]
 #![feature(conservative_impl_trait)]
 #![feature(command_envs)]
 
