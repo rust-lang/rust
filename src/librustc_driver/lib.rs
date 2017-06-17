@@ -534,15 +534,12 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
 fn save_analysis(sess: &Session) -> bool {
     sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_csv ||
     sess.opts.debugging_opts.save_analysis_api
 }
 
 fn save_analysis_format(sess: &Session) -> save::Format {
     if sess.opts.debugging_opts.save_analysis {
         save::Format::Json
-    } else if sess.opts.debugging_opts.save_analysis_csv {
-        save::Format::Csv
     } else if sess.opts.debugging_opts.save_analysis_api {
         save::Format::JsonApi
     } else {
