@@ -856,21 +856,48 @@ impl<'a> CrateLoader<'a> {
                 return
             }
 
-            if !self.sess.crate_types.borrow().iter().all(|ct| {
-                match *ct {
-                    // Link the runtime
-                    config::CrateTypeExecutable => true,
-                    // This crate will be compiled with the required
-                    // instrumentation pass
-                    config::CrateTypeRlib => false,
-                    _ => {
-                        self.sess.err(&format!("Only executables and rlibs can be \
-                                                compiled with `-Z sanitizer`"));
-                        false
+            // firstyear 2017 - during testing I was unable to access an OSX machine
+            // to make this work on different crate types. As a result, today I have
+            // only been able to test and support linux as a target.
+            if self.sess.target.target.llvm_target == "x86_64-unknown-linux-gnu" {
+                if !self.sess.crate_types.borrow().iter().all(|ct| {
+                    match *ct {
+                        // Link the runtime
+                        config::CrateTypeStaticlib |
+                        config::CrateTypeExecutable => true,
+                        // This crate will be compiled with the required
+                        // instrumentation pass
+                        config::CrateTypeRlib |
+                        config::CrateTypeDylib |
+                        config::CrateTypeCdylib =>
+                            false,
+                        _ => {
+                            self.sess.err(&format!("Only executables, staticlibs, \
+                                cdylibs, dylibs and rlibs can be compiled with \
+                                `-Z sanitizer`"));
+                            false
+                        }
                     }
+                }) {
+                    return
                 }
-            }) {
-                return
+            } else {
+                if !self.sess.crate_types.borrow().iter().all(|ct| {
+                    match *ct {
+                        // Link the runtime
+                        config::CrateTypeExecutable => true,
+                        // This crate will be compiled with the required
+                        // instrumentation pass
+                        config::CrateTypeRlib => false,
+                        _ => {
+                            self.sess.err(&format!("Only executables and rlibs can be \
+                                                    compiled with `-Z sanitizer`"));
+                            false
+                        }
+                    }
+                }) {
+                    return
+                }
             }
 
             let mut uses_std = false;
@@ -890,7 +917,7 @@ impl<'a> CrateLoader<'a> {
                 info!("loading sanitizer: {}", name);
 
                 let symbol = Symbol::intern(name);
-                let dep_kind = DepKind::Implicit;
+                let dep_kind = DepKind::Explicit;
                 let (_, data) =
                     self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
                                        PathKind::Crate, dep_kind);
@@ -900,6 +927,8 @@ impl<'a> CrateLoader<'a> {
                     self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
                                            name));
                 }
+            } else {
+                self.sess.err(&format!("Must link std to be compiled with `-Z sanitizer`"));
             }
         }
     }
