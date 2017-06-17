@@ -2761,9 +2761,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
             // FIXME: DRY!
             match (rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref replacement_rhs))
-                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 ||
-                           (orig_rhs.rewrite(context, shape).is_none() &&
-                                replacement_rhs.rewrite(context, new_shape).is_some()) => {
+                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 => {
                     result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }
