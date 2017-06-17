@@ -18,7 +18,7 @@ Below you find a detailed visual guide on all the supported configuration option
 
 Indent on arrays
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -442,7 +442,7 @@ trait Lorem {
 
 Layout of function arguments and tuple structs
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -487,7 +487,7 @@ fn lorem(ipsum: usize,
 
 If function argument parenthesis goes on a newline
 
-- **Default value**: `true`
+- **Default value**: `false`
 - **Possible values**: `true`, `false`
 
 #### `false`:
@@ -582,7 +582,7 @@ fn lorem<T>(ipsum: T)
 
 Indentation for function calls, etc.
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -790,7 +790,7 @@ See also [`force_format_strings`](#force_format_strings), [`max_width`](#max_wid
 
 Indentation of generics
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -1260,7 +1260,7 @@ See also: [`space_after_bound_colon`](#space_after_bound_colon).
 
 Leave a space before the colon in a struct literal field
 
-- **Default value**: `true`
+- **Default value**: `false`
 - **Possible values**: `true`, `false`
 
 #### `false`:
@@ -1839,7 +1839,7 @@ See also: [`where_density`](#where_density), [`where_layout`](#where_layout), [`
 
 Overall strategy for where clauses
 
-- **Default value**: `"Default"`
+- **Default value**: `"Rfc"`
 - **Possible values**: `"Default"`, `"Rfc"`
 
 #### `"Default"`:
