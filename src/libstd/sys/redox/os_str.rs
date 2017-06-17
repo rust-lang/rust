@@ -12,10 +12,11 @@
 /// a `Vec<u8>`/`[u8]`.
 
 use borrow::Cow;
-use fmt::{self, Debug};
+use fmt;
 use str;
 use mem;
 use sys_common::{AsInner, IntoInner};
+use std_unicode::lossy::Utf8Lossy;
 
 #[derive(Clone, Hash)]
 pub struct Buf {
@@ -26,15 +27,27 @@ pub struct Slice {
     pub inner: [u8]
 }
 
-impl Debug for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.to_string_lossy().fmt(formatter)
+impl fmt::Debug for Slice {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&Utf8Lossy::from_bytes(&self.inner), formatter)
     }
 }
 
-impl Debug for Buf {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.as_slice().fmt(formatter)
+impl fmt::Display for Slice {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&Utf8Lossy::from_bytes(&self.inner), formatter)
+    }
+}
+
+impl fmt::Debug for Buf {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.as_slice(), formatter)
+    }
+}
+
+impl fmt::Display for Buf {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self.as_slice(), formatter)
     }
 }
 

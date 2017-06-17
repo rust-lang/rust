@@ -34,6 +34,8 @@
 
 #![feature(char_escape_debug)]
 #![feature(core_char_ext)]
+#![feature(str_internals)]
+#![feature(core_intrinsics)]
 #![feature(decode_utf8)]
 #![feature(fused)]
 #![feature(fn_traits)]
@@ -45,6 +47,7 @@
 mod tables;
 mod u_str;
 pub mod char;
+pub mod lossy;
 
 #[allow(deprecated)]
 pub mod str {

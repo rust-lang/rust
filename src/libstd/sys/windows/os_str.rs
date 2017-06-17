@@ -12,7 +12,7 @@
 /// wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
 
 use borrow::Cow;
-use fmt::{self, Debug};
+use fmt;
 use sys_common::wtf8::{Wtf8, Wtf8Buf};
 use mem;
 use sys_common::{AsInner, IntoInner};
@@ -34,9 +34,15 @@ impl AsInner<Wtf8> for Buf {
     }
 }
 
-impl Debug for Buf {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.as_slice().fmt(formatter)
+impl fmt::Debug for Buf {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self.as_slice(), formatter)
+    }
+}
+
+impl fmt::Display for Buf {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self.as_slice(), formatter)
     }
 }
 
@@ -44,9 +50,15 @@ pub struct Slice {
     pub inner: Wtf8
 }
 
-impl Debug for Slice {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.inner.fmt(formatter)
+impl fmt::Debug for Slice {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, formatter)
+    }
+}
+
+impl fmt::Display for Slice {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, formatter)
     }
 }
 
