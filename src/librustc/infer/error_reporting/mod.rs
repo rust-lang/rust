@@ -67,7 +67,7 @@ use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
-use ty::{Region, Issue32330 };
+use ty::{Region, Issue32330};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -272,11 +272,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         for error in errors {
 
             debug!("report_region_errors: error = {:?}", error);
-        // If ConcreteFailure does not have an anonymous region
-            if !self.report_named_anon_conflict(&error){
+            
+            if !self.try_report_named_anon_conflict(&error){
 
                match error.clone() {
-
+                  // These errors could indicate all manner of different
+                  // problems with many different solutions. Rather
+                  // than generate a "one size fits all" error, what we
+                  // attempt to do is go through a number of specific
+                  // scenarios and try to find the best way to present
+                  // the error. If all of these fails, we fall back to a rather
+                  // general bit of code that displays the error information
                   ConcreteFailure(origin, sub, sup) => {
 
                       self.report_concrete_failure(origin, sub, sup).emit();

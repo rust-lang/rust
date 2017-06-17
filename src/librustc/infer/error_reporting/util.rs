@@ -12,7 +12,6 @@
 
 use ty::{self, Region};
 use infer::InferCtxt;
-use hir::map as hir_map;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // This method returns whether the given Region is Named
@@ -22,30 +21,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::ReFree(ref free_region) => {
                 match free_region.bound_region {
                     ty::BrNamed(..) => true,
-                    _ => false,
-                }
-            }
-            _ => false,
-        }
-    }
-
-    // This method returns whether the given Region is Anonymous
-    pub fn is_anonymous_region(&self, region: Region<'tcx>) -> bool {
-
-        match *region {
-            ty::ReFree(ref free_region) => {
-                match free_region.bound_region {
-                    ty::BrAnon(..) => {
-                        let id = free_region.scope;
-                        let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
-                        match self.tcx.hir.find(node_id) {
-                            Some(hir_map::NodeItem(..)) |
-                            Some(hir_map::NodeTraitItem(..)) => { /* proceed ahead */ }
-                            _ => return false, // inapplicable
-                            // we target only top-level functions
-                        }
-                        return true;
-                    }
                     _ => false,
                 }
             }
