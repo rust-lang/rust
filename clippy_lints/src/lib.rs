@@ -51,6 +51,9 @@ extern crate serde;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate itertools;
+extern crate pulldown_cmark;
+
 macro_rules! declare_restriction_lint {
     { pub $name:tt, $description:tt } => {
         declare_lint! { pub $name, Allow, $description }

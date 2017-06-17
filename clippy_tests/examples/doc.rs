@@ -2,13 +2,13 @@
 
 #![feature(plugin)]
 #![plugin(clippy)]
-
+#![allow(dead_code)]
 #![warn(doc_markdown)]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
 /// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
 /// which should be reported only once despite being __doubly bad__.
-/// Here be ::is::a::global:path.
+/// Here be ::a::global:path.
 /// That's not code ~NotInCodeBlock~.
 /// be_sure_we_got_to_the_end_of_it
 fn foo_bar() {
@@ -47,35 +47,6 @@ fn test_emphasis() {
 /// NaN
 /// be_sure_we_got_to_the_end_of_it
 fn test_units() {
-}
-
-/// This one checks we don’t try to split unicode codepoints
-/// `ß`
-/// `ℝ`
-/// `💣`
-/// `❤️`
-/// ß_foo
-/// ℝ_foo
-/// 💣_foo
-/// ❤️_foo
-/// foo_ß
-/// foo_ℝ
-/// foo_💣
-/// foo_❤️
-/// [ßdummy textß][foo_1ß]
-/// [ℝdummy textℝ][foo_2ℝ]
-/// [💣dummy tex💣t][foo3_💣]
-/// [❤️dummy text❤️][foo_4❤️]
-/// [ßdummy textß](foo_5ß)
-/// [ℝdummy textℝ](foo_6ℝ)
-/// [💣dummy tex💣t](fo7o_💣)
-/// [❤️dummy text❤️](foo_8❤️)
-/// [foo1_ß]: dummy text
-/// [foo2_ℝ]: dummy text
-/// [foo3_💣]: dummy text
-/// [foo4_❤️]: dummy text
-/// be_sure_we_got_to_the_end_of_it
-fn test_unicode() {
 }
 
 /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
@@ -167,3 +138,18 @@ fn issue1073_alt() {
 /// be_sure_we_got_to_the_end_of_it
 fn four_quotes() {
 }
+
+/// See [NIST SP 800-56A, revision 2].
+///
+/// [NIST SP 800-56A, revision 2]:
+///     https://github.com/Manishearth/rust-clippy/issues/902#issuecomment-261919419
+fn issue_902_comment() {}
+
+#[cfg_attr(feature = "a", doc = " ```")]
+#[cfg_attr(not(feature = "a"), doc = " ```ignore")]
+/// fn main() {
+///     let s = "localhost:10000".to_string();
+///     println!("{}", s);
+/// }
+/// ```
+fn issue_1469() {}
