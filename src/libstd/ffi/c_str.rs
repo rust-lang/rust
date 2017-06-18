@@ -412,6 +412,18 @@ impl CString {
     /// Extracts a [`CStr`] slice containing the entire string.
     ///
     /// [`CStr`]: struct.CStr.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(as_c_str)]
+    ///
+    /// use std::ffi::{CString, CStr};
+    ///
+    /// let c_string = CString::new(b"foo".to_vec()).unwrap();
+    /// let c_str = c_string.as_c_str();
+    /// assert_eq!(c_str, CStr::from_bytes_with_nul(b"foo\0").unwrap());
+    /// ```
     #[inline]
     #[unstable(feature = "as_c_str", issue = "40380")]
     pub fn as_c_str(&self) -> &CStr {
