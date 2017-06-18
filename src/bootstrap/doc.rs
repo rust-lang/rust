@@ -254,7 +254,7 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     // for which docs must be built.
     if !build.config.compiler_docs {
         cargo.arg("--no-deps");
-        for krate in &["alloc", "core", "std", "std_unicode"] {
+        for krate in &["alloc", "collections", "core", "std", "std_unicode"] {
             cargo.arg("-p").arg(krate);
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.

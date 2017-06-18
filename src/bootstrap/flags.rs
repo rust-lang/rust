@@ -242,11 +242,18 @@ Arguments:
         let cwd = t!(env::current_dir());
         let paths = matches.free[1..].iter().map(|p| cwd.join(p)).collect::<Vec<_>>();
 
+        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
+            if fs::metadata("config.toml").is_ok() {
+                Some(PathBuf::from("config.toml"))
+            } else {
+                None
+            }
+        });
 
         // All subcommands can have an optional "Available paths" section
         if matches.opt_present("verbose") {
             let flags = Flags::parse(&["build".to_string()]);
-            let mut config = Config::default();
+            let mut config = Config::parse(&flags.build, cfg_file.clone());
             config.build = flags.build.clone();
             let mut build = Build::new(flags, config);
             metadata::build(&mut build);
@@ -306,14 +313,6 @@ Arguments:
             }
         };
 
-
-        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
-            if fs::metadata("config.toml").is_ok() {
-                Some(PathBuf::from("config.toml"))
-            } else {
-                None
-            }
-        });
 
         let mut stage = matches.opt_str("stage").map(|j| j.parse().unwrap());
 

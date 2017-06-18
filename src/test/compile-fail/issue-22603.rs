@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// #41425 -- error message "mismatched types" has wrong types
+#![feature(unboxed_closures, fn_traits, rustc_attrs)]
 
-fn plus_one(x: i32) -> i32 {
-    x + 1;
+struct Foo;
+
+impl<A> FnOnce<(A,)> for Foo {
+    type Output = ();
+    extern "rust-call" fn call_once(self, (_,): (A,)) {
+    }
 }
-
-fn foo() -> Result<u8, u64> {
-    Ok(1);
-}
-
-fn main() {
-    let x = plus_one(5);
-    println!("X = {}", x);
+#[rustc_error]
+fn main() { //~ ERROR compilation successful
+    println!("{:?}", Foo("bar"));
 }

@@ -108,6 +108,7 @@
     - [char_escape_debug](library-features/char-escape-debug.md)
     - [coerce_unsized](library-features/coerce-unsized.md)
     - [collection_placement](library-features/collection-placement.md)
+    - [collections](library-features/collections.md)
     - [collections_range](library-features/collections-range.md)
     - [command_envs](library-features/command-envs.md)
     - [compiler_builtins_lib](library-features/compiler-builtins-lib.md)
