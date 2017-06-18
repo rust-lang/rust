@@ -939,6 +939,18 @@ impl CStr {
     ///
     /// [`Box`]: ../boxed/struct.Box.html
     /// [`CString`]: struct.CString.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(into_boxed_c_str)]
+    ///
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new(b"foo".to_vec()).unwrap();
+    /// let boxed = c_string.into_boxed_c_str();
+    /// assert_eq!(boxed.into_c_string(), CString::new("foo").unwrap());
+    /// ```
     #[unstable(feature = "into_boxed_c_str", issue = "40380")]
     pub fn into_c_string(self: Box<CStr>) -> CString {
         unsafe { mem::transmute(self) }
