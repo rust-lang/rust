@@ -195,16 +195,26 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
     use pulldown_cmark::Tag::*;
 
     let mut in_code = false;
+    let mut in_link = None;
 
     for (offset, event) in docs {
         match event {
             Start(CodeBlock(_)) | Start(Code) => in_code = true,
             End(CodeBlock(_)) | End(Code) => in_code = false,
-            Start(_tag) | End(_tag) => (),         // We don't care about other tags
+            Start(Link(link, _)) => in_link = Some(link),
+            End(Link(_, _)) => in_link = None,
+            Start(_tag) | End(_tag) => (), // We don't care about other tags
             Html(_html) | InlineHtml(_html) => (), // HTML is weird, just ignore it
             SoftBreak => (),
             HardBreak => (),
             FootnoteReference(text) | Text(text) => {
+                if Some(&text) == in_link.as_ref() {
+                    // Probably a link of the form `<http://example.com>`
+                    // Which are represented as a link to "http://example.com" with
+                    // text "http://example.com" by pulldown-cmark
+                    continue;
+                }
+
                 if !in_code {
                     let index = match spans.binary_search_by(|c| c.0.cmp(&offset)) {
                         Ok(o) => o,

@@ -156,5 +156,11 @@ error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the doc
 138 | /// be_sure_we_got_to_the_end_of_it
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 26 previous errors
+error: you should put `http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels` between ticks in the documentation
+   --> $DIR/doc.rs:165:13
+    |
+165 | /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 27 previous errors
 
