@@ -35,6 +35,11 @@ use build_helper::up_to_date;
 
 /// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {
+    // If we're not compiling for LLVM bail out here.
+    if !build.config.llvm_enabled {
+        return;
+    }
+
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
     if let Some(config) = build.config.target_config.get(target) {
