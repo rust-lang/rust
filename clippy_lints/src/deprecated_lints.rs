@@ -14,6 +14,16 @@ declare_deprecated_lint! {
     "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
 }
 
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** `Range::step_by(0)` used to be linted since it's
+/// an infinite iterator, which is better expressed by `iter::repeat`,
+/// but the method has been removed for `Iterator::step_by` which panics
+/// if given a zero
+declare_deprecated_lint! {
+    pub RANGE_STEP_BY_ZERO,
+    "`iterator.step_by(0)` panics nowadays"
+}
 
 /// **What it does:** Nothing. This lint has been deprecated.
 ///
