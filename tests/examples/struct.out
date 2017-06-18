@@ -1,3 +1,9 @@
+old: oldandnew::old::Abc
+new: oldandnew::new::Abc
+old: oldandnew::old::Def
+new: oldandnew::new::Def
+old: oldandnew::old::Efg
+new: oldandnew::new::Efg
 version bump: 1.0.0 -> (NonBreaking) -> 1.1.0
   Def -
     TypeParameterAdded { defaulted: true }

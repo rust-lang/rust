@@ -1,16 +1,16 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-  G -
-    TypeParameterRemoved { defaulted: false }
-  C -
-    RegionParameterRemoved
+  F -
+    TypeParameterRemoved { defaulted: true }
   A -
     FieldTypeChanged("expected u8, found u16")
-  B -
-    RegionParameterAdded
   E -
     TypeParameterAdded { defaulted: false }
+  C -
+    RegionParameterRemoved
   D -
     TypeParameterAdded { defaulted: true }
     FieldTypeChanged("expected reference, found tuple")
-  F -
-    TypeParameterRemoved { defaulted: true }
+  B -
+    RegionParameterAdded
+  G -
+    TypeParameterRemoved { defaulted: false }

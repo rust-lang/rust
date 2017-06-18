@@ -2,6 +2,7 @@ use semcheck::changes::BinaryChangeType;
 use semcheck::changes::BinaryChangeType::*;
 use semcheck::changes::ChangeSet;
 
+use rustc::hir::def::Def;
 use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
@@ -47,6 +48,43 @@ impl IdMapping {
     }
 }
 
+#[derive(PartialEq, Eq, Hash)]
+enum Namespace {
+    Type,
+    Value,
+    Macro,
+    Err,
+}
+
+fn get_namespace(def: &Def) -> Namespace {
+    match *def {
+        Mod(_) |
+        Struct(_) |
+        Union(_) |
+        Enum(_) |
+        Variant(_) |
+        Trait(_) |
+        TyAlias(_) |
+        AssociatedTy(_) |
+        PrimTy(_) |
+        TyParam(_) |
+        SelfTy(_, _) => Namespace::Type,
+        Fn(_) |
+        Const(_) |
+        Static(_, _) |
+        StructCtor(_, _) |
+        VariantCtor(_, _) |
+        Method(_) |
+        AssociatedConst(_) |
+        Local(_) |
+        Upvar(_, _, _) |
+        Label(_) => Namespace::Value,
+        Macro(_, _) => Namespace::Macro,
+        GlobalAsm(_) |
+        Err => Namespace::Err,
+    }
+}
+
 /// Traverse the two root modules in an interleaved manner.
 ///
 /// Match up pairs of modules from the two crate versions and compare for changes.
@@ -67,18 +105,19 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
         let mut c_old = cstore.item_children(old_did, tcx.sess);
         let mut c_new = cstore.item_children(new_did, tcx.sess);
 
+        // TODO: refactor this to avoid storing tons of `Namespace` values.
         for child in c_old
                 .drain(..)
                 .filter(|c| cstore.visibility(c.def.def_id()) == Public) {
-            let child_name = String::from(&*child.ident.name.as_str());
-            children.entry(child_name).or_insert((None, None)).0 = Some(child);
+            let key = (get_namespace(&child.def), child.ident.name);
+            children.entry(key).or_insert((None, None)).0 = Some(child);
         }
 
         for child in c_new
                 .drain(..)
                 .filter(|c| cstore.visibility(c.def.def_id()) == Public) {
-            let child_name = String::from(&*child.ident.name.as_str());
-            children.entry(child_name).or_insert((None, None)).1 = Some(child);
+            let key = (get_namespace(&child.def), child.ident.name);
+            children.entry(key).or_insert((None, None)).1 = Some(child);
         }
 
         for (_, items) in children.drain() {
@@ -123,10 +162,42 @@ fn diff_item_structures(changes: &mut ChangeSet,
                         tcx: TyCtxt,
                         old: Export,
                         new: Export) {
-    let mut generics_changes = diff_generics(tcx, old.def.def_id(), new.def.def_id());
+    let old_def_id = old.def.def_id();
+    let new_def_id = new.def.def_id();
+
+    let mut generics_changes = diff_generics(tcx, old_def_id, new_def_id);
     for change_type in generics_changes.drain(..) {
         changes.new_binary(change_type, old, new);
     }
+
+    // TODO: crude dispatching logic for now (needs totality etc).
+    match (old.def, new.def) {
+        (TyAlias(_), TyAlias(_)) => return,
+        (Struct(_), Struct(_)) |
+        (Union(_), Union(_)) |
+        (Enum(_), Enum(_)) |
+        (Trait(_), Trait(_)) |
+        (Fn(_), Fn(_)) |
+        (Const(_), Const(_)) |
+        (Static(_, _), Static(_, _)) |
+        (Method(_), Method(_)) |
+        (Macro(_, _), Macro(_, _)) => {},
+        _ => {
+            // No match - so we don't need to look further.
+            changes.new_binary(KindDifference, old, new);
+            return;
+        },
+    }
+
+    let (old_def, new_def) = match (old.def, new.def) {
+        (Struct(_), Struct(_)) |
+        (Union(_), Union(_)) |
+        (Enum(_), Enum(_)) => (tcx.adt_def(old_def_id), tcx.adt_def(new_def_id)),
+        _ => return,
+    };
+
+    println!("old: {:?}", old_def);
+    println!("new: {:?}", new_def);
 }
 
 /// Given two items, perform *non-structural* checks.
@@ -138,26 +209,6 @@ fn diff_items(changes: &mut ChangeSet,
               tcx: TyCtxt,
               old: Export,
               new: Export) {
-    let mut structural_changes = match (old.def, new.def) {
-        (Struct(o), Struct(n)) => diff_structs(tcx, o, n),
-        (TyAlias(o), TyAlias(n)) => diff_tyaliases(tcx, o, n),
-        /*(Union(_), Union(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (Enum(_), Enum(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (Trait(_), Trait(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (Fn(_), Fn(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (Const(_), Const(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (Static(_, _), Static(_, _)) => Some(Change::new_binary(Unknown, old, new)),
-        (Method(_), Method(_)) => Some(Change::new_binary(Unknown, old, new)),
-        (Macro(_, _), Macro(_, _)) => Some(Change::new_binary(Unknown, old, new)),*/
-        _ => {
-            vec![KindDifference] // TODO: move this to `diff_item_structures` as per docs
-        },
-    };
-
-    for change_type in structural_changes.drain(..) {
-        changes.new_binary(change_type, old, new);
-    }
-
     if !changes.item_breaking(old.def.def_id()) {
         let mut type_changes = diff_types(id_mapping, tcx, old.def.def_id(), new.def.def_id());
 
@@ -256,19 +307,4 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
     }
 
     ret
-}
-
-/// Given two type aliases' definitions, compare them.
-fn diff_tyaliases(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId)
-    -> Vec<BinaryChangeType> {
-    // let cstore = &tcx.sess.cstore;
-    /* println!("matching TyAlias'es found");
-    println!("old: {:?}", tcx.type_of(old));
-    println!("new: {:?}", tcx.type_of(new));*/
-    Vec::new()
-}
-
-/// Given two structs' definitions, compare them.
-fn diff_structs(/*tcx*/ _: TyCtxt, /*old*/ _: DefId, /*new*/ _: DefId) -> Vec<BinaryChangeType> {
-    Vec::new()
 }
