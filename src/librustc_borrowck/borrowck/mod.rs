@@ -22,6 +22,7 @@ pub use self::mir::elaborate_drops::ElaborateDrops;
 
 use self::InteriorKind::*;
 
+use rustc::hir::BodyId;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::cfg;
@@ -39,15 +40,18 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 
+use std::collections::HashMap;
+
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
-use syntax::ast;
-use syntax_pos::{MultiSpan, Span};
+use syntax::{ast, codemap};
+use syntax_pos::{MultiSpan, Span, NO_EXPANSION};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
+use borrowck::move_data::MoveData;
 
 pub mod check_loans;
 
@@ -62,27 +66,50 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for body_owner_def_id in tcx.body_owners() {
-        tcx.borrowck(body_owner_def_id);
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, save_analysis: bool) -> Option<HashMap<DefId, AnalysisResult<'a, 'tcx>>> {
+    // FIXME: nashenas88 support this through TyCtxt
+    if save_analysis {
+        let mut map = HashMap::new();
+        for body_owner_def_id in tcx.body_owners() {
+            let result = borrowck(tcx, body_owner_def_id, save_analysis).unwrap();
+            map.insert(body_owner_def_id, result);
+        }
+        Some(map)
+    } else {
+        for body_owner_def_id in tcx.body_owners() {
+            tcx.borrowck(body_owner_def_id);
+        }
+        None
     }
 }
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        borrowck,
+        borrowck: borrowck_provider,
         ..*providers
     };
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
 pub struct AnalysisData<'a, 'tcx: 'a> {
+    pub safe_loans: Vec<SafeLoan>,
     pub all_loans: Vec<Loan<'tcx>>,
     pub loans: DataFlowContext<'a, 'tcx, LoanDataFlowOperator>,
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
+pub struct AnalysisResult<'a, 'tcx: 'a> {
+    pub bccx: BorrowckCtxt<'a, 'tcx>,
+    pub safe_loans: Vec<SafeLoan>,
+    pub all_loans: Vec<Loan<'tcx>>,
+    pub move_data: move_data::MoveData<'tcx>,
+}
+
+fn borrowck_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
+    borrowck(tcx, owner_def_id, false);
+}
+
+fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId, save_analysis: bool) -> Option<AnalysisResult<'a, 'tcx>> {
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
     let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
@@ -94,7 +121,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
             // those things (notably the synthesized constructors from
             // tuple structs/variants) do not have an associated body
             // and do not need borrowchecking.
-            return;
+            return None;
         }
         _ => { }
     }
@@ -103,12 +130,12 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_maps = tcx.region_maps(owner_def_id);
-    let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
+    let mut bccx = BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let body = bccx.tcx.hir.body(body_id);
 
     if bccx.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
-        mir::borrowck_mir(bccx, owner_id, &attributes);
+        mir::borrowck_mir(&mut bccx, owner_id, &attributes);
     } else {
         // Eventually, borrowck will always read the MIR, but at the
         // moment we do not. So, for now, we always force MIR to be
@@ -122,17 +149,29 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     }
 
     let cfg = cfg::CFG::new(bccx.tcx, &body);
-    let AnalysisData { all_loans,
+    let AnalysisData { safe_loans,
+                       all_loans,
                        loans: loan_dfcx,
                        move_data: flowed_moves } =
-        build_borrowck_dataflow_data(bccx, &cfg, body_id);
+        build_borrowck_dataflow_data(&mut bccx, &cfg, body_id);
 
-    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
+    check_loans::check_loans(&bccx, &loan_dfcx, &flowed_moves, &all_loans[..], body);
+
+    if save_analysis {
+        Some(AnalysisResult {
+            bccx,
+            safe_loans,
+            all_loans,
+            move_data: flowed_moves.move_data,
+        })
+    } else {
+        None
+    }
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                           cfg: &cfg::CFG,
-                                          body_id: hir::BodyId)
+                                          body_id: BodyId)
                                           -> AnalysisData<'a, 'tcx>
 {
     // Check the body of fn items.
@@ -143,7 +182,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
         visitor.visit_body(body);
         visitor.result()
     };
-    let (all_loans, move_data) =
+    let (safe_loans, all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, body_id);
 
     let mut loan_dfcx =
@@ -168,16 +207,17 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                                       id_range,
                                                       body);
 
-    AnalysisData { all_loans: all_loans,
+    AnalysisData { safe_loans: safe_loans,
+                   all_loans: all_loans,
                    loans: loan_dfcx,
-                   move_data:flowed_moves }
+                   move_data: flowed_moves }
 }
 
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    body_id: hir::BodyId,
+    body_id: BodyId,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
 {
@@ -209,6 +249,26 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
 ///////////////////////////////////////////////////////////////////////////
 // Loans and loan paths
 
+pub struct SafeLoan {
+    kind: ty::BorrowKind,
+    loan_scope: region::CodeExtent,
+    span: Span,
+}
+
+impl SafeLoan {
+    pub fn kind(&self) -> ty::BorrowKind {
+        self.kind
+    }
+
+    pub fn loan_scope(&self) -> region::CodeExtent {
+        self.loan_scope
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 /// Record of a loan that was issued.
 pub struct Loan<'tcx> {
     index: usize,
@@ -235,6 +295,47 @@ pub struct Loan<'tcx> {
 impl<'tcx> Loan<'tcx> {
     pub fn loan_path(&self) -> Rc<LoanPath<'tcx>> {
         self.loan_path.clone()
+    }
+
+    pub fn kind(&self) -> ty::BorrowKind {
+        self.kind
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn span_in_def(&self, def_id: DefId, tcx: TyCtxt) -> Option<Span> {
+        let fn_span = tcx.hir
+            .as_local_node_id(def_id)
+            .map(|node_id| tcx.hir.span(node_id));
+
+        let gen_span = self.gen_scope.span(&tcx.hir)
+            .and_then(|s| fn_span.and_then(|n| Self::get_unexpanded_span(s, n)));
+
+        let kill_span = self.kill_scope.span(&tcx.hir)
+            .and_then(|s| fn_span.and_then(|n| Self::get_unexpanded_span(s, n)));
+
+        match (gen_span, kill_span) {
+            (Some(gen_span), Some(kill_span)) => {
+                Some(Span {
+                    lo: gen_span.lo,
+                    hi: kill_span.hi,
+                    ctxt: NO_EXPANSION
+                })
+            },
+            _ => None,
+        }
+    }
+
+    fn get_unexpanded_span(input_span: Span, wrapping_span: Span) -> Option<Span> {
+        // Walk up the macro expansion chain until we reach a non-expanded span.
+        let span = codemap::original_sp(input_span, wrapping_span);
+        if span == wrapping_span {
+            None // We traversed to the top and couldn't find any matching span
+        } else {
+            Some(span)
+        }
     }
 }
 
@@ -267,6 +368,15 @@ pub enum LoanPathKind<'tcx> {
 impl<'tcx> LoanPath<'tcx> {
     fn new(kind: LoanPathKind<'tcx>, ty: ty::Ty<'tcx>) -> LoanPath<'tcx> {
         LoanPath { kind: kind, ty: ty }
+    }
+
+    pub fn ref_node_id<'a>(&self) -> ast::NodeId {
+        match self.kind {
+            LpVar(node_id) => node_id,
+            LpUpvar(upvar_id) => upvar_id.var_id,
+            LpDowncast(ref base, ..) |
+            LpExtend(ref base, ..) => base.ref_node_id(),
+        }
     }
 
     fn to_type(&self) -> ty::Ty<'tcx> { self.ty }

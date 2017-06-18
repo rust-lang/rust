@@ -24,6 +24,7 @@
 #![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use] extern crate rustc;
+extern crate rustc_borrowck;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -49,8 +50,10 @@ use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_borrowck::AnalysisResult;
 use rustc_typeck::hir_ty_to_ty;
 
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -71,13 +74,14 @@ use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Ref, RefKind, SpanData, MacroRef, Def, DefKind, Relation, RelationKind,
-               ExternalCrateData, Import, CratePreludeData};
+               ExternalCrateData, Import, CratePreludeData, BorrowData, BorrowKind};
 
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
     analysis: &'l ty::CrateAnalysis,
+    borrow_analysis_map: HashMap<DefId, AnalysisResult<'l, 'tcx>>,
     span_utils: SpanUtils<'tcx>,
 }
 
@@ -97,6 +101,7 @@ pub trait Dump {
     fn dump_ref(&mut self, _: Ref) {}
     fn dump_def(&mut self, _: bool, _: Def);
     fn dump_relation(&mut self, data: Relation);
+    fn dump_per_fn_borrow_data(&mut self, data: BorrowData);
 }
 
 macro_rules! option_try(
@@ -958,6 +963,7 @@ impl<'a> SaveHandler for DumpHandler<'a> {
                 let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
                 visitor.dump_crate_info(cratename, krate);
+                visitor.dump_borrow_analysis();
                 visit::walk_crate(&mut visitor, krate);
             }}
         }
@@ -987,6 +993,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
                 let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
                 visitor.dump_crate_info(cratename, krate);
+                visitor.dump_borrow_analysis();
                 visit::walk_crate(&mut visitor, krate);
             }}
         }
@@ -1003,6 +1010,7 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
 pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                                                krate: &ast::Crate,
                                                analysis: &'l ty::CrateAnalysis,
+                                               borrow_analysis_map: HashMap<DefId, AnalysisResult<'l, 'tcx>>,
                                                cratename: &str,
                                                mut handler: H) {
     let _ignore = tcx.dep_graph.in_ignore();
@@ -1015,6 +1023,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         tcx: tcx,
         tables: &ty::TypeckTables::empty(),
         analysis: analysis,
+        borrow_analysis_map: borrow_analysis_map,
         span_utils: SpanUtils::new(&tcx.sess),
     };
 
@@ -1046,6 +1055,14 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 fn id_from_node_id(id: NodeId, scx: &SaveContext) -> rls_data::Id {
     let def_id = scx.tcx.hir.opt_local_def_id(id);
     def_id.map(|id| id_from_def_id(id)).unwrap_or_else(null_id)
+}
+
+fn borrow_kind_from_borrow_kind(kind: ty::BorrowKind) -> BorrowKind {
+    match kind {
+        ty::BorrowKind::ImmBorrow |
+        ty::BorrowKind::UniqueImmBorrow => BorrowKind::ImmBorrow,
+        ty::BorrowKind::MutBorrow       => BorrowKind::MutBorrow,
+    }
 }
 
 fn null_id() -> rls_data::Id {

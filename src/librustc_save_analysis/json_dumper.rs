@@ -13,7 +13,7 @@ use std::io::Write;
 use rustc_serialize::json::as_json;
 
 use rls_data::{self, Analysis, Import, Def, DefKind, Ref, RefKind, MacroRef,
-               Relation, CratePreludeData};
+               Relation, CratePreludeData, BorrowData};
 use rls_span::{Column, Row};
 
 use Dump;
@@ -109,5 +109,9 @@ impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
 
     fn dump_relation(&mut self, data: Relation) {
         self.result.relations.push(data);
+    }
+
+    fn dump_per_fn_borrow_data(&mut self, data: BorrowData) {
+        self.result.per_fn_borrows.push(data);
     }
 }

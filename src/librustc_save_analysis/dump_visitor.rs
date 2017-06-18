@@ -30,7 +30,12 @@ use rustc::hir::map::Node;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
+use rustc_borrowck::{self, AnalysisResult, Loan, SafeLoan, Move, Assignment, BorrowckCtxt};
+
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::path::Path;
+use std::mem;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::token;
@@ -45,8 +50,9 @@ use {escape, generated_code, SaveContext, PathCollector, docs_for_attrs, lower_a
 use span_utils::SpanUtils;
 use sig;
 
-use rls_data::{CratePreludeData, Import, ImportKind, SpanData, Ref, RefKind,
-               Def, DefKind, Relation, RelationKind};
+use rls_data::{Id, CratePreludeData, Import, ImportKind, SpanData, Ref, RefKind,
+               Def, DefKind, Relation, RelationKind, BorrowData, Move as MoveData,
+               Loan as LoanData, Scope};
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
@@ -137,6 +143,138 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         };
 
         self.dumper.crate_prelude(data);
+    }
+
+    pub fn dump_borrow_analysis(&mut self) {
+        let borrow_analysis = self.save_ctxt.borrow_analysis_map.drain().collect::<Vec<_>>();
+        for (def_id, analysis_result) in borrow_analysis {
+            self.process_borrow_analysis(def_id, analysis_result);
+        }
+    }
+
+    fn process_borrow_analysis(&mut self, def_id: DefId, mut analysis_result: AnalysisResult<'l, 'tcx>) {
+        let mut safe_loans = {
+            let mut safe_loans = vec![];
+            mem::swap(&mut safe_loans, &mut analysis_result.safe_loans);
+            safe_loans.into_iter()
+                .filter_map(|safe_loan| self.process_safe_loan(safe_loan))
+                .collect::<Vec<_>>()
+        };
+
+        let mut loans = {
+            let mut loans = vec![];
+            mem::swap(&mut loans, &mut analysis_result.all_loans);
+            loans.into_iter()
+                .filter_map(|loan| self.process_loan(def_id, loan))
+                .collect::<Vec<_>>()
+        };
+
+        loans.append(&mut safe_loans);
+
+        let moves = {
+            let mut moves = vec![];
+            mem::swap(&mut moves, &mut analysis_result.move_data.moves.borrow_mut());
+            moves.into_iter()
+                .map(|m| self.process_move(m, &analysis_result.move_data))
+                .collect::<Vec<_>>()
+        };
+
+        let scopes = {
+            let move_map: HashMap<Id, &MoveData> = moves.iter()
+                .fold(HashMap::new(), |mut acc, m| {
+                    match acc.entry(m.ref_id) {
+                        // we just want the 
+                        Entry::Occupied(mut e) => if e.get().span.byte_start > m.span.byte_start { e.insert(m); },
+                        Entry::Vacant(e) => { e.insert(m); },
+                    }
+
+                    acc
+                });
+            let mut assignments = vec![];
+            mem::swap(&mut assignments, &mut analysis_result.move_data.var_assignments.borrow_mut());
+            assignments.into_iter()
+                .filter_map(|a| {
+                    let id = ::id_from_node_id(a.assignee_id, &self.save_ctxt);
+                    let mov = move_map.get(&id);
+                    self.process_assignment(a, mov, &analysis_result.move_data, &analysis_result.bccx)
+                })
+                .collect()
+        };
+
+        let data = BorrowData {
+            ref_id: ::id_from_def_id(def_id),
+            scopes: scopes,
+            loans: loans,
+            moves: moves,
+        };
+
+        self.dumper.dump_per_fn_borrow_data(data);
+    }
+
+    fn process_assignment(
+        &self,
+        assignment: Assignment,
+        mov: Option<&&MoveData>,
+        move_data: &rustc_borrowck::MoveData<'tcx>,
+        bccx: &BorrowckCtxt<'l, 'tcx>)
+    -> Option<Scope> {
+        move_data.path_loan_path(assignment.path)
+            .kill_scope(&bccx)
+            .span(&self.tcx.hir)
+            .map(|span| {
+                let expanded_span = match mov.map(|m| &m.span) {
+                    Some(move_span) => if move_span.byte_start < span.hi.0 {
+                        Span {
+                            lo: span.lo,
+                            hi: BytePos(move_span.byte_end),
+                            ctxt: NO_EXPANSION,
+                        }
+                    } else {
+                        span
+                    },
+                    None => span,
+                };
+
+                Scope {
+                    ref_id: ::id_from_node_id(assignment.assignee_id, &self.save_ctxt),
+                    span: self.span_from_span(expanded_span)
+                }
+            })
+            .or_else(|| { debug!("No span found for assignment `{:?}-{:?}`", assignment.id, assignment.assignee_id); None })
+    }
+
+    fn process_safe_loan(&self, safe_loan: SafeLoan) -> Option<LoanData> {
+        let node_id = safe_loan.loan_scope().node_id();
+
+        // may be span inside of macro
+        safe_loan.loan_scope().span(&self.tcx.hir)
+            .map(|span| LoanData {
+                ref_id: ::id_from_node_id(node_id, &self.save_ctxt),
+                kind: ::borrow_kind_from_borrow_kind(safe_loan.kind()),
+                span: self.span_from_span(span),
+            })
+            .or_else(|| { debug!("No span found for safe loan `{:?}`", safe_loan.loan_scope()); None })
+    }
+
+    fn process_loan(&self, def_id: DefId, loan: Loan) -> Option<LoanData> {
+        // These may be inside of macros
+        loan.span_in_def(def_id, self.tcx)
+            .map(|span| LoanData {
+                ref_id: ::id_from_node_id(loan.loan_path().ref_node_id(), &self.save_ctxt),
+                kind: ::borrow_kind_from_borrow_kind(loan.kind()),
+                span: self.span_from_span(span),
+            })
+            .or_else(|| { debug!("No span found for loan `{:?}`", loan.loan_path()); None })
+    }
+
+    fn process_move(&self, mov: Move, move_data: &rustc_borrowck::MoveData) -> MoveData {
+        let id = ::id_from_node_id(
+            move_data.path_loan_path(mov.path).ref_node_id(),
+            &self.save_ctxt);
+        MoveData {
+            ref_id: id,
+            span: self.span_from_span(self.tcx.hir.span(mov.id)),
+        }
     }
 
     // Return all non-empty prefixes of a path.
