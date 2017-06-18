@@ -1856,7 +1856,26 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     let string_lit = context.snippet(span);
 
     if !context.config.format_strings() && !context.config.force_format_strings() {
-        return Some(string_lit);
+        if string_lit
+            .lines()
+            .rev()
+            .skip(1)
+            .all(|line| line.ends_with('\\'))
+        {
+            let new_indent = shape.visual_indent(1).indent;
+            return Some(String::from(
+                string_lit
+                    .lines()
+                    .map(|line| {
+                        new_indent.to_string(context.config) + line.trim_left()
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+                    .trim_left(),
+            ));
+        } else {
+            return Some(string_lit);
+        }
     }
 
     if !context.config.force_format_strings() &&
