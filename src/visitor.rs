@@ -290,10 +290,9 @@ impl<'a> FmtVisitor<'a> {
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
                 let snippet = self.get_context().snippet(item.span);
-                let where_span_end =
-                    snippet
-                        .find_uncommented("{")
-                        .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo);
+                let where_span_end = snippet
+                    .find_uncommented("{")
+                    .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo);
                 if let Some(impl_str) = format_impl(
                     &self.get_context(),
                     item,

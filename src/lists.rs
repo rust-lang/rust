@@ -125,17 +125,15 @@ pub struct ListItem {
 impl ListItem {
     pub fn is_multiline(&self) -> bool {
         self.item.as_ref().map_or(false, |s| s.contains('\n')) || self.pre_comment.is_some() ||
-            self.post_comment.as_ref().map_or(
-                false,
-                |s| s.contains('\n'),
-            )
+            self.post_comment
+                .as_ref()
+                .map_or(false, |s| s.contains('\n'))
     }
 
     pub fn has_line_pre_comment(&self) -> bool {
-        self.pre_comment.as_ref().map_or(
-            false,
-            |comment| comment.starts_with("//"),
-        )
+        self.pre_comment
+            .as_ref()
+            .map_or(false, |comment| comment.starts_with("//"))
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {

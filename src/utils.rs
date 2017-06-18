@@ -317,10 +317,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
             } else {
                 let mut lines = snippet.lines();
 
-                // The caller of this function has already placed `shape.offset`
-                // characters on the first line.
-                let first_line_max_len = try_opt!(max_width.checked_sub(shape.indent.width()));
-                if lines.next().unwrap().len() > first_line_max_len {
+                if lines.next().unwrap().len() > shape.width {
                     return None;
                 }
 
@@ -333,9 +330,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
                 // indentation.
                 // A special check for the last line, since the caller may
                 // place trailing characters on this line.
-                if snippet.lines().rev().next().unwrap().len() >
-                    shape.indent.width() + shape.width
-                {
+                if snippet.lines().rev().next().unwrap().len() > shape.used_width() + shape.width {
                     return None;
                 }
             }

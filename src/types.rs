@@ -172,10 +172,11 @@ impl<'a> Rewrite for SegmentParam<'a> {
                     TypeDensity::Compressed => format!("{}=", binding.ident),
                 };
                 let budget = try_opt!(shape.width.checked_sub(result.len()));
-                let rewrite = try_opt!(binding.ty.rewrite(
-                    context,
-                    Shape::legacy(budget, shape.indent + result.len()),
-                ));
+                let rewrite = try_opt!(
+                    binding
+                        .ty
+                        .rewrite(context, Shape::legacy(budget, shape.indent + result.len()))
+                );
                 result.push_str(&rewrite);
                 Some(result)
             }
@@ -448,10 +449,9 @@ impl Rewrite for ast::WherePredicate {
                 // 3 = " = ".len()
                 let used_width = 3 + lhs_ty_str.len();
                 let budget = try_opt!(shape.width.checked_sub(used_width));
-                let rhs_ty_str = try_opt!(rhs_ty.rewrite(
-                    context,
-                    Shape::legacy(budget, shape.indent + used_width),
-                ));
+                let rhs_ty_str = try_opt!(
+                    rhs_ty.rewrite(context, Shape::legacy(budget, shape.indent + used_width))
+                );
                 format!("{} = {}", lhs_ty_str, rhs_ty_str)
             }
         };
@@ -651,10 +651,12 @@ impl Rewrite for ast::Ty {
                         format!(
                             "&{}{}",
                             mut_str,
-                            try_opt!(mt.ty.rewrite(
-                                context,
-                                Shape::legacy(budget, shape.indent + 1 + mut_len),
-                            ))
+                            try_opt!(
+                                mt.ty.rewrite(
+                                    context,
+                                    Shape::legacy(budget, shape.indent + 1 + mut_len),
+                                )
+                            )
                         )
                     }
                 })

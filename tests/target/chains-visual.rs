@@ -47,10 +47,9 @@ fn main() {
     });
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
-        xxxxxxx.map(|x| x + 5).map(|x| x / 2).fold(
-            0,
-            |acc, x| acc + x,
-        );
+        xxxxxxx.map(|x| x + 5)
+               .map(|x| x / 2)
+               .fold(0, |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
         x += 1;

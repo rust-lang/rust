@@ -488,10 +488,12 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let indent = self.block_indent;
-        let mut result = try_opt!(field.node.attrs.rewrite(
-            &context,
-            Shape::indented(indent, self.config),
-        ));
+        let mut result = try_opt!(
+            field
+                .node
+                .attrs
+                .rewrite(&context, Shape::indented(indent, self.config))
+        );
         if !result.is_empty() {
             let shape = Shape {
                 width: context.config.max_width(),
@@ -1436,10 +1438,10 @@ impl Rewrite for ast::StructField {
 
         let name = self.ident;
         let vis = format_visibility(&self.vis);
-        let mut attr_str = try_opt!(self.attrs.rewrite(
-            context,
-            Shape::indented(shape.indent, context.config),
-        ));
+        let mut attr_str = try_opt!(
+            self.attrs
+                .rewrite(context, Shape::indented(shape.indent, context.config))
+        );
         // Try format missing comments after attributes
         let missing_comment = if !self.attrs.is_empty() {
             rewrite_missing_comment_on_field(
@@ -1470,10 +1472,8 @@ impl Rewrite for ast::StructField {
 
         let type_offset = shape.indent.block_indent(context.config);
         let rewrite_type_in_next_line = || {
-            self.ty.rewrite(
-                context,
-                Shape::indented(type_offset, context.config),
-            )
+            self.ty
+                .rewrite(context, Shape::indented(type_offset, context.config))
         };
 
         let last_line_width = last_line_width(&result) + type_annotation_spacing.1.len();
@@ -1670,10 +1670,10 @@ fn is_empty_infer(context: &RewriteContext, ty: &ast::Ty) -> bool {
 impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if is_named_arg(self) {
-            let mut result = try_opt!(self.pat.rewrite(
-                context,
-                Shape::legacy(shape.width, shape.indent),
-            ));
+            let mut result = try_opt!(
+                self.pat
+                    .rewrite(context, Shape::legacy(shape.width, shape.indent))
+            );
 
             if !is_empty_infer(context, &*self.ty) {
                 if context.config.space_before_type_annotation() {
@@ -1872,17 +1872,17 @@ fn rewrite_fn_base(
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
     result.push_str(&generics_str);
 
-    let snuggle_angle_bracket = generics_str.lines().last().map_or(
-        false,
-        |l| l.trim_left().len() == 1,
-    );
+    let snuggle_angle_bracket = generics_str
+        .lines()
+        .last()
+        .map_or(false, |l| l.trim_left().len() == 1);
 
     // Note that the width and indent don't really matter, we'll re-layout the
     // return type later anyway.
-    let ret_str = try_opt!(fd.output.rewrite(
-        &context,
-        Shape::indented(indent, context.config),
-    ));
+    let ret_str = try_opt!(
+        fd.output
+            .rewrite(&context, Shape::indented(indent, context.config))
+    );
 
     let multi_line_ret_str = ret_str.contains('\n');
     let ret_str_len = if multi_line_ret_str { 0 } else { ret_str.len() };
@@ -1942,10 +1942,10 @@ fn rewrite_fn_base(
     }
 
     // A conservative estimation, to goal is to be over all parens in generics
-    let args_start = generics.ty_params.last().map_or(
-        span.lo,
-        |tp| end_typaram(tp),
-    );
+    let args_start = generics
+        .ty_params
+        .last()
+        .map_or(span.lo, |tp| end_typaram(tp));
     let args_span = mk_sp(
         context.codemap.span_after(mk_sp(args_start, span.hi), "("),
         span_for_return(&fd.output).lo,
@@ -1987,10 +1987,10 @@ fn rewrite_fn_base(
         }
         // If the last line of args contains comment, we cannot put the closing paren
         // on the same line.
-        if arg_str.lines().last().map_or(
-            false,
-            |last_line| last_line.contains("//"),
-        )
+        if arg_str
+            .lines()
+            .last()
+            .map_or(false, |last_line| last_line.contains("//"))
         {
             args_last_line_contains_comment = true;
             result.push('\n');
@@ -2048,10 +2048,10 @@ fn rewrite_fn_base(
         if multi_line_ret_str || ret_should_indent {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
-            let ret_str = try_opt!(fd.output.rewrite(
-                context,
-                Shape::indented(ret_indent, context.config),
-            ));
+            let ret_str = try_opt!(
+                fd.output
+                    .rewrite(context, Shape::indented(ret_indent, context.config))
+            );
             result.push_str(&ret_str);
         } else {
             result.push_str(&ret_str);
@@ -2063,14 +2063,12 @@ fn rewrite_fn_base(
             let snippet_hi = span.hi;
             let snippet = context.snippet(mk_sp(snippet_lo, snippet_hi));
             // Try to preserve the layout of the original snippet.
-            let original_starts_with_newline = snippet.find(|c| c != ' ').map_or(
-                false,
-                |i| snippet[i..].starts_with('\n'),
-            );
-            let original_ends_with_newline = snippet.rfind(|c| c != ' ').map_or(
-                false,
-                |i| snippet[i..].ends_with('\n'),
-            );
+            let original_starts_with_newline = snippet
+                .find(|c| c != ' ')
+                .map_or(false, |i| snippet[i..].starts_with('\n'));
+            let original_ends_with_newline = snippet
+                .rfind(|c| c != ' ')
+                .map_or(false, |i| snippet[i..].ends_with('\n'));
             let snippet = snippet.trim();
             if !snippet.is_empty() {
                 result.push(if original_starts_with_newline {

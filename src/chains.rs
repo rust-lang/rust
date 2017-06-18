@@ -124,7 +124,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let first_subexpr_is_try = subexpr_list.last().map_or(false, is_try);
     let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
         let nested_shape = if first_subexpr_is_try {
-            parent_shape.block_indent(context.config.tab_spaces())
+            parent_shape
+                .block_indent(context.config.tab_spaces())
+                .with_max_width(context.config)
         } else {
             chain_indent(context, shape.add_offset(parent_rewrite.len()))
         };
@@ -143,7 +145,12 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     } else if parent_rewrite_contains_newline {
         (chain_indent(context, parent_shape), false)
     } else {
-        (shape.block_indent(context.config.tab_spaces()), false)
+        (
+            shape
+                .block_indent(context.config.tab_spaces())
+                .with_max_width(context.config),
+            false,
+        )
     };
 
     let other_child_shape = nested_shape.with_max_width(context.config);
@@ -176,10 +183,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     // Total of all items excluding the last.
     let last_non_try_index = rewrites.len() - (1 + trailing_try_num);
-    let almost_total = rewrites[..last_non_try_index].iter().fold(
-        0,
-        |a, b| a + first_line_width(b),
-    ) + parent_rewrite.len();
+    let almost_total = rewrites[..last_non_try_index]
+        .iter()
+        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
         parent_rewrite.len();
 
@@ -234,11 +240,12 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         }
     }
 
-    // Try overflowing the last element if we are using block indent.
+    // Try overflowing the last element if we are using block indent and it goes multi line
+    // or it fits in a single line but goes over the max width.
     if !fits_single_line && context.use_block_indent() {
         let (init, last) = rewrites.split_at_mut(last_non_try_index);
         let almost_single_line = init.iter().all(|s| !s.contains('\n'));
-        if almost_single_line {
+        if almost_single_line && last[0].contains('\n') {
             let overflow_shape = Shape {
                 width: one_line_budget,
                 ..parent_shape

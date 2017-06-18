@@ -1077,10 +1077,8 @@ impl<'a> ControlFlow<'a> {
 
             let new_width = try_opt!(new_width.checked_sub(if_str.len()));
             let else_expr = &else_node.stmts[0];
-            let else_str = try_opt!(else_expr.rewrite(
-                context,
-                Shape::legacy(new_width, Indent::empty()),
-            ));
+            let else_str =
+                try_opt!(else_expr.rewrite(context, Shape::legacy(new_width, Indent::empty())));
 
             if if_str.contains('\n') || else_str.contains('\n') {
                 return None;
@@ -1298,19 +1296,17 @@ impl<'a> Rewrite for ControlFlow<'a> {
 
             let between_kwd_else_block = mk_sp(
                 self.block.span.hi,
-                context.codemap.span_before(
-                    mk_sp(self.block.span.hi, else_block.span.lo),
-                    "else",
-                ),
+                context
+                    .codemap
+                    .span_before(mk_sp(self.block.span.hi, else_block.span.lo), "else"),
             );
             let between_kwd_else_block_comment =
                 extract_comment(between_kwd_else_block, context, shape);
 
             let after_else = mk_sp(
-                context.codemap.span_after(
-                    mk_sp(self.block.span.hi, else_block.span.lo),
-                    "else",
-                ),
+                context
+                    .codemap
+                    .span_after(mk_sp(self.block.span.hi, else_block.span.lo), "else"),
                 else_block.span.lo,
             );
             let after_else_comment = extract_comment(after_else, context, shape);
@@ -1328,10 +1324,9 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 write!(
                     &mut result,
                     "{}else{}",
-                    between_kwd_else_block_comment.as_ref().map_or(
-                        between_sep,
-                        |s| &**s,
-                    ),
+                    between_kwd_else_block_comment
+                        .as_ref()
+                        .map_or(between_sep, |s| &**s),
                     after_else_comment.as_ref().map_or(after_sep, |s| &**s)
                 ).ok()
             );
@@ -1478,10 +1473,9 @@ fn rewrite_match(
 
     let arm_indent_str = arm_shape.indent.to_string(context.config);
 
-    let open_brace_pos = context.codemap.span_after(
-        mk_sp(cond.span.hi, arm_start_pos(&arms[0])),
-        "{",
-    );
+    let open_brace_pos = context
+        .codemap
+        .span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])), "{");
 
     for (i, arm) in arms.iter().enumerate() {
         // Make sure we get the stuff between arms.
@@ -2051,10 +2045,8 @@ where
 
 fn need_block_indent(s: &str, shape: Shape) -> bool {
     s.lines().skip(1).any(|s| {
-        s.find(|c| !char::is_whitespace(c)).map_or(
-            false,
-            |w| w + 1 < shape.indent.width(),
-        )
+        s.find(|c| !char::is_whitespace(c))
+            .map_or(false, |w| w + 1 < shape.indent.width())
     })
 }
 
@@ -2271,10 +2263,8 @@ fn can_be_overflowed<'a, T>(context: &RewriteContext, args: &[&T]) -> bool
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
-    args.last().map_or(
-        false,
-        |x| x.can_be_overflowed(context, args.len()),
-    )
+    args.last()
+        .map_or(false, |x| x.can_be_overflowed(context, args.len()))
 }
 
 pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: usize) -> bool {
@@ -2541,10 +2531,9 @@ fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> 
             Some(e) => Some(format!("{}{}{}{}", attrs_str, name, separator, e)),
             None => {
                 let expr_offset = shape.indent.block_indent(context.config);
-                let expr = field.expr.rewrite(
-                    context,
-                    Shape::indented(expr_offset, context.config),
-                );
+                let expr = field
+                    .expr
+                    .rewrite(context, Shape::indented(expr_offset, context.config));
                 expr.map(|s| {
                     format!(
                         "{}{}:\n{}{}",
@@ -2729,7 +2718,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
             0
         };
     // 1 = space between operator and rhs.
-    let orig_shape = try_opt!(shape.block_indent(0).offset_left(last_line_width + 1));
+    let orig_shape = try_opt!(shape.offset_left(last_line_width + 1));
     let rhs = match ex.node {
         ast::ExprKind::Mac(ref mac) => {
             match rewrite_macro(mac, None, context, orig_shape, MacroPosition::Expression) {
@@ -2761,9 +2750,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
             // FIXME: DRY!
             match (rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref replacement_rhs))
-                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 ||
-                           (orig_rhs.rewrite(context, shape).is_none() &&
-                                replacement_rhs.rewrite(context, new_shape).is_some()) => {
+                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 => {
                     result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }
