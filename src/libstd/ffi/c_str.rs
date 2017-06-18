@@ -893,6 +893,31 @@ impl CStr {
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
     /// [`str`]: ../primitive.str.html
+    ///
+    /// # Examples
+    ///
+    /// Calling `to_string_lossy` on a `CStr` containing valid UTF-8:
+    ///
+    /// ```
+    /// use std::borrow::Cow;
+    /// use std::ffi::CStr;
+    ///
+    /// let c_str = CStr::from_bytes_with_nul(b"Hello World\0").unwrap();
+    /// assert_eq!(c_str.to_string_lossy(), Cow::Borrowed("Hello World"));
+    /// ```
+    ///
+    /// Calling `to_string_lossy` on a `CStr` containing invalid UTF-8:
+    ///
+    /// ```
+    /// use std::borrow::Cow;
+    /// use std::ffi::CStr;
+    ///
+    /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0").unwrap();
+    /// assert_eq!(
+    ///     c_str.to_string_lossy(),
+    ///     Cow::Owned(String::from("Hello �World")) as Cow<str>
+    /// );
+    /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self.to_bytes())
