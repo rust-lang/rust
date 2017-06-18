@@ -894,6 +894,15 @@ impl CStr {
     /// > check whenever this method is called.
     ///
     /// [`&str`]: ../primitive.str.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CStr;
+    ///
+    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// assert_eq!(c_str.to_str(), Ok("foo"));
+    /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // NB: When CStr is changed to perform the length check in .to_bytes()
