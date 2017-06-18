@@ -800,6 +800,15 @@ impl CStr {
     /// > **Note**: This method is currently implemented as a 0-cost cast, but
     /// > it is planned to alter its definition in the future to perform the
     /// > length calculation whenever this method is called.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CStr;
+    ///
+    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// assert_eq!(c_str.to_bytes(), b"foo");
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes(&self) -> &[u8] {
