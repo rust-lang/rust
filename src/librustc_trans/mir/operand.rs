@@ -27,6 +27,7 @@ use std::fmt;
 use std::ptr;
 
 use super::{MirContext, LocalRef};
+use super::constant::Const;
 use super::lvalue::{Alignment, LvalueRef};
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -84,23 +85,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                    ty: Ty<'tcx>) -> OperandRef<'tcx> {
         assert!(common::type_is_zero_size(ccx, ty));
         let llty = type_of::type_of(ccx, ty);
-        let val = if common::type_is_imm_pair(ccx, ty) {
-            let layout = ccx.layout_of(ty);
-            let (ix0, ix1) = if let Layout::Univariant { ref variant, .. } = *layout {
-                (adt::struct_llfields_index(variant, 0),
-                adt::struct_llfields_index(variant, 1))
-            } else {
-                (0, 1)
-            };
-            let fields = llty.field_types();
-            OperandValue::Pair(C_undef(fields[ix0]), C_undef(fields[ix1]))
-        } else {
-            OperandValue::Immediate(C_undef(llty))
-        };
-        OperandRef {
-            val,
-            ty,
-        }
+        Const::new(C_undef(llty), ty).to_operand(ccx)
     }
 
     /// Asserts that this operand refers to a scalar and returns

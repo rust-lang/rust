@@ -737,20 +737,17 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     mir::CastKind::Misc => { // Casts from a fat-ptr.
-                        let ll_cast_ty = type_of::immediate_type_of(self.ccx, cast_ty);
-                        let ll_from_ty = type_of::immediate_type_of(self.ccx, operand.ty);
                         if common::type_is_fat_ptr(self.ccx, operand.ty) {
-                            let (data_ptr, meta_ptr) = operand.get_fat_ptr(self.ccx);
+                            let (data_ptr, meta) = operand.get_fat_ptr(self.ccx);
                             if common::type_is_fat_ptr(self.ccx, cast_ty) {
-                                let ll_cft = ll_cast_ty.field_types();
-                                let ll_fft = ll_from_ty.field_types();
-                                let data_cast = consts::ptrcast(data_ptr, ll_cft[0]);
-                                assert_eq!(ll_cft[1].kind(), ll_fft[1].kind());
-                                C_struct(self.ccx, &[data_cast, meta_ptr], false)
+                                let llcast_ty = type_of::fat_ptr_base_ty(self.ccx, cast_ty);
+                                let data_cast = consts::ptrcast(data_ptr, llcast_ty);
+                                C_struct(self.ccx, &[data_cast, meta], false)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                consts::ptrcast(data_ptr, ll_cast_ty)
+                                let llcast_ty = type_of::immediate_type_of(self.ccx, cast_ty);
+                                consts::ptrcast(data_ptr, llcast_ty)
                             }
                         } else {
                             bug!("Unexpected non-fat-pointer operand")

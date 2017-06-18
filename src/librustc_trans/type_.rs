@@ -249,19 +249,6 @@ impl Type {
         }
     }
 
-    pub fn field_types(&self) -> Vec<Type> {
-        unsafe {
-            let n_elts = llvm::LLVMCountStructElementTypes(self.to_ref()) as usize;
-            if n_elts == 0 {
-                return Vec::new();
-            }
-            let mut elts = vec![Type { rf: ptr::null_mut() }; n_elts];
-            llvm::LLVMGetStructElementTypes(self.to_ref(),
-                                            elts.as_mut_ptr() as *mut TypeRef);
-            elts
-        }
-    }
-
     pub fn func_params(&self) -> Vec<Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as usize;

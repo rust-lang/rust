@@ -564,8 +564,6 @@ extern "C" {
                                    ElementCount: c_uint,
                                    Packed: Bool)
                                    -> TypeRef;
-    pub fn LLVMCountStructElementTypes(StructTy: TypeRef) -> c_uint;
-    pub fn LLVMGetStructElementTypes(StructTy: TypeRef, Dest: *mut TypeRef);
     pub fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
 
     // Operations on array, pointer, and vector types (sequence types)

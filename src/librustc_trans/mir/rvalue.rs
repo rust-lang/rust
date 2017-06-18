@@ -258,19 +258,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         }
                     }
                     mir::CastKind::Misc if common::type_is_fat_ptr(bcx.ccx, operand.ty) => {
-                        let ll_cast_ty = type_of::immediate_type_of(bcx.ccx, cast_ty);
-                        let ll_from_ty = type_of::immediate_type_of(bcx.ccx, operand.ty);
-                        if let OperandValue::Pair(data_ptr, meta_ptr) = operand.val {
+                        if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if common::type_is_fat_ptr(bcx.ccx, cast_ty) {
-                                let ll_cft = ll_cast_ty.field_types();
-                                let ll_fft = ll_from_ty.field_types();
-                                let data_cast = bcx.pointercast(data_ptr, ll_cft[0]);
-                                assert_eq!(ll_cft[1].kind(), ll_fft[1].kind());
-                                OperandValue::Pair(data_cast, meta_ptr)
+                                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, cast_ty);
+                                let data_cast = bcx.pointercast(data_ptr, llcast_ty);
+                                OperandValue::Pair(data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llval = bcx.pointercast(data_ptr, ll_cast_ty);
+                                let llcast_ty = type_of::immediate_type_of(bcx.ccx, cast_ty);
+                                let llval = bcx.pointercast(data_ptr, llcast_ty);
                                 OperandValue::Immediate(llval)
                             }
                         } else {
