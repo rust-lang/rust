@@ -10,7 +10,7 @@ fn simple(
         key: &[u8],
         upd: Box<
             Fn(Option<&memcache::Item>)
-               -> (memcache::Status, Result<memcache::Item, Option<String>>),
+                -> (memcache::Status, Result<memcache::Item, Option<String>>),
         >,
     ) -> MapResult {
     }
@@ -34,15 +34,16 @@ fn weird_comment(
 
 fn generic<T>(arg: T) -> &SomeType
 where
-    T: Fn(// First arg
-       A,
-       // Second argument
-       B,
-       C,
-       D,
-       // pre comment
-       E /* last comment */)
-       -> &SomeType,
+    T: Fn(
+        // First arg
+        A,
+        // Second argument
+        B,
+        C,
+        D,
+        // pre comment
+        E, /* last comment */
+    ) -> &SomeType,
 {
     arg(a, b, c, d, e)
 }
@@ -68,13 +69,14 @@ unsafe fn generic_call(
     argc: libc::c_uint,
     vp: *mut JSVal,
     is_lenient: bool,
-    call: unsafe extern "C" fn(*const JSJitInfo,
-                               *mut JSContext,
-                               HandleObject,
-                               *mut libc::c_void,
-                               u32,
-                               *mut JSVal)
-                               -> u8,
+    call: unsafe extern "C" fn(
+        *const JSJitInfo,
+        *mut JSContext,
+        HandleObject,
+        *mut libc::c_void,
+        u32,
+        *mut JSVal,
+    ) -> u8,
 ) {
     let f: fn(_, _) -> _ = panic!();
 }

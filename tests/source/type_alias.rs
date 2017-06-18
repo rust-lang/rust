@@ -28,3 +28,7 @@ pub type Exactly100CharstoEqualWhereTest<T, U, PARAMET> where T: Clone + Ord + E
 pub type Exactly101CharstoEqualWhereTest<T, U, PARAMETE> where T: Clone + Ord + Eq + SomeOtherTrait = Option<T>;
 
 type RegisterPlugin = unsafe fn(pt: *const c_char, plugin: *mut c_void, data: *mut CallbackData);
+
+// #1683
+pub type Between<Lhs, Rhs> = super::operators::Between<Lhs, super::operators::And<AsExpr<Rhs, Lhs>, AsExpr<Rhs, Lhs>>>;
+pub type NotBetween<Lhs, Rhs> = super::operators::NotBetween<Lhs, super::operators::And<AsExpr<Rhs, Lhs>, AsExpr<Rhs, Lhs>>>;

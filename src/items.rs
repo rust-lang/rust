@@ -705,16 +705,17 @@ fn format_impl_ref_and_type(
             Some(ref tr) => tr.path.span.lo,
             None => self_ty.span.lo,
         };
-        let shape = generics_shape_from_config(
+        let shape = try_opt!(generics_shape_from_config(
             context.config,
             Shape::indented(offset + last_line_width(&result), context.config),
             0,
-        );
+        ));
+        let one_line_budget = try_opt!(shape.width.checked_sub(last_line_width(&result) + 2));
         let generics_str = try_opt!(rewrite_generics_inner(
             context,
             generics,
             shape,
-            shape.width,
+            one_line_budget,
             mk_sp(lo, hi),
         ));
 
@@ -927,7 +928,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let trait_bound_str = try_opt!(rewrite_trait_bounds(
             context,
             type_param_bounds,
-            Shape::legacy(context.config.max_width(), offset),
+            Shape::indented(offset, context.config),
         ));
         // If the trait, generics, and trait bound cannot fit on the same line,
         // put the trait bounds on an indented new line
@@ -1591,7 +1592,7 @@ pub fn rewrite_associated_type(
     let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
-        let shape = Shape::legacy(context.config.max_width(), indent);
+        let shape = Shape::indented(indent, context.config);
         let bounds: &[_] = ty_param_bounds;
         let bound_str = try_opt!(
             bounds
@@ -1900,7 +1901,8 @@ fn rewrite_fn_base(
 
     if context.config.fn_args_layout() == IndentStyle::Block {
         arg_indent = indent.block_indent(context.config);
-        multi_line_budget = context.config.max_width() - arg_indent.width();
+        // 1 = ","
+        multi_line_budget = context.config.max_width() - (arg_indent.width() + 1);
     }
 
     debug!(
@@ -2386,9 +2388,11 @@ fn rewrite_generics(
     shape: Shape,
     span: Span,
 ) -> Option<String> {
-    let shape = generics_shape_from_config(context.config, shape, 0);
-    rewrite_generics_inner(context, generics, shape, shape.width, span)
-        .or_else(|| rewrite_generics_inner(context, generics, shape, 0, span))
+    let g_shape = try_opt!(generics_shape_from_config(context.config, shape, 0));
+    let one_line_width = try_opt!(shape.width.checked_sub(2));
+    rewrite_generics_inner(context, generics, g_shape, one_line_width, span).or_else(|| {
+        rewrite_generics_inner(context, generics, g_shape, 0, span)
+    })
 }
 
 fn rewrite_generics_inner(
@@ -2435,14 +2439,17 @@ fn rewrite_generics_inner(
     format_generics_item_list(context, items, shape, one_line_width)
 }
 
-pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) -> Shape {
-    Shape {
-        // 2 = `<>`
-        width: shape.width.checked_sub(offset + 2).unwrap_or(0),
-        ..match config.generics_indent() {
-              IndentStyle::Visual => shape.visual_indent(1 + offset),
-              IndentStyle::Block => shape.block().block_indent(config.tab_spaces()),
-          }
+pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) -> Option<Shape> {
+    match config.generics_indent() {
+        IndentStyle::Visual => shape.visual_indent(1 + offset).sub_width(offset + 2),
+        IndentStyle::Block => {
+            // 1 = ","
+            shape
+                .block()
+                .block_indent(config.tab_spaces())
+                .with_max_width(config)
+                .sub_width(1)
+        }
     }
 }
 
@@ -2531,7 +2538,7 @@ fn rewrite_where_clause_rfc_style(
     snuggle: bool,
     span_end: Option<BytePos>,
 ) -> Option<String> {
-    let block_shape = shape.block();
+    let block_shape = shape.block().with_max_width(context.config);
 
     let starting_newline = if snuggle {
         " ".to_owned()
@@ -2553,7 +2560,7 @@ fn rewrite_where_clause_rfc_style(
         terminator,
         |pred| span_for_where_pred(pred).lo,
         |pred| span_for_where_pred(pred).hi,
-        |pred| pred.rewrite(context, shape),
+        |pred| pred.rewrite(context, block_shape),
         span_start,
         span_end,
     );

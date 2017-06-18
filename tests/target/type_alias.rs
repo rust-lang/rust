@@ -26,8 +26,9 @@ pub type LongGenericListTest<
 
 pub type Exactly100CharsTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAME, A, B> = Vec<i32>;
 
-pub type Exactly101CharsTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAME, A, B> =
-    Vec<Test>;
+pub type Exactly101CharsTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAME, A, B> = Vec<
+    Test,
+>;
 
 pub type Exactly100CharsToEqualTest<'a, 'b, 'c, 'd, LONGPARAMETERNAME, LONGPARAMETERNAME, A, B, C> =
     Vec<i32>;
@@ -61,6 +62,14 @@ pub type Exactly100CharstoEqualWhereTest<T, U, PARAMET> where
 pub type Exactly101CharstoEqualWhereTest<T, U, PARAMETE> where
     T: Clone + Ord + Eq + SomeOtherTrait = Option<T>;
 
-type RegisterPlugin = unsafe fn(pt: *const c_char,
-                                plugin: *mut c_void,
-                                data: *mut CallbackData);
+type RegisterPlugin = unsafe fn(pt: *const c_char, plugin: *mut c_void, data: *mut CallbackData);
+
+// #1683
+pub type Between<Lhs, Rhs> = super::operators::Between<
+    Lhs,
+    super::operators::And<AsExpr<Rhs, Lhs>, AsExpr<Rhs, Lhs>>,
+>;
+pub type NotBetween<Lhs, Rhs> = super::operators::NotBetween<
+    Lhs,
+    super::operators::And<AsExpr<Rhs, Lhs>, AsExpr<Rhs, Lhs>>,
+>;
