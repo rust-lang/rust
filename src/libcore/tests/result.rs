@@ -214,7 +214,7 @@ fn test_try() {
     assert_eq!(try_result_some(), Some(1));
 
     fn try_result_none() -> Option<u8> {
-        let val = Err(Missing)?;
+        let val = Err(NoneError)?;
         Some(val)
     }
     assert_eq!(try_result_none(), None);
