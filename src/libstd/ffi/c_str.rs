@@ -708,6 +708,24 @@ impl CStr {
     /// let cstr = CStr::from_bytes_with_nul(b"hello\0");
     /// assert!(cstr.is_ok());
     /// ```
+    ///
+    /// Creating a `CStr` without a trailing nul byte is an error:
+    ///
+    /// ```
+    /// use std::ffi::CStr;
+    ///
+    /// let c_str = CStr::from_bytes_with_nul(b"hello");
+    /// assert!(c_str.is_err());
+    /// ```
+    ///
+    /// Creating a `CStr` with an interior nul byte is an error:
+    ///
+    /// ```
+    /// use std::ffi::CStr;
+    ///
+    /// let c_str = CStr::from_bytes_with_nul(b"he\0llo\0");
+    /// assert!(c_str.is_err());
+    /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub fn from_bytes_with_nul(bytes: &[u8])
                                -> Result<&CStr, FromBytesWithNulError> {
