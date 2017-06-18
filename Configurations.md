@@ -263,6 +263,40 @@ let (lorem, ipsum, _, _) = (1, 2, 3, 4);
 let (lorem, ipsum, ..) = (1, 2, 3, 4);
 ```
 
+## `control_style`
+
+Indent style for control flow statements
+
+- **Default value**: `"Rfc"`
+- **Possible values**: `"Rfc"`, `"Legacy"`
+
+#### `"Rfc"`:
+
+```rust
+// Conditional expression containing line-break
+if lorem(
+    ipsum,
+    dolor,
+)
+{
+    // ...
+}
+```
+
+#### `"Legacy"`:
+
+```rust
+// Conditional expression containing line-break
+if lorem(
+    ipsum,
+    dolor,
+) {
+    // ...
+}
+```
+
+See also: [`control_brace_style`](#control_brace_style).
+
 ## `control_brace_style`
 
 Brace style for control flow constructs
