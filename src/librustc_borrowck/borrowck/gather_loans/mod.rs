@@ -291,6 +291,33 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         }
     }
 
+    fn loan_scope_from_region(loan_region: &ty::Region<'tcx>) -> region::CodeExtent {
+        match *loan_region {
+            ty::ReScope(scope) => scope,
+
+            ty::ReEarlyBound(ref br) => {
+                self.bccx.region_maps.early_free_extent(self.tcx(), br)
+            }
+
+            ty::ReFree(ref fr) => {
+                self.bccx.region_maps.free_extent(self.tcx(), fr)
+            }
+
+            ty::ReStatic => self.item_ub,
+
+            ty::ReEmpty |
+            ty::ReLateBound(..) |
+            ty::ReVar(..) |
+            ty::ReSkolemized(..) |
+            ty::ReErased => {
+                span_bug!(
+                    cmt.span,
+                    "invalid borrow lifetime: {:?}",
+                    loan_region);
+            }
+        }
+    }
+
     /// Guarantees that `addr_of(cmt)` will be valid for the duration of `static_scope_r`, or
     /// reports an error.  This may entail taking out loans, which will be added to the
     /// `req_loan_map`.
@@ -345,30 +372,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         // Create the loan record (if needed).
         let loan = match restr {
             RestrictionResult::Safe => {
-                let loan_scope = match *loan_region {
-                    ty::ReScope(scope) => scope,
-
-                    ty::ReEarlyBound(ref br) => {
-                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
-                    }
-
-                    ty::ReFree(ref fr) => {
-                        self.bccx.region_maps.free_extent(self.tcx(), fr)
-                    }
-
-                    ty::ReStatic => self.item_ub,
-
-                    ty::ReEmpty |
-                    ty::ReLateBound(..) |
-                    ty::ReVar(..) |
-                    ty::ReSkolemized(..) |
-                    ty::ReErased => {
-                        span_bug!(
-                            cmt.span,
-                            "invalid borrow lifetime: {:?}",
-                            loan_region);
-                    }
-                };
+                let loan_scope = loan_scope_from_region(loan_region);
                 debug!("loan_scope = {:?}", loan_scope);
 
                 let borrow_scope = region::CodeExtent::Misc(borrow_id);
@@ -386,30 +390,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             }
 
             RestrictionResult::SafeIf(loan_path, restricted_paths) => {
-                let loan_scope = match *loan_region {
-                    ty::ReScope(scope) => scope,
-
-                    ty::ReEarlyBound(ref br) => {
-                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
-                    }
-
-                    ty::ReFree(ref fr) => {
-                        self.bccx.region_maps.free_extent(self.tcx(), fr)
-                    }
-
-                    ty::ReStatic => self.item_ub,
-
-                    ty::ReEmpty |
-                    ty::ReLateBound(..) |
-                    ty::ReVar(..) |
-                    ty::ReSkolemized(..) |
-                    ty::ReErased => {
-                        span_bug!(
-                            cmt.span,
-                            "invalid borrow lifetime: {:?}",
-                            loan_region);
-                    }
-                };
+                let loan_scope = loan_scope_from_region(loan_region);
                 debug!("loan_scope = {:?}", loan_scope);
 
                 let borrow_scope = region::CodeExtent::Misc(borrow_id);
