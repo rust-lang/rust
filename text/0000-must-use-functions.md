@@ -78,6 +78,14 @@ fn qux() {
 }
 ```
 
+The primary motivation is to mark `PartialEq` functions as `#[must_use]`:
+
+```
+#[must_use = "the result of testing for equality should not be discarded"]
+fn eq(&self, other: &Rhs) -> bool;
+```
+
+The same thing for `ne`, and also `lt`, `gt`, `ge`, `gt` in `PartialOrd`. There is no reason to discard the results of those operations.
 
 # Drawbacks
 
