@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// #41425 -- error message "mismatched types" has wrong types
+#![feature(rustc_attrs)]
+#![allow(warnings)]
 
-fn plus_one(x: i32) -> i32 {
-    x + 1;
-}
+trait A<T> {}
+struct B<T> where B<T>: A<B<T>> { t: T }
 
-fn foo() -> Result<u8, u64> {
-    Ok(1);
-}
-
-fn main() {
-    let x = plus_one(5);
-    println!("X = {}", x);
+#[rustc_error]
+fn main() { //~ ERROR compilation successful
 }
