@@ -1840,7 +1840,7 @@ See also: [`where_density`](#where_density), [`where_layout`](#where_layout), [`
 Overall strategy for where clauses
 
 - **Default value**: `"Rfc"`
-- **Possible values**: `"Default"`, `"Rfc"`
+- **Possible values**: `"Rfc"`, `"Legacy"`
 
 #### `"Default"`:
 
