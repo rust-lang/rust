@@ -1,3 +1,4 @@
+#![feature(iterator_step_by)]
 #![feature(step_by)]
 #![feature(inclusive_range_syntax)]
 #![feature(plugin)]
@@ -8,7 +9,7 @@ impl NotARange {
     fn step_by(&self, _: u32) {}
 }
 
-#[warn(range_step_by_zero, range_zip_with_len)]
+#[warn(iterator_step_by_zero, range_zip_with_len)]
 fn main() {
     (0..1).step_by(0);
     // No warning for non-zero step
@@ -28,4 +29,7 @@ fn main() {
     let v2 = vec![4,5];
     let _x = v1.iter().zip(0..v1.len());
     let _y = v1.iter().zip(0..v2.len()); // No error
+
+    // check const eval
+    let _ = v1.iter().step_by(2/3);
 }

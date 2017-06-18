@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.141
 * Rewrite of the `doc_markdown` lint.
+* Deprecated [`range_step_by_zero`]
+* New lint: [`iterator_step_by_zero`]
 
 ## 0.0.140 - 2017-06-16
 * Update to *rustc 1.19.0-nightly (258ae6dd9 2017-06-15)*
@@ -439,6 +441,7 @@ All notable changes to this project will be documented in this file.
 [`iter_next_loop`]: https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop
 [`iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#iter_nth
 [`iter_skip_next`]: https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next
+[`iterator_step_by_zero`]: https://github.com/Manishearth/rust-clippy/wiki#iterator_step_by_zero
 [`large_enum_variant`]: https://github.com/Manishearth/rust-clippy/wiki#large_enum_variant
 [`len_without_is_empty`]: https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty
 [`len_zero`]: https://github.com/Manishearth/rust-clippy/wiki#len_zero

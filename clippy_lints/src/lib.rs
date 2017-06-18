@@ -195,6 +195,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice",
     );
     store.register_removed(
+        "range_step_by_zero",
+        "`iterator.step_by(0)` panics nowadays",
+    );
+    store.register_removed(
         "unstable_as_slice",
         "`Vec::as_slice` has been stabilized in 1.7",
     );
@@ -490,7 +494,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,
         ptr::PTR_ARG,
-        ranges::RANGE_STEP_BY_ZERO,
+        ranges::ITERATOR_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
         reference::DEREF_ADDROF,
         regex::INVALID_REGEX,

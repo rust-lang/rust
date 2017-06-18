@@ -260,6 +260,7 @@ name                                                                            
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                                       | warn    | for-looping over `_.next()` which is probably not intended
 [iter_nth](https://github.com/Manishearth/rust-clippy/wiki#iter_nth)                                                   | warn    | using `.iter().nth()` on a standard library type with O(1) element access
 [iter_skip_next](https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next)                                       | warn    | using `.skip(x).next()` on an iterator
+[iterator_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#iterator_step_by_zero)                         | warn    | using `Iterator::step_by(0)`, which produces an infinite iterator
 [large_enum_variant](https://github.com/Manishearth/rust-clippy/wiki#large_enum_variant)                               | warn    | large size difference between variants on an enum
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                           | warn    | traits or impls with a public `len` method but no corresponding `is_empty` method
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                                   | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
@@ -321,7 +322,6 @@ name                                                                            
 [print_with_newline](https://github.com/Manishearth/rust-clippy/wiki#print_with_newline)                               | warn    | using `print!()` with a format string that ends in a newline
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                                     | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [pub_enum_variant_names](https://github.com/Manishearth/rust-clippy/wiki#pub_enum_variant_names)                       | allow   | enums where all variants share a prefix/postfix
-[range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                               | warn    | using `Range::step_by(0)`, which produces an infinite iterator
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                               | warn    | zipping iterator with a range when `enumerate()` would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                                 | warn    | redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 [redundant_closure_call](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure_call)                       | warn    | throwaway closures called in the expression they are defined
