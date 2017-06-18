@@ -765,7 +765,7 @@ impl<'a, 'tcx> CrateMetadata {
         assert!(!self.is_proc_macro(id));
         let ast = self.entry(id).ast.unwrap();
         let def_id = self.local_def_id(id);
-        let body = ast.decode(self).body.decode(self);
+        let body = ast.decode((self, tcx)).body.decode((self, tcx));
         tcx.hir.intern_inlined_body(def_id, body)
     }
 
@@ -1149,6 +1149,7 @@ impl<'a, 'tcx> CrateMetadata {
             // containing the information we need.
             let syntax_pos::FileMap { name,
                                       name_was_remapped,
+                                      src_hash,
                                       start_pos,
                                       end_pos,
                                       lines,
@@ -1174,6 +1175,7 @@ impl<'a, 'tcx> CrateMetadata {
             let local_version = local_codemap.new_imported_filemap(name,
                                                                    name_was_remapped,
                                                                    self.cnum.as_u32(),
+                                                                   src_hash,
                                                                    source_length,
                                                                    lines,
                                                                    multibyte_chars);

@@ -336,6 +336,8 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for FileMa
             crate_of_origin,
             // Do not hash the source as it is not encoded
             src: _,
+            src_hash,
+            external_src: _,
             start_pos,
             end_pos: _,
             ref lines,
@@ -349,6 +351,8 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for FileMa
             krate: CrateNum::from_u32(crate_of_origin),
             index: CRATE_DEF_INDEX,
         }.hash_stable(hcx, hasher);
+
+        src_hash.hash_stable(hcx, hasher);
 
         // We only hash the relative position within this filemap
         let lines = lines.borrow();

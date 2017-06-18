@@ -37,6 +37,7 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
+use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
 use std::{error, fmt};
 use std::rc::Rc;
@@ -49,7 +50,7 @@ pub mod registry;
 pub mod styled_buffer;
 mod lock;
 
-use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum RenderSpan {
@@ -103,6 +104,7 @@ pub trait CodeMapper {
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
+    fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool;
 }
 
 impl CodeSuggestion {
@@ -121,7 +123,7 @@ impl CodeSuggestion {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
-                         line_opt: Option<&str>,
+                         line_opt: Option<&Cow<str>>,
                          lo: &Loc,
                          hi_opt: Option<&Loc>) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
@@ -183,13 +185,13 @@ impl CodeSuggestion {
             let cur_lo = cm.lookup_char_pos(sp.lo);
             for (buf, substitute) in bufs.iter_mut().zip(substitutes) {
                 if prev_hi.line == cur_lo.line {
-                    push_trailing(buf, prev_line, &prev_hi, Some(&cur_lo));
+                    push_trailing(buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
                 } else {
-                    push_trailing(buf, prev_line, &prev_hi, None);
+                    push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
                     // push lines between the previous and current span (if any)
                     for idx in prev_hi.line..(cur_lo.line - 1) {
                         if let Some(line) = fm.get_line(idx) {
-                            buf.push_str(line);
+                            buf.push_str(line.as_ref());
                             buf.push('\n');
                         }
                     }
@@ -205,7 +207,7 @@ impl CodeSuggestion {
         for buf in &mut bufs {
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
-                push_trailing(buf, prev_line, &prev_hi, None);
+                push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
             }
             // remove trailing newline
             buf.pop();

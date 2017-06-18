@@ -17,6 +17,7 @@ use RenderSpan::*;
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
+use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -131,7 +132,7 @@ impl EmitterWriter {
         }
     }
 
-    fn preprocess_annotations(&self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
+    fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
                                   file: Rc<FileMap>,
                                   line_index: usize,
@@ -175,6 +176,7 @@ impl EmitterWriter {
                 if span_label.span == DUMMY_SP {
                     continue;
                 }
+
                 let lo = cm.lookup_char_pos(span_label.span.lo);
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
 
@@ -890,10 +892,10 @@ impl EmitterWriter {
         let mut annotated_files = self.preprocess_annotations(msp);
 
         // Make sure our primary file comes first
-        let primary_lo = if let (Some(ref cm), Some(ref primary_span)) =
+        let (primary_lo, cm) = if let (Some(cm), Some(ref primary_span)) =
             (self.cm.as_ref(), msp.primary_span().as_ref()) {
             if primary_span != &&DUMMY_SP {
-                cm.lookup_char_pos(primary_span.lo)
+                (cm.lookup_char_pos(primary_span.lo), cm)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst)?;
                 return Ok(());
@@ -911,7 +913,7 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if annotated_file.file.src.is_none() {
+            if !cm.ensure_filemap_source_present(annotated_file.file.clone()) {
                 continue;
             }
 
@@ -1012,7 +1014,7 @@ impl EmitterWriter {
                     } else if line_idx_delta == 2 {
                         let unannotated_line = annotated_file.file
                             .get_line(annotated_file.lines[line_idx].line_index)
-                            .unwrap_or("");
+                            .unwrap_or_else(|| Cow::from(""));
 
                         let last_buffer_line_num = buffer.num_lines();
 
