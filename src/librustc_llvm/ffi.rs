@@ -600,10 +600,7 @@ extern "C" {
     pub fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
     pub fn LLVMConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
     pub fn LLVMConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
-    // only for isize/vector
     pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
-    pub fn LLVMIsNull(Val: ValueRef) -> Bool;
-    pub fn LLVMIsUndef(Val: ValueRef) -> Bool;
 
     // Operations on metadata
     pub fn LLVMMDStringInContext(C: ContextRef, Str: *const c_char, SLen: c_uint) -> ValueRef;
