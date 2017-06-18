@@ -85,7 +85,7 @@ The primary motivation is to mark `PartialEq` functions as `#[must_use]`:
 fn eq(&self, other: &Rhs) -> bool;
 ```
 
-The same thing for `ne`, and also `lt`, `gt`, `ge`, `gt` in `PartialOrd`. There is no reason to discard the results of those operations.
+The same thing for `ne`, and also `lt`, `gt`, `ge`, `gt` in `PartialOrd`. There is no reason to discard the results of those operations. This means the `impl`s of these functions are not changed, it still issues a warning even for a custom `impl`.
 
 # Drawbacks
 
@@ -111,6 +111,8 @@ improving/expanding lints.
 - Adjust the rule to propagate `#[must_used]`ness through parentheses
   and blocks, so that `(foo());`, `{ foo() };` and even `if cond {
   foo() } else { 0 };` are linted.
+  
+- Should we let particular `impl`s of a function have this attribute? Current design allows you to attach it inside the declaration of the trait.
 
 # Unresolved questions
 
