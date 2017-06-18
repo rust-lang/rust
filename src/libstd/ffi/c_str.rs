@@ -826,6 +826,15 @@ impl CStr {
     /// > length calculation whenever this method is called.
     ///
     /// [`to_bytes`]: #method.to_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CStr;
+    ///
+    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").unwrap();
+    /// assert_eq!(c_str.to_bytes_with_nul(), b"foo\0");
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
