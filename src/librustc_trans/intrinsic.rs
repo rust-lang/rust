@@ -11,7 +11,6 @@
 #![allow(non_upper_case_globals)]
 
 use intrinsics::{self, Intrinsic};
-use libc;
 use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType};
@@ -1072,7 +1071,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
                 let arg_idx = i;
-                let val = const_get_elt(vector, &[i as libc::c_uint]);
+                let val = const_get_elt(vector, i);
                 match const_to_opt_u128(val, true) {
                     None => {
                         emit_error!("shuffle index #{} is not a constant", arg_idx);

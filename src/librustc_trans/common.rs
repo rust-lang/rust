@@ -356,13 +356,13 @@ pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(v: ValueRef, us: &[c_uint])
-              -> ValueRef {
+pub fn const_get_elt(v: ValueRef, i: usize) -> ValueRef {
     unsafe {
+        let us = &[i as c_uint];
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
-        debug!("const_get_elt(v={:?}, us={:?}, r={:?})",
-               Value(v), us, Value(r));
+        debug!("const_get_elt(v={:?}, i={}, r={:?})",
+               Value(v), i, Value(r));
 
         r
     }
@@ -399,19 +399,6 @@ pub fn const_to_opt_u128(v: ValueRef, sign_ext: bool) -> Option<u128> {
         } else {
             None
         }
-    }
-}
-
-pub fn is_undef(val: ValueRef) -> bool {
-    unsafe {
-        llvm::LLVMIsUndef(val) != False
-    }
-}
-
-#[allow(dead_code)] // potentially useful
-pub fn is_null(val: ValueRef) -> bool {
-    unsafe {
-        llvm::LLVMIsNull(val) != False
     }
 }
 

@@ -17,7 +17,7 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use adt;
 use base;
-use common::{self, CrateContext, C_null};
+use common::{self, CrateContext, C_undef};
 use builder::Builder;
 use value::Value;
 use type_of;
@@ -93,9 +93,9 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 (0, 1)
             };
             let fields = llty.field_types();
-            OperandValue::Pair(C_null(fields[ix0]), C_null(fields[ix1]))
+            OperandValue::Pair(C_undef(fields[ix0]), C_undef(fields[ix1]))
         } else {
-            OperandValue::Immediate(C_null(llty))
+            OperandValue::Immediate(C_undef(llty))
         };
         OperandRef {
             val,
@@ -134,14 +134,10 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
             // Reconstruct the immediate aggregate.
             let llty = type_of::type_of(bcx.ccx, self.ty);
-            let mut llpair = common::C_undef(llty);
+            let mut llpair = C_undef(llty);
             let elems = [a, b];
             for i in 0..2 {
-                let mut elem = elems[i];
-                // Extend boolean i1's to i8.
-                if common::val_ty(elem) == Type::i1(bcx.ccx) {
-                    elem = bcx.zext(elem, Type::i8(bcx.ccx));
-                }
+                let elem = base::from_immediate(bcx, elems[i]);
                 let layout = bcx.ccx.layout_of(self.ty);
                 let i = if let Layout::Univariant { ref variant, .. } = *layout {
                     adt::struct_llfields_index(variant, i)

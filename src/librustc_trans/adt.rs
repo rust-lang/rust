@@ -198,9 +198,14 @@ fn union_fill(cx: &CrateContext, size: Size, align: Align) -> Type {
     Type::array(&elem_ty, size / abi_align)
 }
 
-// Lookup `Struct::memory_index` and double it to account for padding
+/// Double an index to account for padding.
+pub fn memory_index_to_gep(index: usize) -> usize {
+    index * 2
+}
+
+/// Lookup `Struct::memory_index`, double it to account for padding.
 pub fn struct_llfields_index(variant: &layout::Struct, index: usize) -> usize {
-    (variant.memory_index[index] as usize) << 1
+    memory_index_to_gep(variant.memory_index[index] as usize)
 }
 
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,

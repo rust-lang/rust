@@ -252,7 +252,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
     // Double index to account for padding (FieldPath already uses `Struct::memory_index`)
     fn gepi_struct_llfields_path(self, bcx: &Builder, discrfield: &layout::FieldPath) -> ValueRef {
-        let path = discrfield.iter().map(|&i| (i as usize) << 1).collect::<Vec<_>>();
+        let path = discrfield.iter().map(|&i| {
+            adt::memory_index_to_gep(i as usize)
+        }).collect::<Vec<_>>();
         bcx.gepi(self.llval, &path)
     }
 
