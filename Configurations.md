@@ -1842,19 +1842,6 @@ Overall strategy for where clauses
 - **Default value**: `"Rfc"`
 - **Possible values**: `"Rfc"`, `"Legacy"`
 
-#### `"Default"`:
-
-```rust
-fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
-    where Ipsum: Eq,
-          Dolor: Eq,
-          Sit: Eq,
-          Amet: Eq
-{
-    // body
-}
-```
-
 #### `"Rfc"`:
 
 ```rust
@@ -1864,6 +1851,19 @@ where
     Dolor: Eq,
     Sit: Eq,
     Amet: Eq,
+{
+    // body
+}
+```
+
+#### `"Legacy"`:
+
+```rust
+fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
+    where Ipsum: Eq,
+          Dolor: Eq,
+          Sit: Eq,
+          Amet: Eq
 {
     // body
 }
