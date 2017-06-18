@@ -1,6 +1,6 @@
 [root]
 name = "rustfmt-nightly"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "diff 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
