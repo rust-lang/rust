@@ -896,24 +896,71 @@ mod trace {
         )
     }
 
-    fn write_traces_rec(file:&mut File, traces:&Vec<Rec>, depth:usize) {
+    fn html_of_fraction(frac:f64) -> (String, String) {
+        let css = { 
+            if       frac > 0.50  { format!("frac-50") }
+            else if  frac > 0.40  { format!("frac-40") }
+            else if  frac > 0.30  { format!("frac-30") }
+            else if  frac > 0.20  { format!("frac-20") }
+            else if  frac > 0.10  { format!("frac-10") }
+            else if  frac > 0.05  { format!("frac-05") }
+            else if  frac > 0.02  { format!("frac-02") }
+            else if  frac > 0.01  { format!("frac-01") }
+            else if  frac > 0.001 { format!("frac-001") }
+            else                  { format!("frac-0") } 
+        };
+        let percent = frac * 100 as f64;
+        if percent > 0.1 as f64 { (format!("{:.1}%", percent), css) }
+        else { (format!("< 0.1%", ), css) }
+    }
+
+    fn total_duration(traces:&Vec<Rec>) -> Duration {
+        let mut sum : Duration = Duration::new(0,0);
+        for t in traces.iter() {
+            sum += t.duration;
+        }
+        return sum
+    }
+
+    fn duration_div(nom:Duration, den:Duration) -> f64 {
+        let nom_sec = nom.as_secs();
+        let den_sec = den.as_secs();
+        let nom_nanos = nom.subsec_nanos();
+        let den_nanos = den.subsec_nanos();
+        if nom_sec == den_sec {
+            if nom_sec == 0 {
+                nom_nanos as f64 / den_nanos as f64
+            } else {
+                panic!("TODO")
+            }
+        } else {
+            panic!("TODO")
+        }
+    }
+
+    fn write_traces_rec(file:&mut File, traces:&Vec<Rec>, total:Duration, depth:usize) {
         for t in traces {
             let (eff_text, eff_css_classes) = html_of_effect(&t.effect);
             let (dur_text, dur_css_classes) = html_of_duration(&t.start, &t.duration);
-            write!(file, "<div class=\"depth-{} extent-{}{} {} {}\">\n",
+            let fraction = duration_div(t.duration, total);
+            let percent = fraction * 100 as f64;
+            let (frc_text, frc_css_classes) = html_of_fraction(fraction);
+            write!(file, "<div class=\"depth-{} extent-{}{} {} {} {}\">\n",
                    depth,
                    t.extent.len(),
-                   if t.extent.len() > 5 {
+                   if t.extent.len() > 5 || percent >= 1.0 as f64 {
                        // query symbol_name     has extent 5, and is very common
                        // query def_symbol_name has extent 6, and is somewhat common
-                       " extent-big"
+                       " important"
                    } else { "" },
-                   eff_css_classes,
+                   eff_css_classes,                   
                    dur_css_classes,
+                   frc_css_classes,
             ).unwrap();
             write!(file, "{}\n", eff_text).unwrap();
-            write!(file, "{}\n", dur_text).unwrap();
-            write_traces_rec(file, &t.extent, depth + 1);
+            write!(file, "<div class=\"dur\">{}</div>\n", dur_text).unwrap();
+            write!(file, "{}\n", frc_text).unwrap();
+            write_traces_rec(file, &t.extent, total, depth + 1);
             write!(file, "</div>\n").unwrap();
         }
     }
@@ -921,7 +968,8 @@ mod trace {
     pub fn write_traces(html_file:&mut File, _counts_file:&mut File, traces:&Vec<Rec>) {
         // FIXME(matthewhammer): Populate counts_file with counts for
         // each constructor (a histogram of constructor occurrences)
-        write_traces_rec(html_file, traces, 0)
+        let total : Duration = total_duration(traces);
+        write_traces_rec(html_file, traces, total, 0)
     }
 
     pub fn write_style(html_file:&mut File) {
@@ -948,15 +996,19 @@ div {
 .extent-0 {
     padding: 2px;
 }
-.extent-big {
+.important {
     border-width: 3px;
     font-size: 12px;
     color: white;
+    border-color: #f77;
 }
 .hit {
     padding: 0px;
     border-color: blue;
     border-width: 3px;
+}
+.dur {
+  display: none
 }
 ").unwrap();
     }
