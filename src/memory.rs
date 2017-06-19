@@ -141,7 +141,7 @@ pub struct Memory<'a, 'tcx> {
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
 
     /// pthreads-style thread-local storage.
-    thread_local: HashMap<TlsKey, TlsEntry<'tcx>>,
+    thread_local: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 
     /// The Key to use for the next thread-local allocation.
     next_thread_local: TlsKey,
@@ -162,7 +162,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             packed: BTreeSet::new(),
             static_alloc: HashSet::new(),
             literal_alloc_cache: HashMap::new(),
-            thread_local: HashMap::new(),
+            thread_local: BTreeMap::new(),
             next_thread_local: 0,
         }
     }
@@ -391,7 +391,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
     
-    /// Returns a dtor and its argument, if one is supposed to run
+    /// Returns a dtor, its argument and its index, if one is supposed to run
     ///
     /// An optional destructor function may be associated with each key value.
     /// At thread exit, if a key value has a non-NULL destructor pointer,
@@ -409,12 +409,16 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// with associated destructors, implementations may stop calling destructors,
     /// or they may continue calling destructors until no non-NULL values with
     /// associated destructors exist, even though this might result in an infinite loop.
-
-    pub(crate) fn fetch_tls_dtor(&mut self) -> Option<(ty::Instance<'tcx>, PrimVal)> {
-        for (_, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.iter_mut() {
+    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> Option<(ty::Instance<'tcx>, PrimVal, TlsKey)> {
+        use std::collections::Bound::*;
+        let start = match key {
+            Some(key) => Excluded(key),
+            None => Unbounded,
+        };
+        for (&key, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.range_mut((start, Unbounded)) {
             if *data != PrimVal::Bytes(0) {
                 if let Some(dtor) = dtor {
-                    let ret = Some((dtor, *data));
+                    let ret = Some((dtor, *data, key));
                     *data = PrimVal::Bytes(0);
                     return ret;
                 }

@@ -17,7 +17,7 @@ use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
-use memory::{Memory, Pointer};
+use memory::{Memory, Pointer, TlsKey};
 use operator;
 use value::{PrimVal, PrimValKind, Value};
 
@@ -100,6 +100,11 @@ pub enum StackPopCleanup {
     /// A regular stackframe added due to a function call will need to get forwarded to the next
     /// block
     Goto(mir::BasicBlock),
+    /// After finishing a tls destructor, find the next one instead of starting from the beginning
+    /// and thus just rerunning the first one until its `data` argument is null
+    ///
+    /// The index is the current tls destructor's index
+    Tls(Option<TlsKey>),
     /// The main function and diverging functions have nowhere to return to
     None,
 }
@@ -351,6 +356,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             StackPopCleanup::Goto(target) => self.goto_block(target),
             StackPopCleanup::None => {},
+            StackPopCleanup::Tls(key) => {
+                // either fetch the next dtor or start new from the beginning, if any are left with a non-null data
+                if let Some((instance, ptr, key)) = self.memory.fetch_tls_dtor(key).or_else(|| self.memory.fetch_tls_dtor(None)) {
+                    trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
+                    // TODO: Potentially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
+                    let mir = self.load_mir(instance.def)?;
+                    self.push_stack_frame(
+                        instance,
+                        mir.span,
+                        mir,
+                        Lvalue::zst(),
+                        StackPopCleanup::Tls(Some(key)),
+                    )?;
+                    let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
+                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                    let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
+                    self.write_primval(dest, ptr, ty)?;
+                }
+            }
         }
         // deallocate all locals that are backed by an allocation
         for local in frame.locals {
@@ -1630,8 +1654,8 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 start_instance,
                 start_mir.span,
                 start_mir,
-                Some(Lvalue::from_ptr(ret_ptr)),
-                StackPopCleanup::None,
+                Lvalue::from_ptr(ret_ptr),
+                StackPopCleanup::Tls(None),
             )?;
 
             let mut args = ecx.frame().mir.args_iter();
@@ -1657,8 +1681,8 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 main_instance,
                 main_mir.span,
                 main_mir,
-                Some(Lvalue::zst()),
-                StackPopCleanup::None,
+                Lvalue::zst(),
+                StackPopCleanup::Tls(None),
             )?;
         }
 

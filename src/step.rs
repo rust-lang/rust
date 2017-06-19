@@ -32,23 +32,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.clear_packed();
         self.inc_step_counter_and_check_limit(1)?;
         if self.stack.is_empty() {
-            if let Some((instance, ptr)) = self.memory.fetch_tls_dtor() {
-                trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
-                // TODO: Potientially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
-                let mir = self.load_mir(instance.def)?;
-                self.push_stack_frame(
-                    instance,
-                    mir.span,
-                    mir,
-                    Some(Lvalue::zst()),
-                    StackPopCleanup::None,
-                )?;
-                let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
-                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                self.write_primval(dest, ptr, ty)?;
-                return Ok(true);
-            }
             return Ok(false);
         }
 
