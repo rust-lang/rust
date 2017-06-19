@@ -24,6 +24,5 @@ error: boolean short circuit operator in statement may be clearer using an expli
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

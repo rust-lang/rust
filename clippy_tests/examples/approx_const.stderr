@@ -152,6 +152,5 @@ error: approximate value of `f{32, 64}::consts::SQRT_2` found. Consider using it
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

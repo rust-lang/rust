@@ -110,6 +110,5 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

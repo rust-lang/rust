@@ -64,6 +64,5 @@ error: Clike enum variant discriminant is not portable to 32-bit targets
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

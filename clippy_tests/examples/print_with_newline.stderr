@@ -32,6 +32,5 @@ error: using `print!()` with a format string that ends in a newline, consider us
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

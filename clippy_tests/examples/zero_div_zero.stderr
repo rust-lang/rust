@@ -68,6 +68,5 @@ error: constant division of 0.0 with 0.0 will always result in NaN
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

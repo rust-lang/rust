@@ -54,6 +54,5 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

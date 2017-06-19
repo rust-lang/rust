@@ -65,6 +65,5 @@ note: immutable borrow here
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

@@ -32,6 +32,5 @@ error: equality checks against false can be replaced by a negation
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

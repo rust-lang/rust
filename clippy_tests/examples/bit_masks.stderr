@@ -120,6 +120,5 @@ error: ineffective bit mask: `x | 1` compared to `8`, is the same as x compared 
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

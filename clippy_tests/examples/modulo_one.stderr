@@ -8,6 +8,5 @@ error: any number modulo 1 will be 0
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.
