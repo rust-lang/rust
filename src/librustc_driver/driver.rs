@@ -833,6 +833,7 @@ mod trace {
     use syntax_pos::Span;
     use self::ty::maps::QueryMsg;
     use std::fs::File;
+    use std::time::{Duration, Instant};
 
     #[derive(Debug,Clone,Eq,PartialEq)]
     pub struct Query {
@@ -848,13 +849,15 @@ mod trace {
     /// Recursive trace structure
     pub struct Rec {
         pub effect: Effect,
-        pub extent: Box<Vec<Rec>>
+        pub start: Instant,
+        pub duration: Duration,
+        pub extent: Box<Vec<Rec>>,
     }
     /// State for parsing recursive trace structure
     #[derive(Clone,Eq,PartialEq)]
     pub enum ParseState {
         NoQuery,
-        HaveQuery(Query),
+        HaveQuery(Query,Instant),
         //RunningProvider(Query),
     }
     pub struct StackFrame {
@@ -885,10 +888,19 @@ mod trace {
         }
     }
 
+    // First return value is text; second return value is a CSS class
+    fn html_of_duration(_start:&Instant, dur:&Duration) -> (String, String) {
+        use rustc::util::common::duration_to_secs_str;
+        (duration_to_secs_str(dur.clone()),
+         "".to_string()
+        )
+    }
+
     fn write_traces_rec(file:&mut File, traces:&Vec<Rec>, depth:usize) {
         for t in traces {
             let (eff_text, eff_css_classes) = html_of_effect(&t.effect);
-            write!(file, "<div class=\"depth-{} extent-{}{} {}\">\n",
+            let (dur_text, dur_css_classes) = html_of_duration(&t.start, &t.duration);
+            write!(file, "<div class=\"depth-{} extent-{}{} {} {}\">\n",
                    depth,
                    t.extent.len(),
                    if t.extent.len() > 5 {
@@ -897,8 +909,10 @@ mod trace {
                        " extent-big"
                    } else { "" },
                    eff_css_classes,
+                   dur_css_classes,
             ).unwrap();
             write!(file, "{}\n", eff_text).unwrap();
+            write!(file, "{}\n", dur_text).unwrap();
             write_traces_rec(file, &t.extent, depth + 1);
             write!(file, "</div>\n").unwrap();
         }
@@ -952,7 +966,7 @@ div {
 pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
     use self::trace::*;
     use std::fs::File;
-    //use std::sync::mpsc::*; // for Receiver
+    use std::time::{Instant};
 
     let mut queries  : Vec<ProfileQueriesMsg> = vec![];
     let mut frame    : StackFrame = StackFrame{ parse_st:ParseState::NoQuery, traces:vec![] };
@@ -1003,7 +1017,8 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     // Parse State: NoQuery
                     (ParseState::NoQuery,
                      ProfileQueriesMsg::QueryBegin(span,querymsg)) => {
-                        frame.parse_st = ParseState::HaveQuery(Query{span:span, msg:querymsg})
+                        let start = Instant::now();
+                        frame.parse_st = ParseState::HaveQuery(Query{span:span, msg:querymsg}, start)
                     },
                     (ParseState::NoQuery,
                      ProfileQueriesMsg::CacheHit) => {
@@ -1023,14 +1038,17 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                                 match old_frame.parse_st {
                                     ParseState::NoQuery =>
                                         panic!("parse error: expected a stack frame for a query"),
-                                    ParseState::HaveQuery(q) => {
+                                    ParseState::HaveQuery(q,start) => {
+                                        let duration = start.elapsed();
                                         frame = StackFrame{
                                             parse_st:ParseState::NoQuery,
                                             traces:old_frame.traces
                                         };
                                         let trace = Rec {
                                             effect: Effect::QueryBegin(q, CacheCase::Miss),
-                                            extent: Box::new(provider_extent)
+                                            extent: Box::new(provider_extent),
+                                            start: start,
+                                            duration: duration,
                                         };
                                         frame.traces.push( trace );
                                     }
@@ -1040,26 +1058,29 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     }
 
                     // Parse State: HaveQuery
-                    (ParseState::HaveQuery(q),
+                    (ParseState::HaveQuery(q,start),
                      ProfileQueriesMsg::CacheHit) => {
+                        let duration = start.elapsed();
                         let trace : Rec = Rec{
                             effect: Effect::QueryBegin(q, CacheCase::Hit),
-                            extent: Box::new(vec![])
+                            extent: Box::new(vec![]),
+                            start: start,
+                            duration: duration,
                         };
                         frame.traces.push( trace );
                         frame.parse_st = ParseState::NoQuery;
                     },
-                    (ParseState::HaveQuery(_q),
+                    (ParseState::HaveQuery(_,_),
                      ProfileQueriesMsg::ProviderBegin) => {
                         stack.push(frame);
                         frame = StackFrame{parse_st:ParseState::NoQuery, traces:vec![]};
                     },
-                    (ParseState::HaveQuery(q),
+                    (ParseState::HaveQuery(q,_),
                      ProfileQueriesMsg::ProviderEnd) => {
                         panic!("parse error: unexpected ProviderEnd;
 expected something else to follow BeginQuery for {:?}", q)
                     },
-                    (ParseState::HaveQuery(q1),
+                    (ParseState::HaveQuery(q1,_),
                      ProfileQueriesMsg::QueryBegin(span2,querymsg2)) => {
                         panic!("parse error: unexpected QueryBegin;
 earlier query is unfinished: {:?} and now {:?}",
