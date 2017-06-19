@@ -1,14 +1,4 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Breaking changes in `Abc`
- --> /home/twk/gsoc/rust-semverver/tests/examples/kind_change.rs:6:5
-  |
-6 | /     pub enum Abc {
-7 | |
-8 | |     }
-  | |_____^
-  |
-  = warning: Breaking (KindDifference)
-
 warning: Removal of at least one path to `Abc` (Breaking)
  --> /home/twk/gsoc/rust-semverver/tests/examples/kind_change.rs:2:5
   |

@@ -6,12 +6,6 @@ warning: Removal of at least one path to `b` (Breaking)
 8 | |     }
   | |_____^
 
-warning: Removal of at least one path to `Abc` (Breaking)
-  --> /home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:14:13
-   |
-14 |     pub use self::a::Abc;
-   |             ^^^^^^^^^^^^
-
 warning: Removal of at least one path to `c` (Breaking)
   --> /home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:11:9
    |

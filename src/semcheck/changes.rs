@@ -4,7 +4,7 @@ use rustc::session::Session;
 
 use semver::Version;
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, BTreeMap, HashMap};
 use std::cmp::Ordering;
 
 use syntax::symbol::Ident;
@@ -85,6 +85,7 @@ impl UnaryChange {
         }
     }
 
+    /// Report the change.
     fn report(&self, session: &Session) {
         let msg = format!("{} of at least one path to `{}` ({:?})",
                           self.type_(),
@@ -195,7 +196,8 @@ impl BinaryChangeType {
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the *new* span of the associated item export. This allows us to sort them
 /// by appearance in the *new* source, but possibly could create conflict later on.
-// TODO: we should an invariant that the two exports present are *always* tied together.
+// TODO: we should introduce an invariant that the two exports present are *always*
+// tied together.
 pub struct BinaryChange {
     /// The type of the change affecting the item.
     changes: BTreeSet<BinaryChangeType>,
@@ -244,6 +246,7 @@ impl BinaryChange {
         &self.old.ident
     }
 
+    /// Report the change.
     fn report(&self, session: &Session) {
         let msg = format!("{:?} changes in `{}`", self.max, self.ident());
         let mut builder = session.struct_span_warn(self.new.span, &msg);
@@ -318,6 +321,14 @@ impl Change {
         }
     }
 
+    /// Get the change's representative span.
+    fn span(&self) -> &Span {
+        match *self {
+            Change::Unary(ref u) => u.span(),
+            Change::Binary(ref b) => b.new_span(),
+        }
+    }
+
     /// Get the change's category.
     fn to_category(&self) -> ChangeCategory {
         match *self {
@@ -326,6 +337,7 @@ impl Change {
         }
     }
 
+    /// Report the change.
     fn report(&self, session: &Session) {
         match *self {
             Change::Unary(ref u) => u.report(session),
@@ -335,7 +347,7 @@ impl Change {
 }
 
 /// An identifier used to unambiguously refer to items we record changes for.
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ChangeKey {
     /// An item referred to using the old definition's id.
     /// This includes items that have been removed *or* changed.
@@ -350,6 +362,8 @@ pub enum ChangeKey {
 pub struct ChangeSet {
     /// The currently recorded changes.
     changes: HashMap<ChangeKey, Change>,
+    /// The mapping of spans to changes, for ordering purposes.
+    spans: BTreeMap<Span, ChangeKey>,
     /// The most severe change category already recorded.
     max: ChangeCategory,
 }
@@ -373,6 +387,7 @@ impl ChangeSet {
             self.max = cat.clone();
         }
 
+        self.spans.insert(*change.span(), key.clone());
         self.changes.insert(key, change);
     }
 
@@ -405,8 +420,6 @@ impl ChangeSet {
     }
 
     /// Format the contents of a change set for user output.
-    ///
-    /// TODO: replace this with something more sophisticated.
     pub fn output(&self, session: &Session, version: &str) {
         if let Ok(mut new_version) = Version::parse(version) {
             match self.max {
@@ -420,9 +433,8 @@ impl ChangeSet {
             println!("max change: {} (could not parse) -> {:?}", version, self.max);
         }
 
-        for change in self.changes.values() {
-            change.report(session);
-            // span_note!(session, change.span(), "S0001");
+        for key in self.spans.values() {
+            self.changes[key].report(session);
         }
     }
 }
