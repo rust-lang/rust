@@ -227,6 +227,20 @@ macro_rules! define_integer_ops {
                 $ty, $elem,
                 u8, u16, u32, u64, usize,
                 i8, i16, i32, i64, isize);
+
+            impl ::std::fmt::LowerHex for $ty {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    write!(f, "{}(", stringify!($ty))?;
+                    let n = ::std::mem::size_of_val(self) / ::std::mem::size_of::<$elem>();
+                    for i in 0..n {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{:#x}", self.extract(i as u32))?;
+                    }
+                    write!(f, ")")
+                }
+            }
         )+
     }
 }
