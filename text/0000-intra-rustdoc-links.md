@@ -311,8 +311,9 @@ Our proposal is this:
 It should be noted that in the RFC discussion it was determined
 that exact knowledge of the item type
 should not be necessary; only knowing the namespace should suffice.
-Thus, we do not require the tool resolving the links
-to reject links with the wrong prefix that is in the same namespace.
+It is acceptable that the tool resolving the links
+allows (and successfully resolves) a link
+with the wrong prefix that is in the same namespace.
 E.g., given an `struct Foo`, it may be possible to link to it using `[enum Foo]`,
 or, given a `mod bar`, it may be possible to link to that using `[struct bar]`.
 
