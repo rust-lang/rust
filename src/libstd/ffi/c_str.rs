@@ -152,6 +152,14 @@ pub struct CStr {
 /// in the vector provided.
 ///
 /// [`CString::new`]: struct.CString.html#method.new
+///
+/// # Examples
+///
+/// ```
+/// use std::ffi::{CString, NulError};
+///
+/// let _: NulError = CString::new(b"f\0oo".to_vec()).unwrap_err();
+/// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
