@@ -45,3 +45,8 @@ fn issue775() {
                                         mk_object(&[("d".to_string(), String("".to_string()))])]))]);
     }
 }
+
+fn issue1725() {
+    bench_antialiased_lines!(bench_draw_antialiased_line_segment_diagonal, (10, 10), (450, 450));
+    bench_antialiased_lines!(bench_draw_antialiased_line_segment_shallow, (10, 10), (450, 80));
+}

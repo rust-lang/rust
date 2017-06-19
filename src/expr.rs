@@ -2309,8 +2309,8 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         ast::ExprKind::Call(..) |
         ast::ExprKind::MethodCall(..) |
         ast::ExprKind::Mac(..) |
-        ast::ExprKind::Struct(..) => context.use_block_indent() && args_len == 1,
-        ast::ExprKind::Tup(..) => context.use_block_indent(),
+        ast::ExprKind::Struct(..) |
+        ast::ExprKind::Tup(..) => context.use_block_indent() && args_len == 1,
         ast::ExprKind::AddrOf(_, ref expr) |
         ast::ExprKind::Box(ref expr) |
         ast::ExprKind::Try(ref expr) |
