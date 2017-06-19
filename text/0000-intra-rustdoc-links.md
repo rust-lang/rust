@@ -219,8 +219,11 @@ Does work: <a href="../bars/struct.Bar.html"><code>bars::Bar</code></a> :)
 
 The Rust paths used in links are resolved
 relative to the item in whose documentation they appear.
+Specifically, when using inner doc comments (`//!`, `/*!`),
+the paths are resolved from the inside of the item,
+while regular doc comments (`///`, `/**`) start from the "parent scope.
 
-For example:
+Here's an example:
 
 ```rust
 /// Container for a [Dolor](ipsum::Dolor).
@@ -229,14 +232,31 @@ struct Lorem(ipsum::Dolor);
 /// Contains various things, mostly [Dolor](ipsum::Dolor) and a helper function,
 /// [sit](ipsum::sit).
 mod ipsum {
-    struct Dolor;
+    pub struct Dolor;
 
     /// Takes a [Dolor] and does things.
-    fn sit(d: Dolor) {}
+    pub fn sit(d: Dolor) {}
 }
 
 mod amet {
   //! Helper types, can be used with the [ipsum](super::ipsum) module.
+}
+```
+
+And here's an edge case:
+
+```rust
+use foo::Iterator;
+
+/// Uses `[Iterator]`. <- This resolves to `foo::Iterator` because it starts
+/// at the same scope as `foo1`.
+fn foo1() { }
+
+fn foo2() {
+    //! Uses `[Iterator]`. <- This resolves to `bar::Iterator` because it starts
+    //! with the inner scope of `foo2`'s body.
+
+    use bar::Iterator;
 }
 ```
 
