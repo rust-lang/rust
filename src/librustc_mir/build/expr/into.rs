@@ -39,6 +39,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
+                let extent = (extent, source_info);
                 this.in_scope(extent, block, |this| this.into(destination, block, value))
             }
             ExprKind::Block { body: ast_block } => {
@@ -233,7 +234,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             .collect();
 
                     let success = this.cfg.start_new_block();
-                    let cleanup = this.diverge_cleanup();
+                    let cleanup = this.diverge_cleanup(expr_span);
                     this.cfg.terminate(block, source_info, TerminatorKind::Call {
                         func: fun,
                         args: args,

@@ -413,6 +413,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                           "SetDiscriminant should not exist during borrowck");
             }
             StatementKind::InlineAsm { .. } |
+            StatementKind::EndRegion(_) |
             StatementKind::Nop => {}
         }
     }

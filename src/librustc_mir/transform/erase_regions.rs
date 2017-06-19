@@ -65,6 +65,15 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
                             substs: &mut ClosureSubsts<'tcx>) {
         *substs = self.tcx.erase_regions(substs);
     }
+
+    fn visit_statement(&mut self,
+                       _block: BasicBlock,
+                       statement: &mut Statement<'tcx>,
+                       _location: Location) {
+        if let StatementKind::EndRegion(_) = statement.kind {
+            statement.kind = StatementKind::Nop;
+        }
+    }
 }
 
 pub struct EraseRegions;

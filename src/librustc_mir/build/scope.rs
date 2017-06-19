@@ -94,10 +94,11 @@ use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
-use syntax_pos::Span;
+use syntax_pos::{Span};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fx::FxHashMap;
 
+#[derive(Debug)]
 pub struct Scope<'tcx> {
     /// The visibility scope this scope was created in.
     visibility_scope: VisibilityScope,
@@ -114,7 +115,7 @@ pub struct Scope<'tcx> {
     ///  * pollutting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
-    needs_cleanup: bool,
+    pub(super) needs_cleanup: bool,
 
     /// set of lvalues to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
@@ -141,6 +142,7 @@ pub struct Scope<'tcx> {
     cached_exits: FxHashMap<(BasicBlock, CodeExtent), BasicBlock>,
 }
 
+#[derive(Debug)]
 struct DropData<'tcx> {
     /// span where drop obligation was incurred (typically where lvalue was declared)
     span: Span,
@@ -152,6 +154,7 @@ struct DropData<'tcx> {
     kind: DropKind
 }
 
+#[derive(Debug)]
 enum DropKind {
     Value {
         /// The cached block for the cleanups-on-diverge path. This block
@@ -163,6 +166,7 @@ enum DropKind {
     Storage
 }
 
+#[derive(Debug)]
 struct FreeData<'tcx> {
     /// span where free obligation was incurred
     span: Span,
@@ -269,17 +273,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         res
     }
 
+    pub fn in_opt_scope<F, R>(&mut self,
+                              opt_extent: Option<(CodeExtent, SourceInfo)>,
+                              mut block: BasicBlock,
+                              f: F)
+                              -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
+    {
+        debug!("in_opt_scope(opt_extent={:?}, block={:?})", opt_extent, block);
+        if let Some(extent) = opt_extent { self.push_scope(extent.0); }
+        let rv = unpack!(block = f(self));
+        if let Some(extent) = opt_extent {
+            unpack!(block = self.pop_scope(extent, block));
+        }
+        debug!("in_scope: exiting opt_extent={:?} block={:?}", opt_extent, block);
+        block.and(rv)
+    }
+
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self,
-                          extent: CodeExtent,
+                          extent: (CodeExtent, SourceInfo),
                           mut block: BasicBlock,
                           f: F)
                           -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        self.push_scope(extent);
+        self.push_scope(extent.0);
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(extent, block));
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
@@ -307,20 +328,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// drops onto the end of `block` that are needed.  This must
     /// match 1-to-1 with `push_scope`.
     pub fn pop_scope(&mut self,
-                     extent: CodeExtent,
+                     extent: (CodeExtent, SourceInfo),
                      mut block: BasicBlock)
                      -> BlockAnd<()> {
         debug!("pop_scope({:?}, {:?})", extent, block);
         // We need to have `cached_block`s available for all the drops, so we call diverge_cleanup
         // to make sure all the `cached_block`s are filled in.
-        self.diverge_cleanup();
+        self.diverge_cleanup(extent.1.span);
         let scope = self.scopes.pop().unwrap();
-        assert_eq!(scope.extent, extent);
+        assert_eq!(scope.extent, extent.0);
         unpack!(block = build_scope_drops(&mut self.cfg,
                                           &scope,
                                           &self.scopes,
                                           block,
                                           self.arg_count));
+
+        self.cfg.push_end_region(block, extent.1, scope.extent);
         block.unit()
     }
 
@@ -331,11 +354,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// module comment for details.
     pub fn exit_scope(&mut self,
                       span: Span,
-                      extent: CodeExtent,
+                      extent: (CodeExtent, SourceInfo),
                       mut block: BasicBlock,
                       target: BasicBlock) {
         debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
-        let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent)
+        let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent.0)
                                                       .unwrap_or_else(||{
             span_bug!(span, "extent {:?} does not enclose", extent)
         });
@@ -346,7 +369,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let mut rest = &mut self.scopes[(len - scope_count)..];
         while let Some((scope, rest_)) = {rest}.split_last_mut() {
             rest = rest_;
-            block = if let Some(&e) = scope.cached_exits.get(&(target, extent)) {
+            block = if let Some(&e) = scope.cached_exits.get(&(target, extent.0)) {
                 self.cfg.terminate(block, scope.source_info(span),
                                    TerminatorKind::Goto { target: e });
                 return;
@@ -354,7 +377,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let b = self.cfg.start_new_block();
                 self.cfg.terminate(block, scope.source_info(span),
                                    TerminatorKind::Goto { target: b });
-                scope.cached_exits.insert((target, extent), b);
+                scope.cached_exits.insert((target, extent.0), b);
                 b
             };
             unpack!(block = build_scope_drops(&mut self.cfg,
@@ -362,6 +385,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               rest,
                                               block,
                                               self.arg_count));
+
+            // End all regions for scopes out of which we are breaking.
+            self.cfg.push_end_region(block, extent.1, scope.extent);
+
             if let Some(ref free_data) = scope.free {
                 let next = self.cfg.start_new_block();
                 let free = build_free(self.hir.tcx(), &tmp, free_data, next);
@@ -590,7 +617,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This path terminates in Resume. Returns the start of the path.
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
-    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
+    pub fn diverge_cleanup(&mut self, span: Span) -> Option<BasicBlock> {
         if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
             return None;
         }
@@ -623,8 +650,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             resumeblk
         };
 
-        for scope in scopes.iter_mut().filter(|s| s.needs_cleanup) {
-            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, scope, target);
+        for scope in scopes.iter_mut() {
+            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, span, scope, target);
         }
         Some(target)
     }
@@ -640,7 +667,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup();
+        let diverge_target = self.diverge_cleanup(span);
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Drop {
                                location: location,
@@ -658,7 +685,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                   value: Operand<'tcx>) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup();
+        let diverge_target = self.diverge_cleanup(span);
         self.cfg.terminate(block, source_info,
                            TerminatorKind::DropAndReplace {
                                location: location,
@@ -681,7 +708,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
 
         let success_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup();
+        let cleanup = self.diverge_cleanup(span);
 
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Assert {
@@ -750,6 +777,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
 fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        cfg: &mut CFG<'tcx>,
                                        unit_temp: &Lvalue<'tcx>,
+                                       span: Span,
                                        scope: &mut Scope<'tcx>,
                                        mut target: BasicBlock)
                                        -> BasicBlock
@@ -757,9 +785,9 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // Build up the drops in **reverse** order. The end result will
     // look like:
     //
-    //    [drops[n]] -...-> [drops[0]] -> [Free] -> [target]
-    //    |                                    |
-    //    +------------------------------------+
+    //    [EndRegion Block] -> [drops[n]] -...-> [drops[0]] -> [Free] -> [target]
+    //    |                                                         |
+    //    +---------------------------------------------------------+
     //     code for scope
     //
     // The code in this function reads from right to left. At each
@@ -789,9 +817,16 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // Next, build up the drops. Here we iterate the vector in
     // *forward* order, so that we generate drops[0] first (right to
     // left in diagram above).
-    for drop_data in &mut scope.drops {
+    for (j, drop_data) in scope.drops.iter_mut().enumerate() {
+        debug!("build_diverge_scope drop_data[{}]: {:?}", j, drop_data);
         // Only full value drops are emitted in the diverging path,
         // not StorageDead.
+        //
+        // Note: This may not actually be what we desire (are we
+        // "freeing" stack storage as we unwind, or merely observing a
+        // frozen stack)? In particular, the intent may have been to
+        // match the behavior of clang, but on inspection eddyb says
+        // this is not what clang does.
         let cached_block = match drop_data.kind {
             DropKind::Value { ref mut cached_block } => cached_block,
             DropKind::Storage => continue
@@ -809,6 +844,15 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             *cached_block = Some(block);
             block
         };
+    }
+
+    // Finally, push the EndRegion block, used by mir-borrowck. (Block
+    // becomes trivial goto after pass that removes all EndRegions.)
+    {
+        let block = cfg.start_new_cleanup_block();
+        cfg.push_end_region(block, source_info(span), scope.extent);
+        cfg.terminate(block, source_info(span), TerminatorKind::Goto { target: target });
+        target = block
     }
 
     target

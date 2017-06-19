@@ -32,9 +32,9 @@ pub fn droppy() {
 // CHECK-NOT: invoke{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: call{{.*}}drop{{.*}}SomeUniqueName
-// CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK-NOT: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
+// CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: invoke{{.*}}drop{{.*}}SomeUniqueName
 // CHECK: call{{.*}}drop{{.*}}SomeUniqueName
 // CHECK-NOT: {{(call|invoke).*}}drop{{.*}}SomeUniqueName

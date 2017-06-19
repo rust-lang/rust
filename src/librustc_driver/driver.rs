@@ -914,6 +914,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     let mut passes = Passes::new();
     passes.push_hook(mir::transform::dump_mir::DumpMir);
 
+    // Remove all `EndRegion` statements that are not involved in borrows.
+    passes.push_pass(MIR_CONST, mir::transform::clean_end_regions::CleanEndRegions);
+
     // What we need to do constant evaluation.
     passes.push_pass(MIR_CONST, mir::transform::simplify::SimplifyCfg::new("initial"));
     passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);

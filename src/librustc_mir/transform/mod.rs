@@ -24,6 +24,7 @@ use syntax::ast;
 use syntax_pos::{DUMMY_SP, Span};
 use transform;
 
+pub mod clean_end_regions;
 pub mod simplify_branches;
 pub mod simplify;
 pub mod erase_regions;

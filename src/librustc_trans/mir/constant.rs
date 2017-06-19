@@ -284,6 +284,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                     mir::StatementKind::StorageLive(_) |
                     mir::StatementKind::StorageDead(_) |
+                    mir::StatementKind::EndRegion(_) |
                     mir::StatementKind::Nop => {}
                     mir::StatementKind::InlineAsm { .. } |
                     mir::StatementKind::SetDiscriminant{ .. } => {
