@@ -370,7 +370,6 @@ impl fmt::Display for CannotReallocInPlace {
     }
 }
 
-/// An implementation of `Allocator` can allocate, reallocate, and
 /// An implementation of `Alloc` can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
 ///
