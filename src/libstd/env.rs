@@ -438,6 +438,35 @@ pub struct JoinPathsError {
 ///
 /// # Examples
 ///
+/// Joining paths on a Unix-like platform:
+///
+/// ```
+/// # if cfg!(unix) {
+/// use std::env;
+/// use std::ffi::OsString;
+/// use std::path::Path;
+///
+/// let paths = [Path::new("/bin"), Path::new("/usr/bin")];
+/// let path_os_string = env::join_paths(paths.iter()).unwrap();
+/// assert_eq!(path_os_string, OsString::from("/bin:/usr/bin"));
+/// # }
+/// ```
+///
+/// Joining a path containing a colon on a Unix-like platform results in an error:
+///
+/// ```
+/// # if cfg!(unix) {
+/// use std::env;
+/// use std::path::Path;
+///
+/// let paths = [Path::new("/bin"), Path::new("/usr/bi:n")];
+/// assert!(env::join_paths(paths.iter()).is_err());
+/// # }
+/// ```
+///
+/// Using `env::join_paths` with `env::spit_paths` to append an item to the `PATH` environment
+/// variable:
+///
 /// ```
 /// use std::env;
 /// use std::path::PathBuf;
