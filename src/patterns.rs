@@ -376,8 +376,7 @@ fn count_wildcard_suffix_len(
     for item in items.iter().rev().take_while(|i| match i.item {
         Some(ref internal_string) if internal_string == "_" => true,
         _ => false,
-    })
-    {
+    }) {
         suffix_len += 1;
 
         if item.pre_comment.is_some() || item.post_comment.is_some() {

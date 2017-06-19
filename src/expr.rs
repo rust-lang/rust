@@ -21,7 +21,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
-            colon_spaces, contains_skip, mk_sp};
+            colon_spaces, contains_skip, mk_sp, last_line_extendable};
 use visitor::FmtVisitor;
 use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle, Style};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -1145,7 +1145,8 @@ impl<'a> ControlFlow<'a> {
         };
 
         let force_newline_brace = context.config.control_style() == Style::Rfc &&
-            pat_expr_string.contains('\n');
+            pat_expr_string.contains('\n') &&
+            !last_line_extendable(&pat_expr_string);
 
         // Try to format if-else on single line.
         if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
