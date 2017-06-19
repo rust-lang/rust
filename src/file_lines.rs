@@ -19,7 +19,7 @@ use codemap::LineRange;
 
 /// A range that is inclusive of both ends.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Deserialize)]
-struct Range {
+pub struct Range {
     lo: usize,
     hi: usize,
 }
