@@ -57,6 +57,10 @@ pub enum EvalError<'tcx> {
         access: AccessKind,
         lock: LockInfo,
     },
+    InvalidMemoryLockRelease {
+        ptr: MemoryPointer,
+        len: u64,
+    },
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
@@ -108,6 +112,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "memory access conflicts with lock",
             DeallocatedLockedMemory =>
                 "deallocated memory while a lock was held",
+            InvalidMemoryLockRelease { .. } =>
+                "memory lock released that was never acquired",
             ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             ReadBytesAsPointer =>
@@ -210,6 +216,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             MemoryLockViolation { ptr, len, access, lock } => {
                 write!(f, "{:?} access at {:?}, size {}, is in conflict with lock {:?}",
                        access, ptr, len, lock)
+            }
+            InvalidMemoryLockRelease { ptr, len } => {
+                write!(f, "tried to release memory write lock at {:?}, size {}, which was not acquired by this function",
+                       ptr, len)
             }
             NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             FunctionPointerTyMismatch(sig, got) =>

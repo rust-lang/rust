@@ -18,7 +18,7 @@ use eval_context::EvalContext;
 mod range {
     use super::*;
 
-    // The derived `Ord` impl sorts first by the first field, then, if the fields are the same
+    // The derived `Ord` impl sorts first by the first field, then, if the fields are the same,
     // by the second field.
     // This is exactly what we need for our purposes, since a range query on a BTReeSet/BTreeMap will give us all
     // `MemoryRange`s whose `start` is <= than the one we're looking for, but not > the end of the range we're checking.
@@ -75,16 +75,16 @@ pub enum AccessKind {
     Write,
 }
 
-#[derive(Copy, Clone, Debug)]
-struct DynamicLifetime {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct DynamicLifetime {
     frame: usize,
-    region: CodeExtent,
+    region: Option<CodeExtent>, // "None" indicates "until the function ends"
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum LockStatus {
     Held,
-    RecoverAfter(DynamicLifetime),
+    RecoverAfter(CodeExtent), // the frame is given by the surrounding LockInfo's lifetime.
 }
 
 /// Information about a lock that is or will be held.
@@ -138,7 +138,7 @@ pub struct Allocation {
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
     pub kind: Kind,
     /// Memory regions that are locked by some function
-    locks: BTreeMap<MemoryRange, LockInfo>,
+    locks: BTreeMap<MemoryRange, Vec<LockInfo>>,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -427,19 +427,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub(crate) fn check_locks(&self, ptr: MemoryPointer, len: u64, access: AccessKind) -> EvalResult<'tcx> {
-        let alloc = self.get(ptr.alloc_id)?;
-        for (range, lock) in alloc.locks.range(MemoryRange::range(ptr.offset, len)) {
-            // Check if the lock is active, overlaps this access, and is in conflict with the access.
-            if let LockStatus::Held = lock.status {
-                if range.overlaps(ptr.offset, len) && !lock.access_permitted(self.cur_frame, access) {
-                    return Err(EvalError::MemoryLockViolation { ptr, len, access, lock: *lock });
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub(crate) fn set_cur_frame(&mut self, cur_frame: usize) {
         self.cur_frame = cur_frame;
     }
@@ -517,6 +504,89 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
         return Ok(None);
+    }
+}
+
+/// Locking
+impl<'a, 'tcx> Memory<'a, 'tcx> {
+    pub(crate) fn check_locks(&self, ptr: MemoryPointer, len: u64, access: AccessKind) -> EvalResult<'tcx> {
+        let alloc = self.get(ptr.alloc_id)?;
+        for (range, locks) in alloc.locks.range(MemoryRange::range(ptr.offset, len)) {
+            for lock in locks {
+                // Check if the lock is active, overlaps this access, and is in conflict with the access.
+                if lock.status == LockStatus::Held  && range.overlaps(ptr.offset, len) && !lock.access_permitted(self.cur_frame, access) {
+                    return Err(EvalError::MemoryLockViolation { ptr, len, access, lock: *lock });
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Acquire the lock for the given lifetime
+    pub(crate) fn acquire_lock(&mut self, ptr: MemoryPointer, len: u64, region: Option<CodeExtent>, kind: AccessKind) -> EvalResult<'tcx> {
+        self.check_bounds(ptr.offset(len, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_locks(ptr, len, kind)?; // make sure we have the access we are acquiring
+        let lifetime = DynamicLifetime { frame: self.cur_frame, region };
+        let alloc = self.get_mut(ptr.alloc_id)?;
+        alloc.locks.entry(MemoryRange::new(ptr.offset, len)).or_insert_with(|| Vec::new()).push(LockInfo { lifetime, kind, status: LockStatus::Held });
+        Ok(())
+    }
+
+    /// Release a lock prematurely
+    pub(crate) fn release_lock_until(&mut self, ptr: MemoryPointer, len: u64, release_until: Option<CodeExtent>) -> EvalResult<'tcx> {
+        // Make sure there are no read locks and no *other* write locks here
+        if let Err(_) = self.check_locks(ptr, len, AccessKind::Write) {
+            return Err(EvalError::InvalidMemoryLockRelease { ptr, len });
+        }
+        let cur_frame = self.cur_frame;
+        let alloc = self.get_mut(ptr.alloc_id)?;
+        {
+            let lock_infos = alloc.locks.get_mut(&MemoryRange::new(ptr.offset, len)).ok_or(EvalError::InvalidMemoryLockRelease { ptr, len })?;
+            let lock_info = match lock_infos.len() {
+                0 => return Err(EvalError::InvalidMemoryLockRelease { ptr, len }),
+                1 => &mut lock_infos[0],
+                _ => bug!("There can not be overlapping locks when write access is possible."),
+            };
+            assert_eq!(lock_info.lifetime.frame, cur_frame);
+            if let Some(ce) = release_until {
+                lock_info.status = LockStatus::RecoverAfter(ce);
+                return Ok(());
+            }
+        }
+        // Falling through to here means we want to entirely remove the lock.  The control-flow is somewhat weird because of lexical lifetimes.
+        alloc.locks.remove(&MemoryRange::new(ptr.offset, len));
+        Ok(())
+    }
+
+    pub(crate) fn locks_lifetime_ended(&mut self, ending_region: Option<CodeExtent>) {
+        let cur_frame = self.cur_frame;
+        let has_ended =  |lock: &LockInfo| -> bool {
+            if lock.lifetime.frame != cur_frame {
+                return false;
+            }
+            match ending_region {
+                None => true, // When a function ends, we end *all* its locks. It's okay for a function to still have lifetime-related locks
+                              // when it returns, that can happen e.g. with NLL when a lifetime can, but does not have to, extend beyond the
+                              // end of a function.
+                Some(ending_region) => lock.lifetime.region == Some(ending_region),
+            }
+        };
+
+        for alloc in self.alloc_map.values_mut() {
+            for (_range, locks) in alloc.locks.iter_mut() {
+                // Delete everything that ends now -- i.e., keep only all the other lifeimes.
+                locks.retain(|lock| !has_ended(lock));
+                // Activate locks that get recovered now
+                if let Some(ending_region) = ending_region {
+                    for lock in locks.iter_mut() {
+                        if lock.lifetime.frame == cur_frame && lock.status == LockStatus::RecoverAfter(ending_region) {
+                            lock.status = LockStatus::Held;
+                        }
+                    }
+                }
+            }
+        }
+        // TODO: It may happen now that we leave empty vectors in the map.  Is it worth getting rid of them?
     }
 }
 
