@@ -168,6 +168,14 @@ pub struct NulError(usize, Vec<u8>);
 /// byte was found too early in the slice provided or one wasn't found at all.
 ///
 /// [`CStr::from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
+///
+/// # Examples
+///
+/// ```
+/// use std::ffi::{CStr, FromBytesWithNulError};
+///
+/// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
+/// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub struct FromBytesWithNulError {
