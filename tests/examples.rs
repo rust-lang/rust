@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::os::unix::io::{AsRawFd, FromRawFd};
@@ -7,6 +8,9 @@ use std::process::{Command, Stdio};
 fn examples() {
     let mut success = true;
 
+    let current_dir = env::current_dir().expect("could not determine current dir");
+    let subst = format!("s#{}#$REPO_PATH#g", current_dir.to_str().unwrap());
+
     for file in std::fs::read_dir("tests/examples")
             .expect("could not read dir")
             .map(|f| f.expect("could not get file info").path()) {
@@ -14,7 +18,6 @@ fn examples() {
             let out_file = file.with_extension("out");
             let output = File::create(&out_file).expect("could not create file");
             let fd = output.as_raw_fd();
-            //let out = unsafe {Stdio::from_raw_fd(fd)};
             let err = unsafe { Stdio::from_raw_fd(fd) };
             let out = unsafe { Stdio::from_raw_fd(fd) };
 
@@ -30,6 +33,21 @@ fn examples() {
             success &= compile_success;
 
             if compile_success {
+                let mut sed_child = Command::new("sed")
+                    .arg(&subst)
+                    .stdin(Stdio::piped())
+                    .stdout(out)
+                    .stderr(err)
+                    .spawn()
+                    .expect("could not run sed");
+
+                let (err_pipe, out_pipe) = if let Some(ref mut stdin) = sed_child.stdin {
+                    let fd = stdin.as_raw_fd();
+                    unsafe { (Stdio::from_raw_fd(fd), Stdio::from_raw_fd(fd)) }
+                } else {
+                    panic!("could not pipe to sed");
+                };
+
                 let mut child = Command::new("./target/debug/rust-semverver")
                     .args(&["--crate-type=lib",
                             "--extern",
@@ -40,8 +58,8 @@ fn examples() {
                     .env("RUST_BACKTRACE", "full")
                     .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
                     .stdin(Stdio::piped())
-                    .stdout(out)
-                    .stderr(err)
+                    .stdout(out_pipe)
+                    .stderr(err_pipe)
                     .spawn()
                     .expect("could not run rust-semverver");
 
@@ -50,10 +68,11 @@ fn examples() {
                         .write_fmt(format_args!("extern crate oldandnew;"))
                         .expect("could not pipe to rust-semverver");
                 } else {
-                    panic!("could not pipe to rustc (wtf?)");
+                    panic!("could not pipe to rustc");
                 }
 
                 success &= child.wait().expect("could not wait for child").success();
+                success &= sed_child.wait().expect("could not wait for sed child").success();
 
                 success &= Command::new("git")
                     .args(&["diff", "--exit-code", out_file.to_str().unwrap()])

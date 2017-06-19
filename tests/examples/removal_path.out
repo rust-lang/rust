@@ -1,20 +1,20 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Removal of at least one path to `b` (Breaking)
- --> /home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:7:9
+ --> $REPO_PATH/tests/examples/removal_path.rs:7:9
   |
 7 | /         pub use old::a::*;
 8 | |     }
   | |_____^
 
 warning: Removal of at least one path to `c` (Breaking)
-  --> /home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:11:9
+  --> $REPO_PATH/tests/examples/removal_path.rs:11:9
    |
 11 | /         pub use old::a::Abc;
 12 | |     }
    | |_____^
 
 warning: Removal of at least one path to `Abc` (Breaking)
-  --> /home/twk/gsoc/rust-semverver/tests/examples/removal_path.rs:14:13
+  --> $REPO_PATH/tests/examples/removal_path.rs:14:13
    |
 14 |     pub use self::a::Abc;
    |             ^^^^^^^^^^^^

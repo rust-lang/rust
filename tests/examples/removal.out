@@ -1,12 +1,12 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Removal of at least one path to `Abc` (Breaking)
- --> /home/twk/gsoc/rust-semverver/tests/examples/removal.rs:2:5
+ --> $REPO_PATH/tests/examples/removal.rs:2:5
   |
 2 |     pub struct Abc;
   |     ^^^^^^^^^^^^^^^
 
 warning: Removal of at least one path to `a` (Breaking)
- --> /home/twk/gsoc/rust-semverver/tests/examples/removal.rs:6:5
+ --> $REPO_PATH/tests/examples/removal.rs:6:5
   |
 6 |     }
   |     ^
