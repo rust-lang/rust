@@ -200,7 +200,7 @@ impl BinaryChangeType {
 // tied together.
 pub struct BinaryChange {
     /// The type of the change affecting the item.
-    changes: BTreeSet<BinaryChangeType>,
+    changes: BTreeSet<(BinaryChangeType, Option<Span>)>,
     /// The most severe change category already recorded for the item.
     max: ChangeCategory,
     /// The old export of the change item.
@@ -221,14 +221,14 @@ impl BinaryChange {
     }
 
     /// Add another change type to the change record.
-    fn add(&mut self, type_: BinaryChangeType) {
+    fn add(&mut self, type_: BinaryChangeType, span: Option<Span>) {
         let cat = type_.to_category();
 
         if cat > self.max {
             self.max = cat;
         }
 
-        self.changes.insert(type_);
+        self.changes.insert((type_, span));
     }
 
     /// Get the change's category.
@@ -248,16 +248,28 @@ impl BinaryChange {
 
     /// Report the change.
     fn report(&self, session: &Session) {
+        if self.max == Patch {
+            return;
+        }
+
         let msg = format!("{:?} changes in `{}`", self.max, self.ident());
         let mut builder = session.struct_span_warn(self.new.span, &msg);
 
         for change in &self.changes {
-            let cat = change.to_category();
-            let sub_msg = format!("{:?} ({:?})", cat, change);
-            if cat == Breaking {
-                builder.warn(&sub_msg);
+            let cat = change.0.to_category();
+            let sub_msg = format!("{:?} ({:?})", cat, change.0);
+            if let Some(span) = change.1 {
+                if cat == Breaking {
+                    builder.span_warn(span, &sub_msg);
+                } else {
+                    builder.span_note(span, &sub_msg,);
+                }
             } else {
-                builder.note(&sub_msg);
+                if cat == Breaking {
+                    builder.warn(&sub_msg);
+                } else {
+                    builder.note(&sub_msg,);
+                }
             }
         }
 
@@ -314,10 +326,10 @@ impl Change {
     }
 
     /// Add a change type to a given binary change.
-    fn add(&mut self, type_: BinaryChangeType) {
+    fn add(&mut self, type_: BinaryChangeType, span: Option<Span>) {
         match *self {
             Change::Unary(_) => panic!("can't add binary change types to unary change"),
-            Change::Binary(ref mut b) => b.add(type_),
+            Change::Binary(ref mut b) => b.add(type_, span),
         }
     }
 
@@ -391,25 +403,14 @@ impl ChangeSet {
         self.changes.insert(key, change);
     }
 
-    /// Add a new binary change for the given exports.
-    pub fn new_binary(&mut self, type_: BinaryChangeType, old: Export, new: Export) {
-        let key = ChangeKey::OldKey(old.def.def_id());
-        let cat = type_.to_category();
-
-        if cat > self.max {
-            self.max = cat.clone();
-        }
-
-        let entry = self.changes
-            .entry(key)
-            .or_insert_with(|| Change::new_binary(old, new));
-
-        entry.add(type_);
+    /// Add a new binary change entry for the given exports.
+    pub fn new_binary(&mut self, old: Export, new: Export) {
+        self.changes
+            .insert(ChangeKey::OldKey(old.def.def_id()), Change::new_binary(old, new));
     }
 
-    pub fn add_binary(&mut self, type_: BinaryChangeType, old: DefId) -> bool {
-        use std::collections::hash_map::Entry;
-
+    /// Add a new binary change to an already existing entry.
+    pub fn add_binary(&mut self, type_: BinaryChangeType, old: DefId, span: Option<Span>) {
         let key = ChangeKey::OldKey(old);
         let cat = type_.to_category();
 
@@ -417,13 +418,7 @@ impl ChangeSet {
             self.max = cat.clone();
         }
 
-        match self.changes.entry(key) {
-            Entry::Occupied(c) => {
-                c.into_mut().add(type_);
-                true
-            },
-            Entry::Vacant(_) => false,
-        }
+        self.changes.get_mut(&key).unwrap().add(type_, span);
     }
 
     /// Check whether an item with the given id has undergone breaking changes.
@@ -575,7 +570,7 @@ pub mod tests {
         };
 
         let mut change = BinaryChange::new(export1, export2);
-        change.add(t);
+        change.add(t, Some(s1));
 
         change
     }

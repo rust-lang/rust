@@ -128,6 +128,7 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                 }
                 (Some(o), Some(n)) => {
                     if !id_mapping.add_export(o, n) {
+                        changes.new_binary(o, n);
                         diff_item_structures(&mut changes, &mut id_mapping, tcx, o, n);
                     }
                 }
@@ -166,7 +167,7 @@ fn diff_item_structures(changes: &mut ChangeSet,
 
     let mut generics_changes = diff_generics(tcx, old_def_id, new_def_id);
     for change_type in generics_changes.drain(..) {
-        changes.new_binary(change_type, old, new);
+        changes.add_binary(change_type, old_def_id, None);
     }
 
     // TODO: crude dispatching logic for now (needs totality etc).
@@ -183,7 +184,7 @@ fn diff_item_structures(changes: &mut ChangeSet,
         (Macro(_, _), Macro(_, _)) => {},
         _ => {
             // No match - so we don't need to look further.
-            changes.new_binary(KindDifference, old, new);
+            changes.add_binary(KindDifference, old_def_id, None);
             return;
         },
     }
@@ -225,21 +226,25 @@ fn diff_item_structures(changes: &mut ChangeSet,
                         (Some(o), Some(n)) => {
                             id_mapping.add_item(o.did, n.did);
                         },
-                        (Some(_), None) => {
-                            changes.add_binary(VariantFieldRemoved, old_def_id);
+                        (Some(o), None) => {
+                            changes.add_binary(VariantFieldRemoved,
+                                               old_def_id,
+                                               Some(tcx.def_span(o.did)));
                         },
-                        (None, Some(_)) => {
-                            changes.add_binary(VariantFieldAdded, old_def_id);
+                        (None, Some(n)) => {
+                            changes.add_binary(VariantFieldAdded,
+                                               old_def_id,
+                                               Some(tcx.def_span(n.did)));
                         },
                         (None, None) => unreachable!(),
                     }
                 }
             },
-            (Some(_), None) => {
-                changes.add_binary(EnumVariantRemoved, old_def_id);
+            (Some(old), None) => {
+                changes.add_binary(EnumVariantRemoved, old_def_id, Some(tcx.def_span(old.did)));
             },
-            (None, Some(_)) => {
-                changes.add_binary(EnumVariantAdded, old_def_id);
+            (None, Some(new)) => {
+                changes.add_binary(EnumVariantAdded, old_def_id, Some(tcx.def_span(new.did)));
             },
             (None, None) => unreachable!(),
         }
@@ -259,7 +264,7 @@ fn diff_items(changes: &mut ChangeSet,
         let mut type_changes = diff_types(id_mapping, tcx, old.def.def_id(), new.def.def_id());
 
         for change_type in type_changes.drain(..) {
-            changes.new_binary(change_type, old, new);
+            changes.add_binary(change_type, old.def.def_id(), None);
         }
     }
 }
