@@ -287,6 +287,27 @@ impl CString {
     /// to undefined behavior or allocator corruption.
     ///
     /// [`into_raw`]: #method.into_raw
+    ///
+    /// # Examples
+    ///
+    /// Create a `CString`, pass ownership to an `extern` function (via raw pointer), then retake
+    /// ownership with `from_raw`:
+    ///
+    /// ```no_run
+    /// use std::ffi::CString;
+    /// use std::os::raw::c_char;
+    ///
+    /// extern {
+    ///     fn some_extern_function(s: *mut c_char);
+    /// }
+    ///
+    /// let c_string = CString::new("Hello!").unwrap();
+    /// let raw = c_string.into_raw();
+    /// unsafe {
+    ///     some_extern_function(raw);
+    ///     let c_string = CString::from_raw(raw);
+    /// }
+    /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
