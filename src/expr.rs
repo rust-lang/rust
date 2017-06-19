@@ -2719,17 +2719,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
         };
     // 1 = space between operator and rhs.
     let orig_shape = try_opt!(shape.offset_left(last_line_width + 1));
-    let rhs = match ex.node {
-        ast::ExprKind::Mac(ref mac) => {
-            match rewrite_macro(mac, None, context, orig_shape, MacroPosition::Expression) {
-                None if !context.snippet(ex.span).contains("\n") => {
-                    context.snippet(ex.span).rewrite(context, orig_shape)
-                }
-                rhs @ _ => rhs,
-            }
-        }
-        _ => ex.rewrite(context, orig_shape),
-    };
+    let rhs = ex.rewrite(context, orig_shape);
 
     fn count_line_breaks(src: &str) -> usize {
         src.chars().filter(|&x| x == '\n').count()
