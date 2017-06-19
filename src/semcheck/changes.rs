@@ -407,6 +407,25 @@ impl ChangeSet {
         entry.add(type_);
     }
 
+    pub fn add_binary(&mut self, type_: BinaryChangeType, old: DefId) -> bool {
+        use std::collections::hash_map::Entry;
+
+        let key = ChangeKey::OldKey(old);
+        let cat = type_.to_category();
+
+        if cat > self.max {
+            self.max = cat.clone();
+        }
+
+        match self.changes.entry(key) {
+            Entry::Occupied(c) => {
+                c.into_mut().add(type_);
+                true
+            },
+            Entry::Vacant(_) => false,
+        }
+    }
+
     /// Check whether an item with the given id has undergone breaking changes.
     ///
     /// The expected `DefId` is obviously an *old* one.

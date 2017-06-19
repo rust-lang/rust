@@ -89,7 +89,6 @@ fn get_namespace(def: &Def) -> Namespace {
 ///
 /// Match up pairs of modules from the two crate versions and compare for changes.
 /// Matching children get processed in the same fashion.
-///
 // TODO: describe the passes we do.
 pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     let cstore = &tcx.sess.cstore;
@@ -129,7 +128,7 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                 }
                 (Some(o), Some(n)) => {
                     if !id_mapping.add_export(o, n) {
-                        diff_item_structures(&mut changes, &id_mapping, tcx, o, n);
+                        diff_item_structures(&mut changes, &mut id_mapping, tcx, o, n);
                     }
                 }
                 (Some(old), None) => {
@@ -158,7 +157,7 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 /// If the two items can't be meaningfully compared because they are of different kinds,
 /// we return that difference directly.
 fn diff_item_structures(changes: &mut ChangeSet,
-                        _: &IdMapping,
+                        id_mapping: &mut IdMapping,
                         tcx: TyCtxt,
                         old: Export,
                         new: Export) {
@@ -210,6 +209,8 @@ fn diff_item_structures(changes: &mut ChangeSet,
     for (_, items) in variants.drain() {
         match items {
             (Some(old), Some(new)) => {
+                id_mapping.add_item(old.did, new.did);
+
                 for field in &old.fields {
                     fields.entry(field.name).or_insert((None, None)).0 = Some(field);
                 }
@@ -219,29 +220,26 @@ fn diff_item_structures(changes: &mut ChangeSet,
                 }
 
                 for (_, items2) in fields.drain() {
+                    // TODO: visibility
                     match items2 {
                         (Some(o), Some(n)) => {
-                            println!("matching fields");
+                            id_mapping.add_item(o.did, n.did);
                         },
-                        (Some(o), None) => {
-                            println!("removed field");
+                        (Some(_), None) => {
+                            changes.add_binary(VariantFieldRemoved, old_def_id);
                         },
-                        (None, Some(n)) => {
-                            println!("added field");
+                        (None, Some(_)) => {
+                            changes.add_binary(VariantFieldAdded, old_def_id);
                         },
                         (None, None) => unreachable!(),
                     }
                 }
-
-                println!("matching variants");
             },
-            (Some(old), None) => {
-                println!("removed variant");
-                // TODO: a new variant has been removed from the enum (apparently)
+            (Some(_), None) => {
+                changes.add_binary(EnumVariantRemoved, old_def_id);
             },
-            (None, Some(new)) => {
-                println!("added variant");
-                // TODO: a new variant has been added to the enum (apparently)
+            (None, Some(_)) => {
+                changes.add_binary(EnumVariantAdded, old_def_id);
             },
             (None, None) => unreachable!(),
         }
