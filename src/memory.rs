@@ -6,7 +6,7 @@ use rustc::ty;
 use rustc::ty::layout::{self, TargetDataLayout};
 
 use error::{EvalError, EvalResult};
-use value::PrimVal;
+use value::{PrimVal, self};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -61,62 +61,23 @@ impl Pointer {
     }
 
     pub fn wrapping_signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> Self {
-        Pointer::new(self.alloc_id, (self.offset.wrapping_add(i as u64) as u128 % (1u128 << layout.pointer_size.bits())) as u64)
+        Pointer::new(self.alloc_id, value::wrapping_signed_offset(self.offset, i, layout))
     }
 
     pub fn signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        // FIXME: is it possible to over/underflow here?
-        if i < 0 {
-            // trickery to ensure that i64::min_value() works fine
-            // this formula only works for true negative values, it panics for zero!
-            let n = u64::max_value() - (i as u64) + 1;
-            if let Some(res) = self.offset.checked_sub(n) {
-                Ok(Pointer::new(self.alloc_id, res))
-            } else {
-                Err(EvalError::OverflowingMath)
-            }
-        } else {
-            self.offset(i as u64, layout)
-        }
+        Ok(Pointer::new(self.alloc_id, value::signed_offset(self.offset, i, layout)?))
     }
 
     pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        if let Some(res) = self.offset.checked_add(i) {
-            if res as u128 >= (1u128 << layout.pointer_size.bits()) {
-                Err(EvalError::OverflowingMath)
-            } else {
-                Ok(Pointer::new(self.alloc_id, res))
-            }
-        } else {
-            Err(EvalError::OverflowingMath)
-        }
+        Ok(Pointer::new(self.alloc_id, value::offset(self.offset, i, layout)?))
     }
 
     pub fn points_to_zst(&self) -> bool {
         self.alloc_id == ZST_ALLOC_ID
     }
 
-    pub fn to_int<'tcx>(&self) -> EvalResult<'tcx, u64> {
-        match self.alloc_id {
-            NEVER_ALLOC_ID => Ok(self.offset),
-            _ => Err(EvalError::ReadPointerAsBytes),
-        }
-    }
-
-    pub fn from_int(i: u64) -> Self {
-        Pointer::new(NEVER_ALLOC_ID, i)
-    }
-
     pub fn zst_ptr() -> Self {
         Pointer::new(ZST_ALLOC_ID, 0)
-    }
-
-    pub fn never_ptr() -> Self {
-        Pointer::new(NEVER_ALLOC_ID, 0)
-    }
-    
-    pub fn is_null_ptr(&self) -> bool {
-        return *self == Pointer::from_int(0)
     }
 }
 
@@ -124,7 +85,7 @@ pub type TlsKey = usize;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    data: Pointer, // Will eventually become a map from thread IDs to pointers, if we ever support more than one thread.
+    data: PrimVal, // Will eventually become a map from thread IDs to `PrimVal`s, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -187,7 +148,6 @@ pub struct Memory<'a, 'tcx> {
 }
 
 const ZST_ALLOC_ID: AllocId = AllocId(0);
-const NEVER_ALLOC_ID: AllocId = AllocId(1);
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn new(layout: &'a TargetDataLayout, max_memory: u64) -> Self {
@@ -395,7 +355,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.next_thread_local;
         self.next_thread_local += 1;
-        self.thread_local.insert(new_key, TlsEntry { data: Pointer::from_int(0), dtor });
+        self.thread_local.insert(new_key, TlsEntry { data: PrimVal::Bytes(0), dtor });
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
         return new_key;
     }
@@ -410,7 +370,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
+    pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, PrimVal> {
         return match self.thread_local.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
@@ -420,7 +380,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx> {
+    pub(crate) fn store_tls(&mut self, key: TlsKey, new_data: PrimVal) -> EvalResult<'tcx> {
         return match self.thread_local.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
@@ -431,14 +391,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
     
-    // Returns a dtor and its argument, if one is supposed to run
-    pub(crate) fn fetch_tls_dtor(&mut self) -> Option<(ty::Instance<'tcx>, Pointer)> {
+    /// Returns a dtor and its argument, if one is supposed to run
+    pub(crate) fn fetch_tls_dtor(&mut self) -> Option<(ty::Instance<'tcx>, PrimVal)> {
         for (_, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.iter_mut() {
-            if !data.is_null_ptr() {
+            if *data != PrimVal::Bytes(0) {
                 if let Some(dtor) = dtor {
-                    let old_data = *data;
-                    *data = Pointer::from_int(0);
-                    return Some((dtor, old_data));
+                    let ret = Some((dtor, *data));
+                    *data = PrimVal::Bytes(0);
+                    return ret;
                 }
             }
         }
@@ -467,7 +427,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == NEVER_ALLOC_ID || id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
+                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -482,7 +442,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             },
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == NEVER_ALLOC_ID || id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
+                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -513,7 +473,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let mut allocs_seen = HashSet::new();
 
         while let Some(id) = allocs_to_print.pop_front() {
-            if id == ZST_ALLOC_ID || id == NEVER_ALLOC_ID { continue; }
+            if id == ZST_ALLOC_ID { continue; }
             let mut msg = format!("Alloc {:<5} ", format!("{}:", id));
             let prefix_len = msg.len();
             let mut relocations = vec![];
@@ -563,7 +523,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     write!(msg, "{:1$}", "", ((i - pos) * 3) as usize).unwrap();
                     let target = match target_id {
                         ZST_ALLOC_ID => String::from("zst"),
-                        NEVER_ALLOC_ID => String::from("int ptr"),
                         _ => format!("({})", target_id),
                     };
                     // this `as usize` is fine, since we can't print more chars than `usize::MAX`
@@ -647,7 +606,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// mark an allocation as being the entry point to a static (see `static_alloc` field)
     pub fn mark_static(&mut self, alloc_id: AllocId) {
         trace!("mark_static: {:?}", alloc_id);
-        if alloc_id != NEVER_ALLOC_ID && alloc_id != ZST_ALLOC_ID && !self.static_alloc.insert(alloc_id) {
+        if alloc_id != ZST_ALLOC_ID && !self.static_alloc.insert(alloc_id) {
             bug!("tried to mark an allocation ({:?}) as static twice", alloc_id);
         }
     }
@@ -677,7 +636,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 // mark recursively
                 mem::replace(relocations, Default::default())
             },
-            None if alloc_id == NEVER_ALLOC_ID || alloc_id == ZST_ALLOC_ID => return Ok(()),
+            None if alloc_id == ZST_ALLOC_ID => return Ok(()),
             None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
             _ => return Ok(()),
         };
@@ -749,9 +708,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<'tcx, Pointer> {
+    pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<'tcx, PrimVal> {
         let size = self.pointer_size();
-        self.check_defined(ptr, size)?;
+        if self.check_defined(ptr, size).is_err() {
+            return Ok(PrimVal::Undef);
+        }
         let endianess = self.endianess();
         let bytes = self.get_bytes_unchecked(ptr, size, size)?;
         let offset = read_target_uint(endianess, bytes).unwrap();
@@ -759,16 +720,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let offset = offset as u64;
         let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
-            Some(&alloc_id) => Ok(Pointer::new(alloc_id, offset)),
-            None => Ok(Pointer::from_int(offset)),
+            Some(&alloc_id) => Ok(PrimVal::Ptr(Pointer::new(alloc_id, offset))),
+            None => Ok(PrimVal::Bytes(offset as u128)),
         }
     }
 
     pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<'tcx> {
         self.write_usize(dest, ptr.offset as u64)?;
-        if ptr.alloc_id != NEVER_ALLOC_ID {
-            self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
-        }
+        self.get_mut(dest.alloc_id)?.relocations.insert(dest.offset, ptr.alloc_id);
         Ok(())
     }
 

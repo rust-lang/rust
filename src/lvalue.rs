@@ -12,7 +12,10 @@ use value::{PrimVal, Value};
 pub enum Lvalue<'tcx> {
     /// An lvalue referring to a value allocated in the `Memory` system.
     Ptr {
-        ptr: Pointer,
+        /// An lvalue may have an invalid (integral or undef) pointer,
+        /// since it might be turned back into a reference
+        /// before ever being dereferenced.
+        ptr: PrimVal,
         extra: LvalueExtra,
     },
 
@@ -61,11 +64,15 @@ pub struct Global<'tcx> {
 }
 
 impl<'tcx> Lvalue<'tcx> {
-    pub fn from_ptr(ptr: Pointer) -> Self {
-        Lvalue::Ptr { ptr, extra: LvalueExtra::None }
+    pub fn zst() -> Self {
+        Self::from_ptr(Pointer::zst_ptr())
     }
 
-    pub(super) fn to_ptr_and_extra(self) -> (Pointer, LvalueExtra) {
+    pub fn from_ptr(ptr: Pointer) -> Self {
+        Lvalue::Ptr { ptr: PrimVal::Ptr(ptr), extra: LvalueExtra::None }
+    }
+
+    pub(super) fn to_ptr_and_extra(self) -> (PrimVal, LvalueExtra) {
         match self {
             Lvalue::Ptr { ptr, extra } => (ptr, extra),
             _ => bug!("to_ptr_and_extra: expected Lvalue::Ptr, got {:?}", self),
@@ -73,10 +80,10 @@ impl<'tcx> Lvalue<'tcx> {
         }
     }
 
-    pub(super) fn to_ptr(self) -> Pointer {
+    pub(super) fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         let (ptr, extra) = self.to_ptr_and_extra();
         assert_eq!(extra, LvalueExtra::None);
-        ptr
+        ptr.to_ptr()
     }
 
     pub(super) fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
@@ -127,7 +134,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match lvalue {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                Ok(Value::ByRef(ptr))
+                Ok(Value::ByRef(ptr.to_ptr()?))
             }
             Lvalue::Local { frame, local, field } => {
                 self.stack[frame].get_local(local, field.map(|(i, _)| i))
@@ -141,7 +148,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
-            Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
+            Local(mir::RETURN_POINTER) => self.frame().return_lvalue.expect("diverging function returned"),
             Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local, field: None },
 
             Static(ref static_) => {
@@ -229,14 +236,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Local { frame, local, field } => match self.stack[frame].get_local(local, field.map(|(i, _)| i))? {
                 Value::ByRef(ptr) => {
                     assert!(field.is_none(), "local can't be ByRef and have a field offset");
-                    (ptr, LvalueExtra::None)
+                    (PrimVal::Ptr(ptr), LvalueExtra::None)
                 },
                 Value::ByVal(PrimVal::Undef) => {
                     // FIXME: allocate in fewer cases
                     if self.ty_to_primval_kind(base_ty).is_ok() {
                         return Ok(base);
                     } else {
-                        (self.force_allocation(base)?.to_ptr(), LvalueExtra::None)
+                        (PrimVal::Ptr(self.force_allocation(base)?.to_ptr()?), LvalueExtra::None)
                     }
                 },
                 Value::ByVal(_) => {
@@ -264,7 +271,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {
-                let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(PrimVal::Ptr(base_ptr), PrimVal::Ptr(tab)))?;
+                let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(base_ptr, PrimVal::Ptr(tab)))?;
                 offset.abi_align(Align::from_bytes(align, align).unwrap()).bytes()
             }
             _ => offset.bytes(),
@@ -276,7 +283,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         if packed {
             let size = self.type_size(field_ty)?.expect("packed struct must be sized");
-            self.memory.mark_packed(ptr, size);
+            self.memory.mark_packed(ptr.to_ptr()?, size);
         }
 
         let extra = if self.type_is_sized(field_ty) {

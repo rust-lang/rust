@@ -2,6 +2,7 @@
 #![allow(float_cmp)]
 
 use std::mem::transmute;
+use rustc::ty::layout::TargetDataLayout;
 
 use error::{EvalError, EvalResult};
 use memory::{Memory, Pointer};
@@ -47,7 +48,7 @@ pub enum Value {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `PrimVal` can either represent the raw bytes
 /// of a simple value, a pointer into another `Allocation`, or be undefined.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PrimVal {
     /// The raw bytes of a simple value.
     Bytes(u128),
@@ -74,33 +75,33 @@ pub enum PrimValKind {
 }
 
 impl<'a, 'tcx: 'a> Value {
-    pub(super) fn read_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
+    pub(super) fn read_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, PrimVal> {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr),
-            ByVal(ptr) | ByValPair(ptr, _) => ptr.to_ptr(),
+            ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr),
         }
     }
 
     pub(super) fn expect_ptr_vtable_pair(
         &self,
         mem: &Memory<'a, 'tcx>
-    ) -> EvalResult<'tcx, (Pointer, Pointer)> {
+    ) -> EvalResult<'tcx, (PrimVal, Pointer)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
                 let ptr = mem.read_ptr(ref_ptr)?;
                 let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?)?;
-                Ok((ptr, vtable))
+                Ok((ptr, vtable.to_ptr()?))
             }
 
-            ByValPair(ptr, vtable) => Ok((ptr.to_ptr()?, vtable.to_ptr()?)),
+            ByValPair(ptr, vtable) => Ok((ptr, vtable.to_ptr()?)),
 
             _ => bug!("expected ptr and vtable, got {:?}", self),
         }
     }
 
-    pub(super) fn expect_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
+    pub(super) fn expect_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (PrimVal, u64)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
@@ -111,7 +112,7 @@ impl<'a, 'tcx: 'a> Value {
             ByValPair(ptr, val) => {
                 let len = val.to_u128()?;
                 assert_eq!(len as u64 as u128, len);
-                Ok((ptr.to_ptr()?, len as u64))
+                Ok((ptr, len as u64))
             },
             _ => unimplemented!(),
         }
@@ -146,14 +147,14 @@ impl<'tcx> PrimVal {
     pub fn to_bytes(self) -> EvalResult<'tcx, u128> {
         match self {
             PrimVal::Bytes(b) => Ok(b),
-            PrimVal::Ptr(p) => p.to_int().map(|b| b as u128),
+            PrimVal::Ptr(_) => Err(EvalError::ReadPointerAsBytes),
             PrimVal::Undef => Err(EvalError::ReadUndefBytes),
         }
     }
 
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         match self {
-            PrimVal::Bytes(b) => Ok(Pointer::from_int(b as u64)),
+            PrimVal::Bytes(_) => Err(EvalError::ReadBytesAsPointer),
             PrimVal::Ptr(p) => Ok(p),
             PrimVal::Undef => Err(EvalError::ReadUndefBytes),
         }
@@ -203,6 +204,67 @@ impl<'tcx> PrimVal {
             _ => Err(EvalError::InvalidBool),
         }
     }
+
+    pub fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+        match self {
+            PrimVal::Bytes(b) => {
+                assert_eq!(b as u64 as u128, b);
+                Ok(PrimVal::Bytes(signed_offset(b as u64, i, layout)? as u128))
+            },
+            PrimVal::Ptr(ptr) => ptr.signed_offset(i, layout).map(PrimVal::Ptr),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
+    }
+
+    pub fn offset(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+        match self {
+            PrimVal::Bytes(b) => {
+                assert_eq!(b as u64 as u128, b);
+                Ok(PrimVal::Bytes(offset(b as u64, i, layout)? as u128))
+            },
+            PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(PrimVal::Ptr),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
+    }
+
+    pub fn wrapping_signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+        match self {
+            PrimVal::Bytes(b) => {
+                assert_eq!(b as u64 as u128, b);
+                Ok(PrimVal::Bytes(wrapping_signed_offset(b as u64, i, layout) as u128))
+            },
+            PrimVal::Ptr(ptr) => Ok(PrimVal::Ptr(ptr.wrapping_signed_offset(i, layout))),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
+    }
+}
+
+pub fn signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
+    // FIXME: is it possible to over/underflow here?
+    if i < 0 {
+        // trickery to ensure that i64::min_value() works fine
+        // this formula only works for true negative values, it panics for zero!
+        let n = u64::max_value() - (i as u64) + 1;
+        val.checked_sub(n).ok_or(EvalError::OverflowingMath)
+    } else {
+        offset(val, i as u64, layout)
+    }
+}
+
+pub fn offset<'tcx>(val: u64, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
+    if let Some(res) = val.checked_add(i) {
+        if res as u128 >= (1u128 << layout.pointer_size.bits()) {
+            Err(EvalError::OverflowingMath)
+        } else {
+            Ok(res)
+        }
+    } else {
+        Err(EvalError::OverflowingMath)
+    }
+}
+
+pub fn wrapping_signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> u64 {
+    (val.wrapping_add(i as u64) as u128 % (1u128 << layout.pointer_size.bits())) as u64
 }
 
 impl PrimValKind {

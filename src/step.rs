@@ -14,7 +14,6 @@ use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
-use memory::Pointer;
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -41,13 +40,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     instance,
                     mir.span,
                     mir,
-                    Lvalue::from_ptr(Pointer::zst_ptr()),
+                    Some(Lvalue::zst()),
                     StackPopCleanup::None,
                 )?;
                 let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
                 let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                 let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                self.write_value(Value::ByVal(PrimVal::Ptr(ptr)), dest, ty)?;
+                self.write_primval(dest, ptr, ty)?;
                 return Ok(true);
             }
             return Ok(false);
@@ -192,7 +191,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         }
         if self.ecx.tcx.has_attr(def_id, "linkage") {
             trace!("Initializing an extern global with NULL");
-            self.ecx.globals.insert(cid, Global::initialized(self.ecx.tcx.type_of(def_id), Value::ByVal(PrimVal::Ptr(Pointer::from_int(0))), !shared));
+            self.ecx.globals.insert(cid, Global::initialized(self.ecx.tcx.type_of(def_id), Value::ByVal(PrimVal::Bytes(0)), !shared));
             return;
         }
         self.try(|this| {
@@ -210,7 +209,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
                 instance,
                 span,
                 mir,
-                Lvalue::Global(cid),
+                Some(Lvalue::Global(cid)),
                 cleanup,
             )
         });
@@ -253,7 +252,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                     this.ecx.push_stack_frame(this.instance,
                                               constant.span,
                                               mir,
-                                              Lvalue::Global(cid),
+                                              Some(Lvalue::Global(cid)),
                                               StackPopCleanup::MarkStatic(false),
                     )
                 });

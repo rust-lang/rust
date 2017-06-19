@@ -66,7 +66,8 @@ pub struct Frame<'tcx> {
     pub return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to.
-    pub return_lvalue: Lvalue<'tcx>,
+    /// None if the function is a diverging function
+    pub return_lvalue: Option<Lvalue<'tcx>>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
@@ -266,7 +267,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         instance: ty::Instance<'tcx>,
         span: codemap::Span,
         mir: &'tcx mir::Mir<'tcx>,
-        return_lvalue: Lvalue<'tcx>,
+        return_lvalue: Option<Lvalue<'tcx>>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
@@ -323,7 +324,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         match frame.return_to_block {
-            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue {
+            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue.expect("diverging static") {
                 let global_value = self.globals.get_mut(&id)
                     .expect("global should have been cached (static)");
                 match global_value.value {
@@ -389,13 +390,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         where J::IntoIter: ExactSizeIterator,
     {
         // FIXME(solson)
-        let dest_ptr = self.force_allocation(dest)?.to_ptr();
+        let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
 
         let discr_dest = dest_ptr.offset(discr_offset, self.memory.layout)?;
         self.memory.write_uint(discr_dest, discr_val, discr_size)?;
 
         let dest = Lvalue::Ptr {
-            ptr: dest_ptr,
+            ptr: PrimVal::Ptr(dest_ptr),
             extra: LvalueExtra::DowncastVariant(variant_idx),
         };
 
@@ -481,7 +482,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match *dest_layout {
                     Univariant { ref variant, .. } => {
                         if variant.packed {
-                            let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
+                            let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
                             self.memory.mark_packed(ptr, variant.stride().bytes());
                         }
                         self.assign_fields(dest, dest_ty, operands)?;
@@ -499,7 +500,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 .to_u128_unchecked();
                             let discr_size = discr.size().bytes();
                             if variants[variant].packed {
-                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
+                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
                                 self.memory.mark_packed(ptr, variants[variant].stride().bytes());
                             }
 
@@ -541,7 +542,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
                             if nonnull.packed {
-                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
+                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
                                 self.memory.mark_packed(ptr, nonnull.stride().bytes());
                             }
                             if nndiscr == variant as u64 {
@@ -554,7 +555,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
 
                                 // FIXME(solson)
-                                let dest = self.force_allocation(dest)?.to_ptr();
+                                let dest = self.force_allocation(dest)?.to_ptr()?;
 
                                 let dest = dest.offset(offset.bytes(), self.memory.layout)?;
                                 let dest_size = self.type_size(ty)?
@@ -613,7 +614,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let value = self.eval_operand(operand)?;
 
                 // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr()?;
 
                 for i in 0..length {
                     let elem_dest = dest.offset(i * elem_size, self.memory.layout)?;
@@ -630,8 +631,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
-                let (raw_ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
-                let ptr = PrimVal::Ptr(raw_ptr);
+                let (ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
@@ -726,7 +726,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Discriminant(ref lvalue) => {
                 let lval = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
-                let ptr = self.force_allocation(lval)?.to_ptr();
+                let ptr = self.force_allocation(lval)?.to_ptr()?;
                 let discr_val = self.read_discriminant_value(ptr, ty)?;
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     if adt_def.discriminants(self.tcx).all(|v| discr_val != v.to_u128_unchecked()) {
@@ -856,14 +856,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn wrapping_pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
+    pub(super) fn wrapping_pointer_offset(&self, ptr: PrimVal, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, PrimVal> {
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
         let offset = offset.overflowing_mul(pointee_size).0;
-        Ok(ptr.wrapping_signed_offset(offset, self.memory.layout))
+        ptr.wrapping_signed_offset(offset, self.memory.layout)
     }
 
-    pub(super) fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
+    pub(super) fn pointer_offset(&self, ptr: PrimVal, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, PrimVal> {
         if offset == 0 {
             // rustc relies on Offset-by-0 to be well-defined even for "bad" pointers like Unique::empty().
             return Ok(ptr);
@@ -872,7 +872,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
         return if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.signed_offset(offset, self.memory.layout)?;
-            self.memory.check_bounds(ptr, false)?;
+            self.memory.check_bounds(ptr.to_ptr()?, false)?;
             Ok(ptr)
         } else {
             Err(EvalError::OverflowingMath)
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_value_to_ptr(src_val, ptr, dest_ty)
+                self.write_value_to_ptr(src_val, ptr.to_ptr()?, dest_ty)
             }
 
             Lvalue::Local { frame, local, field } => {
@@ -1242,20 +1242,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn read_ptr(&mut self, ptr: Pointer, pointee_ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(crate) fn read_ptr(&self, ptr: Pointer, pointee_ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         let p = self.memory.read_ptr(ptr)?;
         if self.type_is_sized(pointee_ty) {
-            Ok(Value::ByVal(PrimVal::Ptr(p)))
+            Ok(Value::ByVal(p))
         } else {
             trace!("reading fat pointer extra of type {}", pointee_ty);
             let extra = ptr.offset(self.memory.pointer_size(), self.memory.layout)?;
             let extra = match self.tcx.struct_tail(pointee_ty).sty {
-                ty::TyDynamic(..) => PrimVal::Ptr(self.memory.read_ptr(extra)?),
+                ty::TyDynamic(..) => self.memory.read_ptr(extra)?,
                 ty::TySlice(..) |
                 ty::TyStr => PrimVal::from_u128(self.memory.read_usize(extra)? as u128),
                 _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
             };
-            Ok(Value::ByValPair(PrimVal::Ptr(p), extra))
+            Ok(Value::ByValPair(p, extra))
         }
     }
 
@@ -1301,7 +1301,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
             ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
-            ty::TyFnPtr(_) => self.memory.read_ptr(ptr).map(PrimVal::Ptr)?,
+            ty::TyFnPtr(_) => self.memory.read_ptr(ptr)?,
             ty::TyRef(_, ref tam) |
             ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, tam.ty).map(Some),
 
@@ -1360,7 +1360,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                 let ptr = src.read_ptr(&self.memory)?;
                 let len = PrimVal::from_u128(length as u128);
-                let ptr = PrimVal::Ptr(ptr);
                 self.write_value(Value::ByValPair(ptr, len), dest, dest_ty)
             }
             (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
@@ -1374,7 +1373,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                 let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
                 let ptr = src.read_ptr(&self.memory)?;
-                let ptr = PrimVal::Ptr(ptr);
                 let extra = PrimVal::Ptr(vtable);
                 self.write_value(Value::ByValPair(ptr, extra), dest, dest_ty)
             },
@@ -1423,7 +1421,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
 
                 // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
+                let dest = self.force_allocation(dest)?.to_ptr()?;
                 let iter = src_fields.zip(dst_fields).enumerate();
                 for (i, (src_f, dst_f)) in iter {
                     let src_fty = monomorphize_field_ty(self.tcx, src_f, substs_a);
@@ -1632,7 +1630,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 start_instance,
                 start_mir.span,
                 start_mir,
-                Lvalue::from_ptr(ret_ptr),
+                Some(Lvalue::from_ptr(ret_ptr)),
                 StackPopCleanup::None,
             )?;
 
@@ -1659,7 +1657,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 main_instance,
                 main_mir.span,
                 main_mir,
-                Lvalue::from_ptr(Pointer::zst_ptr()),
+                Some(Lvalue::zst()),
                 StackPopCleanup::None,
             )?;
         }

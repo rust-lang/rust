@@ -30,7 +30,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.dump_local(self.frame().return_lvalue);
+                self.dump_local(self.frame().return_lvalue.expect("diverging function returned"));
                 self.pop_stack_frame()?
             }
 
@@ -388,7 +388,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr_size = self.memory.pointer_size();
                 let (_, vtable) = self.eval_operand(&arg_operands[0])?.expect_ptr_vtable_pair(&self.memory)?;
                 let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3), self.memory.layout)?)?;
-                let instance = self.memory.get_fn(fn_ptr.alloc_id)?;
+                let instance = self.memory.get_fn(fn_ptr.to_ptr()?.alloc_id)?;
                 let mut arg_operands = arg_operands.to_vec();
                 let ty = self.operand_ty(&arg_operands[0]);
                 let ty = self.get_field_ty(ty, 0)?;
@@ -430,12 +430,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Err(other) => return Err(other),
         };
         let (return_lvalue, return_to_block) = match destination {
-            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
-            None => {
-                // FIXME(solson)
-                let lvalue = Lvalue::from_ptr(Pointer::never_ptr());
-                (lvalue, StackPopCleanup::None)
-            }
+            Some((lvalue, block)) => (Some(lvalue), StackPopCleanup::Goto(block)),
+            None => (None, StackPopCleanup::None),
         };
 
         self.push_stack_frame(
@@ -579,7 +575,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "__rust_deallocate" => {
-                let ptr = args[0].read_ptr(&self.memory)?;
+                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 // FIXME: insert sanity check for size and align?
                 let _old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
                 let _align = self.value_to_primval(args[2], usize)?.to_u64()?;
@@ -587,7 +583,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
 
             "__rust_reallocate" => {
-                let ptr = args[0].read_ptr(&self.memory)?;
+                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 let size = self.value_to_primval(args[2], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[3], usize)?.to_u64()?;
                 let new_ptr = self.memory.reallocate(ptr, size, align)?;
@@ -598,7 +594,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // fn __rust_maybe_catch_panic(f: fn(*mut u8), data: *mut u8, data_ptr: *mut usize, vtable_ptr: *mut usize) -> u32
                 // We abort on panic, so not much is going on here, but we still have to call the closure
                 let u8_ptr_ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                let f = args[0].read_ptr(&self.memory)?;
+                let f = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 let data = args[1].read_ptr(&self.memory)?;
                 let f_instance = self.memory.get_fn(f.alloc_id)?;
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
@@ -610,13 +606,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     f_instance,
                     mir.span,
                     mir,
-                    Lvalue::from_ptr(Pointer::zst_ptr()),
+                    Some(Lvalue::zst()),
                     StackPopCleanup::Goto(dest_block),
                 )?;
 
                 let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("Argument to __rust_maybe_catch_panic does not take enough arguments.".to_owned()))?;
                 let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                self.write_value(Value::ByVal(PrimVal::Ptr(data)), arg_dest, u8_ptr_ty)?;
+                self.write_primval(arg_dest, data, u8_ptr_ty)?;
 
                 // We ourselbes return 0
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
@@ -630,8 +626,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memcmp" => {
-                let left = args[0].read_ptr(&self.memory)?;
-                let right = args[1].read_ptr(&self.memory)?;
+                let left = args[0].read_ptr(&self.memory)?.to_ptr()?;
+                let right = args[1].read_ptr(&self.memory)?.to_ptr()?;
                 let n = self.value_to_primval(args[2], usize)?.to_u64()?;
 
                 let result = {
@@ -650,7 +646,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memrchr" => {
-                let ptr = args[0].read_ptr(&self.memory)?;
+                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
@@ -662,7 +658,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memchr" => {
-                let ptr = args[0].read_ptr(&self.memory)?;
+                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
@@ -675,7 +671,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "getenv" => {
                 {
-                    let name_ptr = args[0].read_ptr(&self.memory)?;
+                    let name_ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                     let name = self.memory.read_c_str(name_ptr)?;
                     info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
                 }
@@ -684,7 +680,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "write" => {
                 let fd = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let buf = args[1].read_ptr(&self.memory)?;
+                let buf = args[1].read_ptr(&self.memory)?.to_ptr()?;
                 let n = self.value_to_primval(args[2], usize)?.to_u64()?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 { // stdout/stderr
@@ -718,7 +714,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "mmap" => {
                 // This is a horrible hack, but well... the guard page mechanism calls mmap and expects a particular return value, so we give it that value
                 let addr = args[0].read_ptr(&self.memory)?;
-                self.write_primval(dest, PrimVal::Ptr(addr), dest_ty)?;
+                self.write_primval(dest, addr, dest_ty)?;
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
@@ -726,8 +722,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let key_ptr = args[0].read_ptr(&self.memory)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
-                let dtor_ptr = args[1].read_ptr(&self.memory)?;
-                let dtor = if dtor_ptr.is_null_ptr() { None } else { Some(self.memory.get_fn(dtor_ptr.alloc_id)?) };
+                let dtor = match args[1].read_ptr(&self.memory)? {
+                    PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr.alloc_id)?),
+                    PrimVal::Bytes(0) => None,
+                    PrimVal::Bytes(_) => return Err(EvalError::ReadBytesAsPointer),
+                    PrimVal::Undef => return Err(EvalError::ReadUndefBytes),
+                };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_type = self.operand_ty(&arg_operands[0]).builtin_deref(true, ty::LvaluePreference::NoPreference)
@@ -743,7 +743,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Err(EvalError::OutOfTls);
                 }
                 // TODO: Does this need checking for alignment?
-                self.memory.write_uint(key_ptr, key, key_size.bytes())?;
+                self.memory.write_uint(key_ptr.to_ptr()?, key, key_size.bytes())?;
 
                 // Return success (0)
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
@@ -759,7 +759,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
                 let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
                 let ptr = self.memory.load_tls(key)?;
-                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                self.write_primval(dest, ptr, dest_ty)?;
             }
             "pthread_setspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
