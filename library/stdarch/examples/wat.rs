@@ -19,7 +19,7 @@ fn myop(
 
 fn main() {
     let x = env::args().nth(1).unwrap().parse().unwrap();
-    let y = env::args().nth(1).unwrap().parse().unwrap();
+    let y = env::args().nth(2).unwrap().parse().unwrap();
     let r = myop((x, x, x, x), (y, y, y, y));
     println!("{:?}", r);
 }
