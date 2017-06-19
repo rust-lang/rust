@@ -50,6 +50,16 @@ fn execute() -> i32 {
     );
     opts.optflag("", "all", "format all packages (only usable in workspaces)");
 
+    // If there is any invalid argument passed to `cargo fmt`, return without formatting.
+    if let Some(arg) = env::args()
+        .skip(2)
+        .take_while(|a| a != "--")
+        .find(|a| !a.starts_with('-'))
+    {
+        print_usage(&opts, &format!("Invalid argument: `{}`.", arg));
+        return failure;
+    }
+
     let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
         Ok(m) => m,
         Err(e) => {
