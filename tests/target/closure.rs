@@ -182,3 +182,17 @@ fn issue1694() {
         },
     )
 }
+
+fn issue1713() {
+    rayon::join(
+        || recurse(left, is_less, pred, limit),
+        || recurse(right, is_less, Some(pivot), limit),
+    );
+
+    rayon::join(
+        1,
+        || recurse(left, is_less, pred, limit),
+        2,
+        || recurse(right, is_less, Some(pivot), limit),
+    );
+}

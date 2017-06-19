@@ -2155,7 +2155,7 @@ where
             .map_or((None, None), |arg_shape| {
                 rewrite_last_arg_with_overflow(
                     &context,
-                    args[args.len() - 1],
+                    args,
                     &mut item_vec[args.len() - 1],
                     arg_shape,
                 )
@@ -2251,18 +2251,35 @@ fn rewrite_last_closure(
 
 fn rewrite_last_arg_with_overflow<'a, T>(
     context: &RewriteContext,
-    last_arg: &T,
+    args: &[&T],
     last_item: &mut ListItem,
     shape: Shape,
 ) -> (Option<String>, Option<String>)
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
+    let last_arg = args[args.len() - 1];
     let rewrite = if let Some(expr) = last_arg.to_expr() {
         match expr.node {
             // When overflowing the closure which consists of a single control flow expression,
             // force to use block if its condition uses multi line.
-            ast::ExprKind::Closure(..) => rewrite_last_closure(context, expr, shape),
+            ast::ExprKind::Closure(..) => {
+                // If the argument consists of multiple closures, we do not overflow
+                // the last closure.
+                if args.len() > 1 &&
+                    args.iter()
+                        .rev()
+                        .skip(1)
+                        .filter_map(|arg| arg.to_expr())
+                        .any(|expr| match expr.node {
+                            ast::ExprKind::Closure(..) => true,
+                            _ => false,
+                        }) {
+                    None
+                } else {
+                    rewrite_last_closure(context, expr, shape)
+                }
+            }
             _ => expr.rewrite(context, shape),
         }
     } else {

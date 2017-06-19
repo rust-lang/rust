@@ -151,3 +151,17 @@ fn issue1697() {
 fn issue1694() {
     foooooo(|_referencefffffffff: _, _target_reference: _, _oid: _, _target_oid: _| format!("refs/pull/{}/merge", pr_id))
 }
+
+fn issue1713() {
+    rayon::join(
+        || recurse(left, is_less, pred, limit),
+        || recurse(right, is_less, Some(pivot), limit),
+    );
+
+    rayon::join(
+        1,
+        || recurse(left, is_less, pred, limit),
+        2,
+        || recurse(right, is_less, Some(pivot), limit),
+    );
+}
