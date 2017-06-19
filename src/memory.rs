@@ -392,6 +392,24 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
     
     /// Returns a dtor and its argument, if one is supposed to run
+    ///
+    /// An optional destructor function may be associated with each key value.
+    /// At thread exit, if a key value has a non-NULL destructor pointer,
+    /// and the thread has a non-NULL value associated with that key,
+    /// the value of the key is set to NULL, and then the function pointed
+    /// to is called with the previously associated value as its sole argument.
+    /// The order of destructor calls is unspecified if more than one destructor
+    /// exists for a thread when it exits.
+    ///
+    /// If, after all the destructors have been called for all non-NULL values
+    /// with associated destructors, there are still some non-NULL values with
+    /// associated destructors, then the process is repeated.
+    /// If, after at least {PTHREAD_DESTRUCTOR_ITERATIONS} iterations of destructor
+    /// calls for outstanding non-NULL values, there are still some non-NULL values
+    /// with associated destructors, implementations may stop calling destructors,
+    /// or they may continue calling destructors until no non-NULL values with
+    /// associated destructors exist, even though this might result in an infinite loop.
+
     pub(crate) fn fetch_tls_dtor(&mut self) -> Option<(ty::Instance<'tcx>, PrimVal)> {
         for (_, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.iter_mut() {
             if *data != PrimVal::Bytes(0) {
