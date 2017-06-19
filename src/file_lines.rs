@@ -31,7 +31,7 @@ impl<'a> From<&'a LineRange> for Range {
 }
 
 impl Range {
-    fn new(lo: usize, hi: usize) -> Range {
+    pub fn new(lo: usize, hi: usize) -> Range {
         Range { lo: lo, hi: hi }
     }
 
@@ -117,7 +117,7 @@ impl FileLines {
         FileLines(None)
     }
 
-    fn from_ranges(mut ranges: HashMap<String, Vec<Range>>) -> FileLines {
+    pub fn from_ranges(mut ranges: HashMap<String, Vec<Range>>) -> FileLines {
         normalize_ranges(&mut ranges);
         FileLines(Some(ranges))
     }
