@@ -182,7 +182,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         field_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
         let base_layout = self.type_layout(base_ty)?;
-
         use rustc::ty::layout::Layout::*;
         let (offset, packed) = match *base_layout {
             Univariant { ref variant, .. } => {
@@ -255,8 +254,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 },
                 Value::ByVal(_) => {
-                    assert_eq!(field_index, 0, "ByVal can only have 1 non zst field with offset 0");
-                    return Ok(base);
+                    if self.get_field_count(base_ty)? == 1 {
+                        assert_eq!(field_index, 0, "ByVal can only have 1 non zst field with offset 0");
+                        return Ok(base);
+                    }
+                    // this branch is taken when a union creates a large ByVal which is then
+                    // accessed as a struct with multiple small fields
+                    (PrimVal::Ptr(self.force_allocation(base)?.to_ptr()?), LvalueExtra::None)
                 },
                 Value::ByValPair(_, _) => {
                     let field_count = self.get_field_count(base_ty)?;
