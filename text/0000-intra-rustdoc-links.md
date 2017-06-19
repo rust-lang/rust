@@ -197,6 +197,12 @@ This means that this **will not** render a valid link:
 Does not work: <bars::Bar> :(
 ```
 
+It will just output what any CommonMark compliant renderer would generate:
+
+```html
+Does not work: <a href="bars::Bar">bars::Bar</a> :(
+```
+
 We suggest to use [Implied Shortcut Reference Links][isrl] instead:
 
 ```markdown
@@ -297,6 +303,9 @@ or, given a `mod bar`, it may be possible to link to that using `[struct bar]`.
 Ideally, Rustdoc would be able to recognize Rust path syntax,
 and if the path cannot be resolved,
 print a warning (or an error).
+These diagnostic messages should highlight the specific link
+that Rustdoc was not able to resolve,
+using the original Markdown source from the comment and correct line numbers.
 
 ## Complex Example
 [complex-example]: #complex-example
