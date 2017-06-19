@@ -273,11 +273,9 @@ Indent style for control flow statements
 #### `"Rfc"`:
 
 ```rust
-// Conditional expression containing line-break
-if lorem(
-    ipsum,
-    dolor,
-)
+if lorem_ipsum &&
+    dolor_sit &&
+    amet_consectetur
 {
     // ...
 }
@@ -286,11 +284,9 @@ if lorem(
 #### `"Legacy"`:
 
 ```rust
-// Conditional expression containing line-break
-if lorem(
-    ipsum,
-    dolor,
-) {
+if lorem_ipsum &&
+   dolor_sit &&
+   amet_consectetur {
     // ...
 }
 ```
