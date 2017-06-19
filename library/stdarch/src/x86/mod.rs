@@ -1,6 +1,7 @@
 pub use self::sse::*;
 pub use self::sse2::*;
 pub use self::ssse3::*;
+pub use self::sse41::*;
 pub use self::sse42::*;
 pub use self::avx::*;
 pub use self::avx2::*;
@@ -13,6 +14,7 @@ pub type __m256i = ::v256::i8x32;
 mod sse;
 mod sse2;
 mod ssse3;
+mod sse41;
 mod sse42;
 mod avx;
 mod avx2;
