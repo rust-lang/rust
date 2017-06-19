@@ -1,4 +1,3 @@
-// use v128::*;
 use x86::__m128i;
 
 pub const _SIDD_UBYTE_OPS: i8 = 0b00000000;

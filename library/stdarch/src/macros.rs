@@ -7,6 +7,16 @@ macro_rules! define_ty {
     }
 }
 
+macro_rules! define_ty_doc {
+    ($name:ident, $($elty:ident),+ | $(#[$doc:meta])*) => {
+        $(#[$doc])*
+        #[repr(simd)]
+        #[derive(Clone, Copy, Debug, PartialEq)]
+        #[allow(non_camel_case_types)]
+        pub struct $name($($elty),*);
+    }
+}
+
 macro_rules! define_impl {
     (
         $name:ident, $elemty:ident, $nelems:expr, $boolname:ident,
@@ -246,11 +256,11 @@ macro_rules! define_integer_ops {
 }
 
 macro_rules! define_casts {
-    ($(($ty:ident, $floatty:ident, $floatcast:ident)),+) => {
+    ($(($fromty:ident, $toty:ident, $cast:ident)),+) => {
         $(
-            impl $ty {
+            impl $fromty {
                 #[inline]
-                pub fn $floatcast(self) -> ::$floatty {
+                pub fn $cast(self) -> ::simd::$toty {
                     unsafe { simd_cast(self) }
                 }
             }

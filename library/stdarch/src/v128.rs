@@ -1,4 +1,4 @@
-use simd::*;
+use simd_llvm::*;
 
 define_ty! { f64x2, f64, f64 }
 define_impl! { f64x2, f64, 2, i64x2, x0, x1 }

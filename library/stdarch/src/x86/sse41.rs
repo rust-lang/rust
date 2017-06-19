@@ -1,4 +1,3 @@
-// use v128::*;
 use x86::__m128i;
 
 #[inline(always)]

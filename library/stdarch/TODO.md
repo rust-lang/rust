@@ -456,7 +456,7 @@ sse4.1
 * [ ] `_mm_blend_ps`
 * [ ] `_mm_blendv_pd`
 * [ ] `_mm_blendv_ps`
-* [ ] `_mm_blendv_epi8`
+* [x] `_mm_blendv_epi8`
 * [ ] `_mm_blend_epi16`
 * [ ] `_mm_dp_pd`
 * [ ] `_mm_dp_ps`

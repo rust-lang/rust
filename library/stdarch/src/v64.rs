@@ -1,9 +1,15 @@
-use simd::*;
+use simd_llvm::*;
 
-define_ty! { f32x2, f32, f32 }
+define_ty_doc! {
+    f32x2, f32, f32 |
+    /// A 64-bit vector with 2 `f32` lanes.
+}
 define_impl! { f32x2, f32, 2, i32x2, x0, x1 }
 
-define_ty! { u32x2, u32, u32 }
+define_ty_doc! {
+    u32x2, u32, u32 |
+    /// A 64-bit vector with 2 `u32` lanes.
+}
 define_impl! { u32x2, u32, 2, i32x2, x0, x1 }
 
 define_ty! { i32x2, i32, i32 }

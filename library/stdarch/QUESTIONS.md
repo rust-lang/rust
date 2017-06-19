@@ -24,3 +24,8 @@ type is probably `i64x2`.
 What is the deal with the ucomi f64 comparison functions in SSE2? Clang's
 headers indicate some specific behavior with NAN, but I can't seem to reproduce
 it. Intel's official docs are very vague.
+
+---
+
+`_mm256_blendv_pd` takes a mask parameter with type `f64x4`, but the
+documentation seems to indicate that it is a bit vector. What's going on?

@@ -2,7 +2,7 @@ use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
 
-use simd::{
+use simd_llvm::{
     simd_cast, simd_shuffle2, simd_shuffle4, simd_shuffle8, simd_shuffle16,
 };
 use x86::__m128i;

@@ -423,12 +423,12 @@ pub fn _mm256_movemask_epi8(a: i8x32) -> i32 {
     unsafe { pmovmskb(a) }
 }
 
-/// Compute the sum of absolute differences (SADs) of quadruplets of unsigned 
-/// 8-bit integers in `a` compared to those in `b`, and store the 16-bit 
+/// Compute the sum of absolute differences (SADs) of quadruplets of unsigned
+/// 8-bit integers in `a` compared to those in `b`, and store the 16-bit
 /// results in dst. Eight SADs are performed for each 128-bit lane using one
-/// quadruplet from `b` and eight quadruplets from `a`. One quadruplet is 
-/// selected from `b` starting at on the offset specified in `imm8`. Eight 
-/// quadruplets are formed from sequential 8-bit integers selected from `a` 
+/// quadruplet from `b` and eight quadruplets from `a`. One quadruplet is
+/// selected from `b` starting at on the offset specified in `imm8`. Eight
+/// quadruplets are formed from sequential 8-bit integers selected from `a`
 /// starting at the offset specified in `imm8`.
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -438,9 +438,9 @@ pub fn _mm256_mpsadbw_epu8(a: u8x32, b: u8x32, imm8: i32) -> u16x16 {
 
 ***/
 
-/// Multiply the low 32-bit integers from each packed 64-bit element in 
+/// Multiply the low 32-bit integers from each packed 64-bit element in
 /// `a` and `b`
-/// 
+///
 /// Return the 64-bit results.
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -448,7 +448,7 @@ pub fn _mm256_mul_epi32(a: i32x8, b: i32x8) -> i64x4 {
     unsafe { pmuldq(a, b) }
 }
 
-/// Multiply the low unsigned 32-bit integers from each packed 64-bit 
+/// Multiply the low unsigned 32-bit integers from each packed 64-bit
 /// element in `a` and `b`
 ///
 /// Return the unsigned 64-bit results.
@@ -458,7 +458,7 @@ pub fn _mm256_mul_epu32(a: u32x8, b: u32x8) -> u64x4 {
     unsafe { pmuludq(a, b) }
 }
 
-/// Multiply the packed 16-bit integers in `a` and `b`, producing 
+/// Multiply the packed 16-bit integers in `a` and `b`, producing
 /// intermediate 32-bit integers and returning the high 16 bits of the
 /// intermediate integers.
 #[inline(always)]
@@ -476,7 +476,7 @@ pub fn _mm256_mulhi_epu16(a: u16x16, b: u16x16) -> u16x16 {
     unsafe { pmulhuw(a, b) }
 }
 
-/// Multiply the packed 16-bit integers in `a` and `b`, producing 
+/// Multiply the packed 16-bit integers in `a` and `b`, producing
 /// intermediate 32-bit integers, and return the low 16 bits of the
 /// intermediate integers
 #[inline(always)]
@@ -486,7 +486,7 @@ pub fn _mm256_mullo_epi16(a: i16x16, b:i16x16) -> i16x16 {
 }
 
 
-/// Multiply the packed 32-bit integers in `a` and `b`, producing 
+/// Multiply the packed 32-bit integers in `a` and `b`, producing
 /// intermediate 64-bit integers, and return the low 16 bits of the
 /// intermediate integers
 #[inline(always)]
@@ -495,7 +495,7 @@ pub fn _mm256_mullo_epi32(a: i32x8, b:i32x8) -> i32x8 {
     a * b
 }
 
-/// Multiply packed 16-bit integers in `a` and `b`, producing 
+/// Multiply packed 16-bit integers in `a` and `b`, producing
 /// intermediate signed 32-bit integers. Truncate each intermediate
 /// integer to the 18 most significant bits, round by adding 1, and
 /// return bits [16:1]
@@ -505,7 +505,7 @@ pub fn _mm256_mulhrs_epi16(a: i16x16, b:i16x16) -> i16x16 {
     unsafe { pmulhrsw(a, b) }
 }
 
-/// Compute the bitwise OR of 256 bits (representing integer data) in `a` 
+/// Compute the bitwise OR of 256 bits (representing integer data) in `a`
 /// and `b`
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -513,7 +513,7 @@ pub fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
     a | b
 }
 
-/// Convert packed 16-bit integers from `a` and `b` to packed 8-bit integers 
+/// Convert packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -521,7 +521,7 @@ pub fn _mm256_packs_epi16(a: i16x16, b: i16x16) -> i8x32 {
     unsafe { packsswb(a, b) }
 }
 
-/// Convert packed 32-bit integers from `a` and `b` to packed 16-bit integers 
+/// Convert packed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -552,8 +552,8 @@ pub fn _mm256_packus_epi32(a: i32x8, b: i32x8) -> u16x16 {
 // TODO _mm256_permutevar8x32_ps (__m256 a, __m256i idx)
 
 /// Compute the absolute differences of packed unsigned 8-bit integers in `a`
-/// and `b`, then horizontally sum each consecutive 8 differences to 
-/// produce four unsigned 16-bit integers, and pack these unsigned 16-bit 
+/// and `b`, then horizontally sum each consecutive 8 differences to
+/// produce four unsigned 16-bit integers, and pack these unsigned 16-bit
 /// integers in the low 16 bits of the 64-bit return value
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -593,7 +593,7 @@ pub fn _mm256_sign_epi8(a: i8x32, b: i8x32) -> i8x32 {
     unsafe { psignb(a, b) }
 }
 
-/// Shift packed 16-bit integers in `a` left by `count` while 
+/// Shift packed 16-bit integers in `a` left by `count` while
 /// shifting in zeros, and return the result
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -601,7 +601,7 @@ pub fn _mm256_sll_epi16(a: i16x16, count: i16x8) -> i16x16 {
     unsafe { psllw(a, count) }
 }
 
-/// Shift packed 32-bit integers in `a` left by `count` while 
+/// Shift packed 32-bit integers in `a` left by `count` while
 /// shifting in zeros, and return the result
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -609,7 +609,7 @@ pub fn _mm256_sll_epi32(a: i32x8, count: i32x4) -> i32x8 {
     unsafe { pslld(a, count) }
 }
 
-/// Shift packed 64-bit integers in `a` left by `count` while 
+/// Shift packed 64-bit integers in `a` left by `count` while
 /// shifting in zeros, and return the result
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -622,7 +622,7 @@ pub fn _mm256_sll_epi64(a: i64x4, count: i64x2) -> i64x4 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 pub fn _mm256_slli_epi16(a: i16x16, imm8: i32) -> i16x16 {
-    unsafe { pslliw(a, imm8) }    
+    unsafe { pslliw(a, imm8) }
 }
 
 /// Shift packed 32-bit integers in `a` left by `imm8` while
@@ -630,7 +630,7 @@ pub fn _mm256_slli_epi16(a: i16x16, imm8: i32) -> i16x16 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 pub fn _mm256_slli_epi32(a: i32x8, imm8: i32) -> i32x8 {
-    unsafe { psllid(a, imm8) }    
+    unsafe { psllid(a, imm8) }
 }
 
 /// Shift packed 64-bit integers in `a` left by `imm8` while
@@ -638,7 +638,7 @@ pub fn _mm256_slli_epi32(a: i32x8, imm8: i32) -> i32x8 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 pub fn _mm256_slli_epi64(a: i64x4, imm8: i32) -> i64x4 {
-    unsafe { pslliq(a, imm8) }    
+    unsafe { pslliq(a, imm8) }
 }
 
 // TODO _mm256_slli_si256 (__m256i a, const int imm8)
@@ -695,7 +695,7 @@ pub fn _mm256_sra_epi32(a: i32x8, count: i32x4) -> i32x8 {
     unsafe { psrad(a, count) }
 }
 
-/// Shift packed 16-bit integers in `a` right by `imm8` while 
+/// Shift packed 16-bit integers in `a` right by `imm8` while
 /// shifting in sign bits.
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -703,7 +703,7 @@ pub fn _mm256_srai_epi16(a: i16x16, imm8: i32) -> i16x16 {
     unsafe { psraiw(a, imm8) }
 }
 
-/// Shift packed 32-bit integers in `a` right by `imm8` while 
+/// Shift packed 32-bit integers in `a` right by `imm8` while
 /// shifting in sign bits.
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -733,7 +733,7 @@ pub fn _mm256_srav_epi32(a: i32x8, count: i32x8) -> i32x8 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 pub fn _mm256_srl_epi16(a: i16x16, count: i16x8) -> i16x16 {
-    unsafe { psrlw(a, count) }    
+    unsafe { psrlw(a, count) }
 }
 
 /// Shift packed 32-bit integers in `a` right by `count` while shifting in
@@ -741,7 +741,7 @@ pub fn _mm256_srl_epi16(a: i16x16, count: i16x8) -> i16x16 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 pub fn _mm256_srl_epi32(a: i32x8, count: i32x4) -> i32x8 {
-    unsafe { psrld(a, count) }    
+    unsafe { psrld(a, count) }
 }
 
 /// Shift packed 64-bit integers in `a` right by `count` while shifting in
@@ -749,10 +749,10 @@ pub fn _mm256_srl_epi32(a: i32x8, count: i32x4) -> i32x8 {
 #[inline(always)]
 #[target_feature = "+avx2"]
 pub fn _mm256_srl_epi64(a: i64x4, count: i64x2) -> i64x4 {
-    unsafe { psrlq(a, count) }    
+    unsafe { psrlq(a, count) }
 }
 
-/// Shift packed 16-bit integers in `a` right by `imm8` while shifting in 
+/// Shift packed 16-bit integers in `a` right by `imm8` while shifting in
 /// zeros
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -760,7 +760,7 @@ pub fn _mm256_srli_epi16(a: i16x16, imm8: i32) -> i16x16 {
     unsafe { psrliw(a, imm8) }
 }
 
-/// Shift packed 32-bit integers in `a` right by `imm8` while shifting in 
+/// Shift packed 32-bit integers in `a` right by `imm8` while shifting in
 /// zeros
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -768,7 +768,7 @@ pub fn _mm256_srli_epi32(a: i32x8, imm8: i32) -> i32x8 {
     unsafe { psrlid(a, imm8) }
 }
 
-/// Shift packed 64-bit integers in `a` right by `imm8` while shifting in 
+/// Shift packed 64-bit integers in `a` right by `imm8` while shifting in
 /// zeros
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -879,7 +879,7 @@ pub fn _mm256_subs_epu8(a: u8x32, b: u8x32) -> u8x32 {
 // TODO __m256i _mm256_unpacklo_epi64 (__m256i a, __m256i b)
 // TODO __m256i _mm256_unpacklo_epi8 (__m256i a, __m256i b)
 
-/// Compute the bitwise XOR of 256 bits (representing integer data) 
+/// Compute the bitwise XOR of 256 bits (representing integer data)
 /// in `a` and `b`
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -903,7 +903,7 @@ extern "C" {
     #[link_name = "llvm.x86.avx2.paddus.b"]
     fn paddusb(a: u8x32, b: u8x32) -> u8x32;
     #[link_name = "llvm.x86.avx2.paddus.w"]
-    fn paddusw(a: u16x16, b: u16x16) -> u16x16;    
+    fn paddusw(a: u16x16, b: u16x16) -> u16x16;
     #[link_name = "llvm.x86.avx2.pavg.b"]
     fn pavgb(a: u8x32, b: u8x32) -> u8x32;
     #[link_name = "llvm.x86.avx2.pavg.w"]
@@ -949,7 +949,7 @@ extern "C" {
     #[link_name = "llvm.x86.avx2.pminu.d"]
     fn pminud(a: u32x8, b: u32x8) -> u32x8;
     #[link_name = "llvm.x86.avx2.pminu.b"]
-    fn pminub(a: u8x32, b: u8x32) -> u8x32;    
+    fn pminub(a: u8x32, b: u8x32) -> u8x32;
     #[link_name = "llvm.x86.avx2.pmovmskb"]  //fails in debug
     fn pmovmskb(a: i8x32) -> i32;
     #[link_name = "llvm.x86.avx2.mpsadbw"] //fails in debug
@@ -1031,7 +1031,7 @@ extern "C" {
     #[link_name = "llvm.x86.avx2.psrlv.q"]
     fn psrlvq(a: i64x2, count: i64x2) -> i64x2;
     #[link_name = "llvm.x86.avx2.psrlv.q.256"]
-    fn psrlvq256(a: i64x4, count: i64x4) -> i64x4;    
+    fn psrlvq256(a: i64x4, count: i64x4) -> i64x4;
     #[link_name = "llvm.x86.avx2.psubs.b"]
     fn psubsb(a: i8x32, b: i8x32) -> i8x32;
     #[link_name = "llvm.x86.avx2.psubs.w"]
@@ -1580,15 +1580,15 @@ mod tests {
     }
 
 
-/** 
+/**
     // TODO this fails in debug but not release, why?
     #[test]
     #[target_feature ="+avx2"]
     fn _mm256_movemask_epi8() {
-        let a = i8x32::splat(-1);        
+        let a = i8x32::splat(-1);
         let r = avx2::_mm256_movemask_epi8(a);
         let e : i32 = -1;
-        assert_eq!(r, e);    
+        assert_eq!(r, e);
     }
 
     // TODO This fails in debug but not in release, whhhy?
@@ -1604,7 +1604,7 @@ mod tests {
 **/
 
     #[test]
-    #[target_feature = "+avx2"]    
+    #[target_feature = "+avx2"]
     fn _mm256_mul_epi32() {
         let a = i32x8::new(0, 0, 0, 0, 2, 2, 2, 2);
         let b = i32x8::new(1, 2, 3, 4, 5, 6, 7, 8);
@@ -1693,7 +1693,7 @@ mod tests {
             4, 4, 4, 4, 4, 4, 4, 4,
             2, 2, 2, 2, 2, 2, 2, 2,
             4, 4, 4, 4, 4, 4, 4, 4);
-        
+
         assert_eq!(r, e);
     }
 
@@ -1708,7 +1708,7 @@ mod tests {
             4, 4, 4, 4,
             2, 2, 2, 2,
             4, 4, 4, 4);
-        
+
         assert_eq!(r, e);
     }
 
@@ -1723,7 +1723,7 @@ mod tests {
             4, 4, 4, 4, 4, 4, 4, 4,
             2, 2, 2, 2, 2, 2, 2, 2,
             4, 4, 4, 4, 4, 4, 4, 4);
-        
+
         assert_eq!(r, e);
     }
 
@@ -1738,7 +1738,7 @@ mod tests {
             4, 4, 4, 4,
             2, 2, 2, 2,
             4, 4, 4, 4);
-        
+
         assert_eq!(r, e);
     }
 
@@ -1756,7 +1756,7 @@ mod tests {
     #[target_feature = "+avx2"]
     fn _mm256_sign_epi16() {
         let a = i16x16::splat(2);
-        let b = i16x16::splat(-1);    
+        let b = i16x16::splat(-1);
         let r = avx2::_mm256_sign_epi16(a, b);
         let e = i16x16::splat(-2);
         assert_eq!(r, e);
@@ -1766,7 +1766,7 @@ mod tests {
     #[target_feature = "+avx2"]
     fn _mm256_sign_epi32() {
         let a = i32x8::splat(2);
-        let b = i32x8::splat(-1);    
+        let b = i32x8::splat(-1);
         let r = avx2::_mm256_sign_epi32(a, b);
         let e = i32x8::splat(-2);
         assert_eq!(r, e);
@@ -1776,7 +1776,7 @@ mod tests {
     #[target_feature = "+avx2"]
     fn _mm256_sign_epi8() {
         let a = i8x32::splat(2);
-        let b = i8x32::splat(-1);    
+        let b = i8x32::splat(-1);
         let r = avx2::_mm256_sign_epi8(a, b);
         let e = i8x32::splat(-2);
         assert_eq!(r, e);
@@ -1816,7 +1816,7 @@ mod tests {
             avx2::_mm256_slli_epi16(i16x16::splat(0xFF), 4),
             i16x16::splat(0xFF0));
     }
-    
+
     #[test]
     #[target_feature = "+avx2"]
     fn _mm256_slli_epi32() {
@@ -1840,7 +1840,7 @@ mod tests {
         let b = i32x4::splat(1);
         let r = avx2::_mm_sllv_epi32(a, b);
         let e = i32x4::splat(4);
-        assert_eq!(r, e);   
+        assert_eq!(r, e);
     }
 
     #[test]
@@ -1850,7 +1850,7 @@ mod tests {
         let b = i32x8::splat(1);
         let r = avx2::_mm256_sllv_epi32(a, b);
         let e = i32x8::splat(4);
-        assert_eq!(r, e);   
+        assert_eq!(r, e);
     }
     #[test]
     #[target_feature = "+avx2"]
@@ -1859,7 +1859,7 @@ mod tests {
         let b = i64x2::splat(1);
         let r = avx2::_mm_sllv_epi64(a, b);
         let e = i64x2::splat(4);
-        assert_eq!(r, e);   
+        assert_eq!(r, e);
     }
     #[test]
     #[target_feature = "+avx2"]
@@ -1868,7 +1868,7 @@ mod tests {
         let b = i64x4::splat(1);
         let r = avx2::_mm256_sllv_epi64(a, b);
         let e = i64x4::splat(4);
-        assert_eq!(r, e);   
+        assert_eq!(r, e);
     }
 
     #[test]
@@ -2097,5 +2097,5 @@ mod tests {
             __m256i::splat(6));
     }
 
-    
+
 }

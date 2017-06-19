@@ -3,7 +3,8 @@
 extern crate stdsimd;
 
 use std::env;
-use stdsimd as s;
+use stdsimd::simd as s;
+use stdsimd::vendor;
 
 #[inline(never)]
 #[target_feature = "+sse4.2"]
@@ -14,15 +15,15 @@ fn index(needle: &str, haystack: &str) -> usize {
 
     let mut needle = needle.to_string().into_bytes();
     needle.resize(16, 0);
-    let vneedle = s::__m128i::from(s::u8x16::load(&needle, 0));
+    let vneedle = vendor::__m128i::from(s::u8x16::load(&needle, 0));
 
     let mut haystack = haystack.to_string().into_bytes();
     haystack.resize(16, 0);
-    let vhaystack = s::__m128i::from(s::u8x16::load(&haystack, 0));
+    let vhaystack = vendor::__m128i::from(s::u8x16::load(&haystack, 0));
 
-    s::_mm_cmpestri(
+    vendor::_mm_cmpestri(
         vneedle, needle_len as i32, vhaystack, hay_len as i32,
-        s::_SIDD_CMP_EQUAL_ORDERED) as usize
+        vendor::_SIDD_CMP_EQUAL_ORDERED) as usize
 }
 
 fn main() {
