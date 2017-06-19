@@ -8,4 +8,8 @@ fn main() {
     else {
         println!("dolor!");
     }
+    match magi {
+        Homura => "Akemi",
+        Madoka => "Kaname",
+    }
 }

@@ -10,4 +10,9 @@ fn main() {
     {
         println!("dolor!");
     }
+    match magi
+    {
+        Homura => "Akemi",
+        Madoka => "Kaname",
+    }
 }
