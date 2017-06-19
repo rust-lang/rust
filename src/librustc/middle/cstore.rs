@@ -23,7 +23,6 @@
 // probably get a better home if someone can find one.
 
 use hir::def;
-use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData,
@@ -190,15 +189,14 @@ pub struct EncodedMetadataHash {
 /// upstream crate.
 #[derive(Debug, RustcEncodable, RustcDecodable, Clone)]
 pub struct EncodedMetadataHashes {
-    pub entry_hashes: Vec<EncodedMetadataHash>,
-    pub global_hashes: Vec<(DepNode<()>, ich::Fingerprint)>,
+    // Stable content hashes for things in crate metadata, indexed by DefIndex.
+    pub hashes: Vec<EncodedMetadataHash>,
 }
 
 impl EncodedMetadataHashes {
     pub fn new() -> EncodedMetadataHashes {
         EncodedMetadataHashes {
-            entry_hashes: Vec::new(),
-            global_hashes: Vec::new(),
+            hashes: Vec::new(),
         }
     }
 }
@@ -232,7 +230,7 @@ pub trait CrateStore {
 
     // item info
     fn visibility(&self, def: DefId) -> ty::Visibility;
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
+    fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
 
     // trait info
@@ -245,23 +243,18 @@ pub trait CrateStore {
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool;
     fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                    -> Vec<(CrateNum, LinkagePreference)>;
     fn dep_kind(&self, cnum: CrateNum) -> DepKind;
     fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_allocator(&self, cnum: CrateNum) -> bool;
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool;
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
+    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool;
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate>;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
@@ -285,7 +278,7 @@ pub trait CrateStore {
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
     fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children(&self, did: DefId) -> Vec<def::Export>;
+    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
     // misc. metadata
@@ -347,7 +340,9 @@ impl CrateStore for DummyCrateStore {
         { bug!("crate_data_as_rc_any") }
     // item info
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
+    fn visible_parent_map<'a>(&'a self, session: &Session)
+        -> ::std::cell::Ref<'a, DefIdMap<DefId>>
+    {
         bug!("visible_parent_map")
     }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
@@ -364,28 +359,22 @@ impl CrateStore for DummyCrateStore {
         { bug!("associated_item_cloned") }
 
     // flags
-    fn is_const_fn(&self, did: DefId) -> bool { bug!("is_const_fn") }
     fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
     fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
 
     // crate metadata
-    fn dylib_dependency_formats(&self, cnum: CrateNum)
-                                    -> Vec<(CrateNum, LinkagePreference)>
-        { bug!("dylib_dependency_formats") }
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
         { bug!("lang_items") }
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
         { bug!("missing_lang_items") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn is_allocator(&self, cnum: CrateNum) -> bool { bug!("is_allocator") }
-    fn is_panic_runtime(&self, cnum: CrateNum) -> bool { bug!("is_panic_runtime") }
     fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
+    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool { bug!("is_profiler_runtime") }
     fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool { bug!("is_sanitizer_runtime") }
     fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
         bug!("panic_strategy")
     }
-    fn extern_crate(&self, cnum: CrateNum) -> Option<ExternCrate> { bug!("extern_crate") }
     fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
         bug!("original_crate_name")
@@ -421,7 +410,9 @@ impl CrateStore for DummyCrateStore {
         bug!("def_path_table")
     }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
-    fn item_children(&self, did: DefId) -> Vec<def::Export> { bug!("item_children") }
+    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
+        bug!("item_children")
+    }
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata

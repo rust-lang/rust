@@ -351,7 +351,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 signal!(e, TypeckError)
             }
           } else {
-            if tcx.sess.cstore.is_const_fn(def_id) {
+            if tcx.is_const_fn(def_id) {
                 tcx.sess.cstore.item_body(tcx, def_id)
             } else {
                 signal!(e, TypeckError)
@@ -483,7 +483,7 @@ fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("resolve_trait_associated_const: trait_ref={:?}",
            trait_ref);
 
-    tcx.infer_ctxt(()).enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),

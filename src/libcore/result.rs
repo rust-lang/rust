@@ -1060,12 +1060,9 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// checking for overflow:
     ///
     /// ```
-    /// use std::u32;
-    ///
     /// let v = vec![1, 2];
-    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|&x: &u32|
-    ///     if x == u32::MAX { Err("Overflow!") }
-    ///     else { Ok(x + 1) }
+    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|x: &u32|
+    ///     x.checked_add(1).ok_or("Overflow!")
     /// ).collect();
     /// assert!(res == Ok(vec![2, 3]));
     /// ```

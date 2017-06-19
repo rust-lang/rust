@@ -10,7 +10,8 @@
 
 #![allow(deprecated)]
 
-//! Single-threaded reference-counting pointers.
+//! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
+//! Counted'.
 //!
 //! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
 //! allocated in the heap. Invoking [`clone`][clone] on [`Rc`] produces a new
@@ -266,7 +267,8 @@ struct RcBox<T: ?Sized> {
     value: T,
 }
 
-/// A single-threaded reference-counting pointer.
+/// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
+/// Counted'.
 ///
 /// See the [module-level documentation](./index.html) for more details.
 ///
@@ -426,7 +428,7 @@ impl Rc<str> {
     #[doc(hidden)]
     #[unstable(feature = "rustc_private",
                reason = "for internal use in rustc",
-               issue = "0")]
+               issue = "27812")]
     pub fn __from_str(value: &str) -> Rc<str> {
         unsafe {
             // Allocate enough space for `RcBox<str>`.
@@ -451,7 +453,7 @@ impl<T> Rc<[T]> {
     #[doc(hidden)]
     #[unstable(feature = "rustc_private",
                reason = "for internal use in rustc",
-               issue = "0")]
+               issue = "27812")]
     pub fn __from_array(value: Box<[T]>) -> Rc<[T]> {
         unsafe {
             let ptr: *mut RcBox<[T]> =

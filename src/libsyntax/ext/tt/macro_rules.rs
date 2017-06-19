@@ -219,7 +219,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     let lhses = match *argument_map[&lhs_nm] {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| {
-                if let MatchedNonterminal(ref nt) = **m {
+                if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
                         let tt = quoted::parse(tt.clone().into(), true, sess).pop().unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &tt);
@@ -235,7 +235,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     let rhses = match *argument_map[&rhs_nm] {
         MatchedSeq(ref s, _) => {
             s.iter().map(|m| {
-                if let MatchedNonterminal(ref nt) = **m {
+                if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
                         return quoted::parse(tt.clone().into(), false, sess).pop().unwrap();
                     }

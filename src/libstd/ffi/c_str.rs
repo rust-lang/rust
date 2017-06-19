@@ -288,6 +288,26 @@ impl CString {
     /// Failure to call [`from_raw`] will lead to a memory leak.
     ///
     /// [`from_raw`]: #method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    ///
+    /// let ptr = c_string.into_raw();
+    ///
+    /// unsafe {
+    ///     assert_eq!(b'f', *ptr as u8);
+    ///     assert_eq!(b'o', *ptr.offset(1) as u8);
+    ///     assert_eq!(b'o', *ptr.offset(2) as u8);
+    ///     assert_eq!(b'\0', *ptr.offset(3) as u8);
+    ///
+    ///     // retake pointer to free memory
+    ///     let _ = CString::from_raw(ptr);
+    /// }
+    /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub fn into_raw(self) -> *mut c_char {
         Box::into_raw(self.into_inner()) as *mut c_char
@@ -311,6 +331,16 @@ impl CString {
     ///
     /// The returned buffer does **not** contain the trailing nul separator and
     /// it is guaranteed to not have any interior nul bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.into_bytes();
+    /// assert_eq!(bytes, vec![b'f', b'o', b'o']);
+    /// ```
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         let mut vec = self.into_inner().into_vec();
@@ -323,6 +353,16 @@ impl CString {
     /// includes the trailing nul byte.
     ///
     /// [`into_bytes`]: #method.into_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.into_bytes_with_nul();
+    /// assert_eq!(bytes, vec![b'f', b'o', b'o', b'\0']);
+    /// ```
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes_with_nul(self) -> Vec<u8> {
         self.into_inner().into_vec()
@@ -332,6 +372,16 @@ impl CString {
     ///
     /// The returned slice does **not** contain the trailing nul separator and
     /// it is guaranteed to not have any interior nul bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.as_bytes();
+    /// assert_eq!(bytes, &[b'f', b'o', b'o']);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner[..self.inner.len() - 1]
@@ -341,6 +391,16 @@ impl CString {
     /// includes the trailing nul byte.
     ///
     /// [`as_bytes`]: #method.as_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let c_string = CString::new("foo").unwrap();
+    /// let bytes = c_string.as_bytes_with_nul();
+    /// assert_eq!(bytes, &[b'f', b'o', b'o', b'\0']);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner

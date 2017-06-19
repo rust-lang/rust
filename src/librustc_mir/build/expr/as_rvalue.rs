@@ -59,6 +59,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
+                let extent = (extent, source_info);
                 this.in_scope(extent, block, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
@@ -99,7 +100,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // to start, malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg.push_assign(block, source_info, &result, box_);
-                this.in_scope(value_extents, block, |this| {
+                this.in_scope((value_extents, source_info), block, |this| {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_box_free(expr_span, value_extents, &result, value.ty);
                     // initialize the box contents:

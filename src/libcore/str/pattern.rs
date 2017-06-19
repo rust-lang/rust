@@ -618,7 +618,10 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
 }
 
 unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
-    fn haystack(&self) -> &'a str { self.haystack }
+    #[inline]
+    fn haystack(&self) -> &'a str {
+        self.haystack
+    }
 
     #[inline]
     fn next(&mut self) -> SearchStep {

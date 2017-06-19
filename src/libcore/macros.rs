@@ -54,7 +54,7 @@ macro_rules! panic {
 ///
 /// [`panic!`]: macro.panic.html
 /// [`debug_assert!`]: macro.debug_assert.html
-/// [testing]: ../book/testing.html
+/// [testing]: ../book/first-edition/testing.html
 ///
 /// # Examples
 ///
@@ -554,7 +554,8 @@ macro_rules! unreachable {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
-    () => (panic!("not yet implemented"))
+    () => (panic!("not yet implemented"));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)*)));
 }
 
 /// Built-in macros to the compiler itself.

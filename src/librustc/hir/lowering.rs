@@ -2686,7 +2686,7 @@ impl<'a> LoweringContext<'a> {
         let parent_def = self.parent_def.unwrap();
         let def_id = {
             let defs = self.resolver.definitions();
-            let def_path_data = DefPathData::Binding(Ident::with_empty_ctxt(name));
+            let def_path_data = DefPathData::Binding(name);
             let def_index = defs
                 .create_def_with_parent(parent_def, id, def_path_data, REGULAR_SPACE, Mark::root());
             DefId::local(def_index)

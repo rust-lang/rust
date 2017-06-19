@@ -14,10 +14,10 @@ use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
-                            EncodedMetadata, EncodedMetadataHashes};
+                            EncodedMetadata, EncodedMetadataHashes,
+                            EncodedMetadataHash};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
-use rustc::hir::map::definitions::DefPathTable;
-use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
+use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
@@ -244,7 +244,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     // Encodes something that corresponds to a single DepNode::GlobalMetaData
     // and registers the Fingerprint in the `metadata_hashes` map.
     pub fn tracked<'x, DATA, R>(&'x mut self,
-                                dep_node: DepNode<()>,
+                                def_index: DefIndex,
                                 op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
                                 data: DATA)
                                 -> Tracked<R> {
@@ -253,7 +253,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let (fingerprint, this) = entry_builder.finish();
 
         if let Some(fingerprint) = fingerprint {
-            this.metadata_hashes.global_hashes.push((dep_node, fingerprint));
+            this.metadata_hashes.hashes.push(EncodedMetadataHash {
+                def_index,
+                hash: fingerprint,
+            })
         }
 
         Tracked::new(ret)
@@ -322,12 +325,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot> {
         let mut i = self.position();
 
+        let tcx = self.tcx;
+        let global_metadata_def_index = move |kind: GlobalMetaDataKind| {
+            kind.def_index(tcx.hir.definitions().def_path_table())
+        };
+
         let crate_deps = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::CrateDeps),
+            global_metadata_def_index(GlobalMetaDataKind::CrateDeps),
             IsolatedEncoder::encode_crate_deps,
             ());
         let dylib_dependency_formats = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::DylibDependencyFormats),
+            global_metadata_def_index(GlobalMetaDataKind::DylibDependencyFormats),
             IsolatedEncoder::encode_dylib_dependency_formats,
             ());
         let dep_bytes = self.position() - i;
@@ -335,12 +343,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the language items.
         i = self.position();
         let lang_items = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::LangItems),
+            global_metadata_def_index(GlobalMetaDataKind::LangItems),
             IsolatedEncoder::encode_lang_items,
             ());
 
         let lang_items_missing = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::LangItemsMissing),
+            global_metadata_def_index(GlobalMetaDataKind::LangItemsMissing),
             IsolatedEncoder::encode_lang_items_missing,
             ());
         let lang_item_bytes = self.position() - i;
@@ -348,7 +356,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the native libraries used
         i = self.position();
         let native_libraries = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::NativeLibraries),
+            global_metadata_def_index(GlobalMetaDataKind::NativeLibraries),
             IsolatedEncoder::encode_native_libraries,
             ());
         let native_lib_bytes = self.position() - i;
@@ -366,7 +374,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the def IDs of impls, for coherence checking.
         i = self.position();
         let impls = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::Impls),
+            global_metadata_def_index(GlobalMetaDataKind::Impls),
             IsolatedEncoder::encode_impls,
             ());
         let impl_bytes = self.position() - i;
@@ -374,7 +382,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode exported symbols info.
         i = self.position();
         let exported_symbols = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::ExportedSymbols),
+            global_metadata_def_index(GlobalMetaDataKind::ExportedSymbols),
             IsolatedEncoder::encode_exported_symbols,
             self.exported_symbols);
         let exported_symbols_bytes = self.position() - i;
@@ -422,10 +430,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let total_bytes = self.position();
 
-        self.metadata_hashes.global_hashes.push((
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::Krate),
-            Fingerprint::from_smaller_hash(link_meta.crate_hash.as_u64())
-        ));
+        self.metadata_hashes.hashes.push(EncodedMetadataHash {
+            def_index: global_metadata_def_index(GlobalMetaDataKind::Krate),
+            hash: Fingerprint::from_smaller_hash(link_meta.crate_hash.as_u64())
+        });
 
         if self.tcx.sess.meta_stats() {
             let mut zero_bytes = 0;

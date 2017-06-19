@@ -14,8 +14,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use schema::{CrateRoot, Tracked};
 
-use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
-use rustc::hir::def_id::{DefId, CrateNum, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::DepKind;
 use rustc::session::Session;
@@ -516,14 +515,11 @@ impl<'a> CrateLoader<'a> {
             return cstore::CrateNumMap::new();
         }
 
-        let dep_node = DepNode::GlobalMetaData(DefId { krate, index: CRATE_DEF_INDEX },
-                                               GlobalMetaDataKind::CrateDeps);
-
         // The map from crate numbers in the crate we're resolving to local crate numbers.
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
         ::std::iter::once(krate).chain(crate_root.crate_deps
-                                                 .get(&self.sess.dep_graph, dep_node)
+                                                 .get_untracked()
                                                  .decode(metadata)
                                                  .map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
@@ -906,6 +902,24 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
+    fn inject_profiler_runtime(&mut self) {
+        if self.sess.opts.debugging_opts.profile {
+            info!("loading profiler");
+
+            let symbol = Symbol::intern("profiler_builtins");
+            let dep_kind = DepKind::Implicit;
+            let (_, data) =
+                self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
+                                   PathKind::Crate, dep_kind);
+
+            // Sanity check the loaded crate to ensure it is indeed a profiler runtime
+            if !data.is_profiler_runtime(&self.sess.dep_graph) {
+                self.sess.err(&format!("the crate `profiler_builtins` is not \
+                                        a profiler runtime"));
+            }
+        }
+    }
+
     fn inject_allocator_crate(&mut self) {
         // Make sure that we actually need an allocator, if none of our
         // dependencies need one then we definitely don't!
@@ -1108,6 +1122,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         // inject the sanitizer runtime before the allocator runtime because all
         // sanitizers force the use of the `alloc_system` allocator
         self.inject_sanitizer_runtime();
+        self.inject_profiler_runtime();
         self.inject_allocator_crate();
         self.inject_panic_runtime(krate);
 

@@ -241,7 +241,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 }
             }).collect()
         } else {
-            cx.tcx.sess.cstore.item_children(root).iter().map(|item| item.def)
+            cx.tcx.sess.cstore.item_children(root, cx.tcx.sess).iter().map(|item| item.def)
               .filter_map(as_primitive).collect()
         };
 
@@ -310,6 +310,9 @@ impl Item {
     }
     pub fn is_ty_method(&self) -> bool {
         self.type_() == ItemType::TyMethod
+    }
+    pub fn is_typedef(&self) -> bool {
+        self.type_() == ItemType::Typedef
     }
     pub fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive

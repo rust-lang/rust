@@ -15,7 +15,6 @@ use rustc::hir::def_id::DefIndex;
 use rustc::hir::map::DefPathHash;
 use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHash;
-use std::sync::Arc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
@@ -23,11 +22,11 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
-    pub nodes: IndexVec<DepNodeIndex, DepNode<DefPathHash>>,
+    pub nodes: IndexVec<DepNodeIndex, DepNode>,
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
-    pub edge_list_indices: Vec<(u32, u32)>,
+    pub edge_list_indices: IndexVec<DepNodeIndex, (u32, u32)>,
     /// A flattened list of all edge targets in the graph. Edge sources are
     /// implicit in edge_list_indices.
     pub edge_list_data: Vec<DepNodeIndex>,
@@ -35,7 +34,7 @@ pub struct SerializedDepGraph {
     /// These are output nodes that have no incoming edges. We track
     /// these separately so that when we reload all edges, we don't
     /// lose track of these nodes.
-    pub bootstrap_outputs: Vec<DepNode<DefPathHash>>,
+    pub bootstrap_outputs: Vec<DepNode>,
 
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
@@ -56,7 +55,14 @@ pub struct SerializedDepGraph {
     /// will be different when we next compile) related to each node,
     /// but rather the `DefPathIndex`. This can then be retraced
     /// to find the current def-id.
-    pub hashes: Vec<SerializedHash>,
+    pub hashes: Vec<(DepNodeIndex, Fingerprint)>,
+}
+
+impl SerializedDepGraph {
+    pub fn edge_targets_from(&self, source: DepNodeIndex) -> &[DepNodeIndex] {
+        let targets = self.edge_list_indices[source];
+        &self.edge_list_data[targets.0 as usize .. targets.1 as usize]
+    }
 }
 
 /// The index of a DepNode in the SerializedDepGraph::nodes array.
@@ -86,19 +92,9 @@ impl Idx for DepNodeIndex {
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedHash {
-    /// def-id of thing being hashed
-    pub dep_node: DepNode<DefPathHash>,
-
-    /// the hash as of previous compilation, computed by code in
-    /// `hash` module
-    pub hash: Fingerprint,
-}
-
-#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedWorkProduct {
     /// node that produced the work-product
-    pub id: Arc<WorkProductId>,
+    pub id: WorkProductId,
 
     /// work-product data itself
     pub work_product: WorkProduct,
@@ -126,10 +122,6 @@ pub struct SerializedMetadataHashes {
     /// a `DefPathIndex` that gets retracted to the current `DefId`
     /// (matching the one found in this structure).
     pub entry_hashes: Vec<EncodedMetadataHash>,
-
-    /// This map contains fingerprints that are not specific to some DefId but
-    /// describe something global to the whole crate.
-    pub global_hashes: Vec<(DepNode<()>, Fingerprint)>,
 
     /// For each DefIndex (as it occurs in SerializedMetadataHash), this
     /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so

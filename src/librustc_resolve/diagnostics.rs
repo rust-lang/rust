@@ -188,16 +188,16 @@ already been imported.
 Erroneous code example:
 
 ```compile_fail,E0254
-extern crate collections;
+extern crate alloc;
 
 mod foo {
-    pub trait collections {
+    pub trait alloc {
         fn do_something();
     }
 }
 
-use foo::collections; // error: an extern crate named `collections` has already
-                      //        been imported in this module
+use foo::alloc; // error: an extern crate named `alloc` has already
+                //        been imported in this module
 
 fn main() {}
 ```
@@ -206,15 +206,15 @@ To fix issue issue, you have to rename at least one of the two imports.
 Example:
 
 ```ignore
-extern crate collections as libcollections; // ok!
+extern crate alloc as liballoc; // ok!
 
 mod foo {
-    pub trait collections {
+    pub trait alloc {
         fn do_something();
     }
 }
 
-use foo::collections;
+use foo::alloc;
 
 fn main() {}
 ```
@@ -1425,7 +1425,7 @@ Erroneous code example:
 
 ```compile_fail,E0469
 #[macro_use(drink, be_merry)] // error: imported macro not found
-extern crate collections;
+extern crate alloc;
 
 fn main() {
     // ...
@@ -1467,7 +1467,7 @@ Erroneous code example:
 
 ```compile_fail,E0470
 #[macro_reexport(drink, be_merry)]
-extern crate collections;
+extern crate alloc;
 
 fn main() {
     // ...

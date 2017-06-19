@@ -169,6 +169,7 @@ test_impl_from! { test_u16f64, u16, f64 }
 test_impl_from! { test_u32f64, u32, f64 }
 
 // Float -> Float
+#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn test_f32f64() {
     use core::f32;
@@ -398,3 +399,57 @@ test_impl_try_from_signed_to_unsigned_err! { test_try_i32u16, i32, u16 }
 test_impl_try_from_signed_to_unsigned_err! { test_try_i64u8, i64, u8 }
 test_impl_try_from_signed_to_unsigned_err! { test_try_i64u16, i64, u16 }
 test_impl_try_from_signed_to_unsigned_err! { test_try_i64u32, i64, u32 }
+
+macro_rules! test_float {
+    ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => { mod $modname {
+        use core::num::Float;
+        // FIXME(nagisa): these tests should test for sign of -0.0
+        #[test]
+        fn min() {
+            assert_eq!(0.0.min(0.0), 0.0);
+            assert_eq!((-0.0).min(-0.0), -0.0);
+            assert_eq!(9.0.min(9.0), 9.0);
+            assert_eq!((-9.0).min(0.0), -9.0);
+            assert_eq!(0.0.min(9.0), 0.0);
+            assert_eq!((-0.0).min(-9.0), -9.0);
+            assert_eq!($inf.min(9.0), 9.0);
+            assert_eq!(9.0.min($inf), 9.0);
+            assert_eq!($inf.min(-9.0), -9.0);
+            assert_eq!((-9.0).min($inf), -9.0);
+            assert_eq!($neginf.min(9.0), $neginf);
+            assert_eq!(9.0.min($neginf), $neginf);
+            assert_eq!($neginf.min(-9.0), $neginf);
+            assert_eq!((-9.0).min($neginf), $neginf);
+            assert_eq!($nan.min(9.0), 9.0);
+            assert_eq!($nan.min(-9.0), -9.0);
+            assert_eq!(9.0.min($nan), 9.0);
+            assert_eq!((-9.0).min($nan), -9.0);
+            assert!($nan.min($nan).is_nan());
+        }
+        #[test]
+        fn max() {
+            assert_eq!(0.0.max(0.0), 0.0);
+            assert_eq!((-0.0).max(-0.0), -0.0);
+            assert_eq!(9.0.max(9.0), 9.0);
+            assert_eq!((-9.0).max(0.0), 0.0);
+            assert_eq!(0.0.max(9.0), 9.0);
+            assert_eq!((-0.0).max(-9.0), -0.0);
+            assert_eq!($inf.max(9.0), $inf);
+            assert_eq!(9.0.max($inf), $inf);
+            assert_eq!($inf.max(-9.0), $inf);
+            assert_eq!((-9.0).max($inf), $inf);
+            assert_eq!($neginf.max(9.0), 9.0);
+            assert_eq!(9.0.max($neginf), 9.0);
+            assert_eq!($neginf.max(-9.0), -9.0);
+            assert_eq!((-9.0).max($neginf), -9.0);
+            assert_eq!($nan.max(9.0), 9.0);
+            assert_eq!($nan.max(-9.0), -9.0);
+            assert_eq!(9.0.max($nan), 9.0);
+            assert_eq!((-9.0).max($nan), -9.0);
+            assert!($nan.max($nan).is_nan());
+        }
+    } }
+}
+
+test_float!(f32, f32, ::core::f32::INFINITY, ::core::f32::NEG_INFINITY, ::core::f32::NAN);
+test_float!(f64, f64, ::core::f64::INFINITY, ::core::f64::NEG_INFINITY, ::core::f64::NAN);

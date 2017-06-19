@@ -34,6 +34,8 @@
 
 #![feature(char_escape_debug)]
 #![feature(core_char_ext)]
+#![feature(str_internals)]
+#![feature(core_intrinsics)]
 #![feature(decode_utf8)]
 #![feature(fused)]
 #![feature(fn_traits)]
@@ -45,6 +47,7 @@
 mod tables;
 mod u_str;
 pub mod char;
+pub mod lossy;
 
 #[allow(deprecated)]
 pub mod str {
@@ -52,7 +55,7 @@ pub mod str {
     pub use u_str::Utf16Encoder;
 }
 
-// For use in libcollections, not re-exported in libstd.
+// For use in liballoc, not re-exported in libstd.
 pub mod derived_property {
     pub use tables::derived_property::{Case_Ignorable, Cased};
 }

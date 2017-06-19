@@ -50,6 +50,7 @@ pub struct Config {
     pub full_bootstrap: bool,
     pub extended: bool,
     pub sanitizers: bool,
+    pub profiler: bool,
 
     // llvm codegen options
     pub llvm_assertions: bool,
@@ -162,6 +163,7 @@ struct Build {
     extended: Option<bool>,
     verbose: Option<usize>,
     sanitizers: Option<bool>,
+    profiler: Option<bool>,
     openssl_static: Option<bool>,
 }
 
@@ -318,6 +320,7 @@ impl Config {
         set(&mut config.extended, build.extended);
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
+        set(&mut config.profiler, build.profiler);
         set(&mut config.openssl_static, build.openssl_static);
 
         if let Some(ref install) = toml.install {
@@ -471,6 +474,7 @@ impl Config {
                 ("FULL_BOOTSTRAP", self.full_bootstrap),
                 ("EXTENDED", self.extended),
                 ("SANITIZERS", self.sanitizers),
+                ("PROFILER", self.profiler),
                 ("DIST_SRC", self.rust_dist_src),
                 ("CARGO_OPENSSL_STATIC", self.openssl_static),
             }

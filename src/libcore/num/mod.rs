@@ -15,7 +15,6 @@
 use convert::TryFrom;
 use fmt;
 use intrinsics;
-use mem::size_of;
 use str::FromStr;
 
 /// Provides intentionally-wrapped arithmetic on `T`.
@@ -1263,6 +1262,7 @@ macro_rules! uint_impl {
     ($SelfT:ty, $ActualT:ty, $BITS:expr,
      $ctpop:path,
      $ctlz:path,
+     $ctlz_nonzero:path,
      $cttz:path,
      $bswap:path,
      $add_with_overflow:path,
@@ -2176,8 +2176,33 @@ macro_rules! uint_impl {
             (self.wrapping_sub(1)) & self == 0 && !(self == 0)
         }
 
+        // Returns one less than next power of two.
+        // (For 8u8 next power of two is 8u8 and for 6u8 it is 8u8)
+        //
+        // 8u8.one_less_than_next_power_of_two() == 7
+        // 6u8.one_less_than_next_power_of_two() == 7
+        //
+        // This method cannot overflow, as in the `next_power_of_two`
+        // overflow cases it instead ends up returning the maximum value
+        // of the type, and can return 0 for 0.
+        #[inline]
+        fn one_less_than_next_power_of_two(self) -> Self {
+            if self <= 1 { return 0; }
+
+            // Because `p > 0`, it cannot consist entirely of leading zeros.
+            // That means the shift is always in-bounds, and some processors
+            // (such as intel pre-haswell) have more efficient ctlz
+            // intrinsics when the argument is non-zero.
+            let p = self - 1;
+            let z = unsafe { $ctlz_nonzero(p) };
+            <$SelfT>::max_value() >> z
+        }
+
         /// Returns the smallest power of two greater than or equal to `self`.
-        /// Unspecified behavior on overflow.
+        ///
+        /// When return value overflows (i.e. `self > (1 << (N-1))` for type
+        /// `uN`), it panics in debug mode and return value is wrapped to 0 in
+        /// release mode (the only situation in which method can return 0).
         ///
         /// # Examples
         ///
@@ -2190,9 +2215,7 @@ macro_rules! uint_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn next_power_of_two(self) -> Self {
-            let bits = size_of::<Self>() * 8;
-            let one: Self = 1;
-            one << ((bits - self.wrapping_sub(one).leading_zeros() as usize) % bits)
+            self.one_less_than_next_power_of_two() + 1
         }
 
         /// Returns the smallest power of two greater than or equal to `n`. If
@@ -2210,21 +2233,22 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         pub fn checked_next_power_of_two(self) -> Option<Self> {
-            let npot = self.next_power_of_two();
-            if npot >= self {
-                Some(npot)
-            } else {
-                None
-            }
+            self.one_less_than_next_power_of_two().checked_add(1)
         }
     }
 }
+
+#[cfg(stage0)]
+unsafe fn ctlz_nonzero<T>(x: T) -> T { intrinsics::ctlz(x) }
+#[cfg(not(stage0))]
+unsafe fn ctlz_nonzero<T>(x: T) -> T { intrinsics::ctlz_nonzero(x) }
 
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2237,6 +2261,7 @@ impl u16 {
     uint_impl! { u16, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2249,6 +2274,7 @@ impl u32 {
     uint_impl! { u32, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2261,6 +2287,7 @@ impl u64 {
     uint_impl! { u64, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2273,6 +2300,7 @@ impl u128 {
     uint_impl! { u128, u128, 128,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2286,6 +2314,7 @@ impl usize {
     uint_impl! { usize, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2298,6 +2327,7 @@ impl usize {
     uint_impl! { usize, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2311,6 +2341,7 @@ impl usize {
     uint_impl! { usize, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
+        ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2428,6 +2459,13 @@ pub trait Float: Sized {
     /// Convert degrees to radians.
     #[stable(feature = "deg_rad_conversions", since="1.7.0")]
     fn to_radians(self) -> Self;
+
+    /// Returns the maximum of the two numbers.
+    #[stable(feature = "core_float_min_max", since="1.20.0")]
+    fn max(self, other: Self) -> Self;
+    /// Returns the minimum of the two numbers.
+    #[stable(feature = "core_float_min_max", since="1.20.0")]
+    fn min(self, other: Self) -> Self;
 }
 
 macro_rules! from_str_radix_int_impl {

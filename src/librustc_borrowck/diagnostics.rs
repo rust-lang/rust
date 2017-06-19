@@ -144,7 +144,7 @@ that at most one writer or multiple readers can access the data at any one time.
 If you wish to learn more about ownership in Rust, start with the chapter in the
 Book:
 
-https://doc.rust-lang.org/book/ownership.html
+https://doc.rust-lang.org/book/first-edition/ownership.html
 "##,
 
 E0383: r##"
@@ -366,8 +366,8 @@ let mut a = &mut i;
 
 Please note that in rust, you can either have many immutable references, or one
 mutable reference. Take a look at
-https://doc.rust-lang.org/stable/book/references-and-borrowing.html for more
-information. Example:
+https://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
+for more information. Example:
 
 
 ```
@@ -533,7 +533,7 @@ fn foo(a: &mut i32) {
 ```
 
 For more information on the rust ownership system, take a look at
-https://doc.rust-lang.org/stable/book/references-and-borrowing.html.
+https://doc.rust-lang.org/book/first-edition/references-and-borrowing.html.
 "##,
 
 E0503: r##"
@@ -589,7 +589,7 @@ fn main() {
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
 "##,
 
 E0504: r##"
@@ -773,7 +773,7 @@ fn main() {
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
 "##,
 
 E0506: r##"
@@ -972,7 +972,7 @@ fn main() {
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
 "##,
 
 E0508: r##"

@@ -893,6 +893,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          DB_OPTIONS, db_type_desc, dbsetters,
     verbose: bool = (false, parse_bool, [UNTRACKED],
         "in general, enable more debug printouts"),
+    span_free_formats: bool = (false, parse_bool, [UNTRACKED],
+        "when debug-printing compiler state, do not include spans"), // o/w tests have closure@path
+    identify_regions: bool = (false, parse_bool, [UNTRACKED],
+        "make unnamed regions display as '# (where # is some non-ident unique id)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass"),
     count_llvm_insns: bool = (false, parse_bool,
@@ -935,8 +939,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
-    save_analysis_csv: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis (in CSV format) information, in addition to normal output"),
     save_analysis_api: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis information for opaque libraries (in JSON format), \
          in addition to normal output"),
@@ -1033,6 +1035,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
         "extra arguments to prepend to the linker invocation (space separated)"),
+    profile: bool = (false, parse_bool, [TRACKED],
+                     "insert profiling code"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -2468,8 +2472,6 @@ mod tests {
         opts.debugging_opts.ls = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.save_analysis = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.save_analysis_csv = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.save_analysis_api = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());

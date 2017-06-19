@@ -29,6 +29,16 @@ fn test_mut_int_totalord() {
 }
 
 #[test]
+fn test_ord_max_min() {
+    assert_eq!(1.max(2), 2);
+    assert_eq!(2.max(1), 2);
+    assert_eq!(1.min(2), 1);
+    assert_eq!(2.min(1), 1);
+    assert_eq!(1.max(1), 1);
+    assert_eq!(1.min(1), 1);
+}
+
+#[test]
 fn test_ordering_reverse() {
     assert_eq!(Less.reverse(), Greater);
     assert_eq!(Equal.reverse(), Equal);

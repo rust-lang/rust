@@ -34,7 +34,6 @@ use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use util::def_use::DefUseAnalysis;
-use transform::qualify_consts;
 
 pub struct CopyPropagation;
 
@@ -55,7 +54,7 @@ impl MirPass for CopyPropagation {
                 return
             }
             MirSource::Fn(function_node_id) => {
-                if qualify_consts::is_const_fn(tcx, tcx.hir.local_def_id(function_node_id)) {
+                if tcx.is_const_fn(tcx.hir.local_def_id(function_node_id)) {
                     // Don't run on const functions, as, again, trans might not be able to evaluate
                     // the optimized IR.
                     return

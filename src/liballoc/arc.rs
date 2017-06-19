@@ -42,7 +42,8 @@ use heap::deallocate;
 /// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-/// A thread-safe reference-counting pointer.
+/// A thread-safe reference-counting pointer. 'Arc' stands for 'Atomically
+/// Reference Counted'.
 ///
 /// The type `Arc<T>` provides shared ownership of a value of type `T`,
 /// allocated in the heap. Invoking [`clone`][clone] on `Arc` produces
@@ -1221,10 +1222,11 @@ mod tests {
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::thread;
-    use std::vec::Vec;
-    use super::{Arc, Weak};
     use std::sync::Mutex;
     use std::convert::From;
+
+    use super::{Arc, Weak};
+    use vec::Vec;
 
     struct Canary(*mut atomic::AtomicUsize);
 

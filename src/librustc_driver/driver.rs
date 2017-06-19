@@ -204,7 +204,8 @@ pub fn compile_input(sess: &Session,
                 println!("Pre-trans");
                 tcx.print_debug_stats();
             }
-            let trans = phase_4_translate_to_llvm(tcx, analysis, &incremental_hashes_map);
+            let trans = phase_4_translate_to_llvm(tcx, analysis, &incremental_hashes_map,
+                                                  &outputs);
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -899,6 +900,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     reachable::provide(&mut local_providers);
     rustc_const_eval::provide(&mut local_providers);
     middle::region::provide(&mut local_providers);
+    cstore::provide_local(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
@@ -911,6 +913,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // Setup the MIR passes that we want to run.
     let mut passes = Passes::new();
     passes.push_hook(mir::transform::dump_mir::DumpMir);
+
+    // Remove all `EndRegion` statements that are not involved in borrows.
+    passes.push_pass(MIR_CONST, mir::transform::clean_end_regions::CleanEndRegions);
 
     // What we need to do constant evaluation.
     passes.push_pass(MIR_CONST, mir::transform::simplify::SimplifyCfg::new("initial"));
@@ -1042,18 +1047,19 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
-                                           incremental_hashes_map: &IncrementalHashesMap)
+                                           incremental_hashes_map: &IncrementalHashesMap,
+                                           output_filenames: &OutputFilenames)
                                            -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
          "resolving dependency formats",
-         || dependency_format::calculate(&tcx.sess));
+         || dependency_format::calculate(tcx));
 
     let translation =
         time(time_passes,
              "translation",
-             move || trans::trans_crate(tcx, analysis, &incremental_hashes_map));
+             move || trans::trans_crate(tcx, analysis, &incremental_hashes_map, output_filenames));
 
     time(time_passes,
          "assert dep graph",

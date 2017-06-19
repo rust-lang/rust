@@ -51,7 +51,6 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
-use std::mem;
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -102,7 +101,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 fn_like.constness() == hir::Constness::Const
             })
         } else {
-            self.tcx.sess.cstore.is_const_fn(def_id)
+            self.tcx.is_const_fn(def_id)
         };
     }
 }
@@ -138,13 +137,14 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             self.check_const_eval(&body.value);
         }
 
-        let outer_penv = self.tcx.infer_ctxt(body_id).enter(|infcx| {
-            let param_env = self.tcx.param_env(item_def_id);
-            let outer_penv = mem::replace(&mut self.param_env, param_env);
-            let region_maps = &self.tcx.region_maps(item_def_id);
-            euv::ExprUseVisitor::new(self, region_maps, &infcx, param_env).consume_body(body);
-            outer_penv
-        });
+        let outer_penv = self.param_env;
+        self.param_env = self.tcx.param_env(item_def_id);
+
+        let tcx = self.tcx;
+        let param_env = self.param_env;
+        let region_maps = self.tcx.region_maps(item_def_id);
+        euv::ExprUseVisitor::new(self, tcx, param_env, &region_maps, self.tables)
+            .consume_body(body);
 
         self.visit_body(body);
 

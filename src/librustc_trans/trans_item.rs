@@ -23,7 +23,6 @@ use common;
 use declare;
 use llvm;
 use monomorphize::Instance;
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -63,26 +62,15 @@ impl<'a, 'tcx> TransItem<'tcx> {
                   self.to_raw_string(),
                   ccx.codegen_unit().name());
 
-        // (*) This code executes in the context of a dep-node for the
-        // entire CGU. In some cases, we introduce dep-nodes for
-        // particular items that we are translating (these nodes will
-        // have read edges coming into the CGU node). These smaller
-        // nodes are not needed for correctness -- we always
-        // invalidate an entire CGU at a time -- but they enable
-        // finer-grained testing, since you can write tests that check
-        // that the incoming edges to a particular fn are from a
-        // particular set.
-
         match *self {
             TransItem::Static(node_id) => {
-                let def_id = ccx.tcx().hir.local_def_id(node_id);
-                let _task = ccx.tcx().dep_graph.in_task(DepNode::TransCrateItem(def_id)); // (*)
-                let item = ccx.tcx().hir.expect_item(node_id);
+                let tcx = ccx.tcx();
+                let item = tcx.hir.expect_item(node_id);
                 if let hir::ItemStatic(_, m, _) = item.node {
                     match consts::trans_static(&ccx, m, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
                         Err(err) => {
-                            err.report(ccx.tcx(), item.span, "static");
+                            err.report(tcx, item.span, "static");
                         }
                     };
                 } else {
@@ -98,9 +86,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 }
             }
             TransItem::Fn(instance) => {
-                let _task = ccx.tcx().dep_graph.in_task(
-                    DepNode::TransCrateItem(instance.def_id())); // (*)
-
                 base::trans_instance(&ccx, instance);
             }
         }

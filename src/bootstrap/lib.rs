@@ -594,6 +594,9 @@ impl Build {
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
+        if self.config.profiler {
+            features.push_str(" profiler");
+        }
         return features
     }
 
@@ -675,6 +678,11 @@ impl Build {
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: &str) -> PathBuf {
         self.out.join(target).join("doc")
+    }
+
+    /// Output directory for some generated md crate documentation for a target (temporary)
+    fn md_doc_out(&self, target: &str) -> PathBuf {
+        self.out.join(target).join("md-doc")
     }
 
     /// Output directory for all crate documentation for a target (temporary)

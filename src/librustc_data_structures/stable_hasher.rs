@@ -78,6 +78,17 @@ impl StableHasherResult for [u8; 20] {
     }
 }
 
+impl StableHasherResult for u128 {
+    fn finish(mut hasher: StableHasher<Self>) -> Self {
+        let hash_bytes: &[u8] = hasher.finalize();
+        assert!(hash_bytes.len() >= mem::size_of::<u128>());
+
+        unsafe {
+            ::std::ptr::read_unaligned(hash_bytes.as_ptr() as *const u128)
+        }
+    }
+}
+
 impl StableHasherResult for u64 {
     fn finish(mut hasher: StableHasher<Self>) -> Self {
         hasher.state.finalize();
@@ -244,6 +255,14 @@ impl<CTX> HashStable<CTX> for f64 {
     }
 }
 
+impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        self.0.hash_stable(ctx, hasher);
+    }
+}
+
 impl<T1: HashStable<CTX>, T2: HashStable<CTX>, CTX> HashStable<CTX> for (T1, T2) {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,
@@ -270,6 +289,24 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
         (&self[..]).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ::std::rc::Rc<T> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (**self).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ::std::sync::Arc<T> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (**self).hash_stable(ctx, hasher);
     }
 }
 

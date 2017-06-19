@@ -44,7 +44,8 @@ To solve this error you can use conditional compilation:
 extern {}
 ```
 
-See more: https://doc.rust-lang.org/book/conditional-compilation.html
+See more:
+https://doc.rust-lang.org/book/first-edition/conditional-compilation.html
 "##,
 
 E0458: r##"

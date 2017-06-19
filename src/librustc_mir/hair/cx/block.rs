@@ -22,9 +22,14 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
         // We have to eagerly translate the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = mirror_stmts(cx, self.id, &*self.stmts);
+        let opt_def_id = cx.tcx.hir.opt_local_def_id(self.id);
+        let opt_destruction_extent = opt_def_id.and_then(|def_id| {
+            cx.tcx.region_maps(def_id).opt_destruction_extent(self.id)
+        });
         Block {
             targeted_by_break: self.targeted_by_break,
             extent: CodeExtent::Misc(self.id),
+            opt_destruction_extent: opt_destruction_extent,
             span: self.span,
             stmts: stmts,
             expr: self.expr.to_ref(),
@@ -37,7 +42,11 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 stmts: &'tcx [hir::Stmt])
                                 -> Vec<StmtRef<'tcx>> {
     let mut result = vec![];
+    let opt_def_id = cx.tcx.hir.opt_local_def_id(block_id);
     for (index, stmt) in stmts.iter().enumerate() {
+        let opt_dxn_ext = opt_def_id.and_then(|def_id| {
+            cx.tcx.region_maps(def_id).opt_destruction_extent(stmt.node.id())
+        });
         match stmt.node {
             hir::StmtExpr(ref expr, id) |
             hir::StmtSemi(ref expr, id) => {
@@ -47,6 +56,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         scope: CodeExtent::Misc(id),
                         expr: expr.to_ref(),
                     },
+                    opt_destruction_extent: opt_dxn_ext,
                 })))
             }
             hir::StmtDecl(ref decl, id) => {
@@ -69,6 +79,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 pattern: pattern,
                                 initializer: local.init.to_ref(),
                             },
+                            opt_destruction_extent: opt_dxn_ext,
                         })));
                     }
                 }

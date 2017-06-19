@@ -227,14 +227,17 @@ impl TokenStream {
     }
 }
 
+#[derive(Clone)]
 pub struct Cursor(CursorKind);
 
+#[derive(Clone)]
 enum CursorKind {
     Empty,
     Tree(TokenTree, bool /* consumed? */),
     Stream(StreamCursor),
 }
 
+#[derive(Clone)]
 struct StreamCursor {
     stream: RcSlice<TokenStream>,
     index: usize,

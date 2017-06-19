@@ -254,7 +254,6 @@
 #![feature(cfg_target_vendor)]
 #![feature(char_escape_debug)]
 #![feature(char_internals)]
-#![feature(collections)]
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
@@ -337,11 +336,9 @@ use prelude::v1::*;
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
 
+#[allow(deprecated)] extern crate rand as core_rand;
 #[macro_use]
 #[macro_reexport(vec, format)]
-extern crate collections as core_collections;
-
-#[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
 extern crate std_unicode;
 extern crate libc;
@@ -430,17 +427,17 @@ pub use alloc::boxed;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::rc;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::borrow;
+pub use alloc::borrow;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::fmt;
+pub use alloc::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::slice;
+pub use alloc::slice;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::str;
+pub use alloc::str;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::string;
+pub use alloc::string;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::vec;
+pub use alloc::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
 #[unstable(feature = "i128", issue = "35118")]
@@ -487,7 +484,7 @@ pub mod rt;
 // but it may be stabilized long-term. As a result we're exposing a hidden,
 // unstable module so we can get our build working.
 #[doc(hidden)]
-#[unstable(feature = "rand", issue = "0")]
+#[unstable(feature = "rand", issue = "27703")]
 pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
 }

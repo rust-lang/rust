@@ -267,7 +267,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             };
             bcx.call(expect, &[llargs[0], C_i32(ccx, rw), llargs[1], C_i32(ccx, cache_type)], None)
         },
-        "ctlz" | "cttz" | "ctpop" | "bswap" |
+        "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
         "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
@@ -278,6 +278,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         "ctlz" | "cttz" => {
                             let y = C_bool(bcx.ccx, false);
                             let llfn = ccx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
+                            bcx.call(llfn, &[llargs[0], y], None)
+                        }
+                        "ctlz_nonzero" | "cttz_nonzero" => {
+                            let y = C_bool(bcx.ccx, true);
+                            let llvm_name = &format!("llvm.{}.i{}", &name[..4], width);
+                            let llfn = ccx.get_intrinsic(llvm_name);
                             bcx.call(llfn, &[llargs[0], y], None)
                         }
                         "ctpop" => bcx.call(ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),

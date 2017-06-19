@@ -463,7 +463,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.test("check-linkchecker", "src/tools/linkchecker")
          .dep(|s| s.name("tool-linkchecker").stage(0))
          .dep(|s| s.name("default:doc"))
-         .default(true)
+         .default(build.config.docs)
          .host(true)
          .run(move |s| check::linkcheck(build, s.target));
     rules.test("check-cargotest", "src/tools/cargotest")
@@ -548,6 +548,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
+    rules.build("tool-unstable-book-gen", "src/tools/unstable-book-gen")
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
     rules.build("tool-tidy", "src/tools/tidy")
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
@@ -662,8 +666,12 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .target(&build.config.build)
               .stage(0)
          })
+         .dep(move |s| s.name("doc-unstable-book-gen"))
          .default(build.config.docs)
-         .run(move |s| doc::rustbook(build, s.target, "unstable-book"));
+         .run(move |s| doc::rustbook_src(build,
+                                         s.target,
+                                         "unstable-book",
+                                         &build.md_doc_out(s.target)));
     rules.doc("doc-standalone", "src/doc")
          .dep(move |s| {
              s.name("rustc")
@@ -679,6 +687,17 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .default(build.config.docs)
          .host(true)
          .run(move |s| doc::error_index(build, s.target));
+    rules.doc("doc-unstable-book-gen", "src/tools/unstable-book-gen")
+         .dep(move |s| {
+             s.name("tool-unstable-book-gen")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
+         .dep(move |s| s.name("libstd-link"))
+         .default(build.config.docs)
+         .host(true)
+         .run(move |s| doc::unstable_book_gen(build, s.target));
     for (krate, path, default) in krates("std") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libstd-link"))
@@ -1407,13 +1426,20 @@ mod tests {
     fn build(args: &[&str],
              extra_host: &[&str],
              extra_target: &[&str]) -> Build {
+        build_(args, extra_host, extra_target, true)
+    }
+
+    fn build_(args: &[&str],
+              extra_host: &[&str],
+              extra_target: &[&str],
+              docs: bool) -> Build {
         let mut args = args.iter().map(|s| s.to_string()).collect::<Vec<_>>();
         args.push("--build".to_string());
         args.push("A".to_string());
         let flags = Flags::parse(&args);
 
         let mut config = Config::default();
-        config.docs = true;
+        config.docs = docs;
         config.build = "A".to_string();
         config.host = vec![config.build.clone()];
         config.host.extend(extra_host.iter().map(|s| s.to_string()));
@@ -1767,5 +1793,23 @@ mod tests {
         assert!(plan.iter().any(|s| s.name.contains("test-all")));
         assert!(!plan.iter().any(|s| s.name.contains("tidy")));
         assert!(plan.iter().any(|s| s.name.contains("valgrind")));
+    }
+
+    #[test]
+    fn test_disable_docs() {
+        let build = build_(&["test"], &[], &[], false);
+        let rules = super::build_rules(&build);
+        let plan = rules.plan();
+        println!("rules: {:#?}", plan);
+        assert!(!plan.iter().any(|s| {
+            s.name.contains("doc-") || s.name.contains("default:doc")
+        }));
+        // none of the dependencies should be a doc rule either
+        assert!(!plan.iter().any(|s| {
+            rules.rules[s.name].deps.iter().any(|dep| {
+                let dep = dep(&rules.sbuild.name(s.name));
+                dep.name.contains("doc-") || dep.name.contains("default:doc")
+            })
+        }));
     }
 }

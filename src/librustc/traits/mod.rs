@@ -28,7 +28,6 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
-pub use self::error_reporting::TraitErrorKey;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
@@ -484,7 +483,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
                                            unnormalized_env.reveal);
 
-    tcx.infer_ctxt(()).enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         let predicates = match fully_normalize(
             &infcx,
             cause,
@@ -598,7 +597,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.infer_ctxt(()).enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::empty(Reveal::All);
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();

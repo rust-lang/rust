@@ -12,19 +12,5 @@ error[E0281]: type mismatch: `[closure@$DIR/unboxed-closures-vtable-mismatch.rs:
    |
    = note: required by `call_it`
 
-error[E0281]: type mismatch: `[closure@$DIR/unboxed-closures-vtable-mismatch.rs:22:23: 22:73]` implements the trait `std::ops::FnOnce<(usize, isize)>`, but the trait `std::ops::FnOnce<(isize, isize)>` is required
-  --> $DIR/unboxed-closures-vtable-mismatch.rs:25:13
-   |
-22 |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
-   |                       -------------------------------------------------- implements `std::ops::FnOnce<(usize, isize)>`
-...
-25 |     let z = call_it(3, f);
-   |             ^^^^^^^
-   |             |
-   |             requires `std::ops::FnOnce<(isize, isize)>`
-   |             expected isize, found usize
-   |
-   = note: required by `call_it`
-
 error: aborting due to previous error(s)
 

@@ -370,6 +370,10 @@ pub fn path_to_string(p: &ast::Path) -> String {
     to_string(|s| s.print_path(p, false, 0, false))
 }
 
+pub fn path_segment_to_string(p: &ast::PathSegment) -> String {
+    to_string(|s| s.print_path_segment(p, false))
+}
+
 pub fn ident_to_string(id: ast::Ident) -> String {
     to_string(|s| s.print_ident(id))
 }
@@ -2359,15 +2363,24 @@ impl<'a> State<'a> {
             if i > 0 {
                 word(&mut self.s, "::")?
             }
-            if segment.identifier.name != keywords::CrateRoot.name() &&
-               segment.identifier.name != "$crate" {
-                self.print_ident(segment.identifier)?;
-                if let Some(ref parameters) = segment.parameters {
-                    self.print_path_parameters(parameters, colons_before_params)?;
-                }
-            }
+            self.print_path_segment(segment, colons_before_params)?;
         }
 
+        Ok(())
+    }
+
+    fn print_path_segment(&mut self,
+                          segment: &ast::PathSegment,
+                          colons_before_params: bool)
+                          -> io::Result<()>
+    {
+        if segment.identifier.name != keywords::CrateRoot.name() &&
+           segment.identifier.name != "$crate" {
+            self.print_ident(segment.identifier)?;
+            if let Some(ref parameters) = segment.parameters {
+                self.print_path_parameters(parameters, colons_before_params)?;
+            }
+        }
         Ok(())
     }
 

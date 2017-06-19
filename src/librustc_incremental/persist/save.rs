@@ -11,7 +11,6 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
-use rustc::hir::map::DefPathHash;
 use rustc::ich::Fingerprint;
 use rustc::middle::cstore::EncodedMetadataHashes;
 use rustc::session::Session;
@@ -174,19 +173,15 @@ pub fn encode_dep_graph(tcx: TyCtxt,
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
-    let to_hash_based_node = |dep_node: &DepNode<DefId>| {
-        dep_node.map_def(|&def_id| Some(tcx.def_path_hash(def_id))).unwrap()
-    };
-
     // NB: We rely on this Vec being indexable by reduced_graph's NodeIndex.
-    let nodes: IndexVec<DepNodeIndex, DepNode<DefPathHash>> = preds
+    let mut nodes: IndexVec<DepNodeIndex, DepNode> = preds
         .reduced_graph
         .all_nodes()
         .iter()
-        .map(|node| to_hash_based_node(node.data))
+        .map(|node| node.data.clone())
         .collect();
 
-    let mut edge_list_indices = Vec::with_capacity(nodes.len());
+    let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
     let mut edge_list_data = Vec::with_capacity(preds.reduced_graph.len_edges());
 
     for node_index in 0 .. nodes.len() {
@@ -201,34 +196,62 @@ pub fn encode_dep_graph(tcx: TyCtxt,
         edge_list_indices.push((start, end));
     }
 
-    // Let's make we had no overflow there.
+    // Let's make sure we had no overflow there.
     assert!(edge_list_data.len() <= ::std::u32::MAX as usize);
     // Check that we have a consistent number of edges.
     assert_eq!(edge_list_data.len(), preds.reduced_graph.len_edges());
 
-    let bootstrap_outputs = preds
-        .bootstrap_outputs
-        .iter()
-        .map(|n| to_hash_based_node(n))
-        .collect();
+    let bootstrap_outputs = preds.bootstrap_outputs
+                                 .iter()
+                                 .map(|dep_node| (**dep_node).clone())
+                                 .collect();
 
-    let hashes = preds
-        .hashes
-        .iter()
-        .map(|(&dep_node, &hash)| {
-            SerializedHash {
-                dep_node: to_hash_based_node(dep_node),
-                hash: hash,
-            }
-        })
-        .collect();
+    // Next, build the map of content hashes. To this end, we need to transform
+    // the (DepNode -> Fingerprint) map that we have into a
+    // (DepNodeIndex -> Fingerprint) map. This may necessitate adding nodes back
+    // to the dep-graph that have been filtered out during reduction.
+    let content_hashes = {
+        // We have to build a (DepNode -> DepNodeIndex) map. We over-allocate a
+        // little because we expect some more nodes to be added.
+        let capacity = (nodes.len() * 120) / 100;
+        let mut node_to_index = FxHashMap::with_capacity_and_hasher(capacity,
+                                                                    Default::default());
+        // Add the nodes we already have in the graph.
+        node_to_index.extend(nodes.iter_enumerated()
+                                  .map(|(index, &node)| (node, index)));
+
+        let mut content_hashes = Vec::with_capacity(preds.hashes.len());
+
+        for (&&dep_node, &hash) in preds.hashes.iter() {
+            let dep_node_index = *node_to_index
+                .entry(dep_node)
+                .or_insert_with(|| {
+                    // There is no DepNodeIndex for this DepNode yet. This
+                    // happens when the DepNode got filtered out during graph
+                    // reduction. Since we have a content hash for the DepNode,
+                    // we add it back to the graph.
+                    let next_index = nodes.len();
+                    nodes.push(dep_node);
+
+                    debug_assert_eq!(next_index, edge_list_indices.len());
+                    // Push an empty list of edges
+                    edge_list_indices.push((0,0));
+
+                    DepNodeIndex::new(next_index)
+                });
+
+            content_hashes.push((dep_node_index, hash));
+        }
+
+        content_hashes
+    };
 
     let graph = SerializedDepGraph {
         nodes,
         edge_list_indices,
         edge_list_data,
         bootstrap_outputs,
-        hashes,
+        hashes: content_hashes,
     };
 
     // Encode the graph data.
@@ -255,9 +278,11 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                               current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
                               encoder: &mut Encoder)
                               -> io::Result<()> {
+    assert_eq!(metadata_hashes.hashes.len(),
+        metadata_hashes.hashes.iter().map(|x| (x.def_index, ())).collect::<FxHashMap<_,_>>().len());
+
     let mut serialized_hashes = SerializedMetadataHashes {
-        entry_hashes: metadata_hashes.entry_hashes.to_vec(),
-        global_hashes: metadata_hashes.global_hashes.to_vec(),
+        entry_hashes: metadata_hashes.hashes.to_vec(),
         index_map: FxHashMap()
     };
 

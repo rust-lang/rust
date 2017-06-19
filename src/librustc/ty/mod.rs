@@ -15,7 +15,7 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::DepNode;
+use dep_graph::{DepNode, DepConstructor};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -465,9 +465,27 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TyS<'tcx> {
+impl<'tcx> TyS<'tcx> {
+    pub fn is_primitive_ty(&self) -> bool {
+        match self.sty {
+            TypeVariants::TyBool |
+                TypeVariants::TyChar |
+                TypeVariants::TyInt(_) |
+                TypeVariants::TyUint(_) |
+                TypeVariants::TyFloat(_) |
+                TypeVariants::TyInfer(InferTy::IntVar(_)) |
+                TypeVariants::TyInfer(InferTy::FloatVar(_)) |
+                TypeVariants::TyInfer(InferTy::FreshIntTy(_)) |
+                TypeVariants::TyInfer(InferTy::FreshFloatTy(_)) => true,
+            TypeVariants::TyRef(_, x) => x.ty.is_primitive_ty(),
+            _ => false,
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TyS {
             ref sty,
@@ -918,7 +936,7 @@ impl<'tcx> TraitPredicate<'tcx> {
     }
 
     /// Creates the dep-node for selecting/evaluating this trait reference.
-    fn dep_node(&self) -> DepNode<DefId> {
+    fn dep_node(&self, tcx: TyCtxt) -> DepNode {
         // Extact the trait-def and first def-id from inputs.  See the
         // docs for `DepNode::TraitSelect` for more information.
         let trait_def_id = self.def_id();
@@ -926,15 +944,17 @@ impl<'tcx> TraitPredicate<'tcx> {
             self.input_types()
                 .flat_map(|t| t.walk())
                 .filter_map(|t| match t.sty {
-                    ty::TyAdt(adt_def, _) => Some(adt_def.did),
+                    ty::TyAdt(adt_def, ..) => Some(adt_def.did),
+                    ty::TyClosure(def_id, ..) => Some(def_id),
+                    ty::TyFnDef(def_id, ..) => Some(def_id),
                     _ => None
                 })
                 .next()
                 .unwrap_or(trait_def_id);
-        DepNode::TraitSelect {
+        DepNode::new(tcx, DepConstructor::TraitSelect {
             trait_def_id: trait_def_id,
             input_def_id: input_def_id
-        }
+        })
     }
 
     pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
@@ -952,9 +972,9 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
         self.0.def_id()
     }
 
-    pub fn dep_node(&self) -> DepNode<DefId> {
+    pub fn dep_node(&self, tcx: TyCtxt) -> DepNode {
         // ok to skip binder since depnode does not care about regions
-        self.0.dep_node()
+        self.0.dep_node(tcx)
     }
 }
 
@@ -1318,9 +1338,9 @@ impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for AdtDef {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for AdtDef {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::AdtDef {
             did,

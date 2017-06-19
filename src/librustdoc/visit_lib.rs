@@ -70,7 +70,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
             return;
         }
 
-        for item in self.cstore.item_children(def_id) {
+        for item in self.cstore.item_children(def_id, self.cx.tcx.sess) {
             self.visit_item(item.def);
         }
     }

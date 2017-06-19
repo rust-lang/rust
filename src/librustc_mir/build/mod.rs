@@ -83,7 +83,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
     };
 
     let src = MirSource::from_node(tcx, id);
-    tcx.infer_ctxt(body_id).enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         let cx = Cx::new(&infcx, src);
         let mut mir = if cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
@@ -171,7 +171,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let span = tcx.hir.span(ctor_id);
     if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
-        tcx.infer_ctxt(()).enter(|infcx| {
+        tcx.infer_ctxt().enter(|infcx| {
             let (mut mir, src) =
                 shim::build_adt_ctor(&infcx, ctor_id, fields, span);
 
@@ -339,8 +339,9 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let call_site_extent = CodeExtent::CallSiteScope(body.id());
     let arg_extent = CodeExtent::ParameterScope(body.id());
     let mut block = START_BLOCK;
-    unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
-        unpack!(block = builder.in_scope(arg_extent, block, |builder| {
+    let source_info = builder.source_info(span);
+    unpack!(block = builder.in_scope((call_site_extent, source_info), block, |builder| {
+        unpack!(block = builder.in_scope((arg_extent, source_info), block, |builder| {
             builder.args_and_body(block, &arguments, arg_extent, &body.value)
         }));
         // Attribute epilogue to function's closing brace
@@ -365,13 +366,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
             let var_id = tcx.hir.as_local_node_id(fv.def.def_id()).unwrap();
-            let by_ref = hir.tables().upvar_capture(ty::UpvarId {
+            let capture = hir.tables().upvar_capture(ty::UpvarId {
                 var_id: var_id,
                 closure_expr_id: fn_id
-            }).map_or(false, |capture| match capture {
+            });
+            let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
                 ty::UpvarCapture::ByRef(..) => true
-            });
+            };
             let mut decl = UpvarDecl {
                 debug_name: keywords::Invalid.name(),
                 by_ref: by_ref

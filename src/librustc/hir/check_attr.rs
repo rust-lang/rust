@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! This module implements some validity checks for attributes.
+//! In particular it verifies that `#[inline]` and `#[repr]` attributes are
+//! attached to items that actually support them and if there are
+//! conflicts between multiple such attributes attached to the same
+//! item.
+
 use session::Session;
 
 use syntax::ast;
@@ -40,6 +46,18 @@ struct CheckAttrVisitor<'a> {
 }
 
 impl<'a> CheckAttrVisitor<'a> {
+    /// Check any attribute.
+    fn check_attribute(&self, attr: &ast::Attribute, target: Target) {
+        if let Some(name) = attr.name() {
+            match &*name.as_str() {
+                "inline" => self.check_inline(attr, target),
+                "repr" => self.check_repr(attr, target),
+                _ => (),
+            }
+        }
+    }
+
+    /// Check if an `#[inline]` is applied to a function.
     fn check_inline(&self, attr: &ast::Attribute, target: Target) {
         if target != Target::Fn {
             struct_span_err!(self.sess, attr.span, E0518, "attribute should be applied to function")
@@ -48,6 +66,7 @@ impl<'a> CheckAttrVisitor<'a> {
         }
     }
 
+    /// Check if an `#[repr]` attr is valid.
     fn check_repr(&self, attr: &ast::Attribute, target: Target) {
         let words = match attr.meta_item_list() {
             Some(words) => words,
@@ -133,16 +152,6 @@ impl<'a> CheckAttrVisitor<'a> {
         if found_align && found_packed {
             struct_span_err!(self.sess, attr.span, E0587,
                              "conflicting packed and align representation hints").emit();
-        }
-    }
-
-    fn check_attribute(&self, attr: &ast::Attribute, target: Target) {
-        if let Some(name) = attr.name() {
-            match &*name.as_str() {
-                "inline" => self.check_inline(attr, target),
-                "repr" => self.check_repr(attr, target),
-                _ => (),
-            }
         }
     }
 }

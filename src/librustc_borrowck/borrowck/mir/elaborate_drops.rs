@@ -594,6 +594,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             assert!(self.patch.is_patched(bb));
                             allow_initializations = false;
                         }
+                        TerminatorKind::Resume => {
+                            // It is possible for `Resume` to be patched
+                            // (in particular it can be patched to be replaced with
+                            // a Goto; see `MirPatch::new`).
+                        }
                         _ => {
                             assert!(!self.patch.is_patched(bb));
                         }

@@ -158,29 +158,13 @@ impl CodeMap {
 
     /// Creates a new filemap without setting its line information. If you don't
     /// intend to set the line information yourself, you should use new_filemap_and_lines.
-    pub fn new_filemap(&self, filename: FileName, mut src: String) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, src: String) -> Rc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
-        // Remove utf-8 BOM if any.
-        if src.starts_with("\u{feff}") {
-            src.drain(..3);
-        }
-
-        let end_pos = start_pos + src.len();
-
         let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
-
-        let filemap = Rc::new(FileMap {
-            name: filename,
-            name_was_remapped: was_remapped,
-            crate_of_origin: 0,
-            src: Some(Rc::new(src)),
-            start_pos: Pos::from_usize(start_pos),
-            end_pos: Pos::from_usize(end_pos),
-            lines: RefCell::new(Vec::new()),
-            multibyte_chars: RefCell::new(Vec::new()),
-        });
+        let filemap =
+            Rc::new(FileMap::new(filename, was_remapped, src, Pos::from_usize(start_pos)));
 
         files.push(filemap.clone());
 
@@ -210,6 +194,7 @@ impl CodeMap {
                                 filename: FileName,
                                 name_was_remapped: bool,
                                 crate_of_origin: u32,
+                                src_hash: u128,
                                 source_len: usize,
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>)
@@ -233,6 +218,8 @@ impl CodeMap {
             name_was_remapped: name_was_remapped,
             crate_of_origin: crate_of_origin,
             src: None,
+            src_hash: src_hash,
+            external_src: RefCell::new(ExternalSource::AbsentOk),
             start_pos: start_pos,
             end_pos: end_pos,
             lines: RefCell::new(file_local_lines),
@@ -428,30 +415,31 @@ impl CodeMap {
                       local_end.fm.start_pos)
             }));
         } else {
-            match local_begin.fm.src {
-                Some(ref src) => {
-                    let start_index = local_begin.pos.to_usize();
-                    let end_index = local_end.pos.to_usize();
-                    let source_len = (local_begin.fm.end_pos -
-                                      local_begin.fm.start_pos).to_usize();
+            self.ensure_filemap_source_present(local_begin.fm.clone());
 
-                    if start_index > end_index || end_index > source_len {
-                        return Err(SpanSnippetError::MalformedForCodemap(
-                            MalformedCodemapPositions {
-                                name: local_begin.fm.name.clone(),
-                                source_len: source_len,
-                                begin_pos: local_begin.pos,
-                                end_pos: local_end.pos,
-                            }));
-                    }
+            let start_index = local_begin.pos.to_usize();
+            let end_index = local_end.pos.to_usize();
+            let source_len = (local_begin.fm.end_pos -
+                              local_begin.fm.start_pos).to_usize();
 
-                    return Ok((&src[start_index..end_index]).to_string())
-                }
-                None => {
-                    return Err(SpanSnippetError::SourceNotAvailable {
-                        filename: local_begin.fm.name.clone()
-                    });
-                }
+            if start_index > end_index || end_index > source_len {
+                return Err(SpanSnippetError::MalformedForCodemap(
+                    MalformedCodemapPositions {
+                        name: local_begin.fm.name.clone(),
+                        source_len: source_len,
+                        begin_pos: local_begin.pos,
+                        end_pos: local_end.pos,
+                    }));
+            }
+
+            if let Some(ref src) = local_begin.fm.src {
+                return Ok((&src[start_index..end_index]).to_string());
+            } else if let Some(src) = local_begin.fm.external_src.borrow().get_source() {
+                return Ok((&src[start_index..end_index]).to_string());
+            } else {
+                return Err(SpanSnippetError::SourceNotAvailable {
+                    filename: local_begin.fm.name.clone()
+                });
             }
         }
     }
@@ -572,6 +560,10 @@ impl CodeMapper for CodeMap {
         }
         sp
     }
+    fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool {
+        let src = self.file_loader.read_file(Path::new(&file_map.name)).ok();
+        return file_map.add_external_src(src)
+    }
 }
 
 #[derive(Clone)]
@@ -617,6 +609,7 @@ impl FilePathMapping {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Cow;
     use std::rc::Rc;
 
     #[test]
@@ -626,12 +619,12 @@ mod tests {
                                 "first line.\nsecond line".to_string());
         fm.next_line(BytePos(0));
         // Test we can get lines with partial line info.
-        assert_eq!(fm.get_line(0), Some("first line."));
+        assert_eq!(fm.get_line(0), Some(Cow::from("first line.")));
         // TESTING BROKEN BEHAVIOR: line break declared before actual line break.
         fm.next_line(BytePos(10));
-        assert_eq!(fm.get_line(1), Some("."));
+        assert_eq!(fm.get_line(1), Some(Cow::from(".")));
         fm.next_line(BytePos(12));
-        assert_eq!(fm.get_line(2), Some("second line"));
+        assert_eq!(fm.get_line(2), Some(Cow::from("second line")));
     }
 
     #[test]

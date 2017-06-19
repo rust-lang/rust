@@ -492,7 +492,7 @@ pub fn run(mut krate: clean::Crate,
             }
         }
     }
-    try_err!(mkdir(&dst), &dst);
+    try_err!(fs::create_dir_all(&dst), &dst);
     krate = render_sources(&dst, &mut scx, krate)?;
     let cx = Context {
         current: Vec::new(),
@@ -658,7 +658,7 @@ fn write_shared(cx: &Context,
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
-    try_err!(mkdir(&cx.dst), &cx.dst);
+    try_err!(fs::create_dir_all(&cx.dst), &cx.dst);
     let _lock = flock::Lock::panicking_new(&cx.dst.join(".lock"), true, true, true);
 
     // Add all the static files. These may already exist, but we just
@@ -808,10 +808,8 @@ fn write_shared(cx: &Context,
 fn render_sources(dst: &Path, scx: &mut SharedContext,
                   krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
-    let dst = dst.join("src");
-    try_err!(mkdir(&dst), &dst);
-    let dst = dst.join(&krate.name);
-    try_err!(mkdir(&dst), &dst);
+    let dst = dst.join("src").join(&krate.name);
+    try_err!(fs::create_dir_all(&dst), &dst);
     let mut folder = SourceCollector {
         dst: dst,
         scx: scx,
@@ -823,19 +821,6 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
 /// catch any errors.
 fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
     Ok(try_err!(try_err!(File::create(&dst), &dst).write_all(contents), &dst))
-}
-
-/// Makes a directory on the filesystem, failing the thread if an error occurs
-/// and skipping if the directory already exists.
-///
-/// Note that this also handles races as rustdoc is likely to be run
-/// concurrently against another invocation.
-fn mkdir(path: &Path) -> io::Result<()> {
-    match fs::create_dir(path) {
-        Ok(()) => Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
-        Err(e) => Err(e)
-    }
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
@@ -951,7 +936,7 @@ impl<'a> SourceCollector<'a> {
         let mut href = String::new();
         clean_srcpath(&self.scx.src_root, &p, false, |component| {
             cur.push(component);
-            mkdir(&cur).unwrap();
+            fs::create_dir_all(&cur).unwrap();
             root_path.push_str("../");
             href.push_str(component);
             href.push('/');
@@ -1349,7 +1334,7 @@ impl Context {
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
         if !self.render_redirect_pages {
-            self.render_redirect_pages = maybe_ignore_item(&item);
+            self.render_redirect_pages = item.is_stripped();
         }
 
         if item.is_mod() {
@@ -1432,7 +1417,7 @@ impl Context {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map = BTreeMap::new();
         for item in &m.items {
-            if maybe_ignore_item(item) { continue }
+            if item.is_stripped() { continue }
 
             let short = item.type_().css_class();
             let myname = match item.name {
@@ -1733,7 +1718,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         if let clean::DefaultImplItem(..) = items[*i].inner {
             return false;
         }
-        !maybe_ignore_item(&items[*i])
+        !items[*i].is_stripped()
     }).collect::<Vec<usize>>();
 
     // the order of item types in the listing
@@ -1900,17 +1885,6 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         write!(w, "</table>")?;
     }
     Ok(())
-}
-
-fn maybe_ignore_item(it: &clean::Item) -> bool {
-    match it.inner {
-        clean::StrippedItem(..) => true,
-        clean::ModuleItem(ref m) => {
-            it.doc_value().is_none() && m.items.is_empty()
-                                     && it.visibility != Some(clean::Public)
-        },
-        _ => false,
-    }
 }
 
 fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
@@ -3082,7 +3056,13 @@ fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
            type_ = t.type_)?;
 
-    document(w, cx, it)
+    document(w, cx, it)?;
+
+    // Render any items associated directly to this alias, as otherwise they
+    // won't be visible anywhere in the docs. It would be nice to also show
+    // associated items from the aliased type (see discussion in #32077), but
+    // we need #14072 to make sense of the generics.
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 impl<'a> fmt::Display for Sidebar<'a> {
@@ -3092,7 +3072,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
-            || it.is_enum() || it.is_mod()
+            || it.is_enum() || it.is_mod() || it.is_typedef()
         {
             write!(fmt, "<p class='location'>")?;
             match it.inner {
@@ -3101,6 +3081,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
                 clean::UnionItem(..) => write!(fmt, "Union ")?,
                 clean::EnumItem(..) => write!(fmt, "Enum ")?,
+                clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
                 clean::ModuleItem(..) => if it.is_crate() {
                     write!(fmt, "Crate ")?;
                 } else {
@@ -3117,6 +3098,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
                 clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
                 clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
+                clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
                 clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
                 _ => (),
             }
@@ -3259,6 +3241,16 @@ fn sidebar_primitive(fmt: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
+fn sidebar_typedef(fmt: &mut fmt::Formatter, it: &clean::Item,
+                   _t: &clean::Typedef) -> fmt::Result {
+    let sidebar = sidebar_assoc_items(it);
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
 fn sidebar_union(fmt: &mut fmt::Formatter, it: &clean::Item,
                  u: &clean::Union) -> fmt::Result {
     let mut sidebar = String::new();
@@ -3314,7 +3306,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
             if let clean::DefaultImplItem(..) = it.inner {
                 false
             } else {
-                !maybe_ignore_item(it) && !it.is_stripped() && it.type_() == myty
+                !it.is_stripped() && it.type_() == myty
             }
         }) {
             let (short, name) = match myty {

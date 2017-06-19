@@ -478,7 +478,7 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
 
-                for child in self.session.cstore.item_children(def_id) {
+                for child in self.session.cstore.item_children(def_id, self.session) {
                     let ns = if let Def::AssociatedTy(..) = child.def { TypeNS } else { ValueNS };
                     self.define(module, child.ident, ns,
                                 (child.def, ty::Visibility::Public, DUMMY_SP, expansion));
@@ -564,7 +564,7 @@ impl<'a> Resolver<'a> {
     /// is built, building it if it is not.
     pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
         if module.populated.get() { return }
-        for child in self.session.cstore.item_children(module.def_id().unwrap()) {
+        for child in self.session.cstore.item_children(module.def_id().unwrap(), self.session) {
             self.build_reduced_graph_for_external_crate_def(module, child);
         }
         module.populated.set(true)

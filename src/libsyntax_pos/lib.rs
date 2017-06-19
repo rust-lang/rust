@@ -24,6 +24,7 @@
 
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(i128_type)]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
@@ -32,12 +33,17 @@
 #![cfg_attr(stage0, feature(rustc_private))]
 #![cfg_attr(stage0, feature(staged_api))]
 
+use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::ops::{Add, Sub};
 use std::rc::Rc;
 use std::cmp;
-
 use std::fmt;
+use std::hash::Hasher;
+
+use rustc_data_structures::stable_hasher::StableHasher;
+
+extern crate rustc_data_structures;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -369,6 +375,35 @@ pub struct MultiByteChar {
     pub bytes: usize,
 }
 
+/// The state of the lazy external source loading mechanism of a FileMap.
+#[derive(PartialEq, Eq, Clone)]
+pub enum ExternalSource {
+    /// The external source has been loaded already.
+    Present(String),
+    /// No attempt has been made to load the external source.
+    AbsentOk,
+    /// A failed attempt has been made to load the external source.
+    AbsentErr,
+    /// No external source has to be loaded, since the FileMap represents a local crate.
+    Unneeded,
+}
+
+impl ExternalSource {
+    pub fn is_absent(&self) -> bool {
+        match *self {
+            ExternalSource::Present(_) => false,
+            _ => true,
+        }
+    }
+
+    pub fn get_source(&self) -> Option<&str> {
+        match *self {
+            ExternalSource::Present(ref src) => Some(src),
+            _ => None,
+        }
+    }
+}
+
 /// A single source in the CodeMap.
 #[derive(Clone)]
 pub struct FileMap {
@@ -382,6 +417,11 @@ pub struct FileMap {
     pub crate_of_origin: u32,
     /// The complete source code
     pub src: Option<Rc<String>>,
+    /// The source code's hash
+    pub src_hash: u128,
+    /// The external source code (used for external crates, which will have a `None`
+    /// value as `self.src`.
+    pub external_src: RefCell<ExternalSource>,
     /// The start position of this source in the CodeMap
     pub start_pos: BytePos,
     /// The end position of this source in the CodeMap
@@ -394,9 +434,10 @@ pub struct FileMap {
 
 impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("FileMap", 6, |s| {
+        s.emit_struct("FileMap", 7, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
+            s.emit_struct_field("src_hash", 6, |s| self.src_hash.encode(s))?;
             s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
             s.emit_struct_field("lines", 4, |s| {
@@ -459,7 +500,10 @@ impl Decodable for FileMap {
             let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
-            let start_pos: BytePos = d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
+            let src_hash: u128 =
+                d.read_struct_field("src_hash", 6, |d| Decodable::decode(d))?;
+            let start_pos: BytePos =
+                d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
             let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
             let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
                 let num_lines: u32 = Decodable::decode(d)?;
@@ -501,6 +545,8 @@ impl Decodable for FileMap {
                 start_pos: start_pos,
                 end_pos: end_pos,
                 src: None,
+                src_hash: src_hash,
+                external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars)
             })
@@ -515,6 +561,32 @@ impl fmt::Debug for FileMap {
 }
 
 impl FileMap {
+    pub fn new(name: FileName,
+               name_was_remapped: bool,
+               mut src: String,
+               start_pos: BytePos) -> FileMap {
+        remove_bom(&mut src);
+
+        let mut hasher: StableHasher<u128> = StableHasher::new();
+        hasher.write(src.as_bytes());
+        let src_hash = hasher.finish();
+
+        let end_pos = start_pos.to_usize() + src.len();
+
+        FileMap {
+            name: name,
+            name_was_remapped: name_was_remapped,
+            crate_of_origin: 0,
+            src: Some(Rc::new(src)),
+            src_hash: src_hash,
+            external_src: RefCell::new(ExternalSource::Unneeded),
+            start_pos: start_pos,
+            end_pos: Pos::from_usize(end_pos),
+            lines: RefCell::new(Vec::new()),
+            multibyte_chars: RefCell::new(Vec::new()),
+        }
+    }
+
     /// EFFECT: register a start-of-line offset in the
     /// table of line-beginnings.
     /// UNCHECKED INVARIANT: these offsets must be added in the right
@@ -532,26 +604,60 @@ impl FileMap {
         lines.push(pos);
     }
 
-    /// get a line from the list of pre-computed line-beginnings.
-    /// line-number here is 0-based.
-    pub fn get_line(&self, line_number: usize) -> Option<&str> {
-        match self.src {
-            Some(ref src) => {
-                let lines = self.lines.borrow();
-                lines.get(line_number).map(|&line| {
-                    let begin: BytePos = line - self.start_pos;
-                    let begin = begin.to_usize();
-                    // We can't use `lines.get(line_number+1)` because we might
-                    // be parsing when we call this function and thus the current
-                    // line is the last one we have line info for.
-                    let slice = &src[begin..];
-                    match slice.find('\n') {
-                        Some(e) => &slice[..e],
-                        None => slice
-                    }
-                })
+    /// Add externally loaded source.
+    /// If the hash of the input doesn't match or no input is supplied via None,
+    /// it is interpreted as an error and the corresponding enum variant is set.
+    /// The return value signifies whether some kind of source is present.
+    pub fn add_external_src(&self, src: Option<String>) -> bool {
+        if *self.external_src.borrow() == ExternalSource::AbsentOk {
+            let mut external_src = self.external_src.borrow_mut();
+            if let Some(src) = src {
+                let mut hasher: StableHasher<u128> = StableHasher::new();
+                hasher.write(src.as_bytes());
+
+                if hasher.finish() == self.src_hash {
+                    *external_src = ExternalSource::Present(src);
+                    return true;
+                }
+            } else {
+                *external_src = ExternalSource::AbsentErr;
             }
-            None => None
+
+            false
+        } else {
+            self.src.is_some() || self.external_src.borrow().get_source().is_some()
+        }
+    }
+
+    /// Get a line from the list of pre-computed line-beginnings.
+    /// The line number here is 0-based.
+    pub fn get_line(&self, line_number: usize) -> Option<Cow<str>> {
+        fn get_until_newline(src: &str, begin: usize) -> &str {
+            // We can't use `lines.get(line_number+1)` because we might
+            // be parsing when we call this function and thus the current
+            // line is the last one we have line info for.
+            let slice = &src[begin..];
+            match slice.find('\n') {
+                Some(e) => &slice[..e],
+                None => slice
+            }
+        }
+
+        let lines = self.lines.borrow();
+        let line = if let Some(line) = lines.get(line_number) {
+            line
+        } else {
+            return None;
+        };
+        let begin: BytePos = *line - self.start_pos;
+        let begin = begin.to_usize();
+
+        if let Some(ref src) = self.src {
+            Some(Cow::from(get_until_newline(src, begin)))
+        } else if let Some(src) = self.external_src.borrow().get_source() {
+            Some(Cow::Owned(String::from(get_until_newline(src, begin))))
+        } else {
+            None
         }
     }
 
@@ -611,6 +717,13 @@ impl FileMap {
         } else {
             (lines[line_index], lines[line_index + 1])
         }
+    }
+}
+
+/// Remove utf-8 BOM if any.
+fn remove_bom(src: &mut String) {
+    if src.starts_with("\u{feff}") {
+        src.drain(..3);
     }
 }
 

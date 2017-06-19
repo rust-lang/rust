@@ -15,6 +15,7 @@ use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
 use syntax::visit;
 use syntax::symbol::keywords;
+use syntax::symbol::Symbol;
 
 use hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
 
@@ -103,14 +104,14 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 DefPathData::Impl,
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) | ItemKind::Trait(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
-                DefPathData::TypeNs(i.ident.modern()),
+                DefPathData::TypeNs(i.ident.name),
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
                 return visit::walk_item(self, i);
             }
-            ItemKind::Mod(..) => DefPathData::Module(i.ident.modern()),
+            ItemKind::Mod(..) => DefPathData::Module(i.ident.name),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
-                DefPathData::ValueNs(i.ident.modern()),
-            ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.modern()),
+                DefPathData::ValueNs(i.ident.name),
+            ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
             ItemKind::Use(ref view_path) => {
@@ -138,13 +139,13 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     for v in &enum_definition.variants {
                         let variant_def_index =
                             this.create_def(v.node.data.id(),
-                                            DefPathData::EnumVariant(v.node.name.modern()),
+                                            DefPathData::EnumVariant(v.node.name.name),
                                             REGULAR_SPACE);
                         this.with_parent(variant_def_index, |this| {
                             for (index, field) in v.node.data.fields().iter().enumerate() {
-                                let ident = field.ident.map(Ident::modern)
-                                    .unwrap_or_else(|| Ident::from_str(&index.to_string()));
-                                this.create_def(field.id, DefPathData::Field(ident), REGULAR_SPACE);
+                                let name = field.ident.map(|ident| ident.name)
+                                    .unwrap_or_else(|| Symbol::intern(&index.to_string()));
+                                this.create_def(field.id, DefPathData::Field(name), REGULAR_SPACE);
                             }
 
                             if let Some(ref expr) = v.node.disr_expr {
@@ -162,9 +163,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     }
 
                     for (index, field) in struct_def.fields().iter().enumerate() {
-                        let ident = field.ident.map(Ident::modern)
-                            .unwrap_or_else(|| Ident::from_str(&index.to_string()));
-                        this.create_def(field.id, DefPathData::Field(ident), REGULAR_SPACE);
+                        let name = field.ident.map(|ident| ident.name)
+                            .unwrap_or_else(|| Symbol::intern(&index.to_string()));
+                        this.create_def(field.id, DefPathData::Field(name), REGULAR_SPACE);
                     }
                 }
                 _ => {}
@@ -175,7 +176,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
         let def = self.create_def(foreign_item.id,
-                                  DefPathData::ValueNs(foreign_item.ident.modern()),
+                                  DefPathData::ValueNs(foreign_item.ident.name),
                                   REGULAR_SPACE);
 
         self.with_parent(def, |this| {
@@ -186,7 +187,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_generics(&mut self, generics: &'a Generics) {
         for ty_param in generics.ty_params.iter() {
             self.create_def(ty_param.id,
-                            DefPathData::TypeParam(ty_param.ident.modern()),
+                            DefPathData::TypeParam(ty_param.ident.name),
                             REGULAR_SPACE);
         }
 
@@ -196,8 +197,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_trait_item(&mut self, ti: &'a TraitItem) {
         let def_data = match ti.node {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
-                DefPathData::ValueNs(ti.ident.modern()),
-            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.modern()),
+                DefPathData::ValueNs(ti.ident.name),
+            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name),
             TraitItemKind::Macro(..) => return self.visit_macro_invoc(ti.id, false),
         };
 
@@ -214,8 +215,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.node {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
-                DefPathData::ValueNs(ii.ident.modern()),
-            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.modern()),
+                DefPathData::ValueNs(ii.ident.name),
+            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.name),
             ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id, false),
         };
 
@@ -236,7 +237,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             PatKind::Mac(..) => return self.visit_macro_invoc(pat.id, false),
             PatKind::Ident(_, id, _) => {
                 let def = self.create_def(pat.id,
-                                          DefPathData::Binding(id.node.modern()),
+                                          DefPathData::Binding(id.node.name),
                                           REGULAR_SPACE);
                 self.parent_def = Some(def);
             }
@@ -281,7 +282,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_lifetime_def(&mut self, def: &'a LifetimeDef) {
         self.create_def(def.lifetime.id,
-                        DefPathData::LifetimeDef(def.lifetime.ident.modern()),
+                        DefPathData::LifetimeDef(def.lifetime.ident.name),
                         REGULAR_SPACE);
     }
 

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    (return)[0]; //~ ERROR cannot index a value of type `!`
+    (return)[0]; //~ ERROR cannot index into a value of type `!`
 }

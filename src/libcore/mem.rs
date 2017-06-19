@@ -109,7 +109,7 @@ pub use intrinsics::transmute;
 /// [`Clone`][clone]. You need the value's destructor to run only once,
 /// because a double `free` is undefined behavior.
 ///
-/// An example is the definition of [`mem::swap`][swap] in this module:
+/// An example is a possible implementation of [`mem::swap`][swap]:
 ///
 /// ```
 /// use std::mem;
@@ -499,18 +499,59 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        // Give ourselves some scratch space to work with
-        let mut t: T = uninitialized();
+        // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
+        // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
+        // Haswell E processors. LLVM is more able to optimize if we give a struct a
+        // #[repr(simd)], even if we don't actually use this struct directly.
+        //
+        // FIXME repr(simd) broken on emscripten
+        #[cfg_attr(not(target_os = "emscripten"), repr(simd))]
+        struct Block(u64, u64, u64, u64);
+        struct UnalignedBlock(u64, u64, u64, u64);
 
-        // Perform the swap, `&mut` pointers never alias
-        ptr::copy_nonoverlapping(&*x, &mut t, 1);
-        ptr::copy_nonoverlapping(&*y, x, 1);
-        ptr::copy_nonoverlapping(&t, y, 1);
+        let block_size = size_of::<Block>();
 
-        // y and t now point to the same thing, but we need to completely
-        // forget `t` because we do not want to run the destructor for `T`
-        // on its value, which is still owned somewhere outside this function.
-        forget(t);
+        // Get raw pointers to the bytes of x & y for easier manipulation
+        let x = x as *mut T as *mut u8;
+        let y = y as *mut T as *mut u8;
+
+        // Loop through x & y, copying them `Block` at a time
+        // The optimizer should unroll the loop fully for most types
+        // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
+        let len = size_of::<T>();
+        let mut i = 0;
+        while i + block_size <= len {
+            // Create some uninitialized memory as scratch space
+            // Declaring `t` here avoids aligning the stack when this loop is unused
+            let mut t: Block = uninitialized();
+            let t = &mut t as *mut _ as *mut u8;
+            let x = x.offset(i as isize);
+            let y = y.offset(i as isize);
+
+            // Swap a block of bytes of x & y, using t as a temporary buffer
+            // This should be optimized into efficient SIMD operations where available
+            ptr::copy_nonoverlapping(x, t, block_size);
+            ptr::copy_nonoverlapping(y, x, block_size);
+            ptr::copy_nonoverlapping(t, y, block_size);
+            i += block_size;
+        }
+
+
+        if i < len {
+            // Swap any remaining bytes, using aligned types to copy
+            // where appropriate (this information is lost by conversion
+            // to *mut u8, so restore it manually here)
+            let mut t: UnalignedBlock = uninitialized();
+            let rem = len - i;
+
+            let t = &mut t as *mut _ as *mut u8;
+            let x = x.offset(i as isize);
+            let y = y.offset(i as isize);
+
+            ptr::copy_nonoverlapping(x, t, rem);
+            ptr::copy_nonoverlapping(y, x, rem);
+            ptr::copy_nonoverlapping(t, y, rem);
+        }
     }
 }
 

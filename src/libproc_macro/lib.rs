@@ -21,7 +21,7 @@
 //! This functionality is intended to be expanded over time as more surface
 //! area for macro authors is stabilized.
 //!
-//! See [the book](../book/procedural-macros.html) for more.
+//! See [the book](../book/first-edition/procedural-macros.html) for more.
 
 #![crate_name = "proc_macro"]
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]

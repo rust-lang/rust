@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::{DepNode, DepTrackingMapConfig};
+use dep_graph::{DepConstructor, DepNode, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
 use middle::const_val;
+use middle::cstore::{ExternCrate, LinkagePreference};
 use middle::privacy::AccessLevels;
 use middle::region::RegionMaps;
 use mir;
@@ -476,6 +477,36 @@ impl<'tcx> QueryDescription for queries::is_object_safe<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::is_const_fn<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("checking if item is const fn: `{}`", tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::dylib_dependency_formats<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "dylib dependency formats of crate".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_allocator<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate is_allocator".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate is_panic_runtime".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "getting crate's ExternCrateData".to_string()
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -524,10 +555,10 @@ macro_rules! define_maps {
             type Value = $V;
 
             #[allow(unused)]
-            fn to_dep_node(key: &$K) -> DepNode<DefId> {
-                use dep_graph::DepNode::*;
+            fn to_dep_node(tcx: TyCtxt, key: &$K) -> DepNode {
+                use dep_graph::DepConstructor::*;
 
-                $node(*key)
+                DepNode::new(tcx, $node(*key))
             }
         }
         impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
@@ -554,7 +585,7 @@ macro_rules! define_maps {
                     span = key.default_span(tcx)
                 }
 
-                let _task = tcx.dep_graph.in_task(Self::to_dep_node(&key));
+                let _task = tcx.dep_graph.in_task(Self::to_dep_node(tcx, &key));
 
                 let result = tcx.cycle_check(span, Query::$name(key), || {
                     let provider = tcx.maps.providers[key.map_crate()].$name;
@@ -569,7 +600,7 @@ macro_rules! define_maps {
                 // We register the `read` here, but not in `force`, since
                 // `force` does not give access to the value produced (and thus
                 // we actually don't read it).
-                tcx.dep_graph.read(Self::to_dep_node(&key));
+                tcx.dep_graph.read(Self::to_dep_node(tcx, &key));
                 Self::try_get_with(tcx, span, key, Clone::clone)
             }
 
@@ -782,7 +813,7 @@ define_maps! { <'tcx>
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
-    [] type_param_predicates: TypeParamPredicates((DefId, DefId))
+    [] type_param_predicates: type_param_predicates((DefId, DefId))
         -> ty::GenericPredicates<'tcx>,
 
     [] trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
@@ -790,6 +821,9 @@ define_maps! { <'tcx>
     [] adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
     [] adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+
+    /// True if this is a const fn
+    [] is_const_fn: IsConstFn(DefId) -> bool,
 
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     [] is_foreign_item: IsForeignItem(DefId) -> bool,
@@ -929,76 +963,91 @@ define_maps! { <'tcx>
     [] needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
+
+    [] dylib_dependency_formats: DylibDepFormats(DefId)
+                                    -> Rc<Vec<(CrateNum, LinkagePreference)>>,
+
+    [] is_allocator: IsAllocator(DefId) -> bool,
+    [] is_panic_runtime: IsPanicRuntime(DefId) -> bool,
+
+    [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 }
 
-fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
-    DepNode::CoherenceCheckTrait(def_id)
+fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {
+    DepConstructor::TypeParamPredicates {
+        item_id,
+        param_id
+    }
 }
 
-fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
-    DepNode::Coherence
+fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepConstructor {
+    DepConstructor::CoherenceCheckTrait(def_id)
 }
 
-fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
-    DepNode::Reachability
+fn crate_inherent_impls_dep_node(_: CrateNum) -> DepConstructor {
+    DepConstructor::Coherence
 }
 
-fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {
+fn reachability_dep_node(_: CrateNum) -> DepConstructor {
+    DepConstructor::Reachability
+}
+
+fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepConstructor {
     instance.dep_node()
 }
 
-fn symbol_name_dep_node(instance: ty::Instance) -> DepNode<DefId> {
+fn symbol_name_dep_node(instance: ty::Instance) -> DepConstructor {
     // symbol_name uses the substs only to traverse them to find the
     // hash, and that does not create any new dep-nodes.
-    DepNode::SymbolName(instance.def.def_id())
+    DepConstructor::SymbolName(instance.def.def_id())
 }
 
-fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
-    DepNode::TypeckBodiesKrate
+fn typeck_item_bodies_dep_node(_: CrateNum) -> DepConstructor {
+    DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
-    DepNode::ConstEval(def_id)
+fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepConstructor {
+    DepConstructor::ConstEval(def_id)
 }
 
-fn mir_keys(_: CrateNum) -> DepNode<DefId> {
-    DepNode::MirKeys
+fn mir_keys(_: CrateNum) -> DepConstructor {
+    DepConstructor::MirKeys
 }
 
-fn crate_variances(_: CrateNum) -> DepNode<DefId> {
-    DepNode::CrateVariances
+fn crate_variances(_: CrateNum) -> DepConstructor {
+    DepConstructor::CrateVariances
 }
 
-fn relevant_trait_impls_for((def_id, _): (DefId, SimplifiedType)) -> DepNode<DefId> {
-    DepNode::TraitImpls(def_id)
+fn relevant_trait_impls_for((def_id, _): (DefId, SimplifiedType)) -> DepConstructor {
+    DepConstructor::TraitImpls(def_id)
 }
 
-fn is_copy_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+fn is_copy_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
     let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
         .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepNode::IsCopy(def_id)
+    DepConstructor::IsCopy(def_id)
 }
 
-fn is_sized_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+fn is_sized_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
     let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
         .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepNode::IsSized(def_id)
+    DepConstructor::IsSized(def_id)
 }
 
-fn is_freeze_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+fn is_freeze_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
     let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
         .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepNode::IsFreeze(def_id)
+    DepConstructor::IsFreeze(def_id)
 }
 
-fn needs_drop_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+fn needs_drop_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
     let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
         .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepNode::NeedsDrop(def_id)
+    DepConstructor::NeedsDrop(def_id)
 }
 
-fn layout_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepNode<DefId> {
+fn layout_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
     let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
         .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepNode::Layout(def_id)
+    DepConstructor::Layout(def_id)
 }

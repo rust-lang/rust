@@ -19,7 +19,6 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
@@ -106,18 +105,6 @@ impl fmt::Display for Mode {
             Mode::ConstFn => write!(f, "constant function"),
             Mode::Fn => write!(f, "function")
         }
-    }
-}
-
-pub fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-        if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(node_id)) {
-            fn_like.constness() == hir::Constness::Const
-        } else {
-            false
-        }
-    } else {
-        tcx.sess.cstore.is_const_fn(def_id)
     }
 }
 
@@ -663,7 +650,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
                             span_err!(self.tcx.sess, self.span, E0492,
-                                      "cannot borrow a constant which contains \
+                                      "cannot borrow a constant which may contain \
                                        interior mutability, create a static instead");
                         }
                     }
@@ -766,7 +753,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 ty::TyFnDef(def_id, _, f) => {
                     (f.abi() == Abi::PlatformIntrinsic &&
                      self.tcx.item_name(def_id).as_str().starts_with("simd_shuffle"),
-                     is_const_fn(self.tcx, def_id))
+                     self.tcx.is_const_fn(def_id))
                 }
                 _ => (false, false)
             };
@@ -907,6 +894,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
                 StatementKind::InlineAsm {..} |
+                StatementKind::EndRegion(_) |
                 StatementKind::Nop => {}
             }
         });
@@ -957,7 +945,7 @@ impl MirPass for QualifyAndPromoteConstants {
         let def_id = tcx.hir.local_def_id(id);
         let mode = match src {
             MirSource::Fn(_) => {
-                if is_const_fn(tcx, def_id) {
+                if tcx.is_const_fn(def_id) {
                     Mode::ConstFn
                 } else {
                     Mode::Fn
@@ -998,7 +986,7 @@ impl MirPass for QualifyAndPromoteConstants {
         // Statics must be Sync.
         if mode == Mode::Static {
             let ty = mir.return_ty;
-            tcx.infer_ctxt(()).enter(|infcx| {
+            tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();

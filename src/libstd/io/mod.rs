@@ -263,7 +263,7 @@
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
-//! [`?` operator]: ../../book/syntax-index.html
+//! [`?` operator]: ../../book/first-edition/syntax-index.html
 //! [`Read::read`]: trait.Read.html#tymethod.read
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -389,7 +389,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 
 /// The `Read` trait allows for reading bytes from a source.
 ///
-/// Implementors of the `Read` trait are sometimes called 'readers'.
+/// Implementors of the `Read` trait are called 'readers'.
 ///
 /// Readers are defined by one required method, `read()`. Each call to `read`
 /// will attempt to pull bytes from this source into a provided buffer. A

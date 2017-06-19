@@ -7,7 +7,7 @@ error[E0599]: no method named `fake` found for type `{integer}` in the current s
 50 |     fake_method_stmt!();
    |     -------------------- in this macro invocation
 
-error: no field `fake` on type `{integer}`
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:21:13
    |
 21 |           1.fake
@@ -34,7 +34,7 @@ error[E0599]: no method named `fake` found for type `{integer}` in the current s
 54 |     let _ = fake_method_expr!();
    |             ------------------- in this macro invocation
 
-error: no field `fake` on type `{integer}`
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
   --> $DIR/macro-backtrace-invalid-internals.rs:39:13
    |
 39 |           1.fake

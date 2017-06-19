@@ -18,6 +18,7 @@ use super::{
     OutputTypeParameterMismatch,
     TraitNotObjectSafe,
     PredicateObligation,
+    Reveal,
     SelectionContext,
     SelectionError,
     ObjectSafetyViolation,
@@ -25,16 +26,14 @@ use super::{
 
 use errors::DiagnosticBuilder;
 use fmt_macros::{Parser, Piece, Position};
-use hir::{self, intravisit, Local, Pat, Body};
-use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::map::NodeExpr;
+use hir;
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
-use syntax::ast::{self, NodeId};
-use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable, TyInfer, TyVar};
+use syntax::ast;
+use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use ty::fast_reject;
 use ty::fold::TypeFolder;
@@ -44,93 +43,113 @@ use util::nodemap::{FxHashMap, FxHashSet};
 
 use syntax_pos::{DUMMY_SP, Span};
 
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub struct TraitErrorKey<'tcx> {
-    span: Span,
-    predicate: ty::Predicate<'tcx>
-}
-
-impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
-    fn from_error(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                  e: &FulfillmentError<'tcx>) -> Self {
-        let predicate =
-            infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
-        TraitErrorKey {
-            span: e.obligation.cause.span,
-            predicate: infcx.tcx.erase_regions(&predicate)
-        }
-    }
-}
-
-struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    target_ty: &'a Ty<'tcx>,
-    hir_map: &'a hir::map::Map<'gcx>,
-    found_local_pattern: Option<&'gcx Pat>,
-    found_arg_pattern: Option<&'gcx Pat>,
-}
-
-impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn node_matches_type(&mut self, node_id: &'gcx NodeId) -> bool {
-        match self.infcx.tables.borrow().node_types.get(node_id) {
-            Some(&ty) => {
-                let ty = self.infcx.resolve_type_vars_if_possible(&ty);
-                ty.walk().any(|inner_ty| {
-                    inner_ty == *self.target_ty || match (&inner_ty.sty, &self.target_ty.sty) {
-                        (&TyInfer(TyVar(a_vid)), &TyInfer(TyVar(b_vid))) => {
-                            self.infcx
-                                .type_variables
-                                .borrow_mut()
-                                .sub_unified(a_vid, b_vid)
-                        }
-                        _ => false,
-                    }
-                })
-            }
-            _ => false,
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.hir_map)
-    }
-
-    fn visit_local(&mut self, local: &'gcx Local) {
-        if self.found_local_pattern.is_none() && self.node_matches_type(&local.id) {
-            self.found_local_pattern = Some(&*local.pat);
-        }
-        intravisit::walk_local(self, local);
-    }
-
-    fn visit_body(&mut self, body: &'gcx Body) {
-        for argument in &body.arguments {
-            if self.found_arg_pattern.is_none() && self.node_matches_type(&argument.id) {
-                self.found_arg_pattern = Some(&*argument.pat);
-            }
-        }
-        intravisit::walk_body(self, body);
-    }
-}
-
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    pub fn report_fulfillment_errors(&self, errors: &Vec<FulfillmentError<'tcx>>) {
-        for error in errors {
-            self.report_fulfillment_error(error);
+    pub fn report_fulfillment_errors(&self,
+                                     errors: &Vec<FulfillmentError<'tcx>>) {
+        #[derive(Debug)]
+        struct ErrorDescriptor<'tcx> {
+            predicate: ty::Predicate<'tcx>,
+            index: Option<usize>, // None if this is an old error
+        }
+
+        let mut error_map : FxHashMap<_, _> =
+            self.reported_trait_errors.borrow().iter().map(|(&span, predicates)| {
+                (span, predicates.iter().map(|predicate| ErrorDescriptor {
+                    predicate: predicate.clone(),
+                    index: None
+                }).collect())
+            }).collect();
+
+        for (index, error) in errors.iter().enumerate() {
+            error_map.entry(error.obligation.cause.span).or_insert(Vec::new()).push(
+                ErrorDescriptor {
+                    predicate: error.obligation.predicate.clone(),
+                    index: Some(index)
+                });
+
+            self.reported_trait_errors.borrow_mut()
+                .entry(error.obligation.cause.span).or_insert(Vec::new())
+                .push(error.obligation.predicate.clone());
+        }
+
+        // We do this in 2 passes because we want to display errors in order, tho
+        // maybe it *is* better to sort errors by span or something.
+        let mut is_suppressed: Vec<bool> = errors.iter().map(|_| false).collect();
+        for (_, error_set) in error_map.iter() {
+            // We want to suppress "duplicate" errors with the same span.
+            for error in error_set {
+                if let Some(index) = error.index {
+                    // Suppress errors that are either:
+                    // 1) strictly implied by another error.
+                    // 2) implied by an error with a smaller index.
+                    for error2 in error_set {
+                        if error2.index.map_or(false, |index2| is_suppressed[index2]) {
+                            // Avoid errors being suppressed by already-suppressed
+                            // errors, to prevent all errors from being suppressed
+                            // at once.
+                            continue
+                        }
+
+                        if self.error_implies(&error2.predicate, &error.predicate) &&
+                            !(error2.index >= error.index &&
+                              self.error_implies(&error.predicate, &error2.predicate))
+                        {
+                            info!("skipping {:?} (implied by {:?})", error, error2);
+                            is_suppressed[index] = true;
+                            break
+                        }
+                    }
+                }
+            }
+        }
+
+        for (error, suppressed) in errors.iter().zip(is_suppressed) {
+            if !suppressed {
+                self.report_fulfillment_error(error);
+            }
         }
     }
 
-    fn report_fulfillment_error(&self,
-                                error: &FulfillmentError<'tcx>) {
-        let error_key = TraitErrorKey::from_error(self, error);
-        debug!("report_fulfillment_errors({:?}) - key={:?}",
-               error, error_key);
-        if !self.reported_trait_errors.borrow_mut().insert(error_key) {
-            debug!("report_fulfillment_errors: skipping duplicate");
-            return;
+    // returns if `cond` not occuring implies that `error` does not occur - i.e. that
+    // `error` occuring implies that `cond` occurs.
+    fn error_implies(&self,
+                     cond: &ty::Predicate<'tcx>,
+                     error: &ty::Predicate<'tcx>)
+                     -> bool
+    {
+        if cond == error {
+            return true
         }
+
+        let (cond, error) = match (cond, error) {
+            (&ty::Predicate::Trait(..), &ty::Predicate::Trait(ref error))
+                => (cond, error),
+            _ => {
+                // FIXME: make this work in other cases too.
+                return false
+            }
+        };
+
+        for implication in super::elaborate_predicates(self.tcx, vec![cond.clone()]) {
+            if let ty::Predicate::Trait(implication) = implication {
+                let error = error.to_poly_trait_ref();
+                let implication = implication.to_poly_trait_ref();
+                // FIXME: I'm just not taking associated types at all here.
+                // Eventually I'll need to implement param-env-aware
+                // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
+                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                if let Ok(_) = self.can_sub(param_env, error, implication) {
+                    debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
+                    return true
+                }
+            }
+        }
+
+        false
+    }
+
+    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) {
+        debug!("report_fulfillment_errors({:?})", error);
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref e) => {
                 self.report_selection_error(&error.obligation, e);
@@ -640,16 +659,36 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::ClosureKind(closure_def_id, kind) => {
                         let found_kind = self.closure_kind(closure_def_id).unwrap();
                         let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
+                        let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             self.tcx.sess, closure_span, E0525,
                             "expected a closure that implements the `{}` trait, \
                                 but this closure only implements `{}`",
                             kind,
                             found_kind);
-                        err.span_note(
+
+                        err.span_label(
                             obligation.cause.span,
-                            &format!("the requirement to implement \
-                                        `{}` derives from here", kind));
+                            format!("the requirement to implement `{}` derives from here", kind));
+
+                        // Additional context information explaining why the closure only implements
+                        // a particular trait.
+                        if let Some(tables) = self.in_progress_tables {
+                            match tables.borrow().closure_kinds.get(&node_id) {
+                                Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
+                                    err.span_note(span, &format!(
+                                        "closure is `FnOnce` because it moves the \
+                                         variable `{}` out of its environment", name));
+                                },
+                                Some(&(ty::ClosureKind::FnMut, Some((span, name)))) => {
+                                    err.span_note(span, &format!(
+                                        "closure is `FnMut` because it mutates the \
+                                         variable `{}` here", name));
+                                },
+                                _ => {}
+                            }
+                        }
+
                         err.emit();
                         return;
                     }
@@ -985,83 +1024,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
-        if let ty::TyInfer(ty::TyVar(ty_vid)) = (*ty).sty {
-            let ty_vars = self.type_variables.borrow();
-            if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
-                *ty_vars.var_origin(ty_vid) {
-                name.to_string()
-            } else {
-                ty.to_string()
-            }
-        } else {
-            ty.to_string()
-        }
-    }
-
-    pub fn need_type_info(&self, body_id: hir::BodyId, span: Span, ty: Ty<'tcx>) {
-        let ty = self.resolve_type_vars_if_possible(&ty);
-        let name = self.extract_type_name(&ty);
-
-        let mut err_span = span;
-        let mut labels = vec![(span, format!("cannot infer type for `{}`", name))];
-
-        let mut local_visitor = FindLocalByTypeVisitor {
-            infcx: &self,
-            target_ty: &ty,
-            hir_map: &self.tcx.hir,
-            found_local_pattern: None,
-            found_arg_pattern: None,
-        };
-
-        // #40294: cause.body_id can also be a fn declaration.
-        // Currently, if it's anything other than NodeExpr, we just ignore it
-        match self.tcx.hir.find(body_id.node_id) {
-            Some(NodeExpr(expr)) => local_visitor.visit_expr(expr),
-            _ => ()
-        }
-
-        if let Some(pattern) = local_visitor.found_arg_pattern {
-            err_span = pattern.span;
-            // We don't want to show the default label for closures.
-            //
-            // So, before clearing, the output would look something like this:
-            // ```
-            // let x = |_| {  };
-            //          -  ^^^^ cannot infer type for `[_; 0]`
-            //          |
-            //          consider giving this closure parameter a type
-            // ```
-            //
-            // After clearing, it looks something like this:
-            // ```
-            // let x = |_| {  };
-            //          ^ consider giving this closure parameter a type
-            // ```
-            labels.clear();
-            labels.push((pattern.span, format!("consider giving this closure parameter a type")));
-        }
-
-        if let Some(pattern) = local_visitor.found_local_pattern {
-            if let Some(simple_name) = pattern.simple_name() {
-                labels.push((pattern.span, format!("consider giving `{}` a type", simple_name)));
-            } else {
-                labels.push((pattern.span, format!("consider giving the pattern a type")));
-            }
-        }
-
-        let mut err = struct_span_err!(self.tcx.sess,
-                                       err_span,
-                                       E0282,
-                                       "type annotations needed");
-
-        for (target_span, label_message) in labels {
-            err.span_label(target_span, label_message);
-        }
-
-        err.emit();
-    }
-
     fn note_obligation_cause<T>(&self,
                                 err: &mut DiagnosticBuilder,
                                 obligation: &Obligation<'tcx, T>)
@@ -1182,4 +1144,3 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                           suggested_limit));
     }
 }
-

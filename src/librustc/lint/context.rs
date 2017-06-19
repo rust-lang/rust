@@ -25,8 +25,8 @@
 //! for all lint attributes.
 use self::TargetLint::*;
 
-use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
+use traits::Reveal;
 use ty::{self, TyCtxt};
 use session::{config, early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintPass, LintSource};
@@ -411,8 +411,8 @@ pub struct LateContext<'a, 'tcx: 'a> {
     /// Side-tables for the body we are in.
     pub tables: &'a ty::TypeckTables<'tcx>,
 
-    /// The crate being checked.
-    pub krate: &'a hir::Crate,
+    /// Parameter environment for the item we are in.
+    pub param_env: ty::ParamEnv<'tcx>,
 
     /// Items accessible from the crate being checked.
     pub access_levels: &'a AccessLevels,
@@ -869,6 +869,17 @@ impl<'a> LintContext<'a> for EarlyContext<'a> {
     }
 }
 
+impl<'a, 'tcx> LateContext<'a, 'tcx> {
+    fn with_param_env<F>(&mut self, id: ast::NodeId, f: F)
+        where F: FnOnce(&mut Self),
+    {
+        let old_param_env = self.param_env;
+        self.param_env = self.tcx.param_env(self.tcx.hir.local_def_id(id));
+        f(self);
+        self.param_env = old_param_env;
+    }
+}
+
 impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
@@ -902,17 +913,21 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
-            run_lints!(cx, check_item, late_passes, it);
-            hir_visit::walk_item(cx, it);
-            run_lints!(cx, check_item_post, late_passes, it);
+            cx.with_param_env(it.id, |cx| {
+                run_lints!(cx, check_item, late_passes, it);
+                hir_visit::walk_item(cx, it);
+                run_lints!(cx, check_item_post, late_passes, it);
+            });
         })
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
         self.with_lint_attrs(&it.attrs, |cx| {
-            run_lints!(cx, check_foreign_item, late_passes, it);
-            hir_visit::walk_foreign_item(cx, it);
-            run_lints!(cx, check_foreign_item_post, late_passes, it);
+            cx.with_param_env(it.id, |cx| {
+                run_lints!(cx, check_foreign_item, late_passes, it);
+                hir_visit::walk_foreign_item(cx, it);
+                run_lints!(cx, check_foreign_item_post, late_passes, it);
+            });
         })
     }
 
@@ -1026,17 +1041,21 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         self.with_lint_attrs(&trait_item.attrs, |cx| {
-            run_lints!(cx, check_trait_item, late_passes, trait_item);
-            hir_visit::walk_trait_item(cx, trait_item);
-            run_lints!(cx, check_trait_item_post, late_passes, trait_item);
+            cx.with_param_env(trait_item.id, |cx| {
+                run_lints!(cx, check_trait_item, late_passes, trait_item);
+                hir_visit::walk_trait_item(cx, trait_item);
+                run_lints!(cx, check_trait_item_post, late_passes, trait_item);
+            });
         });
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         self.with_lint_attrs(&impl_item.attrs, |cx| {
-            run_lints!(cx, check_impl_item, late_passes, impl_item);
-            hir_visit::walk_impl_item(cx, impl_item);
-            run_lints!(cx, check_impl_item_post, late_passes, impl_item);
+            cx.with_param_env(impl_item.id, |cx| {
+                run_lints!(cx, check_impl_item, late_passes, impl_item);
+                hir_visit::walk_impl_item(cx, impl_item);
+                run_lints!(cx, check_impl_item_post, late_passes, impl_item);
+            });
         });
     }
 
@@ -1321,8 +1340,6 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
-
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
@@ -1330,7 +1347,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut cx = LateContext {
         tcx: tcx,
         tables: &ty::TypeckTables::empty(),
-        krate: krate,
+        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
         access_levels: access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
     };

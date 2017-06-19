@@ -94,7 +94,8 @@ use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::infer::{self, GenericKind, SubregionOrigin, VerifyBound};
 use rustc::ty::adjustment;
-use rustc::ty::wf::ImpliedBound;
+use rustc::ty::outlives::Component;
+use rustc::ty::wf;
 
 use std::mem;
 use std::ops::Deref;
@@ -194,6 +195,24 @@ pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // id of AST node being analyzed (the subject of the analysis).
     subject_def_id: DefId,
 
+}
+
+/// Implied bounds are region relationships that we deduce
+/// automatically.  The idea is that (e.g.) a caller must check that a
+/// function's argument types are well-formed immediately before
+/// calling that fn, and hence the *callee* can assume that its
+/// argument types are well-formed. This may imply certain relationships
+/// between generic parameters. For example:
+///
+///     fn foo<'a,T>(x: &'a T)
+///
+/// can only be called with a `'a` and `T` such that `&'a T` is WF.
+/// For `&'a T` to be WF, `T: 'a` must hold. So we can assume `T: 'a`.
+#[derive(Debug)]
+enum ImpliedBound<'tcx> {
+    RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
+    RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
+    RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
 }
 
 impl<'a, 'gcx, 'tcx> Deref for RegionCtxt<'a, 'gcx, 'tcx> {
@@ -386,11 +405,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         for &ty in fn_sig_tys {
             let ty = self.resolve_type(ty);
             debug!("relate_free_regions(t={:?})", ty);
-            let implied_bounds =
-                ty::wf::implied_bounds(self, self.fcx.param_env, body_id, ty, span);
-
-            // Record any relations between free regions that we observe into the free-region-map.
-            self.free_region_map.relate_free_regions_from_implied_bounds(&implied_bounds);
+            let implied_bounds = self.implied_bounds(body_id, ty, span);
 
             // But also record other relationships, such as `T:'x`,
             // that don't go into the free-region-map but which we use
@@ -410,22 +425,156 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     ImpliedBound::RegionSubProjection(r_a, projection_b) => {
                         self.region_bound_pairs.push((r_a, GenericKind::Projection(projection_b)));
                     }
-                    ImpliedBound::RegionSubRegion(..) => {
+                    ImpliedBound::RegionSubRegion(r_a, r_b) => {
                         // In principle, we could record (and take
                         // advantage of) every relationship here, but
                         // we are also free not to -- it simply means
                         // strictly less that we can successfully type
-                        // check. (It may also be that we should
-                        // revise our inference system to be more
-                        // general and to make use of *every*
-                        // relationship that arises here, but
-                        // presently we do not.)
+                        // check. Right now we only look for things
+                        // relationships between free regions. (It may
+                        // also be that we should revise our inference
+                        // system to be more general and to make use
+                        // of *every* relationship that arises here,
+                        // but presently we do not.)
+                        self.free_region_map.relate_regions(r_a, r_b);
                     }
                 }
             }
         }
 
         debug!("<< relate_free_regions");
+    }
+
+    /// Compute the implied bounds that a callee/impl can assume based on
+    /// the fact that caller/projector has ensured that `ty` is WF.  See
+    /// the `ImpliedBound` type for more details.
+    fn implied_bounds(&mut self, body_id: ast::NodeId, ty: Ty<'tcx>, span: Span)
+                      -> Vec<ImpliedBound<'tcx>> {
+        // Sometimes when we ask what it takes for T: WF, we get back that
+        // U: WF is required; in that case, we push U onto this stack and
+        // process it next. Currently (at least) these resulting
+        // predicates are always guaranteed to be a subset of the original
+        // type, so we need not fear non-termination.
+        let mut wf_types = vec![ty];
+
+        let mut implied_bounds = vec![];
+
+        while let Some(ty) = wf_types.pop() {
+            // Compute the obligations for `ty` to be well-formed. If `ty` is
+            // an unresolved inference variable, just substituted an empty set
+            // -- because the return type here is going to be things we *add*
+            // to the environment, it's always ok for this set to be smaller
+            // than the ultimate set. (Note: normally there won't be
+            // unresolved inference variables here anyway, but there might be
+            // during typeck under some circumstances.)
+            let obligations =
+                wf::obligations(self, self.fcx.param_env, body_id, ty, span)
+                .unwrap_or(vec![]);
+
+            // NB: All of these predicates *ought* to be easily proven
+            // true. In fact, their correctness is (mostly) implied by
+            // other parts of the program. However, in #42552, we had
+            // an annoying scenario where:
+            //
+            // - Some `T::Foo` gets normalized, resulting in a
+            //   variable `_1` and a `T: Trait<Foo=_1>` constraint
+            //   (not sure why it couldn't immediately get
+            //   solved). This result of `_1` got cached.
+            // - These obligations were dropped on the floor here,
+            //   rather than being registered.
+            // - Then later we would get a request to normalize
+            //   `T::Foo` which would result in `_1` being used from
+            //   the cache, but hence without the `T: Trait<Foo=_1>`
+            //   constraint. As a result, `_1` never gets resolved,
+            //   and we get an ICE (in dropck).
+            //
+            // Therefore, we register any predicates involving
+            // inference variables. We restrict ourselves to those
+            // involving inference variables both for efficiency and
+            // to avoids duplicate errors that otherwise show up.
+            self.fcx.register_predicates(
+                obligations.iter()
+                           .filter(|o| o.predicate.has_infer_types())
+                           .cloned());
+
+            // From the full set of obligations, just filter down to the
+            // region relationships.
+            implied_bounds.extend(
+                obligations
+                    .into_iter()
+                    .flat_map(|obligation| {
+                        assert!(!obligation.has_escaping_regions());
+                        match obligation.predicate {
+                            ty::Predicate::Trait(..) |
+                            ty::Predicate::Equate(..) |
+                            ty::Predicate::Subtype(..) |
+                            ty::Predicate::Projection(..) |
+                            ty::Predicate::ClosureKind(..) |
+                            ty::Predicate::ObjectSafe(..) =>
+                                vec![],
+
+                            ty::Predicate::WellFormed(subty) => {
+                                wf_types.push(subty);
+                                vec![]
+                            }
+
+                            ty::Predicate::RegionOutlives(ref data) =>
+                                match self.tcx.no_late_bound_regions(data) {
+                                    None =>
+                                        vec![],
+                                    Some(ty::OutlivesPredicate(r_a, r_b)) =>
+                                        vec![ImpliedBound::RegionSubRegion(r_b, r_a)],
+                                },
+
+                            ty::Predicate::TypeOutlives(ref data) =>
+                                match self.tcx.no_late_bound_regions(data) {
+                                    None => vec![],
+                                    Some(ty::OutlivesPredicate(ty_a, r_b)) => {
+                                        let ty_a = self.resolve_type_vars_if_possible(&ty_a);
+                                        let components = self.tcx.outlives_components(ty_a);
+                                        self.implied_bounds_from_components(r_b, components)
+                                    }
+                                },
+                        }}));
+        }
+
+        implied_bounds
+    }
+
+    /// When we have an implied bound that `T: 'a`, we can further break
+    /// this down to determine what relationships would have to hold for
+    /// `T: 'a` to hold. We get to assume that the caller has validated
+    /// those relationships.
+    fn implied_bounds_from_components(&self,
+                                      sub_region: ty::Region<'tcx>,
+                                      sup_components: Vec<Component<'tcx>>)
+                                      -> Vec<ImpliedBound<'tcx>>
+    {
+        sup_components
+            .into_iter()
+            .flat_map(|component| {
+                match component {
+                    Component::Region(r) =>
+                        vec![ImpliedBound::RegionSubRegion(sub_region, r)],
+                    Component::Param(p) =>
+                        vec![ImpliedBound::RegionSubParam(sub_region, p)],
+                    Component::Projection(p) =>
+                        vec![ImpliedBound::RegionSubProjection(sub_region, p)],
+                    Component::EscapingProjection(_) =>
+                    // If the projection has escaping regions, don't
+                    // try to infer any implied bounds even for its
+                    // free components. This is conservative, because
+                    // the caller will still have to prove that those
+                    // free components outlive `sub_region`. But the
+                    // idea is that the WAY that the caller proves
+                    // that may change in the future and we want to
+                    // give ourselves room to get smarter here.
+                        vec![],
+                    Component::UnresolvedInferenceVariable(..) =>
+                        vec![],
+                }
+            })
+            .collect()
     }
 
     fn resolve_regions_and_report_errors(&self) {
@@ -824,18 +973,24 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Create a temporary `MemCategorizationContext` and pass it to the closure.
+    fn with_mc<F, R>(&self, f: F) -> R
+        where F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'gcx, 'tcx>) -> R
+    {
+        f(mc::MemCategorizationContext::with_infer(&self.infcx,
+                                                   &self.region_maps,
+                                                   &self.tables.borrow()))
+    }
+
     /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
     /// dereferenced, the lifetime of the pointer includes the deref expr.
     fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::cmt<'tcx>> {
         debug!("constrain_adjustments(expr={:?})", expr);
 
-        let mut cmt = {
-            let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-            mc.cat_expr_unadjusted(expr)?
-        };
+        let mut cmt = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
 
-        //NOTE(@jroesch): mixed RefCell borrow causes crash
-        let adjustments = self.tables.borrow().expr_adjustments(&expr).to_vec();
+        let tables = self.tables.borrow();
+        let adjustments = tables.expr_adjustments(&expr);
         if adjustments.is_empty() {
             return Ok(cmt);
         }
@@ -886,10 +1041,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                                expr.id, expr_region);
             }
 
-            {
-                let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-                cmt = mc.cat_expr_adjusted(expr, cmt, &adjustment)?;
-            }
+            cmt = self.with_mc(|mc| mc.cat_expr_adjusted(expr, cmt, &adjustment))?;
 
             if let Categorization::Deref(_, mc::BorrowedPtr(_, r_ptr)) = cmt.cat {
                 self.mk_subregion_due_to_dereference(expr.span,
@@ -981,10 +1133,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     mutability: hir::Mutability, base: &hir::Expr) {
         debug!("link_addr_of(expr={:?}, base={:?})", expr, base);
 
-        let cmt = {
-            let mc = mc::MemCategorizationContext::new(self, &self.region_maps);
-            ignore_err!(mc.cat_expr(base))
-        };
+        let cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(base)));
 
         debug!("link_addr_of: cmt={:?}", cmt);
 
@@ -1000,9 +1149,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             None => { return; }
             Some(ref expr) => &**expr,
         };
-        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
-        let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
-        self.link_pattern(mc, discr_cmt, &local.pat);
+        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(init_expr)));
+        self.link_pattern(discr_cmt, &local.pat);
     }
 
     /// Computes the guarantors for any ref bindings in a match and
@@ -1010,12 +1158,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
         debug!("regionck::for_match()");
-        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
-        let discr_cmt = ignore_err!(mc.cat_expr(discr));
+        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(discr)));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
             for root_pat in &arm.pats {
-                self.link_pattern(mc, discr_cmt.clone(), &root_pat);
+                self.link_pattern(discr_cmt.clone(), &root_pat);
             }
         }
     }
@@ -1025,30 +1172,28 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
         debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
-        let mc = &mc::MemCategorizationContext::new(self, &self.region_maps);
         for arg in args {
             let arg_ty = self.node_ty(arg.id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
-            let arg_cmt = mc.cat_rvalue(
-                arg.id, arg.pat.span, re_scope, arg_ty);
+            let arg_cmt = self.with_mc(|mc| {
+                mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty)
+            });
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                    arg_ty,
                    arg_cmt,
                    arg);
-            self.link_pattern(mc, arg_cmt, &arg.pat);
+            self.link_pattern(arg_cmt, &arg.pat);
         }
     }
 
     /// Link lifetimes of any ref bindings in `root_pat` to the pointers found
     /// in the discriminant, if needed.
-    fn link_pattern<'t>(&self,
-                        mc: &mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
-                        discr_cmt: mc::cmt<'tcx>,
-                        root_pat: &hir::Pat) {
+    fn link_pattern(&self, discr_cmt: mc::cmt<'tcx>, root_pat: &hir::Pat) {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",
                discr_cmt,
                root_pat);
-        let _ = mc.cat_pattern(discr_cmt, root_pat, |_, sub_cmt, sub_pat| {
+        let _ = self.with_mc(|mc| {
+            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
                 match sub_pat.node {
                     // `ref x` pattern
                     PatKind::Binding(hir::BindByRef(mutbl), ..) => {
@@ -1057,7 +1202,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     }
                     _ => {}
                 }
-            });
+            })
+        });
     }
 
     /// Link lifetime of borrowed pointer resulting from autoref to lifetimes in the value being
@@ -1215,8 +1361,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // Detect by-ref upvar `x`:
         let cause = match note {
             mc::NoteUpvarRef(ref upvar_id) => {
-                let upvar_capture_map = &self.tables.borrow_mut().upvar_capture_map;
-                match upvar_capture_map.get(upvar_id) {
+                match self.tables.borrow().upvar_capture_map.get(upvar_id) {
                     Some(&ty::UpvarCapture::ByRef(ref upvar_borrow)) => {
                         // The mutability of the upvar may have been modified
                         // by the above adjustment, so update our local variable.
@@ -1357,25 +1502,25 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn components_must_outlive(&self,
                                origin: infer::SubregionOrigin<'tcx>,
-                               components: Vec<ty::outlives::Component<'tcx>>,
+                               components: Vec<Component<'tcx>>,
                                region: ty::Region<'tcx>)
     {
         for component in components {
             let origin = origin.clone();
             match component {
-                ty::outlives::Component::Region(region1) => {
+                Component::Region(region1) => {
                     self.sub_regions(origin, region, region1);
                 }
-                ty::outlives::Component::Param(param_ty) => {
+                Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, param_ty);
                 }
-                ty::outlives::Component::Projection(projection_ty) => {
+                Component::Projection(projection_ty) => {
                     self.projection_must_outlive(origin, region, projection_ty);
                 }
-                ty::outlives::Component::EscapingProjection(subcomponents) => {
+                Component::EscapingProjection(subcomponents) => {
                     self.components_must_outlive(origin, subcomponents, region);
                 }
-                ty::outlives::Component::UnresolvedInferenceVariable(v) => {
+                Component::UnresolvedInferenceVariable(v) => {
                     // ignore this, we presume it will yield an error
                     // later, since if a type variable is not resolved by
                     // this point it never will be

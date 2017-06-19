@@ -493,6 +493,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             }
             mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
                 let source_ty = operand.ty(self.mir, self.scx.tcx());
+                let source_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                        &source_ty);
                 match source_ty.sty {
                     ty::TyClosure(def_id, substs) => {
                         let instance = monomorphize::resolve_closure(
@@ -543,6 +545,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                              block: mir::BasicBlock,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
+        debug!("visiting terminator {:?} @ {:?}", kind, location);
+
         let tcx = self.scx.tcx();
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {

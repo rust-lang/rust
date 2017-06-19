@@ -413,6 +413,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             StatementKind::InlineAsm { .. } |
+            StatementKind::EndRegion(_) |
             StatementKind::Nop => {}
         }
     }
@@ -759,7 +760,7 @@ impl MirPass for TypeckMir {
             return;
         }
         let param_env = tcx.param_env(def_id);
-        tcx.infer_ctxt(()).enter(|infcx| {
+        tcx.infer_ctxt().enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx, item_id, param_env);
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);

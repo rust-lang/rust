@@ -480,9 +480,10 @@ impl Drop for Condvar {
 mod tests {
     use sync::mpsc::channel;
     use sync::{Condvar, Mutex, Arc};
+    use sync::atomic::{AtomicBool, Ordering};
     use thread;
     use time::Duration;
-    use u32;
+    use u64;
 
     #[test]
     fn smoke() {
@@ -547,23 +548,58 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    fn wait_timeout_ms() {
+    fn wait_timeout_wait() {
         let m = Arc::new(Mutex::new(()));
-        let m2 = m.clone();
         let c = Arc::new(Condvar::new());
-        let c2 = c.clone();
 
-        let g = m.lock().unwrap();
-        let (g, _no_timeout) = c.wait_timeout(g, Duration::from_millis(1)).unwrap();
-        // spurious wakeups mean this isn't necessarily true
-        // assert!(!no_timeout);
-        let _t = thread::spawn(move || {
-            let _g = m2.lock().unwrap();
-            c2.notify_one();
-        });
-        let (g, timeout_res) = c.wait_timeout(g, Duration::from_millis(u32::MAX as u64)).unwrap();
-        assert!(!timeout_res.timed_out());
-        drop(g);
+        loop {
+            let g = m.lock().unwrap();
+            let (_g, no_timeout) = c.wait_timeout(g, Duration::from_millis(1)).unwrap();
+            // spurious wakeups mean this isn't necessarily true
+            // so execute test again, if not timeout
+            if !no_timeout.timed_out() {
+                continue;
+            }
+
+            break;
+        }
+    }
+
+    #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
+    fn wait_timeout_wake() {
+        let m = Arc::new(Mutex::new(()));
+        let c = Arc::new(Condvar::new());
+
+        loop {
+            let g = m.lock().unwrap();
+
+            let c2 = c.clone();
+            let m2 = m.clone();
+
+            let notified = Arc::new(AtomicBool::new(false));
+            let notified_copy = notified.clone();
+
+            let t = thread::spawn(move || {
+                let _g = m2.lock().unwrap();
+                thread::sleep(Duration::from_millis(1));
+                notified_copy.store(true, Ordering::SeqCst);
+                c2.notify_one();
+            });
+            let (g, timeout_res) = c.wait_timeout(g, Duration::from_millis(u64::MAX)).unwrap();
+            assert!(!timeout_res.timed_out());
+            // spurious wakeups mean this isn't necessarily true
+            // so execute test again, if not notified
+            if !notified.load(Ordering::SeqCst) {
+                t.join().unwrap();
+                continue;
+            }
+            drop(g);
+
+            t.join().unwrap();
+
+            break;
+        }
     }
 
     #[test]

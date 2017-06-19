@@ -166,6 +166,9 @@ impl EarlyProps {
         }
 
         fn ignore_llvm(config: &Config, line: &str) -> bool {
+            if config.system_llvm && line.starts_with("no-system-llvm") {
+                    return true;
+            }
             if let Some(ref actual_version) = config.llvm_version {
                 if line.starts_with("min-llvm-version") {
                     let min_version = line.trim_right()

@@ -14,7 +14,7 @@ error: casting `*const U` as `*const str` is invalid
    |
    = note: vtable kinds may not match
 
-error: no field `f` on type `fn() {main}`
+error[E0609]: no field `f` on type `fn() {main}`
   --> $DIR/cast-rfc0401.rs:75:18
    |
 75 |     let _ = main.f as *const u32;

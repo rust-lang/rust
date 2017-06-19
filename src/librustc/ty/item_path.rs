@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 //
                 // Returns `None` for the local crate.
                 if cnum != LOCAL_CRATE {
-                    let opt_extern_crate = self.sess.cstore.extern_crate(cnum);
+                    let opt_extern_crate = self.extern_crate(cnum.as_def_id());
                     let opt_extern_crate = opt_extern_crate.and_then(|extern_crate| {
                         if extern_crate.direct {
                             Some(extern_crate.def_id)
@@ -129,15 +129,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn try_push_visible_item_path<T>(self, buffer: &mut T, external_def_id: DefId) -> bool
         where T: ItemPathBuffer
     {
-        let visible_parent_map = self.sess.cstore.visible_parent_map();
+        let visible_parent_map = self.sess.cstore.visible_parent_map(self.sess);
 
         let (mut cur_def, mut cur_path) = (external_def_id, Vec::<ast::Name>::new());
         loop {
             // If `cur_def` is a direct or injected extern crate, push the path to the crate
             // followed by the path to the item within the crate and return.
             if cur_def.index == CRATE_DEF_INDEX {
-                match self.sess.cstore.extern_crate(cur_def.krate) {
-                    Some(extern_crate) if extern_crate.direct => {
+                match *self.extern_crate(cur_def) {
+                    Some(ref extern_crate) if extern_crate.direct => {
                         self.push_item_path(buffer, extern_crate.def_id);
                         cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
                         return true;
@@ -197,7 +197,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::ClosureExpr |
             data @ DefPathData::Binding(..) |
             data @ DefPathData::ImplTrait |
-            data @ DefPathData::Typeof => {
+            data @ DefPathData::Typeof |
+            data @ DefPathData::GlobalMetaData(..) => {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
                 buffer.push(&data.as_interned_str());

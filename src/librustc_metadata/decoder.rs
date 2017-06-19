@@ -13,8 +13,9 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
-use rustc::dep_graph::{DepGraph, DepNode, GlobalMetaDataKind};
+use rustc::dep_graph::{DepGraph, DepNode, DepKind};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
+use rustc::hir::map::definitions::GlobalMetaDataKind;
 use rustc::hir;
 
 use rustc::middle::cstore::LinkagePreference;
@@ -653,7 +654,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over each child of the given item.
-    pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F)
+    pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F, sess: &Session)
         where F: FnMut(def::Export)
     {
         if let Some(ref proc_macros) = self.proc_macros {
@@ -676,19 +677,19 @@ impl<'a, 'tcx> CrateMetadata {
         // Find the item.
         let item = match self.maybe_entry(id) {
             None => return,
-            Some(item) => item.decode(self),
+            Some(item) => item.decode((self, sess)),
         };
 
         // Iterate over all children.
         let macros_only = self.dep_kind.get().macros_only();
-        for child_index in item.children.decode(self) {
+        for child_index in item.children.decode((self, sess)) {
             if macros_only {
                 continue
             }
 
             // Get the item.
             if let Some(child) = self.maybe_entry(child_index) {
-                let child = child.decode(self);
+                let child = child.decode((self, sess));
                 match child.kind {
                     EntryKind::MacroDef(..) => {}
                     _ if macros_only => continue,
@@ -699,12 +700,12 @@ impl<'a, 'tcx> CrateMetadata {
                 match child.kind {
                     // FIXME(eddyb) Don't encode these in children.
                     EntryKind::ForeignMod => {
-                        for child_index in child.children.decode(self) {
+                        for child_index in child.children.decode((self, sess)) {
                             if let Some(def) = self.get_def(child_index) {
                                 callback(def::Export {
                                     def: def,
                                     ident: Ident::with_empty_ctxt(self.item_name(child_index)),
-                                    span: self.entry(child_index).span.decode(self),
+                                    span: self.entry(child_index).span.decode((self, sess)),
                                 });
                             }
                         }
@@ -717,7 +718,7 @@ impl<'a, 'tcx> CrateMetadata {
                 }
 
                 let def_key = self.def_key(child_index);
-                let span = child.span.decode(self);
+                let span = child.span.decode((self, sess));
                 if let (Some(def), Some(name)) =
                     (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
                     let ident = Ident::with_empty_ctxt(name);
@@ -746,7 +747,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
 
         if let EntryKind::Mod(data) = item.kind {
-            for exp in data.decode(self).reexports.decode(self) {
+            for exp in data.decode((self, sess)).reexports.decode((self, sess)) {
                 match exp.def {
                     Def::Macro(..) => {}
                     _ if macros_only => continue,
@@ -764,7 +765,7 @@ impl<'a, 'tcx> CrateMetadata {
         assert!(!self.is_proc_macro(id));
         let ast = self.entry(id).ast.unwrap();
         let def_id = self.local_def_id(id);
-        let body = ast.decode(self).body.decode(self);
+        let body = ast.decode((self, tcx)).body.decode((self, tcx));
         tcx.hir.intern_inlined_body(def_id, body)
     }
 
@@ -875,7 +876,8 @@ impl<'a, 'tcx> CrateMetadata {
             return Rc::new([]);
         }
 
-        dep_graph.read(DepNode::MetaData(self.local_def_id(node_id)));
+        let dep_node = self.def_path_hash(node_id).to_dep_node(DepKind::MetaData);
+        dep_graph.read(dep_node);
 
         if let Some(&Some(ref val)) =
             self.attribute_cache.borrow()[node_as].get(node_index) {
@@ -993,12 +995,8 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn get_dylib_dependency_formats(&self,
                                         dep_graph: &DepGraph)
                                         -> Vec<(CrateNum, LinkagePreference)> {
-        let def_id = DefId {
-            krate: self.cnum,
-            index: CRATE_DEF_INDEX,
-        };
-        let dep_node = DepNode::GlobalMetaData(def_id,
-                                               GlobalMetaDataKind::DylibDependencyFormats);
+        let dep_node =
+            self.metadata_dep_node(GlobalMetaDataKind::DylibDependencyFormats);
         self.root
             .dylib_dependency_formats
             .get(dep_graph, dep_node)
@@ -1151,6 +1149,7 @@ impl<'a, 'tcx> CrateMetadata {
             // containing the information we need.
             let syntax_pos::FileMap { name,
                                       name_was_remapped,
+                                      src_hash,
                                       start_pos,
                                       end_pos,
                                       lines,
@@ -1176,6 +1175,7 @@ impl<'a, 'tcx> CrateMetadata {
             let local_version = local_codemap.new_imported_filemap(name,
                                                                    name_was_remapped,
                                                                    self.cnum.as_u32(),
+                                                                   src_hash,
                                                                    source_length,
                                                                    lines,
                                                                    multibyte_chars);
@@ -1197,12 +1197,9 @@ impl<'a, 'tcx> CrateMetadata {
         self.codemap_import_info.borrow()
     }
 
-    pub fn metadata_dep_node(&self, kind: GlobalMetaDataKind) -> DepNode<DefId> {
-        let def_id = DefId {
-            krate: self.cnum,
-            index: CRATE_DEF_INDEX,
-        };
-
-        DepNode::GlobalMetaData(def_id, kind)
+    pub fn metadata_dep_node(&self, kind: GlobalMetaDataKind) -> DepNode {
+        let def_index = kind.def_index(&self.def_path_table);
+        let def_path_hash = self.def_path_table.def_path_hash(def_index);
+        def_path_hash.to_dep_node(DepKind::MetaData)
     }
 }

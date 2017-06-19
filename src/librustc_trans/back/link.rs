@@ -23,7 +23,7 @@ use rustc::middle::dependency_format::Linkage;
 use CrateTranslation;
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepKind, DepNode};
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
@@ -134,24 +134,28 @@ pub fn find_crate_name(sess: Option<&Session>,
 }
 
 pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
+    let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
     let r = LinkMeta {
-        crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate].to_smaller_hash()),
+        crate_hash: Svh::new(incremental_hashes_map[krate_dep_node].to_smaller_hash()),
     };
     info!("{:?}", r);
     return r;
 }
 
-// The third parameter is for an env vars, used to set up the path for MSVC
-// to find its DLLs
+// The third parameter is for env vars, used on windows to set up the
+// path for MSVC to find its DLLs, and gcc to find its bundled
+// toolchain
 pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
+    let envs = vec![("PATH".into(), command_path(sess))];
+
     if let Some(ref linker) = sess.opts.cg.linker {
-        (linker.clone(), Command::new(linker), vec![])
+        (linker.clone(), Command::new(linker), envs)
     } else if sess.target.target.options.is_like_msvc {
         let (cmd, envs) = msvc_link_exe_cmd(sess);
         ("link.exe".to_string(), cmd, envs)
     } else {
-        (sess.target.target.options.linker.clone(),
-         Command::new(&sess.target.target.options.linker), vec![])
+        let linker = &sess.target.target.options.linker;
+        (linker.clone(), Command::new(&linker), envs)
     }
 }
 
@@ -182,7 +186,7 @@ pub fn get_ar_prog(sess: &Session) -> String {
     })
 }
 
-fn command_path(sess: &Session, extra: Option<PathBuf>) -> OsString {
+fn command_path(sess: &Session) -> OsString {
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
     let mut new_path = sess.host_filesearch(PathKind::All)
@@ -190,7 +194,6 @@ fn command_path(sess: &Session, extra: Option<PathBuf>) -> OsString {
     if let Some(path) = env::var_os("PATH") {
         new_path.extend(env::split_paths(&path));
     }
-    new_path.extend(extra);
     env::join_paths(new_path).unwrap()
 }
 
@@ -451,7 +454,7 @@ fn archive_config<'a>(sess: &'a Session,
         src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),
         ar_prog: get_ar_prog(sess),
-        command_path: command_path(sess, None),
+        command_path: command_path(sess),
     }
 }
 
@@ -727,7 +730,7 @@ fn link_natively(sess: &Session,
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd, envs) = get_linker(sess);
-    // This will set PATH on MSVC
+    // This will set PATH on windows
     cmd.envs(envs);
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
@@ -1098,6 +1101,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum.as_usize() - 1] {
+            _ if sess.cstore.is_profiler_runtime(cnum) => {
+                add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
+            }
             _ if sess.cstore.is_sanitizer_runtime(cnum) => {
                 link_sanitizer_runtime(cmd, sess, tmpdir, cnum);
             }

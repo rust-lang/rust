@@ -108,7 +108,7 @@ use lint;
 use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::mem::replace;
@@ -120,7 +120,7 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, BytePos, Span, DUMMY_SP};
+use syntax_pos::{self, BytePos, Span};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -147,6 +147,33 @@ mod compare_method;
 mod intrinsic;
 mod op;
 
+/// A wrapper for InferCtxt's `in_progress_tables` field.
+#[derive(Copy, Clone)]
+struct MaybeInProgressTables<'a, 'tcx: 'a> {
+    maybe_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
+}
+
+impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
+    fn borrow(self) -> Ref<'a, ty::TypeckTables<'tcx>> {
+        match self.maybe_tables {
+            Some(tables) => tables.borrow(),
+            None => {
+                bug!("MaybeInProgressTables: inh/fcx.tables.borrow() with no tables")
+            }
+        }
+    }
+
+    fn borrow_mut(self) -> RefMut<'a, ty::TypeckTables<'tcx>> {
+        match self.maybe_tables {
+            Some(tables) => tables.borrow_mut(),
+            None => {
+                bug!("MaybeInProgressTables: inh/fcx.tables.borrow_mut() with no tables")
+            }
+        }
+    }
+}
+
+
 /// closures defined within the function.  For example:
 ///
 ///     fn foo() {
@@ -158,6 +185,8 @@ mod op;
 /// share the inherited fields.
 pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: InferCtxt<'a, 'gcx, 'tcx>,
+
+    tables: MaybeInProgressTables<'a, 'tcx>,
 
     locals: RefCell<NodeMap<Ty<'tcx>>>,
 
@@ -202,6 +231,9 @@ impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
 pub enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
+
+    /// This expression is an `if` condition, it must resolve to `bool`.
+    ExpectIfCondition,
 
     /// This expression should have the type given (or some subtype)
     ExpectHasType(Ty<'tcx>),
@@ -281,9 +313,8 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     // no constraints yet present), just returns `None`.
     fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Expectation<'tcx> {
         match self {
-            NoExpectation => {
-                NoExpectation
-            }
+            NoExpectation => NoExpectation,
+            ExpectIfCondition => ExpectIfCondition,
             ExpectCastableToType(t) => {
                 ExpectCastableToType(fcx.resolve_type_vars_if_possible(&t))
             }
@@ -299,6 +330,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     fn to_option(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             NoExpectation => None,
+            ExpectIfCondition => Some(fcx.tcx.types.bool),
             ExpectCastableToType(ty) |
             ExpectHasType(ty) |
             ExpectRvalueLikeUnsized(ty) => Some(ty),
@@ -312,7 +344,8 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     fn only_has_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
-            _ => None
+            ExpectIfCondition => Some(fcx.tcx.types.bool),
+            NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) => None,
         }
     }
 
@@ -535,9 +568,8 @@ pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
-        let tables = ty::TypeckTables::empty();
         InheritedBuilder {
-            infcx: tcx.infer_ctxt(tables),
+            infcx: tcx.infer_ctxt().with_fresh_in_progress_tables(),
             def_id,
         }
     }
@@ -562,6 +594,9 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         });
 
         Inherited {
+            tables: MaybeInProgressTables {
+                maybe_tables: infcx.in_progress_tables,
+            },
             infcx: infcx,
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             locals: RefCell::new(NodeMap()),
@@ -583,7 +618,8 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             .register_predicate_obligation(self, obligation);
     }
 
-    fn register_predicates(&self, obligations: Vec<traits::PredicateObligation<'tcx>>) {
+    fn register_predicates<I>(&self, obligations: I)
+    where I: IntoIterator<Item = traits::PredicateObligation<'tcx>> {
         for obligation in obligations {
             self.register_predicate(obligation);
         }
@@ -1901,14 +1937,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            value)
     }
 
-    pub fn write_nil(&self, node_id: ast::NodeId) {
-        self.write_ty(node_id, self.tcx.mk_nil());
-    }
-
-    pub fn write_error(&self, node_id: ast::NodeId) {
-        self.write_ty(node_id, self.tcx.types.err);
-    }
-
     pub fn require_type_meets(&self,
                               ty: Ty<'tcx>,
                               span: Span,
@@ -2530,42 +2558,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // We also need to make sure we at least write the ty of the other
         // arguments which we skipped above.
         if variadic {
+            fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
+                type_error_struct!(s, span, t, E0617,
+                                   "can't pass `{}` to variadic function, cast to `{}`",
+                                   t, cast_ty).emit();
+            }
+
             for arg in args.iter().skip(expected_arg_count) {
                 let arg_ty = self.check_expr(&arg);
 
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
-                let arg_ty = self.structurally_resolved_type(arg.span,
-                                                             arg_ty);
+                let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
                 match arg_ty.sty {
                     ty::TyFloat(ast::FloatTy::F32) => {
-                        self.type_error_message(arg.span, |t| {
-                            format!("can't pass an `{}` to variadic \
-                                     function, cast to `c_double`", t)
-                        }, arg_ty);
+                        variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
                     ty::TyInt(ast::IntTy::I8) | ty::TyInt(ast::IntTy::I16) | ty::TyBool => {
-                        self.type_error_message(arg.span, |t| {
-                            format!("can't pass `{}` to variadic \
-                                     function, cast to `c_int`",
-                                           t)
-                        }, arg_ty);
+                        variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
                     }
                     ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
-                        self.type_error_message(arg.span, |t| {
-                            format!("can't pass `{}` to variadic \
-                                     function, cast to `c_uint`",
-                                           t)
-                        }, arg_ty);
+                        variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::TyFnDef(.., f) => {
                         let ptr_ty = self.tcx.mk_fn_ptr(f);
                         let ptr_ty = self.resolve_type_vars_if_possible(&ptr_ty);
-                        self.type_error_message(arg.span,
-                                                |t| {
-                            format!("can't pass `{}` to variadic \
-                                     function, cast to `{}`", t, ptr_ty)
-                        }, arg_ty);
+                        variadic_error(tcx.sess, arg.span, arg_ty, &format!("{}", ptr_ty));
                     }
                     _ => {}
                 }
@@ -2630,10 +2648,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.demand_eqtype(expr.span, expected, ty);
     }
 
-    pub fn check_expr_has_type(&self,
-                               expr: &'gcx hir::Expr,
-                               expected: Ty<'tcx>) -> Ty<'tcx> {
-        let mut ty = self.check_expr_with_hint(expr, expected);
+    pub fn check_expr_has_type_or_error(&self,
+                                        expr: &'gcx hir::Expr,
+                                        expected: Ty<'tcx>) -> Ty<'tcx> {
+        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected))
+    }
+
+    fn check_expr_meets_expectation_or_error(&self,
+                                             expr: &'gcx hir::Expr,
+                                             expected: Expectation<'tcx>) -> Ty<'tcx> {
+        let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
+        let mut ty = self.check_expr_with_expectation(expr, expected);
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
@@ -2649,7 +2674,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty = adj_ty;
         }
 
-        self.demand_suptype(expr.span, expected, ty);
+        if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
+            // Add help to type error if this is an `if` condition with an assignment
+            match (expected, &expr.node) {
+                (ExpectIfCondition, &hir::ExprAssign(ref lhs, ref rhs)) => {
+                    let msg = "did you mean to compare equality?";
+                    if let (Ok(left), Ok(right)) = (
+                        self.tcx.sess.codemap().span_to_snippet(lhs.span),
+                        self.tcx.sess.codemap().span_to_snippet(rhs.span))
+                    {
+                        err.span_suggestion(expr.span, msg, format!("{} == {}", left, right));
+                    } else {
+                        err.help(msg);
+                    }
+                }
+                _ => (),
+            }
+            err.emit();
+        }
         ty
     }
 
@@ -2824,7 +2866,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        opt_else_expr: Option<&'gcx hir::Expr>,
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_has_type(cond_expr, self.tcx.types.bool);
+        let cond_ty = self.check_expr_meets_expectation_or_error(cond_expr, ExpectIfCondition);
         let cond_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
@@ -2929,30 +2971,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .emit();
             self.tcx().types.err
         } else {
-            let mut err = self.type_error_struct(field.span, |actual| {
-                format!("no field `{}` on type `{}`",
-                        field.node, actual)
-            }, expr_t);
-            match expr_t.sty {
-                ty::TyAdt(def, _) if !def.is_enum() => {
-                    if let Some(suggested_field_name) =
-                        Self::suggest_field_name(def.struct_variant(), field, vec![]) {
-                            err.span_label(field.span,
-                                           format!("did you mean `{}`?", suggested_field_name));
-                        } else {
-                            err.span_label(field.span,
-                                           "unknown field");
-                        };
+            if !expr_t.is_primitive_ty() {
+                let mut err = type_error_struct!(self.tcx().sess, field.span, expr_t, E0609,
+                                                 "no field `{}` on type `{}`",
+                                                 field.node, expr_t);
+                match expr_t.sty {
+                    ty::TyAdt(def, _) if !def.is_enum() => {
+                        if let Some(suggested_field_name) =
+                            Self::suggest_field_name(def.struct_variant(), field, vec![]) {
+                                err.span_label(field.span,
+                                               format!("did you mean `{}`?", suggested_field_name));
+                            } else {
+                                err.span_label(field.span, "unknown field");
+                            };
+                    }
+                    ty::TyRawPtr(..) => {
+                        err.note(&format!("`{0}` is a native pointer; perhaps you need to deref \
+                                           with `(*{0}).{1}`",
+                                          self.tcx.hir.node_to_pretty_string(base.id),
+                                          field.node));
+                    }
+                    _ => {}
                 }
-                ty::TyRawPtr(..) => {
-                    err.note(&format!("`{0}` is a native pointer; perhaps you need to deref with \
-                                      `(*{0}).{1}`",
-                                      self.tcx.hir.node_to_pretty_string(base.id),
-                                      field.node));
-                }
-                _ => {}
-            }
-            err.emit();
+                err
+            } else {
+                type_error_struct!(self.tcx().sess, field.span, expr_t, E0610,
+                                   "`{}` is a primitive type and therefore doesn't have fields",
+                                   expr_t)
+            }.emit();
             self.tcx().types.err
         }
     }
@@ -3307,17 +3353,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
-            self.check_expr_has_type(base_expr, struct_ty);
+            self.check_expr_has_type_or_error(base_expr, struct_ty);
             match struct_ty.sty {
                 ty::TyAdt(adt, substs) if adt.is_struct() => {
-                    self.tables.borrow_mut().fru_field_types.insert(
-                        expr.id,
-                        adt.struct_variant().fields.iter().map(|f| {
-                            self.normalize_associated_types_in(
-                                expr.span, &f.ty(self.tcx, substs)
-                            )
-                        }).collect()
-                    );
+                    let fru_field_types = adt.struct_variant().fields.iter().map(|f| {
+                        self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
+                    }).collect();
+                    self.tables.borrow_mut().fru_field_types.insert(expr.id, fru_field_types);
                 }
                 _ => {
                     span_err!(self.tcx.sess, base_expr.span, E0436,
@@ -3624,18 +3666,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprAssign(ref lhs, ref rhs) => {
             let lhs_ty = self.check_expr_with_lvalue_pref(&lhs, PreferMutLvalue);
 
-            let tcx = self.tcx;
-            if !tcx.expr_is_lval(&lhs) {
-                struct_span_err!(
-                    tcx.sess, expr.span, E0070,
-                    "invalid left-hand side expression")
-                .span_label(
-                    expr.span,
-                    "left-hand of expression not valid")
-                .emit();
-            }
-
             let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
+
+            match expected {
+                ExpectIfCondition => {
+                    self.tcx.sess.delay_span_bug(lhs.span, "invalid lhs expression in if;\
+                                                            expected error elsehwere");
+                }
+                _ => {
+                    // Only check this if not in an `if` condition, as the
+                    // mistyped comparison help is more appropriate.
+                    if !self.tcx.expr_is_lval(&lhs) {
+                        struct_span_err!(
+                            self.tcx.sess, expr.span, E0070,
+                            "invalid left-hand side expression")
+                        .span_label(
+                            expr.span,
+                            "left-hand of expression not valid")
+                        .emit();
+                    }
+                }
+            }
 
             self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
@@ -3657,7 +3708,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               };
 
               self.with_breakable_ctxt(expr.id, ctxt, || {
-                  self.check_expr_has_type(&cond, tcx.types.bool);
+                  self.check_expr_has_type_or_error(&cond, tcx.types.bool);
                   let cond_diverging = self.diverges.get();
                   self.check_block_no_value(&body);
 
@@ -3795,7 +3846,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 None => {
                     let t: Ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
-                    let element_ty = self.check_expr_has_type(&element, t);
+                    let element_ty = self.check_expr_has_type_or_error(&element, t);
                     (element_ty, t)
                 }
             };
@@ -3866,13 +3917,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           element_ty
                       }
                       None => {
-                          let mut err = self.type_error_struct(
-                              expr.span,
-                              |actual| {
-                                  format!("cannot index a value of type `{}`",
-                                          actual)
-                              },
-                              base_t);
+                          let mut err = type_error_struct!(tcx.sess, expr.span, base_t, E0608,
+                                                           "cannot index into a value of type `{}`",
+                                                           base_t);
                           // Try to give some advice about indexing tuples.
                           if let ty::TyTuple(..) = base_t.sty {
                               let mut needs_note = true;
@@ -4020,11 +4067,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn check_stmt(&self, stmt: &'gcx hir::Stmt) {
         // Don't do all the complex logic below for DeclItem.
         match stmt.node {
-            hir::StmtDecl(ref decl, id) => {
+            hir::StmtDecl(ref decl, _) => {
                 match decl.node {
                     hir::DeclLocal(_) => {}
                     hir::DeclItem(_) => {
-                        self.write_nil(id);
                         return;
                     }
                 }
@@ -4040,34 +4086,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
         self.has_errors.set(false);
 
-        let (node_id, _span) = match stmt.node {
-            hir::StmtDecl(ref decl, id) => {
-                let span = match decl.node {
+        match stmt.node {
+            hir::StmtDecl(ref decl, _) => {
+                match decl.node {
                     hir::DeclLocal(ref l) => {
                         self.check_decl_local(&l);
-                        l.span
                     }
-                    hir::DeclItem(_) => {/* ignore for now */
-                        DUMMY_SP
-                    }
-                };
-                (id, span)
+                    hir::DeclItem(_) => {/* ignore for now */}
+                }
             }
-            hir::StmtExpr(ref expr, id) => {
+            hir::StmtExpr(ref expr, _) => {
                 // Check with expected type of ()
-                self.check_expr_has_type(&expr, self.tcx.mk_nil());
-                (id, expr.span)
+                self.check_expr_has_type_or_error(&expr, self.tcx.mk_nil());
             }
-            hir::StmtSemi(ref expr, id) => {
+            hir::StmtSemi(ref expr, _) => {
                 self.check_expr(&expr);
-                (id, expr.span)
             }
-        };
-
-        if self.has_errors.get() {
-            self.write_error(node_id);
-        } else {
-            self.write_nil(node_id);
         }
 
         // Combine the diverging and has_error flags.
@@ -4207,7 +4241,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::StmtSemi(ref e, _) => e,
             _ => return,
         };
-        let last_expr_ty = self.expr_ty(last_expr);
+        let last_expr_ty = self.node_ty(last_expr.id);
         if self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err() {
             return;
         }

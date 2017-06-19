@@ -46,6 +46,7 @@ impl<'tcx> MirPatch<'tcx> {
         for (bb, block) in mir.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Resume = block.terminator().kind {
                 if block.statements.len() > 0 {
+                    assert!(resume_stmt_block.is_none());
                     resume_stmt_block = Some(bb);
                 } else {
                     resume_block = Some(bb);

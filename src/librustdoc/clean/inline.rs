@@ -77,10 +77,10 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
             ret.extend(build_impls(cx, did));
             clean::EnumItem(build_enum(cx, did))
         }
-        // Assume that the enum type is reexported next to the variant, and
-        // variants don't show up in documentation specially.
-        // Similarly, consider that struct type is reexported next to its constructor.
-        Def::Variant(..) |
+        // Never inline enum variants but leave them shown as reexports.
+        Def::Variant(..) => return None,
+        // Assume that enum variants and struct types are reexported next to
+        // their constructors.
         Def::VariantCtor(..) |
         Def::StructCtor(..) => return Some(Vec::new()),
         Def::Mod(did) => {
@@ -151,7 +151,7 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
 fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
     let sig = cx.tcx.type_of(did).fn_sig();
 
-    let constness = if cx.tcx.sess.cstore.is_const_fn(did) {
+    let constness = if cx.tcx.is_const_fn(did) {
         hir::Constness::Const
     } else {
         hir::Constness::NotConst
@@ -352,7 +352,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
                     clean::TyMethodItem(clean::TyMethod {
                         unsafety, decl, generics, abi
                     }) => {
-                        let constness = if tcx.sess.cstore.is_const_fn(item.def_id) {
+                        let constness = if tcx.is_const_fn(item.def_id) {
                             hir::Constness::Const
                         } else {
                             hir::Constness::NotConst
@@ -443,7 +443,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         let mut visited = FxHashSet();
-        for item in cx.tcx.sess.cstore.item_children(did) {
+        for item in cx.tcx.sess.cstore.item_children(did, cx.tcx.sess) {
             let def_id = item.def.def_id();
             if cx.tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }

@@ -18,7 +18,6 @@
 //! to accumulate more messages. This way we only ever have two vectors
 //! allocated (and both have a fairly large capacity).
 
-use hir::def_id::DefId;
 use rustc_data_structures::veccell::VecCell;
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread;
@@ -30,10 +29,10 @@ use super::shadow::ShadowGraph;
 
 #[derive(Debug)]
 pub enum DepMessage {
-    Read(DepNode<DefId>),
-    Write(DepNode<DefId>),
-    PushTask(DepNode<DefId>),
-    PopTask(DepNode<DefId>),
+    Read(DepNode),
+    Write(DepNode),
+    PushTask(DepNode),
+    PopTask(DepNode),
     PushIgnore,
     PopIgnore,
     Query,
@@ -63,7 +62,7 @@ pub struct DepGraphThreadData {
     swap_out: Sender<Vec<DepMessage>>,
 
     // where to receive query results
-    query_in: Receiver<DepGraphQuery<DefId>>,
+    query_in: Receiver<DepGraphQuery>,
 }
 
 const INITIAL_CAPACITY: usize = 2048;
@@ -120,7 +119,7 @@ impl DepGraphThreadData {
         self.swap_out.send(old_messages).unwrap();
     }
 
-    pub fn query(&self) -> DepGraphQuery<DefId> {
+    pub fn query(&self) -> DepGraphQuery {
         assert!(self.is_fully_enabled(), "should never query if not fully enabled");
         self.enqueue(DepMessage::Query);
         self.swap();
@@ -151,7 +150,7 @@ impl DepGraphThreadData {
 /// Definition of the depgraph thread.
 pub fn main(swap_in: Receiver<Vec<DepMessage>>,
             swap_out: Sender<Vec<DepMessage>>,
-            query_out: Sender<DepGraphQuery<DefId>>) {
+            query_out: Sender<DepGraphQuery>) {
     let mut edges = DepGraphEdges::new();
 
     // the compiler thread always expects a fresh buffer to be

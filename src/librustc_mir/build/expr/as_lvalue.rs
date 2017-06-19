@@ -40,7 +40,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = this.source_info(expr_span);
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this| this.as_lvalue(block, value))
+                this.in_scope((extent, source_info), block, |this| this.as_lvalue(block, value))
             }
             ExprKind::Field { lhs, name } => {
                 let lvalue = unpack!(block = this.as_lvalue(block, lhs));

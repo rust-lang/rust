@@ -526,7 +526,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
                     if !external_mods.insert(def_id) {
                         return;
                     }
-                    for child in tcx.sess.cstore.item_children(def_id) {
+                    for child in tcx.sess.cstore.item_children(def_id, tcx.sess) {
                         handle_external_def(tcx, traits, external_mods, child.def)
                     }
                 }

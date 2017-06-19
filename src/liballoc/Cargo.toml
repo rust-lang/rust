@@ -9,3 +9,12 @@ path = "lib.rs"
 
 [dependencies]
 core = { path = "../libcore" }
+std_unicode = { path = "../libstd_unicode" }
+
+[[test]]
+name = "collectionstests"
+path = "../liballoc/tests/lib.rs"
+
+[[bench]]
+name = "collectionsbenches"
+path = "../liballoc/benches/lib.rs"

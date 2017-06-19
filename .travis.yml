@@ -36,9 +36,10 @@ matrix:
     - env: IMAGE=dist-x86_64-linux DEPLOY=1 ALLOW_TRY=1
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
-    - env: IMAGE=emscripten
+    - env: IMAGE=asmjs
     - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
+    # - env: IMAGE=wasm32 issue 42646
     - env: IMAGE=x86_64-gnu
     - env: IMAGE=x86_64-gnu-full-bootstrap
     - env: IMAGE=x86_64-gnu-aux
@@ -54,7 +55,7 @@ matrix:
     # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers"
+        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
@@ -87,7 +88,7 @@ matrix:
     # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -101,7 +102,7 @@ matrix:
         - *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers"
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
