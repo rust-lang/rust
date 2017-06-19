@@ -55,7 +55,7 @@ where
                 write!(
                     writer,
                     "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
-                             />",
+                     />",
                     mismatch.line_number,
                     message
                 )?;

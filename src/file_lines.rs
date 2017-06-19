@@ -228,7 +228,7 @@ impl<'de> ::serde::de::Deserialize<'de> for FileLines {
     {
         panic!(
             "FileLines cannot be deserialized from a project rustfmt.toml file: please \
-                specify it via the `--file-lines` option instead"
+             specify it via the `--file-lines` option instead"
         );
     }
 }

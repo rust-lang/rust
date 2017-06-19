@@ -144,7 +144,7 @@ fn make_opts() -> Options {
         "",
         "config-path",
         "Recursively searches the given path for the rustfmt.toml config file. If not \
-                 found reverts to the input file path",
+         found reverts to the input file path",
         "[Path for the configuration file]",
     );
     opts.optopt(
