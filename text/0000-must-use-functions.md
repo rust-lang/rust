@@ -47,8 +47,8 @@ There's a bug in Android where instead of `modem_reset_flag = 0;` the file affec
 Rust does not do better in this case. If you wrote `modem_reset_flag == false;` the compiler would be perfectly happy and wouldn't warn you. By marking this function `#[must_use]` the compiler would complain about things like:
 
 ```
-    modem_reset_flag == returns_bool(); //warning
-    modem_reset_flag = returns_bool(); //ok
+    modem_reset_flag == false; //warning
+    modem_reset_flag = false; //ok
 ```
 
 See further discussion in [#1812.](https://github.com/rust-lang/rfcs/pull/1812)
