@@ -84,6 +84,16 @@ impl UnaryChange {
             UnaryChange::Removal(_) => "Removal",
         }
     }
+
+    fn report(&self, session: &Session) {
+        let msg = format!("{} of at least one path to `{}` ({:?})",
+                          self.type_(),
+                          self.ident(),
+                          self.to_category());
+        let mut builder = session.struct_span_warn(self.export().span, &msg);
+
+        builder.emit();
+    }
 }
 
 impl PartialEq for UnaryChange {
@@ -233,6 +243,23 @@ impl BinaryChange {
     fn ident(&self) -> &Ident {
         &self.old.ident
     }
+
+    fn report(&self, session: &Session) {
+        let msg = format!("{:?} changes in `{}`", self.max, self.ident());
+        let mut builder = session.struct_span_warn(self.new.span, &msg);
+
+        for change in &self.changes {
+            let cat = change.to_category();
+            let sub_msg = format!("{:?} ({:?})", cat, change);
+            if cat == Breaking {
+                builder.warn(&sub_msg);
+            } else {
+                builder.note(&sub_msg);
+            }
+        }
+
+        builder.emit();
+    }
 }
 
 impl PartialEq for BinaryChange {
@@ -296,6 +323,13 @@ impl Change {
         match *self {
             Change::Unary(ref u) => u.to_category(),
             Change::Binary(ref b) => b.to_category(),
+        }
+    }
+
+    fn report(&self, session: &Session) {
+        match *self {
+            Change::Unary(ref u) => u.report(session),
+            Change::Binary(ref b) => b.report(session),
         }
     }
 }
@@ -373,7 +407,7 @@ impl ChangeSet {
     /// Format the contents of a change set for user output.
     ///
     /// TODO: replace this with something more sophisticated.
-    pub fn output(&self, /*session*/ _: &Session, version: &str) {
+    pub fn output(&self, session: &Session, version: &str) {
         if let Ok(mut new_version) = Version::parse(version) {
             match self.max {
                 Patch => new_version.increment_patch(),
@@ -387,19 +421,7 @@ impl ChangeSet {
         }
 
         for change in self.changes.values() {
-            match *change {
-                Change::Unary(ref u) => {
-                    println!("  {}: {}", u.type_(), u.ident().name.as_str());
-                    // session.span_warn(*c.span(), "change");
-                },
-                Change::Binary(ref b) => {
-                    println!("  {} -", b.ident().name.as_str());
-                    for change in &b.changes {
-                        println!("    {:?}", change);
-                        // session.span_warn(*c.new_span(), "change");
-                    }
-                },
-            }
+            change.report(session);
             // span_note!(session, change.span(), "S0001");
         }
     }
