@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // this used to cause exponential code-size blowup during LLVM passes.
+// ignore-test FIXME #41696
 // min-llvm-version 3.9
 
 #![feature(test)]
