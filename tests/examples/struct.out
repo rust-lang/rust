@@ -1,9 +1,17 @@
-old: oldandnew::old::Abc
-new: oldandnew::new::Abc
-old: oldandnew::old::Def
-new: oldandnew::new::Def
-old: oldandnew::old::Efg
-new: oldandnew::new::Efg
+matching fields
+matching variants
+matching fields
+matching variants
+matching fields
+matching variants
 version bump: 1.0.0 -> (NonBreaking) -> 1.1.0
-  Def -
-    TypeParameterAdded { defaulted: true }
+warning: NonBreaking changes in `Def`
+  --> /home/twk/gsoc/rust-semverver/tests/examples/struct.rs:22:5
+   |
+22 | /     pub struct Def<A=u8> {
+23 | |         field: A,
+24 | |     }
+   | |_____^
+   |
+   = note: NonBreaking (TypeParameterAdded { defaulted: true })
+

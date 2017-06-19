@@ -196,8 +196,56 @@ fn diff_item_structures(changes: &mut ChangeSet,
         _ => return,
     };
 
-    println!("old: {:?}", old_def);
-    println!("new: {:?}", new_def);
+    let mut variants = HashMap::new();
+    let mut fields = HashMap::new();
+
+    for variant in &old_def.variants {
+        variants.entry(variant.name).or_insert((None, None)).0 = Some(variant);
+    }
+
+    for variant in &new_def.variants {
+        variants.entry(variant.name).or_insert((None, None)).1 = Some(variant);
+    }
+
+    for (_, items) in variants.drain() {
+        match items {
+            (Some(old), Some(new)) => {
+                for field in &old.fields {
+                    fields.entry(field.name).or_insert((None, None)).0 = Some(field);
+                }
+
+                for field in &new.fields {
+                    fields.entry(field.name).or_insert((None, None)).1 = Some(field);
+                }
+
+                for (_, items2) in fields.drain() {
+                    match items2 {
+                        (Some(o), Some(n)) => {
+                            println!("matching fields");
+                        },
+                        (Some(o), None) => {
+                            println!("removed field");
+                        },
+                        (None, Some(n)) => {
+                            println!("added field");
+                        },
+                        (None, None) => unreachable!(),
+                    }
+                }
+
+                println!("matching variants");
+            },
+            (Some(old), None) => {
+                println!("removed variant");
+                // TODO: a new variant has been removed from the enum (apparently)
+            },
+            (None, Some(new)) => {
+                println!("added variant");
+                // TODO: a new variant has been added to the enum (apparently)
+            },
+            (None, None) => unreachable!(),
+        }
+    }
 }
 
 /// Given two items, perform *non-structural* checks.

@@ -1,4 +1,19 @@
 version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
-  Addition: a
-  Addition: Abc
-  Addition: Abc
+warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
+ --> /home/twk/gsoc/rust-semverver/tests/examples/addition.rs:6:5
+  |
+6 |     pub struct Abc;
+  |     ^^^^^^^^^^^^^^^
+
+warning: Addition of at least one path to `a` (TechnicallyBreaking)
+  --> /home/twk/gsoc/rust-semverver/tests/examples/addition.rs:10:5
+   |
+10 |     }
+   |     ^
+
+warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
+ --> /home/twk/gsoc/rust-semverver/tests/examples/addition.rs:6:5
+  |
+6 |     pub struct Abc;
+  |     ^^^^^^^^^^^^^^^
+

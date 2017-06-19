@@ -1,3 +1,13 @@
 version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
-  Addition: a
-  Addition: b
+warning: Addition of at least one path to `b` (TechnicallyBreaking)
+  --> /home/twk/gsoc/rust-semverver/tests/examples/pathologic_paths.rs:12:25
+   |
+12 |             pub mod b { pub use super::a::*; }
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Addition of at least one path to `a` (TechnicallyBreaking)
+  --> /home/twk/gsoc/rust-semverver/tests/examples/pathologic_paths.rs:11:25
+   |
+11 |             pub mod a { blow!($($rest)*); }
+   |                         ^^^^^^^^^^^^^^^^^^^
+
