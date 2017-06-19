@@ -66,8 +66,7 @@ pub struct Frame<'tcx> {
     pub return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to.
-    /// None if the function is a diverging function
-    pub return_lvalue: Option<Lvalue<'tcx>>,
+    pub return_lvalue: Lvalue<'tcx>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
@@ -272,7 +271,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         instance: ty::Instance<'tcx>,
         span: codemap::Span,
         mir: &'tcx mir::Mir<'tcx>,
-        return_lvalue: Option<Lvalue<'tcx>>,
+        return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
@@ -329,7 +328,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         match frame.return_to_block {
-            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue.expect("diverging static") {
+            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue {
                 let global_value = self.globals.get_mut(&id)
                     .expect("global should have been cached (static)");
                 match global_value.value {

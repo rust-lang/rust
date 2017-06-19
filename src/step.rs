@@ -192,7 +192,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
                 instance,
                 span,
                 mir,
-                Some(Lvalue::Global(cid)),
+                Lvalue::Global(cid),
                 cleanup,
             )
         });
@@ -235,7 +235,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                     this.ecx.push_stack_frame(this.instance,
                                               constant.span,
                                               mir,
-                                              Some(Lvalue::Global(cid)),
+                                              Lvalue::Global(cid),
                                               StackPopCleanup::MarkStatic(false),
                     )
                 });

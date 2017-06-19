@@ -30,7 +30,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.dump_local(self.frame().return_lvalue.expect("diverging function returned"));
+                self.dump_local(self.frame().return_lvalue);
                 self.pop_stack_frame()?
             }
 
@@ -430,8 +430,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Err(other) => return Err(other),
         };
         let (return_lvalue, return_to_block) = match destination {
-            Some((lvalue, block)) => (Some(lvalue), StackPopCleanup::Goto(block)),
-            None => (None, StackPopCleanup::None),
+            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
+            None => (Lvalue::undef(), StackPopCleanup::None),
         };
 
         self.push_stack_frame(
@@ -606,7 +606,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     f_instance,
                     mir.span,
                     mir,
-                    Some(Lvalue::zst()),
+                    Lvalue::zst(),
                     StackPopCleanup::Goto(dest_block),
                 )?;
 

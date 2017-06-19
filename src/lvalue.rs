@@ -64,6 +64,14 @@ pub struct Global<'tcx> {
 }
 
 impl<'tcx> Lvalue<'tcx> {
+    /// Produces an Lvalue that will error if attempted to be read from
+    pub fn undef() -> Self {
+        Lvalue::Ptr {
+            ptr: PrimVal::Undef,
+            extra: LvalueExtra::None,
+        }
+    }
+
     pub fn zst() -> Self {
         Self::from_ptr(Pointer::zst_ptr())
     }
@@ -148,7 +156,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
-            Local(mir::RETURN_POINTER) => self.frame().return_lvalue.expect("diverging function returned"),
+            Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
             Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local, field: None },
 
             Static(ref static_) => {

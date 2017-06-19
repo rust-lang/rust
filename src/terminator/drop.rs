@@ -49,7 +49,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             instance,
             span,
             mir,
-            Some(Lvalue::zst()),
+            Lvalue::zst(),
             StackPopCleanup::None,
         )?;
 
