@@ -208,6 +208,5 @@ error: you should put `be_sure_we_got_to_the_end_of_it` between ticks in the doc
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

@@ -96,6 +96,5 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

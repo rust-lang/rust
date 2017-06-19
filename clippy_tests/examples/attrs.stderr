@@ -24,6 +24,5 @@ error: the since field must contain a semver-compliant version
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.

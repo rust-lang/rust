@@ -74,6 +74,5 @@ error: this looks like you are trying to swap `c.0` and `a`
 
 error: aborting due to previous error(s)
 
-error: Could not compile `clippy_tests`.
 
 To learn more, run the command again with --verbose.
