@@ -257,10 +257,13 @@ fn combine_block() {
         foo(param)
     });
 
-    do_thing(x, (1, 2, 3, |param| {
-        action();
-        foo(param)
-    }));
+    do_thing(
+        x,
+        (1, 2, 3, |param| {
+            action();
+            foo(param)
+        }),
+    );
 
     Ok(some_function(
         lllllllllong_argument_one,
