@@ -5,6 +5,7 @@ use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 use syntax_pos::Pos;
 use utils::span_lint;
+use url::Url;
 
 /// **What it does:** Checks for the presence of `_`, `::` or camel-case words
 /// outside ticks in documentation.
@@ -278,6 +279,18 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
 
     fn has_underscore(s: &str) -> bool {
         s != "_" && !s.contains("\\_") && s.contains('_')
+    }
+
+    if let Ok(url) = Url::parse(word) {
+        // try to get around the fact that `foo::bar` parses as a valid URL
+        if !url.cannot_be_a_base() {
+            span_lint(cx,
+                      DOC_MARKDOWN,
+                      span,
+                      "you should put bare URLs between `<`/`>` or make a proper Markdown link");
+
+            return;
+        }
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {
