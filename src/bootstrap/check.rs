@@ -672,6 +672,7 @@ pub fn bootstrap(build: &Build) {
     cmd.arg("test")
        .current_dir(build.src.join("src/bootstrap"))
        .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
+       .env("RUSTC_BOOTSTRAP", "1")
        .env("RUSTC", &build.rustc);
     if build.flags.cmd.no_fail_fast() {
         cmd.arg("--no-fail-fast");

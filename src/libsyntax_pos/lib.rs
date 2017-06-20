@@ -29,17 +29,13 @@
 #![allow(unused_attributes)]
 #![feature(specialization)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::ops::{Add, Sub};
-use std::rc::Rc;
 use std::cmp;
 use std::fmt;
 use std::hash::Hasher;
+use std::ops::{Add, Sub};
+use std::rc::Rc;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 

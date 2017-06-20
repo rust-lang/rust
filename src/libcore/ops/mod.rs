@@ -186,9 +186,6 @@ pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub use self::range::{RangeInclusive, RangeToInclusive};
 
-#[unstable(feature = "question_mark_carrier", issue = "31436")]
-#[cfg(stage0)]
-pub use self::try::Carrier;
 #[unstable(feature = "try_trait", issue = "42327")]
 pub use self::try::Try;
 

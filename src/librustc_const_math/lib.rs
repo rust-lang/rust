@@ -26,10 +26,6 @@
 #![feature(i128)]
 #![feature(i128_type)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-
 extern crate syntax;
 
 extern crate serialize as rustc_serialize; // used by deriving

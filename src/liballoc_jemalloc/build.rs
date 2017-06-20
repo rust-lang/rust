@@ -154,6 +154,11 @@ fn main() {
     make.current_dir(&native.out_dir)
         .arg("build_lib_static");
 
+    // These are intended for mingw32-make which we don't use
+    if cfg!(windows) {
+        make.env_remove("MAKEFLAGS").env_remove("MFLAGS");
+    }
+
     // mingw make seems... buggy? unclear...
     if !host.contains("windows") {
         make.arg("-j")

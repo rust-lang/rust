@@ -118,13 +118,6 @@ fn main() {
             cmd.arg("-Cprefer-dynamic");
         }
 
-        // Pass the `rustbuild` feature flag to crates which rustbuild is
-        // building. See the comment in bootstrap/lib.rs where this env var is
-        // set for more details.
-        if env::var_os("RUSTBUILD_UNSTABLE").is_some() {
-            cmd.arg("--cfg").arg("rustbuild");
-        }
-
         // Help the libc crate compile by assisting it in finding the MUSL
         // native libraries.
         if let Some(s) = env::var_os("MUSL_ROOT") {
@@ -218,11 +211,7 @@ fn main() {
                 // do that we pass a weird flag to the compiler to get it to do
                 // so. Note that this is definitely a hack, and we should likely
                 // flesh out rpath support more fully in the future.
-                //
-                // FIXME: remove condition after next stage0
-                if stage != "0" {
-                    cmd.arg("-Z").arg("osx-rpath-install-name");
-                }
+                cmd.arg("-Z").arg("osx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
             } else if !target.contains("windows") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
@@ -242,12 +231,8 @@ fn main() {
         // Force all crates compiled by this compiler to (a) be unstable and (b)
         // allow the `rustc_private` feature to link to other unstable crates
         // also in the sysroot.
-        //
-        // FIXME: remove condition after next stage0
         if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
-            if stage != "0" {
-                cmd.arg("-Z").arg("force-unstable-if-unmarked");
-            }
+            cmd.arg("-Z").arg("force-unstable-if-unmarked");
         }
     }
 

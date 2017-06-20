@@ -42,11 +42,6 @@
 #![feature(sort_unstable)]
 #![feature(trace_macros)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-#![cfg_attr(stage0, feature(loop_break_value))]
-
 #![recursion_limit="256"]
 
 extern crate arena;

@@ -15,7 +15,6 @@
 //! [mz]: https://code.google.com/p/miniz/
 
 #![crate_name = "flate"]
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -25,7 +24,6 @@
 #![deny(warnings)]
 
 #![feature(libc)]
-#![cfg_attr(stage0, feature(staged_api))]
 #![feature(unique)]
 #![cfg_attr(test, feature(rand))]
 
