@@ -1,7 +1,7 @@
 use rustc::hir::Mutability as TyMutability;
 use rustc::mir;
 use rustc::ty::layout::{Size, Align};
-use rustc::ty::{self, Ty, TypeAndMut};
+use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast::Mutability;
 
@@ -469,9 +469,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
 // Validity checks
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+    fn variant_check_valid(
+        &mut self,
+        lvalue: Lvalue<'tcx>,
+        ty: Ty<'tcx>,
+        variant: &ty::VariantDef,
+        subst: &ty::subst::Substs<'tcx>,
+        outer_mutbl: TyMutability
+    ) -> EvalResult<'tcx> {
+        // TODO: Take visibility/privacy into account.
+        for (idx, field) in variant.fields.iter().enumerate() {
+            let field_ty = field.ty(self.tcx, subst);
+            let field_lvalue = self.lvalue_field(lvalue, idx, ty, field_ty)?;
+            self.acquire_valid(field_lvalue, field_ty, outer_mutbl)?;
+        }
+        Ok(())
+    }
+
     pub(super) fn acquire_valid(&mut self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>, outer_mutbl: TyMutability) -> EvalResult<'tcx> {
         use rustc::ty::TypeVariants::*;
         use rustc::ty::RegionKind::*;
+        use rustc::ty::AdtKind;
         use self::TyMutability::*;
 
         trace!("Validating {:?} at type {}, outer mutability {:?}", lvalue, ty, outer_mutbl);
@@ -485,7 +503,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // TODO: Check if these are valid bool/float/UTF-8, respectively (and in particular, not undef).
                 Ok(())
             }
-            TyRef(region, TypeAndMut { ty: pointee_ty, mutbl }) => {
+            TyRef(region, ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
                 // Acquire lock
                 let val = self.read_lvalue(lvalue)?;
                 let (len, _) = self.size_and_align_of_dst(pointee_ty, val)?;
@@ -519,6 +537,35 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.get_fn(ptr)?;
                 // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
                 Ok(())
+            }
+            TyAdt(adt, subst) => {
+                match adt.adt_kind() {
+                    AdtKind::Enum => {
+                        // TODO: Can we get the discriminant without forcing an allocation?
+                        let ptr = self.force_allocation(lvalue)?.to_ptr()?;
+                        let discr = self.read_discriminant_value(ptr, ty)?;
+
+                        // Get variant index for discriminant
+                        let variant_idx = adt.discriminants(self.tcx)
+                            .position(|variant_discr| variant_discr.to_u128_unchecked() == discr)
+                            .ok_or(EvalError::InvalidDiscriminant)?;
+
+                        // Downcast to this variant
+                        let lvalue = self.eval_lvalue_projection(lvalue, ty, &mir::ProjectionElem::Downcast(adt, variant_idx))?;
+
+                        // Recursively validate the fields
+                        let variant = &adt.variants[variant_idx];
+                        self.variant_check_valid(lvalue, ty, variant, subst, outer_mutbl)
+                    }
+                    AdtKind::Struct => {
+                        self.variant_check_valid(lvalue, ty, adt.struct_variant(), subst, outer_mutbl)
+                    }
+                    AdtKind::Union => {
+                        // No guarantees are provided for union types.
+                        // TODO: Make sure that all access to union fields is unsafe; otherwise, we may have some checking to do (but what exactly?)
+                        Ok(())
+                    }
+                }
             }
             _ => unimplemented!("Unimplemented type encountered when checking validity.")
         }
