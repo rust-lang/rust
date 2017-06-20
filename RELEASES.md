@@ -45,6 +45,16 @@ Libraries
 - [`eprint!` and `eprintln!` macros added to prelude.][41192] Same as the `print!`
   macros, but for printing to stderr.
 
+Stabilized APIs
+---------------
+
+- [`OsString::shrink_to_fit`]
+- [`cmp::Reverse`]
+- [`ops::RangeArgument`]
+- [`ops::Bound`]
+- [`Command::envs`]
+- [`thread::ThreadId`]
+
 Compatibility Notes
 -------------------
 
@@ -96,6 +106,7 @@ Cargo
 - [The `--features` option now accepts multiple comma or space
   delimited values.][cargo/4084]
 - [Added a GNU make jobserver implementation to Cargo.][cargo/4110]
+- [Added support for custom target specific runners][cargo/3954]
 
 [34537]: https://github.com/rust-lang/rust/issues/34537
 [36886]: https://github.com/rust-lang/rust/issues/36886
@@ -133,6 +144,7 @@ Cargo
 [RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
 [RFC 1624]: https://github.com/rust-lang/rfcs/pull/1624
 [cargo/3929]: https://github.com/rust-lang/cargo/pull/3929
+[cargo/3954]: https://github.com/rust-lang/cargo/pull/3954
 [cargo/3970]: https://github.com/rust-lang/cargo/pull/3970
 [cargo/3979]: https://github.com/rust-lang/cargo/pull/3979
 [cargo/3988]: https://github.com/rust-lang/cargo/pull/3988
@@ -143,6 +155,12 @@ Cargo
 [cargo/4032]: https://github.com/rust-lang/cargo/pull/4032
 [cargo/4084]: https://github.com/rust-lang/cargo/pull/4084
 [cargo/4110]: https://github.com/rust-lang/cargo/pull/4110
+[`OsString::shrink_to_fit`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to_fit
+[`cmp::Reverse`]: https://doc.rust-lang.org/std/cmp/struct.Reverse.html
+[`ops::RangeArgument`]: https://doc.rust-lang.org/std/ops/trait.RangeArgument.html
+[`ops::Bound`]: https://doc.rust-lang.org/std/ops/enum.Bound.html
+[`Command::envs`]: https://doc.rust-lang.org/nightly/std/process/struct.Command.html#method.envs
+[`thread::ThreadId`]: https://doc.rust-lang.org/std/thread/struct.ThreadId.html
 
 
 Version 1.18.0 (2017-06-08)
