@@ -4,16 +4,16 @@ Version 1.19.0 (2017-07-20)
 Language
 --------
 
-- [Numeric fields can now be used for creating tuple structs.][41145]
+- [Numeric fields can now be used for creating tuple structs.][41145] [RFC 1506]
   For example `struct Point(u32, u32); let x = Point { 0: 7, 1: 0 };`.
 - [Macro recursion limit increased to 1024 from 64.][41676]
 - [Added lint for detecting unused macros.][41907]
-- [`loop` can now return a value with `break`.][42016]
+- [`loop` can now return a value with `break`.][42016] [RFC 1624]
   For example: `let x = loop { break 7; };`
-- [C compatible `union`s are now available.][42068] They can only contain `Copy`
-  types and cannot have a `Drop` implementation.
+- [C compatible `union`s are now available.][42068] [RFC 1444] They can only
+  contain `Copy` types and cannot have a `Drop` implementation.
   Example: `union Foo { bar: u8, baz: usize }`
-- [Non capturing closures can now be coerced into `fn`s,][42162]
+- [Non capturing closures can now be coerced into `fn`s,][42162] [RFC 1558]
   Example: `let foo: fn(u8) -> u8 = |v: u8| { v };`
 
 Compiler
@@ -28,7 +28,8 @@ Compiler
 - [Compiler error message is now `aborting due to previous error(s)` instead of
   `aborting due to N previous errors`][42150] This was previously inaccurate and
   would only count certain kinds of errors.
-- [Now supports Visual Studio 2017][42225]
+- [The compiler now supports Visual Studio 2017][42225]
+- [The compiler can now be built against LLVM 4.0][40123]
 - [Added a lot][42264] of [new error codes][42302]
 
 Libraries
@@ -96,8 +97,17 @@ Cargo
   delimited values.][cargo/4084]
 - [Added a GNU make jobserver implementation to Cargo.][cargo/4110]
 
+[34537]: https://github.com/rust-lang/rust/issues/34537
+[36886]: https://github.com/rust-lang/rust/issues/36886
+[36888]: https://github.com/rust-lang/rust/issues/36888
+[36890]: https://github.com/rust-lang/rust/issues/36890
+[36891]: https://github.com/rust-lang/rust/issues/36891
+[36892]: https://github.com/rust-lang/rust/issues/36892
 [39983]: https://github.com/rust-lang/rust/pull/39983
+[40123]: https://github.com/rust-lang/rust/pull/40123
 [41145]: https://github.com/rust-lang/rust/pull/41145
+[41192]: https://github.com/rust-lang/rust/pull/41192
+[41258]: https://github.com/rust-lang/rust/pull/41258
 [41370]: https://github.com/rust-lang/rust/pull/41370
 [41449]: https://github.com/rust-lang/rust/pull/41449
 [41530]: https://github.com/rust-lang/rust/pull/41530
@@ -113,19 +123,15 @@ Cargo
 [42016]: https://github.com/rust-lang/rust/pull/42016
 [42037]: https://github.com/rust-lang/rust/pull/42037
 [42068]: https://github.com/rust-lang/rust/pull/42068
-[41258]: https://github.com/rust-lang/rust/pull/41258
-[34537]: https://github.com/rust-lang/rust/issues/34537
-[36886]: https://github.com/rust-lang/rust/issues/36886
-[36888]: https://github.com/rust-lang/rust/issues/36888
-[36890]: https://github.com/rust-lang/rust/issues/36890
-[36891]: https://github.com/rust-lang/rust/issues/36891
-[36892]: https://github.com/rust-lang/rust/issues/36892
 [42150]: https://github.com/rust-lang/rust/pull/42150
+[42162]: https://github.com/rust-lang/rust/pull/42162
 [42225]: https://github.com/rust-lang/rust/pull/42225
 [42264]: https://github.com/rust-lang/rust/pull/42264
 [42302]: https://github.com/rust-lang/rust/pull/42302
-[41192]: https://github.com/rust-lang/rust/pull/41192
-[42162]: https://github.com/rust-lang/rust/pull/42162
+[RFC 1444]: https://github.com/rust-lang/rfcs/pull/1444
+[RFC 1506]: https://github.com/rust-lang/rfcs/pull/1506
+[RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
+[RFC 1624]: https://github.com/rust-lang/rfcs/pull/1624
 [cargo/3929]: https://github.com/rust-lang/cargo/pull/3929
 [cargo/3970]: https://github.com/rust-lang/cargo/pull/3970
 [cargo/3979]: https://github.com/rust-lang/cargo/pull/3979
