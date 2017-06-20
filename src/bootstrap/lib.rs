@@ -429,6 +429,10 @@ impl Build {
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
 
+        // Ensure we have access to the release channel we're building everywhere.
+        // This is used by cargo to compute the libraries hash.
+        cargo.env("CFG_RELEASE_CHANNEL", &self.config.channel);
+
         // There are two invariants we must maintain:
         // * stable crates cannot depend on unstable crates (general Rust rule),
         // * crates that end up in the sysroot must be unstable (rustbuild rule).
