@@ -221,7 +221,7 @@ The Rust paths used in links are resolved
 relative to the item in whose documentation they appear.
 Specifically, when using inner doc comments (`//!`, `/*!`),
 the paths are resolved from the inside of the item,
-while regular doc comments (`///`, `/**`) start from the "parent scope.
+while regular doc comments (`///`, `/**`) start from the parent scope.
 
 Here's an example:
 
