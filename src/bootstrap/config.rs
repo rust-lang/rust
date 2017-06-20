@@ -497,6 +497,9 @@ impl Config {
                 "CFG_TARGET" if value.len() > 0 => {
                     self.target.extend(value.split(" ").map(|s| s.to_string()));
                 }
+                "CFG_EXPERIMENTAL_TARGETS" if value.len() > 0 => {
+                    self.llvm_experimental_targets = Some(value.to_string());
+                }
                 "CFG_MUSL_ROOT" if value.len() > 0 => {
                     self.musl_root = Some(parse_configure_path(value));
                 }

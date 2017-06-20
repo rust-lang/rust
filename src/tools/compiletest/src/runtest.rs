@@ -1280,6 +1280,12 @@ actual:\n\
         let extra_link_args = vec!["-L".to_owned(),
                                    aux_dir.to_str().unwrap().to_owned()];
 
+        let mut env = self.props.rustc_env.clone();
+        // Tell emscripten to link using libc produced with LLVM backend
+        if self.config.target.contains("wasm32") && self.config.target.contains("experimental") {
+            env.push(("EMCC_WASM_BACKEND".to_string(), "1".to_string()));
+        }
+
         for rel_ab in &self.props.aux_builds {
             let aux_testpaths = self.compute_aux_test_paths(rel_ab);
             let aux_props = self.props.from_aux_file(&aux_testpaths.file,
@@ -1319,7 +1325,7 @@ actual:\n\
             };
             let aux_args = aux_cx.make_compile_args(crate_type, &aux_testpaths.file, aux_output);
             let auxres = aux_cx.compose_and_run(aux_args,
-                                                Vec::new(),
+                                                env.clone(),
                                                 aux_cx.config.compile_lib_path.to_str().unwrap(),
                                                 Some(aux_dir.to_str().unwrap()),
                                                 None);
@@ -1332,12 +1338,11 @@ actual:\n\
         }
 
         self.compose_and_run(args,
-                             self.props.rustc_env.clone(),
+                             env,
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
                              input)
     }
-
 
     fn compose_and_run(&self,
                        ProcArgs{ args, prog }: ProcArgs,

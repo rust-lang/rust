@@ -40,8 +40,11 @@ hide_output ./emsdk install sdk-1.37.13-64bit
 source ./emsdk_env.sh
 echo "main(){}" > a.c
 HOME=/emsdk-portable/ emcc a.c
-HOME=/emsdk-portable/ emcc -s BINARYEN=1 a.c
+HOME=/emsdk-portable/ emcc -s WASM=1 a.c
 rm -f a.*
+
+# Make emscripten use Rust's LLVM
+echo "LLVM_ROOT='/checkout/obj/build/x86_64-unknown-linux-gnu/llvm/bin'" >> /root/.emscripten
 
 # Make emsdk usable by any user
 cp /root/.emscripten /emsdk-portable
