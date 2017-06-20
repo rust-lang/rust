@@ -31,8 +31,8 @@ Compiler
 - [The compiler now supports Visual Studio 2017][42225]
 - [The compiler can now be built against LLVM 4.0][40123]
 - [Added a lot][42264] of [new error codes][42302]
-- [Added `target-feature=+crt-static` option][37406] Which allows libraries with
-  C Run-time Libraries(CRT) to be statically linked.
+- [Added `target-feature=+crt-static` option][37406] [RFC 1721] Which allows
+  libraries with C Run-time Libraries(CRT) to be statically linked.
 
 Libraries
 ---------
@@ -56,15 +56,6 @@ Stabilized APIs
 - [`ops::Bound`]
 - [`Command::envs`]
 - [`thread::ThreadId`]
-
-Misc
-----
-
-- [Added `rust-windbg.cmd`][39983] for loading rust `.natvis` files in the
-  Windows Debugger.
-- [Rust will now release XZ compressed packages][rust-installer/57]
-- [rustup will now prefer to download rust packages with
-  XZ compression][rustup/1100] over GZip packages.
 
 Cargo
 -----
@@ -90,6 +81,15 @@ Cargo
   delimited values.][cargo/4084]
 - [Added a GNU make jobserver implementation to Cargo.][cargo/4110]
 - [Added support for custom target specific runners][cargo/3954]
+
+Misc
+----
+
+- [Added `rust-windbg.cmd`][39983] for loading rust `.natvis` files in the
+  Windows Debugger.
+- [Rust will now release XZ compressed packages][rust-installer/57]
+- [rustup will now prefer to download rust packages with
+  XZ compression][rustup/1100] over GZip packages.
 
 Compatibility Notes
 -------------------
@@ -149,6 +149,7 @@ Compatibility Notes
 [RFC 1506]: https://github.com/rust-lang/rfcs/pull/1506
 [RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
 [RFC 1624]: https://github.com/rust-lang/rfcs/pull/1624
+[RFC 1721]: https://github.com/rust-lang/rfcs/pull/1721
 [`Command::envs`]: https://doc.rust-lang.org/nightly/std/process/struct.Command.html#method.envs
 [`OsString::shrink_to_fit`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to_fit
 [`cmp::Reverse`]: https://doc.rust-lang.org/std/cmp/struct.Reverse.html
