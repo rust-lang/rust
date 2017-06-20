@@ -76,9 +76,9 @@ pub enum AccessKind {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct DynamicLifetime {
-    frame: usize,
-    region: Option<CodeExtent>, // "None" indicates "until the function ends"
+struct DynamicLifetime {
+    pub frame: usize,
+    pub region: Option<CodeExtent>, // "None" indicates "until the function ends"
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -524,6 +524,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     /// Acquire the lock for the given lifetime
     pub(crate) fn acquire_lock(&mut self, ptr: MemoryPointer, len: u64, region: Option<CodeExtent>, kind: AccessKind) -> EvalResult<'tcx> {
+        trace!("Acquiring {:?} lock at {:?}, size {}", kind, ptr, len);
+        if len == 0 {
+            return Ok(());
+        }
         self.check_bounds(ptr.offset(len, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         self.check_locks(ptr, len, kind)?; // make sure we have the access we are acquiring
         let lifetime = DynamicLifetime { frame: self.cur_frame, region };
@@ -534,6 +538,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     /// Release a lock prematurely
     pub(crate) fn release_lock_until(&mut self, ptr: MemoryPointer, len: u64, release_until: Option<CodeExtent>) -> EvalResult<'tcx> {
+        // TODO: More tracing.
         // Make sure there are no read locks and no *other* write locks here
         if let Err(_) = self.check_locks(ptr, len, AccessKind::Write) {
             return Err(EvalError::InvalidMemoryLockRelease { ptr, len });
@@ -559,6 +564,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub(crate) fn locks_lifetime_ended(&mut self, ending_region: Option<CodeExtent>) {
+        // TODO: More tracing.
         let cur_frame = self.cur_frame;
         let has_ended =  |lock: &LockInfo| -> bool {
             if lock.lifetime.frame != cur_frame {

@@ -5,7 +5,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
-use rustc::mir;
+use rustc::mir::{self, ValidationOp};
 use rustc::traits::Reveal;
 use rustc::ty::layout::Layout;
 use rustc::ty::{subst, self};
@@ -130,8 +130,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.deallocate_local(old_val)?;
             }
 
-            // Validity checks.  Not yet implemented.
-            Validate(_, _) => {}
+            // Validity checks.
+            Validate(ref op, ref lvalues) => {
+                match *op {
+                    ValidationOp::Acquire => {
+                        for operand in lvalues {
+                            let lvalue = self.eval_lvalue(&operand.lval)?;
+                            self.acquire_valid(lvalue, operand.ty, hir::MutMutable)?;
+                        }
+                    }
+                    _ => { /* not yet implemented */ }
+                }
+            }
 
             // Just a borrowck thing
             EndRegion(..) => {}

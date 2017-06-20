@@ -1,13 +1,14 @@
+use rustc::hir::Mutability as TyMutability;
 use rustc::mir;
 use rustc::ty::layout::{Size, Align};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TypeAndMut};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast::Mutability;
 
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
-use memory::MemoryPointer;
-use value::{PrimVal, Value, Pointer};
+use memory::{MemoryPointer, AccessKind};
+use value::{PrimVal, Pointer, Value};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Lvalue<'tcx> {
@@ -349,6 +350,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Lvalue::Ptr { ptr, extra, aligned: aligned && !packed })
     }
 
+    fn val_to_lvalue(&mut self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
+        Ok(match self.tcx.struct_tail(ty).sty {
+            ty::TyDynamic(..) => {
+                let (ptr, vtable) = val.into_ptr_vtable_pair(&mut self.memory)?;
+                Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable), aligned: true }
+            },
+            ty::TyStr | ty::TySlice(_) => {
+                let (ptr, len) = val.into_slice(&mut self.memory)?;
+                Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len), aligned: true }
+            },
+            _ => Lvalue::Ptr { ptr: val.into_ptr(&mut self.memory)?, extra: LvalueExtra::None, aligned: true },
+        })
+    }
+
+    fn lvalue_index(&mut self, base: Lvalue<'tcx>, outer_ty: Ty<'tcx>, n: u64) -> EvalResult<'tcx, Lvalue<'tcx>> {
+        // Taking the outer type here may seem odd; it's needed because for array types, the outer type gives away the length.
+        let base = self.force_allocation(base)?;
+        let (base_ptr, _, aligned) = base.to_ptr_extra_aligned();
+
+        let (elem_ty, len) = base.elem_ty_and_len(outer_ty);
+        let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
+        assert!(n < len, "Tried to access element {} of array/slice with length {}", n, len);
+        let ptr = base_ptr.offset(n * elem_size, self.memory.layout)?;
+        Ok(Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned })
+    }
+
     fn eval_lvalue_projection(
         &mut self,
         base: Lvalue<'tcx>,
@@ -388,32 +415,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 trace!("deref to {} on {:?}", pointee_type, val);
 
-                match self.tcx.struct_tail(pointee_type).sty {
-                    ty::TyDynamic(..) => {
-                        let (ptr, vtable) = val.into_ptr_vtable_pair(&mut self.memory)?;
-                        (ptr, LvalueExtra::Vtable(vtable), true)
-                    },
-                    ty::TyStr | ty::TySlice(_) => {
-                        let (ptr, len) = val.into_slice(&mut self.memory)?;
-                        (ptr, LvalueExtra::Length(len), true)
-                    },
-                    _ => (val.into_ptr(&mut self.memory)?, LvalueExtra::None, true),
-                }
+                return self.val_to_lvalue(val, pointee_type);
             }
 
             Index(ref operand) => {
                 // FIXME(solson)
-                let base = self.force_allocation(base)?;
-                let (base_ptr, _, aligned) = base.to_ptr_extra_aligned();
-
-                let (elem_ty, len) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 let n_ptr = self.eval_operand(operand)?;
                 let usize = self.tcx.types.usize;
                 let n = self.value_to_primval(n_ptr, usize)?.to_u64()?;
-                assert!(n < len, "Tried to access element {} of array/slice with length {}", n, len);
-                let ptr = base_ptr.offset(n * elem_size, &self)?;
-                (ptr, LvalueExtra::None, aligned)
+                return self.lvalue_index(base, base_ty, n);
             }
 
             ConstantIndex { offset, min_length, from_end } => {
@@ -454,5 +464,63 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub(super) fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         self.monomorphize(lvalue.ty(self.mir(), self.tcx).to_ty(self.tcx), self.substs())
+    }
+}
+
+// Validity checks
+impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+    pub(super) fn acquire_valid(&mut self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>, outer_mutbl: TyMutability) -> EvalResult<'tcx> {
+        use rustc::ty::TypeVariants::*;
+        use rustc::ty::RegionKind::*;
+        use self::TyMutability::*;
+
+        trace!("Validating {:?} at type {}, outer mutability {:?}", lvalue, ty, outer_mutbl);
+        match ty.sty {
+            TyChar | TyInt(_) | TyUint(_) | TyRawPtr(_) => {
+                // TODO: Make sure these are not undef.
+                // We could do a bounds-check and other sanity checks on the lvalue, but it would be a bug in miri for this to ever fail.
+                Ok(())
+            }
+            TyBool | TyFloat(_) | TyStr => {
+                // TODO: Check if these are valid bool/float/UTF-8, respectively (and in particular, not undef).
+                Ok(())
+            }
+            TyRef(region, TypeAndMut { ty: pointee_ty, mutbl }) => {
+                // Acquire lock
+                let val = self.read_lvalue(lvalue)?;
+                let (len, _) = self.size_and_align_of_dst(pointee_ty, val)?;
+                let ptr = val.into_ptr(&mut self.memory)?.to_ptr()?;
+                let combined_mutbl = match outer_mutbl { MutMutable => mutbl, MutImmutable => MutImmutable };
+                let access = match combined_mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
+                let region = match *region {
+                    ReScope(extent) => Some(extent),
+                    _ => None,
+                };
+                self.memory.acquire_lock(ptr, len, region, access)?;
+
+                // Recurse
+                let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
+                self.acquire_valid(pointee_lvalue, pointee_ty, combined_mutbl)
+            }
+            TySlice(elem_ty) => {
+                let len = match lvalue {
+                    Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
+                    _ => bug!("acquire_valid of a TySlice given non-slice lvalue: {:?}", lvalue),
+                };
+                for i in 0..len {
+                    let inner_lvalue = self.lvalue_index(lvalue, ty, i)?;
+                    self.acquire_valid(inner_lvalue, elem_ty, outer_mutbl)?;
+                }
+                Ok(())
+            }
+            TyFnPtr(_sig) => {
+                // TODO: The function names here could need some improvement.
+                let ptr = self.read_lvalue(lvalue)?.into_ptr(&mut self.memory)?.to_ptr()?;
+                self.memory.get_fn(ptr)?;
+                // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
+                Ok(())
+            }
+            _ => unimplemented!("Unimplemented type encountered when checking validity.")
+        }
     }
 }
