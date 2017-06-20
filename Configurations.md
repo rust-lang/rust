@@ -18,7 +18,7 @@ Below you find a detailed visual guide on all the supported configuration option
 
 Indent on arrays
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -263,6 +263,36 @@ let (lorem, ipsum, _, _) = (1, 2, 3, 4);
 let (lorem, ipsum, ..) = (1, 2, 3, 4);
 ```
 
+## `control_style`
+
+Indent style for control flow statements
+
+- **Default value**: `"Rfc"`
+- **Possible values**: `"Rfc"`, `"Legacy"`
+
+#### `"Rfc"`:
+
+```rust
+if lorem_ipsum &&
+    dolor_sit &&
+    amet_consectetur
+{
+    // ...
+}
+```
+
+#### `"Legacy"`:
+
+```rust
+if lorem_ipsum &&
+   dolor_sit &&
+   amet_consectetur {
+    // ...
+}
+```
+
+See also: [`control_brace_style`](#control_brace_style).
+
 ## `control_brace_style`
 
 Brace style for control flow constructs
@@ -442,7 +472,7 @@ trait Lorem {
 
 Layout of function arguments and tuple structs
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -487,7 +517,7 @@ fn lorem(ipsum: usize,
 
 If function argument parenthesis goes on a newline
 
-- **Default value**: `true`
+- **Default value**: `false`
 - **Possible values**: `true`, `false`
 
 #### `false`:
@@ -582,7 +612,7 @@ fn lorem<T>(ipsum: T)
 
 Indentation for function calls, etc.
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -790,7 +820,7 @@ See also [`force_format_strings`](#force_format_strings), [`max_width`](#max_wid
 
 Indentation of generics
 
-- **Default value**: `"Visual"`
+- **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
 
 #### `"Block"`:
@@ -1260,7 +1290,7 @@ See also: [`space_after_bound_colon`](#space_after_bound_colon).
 
 Leave a space before the colon in a struct literal field
 
-- **Default value**: `true`
+- **Default value**: `false`
 - **Possible values**: `true`, `false`
 
 #### `false`:
@@ -1839,21 +1869,8 @@ See also: [`where_density`](#where_density), [`where_layout`](#where_layout), [`
 
 Overall strategy for where clauses
 
-- **Default value**: `"Default"`
-- **Possible values**: `"Default"`, `"Rfc"`
-
-#### `"Default"`:
-
-```rust
-fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
-    where Ipsum: Eq,
-          Dolor: Eq,
-          Sit: Eq,
-          Amet: Eq
-{
-    // body
-}
-```
+- **Default value**: `"Rfc"`
+- **Possible values**: `"Rfc"`, `"Legacy"`
 
 #### `"Rfc"`:
 
@@ -1864,6 +1881,19 @@ where
     Dolor: Eq,
     Sit: Eq,
     Amet: Eq,
+{
+    // body
+}
+```
+
+#### `"Legacy"`:
+
+```rust
+fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
+    where Ipsum: Eq,
+          Dolor: Eq,
+          Sit: Eq,
+          Amet: Eq
 {
     // body
 }
