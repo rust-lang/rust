@@ -561,13 +561,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let variant_idx = adt.discriminants(self.tcx)
                             .position(|variant_discr| variant_discr.to_u128_unchecked() == discr)
                             .ok_or(EvalError::InvalidDiscriminant)?;
-
-                        // Downcast to this variant
-                        let lvalue = self.eval_lvalue_projection(lvalue, ty, &mir::ProjectionElem::Downcast(adt, variant_idx))?;
-
-                        // Recursively validate the fields
                         let variant = &adt.variants[variant_idx];
-                        self.validate_variant(lvalue, ty, variant, subst, outer_mutbl)
+
+                        if variant.fields.len() > 0 {
+                            // Downcast to this variant
+                            let lvalue = self.eval_lvalue_projection(lvalue, ty, &mir::ProjectionElem::Downcast(adt, variant_idx))?;
+
+                            // Recursively validate the fields
+                            self.validate_variant(lvalue, ty, variant, subst, outer_mutbl)
+                        } else {
+                            // No fields, nothing left to check.  Downcasting may fail, e.g. in case of a CEnum.
+                            Ok(())
+                        }
                     }
                     AdtKind::Struct => {
                         self.validate_variant(lvalue, ty, adt.struct_variant(), subst, outer_mutbl)
