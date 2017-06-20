@@ -141,6 +141,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.deallocate_local(old_val)?;
             }
 
+            EndRegion(..) => {}
+
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
