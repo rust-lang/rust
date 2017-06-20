@@ -31,6 +31,8 @@ Compiler
 - [The compiler now supports Visual Studio 2017][42225]
 - [The compiler can now be built against LLVM 4.0][40123]
 - [Added a lot][42264] of [new error codes][42302]
+- [Added `target-feature=+crt-static` option][37406] Which allows libraries with
+  C Run-time Libraries(CRT) to be statically linked.
 
 Libraries
 ---------
@@ -55,33 +57,14 @@ Stabilized APIs
 - [`Command::envs`]
 - [`thread::ThreadId`]
 
-Compatibility Notes
--------------------
-
-- [`MutexGuard<T>` may only be `Sync` if `T` is `Sync`.][41624]
-- [`-Z` flags are now no longer allowed to be used on the stable
-  compiler.][41751] This has been a warning for a year previous to this.
-- [Ending a float literal with `._` is now a hard error.
-  Example: `42._` .][41946]
-- [Publicly reexporting a private enum variant is now a hard error][34537] This was
-  previously a warning.
-- [Any use of a private `extern crate` outside of it's module is now a
-  hard error.][36886] This was previously a warning.
-- [`use ::self::foo;` is now a hard error.][36888] `self` paths are always
-  relative while the `::` prefix makes a path absolute, but was ignored and the
-  path was relative regardless.
-- [Floating point constants in match patterns is now a hard error][36890]
-  This was previously a warning.
-- [Struct or enum constants that don't derive `PartialEq` & `Eq` used
-  match patterns is now a hard error][36891] This was previously a warning.
-- [Lifetimes named `'_` are no longer allowed.][36892] This was previously
-  a warning.
-
 Misc
 ----
 
 - [Added `rust-windbg.cmd`][39983] for loading rust `.natvis` files in the
   Windows Debugger.
+- [Rust will now release XZ compressed packages][rust-installer/57]
+- [rustup will now prefer to download rust packages with
+  XZ compression][rustup/1100] over GZip packages.
 
 Cargo
 -----
@@ -108,12 +91,35 @@ Cargo
 - [Added a GNU make jobserver implementation to Cargo.][cargo/4110]
 - [Added support for custom target specific runners][cargo/3954]
 
+Compatibility Notes
+-------------------
+
+- [`MutexGuard<T>` may only be `Sync` if `T` is `Sync`.][41624]
+- [`-Z` flags are now no longer allowed to be used on the stable
+  compiler.][41751] This has been a warning for a year previous to this.
+- [Ending a float literal with `._` is now a hard error.
+  Example: `42._` .][41946]
+- [Publicly reexporting a private enum variant is now a hard error][34537] This was
+  previously a warning.
+- [Any use of a private `extern crate` outside of it's module is now a
+  hard error.][36886] This was previously a warning.
+- [`use ::self::foo;` is now a hard error.][36888] `self` paths are always
+  relative while the `::` prefix makes a path absolute, but was ignored and the
+  path was relative regardless.
+- [Floating point constants in match patterns is now a hard error][36890]
+  This was previously a warning.
+- [Struct or enum constants that don't derive `PartialEq` & `Eq` used
+  match patterns is now a hard error][36891] This was previously a warning.
+- [Lifetimes named `'_` are no longer allowed.][36892] This was previously
+  a warning.
+
 [34537]: https://github.com/rust-lang/rust/issues/34537
 [36886]: https://github.com/rust-lang/rust/issues/36886
 [36888]: https://github.com/rust-lang/rust/issues/36888
 [36890]: https://github.com/rust-lang/rust/issues/36890
 [36891]: https://github.com/rust-lang/rust/issues/36891
 [36892]: https://github.com/rust-lang/rust/issues/36892
+[37406]: https://github.com/rust-lang/rust/issues/37406
 [39983]: https://github.com/rust-lang/rust/pull/39983
 [40123]: https://github.com/rust-lang/rust/pull/40123
 [41145]: https://github.com/rust-lang/rust/pull/41145
@@ -143,6 +149,12 @@ Cargo
 [RFC 1506]: https://github.com/rust-lang/rfcs/pull/1506
 [RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
 [RFC 1624]: https://github.com/rust-lang/rfcs/pull/1624
+[`Command::envs`]: https://doc.rust-lang.org/nightly/std/process/struct.Command.html#method.envs
+[`OsString::shrink_to_fit`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to_fit
+[`cmp::Reverse`]: https://doc.rust-lang.org/std/cmp/struct.Reverse.html
+[`ops::Bound`]: https://doc.rust-lang.org/std/ops/enum.Bound.html
+[`ops::RangeArgument`]: https://doc.rust-lang.org/std/ops/trait.RangeArgument.html
+[`thread::ThreadId`]: https://doc.rust-lang.org/std/thread/struct.ThreadId.html
 [cargo/3929]: https://github.com/rust-lang/cargo/pull/3929
 [cargo/3954]: https://github.com/rust-lang/cargo/pull/3954
 [cargo/3970]: https://github.com/rust-lang/cargo/pull/3970
@@ -155,12 +167,8 @@ Cargo
 [cargo/4032]: https://github.com/rust-lang/cargo/pull/4032
 [cargo/4084]: https://github.com/rust-lang/cargo/pull/4084
 [cargo/4110]: https://github.com/rust-lang/cargo/pull/4110
-[`OsString::shrink_to_fit`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to_fit
-[`cmp::Reverse`]: https://doc.rust-lang.org/std/cmp/struct.Reverse.html
-[`ops::RangeArgument`]: https://doc.rust-lang.org/std/ops/trait.RangeArgument.html
-[`ops::Bound`]: https://doc.rust-lang.org/std/ops/enum.Bound.html
-[`Command::envs`]: https://doc.rust-lang.org/nightly/std/process/struct.Command.html#method.envs
-[`thread::ThreadId`]: https://doc.rust-lang.org/std/thread/struct.ThreadId.html
+[rust-installer/57]: https://github.com/rust-lang/rust-installer/pull/57
+[rustup/1100]: https://github.com/rust-lang-nursery/rustup.rs/pull/1100
 
 
 Version 1.18.0 (2017-06-08)
