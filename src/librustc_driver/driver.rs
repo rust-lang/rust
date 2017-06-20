@@ -865,6 +865,10 @@ mod trace {
         pub parse_st: ParseState,
         pub traces:   Vec<Rec>,
     }
+    pub struct QueryMetric {
+        pub count: usize,
+        pub duration: Duration,
+    }
 
     pub fn cons_of_query_msg(q:&trace::Query) -> String {
         let s = format!("{:?}", q.msg);
@@ -966,32 +970,43 @@ mod trace {
         }
     }
 
-    fn compute_counts_rec(counts: &mut HashMap<String,usize>, traces:&Vec<Rec>) {
+    fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces:&Vec<Rec>) {
         for t in traces.iter() {
             match t.effect {
                 Effect::QueryBegin(ref qmsg, ref _cc) => {
                     let qcons = cons_of_query_msg(qmsg);
-                    let c = match counts.get(&qcons) {
-                        Some(c) => c + 1,
-                        None => 1
+                    let qm = match counts.get(&qcons) {
+                        Some(qm) => 
+                            QueryMetric{
+                                count:qm.count + 1,
+                                duration:qm.duration + t.duration
+                            },
+                        None => QueryMetric{
+                            count: 1,
+                            duration: t.duration
+                        }
                     };
-                    counts.insert(qcons, c);
+                    counts.insert(qcons, qm);
                 }
             }
             compute_counts_rec(counts, &t.extent)
         }
     }
 
-    pub fn write_counts(count_file:&mut File, counts:&mut HashMap<String,usize>) {
-        for (ref cons, ref count) in counts.iter() {
-            write!(count_file, "{},{}\n", cons, count).unwrap();
+    pub fn write_counts(count_file:&mut File, counts:&mut HashMap<String,QueryMetric>) {
+        use rustc::util::common::duration_to_secs_str;
+        for (ref cons, ref qm) in counts.iter() {
+            write!(count_file, "{},{},{}\n", 
+                   cons, qm.count,
+                   duration_to_secs_str(qm.duration)
+            ).unwrap();
         }
     }
 
     pub fn write_traces(html_file:&mut File, counts_file:&mut File, traces:&Vec<Rec>) {
         // FIXME(matthewhammer): Populate counts_file with counts for
         // each constructor (a histogram of constructor occurrences)
-        let mut counts : HashMap<String,usize> = HashMap::new();
+        let mut counts : HashMap<String,QueryMetric> = HashMap::new();
         compute_counts_rec(&mut counts, traces);
         write_counts(counts_file, &mut counts);
 
