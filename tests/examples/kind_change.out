@@ -5,3 +5,13 @@ warning: Removal of at least one path to `Abc` (Breaking)
 2 |     pub struct Abc;
   |     ^^^^^^^^^^^^^^^
 
+warning: Breaking changes in `Abc`
+ --> $REPO_PATH/tests/examples/kind_change.rs:6:5
+  |
+6 | /     pub enum Abc {
+7 | |
+8 | |     }
+  | |_____^
+  |
+  = warning: Breaking (KindDifference)
+

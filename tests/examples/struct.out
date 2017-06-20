@@ -1,1 +1,11 @@
 version bump: 1.0.0 -> (NonBreaking) -> 1.1.0
+warning: NonBreaking changes in `Def`
+  --> $REPO_PATH/tests/examples/struct.rs:22:5
+   |
+22 | /     pub struct Def<A=u8> {
+23 | |         field: A,
+24 | |     }
+   | |_____^
+   |
+   = note: NonBreaking (TypeParameterAdded { defaulted: true })
+

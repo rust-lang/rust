@@ -7,9 +7,9 @@ use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
+use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
-use rustc::ty::Visibility::Public;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -105,16 +105,12 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
         let mut c_new = cstore.item_children(new_did, tcx.sess);
 
         // TODO: refactor this to avoid storing tons of `Namespace` values.
-        for child in c_old
-                .drain(..)
-                .filter(|c| cstore.visibility(c.def.def_id()) == Public) {
+        for child in c_old.drain(..) {
             let key = (get_namespace(&child.def), child.ident.name);
             children.entry(key).or_insert((None, None)).0 = Some(child);
         }
 
-        for child in c_new
-                .drain(..)
-                .filter(|c| cstore.visibility(c.def.def_id()) == Public) {
+        for child in c_new.drain(..) {
             let key = (get_namespace(&child.def), child.ident.name);
             children.entry(key).or_insert((None, None)).1 = Some(child);
         }
@@ -122,13 +118,21 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
         for (_, items) in children.drain() {
             match items {
                 (Some(Export { def: Mod(o), .. }), Some(Export { def: Mod(n), .. })) => {
+                    // TODO: handle private modules correctly!
                     if !visited.insert((o, n)) {
                         mod_queue.push_back((o, n));
                     }
                 }
                 (Some(o), Some(n)) => {
                     if !id_mapping.add_export(o, n) {
+                        let old_vis = cstore.visibility(o.def.def_id());
+                        let new_vis = cstore.visibility(n.def.def_id());
                         changes.new_binary(o, n);
+                        if old_vis == Public && new_vis != Public {
+                            changes.add_binary(ItemMadePrivate, o.def.def_id(), None);
+                        } else if old_vis != Public && new_vis == Public {
+                            changes.add_binary(ItemMadePublic, o.def.def_id(), None);
+                        }
                         diff_item_structures(&mut changes, &mut id_mapping, tcx, o, n);
                     }
                 }
@@ -172,7 +176,8 @@ fn diff_item_structures(changes: &mut ChangeSet,
 
     // TODO: crude dispatching logic for now (needs totality etc).
     match (old.def, new.def) {
-        (TyAlias(_), TyAlias(_)) => return,
+        (TyAlias(_), TyAlias(_)) |
+        (StructCtor(_, _), StructCtor(_, _)) => return,
         (Struct(_), Struct(_)) |
         (Union(_), Union(_)) |
         (Enum(_), Enum(_)) |

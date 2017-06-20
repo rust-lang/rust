@@ -6,8 +6,16 @@ warning: Removal of at least one path to `Abc` (Breaking)
   |     ^^^^^^^^^^^^^^^
 
 warning: Removal of at least one path to `a` (Breaking)
- --> $REPO_PATH/tests/examples/removal.rs:6:5
+ --> $REPO_PATH/tests/examples/removal.rs:8:5
   |
-6 |     }
+8 |     }
   |     ^
+
+warning: Breaking changes in `Bce`
+  --> $REPO_PATH/tests/examples/removal.rs:17:5
+   |
+17 |     struct Bce;
+   |     ^^^^^^^^^^^
+   |
+   = warning: Breaking (ItemMadePrivate)
 

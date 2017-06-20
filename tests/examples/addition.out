@@ -1,13 +1,21 @@
 version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
 warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
- --> $REPO_PATH/tests/examples/addition.rs:6:5
-  |
-6 |     pub struct Abc;
-  |     ^^^^^^^^^^^^^^^
+  --> $REPO_PATH/tests/examples/addition.rs:11:5
+   |
+11 |     pub struct Abc;
+   |     ^^^^^^^^^^^^^^^
+
+warning: TechnicallyBreaking changes in `Bce`
+  --> $REPO_PATH/tests/examples/addition.rs:13:5
+   |
+13 |     pub struct Bce;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: TechnicallyBreaking (ItemMadePublic)
 
 warning: Addition of at least one path to `a` (TechnicallyBreaking)
-  --> $REPO_PATH/tests/examples/addition.rs:10:5
+  --> $REPO_PATH/tests/examples/addition.rs:17:5
    |
-10 |     }
+17 |     }
    |     ^
 

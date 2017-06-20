@@ -1,1 +1,58 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `A`
+  --> $REPO_PATH/tests/examples/ty_alias.rs:12:5
+   |
+12 |     pub type A = u16;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (FieldTypeChanged("expected u8, found u16"))
+
+warning: Breaking changes in `B`
+  --> $REPO_PATH/tests/examples/ty_alias.rs:13:5
+   |
+13 |     pub type B<'a, 'b : 'a, T> = (&'a T, &'b T);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (RegionParameterAdded)
+
+warning: Breaking changes in `C`
+  --> $REPO_PATH/tests/examples/ty_alias.rs:14:5
+   |
+14 |     pub type C<T> = T;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (RegionParameterRemoved)
+
+warning: Breaking changes in `D`
+  --> $REPO_PATH/tests/examples/ty_alias.rs:15:5
+   |
+15 |     pub type D<'a, T, U=T> = (&'a T, U);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: NonBreaking (TypeParameterAdded { defaulted: true })
+   = warning: Breaking (FieldTypeChanged("expected reference, found tuple"))
+
+warning: Breaking changes in `E`
+  --> $REPO_PATH/tests/examples/ty_alias.rs:16:5
+   |
+16 |     pub type E<'a, T, U> = (&'a T, U);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (TypeParameterAdded { defaulted: false })
+
+warning: Breaking changes in `F`
+  --> $REPO_PATH/tests/examples/ty_alias.rs:17:5
+   |
+17 |     pub type F<'a> = &'a u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (TypeParameterRemoved { defaulted: true })
+
+warning: Breaking changes in `G`
+  --> $REPO_PATH/tests/examples/ty_alias.rs:18:5
+   |
+18 |     pub type G<'a> = (&'a u8);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (TypeParameterRemoved { defaulted: false })
+

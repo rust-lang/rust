@@ -121,6 +121,10 @@ impl Ord for UnaryChange {
 // TODO: this needs a lot of refinement still
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryChangeType {
+    /// An item has been made public.
+    ItemMadePublic,
+    /// An item has been made private
+    ItemMadePrivate,
     /// An item has changed it's kind.
     KindDifference,
     /// A region parameter has been added to an item.
@@ -167,6 +171,7 @@ impl BinaryChangeType {
     // TODO: this will need a lot of changes (it's *very* conservative rn)
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
+            ItemMadePrivate |
             KindDifference |
             RegionParameterAdded |
             RegionParameterRemoved |
@@ -185,7 +190,8 @@ impl BinaryChangeType {
             TraitImplItemAdded { .. } |
             TraitImplItemRemoved |
             Unknown => Breaking,
-            TypeGeneralization => TechnicallyBreaking,
+            TypeGeneralization |
+            ItemMadePublic => TechnicallyBreaking,
             TypeParameterAdded { defaulted: true } => NonBreaking,
         }
     }
@@ -268,7 +274,7 @@ impl BinaryChange {
                 if cat == Breaking {
                     builder.warn(&sub_msg);
                 } else {
-                    builder.note(&sub_msg,);
+                    builder.note(&sub_msg);
                 }
             }
         }
@@ -405,8 +411,11 @@ impl ChangeSet {
 
     /// Add a new binary change entry for the given exports.
     pub fn new_binary(&mut self, old: Export, new: Export) {
-        self.changes
-            .insert(ChangeKey::OldKey(old.def.def_id()), Change::new_binary(old, new));
+        let key = ChangeKey::OldKey(old.def.def_id());
+        let change = Change::new_binary(old, new);
+
+        self.spans.insert(*change.span(), key.clone());
+        self.changes.insert(key, change);
     }
 
     /// Add a new binary change to an already existing entry.
