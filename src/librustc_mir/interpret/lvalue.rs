@@ -2,6 +2,7 @@ use rustc::hir::Mutability as TyMutability;
 use rustc::mir;
 use rustc::ty::layout::{Size, Align};
 use rustc::ty::{self, Ty};
+use rustc::middle::region::CodeExtent;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast::Mutability;
 
@@ -469,7 +470,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
 // Validity checks
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    fn variant_check_valid(
+    fn validate_variant(
         &mut self,
         lvalue: Lvalue<'tcx>,
         ty: Ty<'tcx>,
@@ -484,6 +485,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             self.acquire_valid(field_lvalue, field_ty, outer_mutbl)?;
         }
         Ok(())
+    }
+
+    fn validate_ptr(&mut self, val: Value, region: Option<CodeExtent>, pointee_ty: Ty<'tcx>, mutbl: TyMutability) -> EvalResult<'tcx> {
+        use self::TyMutability::*;
+
+        // Acquire lock
+        let (len, _) = self.size_and_align_of_dst(pointee_ty, val)?;
+        let ptr = val.into_ptr(&mut self.memory)?.to_ptr()?;
+        let access = match mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
+        self.memory.acquire_lock(ptr, len, region, access)?;
+
+        // Recurse
+        let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
+        self.acquire_valid(pointee_lvalue, pointee_ty, mutbl)
     }
 
     pub(super) fn acquire_valid(&mut self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>, outer_mutbl: TyMutability) -> EvalResult<'tcx> {
@@ -504,21 +519,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             }
             TyRef(region, ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
-                // Acquire lock
                 let val = self.read_lvalue(lvalue)?;
-                let (len, _) = self.size_and_align_of_dst(pointee_ty, val)?;
-                let ptr = val.into_ptr(&mut self.memory)?.to_ptr()?;
                 let combined_mutbl = match outer_mutbl { MutMutable => mutbl, MutImmutable => MutImmutable };
-                let access = match combined_mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
-                let region = match *region {
+                let extent = match *region {
                     ReScope(extent) => Some(extent),
                     _ => None,
                 };
-                self.memory.acquire_lock(ptr, len, region, access)?;
-
-                // Recurse
-                let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
-                self.acquire_valid(pointee_lvalue, pointee_ty, combined_mutbl)
+                self.validate_ptr(val, extent, pointee_ty, combined_mutbl)
+            }
+            TyAdt(adt, _) if adt.is_box() => {
+                let val = self.read_lvalue(lvalue)?;
+                // TODO: The region can't always be None.  It must take outer borrows into account.
+                self.validate_ptr(val, None, ty.boxed_ty(), outer_mutbl)
             }
             TySlice(elem_ty) => {
                 let len = match lvalue {
@@ -555,10 +567,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                         // Recursively validate the fields
                         let variant = &adt.variants[variant_idx];
-                        self.variant_check_valid(lvalue, ty, variant, subst, outer_mutbl)
+                        self.validate_variant(lvalue, ty, variant, subst, outer_mutbl)
                     }
                     AdtKind::Struct => {
-                        self.variant_check_valid(lvalue, ty, adt.struct_variant(), subst, outer_mutbl)
+                        self.validate_variant(lvalue, ty, adt.struct_variant(), subst, outer_mutbl)
                     }
                     AdtKind::Union => {
                         // No guarantees are provided for union types.
