@@ -1461,8 +1461,8 @@ fn rewrite_match(
     let cond_str = try_opt!(cond.rewrite(context, cond_shape));
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let block_sep = match context.config.control_brace_style() {
-        ControlBraceStyle::AlwaysSameLine => " ",
-        _ => alt_block_sep.as_str(),
+        ControlBraceStyle::AlwaysNextLine => alt_block_sep.as_str(),
+        _ => " ",
     };
     let mut result = format!("match {}{}{{", cond_str, block_sep);
 
