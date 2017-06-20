@@ -143,6 +143,10 @@ extern crate std_unicode;
 #[macro_use]
 mod macros;
 
+// Allocator trait and helper struct definitions
+
+pub mod allocator;
+
 // Heaps provided for low-level allocation strategies
 
 pub mod heap;

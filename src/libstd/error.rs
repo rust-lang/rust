@@ -51,6 +51,7 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
+use alloc::allocator;
 use any::TypeId;
 use cell;
 use char;
@@ -219,6 +220,24 @@ impl<'a> From<&'a str> for Box<Error> {
 #[unstable(feature = "never_type_impls", issue = "35121")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
+}
+
+#[unstable(feature = "allocator_api",
+           reason = "the precise API and guarantees it provides may be tweaked.",
+           issue = "27700")]
+impl Error for allocator::AllocErr {
+    fn description(&self) -> &str {
+        allocator::AllocErr::description(self)
+    }
+}
+
+#[unstable(feature = "allocator_api",
+           reason = "the precise API and guarantees it provides may be tweaked.",
+           issue = "27700")]
+impl Error for allocator::CannotReallocInPlace {
+    fn description(&self) -> &str {
+        allocator::CannotReallocInPlace::description(self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
