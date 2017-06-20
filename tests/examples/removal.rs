@@ -1,7 +1,7 @@
 pub mod old {
     pub struct Abc;
 
-    pub struct Bce;
+    pub struct Bcd;
 
     pub mod a {
 
@@ -14,9 +14,10 @@ pub mod old {
 
 pub mod new {
     #[allow(dead_code)]
-    struct Bce;
+    struct Bcd;
 
     mod b {
-
+        #[allow(dead_code)]
+        pub struct Cde;
     }
 }

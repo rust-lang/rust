@@ -118,21 +118,38 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
         for (_, items) in children.drain() {
             match items {
                 (Some(Export { def: Mod(o), .. }), Some(Export { def: Mod(n), .. })) => {
-                    // TODO: handle private modules correctly!
-                    if !visited.insert((o, n)) {
+                    if visited.insert((o, n)) {
+                        let o_vis = cstore.visibility(o);
+                        let n_vis = cstore.visibility(n);
+
+                        if o_vis != n_vis {
+                            // TODO: ugly
+                            changes.new_binary(items.0.unwrap(), items.1.unwrap(), true);
+
+                            if o_vis == Public && n_vis != Public {
+                                changes.add_binary(ItemMadePrivate, o, None);
+                            } else if o_vis != Public && n_vis == Public {
+                                changes.add_binary(ItemMadePublic, o, None);
+                            }
+                        }
+
                         mod_queue.push_back((o, n));
                     }
                 }
                 (Some(o), Some(n)) => {
                     if !id_mapping.add_export(o, n) {
-                        let old_vis = cstore.visibility(o.def.def_id());
-                        let new_vis = cstore.visibility(n.def.def_id());
-                        changes.new_binary(o, n);
-                        if old_vis == Public && new_vis != Public {
+                        let o_vis = cstore.visibility(o.def.def_id());
+                        let n_vis = cstore.visibility(n.def.def_id());
+
+                        let output = o_vis == Public || n_vis == Public;
+                        changes.new_binary(o, n, output);
+
+                        if o_vis == Public && n_vis != Public {
                             changes.add_binary(ItemMadePrivate, o.def.def_id(), None);
-                        } else if old_vis != Public && new_vis == Public {
+                        } else if o_vis != Public && n_vis == Public {
                             changes.add_binary(ItemMadePublic, o.def.def_id(), None);
                         }
+
                         diff_item_structures(&mut changes, &mut id_mapping, tcx, o, n);
                     }
                 }

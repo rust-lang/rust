@@ -213,16 +213,19 @@ pub struct BinaryChange {
     old: Export,
     /// The new export of the change item.
     new: Export,
+    /// Whether to output changes. Used to distinguish all-private items.
+    output: bool
 }
 
 impl BinaryChange {
     /// Construct a new empty change record for an item.
-    fn new(old: Export, new: Export) -> BinaryChange {
+    fn new(old: Export, new: Export, output: bool) -> BinaryChange {
         BinaryChange {
             changes: BTreeSet::new(),
             max: ChangeCategory::default(),
             old: old,
             new: new,
+            output: output,
         }
     }
 
@@ -254,7 +257,7 @@ impl BinaryChange {
 
     /// Report the change.
     fn report(&self, session: &Session) {
-        if self.max == Patch {
+        if self.max == Patch || !self.output {
             return;
         }
 
@@ -270,12 +273,11 @@ impl BinaryChange {
                 } else {
                     builder.span_note(span, &sub_msg,);
                 }
+            // change.1 == None from here on.
+            } else if cat == Breaking {
+                builder.warn(&sub_msg);
             } else {
-                if cat == Breaking {
-                    builder.warn(&sub_msg);
-                } else {
-                    builder.note(&sub_msg);
-                }
+                builder.note(&sub_msg);
             }
         }
 
@@ -327,8 +329,8 @@ impl Change {
     }
 
     /// Construct a new binary change for the given exports.
-    fn new_binary(old: Export, new: Export) -> Change {
-        Change::Binary(BinaryChange::new(old, new))
+    fn new_binary(old: Export, new: Export, output: bool) -> Change {
+        Change::Binary(BinaryChange::new(old, new, output))
     }
 
     /// Add a change type to a given binary change.
@@ -410,9 +412,9 @@ impl ChangeSet {
     }
 
     /// Add a new binary change entry for the given exports.
-    pub fn new_binary(&mut self, old: Export, new: Export) {
+    pub fn new_binary(&mut self, old: Export, new: Export, output: bool) {
         let key = ChangeKey::OldKey(old.def.def_id());
-        let change = Change::new_binary(old, new);
+        let change = Change::new_binary(old, new, output);
 
         self.spans.insert(*change.span(), key.clone());
         self.changes.insert(key, change);
@@ -578,7 +580,7 @@ pub mod tests {
             span: s2,
         };
 
-        let mut change = BinaryChange::new(export1, export2);
+        let mut change = BinaryChange::new(export1, export2, true);
         change.add(t, Some(s1));
 
         change
