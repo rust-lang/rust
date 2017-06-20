@@ -834,6 +834,7 @@ mod trace {
     use self::ty::maps::QueryMsg;
     use std::fs::File;
     use std::time::{Duration, Instant};
+    use std::collections::hash_map::HashMap;
 
     #[derive(Debug,Clone,Eq,PartialEq)]
     pub struct Query {
@@ -957,17 +958,43 @@ mod trace {
                    dur_css_classes,
                    frc_css_classes,
             ).unwrap();
-            write!(file, "{}\n", eff_text).unwrap();
+            write!(file, "<div class=\"eff\">{}</div>\n", eff_text).unwrap();
             write!(file, "<div class=\"dur\">{}</div>\n", dur_text).unwrap();
-            write!(file, "{}\n", frc_text).unwrap();
+            write!(file, "<div class=\"frc\">{}</div>\n", frc_text).unwrap();
             write_traces_rec(file, &t.extent, total, depth + 1);
             write!(file, "</div>\n").unwrap();
         }
     }
 
-    pub fn write_traces(html_file:&mut File, _counts_file:&mut File, traces:&Vec<Rec>) {
+    fn compute_counts_rec(counts: &mut HashMap<String,usize>, traces:&Vec<Rec>) {
+        for t in traces.iter() {
+            match t.effect {
+                Effect::QueryBegin(ref qmsg, ref _cc) => {
+                    let qcons = cons_of_query_msg(qmsg);
+                    let c = match counts.get(&qcons) {
+                        Some(c) => c + 1,
+                        None => 1
+                    };
+                    counts.insert(qcons, c);
+                }
+            }
+            compute_counts_rec(counts, &t.extent)
+        }
+    }
+
+    pub fn write_counts(count_file:&mut File, counts:&mut HashMap<String,usize>) {
+        for (ref cons, ref count) in counts.iter() {
+            write!(count_file, "{},{}\n", cons, count).unwrap();
+        }
+    }
+
+    pub fn write_traces(html_file:&mut File, counts_file:&mut File, traces:&Vec<Rec>) {
         // FIXME(matthewhammer): Populate counts_file with counts for
         // each constructor (a histogram of constructor occurrences)
+        let mut counts : HashMap<String,usize> = HashMap::new();
+        compute_counts_rec(&mut counts, traces);
+        write_counts(counts_file, &mut counts);
+
         let total : Duration = total_duration(traces);
         write_traces_rec(html_file, traces, total, 0)
     }
