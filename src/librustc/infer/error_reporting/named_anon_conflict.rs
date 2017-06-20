@@ -15,6 +15,7 @@ use ty::{self, Region};
 use infer::region_inference::RegionResolutionError::*;
 use infer::region_inference::RegionResolutionError;
 use hir::map as hir_map;
+use hir::def_id::DefId;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // This method walks the Type of the function body arguments using
@@ -24,13 +25,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // Currently only the case where the function declaration consists of
     // one named region and one anonymous region is handled.
     // Consider the example `fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32`
-    // Here, we would return the hir::Arg for y, and we return the type &'a
+    // Here, we would return the hir::Arg for y, we return the type &'a
     // i32, which is the type of y but with the anonymous region replaced
-    // with 'a.
+    // with 'a and also the corresponding bound region.
     fn find_arg_with_anonymous_region(&self,
                                       anon_region: Region<'tcx>,
                                       named_region: Region<'tcx>)
-                                      -> Option<(&hir::Arg, ty::Ty<'tcx>)> {
+                                      -> Option<(&hir::Arg, ty::Ty<'tcx>, ty::BoundRegion)> {
 
         match *anon_region {
             ty::ReFree(ref free_region) => {
@@ -55,7 +56,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                           r
                                                       });
                                     if found_anon_region {
-                                        return Some((arg, new_arg_ty));
+                                        return Some((arg, new_arg_ty, free_region.bound_region));
                                     } else {
                                         None
                                     }
@@ -85,14 +86,35 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
-        let (named, (arg, new_ty)) =
-            if self.is_named_region(sub) && self.is_suitable_anonymous_region(sup) {
-                (sub, self.find_arg_with_anonymous_region(sup, sub).unwrap())
-            } else if self.is_named_region(sup) && self.is_suitable_anonymous_region(sub) {
-                (sup, self.find_arg_with_anonymous_region(sub, sup).unwrap())
+        let (named, (arg, new_ty, br), scope_def_id) =
+            if self.is_named_region(sub) && self.is_suitable_anonymous_region(sup).is_some() {
+                (sub,
+                 self.find_arg_with_anonymous_region(sup, sub).unwrap(),
+                 self.is_suitable_anonymous_region(sup).unwrap())
+            } else if self.is_named_region(sup) &&
+                      self.is_suitable_anonymous_region(sub).is_some() {
+                (sup,
+                 self.find_arg_with_anonymous_region(sub, sup).unwrap(),
+                 self.is_suitable_anonymous_region(sub).unwrap())
             } else {
                 return false; // inapplicable
             };
+
+        // Here, we check for the case where the anonymous region
+        // is in the return type.
+        // FIXME(#42703) - Need to handle certain cases here.
+        let ret_ty = self.tcx.type_of(scope_def_id);
+        match ret_ty.sty {
+            ty::TyFnDef(_, _, sig) => {
+                let late_bound_regions = self.tcx
+                    .collect_referenced_late_bound_regions(&sig.output());
+                if late_bound_regions.iter().any(|r| *r == br) {
+                    return false;
+                } else {
+                }
+            }
+            _ => {}
+        }
 
         if let Some(simple_name) = arg.pat.simple_name() {
             struct_span_err!(self.tcx.sess,
@@ -122,7 +144,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     // This method returns whether the given Region is Anonymous
-    pub fn is_suitable_anonymous_region(&self, region: Region<'tcx>) -> bool {
+    // and returns the DefId corresponding to the region.
+    pub fn is_suitable_anonymous_region(&self, region: Region<'tcx>) -> Option<DefId> {
 
         match *region {
             ty::ReFree(ref free_region) => {
@@ -147,20 +170,20 @@ associated_item(anonymous_region_binding_scope).container.id()).is_some() {
                                     // since the signature must match the trait.
                                     //
                                     // FIXME(#42706) -- in some cases, we could do better here.
-                                    return false;//None;
+                                    return None;
                                 }
                               else{  }
 
                             }
-                            _ => return false, // inapplicable
+                            _ => return None, // inapplicable
                             // we target only top-level functions
                         }
-                        return true;
+                        return Some(anonymous_region_binding_scope);
                     }
-                    _ => false,
+                    _ => None,
                 }
             }
-            _ => false,
+            _ => None,
         }
     }
 }

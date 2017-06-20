@@ -13,9 +13,9 @@ struct Foo {
 }
 
 impl Foo {
-  fn foo<'a>(&'a self, x: &i32) -> &i32 {
+  fn foo<'a>(&self, x: &'a i32) -> &i32 {
 
-    if true { &self.field } else { x }
+    x
 
   }
 

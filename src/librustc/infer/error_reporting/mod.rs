@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         for error in errors {
 
             debug!("report_region_errors: error = {:?}", error);
-            
+
             if !self.try_report_named_anon_conflict(&error){
 
                match error.clone() {
