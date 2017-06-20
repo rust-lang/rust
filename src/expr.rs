@@ -1478,6 +1478,7 @@ fn rewrite_match(
         .codemap
         .span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])), "{");
 
+    let arm_num = arms.len();
     for (i, arm) in arms.iter().enumerate() {
         // Make sure we get the stuff between arms.
         let missed_str = if i == 0 {
@@ -1497,12 +1498,21 @@ fn rewrite_match(
 
         let arm_str = arm.rewrite(&context, arm_shape.with_max_width(context.config));
         if let Some(ref arm_str) = arm_str {
-            result.push_str(arm_str);
+            // Trim the trailing comma if necessary.
+            if i == arm_num - 1 && context.config.trailing_comma() == SeparatorTactic::Never &&
+                arm_str.ends_with(',')
+            {
+                result.push_str(&arm_str[0..arm_str.len() - 1])
+            } else {
+                result.push_str(arm_str)
+            }
         } else {
             // We couldn't format the arm, just reproduce the source.
             let snippet = context.snippet(mk_sp(arm_start_pos(arm), arm_end_pos(arm)));
             result.push_str(&snippet);
-            result.push_str(arm_comma(context.config, &arm.body));
+            if context.config.trailing_comma() != SeparatorTactic::Never {
+                result.push_str(arm_comma(context.config, &arm.body))
+            }
         }
     }
     // BytePos(1) = closing match brace.

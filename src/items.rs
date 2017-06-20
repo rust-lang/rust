@@ -2267,12 +2267,12 @@ fn rewrite_args(
         IndentStyle::Block => {
             (
                 indent.block_indent(context.config),
-                SeparatorTactic::Vertical,
+                context.config.trailing_comma(),
                 true,
             )
         }
         IndentStyle::Visual if last_line_ends_with_comment => {
-            (arg_indent, SeparatorTactic::Vertical, true)
+            (arg_indent, context.config.trailing_comma(), true)
         }
         IndentStyle::Visual => (arg_indent, SeparatorTactic::Never, false),
     };
@@ -2564,7 +2564,7 @@ fn rewrite_where_clause_rfc_style(
     let comma_tactic = if suppress_comma {
         SeparatorTactic::Never
     } else {
-        SeparatorTactic::Always
+        context.config.trailing_comma()
     };
 
     let fmt = ListFormatting {
