@@ -10,6 +10,7 @@
 
 use std::{char,str};
 use std::convert::TryFrom;
+use std::str::FromStr;
 
 #[test]
 fn test_convert() {
@@ -26,6 +27,16 @@ fn test_convert() {
     assert_eq!(char::try_from(0x10FFFF_u32), Ok('\u{10FFFF}'));
     assert!(char::try_from(0x110000_u32).is_err());
     assert!(char::try_from(0xFFFF_FFFF_u32).is_err());
+}
+
+#[test]
+fn test_from_str() {
+    assert_eq!(char::from_str("a").unwrap(), 'a');
+    assert_eq!(char::try_from("a").unwrap(), 'a');
+    assert_eq!(char::from_str("\0").unwrap(), '\0');
+    assert_eq!(char::from_str("\u{D7FF}").unwrap(), '\u{d7FF}');
+    assert!(char::from_str("").is_err());
+    assert!(char::from_str("abc").is_err());
 }
 
 #[test]

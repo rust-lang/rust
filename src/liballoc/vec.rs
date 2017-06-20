@@ -2124,10 +2124,12 @@ impl<T> From<Box<[T]>> for Vec<T> {
     }
 }
 
-#[stable(feature = "box_from_vec", since = "1.18.0")]
-impl<T> Into<Box<[T]>> for Vec<T> {
-    fn into(self) -> Box<[T]> {
-        self.into_boxed_slice()
+// note: test pulls in libstd, which causes errors here
+#[cfg(not(test))]
+#[stable(feature = "box_from_vec", since = "1.20.0")]
+impl<T> From<Vec<T>> for Box<[T]> {
+    fn from(v: Vec<T>) -> Box<[T]> {
+        v.into_boxed_slice()
     }
 }
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::adjustment;
 use util::nodemap::FxHashMap;
@@ -144,20 +145,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             ty::TyTuple(ref tys, _) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyBool => return,
-            ty::TyAdt(def, _) => {
-                let attrs = cx.tcx.get_attrs(def.did);
-                check_must_use(cx, &attrs, s.span)
-            }
+            ty::TyAdt(def, _) => check_must_use(cx, def.did, s.span),
             _ => false,
         };
         if !warned {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
-        fn check_must_use(cx: &LateContext, attrs: &[ast::Attribute], sp: Span) -> bool {
-            for attr in attrs {
+        fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span) -> bool {
+            for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name("must_use") {
-                    let mut msg = "unused result which must be used".to_string();
+                    let mut msg = format!("unused `{}` which must be used",
+                                          cx.tcx.item_path_str(def_id));
                     // check for #[must_use="..."]
                     if let Some(s) = attr.value_str() {
                         msg.push_str(": ");

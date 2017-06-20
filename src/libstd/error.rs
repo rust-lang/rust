@@ -340,6 +340,14 @@ impl Error for char::CharTryFromError {
     }
 }
 
+#[stable(feature = "char_from_str", since = "1.19.0")]
+impl Error for char::ParseCharError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
+
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`

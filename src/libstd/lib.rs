@@ -254,6 +254,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_target_vendor)]
 #![feature(char_escape_debug)]
+#![feature(char_error_internals)]
 #![feature(char_internals)]
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]

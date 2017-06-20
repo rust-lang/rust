@@ -523,7 +523,10 @@ impl<'a> Resolver<'a> {
         };
 
         let kind = ModuleKind::Def(Def::Mod(def_id), name);
-        self.arenas.alloc_module(ModuleData::new(parent, kind, def_id, Mark::root(), DUMMY_SP))
+        let module =
+            self.arenas.alloc_module(ModuleData::new(parent, kind, def_id, Mark::root(), DUMMY_SP));
+        self.extern_module_map.insert((def_id, macros_only), module);
+        module
     }
 
     pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
