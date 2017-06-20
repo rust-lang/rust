@@ -152,3 +152,14 @@ fn issue_1004() {
             })
             ?;
 }
+
+fn issue1392() {
+    test_method(r#"
+        if foo {
+            a();
+        }
+        else {
+            b();
+        }
+        "#.trim());
+}

@@ -169,3 +169,16 @@ fn issue_1004() {
         in_binder(f, tcx, &ty::Binder(""), Some(tap))
     })?;
 }
+
+fn issue1392() {
+    test_method(
+        r#"
+        if foo {
+            a();
+        }
+        else {
+            b();
+        }
+        "#.trim(),
+    );
+}
