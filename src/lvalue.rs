@@ -189,7 +189,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return Ok(val);
         }
         let lvalue = self.eval_lvalue(lvalue)?;
+        self.read_lvalue(lvalue, ty)
+    }
 
+    fn read_lvalue(&self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if ty.is_never() {
             return Err(EvalError::Unreachable);
         }
@@ -219,7 +222,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Lvalue::Global(GlobalId { instance, promoted: None })
             }
 
-            Projection(ref proj) => return self.eval_lvalue_projection(proj),
+            Projection(ref proj) => {
+                let ty = self.lvalue_ty(&proj.base);
+                let lvalue = self.eval_lvalue(&proj.base)?;
+                return self.eval_lvalue_projection(lvalue, ty, &proj.elem);
+            }
         };
 
         if log_enabled!(::log::LogLevel::Trace) {
@@ -348,19 +355,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn eval_lvalue_projection(
         &mut self,
-        proj: &mir::LvalueProjection<'tcx>,
+        base: Lvalue<'tcx>,
+        base_ty: Ty<'tcx>,
+        proj_elem: &mir::ProjectionElem<'tcx, mir::Operand<'tcx>>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
         use rustc::mir::ProjectionElem::*;
-        let (ptr, extra, aligned) = match proj.elem {
+        let (ptr, extra, aligned) = match *proj_elem {
             Field(field, field_ty) => {
-                let base = self.eval_lvalue(&proj.base)?;
-                let base_ty = self.lvalue_ty(&proj.base);
                 return self.lvalue_field(base, field.index(), base_ty, field_ty);
             }
 
             Downcast(_, variant) => {
-                let base = self.eval_lvalue(&proj.base)?;
-                let base_ty = self.lvalue_ty(&proj.base);
                 let base_layout = self.type_layout(base_ty)?;
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
@@ -376,8 +381,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Deref => {
-                let base_ty = self.lvalue_ty(&proj.base);
-                let val = self.eval_and_read_lvalue(&proj.base)?;
+                let val = self.read_lvalue(base, base_ty)?;
 
                 let pointee_type = match base_ty.sty {
                     ty::TyRawPtr(ref tam) |
@@ -402,8 +406,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Index(ref operand) => {
-                let base = self.eval_lvalue(&proj.base)?;
-                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _, aligned) = base.to_ptr_extra_aligned();
@@ -419,8 +421,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             ConstantIndex { offset, min_length, from_end } => {
-                let base = self.eval_lvalue(&proj.base)?;
-                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _, aligned) = base.to_ptr_extra_aligned();
@@ -440,8 +440,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Subslice { from, to } => {
-                let base = self.eval_lvalue(&proj.base)?;
-                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _, aligned) = base.to_ptr_extra_aligned();
