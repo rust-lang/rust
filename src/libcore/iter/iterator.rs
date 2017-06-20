@@ -482,6 +482,52 @@ pub trait Iterator {
         Map{iter: self, f: f}
     }
 
+    /// Calls a closure on each element of an iterator.
+    ///
+    /// This is equivalent to using a [`for`] loop on the iterator, although
+    /// `break` and `continue` are not possible from a closure.  It's generally
+    /// more idiomatic to use a `for` loop, but `for_each` may be more legible
+    /// when processing items at the end of longer iterator chains.
+    ///
+    /// [`for`]: ../../book/first-edition/loops.html#for
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_for_each)]
+    ///
+    /// let mut v = vec![];
+    /// (0..5).for_each(|x| v.push(x * 100));
+    ///
+    /// let mut v2 = vec![];
+    /// for x in 0..5 { v2.push(x * 100); }
+    ///
+    /// assert_eq!(v, v2);
+    /// ```
+    ///
+    /// For such a small example, the `for` loop is cleaner, but `for_each`
+    /// might be preferable to keep a functional style with longer iterators:
+    ///
+    /// ```
+    /// #![feature(iterator_for_each)]
+    ///
+    /// (0..5).flat_map(|x| x * 100 .. x * 110)
+    ///       .enumerate()
+    ///       .filter(|&(i, x)| (i + x) % 3 == 0)
+    ///       .for_each(|(i, x)| println!("{}:{}", i, x));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_for_each", issue = "0")]
+    fn for_each<F>(self, mut f: F) where
+        Self: Sized, F: FnMut(Self::Item),
+    {
+        for item in self {
+            f(item);
+        }
+    }
+
     /// Creates an iterator which uses a closure to determine if an element
     /// should be yielded.
     ///
