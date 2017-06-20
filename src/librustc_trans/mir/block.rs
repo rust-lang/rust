@@ -146,6 +146,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             } else {
                 let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
                 fn_ty.apply_attrs_callsite(llret);
+                if this.mir[bb].is_cleanup {
+                    // Cleanup is always the cold path. Don't inline
+                    // drop glue. Also, when there is a deeply-nested
+                    // struct, there are "symmetry" issues that cause
+                    // exponential inlining - see issue #41696.
+                    llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
+                }
 
                 if let Some((ret_dest, ret_ty, target)) = destination {
                     let op = OperandRef {
