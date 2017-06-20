@@ -17,7 +17,7 @@ use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wr
             trimmed_last_line_width, colon_spaces, mk_sp};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
             DefinitiveListTactic, ListTactic, definitive_tactic};
-use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
+use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, ExprType};
 use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
@@ -352,7 +352,9 @@ impl<'a> FmtVisitor<'a> {
                         Some(e) => {
                             let suffix = if semicolon_for_expr(e) { ";" } else { "" };
 
-                            e.rewrite(
+                            format_expr(
+                                &e,
+                                ExprType::Statement,
                                 &self.get_context(),
                                 Shape::indented(self.block_indent, self.config),
                             ).map(|s| s + suffix)

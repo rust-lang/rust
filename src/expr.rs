@@ -42,7 +42,7 @@ impl Rewrite for ast::Expr {
 }
 
 #[derive(PartialEq)]
-enum ExprType {
+pub enum ExprType {
     Statement,
     SubExpression,
 }
@@ -67,7 +67,7 @@ fn combine_attr_and_expr(
     format!("{}{}{}", attr_str, separator, expr_str)
 }
 
-fn format_expr(
+pub fn format_expr(
     expr: &ast::Expr,
     expr_type: ExprType,
     context: &RewriteContext,
@@ -160,7 +160,23 @@ fn format_expr(
             to_control_flow(expr, expr_type)
                 .and_then(|control_flow| control_flow.rewrite(context, shape))
         }
-        ast::ExprKind::Block(ref block) => block.rewrite(context, shape),
+        ast::ExprKind::Block(ref block) => {
+            match expr_type {
+                ExprType::Statement => {
+                    if is_unsafe_block(block) {
+                        block.rewrite(context, shape)
+                    } else {
+                        // Rewrite block without trying to put it in a single line.
+                        if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
+                            return rw;
+                        }
+                        let prefix = try_opt!(block_prefix(context, block, shape));
+                        rewrite_block_with_visitor(context, &prefix, block, shape)
+                    }
+                }
+                ExprType::SubExpression => block.rewrite(context, shape),
+            }
+        }
         ast::ExprKind::Match(ref cond, ref arms) => {
             rewrite_match(context, cond, arms, shape, expr.span)
         }
@@ -1280,7 +1296,12 @@ impl<'a> Rewrite for ControlFlow<'a> {
         };
         let mut block_context = context.clone();
         block_context.is_if_else_block = self.else_block.is_some();
-        let block_str = try_opt!(self.block.rewrite(&block_context, block_shape));
+        let block_str = try_opt!(rewrite_block_with_visitor(
+            &block_context,
+            "",
+            self.block,
+            block_shape,
+        ));
 
         let mut result = format!("{}{}", cond_str, block_str);
 
@@ -1322,7 +1343,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         width: min(1, shape.width),
                         ..shape
                     };
-                    else_block.rewrite(context, else_shape)
+                    format_expr(else_block, ExprType::Statement, context, else_shape)
                 }
             };
 
@@ -1689,7 +1710,10 @@ impl Rewrite for ast::Arm {
                 .unwrap()
                 .sub_width(comma.len())
                 .unwrap();
-            let rewrite = nop_block_collapse(body.rewrite(context, arm_shape), arm_shape.width);
+            let rewrite = nop_block_collapse(
+                format_expr(body, ExprType::Statement, context, arm_shape),
+                arm_shape.width,
+            );
             let is_block = if let ast::ExprKind::Block(..) = body.node {
                 true
             } else {
@@ -1724,7 +1748,7 @@ impl Rewrite for ast::Arm {
         // necessary.
         let body_shape = try_opt!(shape.block_left(context.config.tab_spaces()));
         let next_line_body = try_opt!(nop_block_collapse(
-            body.rewrite(context, body_shape),
+            format_expr(body, ExprType::Statement, context, body_shape),
             body_shape.width,
         ));
         let indent_str = shape
