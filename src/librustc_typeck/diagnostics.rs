@@ -226,8 +226,10 @@ size of trait implementors isn't fixed, this type has no compile-time size.
 Therefore, all accesses to trait types must be through pointers. If you
 encounter this error you should try to avoid dereferencing the pointer.
 
-```ignore
-let trait_obj: &SomeTrait = ...;
+```compile_fail,E0033
+# trait SomeTrait { fn method_one(&self){} fn method_two(&self){} }
+# impl<T> SomeTrait for T {}
+let trait_obj: &SomeTrait = &"some_value";
 
 // This tries to implicitly dereference to create an unsized local variable.
 let &invalid = trait_obj;
@@ -407,7 +409,11 @@ fn main() {
 
 Please note on the last example that we could have called `method` like this:
 
-```ignore
+```
+# struct Test;
+# impl Test { fn method<T>(&self, v: &[T]) -> usize { v.len() } }
+# let x = Test;
+# let v = &[0];
 x.method(v);
 ```
 "##,
@@ -684,9 +690,8 @@ External C functions are allowed to be variadic. However, a variadic function
 takes a minimum number of arguments. For example, consider C's variadic `printf`
 function:
 
-```ignore
-extern crate libc;
-use libc::{ c_char, c_int };
+```
+use std::os::raw::{c_char, c_int};
 
 extern "C" {
     fn printf(_: *const c_char, ...) -> c_int;
@@ -696,16 +701,35 @@ extern "C" {
 Using this declaration, it must be called with at least one argument, so
 simply calling `printf()` is invalid. But the following uses are allowed:
 
-```ignore
+```
+# #![feature(static_nobundle)]
+# use std::os::raw::{c_char, c_int};
+# #[cfg_attr(all(windows, target_env = "msvc"),
+#            link(name = "legacy_stdio_definitions", kind = "static-nobundle"))]
+# extern "C" { fn printf(_: *const c_char, ...) -> c_int; }
+# fn main() {
 unsafe {
     use std::ffi::CString;
 
-    printf(CString::new("test\n").unwrap().as_ptr());
-    printf(CString::new("number = %d\n").unwrap().as_ptr(), 3);
-    printf(CString::new("%d, %d\n").unwrap().as_ptr(), 10, 5);
+    let fmt = CString::new("test\n").unwrap();
+    printf(fmt.as_ptr());
+
+    let fmt = CString::new("number = %d\n").unwrap();
+    printf(fmt.as_ptr(), 3);
+
+    let fmt = CString::new("%d, %d\n").unwrap();
+    printf(fmt.as_ptr(), 10, 5);
 }
+# }
 ```
 "##,
+// ^ Note: On MSVC 2015, the `printf` function is "inlined" in the C code, and
+// the C runtime does not contain the `printf` definition. This leads to linker
+// error from the doc test (issue #42830).
+// This can be fixed by linking to the static library
+// `legacy_stdio_definitions.lib` (see https://stackoverflow.com/a/36504365/).
+// If this compatibility library is removed in the future, consider changing
+// `printf` in this example to another well-known variadic function.
 
 E0061: r##"
 The number of arguments passed to a function must match the number of arguments
@@ -924,13 +948,15 @@ fn main() {
 "##,
 
 E0073: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 You cannot define a struct (or enum) `Foo` that requires an instance of `Foo`
 in order to make a new `Foo` value. This is because there would be no way a
 first instance of `Foo` could be made to initialize another instance!
 
 Here's an example of a struct that has this problem:
 
-```ignore
+```
 struct Foo { x: Box<Foo> } // error
 ```
 
@@ -944,6 +970,8 @@ Now it's possible to create at least one instance of `Foo`: `Foo { x: None }`.
 "##,
 
 E0074: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 When using the `#[simd]` attribute on a tuple struct, the components of the
 tuple struct must all be of a concrete, nongeneric type so the compiler can
 reason about how to use SIMD with them. This error will occur if the types
@@ -951,7 +979,7 @@ are generic.
 
 This will cause an error:
 
-```ignore
+```
 #![feature(repr_simd)]
 
 #[repr(simd)]
@@ -1078,13 +1106,16 @@ encountered, so a conflict occurs.
 "##,
 
 E0082: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 When you specify enum discriminants with `=`, the compiler expects `isize`
 values by default. Or you can add the `repr` attibute to the enum declaration
 for an explicit choice of the discriminant type. In either cases, the
 discriminant values must fall within a valid range for the expected type;
 otherwise this error is raised. For example:
 
-```ignore
+```compile_fail
+# #![deny(overflowing_literals)]
 #[repr(u8)]
 enum Thing {
     A = 1024,
@@ -1095,7 +1126,8 @@ enum Thing {
 Here, 1024 lies outside the valid range for `u8`, so the discriminant for `A` is
 invalid. Here is another, more subtle example which depends on target word size:
 
-```ignore
+```compile_fail,E0080
+# #[repr(i32)]
 enum DependsOnPointerSize {
     A = 1 << 32,
 }
@@ -1448,11 +1480,12 @@ impl Drop for u32 {}
 To avoid this kind of error, ensure that at least one local type is referenced
 by the `impl`:
 
-```ignore
+```
 pub struct Foo; // you define your type in your crate
 
 impl Drop for Foo { // and you can implement the trait on it!
     // code of trait implementation here
+#   fn drop(&mut self) { }
 }
 
 impl From<Foo> for i32 { // or you use a type from your crate as
@@ -1644,7 +1677,8 @@ It is not possible to declare type parameters on a function that has the `start`
 attribute. Such a function must have the following type signature (for more
 information: http://doc.rust-lang.org/stable/book/first-edition/no-stdlib.html):
 
-```ignore
+```
+# let _:
 fn(isize, *const *const u8) -> isize;
 ```
 
@@ -1812,10 +1846,12 @@ information see the [opt-in builtin traits RFC][RFC 19].
 "##,
 
 E0193: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 `where` clauses must use generic type parameters: it does not make sense to use
 them otherwise. An example causing this error:
 
-```ignore
+```
 trait Foo {
     fn bar(&self);
 }
@@ -2265,17 +2301,20 @@ If `ForeignTrait` is a trait defined in some external crate `foo`, then the
 following trait `impl` is an error:
 
 ```compile_fail,E0210
-extern crate alloc;
-use alloc::range::RangeArgument;
+# #[cfg(for_demonstration_only)]
+extern crate foo;
+# #[cfg(for_demonstration_only)]
+use foo::ForeignTrait;
+# use std::panic::UnwindSafe as ForeignTrait;
 
-impl<T> RangeArgument<T> for T { } // error
-
-fn main() {}
+impl<T> ForeignTrait for T { } // error
+# fn main() {}
 ```
 
 To work around this, it can be covered with a local type, `MyType`:
 
-```ignore
+```
+# use std::panic::UnwindSafe as ForeignTrait;
 struct MyType<T>(T);
 impl<T> ForeignTrait for MyType<T> { } // Ok
 ```
@@ -2286,7 +2325,7 @@ For another example of an error, suppose there's another trait defined in `foo`
 named `ForeignTrait2` that takes two type parameters. Then this `impl` results
 in the same rule violation:
 
-```compile_fail
+```ignore (cannot-doctest-multicrate-project)
 struct MyType2;
 impl<T> ForeignTrait2<T, MyType<T>> for MyType2 { } // error
 ```
@@ -2297,7 +2336,7 @@ is uncovered, and so runs afoul of the orphan rule.
 
 Consider one more example:
 
-```ignore
+```ignore (cannot-doctest-multicrate-project)
 impl<T> ForeignTrait2<MyType<T>, T> for MyType2 { } // Ok
 ```
 
@@ -2308,7 +2347,7 @@ violate the orphan rule; it is permitted.
 To see why that last example was allowed, you need to understand the general
 rule. Unfortunately this rule is a bit tricky to state. Consider an `impl`:
 
-```ignore
+```ignore (only-for-syntax-highlight)
 impl<P1, ..., Pm> ForeignTrait<T1, ..., Tn> for T0 { ... }
 ```
 
@@ -2590,13 +2629,17 @@ fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
 To solve this error, please move the type bindings in the type parameter
 declaration:
 
-```ignore
+```
+# struct Bar;
+# trait Foo { type A; }
 fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
 ```
 
 Or in the `where` clause:
 
-```ignore
+```
+# struct Bar;
+# trait Foo { type A; }
 fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
 ```
 "##,
@@ -2935,12 +2978,19 @@ impl<T, U> CoerceUnsized<MyType<U>> for MyType<T>
 [`CoerceUnsized`]: https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html
 "##,
 
+/*
+// Associated consts can now be accessed through generic type parameters, and
+// this error is no longer emitted.
+//
+// FIXME: consider whether to leave it in the error index, or remove it entirely
+//        as associated consts is not stabilized yet.
+
 E0329: r##"
 An attempt was made to access an associated constant through either a generic
 type parameter or `Self`. This is not supported yet. An example causing this
 error is shown below:
 
-```ignore
+```
 #![feature(associated_consts)]
 
 trait Foo {
@@ -2961,7 +3011,7 @@ fn get_bar_bad<F: Foo>(t: F) -> f64 {
 Currently, the value of `BAR` for a particular type can only be accessed
 through a concrete type, as shown below:
 
-```ignore
+```
 #![feature(associated_consts)]
 
 trait Foo {
@@ -2975,6 +3025,7 @@ fn get_bar_good() -> f64 {
 }
 ```
 "##,
+*/
 
 E0366: r##"
 An attempt was made to implement `Drop` on a concrete specialization of a

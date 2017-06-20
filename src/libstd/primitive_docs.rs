@@ -320,7 +320,7 @@ mod prim_pointer { }
 ///
 /// An array itself is not iterable:
 ///
-/// ```ignore
+/// ```compile_fail,E0277
 /// let array: [i32; 3] = [0; 3];
 ///
 /// for x in array { }
@@ -480,8 +480,10 @@ mod prim_str { }
 /// Tuples are *heterogeneous*. This means that each element of the tuple can
 /// have a different type. In that tuple above, it has the type:
 ///
-/// ```rust,ignore
+/// ```
+/// # let _:
 /// (&'static str, i32, char)
+/// # = ("hello", 5, 'c');
 /// ```
 ///
 /// Tuples are a *sequence*. This means that they can be accessed by position;

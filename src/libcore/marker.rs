@@ -434,7 +434,7 @@ macro_rules! impls{
 /// example, here is a struct `Slice` that has two pointers of type `*const T`,
 /// presumably pointing into an array somewhere:
 ///
-/// ```ignore
+/// ```compile_fail,E0392
 /// struct Slice<'a, T> {
 ///     start: *const T,
 ///     end: *const T,
