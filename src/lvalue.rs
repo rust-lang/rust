@@ -66,10 +66,11 @@ pub struct Global<'tcx> {
 impl<'tcx> Lvalue<'tcx> {
     /// Produces an Lvalue that will error if attempted to be read from
     pub fn undef() -> Self {
-        Lvalue::Ptr {
-            ptr: PrimVal::Undef,
-            extra: LvalueExtra::None,
-        }
+        Self::from_primval_ptr(PrimVal::Undef)
+    }
+
+    fn from_primval_ptr(ptr: PrimVal) -> Self {
+        Lvalue::Ptr { ptr, extra: LvalueExtra::None }
     }
 
     pub fn zst() -> Self {
@@ -77,7 +78,7 @@ impl<'tcx> Lvalue<'tcx> {
     }
 
     pub fn from_ptr(ptr: Pointer) -> Self {
-        Lvalue::Ptr { ptr: PrimVal::Ptr(ptr), extra: LvalueExtra::None }
+        Self::from_primval_ptr(PrimVal::Ptr(ptr))
     }
 
     pub(super) fn to_ptr_and_extra(self) -> (PrimVal, LvalueExtra) {

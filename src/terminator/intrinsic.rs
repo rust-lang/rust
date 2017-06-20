@@ -69,7 +69,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_store_rel" |
             "volatile_store" => {
                 let ty = substs.type_at(0);
-                let dest = arg_vals[0].read_ptr(&self.memory)?.to_ptr()?;
+                let dest = arg_vals[0].read_ptr(&self.memory)?;
                 self.write_value_to_ptr(arg_vals[1], dest, ty)?;
             }
 
@@ -145,8 +145,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let elem_size = self.type_size(elem_ty)?.expect("cannot copy unsized value");
                 if elem_size != 0 {
                     let elem_align = self.type_align(elem_ty)?;
-                    let src = arg_vals[0].read_ptr(&self.memory)?.to_ptr()?;
-                    let dest = arg_vals[1].read_ptr(&self.memory)?.to_ptr()?;
+                    let src = arg_vals[0].read_ptr(&self.memory)?;
+                    let dest = arg_vals[1].read_ptr(&self.memory)?;
                     let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
                     self.memory.copy(src, dest, count * elem_size, elem_align)?;
                 }
@@ -284,7 +284,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "move_val_init" => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].read_ptr(&self.memory)?.to_ptr()?;
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 self.write_value_to_ptr(arg_vals[1], ptr, ty)?;
             }
 
@@ -392,7 +392,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if dest_align < src_align {
                     let ptr = self.force_allocation(dest)?.to_ptr()?;
                     self.memory.mark_packed(ptr, size);
-                    self.write_value_to_ptr(arg_vals[0], ptr, dest_ty)?;
+                    self.write_value_to_ptr(arg_vals[0], PrimVal::Ptr(ptr), dest_ty)?;
                 } else {
                     self.write_value(arg_vals[0], dest, dest_ty)?;
                 }
@@ -403,7 +403,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let uninit = |this: &mut Self, val: Value| {
                     match val {
                         Value::ByRef(ptr) => {
-                            this.memory.mark_definedness(ptr, size, false)?;
+                            this.memory.mark_definedness(PrimVal::Ptr(ptr), size, false)?;
                             Ok(Value::ByRef(ptr))
                         },
                         _ => Ok(Value::ByVal(PrimVal::Undef)),
@@ -412,7 +412,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match dest {
                     Lvalue::Local { frame, local, field } => self.modify_local(frame, local, field.map(|(i, _)| i), uninit)?,
                     Lvalue::Ptr { ptr, extra: LvalueExtra::None } =>
-                        self.memory.mark_definedness(ptr.to_ptr()?, size, false)?,
+                        self.memory.mark_definedness(ptr, size, false)?,
                     Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat ptr target"),
                     Lvalue::Global(cid) => self.modify_global(cid, uninit)?,
                 }

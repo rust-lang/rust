@@ -637,7 +637,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let value = self.eval_operand(operand)?;
 
                 // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr()?;
+                let dest = PrimVal::Ptr(self.force_allocation(dest)?.to_ptr()?);
 
                 for i in 0..length {
                     let elem_dest = dest.offset(i * elem_size, self.memory.layout)?;
@@ -893,6 +893,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
+        if pointee_size == 0 {
+            // rustc relies on offsetting pointers to zsts to be a nop
+            return Ok(ptr);
+        }
         return if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.signed_offset(offset, self.memory.layout)?;
             self.memory.check_bounds(ptr.to_ptr()?, false)?;
@@ -943,7 +947,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.monomorphize(operand.ty(self.mir(), self.tcx), self.substs())
     }
 
-    fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {
+    fn copy(&mut self, src: PrimVal, dest: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx> {
         let size = self.type_size(ty)?.expect("cannot copy from an unsized type");
         let align = self.type_align(ty)?;
         self.memory.copy(src, dest, size, align)?;
@@ -969,7 +973,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let substs = self.stack[frame].instance.substs;
                         let ptr = self.alloc_ptr_with_substs(ty, substs)?;
                         self.stack[frame].locals[local.index() - 1] = Some(Value::ByRef(ptr)); // it stays live
-                        self.write_value_to_ptr(val, ptr, ty)?;
+                        self.write_value_to_ptr(val, PrimVal::Ptr(ptr), ty)?;
                         let lval = Lvalue::from_ptr(ptr);
                         if let Some((field, field_ty)) = field {
                             self.lvalue_field(lval, field, ty, field_ty)?
@@ -987,7 +991,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => {
                         let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.instance.substs)?;
                         self.memory.mark_static(ptr.alloc_id);
-                        self.write_value_to_ptr(global_val.value, ptr, global_val.ty)?;
+                        self.write_value_to_ptr(global_val.value, PrimVal::Ptr(ptr), global_val.ty)?;
                         // see comment on `initialized` field
                         if global_val.initialized {
                             self.memory.mark_static_initalized(ptr.alloc_id, global_val.mutable)?;
@@ -1059,7 +1063,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_value_to_ptr(src_val, ptr.to_ptr()?, dest_ty)
+                self.write_value_to_ptr(src_val, ptr, dest_ty)
             }
 
             Lvalue::Local { frame, local, field } => {
@@ -1090,7 +1094,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
             // knew for certain that there were no outstanding pointers to this allocation.
-            self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
+            self.write_value_to_ptr(src_val, PrimVal::Ptr(dest_ptr), dest_ty)?;
 
         } else if let Value::ByRef(src_ptr) = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
@@ -1108,7 +1112,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 write_dest(self, src_val)?;
             } else {
                 let dest_ptr = self.alloc_ptr(dest_ty)?;
-                self.copy(src_ptr, dest_ptr, dest_ty)?;
+                self.copy(PrimVal::Ptr(src_ptr), PrimVal::Ptr(dest_ptr), dest_ty)?;
                 write_dest(self, Value::ByRef(dest_ptr))?;
             }
 
@@ -1123,16 +1127,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn write_value_to_ptr(
         &mut self,
         value: Value,
-        dest: Pointer,
+        dest: PrimVal,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         match value {
-            Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
+            Value::ByRef(ptr) => self.copy(PrimVal::Ptr(ptr), dest, dest_ty),
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
                 self.memory.write_primval(dest, primval, size)
             }
-            Value::ByValPair(a, b) => self.write_pair_to_ptr(a, b, dest, dest_ty),
+            Value::ByValPair(a, b) => self.write_pair_to_ptr(a, b, dest.to_ptr()?, dest_ty),
         }
     }
 
@@ -1153,8 +1157,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let field_1_ty = self.get_field_ty(ty, 1)?;
         let field_0_size = self.type_size(field_0_ty)?.expect("pair element type must be sized");
         let field_1_size = self.type_size(field_1_ty)?.expect("pair element type must be sized");
-        self.memory.write_primval(ptr.offset(field_0, self.memory.layout)?, a, field_0_size)?;
-        self.memory.write_primval(ptr.offset(field_1, self.memory.layout)?, b, field_1_size)?;
+        self.memory.write_primval(PrimVal::Ptr(ptr.offset(field_0, self.memory.layout)?), a, field_0_size)?;
+        self.memory.write_primval(PrimVal::Ptr(ptr.offset(field_1, self.memory.layout)?), b, field_1_size)?;
         Ok(())
     }
 
@@ -1457,7 +1461,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let src_f_ptr = src_ptr.offset(src_field_offset, self.memory.layout)?;
                     let dst_f_ptr = dest.offset(dst_field_offset, self.memory.layout)?;
                     if src_fty == dst_fty {
-                        self.copy(src_f_ptr, dst_f_ptr, src_fty)?;
+                        self.copy(PrimVal::Ptr(src_f_ptr), PrimVal::Ptr(dst_f_ptr), src_fty)?;
                     } else {
                         self.unsize_into(Value::ByRef(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
                     }

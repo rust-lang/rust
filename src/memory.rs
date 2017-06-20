@@ -618,7 +618,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&mut []);
         }
         self.clear_relocations(ptr, size)?;
-        self.mark_definedness(ptr, size, true)?;
+        self.mark_definedness(PrimVal::Ptr(ptr), size, true)?;
         self.get_bytes_unchecked_mut(ptr, size, align)
     }
 }
@@ -671,10 +671,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn copy(&mut self, src: Pointer, dest: Pointer, size: u64, align: u64) -> EvalResult<'tcx> {
+    pub fn copy(&mut self, src: PrimVal, dest: PrimVal, size: u64, align: u64) -> EvalResult<'tcx> {
         if size == 0 {
             return Ok(());
         }
+        let src = src.to_ptr()?;
+        let dest = dest.to_ptr()?;
         self.check_relocation_edges(src, size)?;
 
         let src_bytes = self.get_bytes_unchecked(src, size, align)?.as_ptr();
@@ -755,14 +757,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn write_primval(
         &mut self,
-        dest: Pointer,
+        dest: PrimVal,
         val: PrimVal,
         size: u64,
     ) -> EvalResult<'tcx> {
         match val {
             PrimVal::Ptr(ptr) => {
                 assert_eq!(size, self.pointer_size());
-                self.write_ptr(dest, ptr)
+                self.write_ptr(dest.to_ptr()?, ptr)
             }
 
             PrimVal::Bytes(bytes) => {
@@ -776,7 +778,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     16 => !0,
                     _ => bug!("unexpected PrimVal::Bytes size"),
                 };
-                self.write_uint(dest, bytes & mask, size)
+                self.write_uint(dest.to_ptr()?, bytes & mask, size)
             }
 
             PrimVal::Undef => self.mark_definedness(dest, size, false),
@@ -962,13 +964,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn mark_definedness(
         &mut self,
-        ptr: Pointer,
+        ptr: PrimVal,
         size: u64,
         new_state: bool
     ) -> EvalResult<'tcx> {
         if size == 0 {
             return Ok(())
         }
+        let ptr = ptr.to_ptr()?;
         let mut alloc = self.get_mut(ptr.alloc_id)?;
         alloc.undef_mask.set_range(ptr.offset, ptr.offset + size, new_state);
         Ok(())
