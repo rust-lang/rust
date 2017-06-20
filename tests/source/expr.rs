@@ -299,3 +299,12 @@ fn issue1106() {
         .filter_entry(|entry| exclusions.filter_entry(entry)) {
     }
 }
+
+fn issue1570() {
+    a_very_long_function_name({some_func(1, {1})})
+}
+
+fn issue1714() {
+    v = &mut {v}[mid..];
+    let (left, right) = {v}.split_at_mut(mid);
+}

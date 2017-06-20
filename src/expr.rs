@@ -42,7 +42,7 @@ impl Rewrite for ast::Expr {
 }
 
 #[derive(PartialEq)]
-enum ExprType {
+pub enum ExprType {
     Statement,
     SubExpression,
 }
@@ -67,7 +67,7 @@ fn combine_attr_and_expr(
     format!("{}{}{}", attr_str, separator, expr_str)
 }
 
-fn format_expr(
+pub fn format_expr(
     expr: &ast::Expr,
     expr_type: ExprType,
     context: &RewriteContext,
@@ -160,7 +160,23 @@ fn format_expr(
             to_control_flow(expr, expr_type)
                 .and_then(|control_flow| control_flow.rewrite(context, shape))
         }
-        ast::ExprKind::Block(ref block) => block.rewrite(context, shape),
+        ast::ExprKind::Block(ref block) => {
+            match expr_type {
+                ExprType::Statement => {
+                    if is_unsafe_block(block) {
+                        block.rewrite(context, shape)
+                    } else {
+                        // Rewrite block without trying to put it in a single line.
+                        if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
+                            return rw;
+                        }
+                        let prefix = try_opt!(block_prefix(context, block, shape));
+                        rewrite_block_with_visitor(context, &prefix, block, shape)
+                    }
+                }
+                ExprType::SubExpression => block.rewrite(context, shape),
+            }
+        }
         ast::ExprKind::Match(ref cond, ref arms) => {
             rewrite_match(context, cond, arms, shape, expr.span)
         }
@@ -290,7 +306,9 @@ fn format_expr(
             )
         }
         ast::ExprKind::Catch(ref block) => {
-            if let rewrite @ Some(_) = try_one_line_block(context, shape, "do catch ", block) {
+            if let rewrite @ Some(_) =
+                rewrite_single_line_block(context, "do catch ", block, shape)
+            {
                 return rewrite;
             }
             // 9 = `do catch `
@@ -313,23 +331,6 @@ fn format_expr(
         }
         _ => None,
     }
-}
-
-fn try_one_line_block(
-    context: &RewriteContext,
-    shape: Shape,
-    prefix: &str,
-    block: &ast::Block,
-) -> Option<String> {
-    if is_simple_block(block, context.codemap) {
-        let expr_shape = Shape::legacy(shape.width - prefix.len(), shape.indent);
-        let expr_str = try_opt!(block.stmts[0].rewrite(context, expr_shape));
-        let result = format!("{}{{ {} }}", prefix, expr_str);
-        if result.len() <= shape.width && !result.contains('\n') {
-            return Some(result);
-        }
-    }
-    None
 }
 
 pub fn rewrite_pair<LHS, RHS>(
@@ -763,78 +764,124 @@ fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String
     })
 }
 
+fn rewrite_empty_block(
+    context: &RewriteContext,
+    block: &ast::Block,
+    shape: Shape,
+) -> Option<String> {
+    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) &&
+        shape.width >= 2
+    {
+        return Some("{}".to_owned());
+    }
+
+    // If a block contains only a single-line comment, then leave it on one line.
+    let user_str = context.snippet(block.span);
+    let user_str = user_str.trim();
+    if user_str.starts_with('{') && user_str.ends_with('}') {
+        let comment_str = user_str[1..user_str.len() - 1].trim();
+        if block.stmts.is_empty() && !comment_str.contains('\n') &&
+            !comment_str.starts_with("//") && comment_str.len() + 4 <= shape.width
+        {
+            return Some(format!("{{ {} }}", comment_str));
+        }
+    }
+
+    None
+}
+
+fn block_prefix(context: &RewriteContext, block: &ast::Block, shape: Shape) -> Option<String> {
+    Some(match block.rules {
+        ast::BlockCheckMode::Unsafe(..) => {
+            let snippet = context.snippet(block.span);
+            let open_pos = try_opt!(snippet.find_uncommented("{"));
+            // Extract comment between unsafe and block start.
+            let trimmed = &snippet[6..open_pos].trim();
+
+            if !trimmed.is_empty() {
+                // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
+                let budget = try_opt!(shape.width.checked_sub(9));
+                format!(
+                    "unsafe {} ",
+                    try_opt!(rewrite_comment(
+                        trimmed,
+                        true,
+                        Shape::legacy(budget, shape.indent + 7),
+                        context.config,
+                    ))
+                )
+            } else {
+                "unsafe ".to_owned()
+            }
+        }
+        ast::BlockCheckMode::Default => String::new(),
+    })
+}
+
+fn rewrite_single_line_block(
+    context: &RewriteContext,
+    prefix: &str,
+    block: &ast::Block,
+    shape: Shape,
+) -> Option<String> {
+    if is_simple_block(block, context.codemap) {
+        let expr_shape = Shape::legacy(shape.width - prefix.len(), shape.indent);
+        let expr_str = try_opt!(block.stmts[0].rewrite(context, expr_shape));
+        let result = format!("{}{{ {} }}", prefix, expr_str);
+        if result.len() <= shape.width && !result.contains('\n') {
+            return Some(result);
+        }
+    }
+    None
+}
+
+fn rewrite_block_with_visitor(
+    context: &RewriteContext,
+    prefix: &str,
+    block: &ast::Block,
+    shape: Shape,
+) -> Option<String> {
+    if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
+        return rw;
+    }
+
+    let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
+    visitor.block_indent = shape.indent;
+    visitor.is_if_else_block = context.is_if_else_block;
+    match block.rules {
+        ast::BlockCheckMode::Unsafe(..) => {
+            let snippet = context.snippet(block.span);
+            let open_pos = try_opt!(snippet.find_uncommented("{"));
+            visitor.last_pos = block.span.lo + BytePos(open_pos as u32)
+        }
+        ast::BlockCheckMode::Default => visitor.last_pos = block.span.lo,
+    }
+
+    visitor.visit_block(block);
+    if visitor.failed && shape.indent.alignment != 0 {
+        block.rewrite(
+            context,
+            Shape::indented(shape.indent.block_only(), context.config),
+        )
+    } else {
+        Some(format!("{}{}", prefix, visitor.buffer))
+    }
+}
+
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         // shape.width is used only for the single line case: either the empty block `{}`,
         // or an unsafe expression `unsafe { e }`.
-
-        if self.stmts.is_empty() && !block_contains_comment(self, context.codemap) &&
-            shape.width >= 2
-        {
-            return Some("{}".to_owned());
+        if let rw @ Some(_) = rewrite_empty_block(context, self, shape) {
+            return rw;
         }
 
-        // If a block contains only a single-line comment, then leave it on one line.
-        let user_str = context.snippet(self.span);
-        let user_str = user_str.trim();
-        if user_str.starts_with('{') && user_str.ends_with('}') {
-            let comment_str = user_str[1..user_str.len() - 1].trim();
-            if self.stmts.is_empty() && !comment_str.contains('\n') &&
-                !comment_str.starts_with("//") &&
-                comment_str.len() + 4 <= shape.width
-            {
-                return Some(format!("{{ {} }}", comment_str));
-            }
+        let prefix = try_opt!(block_prefix(context, self, shape));
+        if let rw @ Some(_) = rewrite_single_line_block(context, &prefix, self, shape) {
+            return rw;
         }
 
-        let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-        visitor.block_indent = shape.indent;
-        visitor.is_if_else_block = context.is_if_else_block;
-
-        let prefix = match self.rules {
-            ast::BlockCheckMode::Unsafe(..) => {
-                let snippet = context.snippet(self.span);
-                let open_pos = try_opt!(snippet.find_uncommented("{"));
-                visitor.last_pos = self.span.lo + BytePos(open_pos as u32);
-
-                // Extract comment between unsafe and block start.
-                let trimmed = &snippet[6..open_pos].trim();
-
-                let prefix = if !trimmed.is_empty() {
-                    // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
-                    let budget = try_opt!(shape.width.checked_sub(9));
-                    format!(
-                        "unsafe {} ",
-                        try_opt!(rewrite_comment(
-                            trimmed,
-                            true,
-                            Shape::legacy(budget, shape.indent + 7),
-                            context.config,
-                        ))
-                    )
-                } else {
-                    "unsafe ".to_owned()
-                };
-                if let result @ Some(_) = try_one_line_block(context, shape, &prefix, self) {
-                    return result;
-                }
-                prefix
-            }
-            ast::BlockCheckMode::Default => {
-                visitor.last_pos = self.span.lo;
-                String::new()
-            }
-        };
-
-        visitor.visit_block(self);
-        if visitor.failed && shape.indent.alignment != 0 {
-            self.rewrite(
-                context,
-                Shape::indented(shape.indent.block_only(), context.config),
-            )
-        } else {
-            Some(format!("{}{}", prefix, visitor.buffer))
-        }
+        rewrite_block_with_visitor(context, &prefix, self, shape)
     }
 }
 
@@ -1249,7 +1296,12 @@ impl<'a> Rewrite for ControlFlow<'a> {
         };
         let mut block_context = context.clone();
         block_context.is_if_else_block = self.else_block.is_some();
-        let block_str = try_opt!(self.block.rewrite(&block_context, block_shape));
+        let block_str = try_opt!(rewrite_block_with_visitor(
+            &block_context,
+            "",
+            self.block,
+            block_shape,
+        ));
 
         let mut result = format!("{}{}", cond_str, block_str);
 
@@ -1291,7 +1343,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         width: min(1, shape.width),
                         ..shape
                     };
-                    else_block.rewrite(context, else_shape)
+                    format_expr(else_block, ExprType::Statement, context, else_shape)
                 }
             };
 
@@ -1658,7 +1710,10 @@ impl Rewrite for ast::Arm {
                 .unwrap()
                 .sub_width(comma.len())
                 .unwrap();
-            let rewrite = nop_block_collapse(body.rewrite(context, arm_shape), arm_shape.width);
+            let rewrite = nop_block_collapse(
+                format_expr(body, ExprType::Statement, context, arm_shape),
+                arm_shape.width,
+            );
             let is_block = if let ast::ExprKind::Block(..) = body.node {
                 true
             } else {
@@ -1693,7 +1748,7 @@ impl Rewrite for ast::Arm {
         // necessary.
         let body_shape = try_opt!(shape.block_left(context.config.tab_spaces()));
         let next_line_body = try_opt!(nop_block_collapse(
-            body.rewrite(context, body_shape),
+            format_expr(body, ExprType::Statement, context, body_shape),
             body_shape.width,
         ));
         let indent_str = shape

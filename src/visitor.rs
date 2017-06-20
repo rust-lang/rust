@@ -17,6 +17,7 @@ use syntax::parse::ParseSess;
 use strings::string_buffer::StringBuffer;
 
 use {Indent, Shape};
+use expr::{format_expr, ExprType};
 use utils::{self, mk_sp};
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, FindUncommented};
@@ -87,7 +88,20 @@ impl<'a> FmtVisitor<'a> {
                 );
                 self.push_rewrite(stmt.span, rewrite);
             }
-            ast::StmtKind::Expr(ref expr) |
+            ast::StmtKind::Expr(ref expr) => {
+                let rewrite = format_expr(
+                    expr,
+                    ExprType::Statement,
+                    &self.get_context(),
+                    Shape::indented(self.block_indent, self.config),
+                );
+                let span = if expr.attrs.is_empty() {
+                    stmt.span
+                } else {
+                    mk_sp(expr.attrs[0].span.lo, stmt.span.hi)
+                };
+                self.push_rewrite(span, rewrite)
+            }
             ast::StmtKind::Semi(ref expr) => {
                 let rewrite = stmt.rewrite(
                     &self.get_context(),
