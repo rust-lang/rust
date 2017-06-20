@@ -355,14 +355,21 @@ fn handle_explain(code: &str,
     };
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
+            let mut is_in_code_block = false;
             // Slice off the leading newline and print.
-            print!("{}", &(&description[1..]).split("\n").map(|x| {
-                format!("{}\n", if x.starts_with("```") {
-                    "```"
+            for line in description[1..].lines() {
+                let indent_level = line.find(|c: char| !c.is_whitespace())
+                    .unwrap_or_else(|| line.len());
+                let dedented_line = &line[indent_level..];
+                if dedented_line.starts_with("```") {
+                    is_in_code_block = !is_in_code_block;
+                    println!("{}", &line[..(indent_level+3)]);
+                } else if is_in_code_block && dedented_line.starts_with("# ") {
+                    continue;
                 } else {
-                    x
-                })
-            }).collect::<String>());
+                    println!("{}", line);
+                }
+            }
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));
