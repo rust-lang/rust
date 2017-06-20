@@ -603,9 +603,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     fn get_bytes(&self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
-        if size == 0 {
-            return Ok(&[]);
-        }
+        assert_ne!(size, 0);
         if self.relocations(ptr, size)?.count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
@@ -614,9 +612,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
-        if size == 0 {
-            return Ok(&mut []);
-        }
+        assert_ne!(size, 0);
         self.clear_relocations(ptr, size)?;
         self.mark_definedness(PrimVal::Ptr(ptr), size, true)?;
         self.get_bytes_unchecked_mut(ptr, size, align)
@@ -716,17 +712,26 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn read_bytes(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes(ptr, size, 1)
+    pub fn read_bytes(&self, ptr: PrimVal, size: u64) -> EvalResult<'tcx, &[u8]> {
+        if size == 0 {
+            return Ok(&[]);
+        }
+        self.get_bytes(ptr.to_ptr()?, size, 1)
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
+        if src.is_empty() {
+            return Ok(());
+        }
         let bytes = self.get_bytes_mut(ptr, src.len() as u64, 1)?;
         bytes.clone_from_slice(src);
         Ok(())
     }
 
     pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
+        if count == 0 {
+            return Ok(());
+        }
         let bytes = self.get_bytes_mut(ptr, count, 1)?;
         for b in bytes { *b = val; }
         Ok(())

@@ -626,8 +626,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memcmp" => {
-                let left = args[0].read_ptr(&self.memory)?.to_ptr()?;
-                let right = args[1].read_ptr(&self.memory)?.to_ptr()?;
+                let left = args[0].read_ptr(&self.memory)?;
+                let right = args[1].read_ptr(&self.memory)?;
                 let n = self.value_to_primval(args[2], usize)?.to_u64()?;
 
                 let result = {
@@ -646,24 +646,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memrchr" => {
-                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
+                let ptr = args[0].read_ptr(&self.memory)?;
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
                     let new_ptr = ptr.offset(num - idx as u64 - 1, self.memory.layout)?;
-                    self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
+                    self.write_primval(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
                 }
             }
 
             "memchr" => {
-                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
+                let ptr = args[0].read_ptr(&self.memory)?;
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
                     let new_ptr = ptr.offset(idx as u64, self.memory.layout)?;
-                    self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
+                    self.write_primval(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
                 }
@@ -680,7 +680,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "write" => {
                 let fd = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let buf = args[1].read_ptr(&self.memory)?.to_ptr()?;
+                let buf = args[1].read_ptr(&self.memory)?;
                 let n = self.value_to_primval(args[2], usize)?.to_u64()?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 { // stdout/stderr
