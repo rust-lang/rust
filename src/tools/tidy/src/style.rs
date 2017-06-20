@@ -18,6 +18,7 @@
 //! * No CR characters
 //! * No `TODO` or `XXX` directives
 //! * A valid license header is at the top
+//! * No unexplained ` ```ignore ` or ` ```rust,ignore ` doc tests
 //!
 //! A number of these checks can be opted-out of with various directives like
 //! `// ignore-tidy-linelength`.
@@ -37,6 +38,17 @@ http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 option. This file may not be copied, modified, or distributed
 except according to those terms.";
+
+const UNEXPLAINED_IGNORE_DOCTEST_INFO: &str = r#"unexplained "```ignore" doctest; try one:
+
+* make the test actually pass, by adding necessary imports and declarations, or
+* use "```text", if the code is not Rust code, or
+* use "```compile_fail,Ennnn", if the code is expected to fail at compile time, or
+* use "```should_panic", if the code is expected to fail at run time, or
+* use "```no_run", if the code should type-check but not necessary linkable/runnable, or
+* explain it like "```ignore (cannot-test-this-because-xxxx)", if the annotation cannot be avoided.
+
+"#;
 
 /// Parser states for line_is_url.
 #[derive(PartialEq)]
@@ -137,6 +149,9 @@ pub fn check(path: &Path, bad: &mut bool) {
                 if line.contains("//") && line.contains(" XXX") {
                     err("XXX is deprecated; use FIXME")
                 }
+            }
+            if line.ends_with("```ignore") || line.ends_with("```rust,ignore") {
+                err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
             }
         }
         if !licenseck(file, &contents) {
