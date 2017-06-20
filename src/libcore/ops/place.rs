@@ -38,7 +38,13 @@ pub trait Place<Data: ?Sized> {
 ///
 /// `PLACE <- EXPR` effectively desugars into:
 ///
-/// ```rust,ignore
+/// ```
+/// # #![feature(placement_new_protocol, box_heap)]
+/// # use std::ops::{Placer, Place, InPlace};
+/// # #[allow(non_snake_case)]
+/// # fn main() {
+/// # let PLACE = std::boxed::HEAP;
+/// # let EXPR = 1;
 /// let p = PLACE;
 /// let mut place = Placer::make_place(p);
 /// let raw_place = Place::pointer(&mut place);
@@ -47,6 +53,7 @@ pub trait Place<Data: ?Sized> {
 ///     std::ptr::write(raw_place, value);
 ///     InPlace::finalize(place)
 /// }
+/// # ; }
 /// ```
 ///
 /// The type of `PLACE <- EXPR` is derived from the type of `PLACE`;
@@ -89,14 +96,21 @@ pub trait InPlace<Data: ?Sized>: Place<Data> {
 ///
 /// `box EXPR` effectively desugars into:
 ///
-/// ```rust,ignore
+/// ```
+/// # #![feature(placement_new_protocol)]
+/// # use std::ops::{BoxPlace, Place, Boxed};
+/// # #[allow(non_snake_case)]
+/// # fn main() {
+/// # let EXPR = 1;
 /// let mut place = BoxPlace::make_place();
 /// let raw_place = Place::pointer(&mut place);
 /// let value = EXPR;
+/// # let _: Box<_> =
 /// unsafe {
 ///     ::std::ptr::write(raw_place, value);
 ///     Boxed::finalize(place)
 /// }
+/// # ; }
 /// ```
 ///
 /// The type of `box EXPR` is supplied from its surrounding

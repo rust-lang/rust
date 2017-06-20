@@ -11,7 +11,7 @@
 //! This pretty-printer is a direct reimplementation of Philip Karlton's
 //! Mesa pretty-printer, as described in appendix A of
 //!
-//! ````ignore
+//! ````text
 //! STAN-CS-79-770: "Pretty Printing", by Derek C. Oppen.
 //! Stanford Department of Computer Science, 1979.
 //! ````

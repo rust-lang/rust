@@ -198,7 +198,12 @@ impl Trait for u8 {
 
 Now, if we have the following code:
 
-```ignore
+```compile_fail,E0038
+# trait Trait { fn foo<T>(&self, on: T); }
+# impl Trait for String { fn foo<T>(&self, on: T) {} }
+# impl Trait for u8 { fn foo<T>(&self, on: T) {} }
+# impl Trait for bool { fn foo<T>(&self, on: T) {} }
+# // etc.
 fn call_foo(thing: Box<Trait>) {
     thing.foo(true); // this could be any one of the 8 types above
     thing.foo(1);
@@ -565,8 +570,9 @@ fn foo(argc: isize, argv: *const *const u8) -> isize { 0 } // ok!
 ```
 "##,
 
-// isn't thrown anymore
 E0139: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 There are various restrictions on transmuting between types in Rust; for example
 types being transmuted must have the same size. To apply all these restrictions,
 the compiler must know the exact types that may be transmuted. When type
@@ -602,22 +608,24 @@ If it's possible, hand-monomorphize the code by writing the function for each
 possible type substitution. It's possible to use traits to do this cleanly,
 for example:
 
-```ignore
+```
+use std::mem::transmute;
+
 struct Foo<T>(Vec<T>);
 
-trait MyTransmutableType {
+trait MyTransmutableType: Sized {
     fn transmute(Vec<Self>) -> Foo<Self>;
 }
 
 impl MyTransmutableType for u8 {
-    fn transmute(x: Foo<u8>) -> Vec<u8> {
-        transmute(x)
+    fn transmute(x: Vec<u8>) -> Foo<u8> {
+        unsafe { transmute(x) }
     }
 }
 
 impl MyTransmutableType for String {
-    fn transmute(x: Foo<String>) -> Vec<String> {
-        transmute(x)
+    fn transmute(x: Vec<String>) -> Foo<String> {
+        unsafe { transmute(x) }
     }
 }
 
@@ -635,8 +643,14 @@ is a size mismatch in one of the impls.
 
 It is also possible to manually transmute:
 
-```ignore
-ptr::read(&v as *const _ as *const SomeType) // `v` transmuted to `SomeType`
+```
+# use std::ptr;
+# let v = Some("value");
+# type SomeType = &'static [u8];
+unsafe {
+    ptr::read(&v as *const _ as *const SomeType) // `v` transmuted to `SomeType`
+}
+# ;
 ```
 
 Note that this does not move `v` (unlike `transmute`), and may need a
@@ -662,7 +676,7 @@ them yourself.
 You can build a free-standing crate by adding `#![no_std]` to the crate
 attributes:
 
-```ignore
+```ignore (only-for-syntax-highlight)
 #![no_std]
 ```
 
@@ -764,7 +778,7 @@ foo(3_i8);
 
 Here is that same example again, with some explanatory comments:
 
-```ignore
+```compile_fail,E0271
 trait Trait { type AssociatedType; }
 
 fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
@@ -784,7 +798,7 @@ fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
 }
 
 impl Trait for i8 { type AssociatedType = &'static str; }
-~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //      |                             |
 // `i8` does have                     |
 // implementation                     |
@@ -816,7 +830,7 @@ The above fails because of an analogous type mismatch,
 though may be harder to see. Again, here are some
 explanatory comments for the same example:
 
-```ignore
+```compile_fail
 {
     let vs = vec![1, 2, 3, 4];
 
@@ -1416,6 +1430,8 @@ trait SecondTrait : FirstTrait {
 "##,
 
 E0398: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 In Rust 1.3, the default object lifetime bounds are expected to change, as
 described in [RFC 1156]. You are getting a warning because the compiler
 thinks it is possible that this change will cause a compilation error in your
@@ -1433,14 +1449,16 @@ time, this means that you will want to change the signature of a function that
 you are calling. For example, if the error is reported on a call like `foo(x)`,
 and `foo` is defined as follows:
 
-```ignore
-fn foo(arg: &Box<SomeTrait>) { ... }
+```
+# trait SomeTrait {}
+fn foo(arg: &Box<SomeTrait>) { /* ... */ }
 ```
 
 You might change it to:
 
-```ignore
-fn foo<'a>(arg: &Box<SomeTrait+'a>) { ... }
+```
+# trait SomeTrait {}
+fn foo<'a>(arg: &'a Box<SomeTrait+'a>) { /* ... */ }
 ```
 
 This explicitly states that you expect the trait object `SomeTrait` to contain
@@ -1809,24 +1827,29 @@ specified exit code, use `std::process::exit`.
 E0591: r##"
 Per [RFC 401][rfc401], if you have a function declaration `foo`:
 
-```rust,ignore
+```
 // For the purposes of this explanation, all of these
 // different kinds of `fn` declarations are equivalent:
-fn foo(x: i32) { ... }
-extern "C" fn foo(x: i32);
-impl i32 { fn foo(x: self) { ... } }
+struct S;
+fn foo(x: S) { /* ... */ }
+# #[cfg(for_demonstration_only)]
+extern "C" { fn foo(x: S); }
+# #[cfg(for_demonstration_only)]
+impl S { fn foo(self) { /* ... */ } }
 ```
 
-the type of `foo` is **not** `fn(i32)`, as one might expect.
+the type of `foo` is **not** `fn(S)`, as one might expect.
 Rather, it is a unique, zero-sized marker type written here as `typeof(foo)`.
-However, `typeof(foo)` can be _coerced_ to a function pointer `fn(i32)`,
+However, `typeof(foo)` can be _coerced_ to a function pointer `fn(S)`,
 so you rarely notice this:
 
-```rust,ignore
-let x: fn(i32) = foo; // OK, coerces
+```
+# struct S;
+# fn foo(_: S) {}
+let x: fn(S) = foo; // OK, coerces
 ```
 
-The reason that this matter is that the type `fn(i32)` is not specific to
+The reason that this matter is that the type `fn(S)` is not specific to
 any particular function: it's a function _pointer_. So calling `x()` results
 in a virtual call, whereas `foo()` is statically dispatched, because the type
 of `foo` tells us precisely what function is being called.
@@ -1837,14 +1860,17 @@ when using **transmute** to convert a fn item into a fn pointer.
 
 This is sometimes done as part of an FFI:
 
-```rust,ignore
+```compile_fail,E0591
 extern "C" fn foo(userdata: Box<i32>) {
-   ...
+    /* ... */
 }
 
+# fn callback(_: extern "C" fn(*mut i32)) {}
+# use std::mem::transmute;
+# unsafe {
 let f: extern "C" fn(*mut i32) = transmute(foo);
 callback(f);
-
+# }
 ```
 
 Here, transmute is being used to convert the types of the fn arguments.
@@ -1856,8 +1882,15 @@ This pattern should be rewritten. There are a few possible ways to do this:
 - change the original fn declaration to match the expected signature,
   and do the cast in the fn body (the prefered option)
 - cast the fn item fo a fn pointer before calling transmute, as shown here:
-  - `let f: extern "C" fn(*mut i32) = transmute(foo as extern "C" fn(_))`
-  - `let f: extern "C" fn(*mut i32) = transmute(foo as usize) /* works too */`
+
+    ```
+    # extern "C" fn foo(_: Box<i32>) {}
+    # use std::mem::transmute;
+    # unsafe {
+    let f: extern "C" fn(*mut i32) = transmute(foo as extern "C" fn(_));
+    let f: extern "C" fn(*mut i32) = transmute(foo as usize); // works too
+    # }
+    ```
 
 The same applies to transmutes to `*mut fn()`, which were observedin practice.
 Note though that use of this type is generally incorrect.
@@ -1905,7 +1938,7 @@ An unknown lint was used on the command line.
 
 Erroneous example:
 
-```ignore
+```sh
 rustc -D bogus omse_file.rs
 ```
 

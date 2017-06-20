@@ -15,8 +15,10 @@
 //! useful an upstream crate must define panicking for libcore to use. The current
 //! interface for panicking is:
 //!
-//! ```ignore
-//! fn panic_impl(fmt: fmt::Arguments, &(&'static str, u32)) -> !;
+//! ```
+//! # use std::fmt;
+//! fn panic_impl(fmt: fmt::Arguments, file_line: &(&'static str, u32)) -> !
+//! # { loop {} }
 //! ```
 //!
 //! This definition allows for panicking with any general message, but it does not

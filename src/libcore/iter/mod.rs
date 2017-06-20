@@ -211,7 +211,7 @@
 //! There's one more subtle bit here: the standard library contains an
 //! interesting implementation of [`IntoIterator`]:
 //!
-//! ```ignore
+//! ```ignore (only-for-syntax-highlight)
 //! impl<I: Iterator> IntoIterator for I
 //! ```
 //!
