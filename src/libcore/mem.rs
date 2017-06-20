@@ -328,11 +328,18 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// Here's an example of how a collection might make use of needs_drop:
 ///
-/// ```ignore
+/// ```
 /// #![feature(needs_drop)]
 /// use std::{mem, ptr};
 ///
-/// pub struct MyCollection<T> { /* ... */ }
+/// pub struct MyCollection<T> {
+/// #   data: [T; 1],
+///     /* ... */
+/// }
+/// # impl<T> MyCollection<T> {
+/// #   fn iter_mut(&mut self) -> &mut [T] { &mut self.data }
+/// #   fn free_buffer(&mut self) {}
+/// # }
 ///
 /// impl<T> Drop for MyCollection<T> {
 ///     fn drop(&mut self) {
@@ -575,7 +582,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `replace` allows consumption of a struct field by replacing it with another value.
 /// Without `replace` you can run into issues like these:
 ///
-/// ```ignore
+/// ```compile_fail,E0507
 /// struct Buffer<T> { buf: Vec<T> }
 ///
 /// impl<T> Buffer<T> {
@@ -645,7 +652,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 ///
 /// Borrows are based on lexical scope, so this produces an error:
 ///
-/// ```ignore
+/// ```compile_fail,E0502
 /// let mut v = vec![1, 2, 3];
 /// let x = &v[0];
 ///

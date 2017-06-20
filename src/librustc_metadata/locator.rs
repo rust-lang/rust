@@ -150,7 +150,7 @@
 //! the compiler. For example, if crate A wanted to use Bv1 and Bv2, then it
 //! would look something like:
 //!
-//! ```ignore
+//! ```compile_fail,E0463
 //! extern crate b1;
 //! extern crate b2;
 //!

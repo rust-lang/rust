@@ -153,9 +153,12 @@ structure that is currently uninitialized.
 
 For example, this can happen when a drop has taken place:
 
-```ignore
+```compile_fail,E0383
 struct Foo {
     a: u32,
+}
+impl Drop for Foo {
+    fn drop(&mut self) { /* ... */ }
 }
 
 let mut x = Foo { a: 1 };
@@ -168,6 +171,9 @@ This error can be fixed by fully reinitializing the structure in question:
 ```
 struct Foo {
     a: u32,
+}
+impl Drop for Foo {
+    fn drop(&mut self) { /* ... */ }
 }
 
 let mut x = Foo { a: 1 };
@@ -944,10 +950,9 @@ fn main() {
 }
 ```
 
-Moving out of a member of a mutably borrowed struct is fine if you put something
-back. `mem::replace` can be used for that:
+Moving a member out of a mutably borrowed struct will also cause E0507 error:
 
-```ignore
+```compile_fail,E0507
 struct TheDarkKnight;
 
 impl TheDarkKnight {
@@ -959,16 +964,29 @@ struct Batcave {
 }
 
 fn main() {
-    use std::mem;
-
     let mut cave = Batcave {
         knight: TheDarkKnight
     };
     let borrowed = &mut cave;
 
     borrowed.knight.nothing_is_true(); // E0507
-    mem::replace(&mut borrowed.knight, TheDarkKnight).nothing_is_true(); // ok!
 }
+```
+
+It is fine only if you put something back. `mem::replace` can be used for that:
+
+```
+# struct TheDarkKnight;
+# impl TheDarkKnight { fn nothing_is_true(self) {} }
+# struct Batcave { knight: TheDarkKnight }
+use std::mem;
+
+let mut cave = Batcave {
+    knight: TheDarkKnight
+};
+let borrowed = &mut cave;
+
+mem::replace(&mut borrowed.knight, TheDarkKnight).nothing_is_true(); // ok!
 ```
 
 You can find more information about borrowing in the rust-book:

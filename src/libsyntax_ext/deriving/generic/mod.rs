@@ -456,7 +456,7 @@ impl<'a> TraitDef<'a> {
 
     /// Given that we are deriving a trait `DerivedTrait` for a type like:
     ///
-    /// ```ignore
+    /// ```ignore (only-for-syntax-highlight)
     /// struct Struct<'a, ..., 'z, A, B: DeclaredTrait, C, ..., Z> where C: WhereTrait {
     ///     a: A,
     ///     b: B::Item,
@@ -469,7 +469,7 @@ impl<'a> TraitDef<'a> {
     ///
     /// create an impl like:
     ///
-    /// ```ignore
+    /// ```ignore (only-for-syntax-highlight)
     /// impl<'a, ..., 'z, A, B: DeclaredTrait, C, ...  Z> where
     ///     C:                       WhereTrait,
     ///     A: DerivedTrait + B1 + ... + BN,
@@ -933,8 +933,9 @@ impl<'a> MethodDef<'a> {
         }
     }
 
-    /// ```ignore
+    /// ```
     /// #[derive(PartialEq)]
+    /// # struct Dummy;
     /// struct A { x: i32, y: i32 }
     ///
     /// // equivalent to:
@@ -1040,8 +1041,9 @@ impl<'a> MethodDef<'a> {
                                       &StaticStruct(struct_def, summary))
     }
 
-    /// ```ignore
+    /// ```
     /// #[derive(PartialEq)]
+    /// # struct Dummy;
     /// enum A {
     ///     A1,
     ///     A2(i32)
@@ -1624,7 +1626,7 @@ pub fn cs_fold<F>(use_foldl: bool,
 /// Call the method that is being derived on all the fields, and then
 /// process the collected results. i.e.
 ///
-/// ```ignore
+/// ```ignore (only-for-syntax-highlight)
 /// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
 ///                  self_2.method(__arg_1_2, __arg_2_2)])
 /// ```

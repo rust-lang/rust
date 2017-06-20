@@ -42,8 +42,10 @@
 //! Recursive structures must be boxed, because if the definition of `Cons`
 //! looked like this:
 //!
-//! ```rust,ignore
+//! ```compile_fail,E0072
+//! # enum List<T> {
 //! Cons(T, List<T>),
+//! # }
 //! ```
 //!
 //! It wouldn't work. This is because the size of a `List` depends on how many

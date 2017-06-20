@@ -154,7 +154,7 @@ E0449: r##"
 A visibility qualifier was used when it was unnecessary. Erroneous code
 examples:
 
-```compile_fail
+```compile_fail,E0449
 struct Bar;
 
 trait Foo {
@@ -171,7 +171,7 @@ pub impl Foo for Bar { // error: unnecessary visibility qualifier
 To fix this error, please remove the visibility qualifier when it is not
 required. Example:
 
-```ignore
+```
 struct Bar;
 
 trait Foo {
@@ -184,8 +184,8 @@ impl Bar {}
 
 // Trait methods share the visibility of the trait, so `pub` is
 // unnecessary in either case
-pub impl Foo for Bar {
-    pub fn foo() {}
+impl Foo for Bar {
+    fn foo() {}
 }
 ```
 "##,
