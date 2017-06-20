@@ -78,6 +78,8 @@ impl CliOptions {
                     format!("Invalid write-mode: {}", write_mode),
                 ));
             }
+        } else {
+            println!("Warning: the default write-mode for Rustfmt will soon change to overwrite - this will not leave backups of changed files.");
         }
 
         if let Some(ref file_lines) = matches.opt_str("file-lines") {
