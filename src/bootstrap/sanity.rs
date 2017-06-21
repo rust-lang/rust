@@ -18,9 +18,9 @@
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::process::Command;
 use std::path::PathBuf;
@@ -29,9 +29,46 @@ use build_helper::output;
 
 use Build;
 
+struct Finder {
+    cache: HashMap<OsString, Option<PathBuf>>,
+    path: OsString,
+}
+
+impl Finder {
+    fn new() -> Self {
+        Self {
+            cache: HashMap::new(),
+            path: env::var_os("PATH").unwrap_or_default()
+        }
+    }
+
+    fn maybe_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> Option<PathBuf> {
+        let cmd: OsString = cmd.as_ref().into();
+        let path = self.path.clone();
+        self.cache.entry(cmd.clone()).or_insert_with(|| {
+            for path in env::split_paths(&path) {
+                let target = path.join(&cmd);
+                let mut cmd_alt = cmd.clone();
+                cmd_alt.push(".exe");
+                if target.is_file() || // some/path/git
+                target.with_extension("exe").exists() || // some/path/git.exe
+                target.join(&cmd_alt).exists() { // some/path/git/git.exe
+                    return Some(target);
+                }
+            }
+            return None;
+        }).clone()
+    }
+
+    fn must_have<S: AsRef<OsStr>>(&mut self, cmd: S) -> PathBuf {
+        self.maybe_have(&cmd).unwrap_or_else(|| {
+            panic!("\n\ncouldn't find required command: {:?}\n\n", cmd.as_ref());
+        })
+    }
+}
+
 pub fn check(build: &mut Build) {
-    let mut checked = HashSet::new();
-    let path = env::var_os("PATH").unwrap_or(OsString::new());
+    let path = env::var_os("PATH").unwrap_or_default();
     // On Windows, quotes are invalid characters for filename paths, and if
     // one is present as part of the PATH then that can lead to the system
     // being unable to identify the files properly. See
@@ -41,33 +78,12 @@ pub fn check(build: &mut Build) {
             panic!("PATH contains invalid character '\"'");
         }
     }
-    let have_cmd = |cmd: &OsStr| {
-        for path in env::split_paths(&path) {
-            let target = path.join(cmd);
-            let mut cmd_alt = cmd.to_os_string();
-            cmd_alt.push(".exe");
-            if target.is_file() ||
-               target.with_extension("exe").exists() ||
-               target.join(cmd_alt).exists() {
-                return Some(target);
-            }
-        }
-        return None;
-    };
 
-    let mut need_cmd = |cmd: &OsStr| {
-        if !checked.insert(cmd.to_owned()) {
-            return
-        }
-        if have_cmd(cmd).is_none() {
-            panic!("\n\ncouldn't find required command: {:?}\n\n", cmd);
-        }
-    };
-
+    let mut cmd_finder = Finder::new();
     // If we've got a git directory we're gona need git to update
     // submodules and learn about various other aspects.
     if build.src_is_git {
-        need_cmd("git".as_ref());
+        cmd_finder.must_have("git");
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
@@ -75,57 +91,34 @@ pub fn check(build: &mut Build) {
         .filter_map(|host| build.config.target_config.get(host))
         .any(|config| config.llvm_config.is_none());
     if building_llvm || build.config.sanitizers {
-        need_cmd("cmake".as_ref());
+        cmd_finder.must_have("cmake");
     }
 
     // Ninja is currently only used for LLVM itself.
     if building_llvm && build.config.ninja {
         // Some Linux distros rename `ninja` to `ninja-build`.
         // CMake can work with either binary name.
-        if have_cmd("ninja-build".as_ref()).is_none() {
-            need_cmd("ninja".as_ref());
+        if cmd_finder.maybe_have("ninja-build").is_none() {
+            cmd_finder.must_have("ninja");
         }
     }
 
-    if build.config.python.is_none() {
-        // set by bootstrap.py
-        if let Some(v) = env::var_os("BOOTSTRAP_PYTHON") {
-            build.config.python = Some(PathBuf::from(v));
-        }
-    }
-    if build.config.python.is_none() {
-        build.config.python = have_cmd("python2.7".as_ref());
-    }
-    if build.config.python.is_none() {
-        build.config.python = have_cmd("python2".as_ref());
-    }
-    if build.config.python.is_none() {
-        need_cmd("python".as_ref());
-        build.config.python = Some("python".into());
-    }
-    need_cmd(build.config.python.as_ref().unwrap().as_ref());
+    build.config.python = build.config.python.take().map(|p| cmd_finder.must_have(p))
+        .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
+        .or_else(|| cmd_finder.maybe_have("python2.7"))
+        .or_else(|| cmd_finder.maybe_have("python2"))
+        .or_else(|| Some(cmd_finder.must_have("python")));
 
+    build.config.nodejs = build.config.nodejs.take().map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("node"))
+        .or_else(|| cmd_finder.maybe_have("nodejs"));
 
-    if let Some(ref s) = build.config.nodejs {
-        need_cmd(s.as_ref());
-    } else {
-        // Look for the nodejs command, needed for emscripten testing
-        if let Some(node) = have_cmd("node".as_ref()) {
-            build.config.nodejs = Some(node);
-        } else if let Some(node) = have_cmd("nodejs".as_ref()) {
-            build.config.nodejs = Some(node);
-        }
-    }
-
-    if let Some(ref gdb) = build.config.gdb {
-        need_cmd(gdb.as_ref());
-    } else {
-        build.config.gdb = have_cmd("gdb".as_ref());
-    }
+    build.config.gdb = build.config.gdb.take().map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("gdb"));
 
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
-    for target in build.config.target.iter() {
+    for target in &build.config.target {
         // On emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
@@ -133,18 +126,17 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
-        need_cmd(build.cc(target).as_ref());
+        cmd_finder.must_have(build.cc(target));
         if let Some(ar) = build.ar(target) {
-            need_cmd(ar.as_ref());
+            cmd_finder.must_have(ar);
         }
     }
-    for host in build.config.host.iter() {
-        need_cmd(build.cxx(host).unwrap().as_ref());
-    }
 
-    // The msvc hosts don't use jemalloc, turn it off globally to
-    // avoid packaging the dummy liballoc_jemalloc on that platform.
     for host in build.config.host.iter() {
+        cmd_finder.must_have(build.cxx(host).unwrap());
+
+        // The msvc hosts don't use jemalloc, turn it off globally to
+        // avoid packaging the dummy liballoc_jemalloc on that platform.
         if host.contains("msvc") {
             build.config.use_jemalloc = false;
         }
@@ -156,7 +148,7 @@ pub fn check(build: &mut Build) {
         panic!("FileCheck executable {:?} does not exist", filecheck);
     }
 
-    for target in build.config.target.iter() {
+    for target in &build.config.target {
         // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
            !build.config.build.contains("apple-darwin") {
@@ -208,13 +200,12 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 
     for host in build.flags.host.iter() {
         if !build.config.host.contains(host) {
-            panic!("specified host `{}` is not in the ./configure list", host);
+            panic!("specified host `{}` is not in configuration", host);
         }
     }
     for target in build.flags.target.iter() {
         if !build.config.target.contains(target) {
-            panic!("specified target `{}` is not in the ./configure list",
-                   target);
+            panic!("specified target `{}` is not in configuration", target);
         }
     }
 
@@ -231,6 +222,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     }
 
     if let Some(ref s) = build.config.ccache {
-        need_cmd(s.as_ref());
+        cmd_finder.must_have(s);
     }
 }

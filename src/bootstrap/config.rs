@@ -119,6 +119,7 @@ pub struct Config {
 /// Per-target configuration stored in the global configuration structure.
 #[derive(Default)]
 pub struct Target {
+    /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
     pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
