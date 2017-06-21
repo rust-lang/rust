@@ -11,7 +11,7 @@
 use io::prelude::*;
 
 use fmt;
-use io;
+use io::{self, Initializer};
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
@@ -481,8 +481,10 @@ impl TcpStream {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.0.read_to_end(buf)
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -493,8 +495,10 @@ impl Write for TcpStream {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Read for &'a TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.0.read_to_end(buf)
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]

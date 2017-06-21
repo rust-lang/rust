@@ -275,6 +275,7 @@ use fmt;
 use result;
 use str;
 use memchr;
+use ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
@@ -292,7 +293,7 @@ pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
 #[unstable(feature = "print_internals", issue = "0")]
 pub use self::stdio::{_print, _eprint};
-#[unstable(feature = "libstd_io_internals", issue = "0")]
+#[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
 
@@ -306,6 +307,14 @@ mod util;
 mod stdio;
 
 const DEFAULT_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
+
+struct Guard<'a> { buf: &'a mut Vec<u8>, len: usize }
+
+impl<'a> Drop for Guard<'a> {
+    fn drop(&mut self) {
+        unsafe { self.buf.set_len(self.len); }
+    }
+}
 
 // A few methods below (read_to_string, read_line) will append data into a
 // `String` buffer, but we need to be pretty careful when doing this. The
@@ -328,23 +337,16 @@ const DEFAULT_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
 fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
     where F: FnOnce(&mut Vec<u8>) -> Result<usize>
 {
-    struct Guard<'a> { s: &'a mut Vec<u8>, len: usize }
-        impl<'a> Drop for Guard<'a> {
-        fn drop(&mut self) {
-            unsafe { self.s.set_len(self.len); }
-        }
-    }
-
     unsafe {
-        let mut g = Guard { len: buf.len(), s: buf.as_mut_vec() };
-        let ret = f(g.s);
-        if str::from_utf8(&g.s[g.len..]).is_err() {
+        let mut g = Guard { len: buf.len(), buf: buf.as_mut_vec() };
+        let ret = f(g.buf);
+        if str::from_utf8(&g.buf[g.len..]).is_err() {
             ret.and_then(|_| {
                 Err(Error::new(ErrorKind::InvalidData,
                                "stream did not contain valid UTF-8"))
             })
         } else {
-            g.len = g.s.len();
+            g.len = g.buf.len();
             ret
         }
     }
@@ -356,25 +358,32 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 // of data to return. Simply tacking on an extra DEFAULT_BUF_SIZE space every
 // time is 4,500 times (!) slower than this if the reader has a very small
 // amount of data to return.
+//
+// Because we're extending the buffer with uninitialized data for trusted
+// readers, we need to make sure to truncate that if any of this panics.
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
-    let mut len = start_len;
+    let mut g = Guard { len: buf.len(), buf: buf };
     let mut new_write_size = 16;
     let ret;
     loop {
-        if len == buf.len() {
+        if g.len == g.buf.len() {
             if new_write_size < DEFAULT_BUF_SIZE {
                 new_write_size *= 2;
             }
-            buf.resize(len + new_write_size, 0);
+            unsafe {
+                g.buf.reserve(new_write_size);
+                g.buf.set_len(g.len + new_write_size);
+                r.initializer().initialize(&mut g.buf[g.len..]);
+            }
         }
 
-        match r.read(&mut buf[len..]) {
+        match r.read(&mut g.buf[g.len..]) {
             Ok(0) => {
-                ret = Ok(len - start_len);
+                ret = Ok(g.len - start_len);
                 break;
             }
-            Ok(n) => len += n,
+            Ok(n) => g.len += n,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
             Err(e) => {
                 ret = Err(e);
@@ -383,7 +392,6 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
         }
     }
 
-    buf.truncate(len);
     ret
 }
 
@@ -493,6 +501,31 @@ pub trait Read {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+
+    /// Determines if this `Read`er can work with buffers of uninitialized
+    /// memory.
+    ///
+    /// The default implementation returns an initializer which will zero
+    /// buffers.
+    ///
+    /// If a `Read`er guarantees that it can work properly with uninitialized
+    /// memory, it should call `Initializer::nop()`. See the documentation for
+    /// `Initializer` for details.
+    ///
+    /// The behavior of this method must be independent of the state of the
+    /// `Read`er - the method only takes `&self` so that it can be used through
+    /// trait objects.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is unsafe because a `Read`er could otherwise return a
+    /// non-zeroing `Initializer` from another `Read` type without an `unsafe`
+    /// block.
+    #[unstable(feature = "read_initializer", issue = "42788")]
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::zeroing()
+    }
 
     /// Read all bytes until EOF in this source, placing them into `buf`.
     ///
@@ -826,6 +859,50 @@ pub trait Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, limit: u64) -> Take<Self> where Self: Sized {
         Take { inner: self, limit: limit }
+    }
+}
+
+/// A type used to conditionally initialize buffers passed to `Read` methods.
+#[unstable(feature = "read_initializer", issue = "42788")]
+#[derive(Debug)]
+pub struct Initializer(bool);
+
+impl Initializer {
+    /// Returns a new `Initializer` which will zero out buffers.
+    #[unstable(feature = "read_initializer", issue = "42788")]
+    #[inline]
+    pub fn zeroing() -> Initializer {
+        Initializer(true)
+    }
+
+    /// Returns a new `Initializer` which will not zero out buffers.
+    ///
+    /// # Unsafety
+    ///
+    /// This may only be called by `Read`ers which guarantee that they will not
+    /// read from buffers passed to `Read` methods, and that the return value of
+    /// the method accurately reflects the number of bytes that have been
+    /// written to the head of the buffer.
+    #[unstable(feature = "read_initializer", issue = "42788")]
+    #[inline]
+    pub unsafe fn nop() -> Initializer {
+        Initializer(false)
+    }
+
+    /// Indicates if a buffer should be initialized.
+    #[unstable(feature = "read_initializer", issue = "42788")]
+    #[inline]
+    pub fn should_initialize(&self) -> bool {
+        self.0
+    }
+
+    /// Initializes a buffer if necessary.
+    #[unstable(feature = "read_initializer", issue = "42788")]
+    #[inline]
+    pub fn initialize(&self, buf: &mut [u8]) {
+        if self.should_initialize() {
+            unsafe { ptr::write_bytes(buf.as_mut_ptr(), 0, buf.len()) }
+        }
     }
 }
 
@@ -1608,6 +1685,15 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         }
         self.second.read(buf)
     }
+
+    unsafe fn initializer(&self) -> Initializer {
+        let initializer = self.first.initializer();
+        if initializer.should_initialize() {
+            initializer
+        } else {
+            self.second.initializer()
+        }
+    }
 }
 
 #[stable(feature = "chain_bufread", since = "1.9.0")]
@@ -1771,6 +1857,10 @@ impl<T: Read> Read for Take<T> {
         let n = self.inner.read(&mut buf[..max])?;
         self.limit -= n as u64;
         Ok(n)
+    }
+
+    unsafe fn initializer(&self) -> Initializer {
+        self.inner.initializer()
     }
 }
 

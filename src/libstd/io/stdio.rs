@@ -13,7 +13,7 @@ use io::prelude::*;
 use cell::RefCell;
 use fmt;
 use io::lazy::Lazy;
-use io::{self, BufReader, LineWriter};
+use io::{self, Initializer, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -75,8 +75,10 @@ fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.0.read_to_end(buf)
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 impl Write for StdoutRaw {
@@ -113,12 +115,6 @@ impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
-            Maybe::Fake => Ok(0)
-        }
-    }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        match *self {
-            Maybe::Real(ref mut r) => handle_ebadf(r.read_to_end(buf), 0),
             Maybe::Fake => Ok(0)
         }
     }
@@ -294,6 +290,10 @@ impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
     }
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
+    }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.lock().read_to_end(buf)
     }
@@ -310,8 +310,9 @@ impl<'a> Read for StdinLock<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.inner.read_to_end(buf)
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 

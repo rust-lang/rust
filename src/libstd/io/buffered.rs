@@ -15,7 +15,7 @@ use io::prelude::*;
 use cmp;
 use error;
 use fmt;
-use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
+use io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
 use memchr;
 
 /// The `BufReader` struct adds buffering to any reader.
@@ -92,11 +92,16 @@ impl<R: Read> BufReader<R> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
-        BufReader {
-            inner: inner,
-            buf: vec![0; cap].into_boxed_slice(),
-            pos: 0,
-            cap: 0,
+        unsafe {
+            let mut buffer = Vec::with_capacity(cap);
+            buffer.set_len(cap);
+            inner.initializer().initialize(&mut buffer);
+            BufReader {
+                inner: inner,
+                buf: buffer.into_boxed_slice(),
+                pos: 0,
+                cap: 0,
+            }
         }
     }
 
@@ -179,6 +184,11 @@ impl<R: Read> Read for BufReader<R> {
         };
         self.consume(nread);
         Ok(nread)
+    }
+
+    // we can't skip unconditionally because of the large buffer case in read.
+    unsafe fn initializer(&self) -> Initializer {
+        self.inner.initializer()
     }
 }
 

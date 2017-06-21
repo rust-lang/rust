@@ -491,10 +491,6 @@ impl File {
         self.0.read(buf)
     }
 
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.0.read_to_end(buf)
-    }
-
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.0.read_at(buf, offset)
     }

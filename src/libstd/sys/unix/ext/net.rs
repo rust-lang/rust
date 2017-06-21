@@ -17,7 +17,7 @@ use libc;
 use ascii;
 use ffi::OsStr;
 use fmt;
-use io;
+use io::{self, Initializer};
 use mem;
 use net::Shutdown;
 use os::unix::ffi::OsStrExt;
@@ -516,8 +516,9 @@ impl io::Read for UnixStream {
         io::Read::read(&mut &*self, buf)
     }
 
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        io::Read::read_to_end(&mut &*self, buf)
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 
@@ -527,8 +528,9 @@ impl<'a> io::Read for &'a UnixStream {
         self.0.read(buf)
     }
 
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.0.read_to_end(buf)
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 }
 
