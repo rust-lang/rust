@@ -8,7 +8,8 @@ pub mod old {
     }
 
     pub mod b {
-
+        #[allow(dead_code)]
+        pub struct Cde;
     }
 }
 
@@ -17,7 +18,6 @@ pub mod new {
     struct Bcd;
 
     mod b {
-        #[allow(dead_code)]
-        pub struct Cde;
+
     }
 }

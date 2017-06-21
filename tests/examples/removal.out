@@ -11,27 +11,25 @@ warning: Removal of at least one path to `a` (Breaking)
 8 |     }
   |     ^
 
-warning: Breaking changes in `Bcd`
-  --> $REPO_PATH/tests/examples/removal.rs:17:5
+warning: Removal of at least one path to `Cde` (Breaking)
+  --> $REPO_PATH/tests/examples/removal.rs:12:9
    |
-17 |     struct Bcd;
+12 |         pub struct Cde;
+   |         ^^^^^^^^^^^^^^^
+
+warning: Breaking changes in `Bcd`
+  --> $REPO_PATH/tests/examples/removal.rs:18:5
+   |
+18 |     struct Bcd;
    |     ^^^^^^^^^^^
    |
    = warning: Breaking (ItemMadePrivate)
 
 warning: Breaking changes in `b`
-  --> $REPO_PATH/tests/examples/removal.rs:20:9
+  --> $REPO_PATH/tests/examples/removal.rs:22:5
    |
-20 | /         #[allow(dead_code)]
-21 | |         pub struct Cde;
-22 | |     }
-   | |_____^
+22 |     }
+   |     ^
    |
    = warning: Breaking (ItemMadePrivate)
-
-warning: Addition of at least one path to `Cde` (TechnicallyBreaking)
-  --> $REPO_PATH/tests/examples/removal.rs:21:9
-   |
-21 |         pub struct Cde;
-   |         ^^^^^^^^^^^^^^^
 
