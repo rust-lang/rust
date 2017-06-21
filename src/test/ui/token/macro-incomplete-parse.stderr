@@ -15,6 +15,9 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
    |
 22 |     () => ( 1,  //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
    |              ^ expected one of `.`, `;`, `?`, `}`, or an operator here
+...
+35 |     ignored_expr!(); //~ NOTE in this expansion
+   |     ---------------- in this macro invocation
 
 error: macro expansion ignores token `,` and any following
   --> $DIR/macro-incomplete-parse.rs:29:14
