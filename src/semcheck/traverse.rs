@@ -2,7 +2,7 @@ use semcheck::changes::BinaryChangeType;
 use semcheck::changes::BinaryChangeType::*;
 use semcheck::changes::ChangeSet;
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
@@ -105,7 +105,9 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
         let mut c_new = cstore.item_children(new_did, tcx.sess);
 
         // TODO: refactor this to avoid storing tons of `Namespace` values.
+        // println!("old");
         for child in c_old.drain(..) {
+            // println!("  {:?}", child.def.def_id());
             let key = (get_namespace(&child.def), child.ident.name);
             children.entry(key).or_insert((None, None)).0 = Some(child);
         }
@@ -191,21 +193,36 @@ fn diff_item_structures(changes: &mut ChangeSet,
         changes.add_binary(change_type, old_def_id, None);
     }
 
-    // TODO: crude dispatching logic for now (needs totality etc).
+    // TODO: extend as needed.
     match (old.def, new.def) {
-        (TyAlias(_), TyAlias(_)) |
-        (StructCtor(_, _), StructCtor(_, _)) => return,
-        (Struct(_), Struct(_)) |
-        (Union(_), Union(_)) |
-        (Enum(_), Enum(_)) |
+        // (matching) things we don't care about (for now)
+        (Mod(_), Mod(_)) |
         (Trait(_), Trait(_)) |
+        (TyAlias(_), TyAlias(_)) |
+        (AssociatedTy(_), AssociatedTy(_)) |
+        (PrimTy(_), PrimTy(_)) |
+        (TyParam(_), TyParam(_)) |
+        (SelfTy(_, _), SelfTy(_, _)) |
         (Fn(_), Fn(_)) |
+        (StructCtor(_, _), StructCtor(_, _)) |
+        (VariantCtor(_, _), VariantCtor(_, _)) |
+        (Method(_), Method(_)) |
+        (AssociatedConst(_), AssociatedConst(_)) |
+        (Local(_), Local(_)) |
+        (Upvar(_, _, _), Upvar(_, _, _)) |
+        (Label(_), Label(_)) |
+        (GlobalAsm(_), GlobalAsm(_)) |
+        (Macro(_, _), Macro(_, _)) |
+        (Variant(_), Variant(_)) |
         (Const(_), Const(_)) |
         (Static(_, _), Static(_, _)) |
-        (Method(_), Method(_)) |
-        (Macro(_, _), Macro(_, _)) => {},
+        (Err, Err) => return,
+        // ADTs for now
+        (Struct(_), Struct(_)) |
+        (Union(_), Union(_)) |
+        (Enum(_), Enum(_)) => {},
+        // non-matching item pair - register the difference and abort
         _ => {
-            // No match - so we don't need to look further.
             changes.add_binary(KindDifference, old_def_id, None);
             return;
         },
@@ -242,31 +259,63 @@ fn diff_item_structures(changes: &mut ChangeSet,
                     fields.entry(field.name).or_insert((None, None)).1 = Some(field);
                 }
 
+                let mut total_private = true;
+                let mut total_public = true;
+
+                for items2 in fields.values() {
+                    if let Some(o) = items2.0 {
+                        let public = o.vis == Public;
+                        total_public &= public;
+                        total_private &= !public;
+                    }
+                }
+
+                if old.ctor_kind != new.ctor_kind {
+                    let c = VariantStyleChanged {
+                        now_struct: new.ctor_kind == CtorKind::Fictive,
+                        total_private: total_private,
+                    };
+                    changes.add_binary(c, old_def_id, Some(tcx.def_span(old.did)));
+                }
+
                 for (_, items2) in fields.drain() {
-                    // TODO: visibility
                     match items2 {
                         (Some(o), Some(n)) => {
                             id_mapping.add_item(o.did, n.did);
+
+                            if o.vis != Public && n.vis == Public {
+                                changes.add_binary(ItemMadePublic,
+                                                   old_def_id,
+                                                   Some(tcx.def_span(o.did)));
+                            } else if o.vis == Public && n.vis != Public {
+                                changes.add_binary(ItemMadePrivate,
+                                                   old_def_id,
+                                                   Some(tcx.def_span(o.did)));
+                            }
                         },
                         (Some(o), None) => {
-                            changes.add_binary(VariantFieldRemoved,
-                                               old_def_id,
-                                               Some(tcx.def_span(o.did)));
+                            let c = VariantFieldRemoved {
+                                public: o.vis == Public,
+                                total_public: total_public
+                            };
+                            changes.add_binary(c, old_def_id, Some(tcx.def_span(o.did)));
                         },
                         (None, Some(n)) => {
-                            changes.add_binary(VariantFieldAdded,
-                                               old_def_id,
-                                               Some(tcx.def_span(n.did)));
+                            let c = VariantFieldRemoved {
+                                public: n.vis == Public,
+                                total_public: total_public
+                            };
+                            changes.add_binary(c, old_def_id, Some(tcx.def_span(n.did)));
                         },
                         (None, None) => unreachable!(),
                     }
                 }
             },
             (Some(old), None) => {
-                changes.add_binary(EnumVariantRemoved, old_def_id, Some(tcx.def_span(old.did)));
+                changes.add_binary(VariantRemoved, old_def_id, Some(tcx.def_span(old.did)));
             },
             (None, Some(new)) => {
-                changes.add_binary(EnumVariantAdded, old_def_id, Some(tcx.def_span(new.did)));
+                changes.add_binary(VariantAdded, old_def_id, Some(tcx.def_span(new.did)));
             },
             (None, None) => unreachable!(),
         }

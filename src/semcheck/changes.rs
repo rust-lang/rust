@@ -139,26 +139,20 @@ pub enum BinaryChangeType {
     TypeGeneralization,
     /// The bounds on a type parameter have been tightened.
     TypeSpecialization,
-    /// A field has been added to a struct.
-    StructFieldAdded { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAAIN!
-    /// A field has been removed from a struct.
-    StructFieldRemoved { public: bool, total_public: bool }, // TODO: EXXXXPPPPLAAAIN!
-    /// A struct has changed it's style.
-    StructStyleChanged { now_tuple: bool, total_private: bool },
     /// A variant has been added to an enum.
-    EnumVariantAdded,
+    VariantAdded,
     /// A variant has been removed from an enum.
-    EnumVariantRemoved,
-    /// A field hasb been added to an enum variant.
-    VariantFieldAdded,
-    /// A field has been removed from an enum variant.
-    VariantFieldRemoved,
-    /// An enum variant has changed it's style.
-    VariantFieldStyleChanged { now_tuple: bool },
+    VariantRemoved,
+    /// A field hasb been added to a variant.
+    VariantFieldAdded { public: bool, total_public: bool },
+    /// A field has been removed from a variant.
+    VariantFieldRemoved { public: bool, total_public: bool },
+    /// A variant has changed it's style.
+    VariantStyleChanged { now_struct: bool, total_private: bool },
     /// A field in a struct or enum has changed it's type.
     FieldTypeChanged(String), // FIXME: terrible for obvious reasons
     /// An impl item has been added.
-    TraitImplItemAdded { defaulted: bool }, // TODO: EXPLAAAIN!
+    TraitImplItemAdded { defaulted: bool },
     /// An impl item has been removed.
     TraitImplItemRemoved,
     /// An unknown change is any change we don't yet explicitly handle.
@@ -178,14 +172,11 @@ impl BinaryChangeType {
             TypeParameterAdded { defaulted: false } |
             TypeParameterRemoved { .. } |
             TypeSpecialization |
-            StructFieldAdded { .. } |
-            StructFieldRemoved { .. } |
-            StructStyleChanged { .. } |
-            EnumVariantAdded |
-            EnumVariantRemoved |
-            VariantFieldAdded |
-            VariantFieldRemoved |
-            VariantFieldStyleChanged { .. } |
+            VariantAdded |
+            VariantRemoved |
+            VariantFieldAdded { .. } |
+            VariantFieldRemoved { .. } |
+            VariantStyleChanged { .. } |
             FieldTypeChanged(_) |
             TraitImplItemAdded { .. } |
             TraitImplItemRemoved |
