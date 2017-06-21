@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo { //~ NOTE previous definition of `Foo` here
+enum Foo { //~ NOTE previous definition of the type `Foo` here
     X
 }
 
-mod Foo { //~ ERROR a type named `Foo` has already been defined
-          //~| NOTE already defined
+mod Foo { //~ ERROR the name `Foo` is defined multiple times
+          //~| NOTE `Foo` redefined here
+          //~| NOTE `Foo` must be defined only once in the type namespace of this module
     pub static X: isize = 42;
     fn f() { f() } // Check that this does not result in a resolution error
 }

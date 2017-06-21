@@ -3450,11 +3450,11 @@ impl<'a> Resolver<'a> {
                        parent: Module,
                        ident: Ident,
                        ns: Namespace,
-                       binding: &NameBinding,
+                       new_binding: &NameBinding,
                        old_binding: &NameBinding) {
         // Error on the second of two conflicting names
-        if old_binding.span.lo > binding.span.lo {
-            return self.report_conflict(parent, ident, ns, old_binding, binding);
+        if old_binding.span.lo > new_binding.span.lo {
+            return self.report_conflict(parent, ident, ns, old_binding, new_binding);
         }
 
         let container = match parent.kind {
@@ -3464,12 +3464,17 @@ impl<'a> Resolver<'a> {
             _ => "enum",
         };
 
-        let (participle, noun) = match old_binding.is_import() {
-            true => ("imported", "import"),
-            false => ("defined", "definition"),
+        let old_noun = match old_binding.is_import() {
+            true => "import",
+            false => "definition",
         };
 
-        let (name, span) = (ident.name, binding.span);
+        let new_participle = match new_binding.is_import() {
+            true => "imported",
+            false => "defined",
+        };
+
+        let (name, span) = (ident.name, new_binding.span);
 
         if let Some(s) = self.name_already_seen.get(&name) {
             if s == &span {
@@ -3477,36 +3482,47 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let msg = {
-            let kind = match (ns, old_binding.module()) {
-                (ValueNS, _) => "a value",
-                (MacroNS, _) => "a macro",
-                (TypeNS, _) if old_binding.is_extern_crate() => "an extern crate",
-                (TypeNS, Some(module)) if module.is_normal() => "a module",
-                (TypeNS, Some(module)) if module.is_trait() => "a trait",
-                (TypeNS, _) => "a type",
-            };
-            format!("{} named `{}` has already been {} in this {}",
-                    kind, name, participle, container)
+        let old_kind = match (ns, old_binding.module()) {
+            (ValueNS, _) => "value",
+            (MacroNS, _) => "macro",
+            (TypeNS, _) if old_binding.is_extern_crate() => "extern crate",
+            (TypeNS, Some(module)) if module.is_normal() => "module",
+            (TypeNS, Some(module)) if module.is_trait() => "trait",
+            (TypeNS, _) => "type",
         };
 
-        let mut err = match (old_binding.is_extern_crate(), binding.is_extern_crate()) {
+        let namespace = match ns {
+            ValueNS => "value",
+            MacroNS => "macro",
+            TypeNS => "type",
+        };
+
+        let msg = format!("the name `{}` is defined multiple times", name);
+
+        let mut err = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
             (true, true) => struct_span_err!(self.session, span, E0259, "{}", msg),
-            (true, _) | (_, true) => match binding.is_import() && old_binding.is_import() {
+            (true, _) | (_, true) => match new_binding.is_import() && old_binding.is_import() {
                 true => struct_span_err!(self.session, span, E0254, "{}", msg),
                 false => struct_span_err!(self.session, span, E0260, "{}", msg),
             },
-            _ => match (old_binding.is_import(), binding.is_import()) {
+            _ => match (old_binding.is_import(), new_binding.is_import()) {
                 (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),
                 (true, true) => struct_span_err!(self.session, span, E0252, "{}", msg),
                 _ => struct_span_err!(self.session, span, E0255, "{}", msg),
             },
         };
 
-        err.span_label(span, format!("`{}` already {}", name, participle));
+        err.note(&format!("`{}` must be defined only once in the {} namespace of this {}",
+                          name,
+                          namespace,
+                          container));
+
+        err.span_label(span, format!("`{}` re{} here", name, new_participle));
         if old_binding.span != syntax_pos::DUMMY_SP {
-            err.span_label(old_binding.span, format!("previous {} of `{}` here", noun, name));
+            err.span_label(old_binding.span, format!("previous {} of the {} `{}` here",
+                                                      old_noun, old_kind, name));
         }
+
         err.emit();
         self.name_already_seen.insert(name, span);
     }

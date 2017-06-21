@@ -11,11 +11,12 @@
 #![feature(alloc)]
 
 extern crate alloc;
-//~^ NOTE previous import of `alloc` here
+//~^ NOTE previous import of the extern crate `alloc` here
 
 mod alloc {
-//~^ ERROR `alloc` has already been imported in this module [E0260]
-//~| NOTE `alloc` already imported
+//~^ ERROR the name `alloc` is defined multiple times [E0260]
+//~| NOTE `alloc` redefined here
+//~| NOTE `alloc` must be defined only once in the type namespace of this module
     pub trait MyTrait {
         fn do_something();
     }

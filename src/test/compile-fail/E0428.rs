@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Bar; //~ previous definition of `Bar` here
+struct Bar; //~ previous definition of the type `Bar` here
 struct Bar; //~ ERROR E0428
-            //~| NOTE already defined
+            //~| NOTE `Bar` redefined here
+            //~| NOTE `Bar` must be defined only once in the type namespace of this module
 
 fn main () {
 }
