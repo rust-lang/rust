@@ -236,6 +236,15 @@ fn main() {
         }
     }
 
+    let color = match env::var("RUSTC_COLOR") {
+        Ok(s) => usize::from_str(&s).expect("RUSTC_COLOR should be an integer"),
+        Err(_) => 0,
+    };
+
+    if color != 0 {
+        cmd.arg("--color=always");
+    }
+
     if verbose > 1 {
         writeln!(&mut io::stderr(), "rustc command: {:?}", cmd).unwrap();
     }

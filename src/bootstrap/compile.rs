@@ -477,11 +477,43 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     build.run(&mut cargo);
 }
 
+
+// Avoiding a dependency on winapi to keep compile times down
+#[cfg(unix)]
+fn stderr_isatty() -> bool {
+    use libc;
+    unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
+}
+#[cfg(windows)]
+fn stderr_isatty() -> bool {
+    type DWORD = u32;
+    type BOOL = i32;
+    type HANDLE = *mut u8;
+    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
+    extern "system" {
+        fn GetStdHandle(which: DWORD) -> HANDLE;
+        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: *mut DWORD) -> BOOL;
+    }
+    unsafe {
+        let handle = GetStdHandle(STD_ERROR_HANDLE);
+        let mut out = 0;
+        GetConsoleMode(handle, &mut out) != 0
+    }
+}
+
 fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     cargo.arg("--message-format").arg("json")
          .stdout(Stdio::piped());
+
+    if stderr_isatty() {
+        // since we pass message-format=json to cargo, we need to tell the rustc
+        // wrapper to give us colored output if necessary. This is because we
+        // only want Cargo's JSON output, not rustcs.
+        cargo.env("RUSTC_COLOR", "1");
+    }
+
     build.verbose(&format!("running: {:?}", cargo));
     let mut child = match cargo.spawn() {
         Ok(child) => child,
