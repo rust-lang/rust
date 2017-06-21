@@ -571,6 +571,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.deallocate(ptr)?;
             }
 
+            "syscall" => {
+                match self.value_to_primval(args[0], usize)?.to_u64()? {
+                    511 => return Err(EvalError::Unimplemented("miri does not support random number generators".to_owned())),
+                    id => return Err(EvalError::Unimplemented(format!("miri does not support syscall id {}", id))),
+                }
+            }
+
+            "dlsym" => {
+                let handle = args[0].read_ptr(&self.memory)?;
+                {
+                    let symbol = args[1].read_ptr(&self.memory)?.to_ptr()?;
+                    let symbol_name = self.memory.read_c_str(symbol)?;
+                    let err = format!("bad c unicode symbol: {:?}", symbol_name);
+                    let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
+                    return Err(EvalError::Unimplemented(format!("miri does not support dynamically loading libraries (requested symbol: {})", symbol_name)));
+                }
+            }
+
             "__rust_allocate" => {
                 let size = self.value_to_primval(args[0], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[1], usize)?.to_u64()?;
