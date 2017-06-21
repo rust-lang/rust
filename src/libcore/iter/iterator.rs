@@ -487,7 +487,9 @@ pub trait Iterator {
     /// This is equivalent to using a [`for`] loop on the iterator, although
     /// `break` and `continue` are not possible from a closure.  It's generally
     /// more idiomatic to use a `for` loop, but `for_each` may be more legible
-    /// when processing items at the end of longer iterator chains.
+    /// when processing items at the end of longer iterator chains.  In some
+    /// cases `for_each` may also be faster than a loop, because it will use
+    /// internal iteration on adaptors like `Chain`.
     ///
     /// [`for`]: ../../book/first-edition/loops.html#for
     ///
@@ -523,9 +525,7 @@ pub trait Iterator {
     fn for_each<F>(self, mut f: F) where
         Self: Sized, F: FnMut(Self::Item),
     {
-        for item in self {
-            f(item);
-        }
+        self.fold((), move |(), item| f(item));
     }
 
     /// Creates an iterator which uses a closure to determine if an element
