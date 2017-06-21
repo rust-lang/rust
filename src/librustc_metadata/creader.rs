@@ -14,7 +14,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use schema::{CrateRoot, Tracked};
 
-use rustc::hir::def_id::{CrateNum, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::DepKind;
 use rustc::session::Session;
@@ -26,8 +26,7 @@ use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::middle::cstore::NativeLibrary;
-use rustc::hir::map::{Definitions, DefKey, DefPathData, DisambiguatedDefPathData, ITEM_LIKE_SPACE};
-use rustc::hir::map::definitions::DefPathTable;
+use rustc::hir::map::Definitions;
 
 use std::cell::{RefCell, Cell};
 use std::ops::Deref;
@@ -308,16 +307,9 @@ impl<'a> CrateLoader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
-        let proc_macros = crate_root.macro_derive_registrar.map(|_| {
-            self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
+        let def_path_table = record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
+            crate_root.def_path_table.decode(&metadata)
         });
-        let def_path_table = if let Some(ref proc_macros) = proc_macros {
-            proc_macro_def_path_table(proc_macros)
-        } else {
-            record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
-                crate_root.def_path_table.decode(&metadata)
-            })
-        };
 
         let exported_symbols = crate_root.exported_symbols
                                          .map(|x| x.decode(&metadata).collect());
@@ -336,7 +328,9 @@ impl<'a> CrateLoader<'a> {
             def_path_table: Rc::new(def_path_table),
             exported_symbols: exported_symbols,
             trait_impls: trait_impls,
-            proc_macros: proc_macros,
+            proc_macros: crate_root.macro_derive_registrar.map(|_| {
+                self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
+            }),
             root: crate_root,
             blob: metadata,
             cnum_map: RefCell::new(cnum_map),
@@ -1218,32 +1212,4 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             _ => {}
         }
     }
-}
-
-fn proc_macro_def_path_table(proc_macros: &[(ast::Name, Rc<SyntaxExtension>)]) -> DefPathTable {
-    let mut table = DefPathTable::new();
-    let root = DefKey {
-        parent: None,
-        disambiguated_data: DisambiguatedDefPathData {
-            data: DefPathData::CrateRoot,
-            disambiguator: 0,
-        },
-    };
-
-    let initial_hash = DefKey::root_parent_stable_hash("", "");
-    let root_hash = root.compute_stable_hash(initial_hash);
-    let root_id = table.allocate(root, root_hash, ITEM_LIKE_SPACE);
-    let root_path_hash = table.def_path_hash(root_id);
-    for proc_macro in proc_macros {
-        let key = DefKey {
-            parent: Some(CRATE_DEF_INDEX),
-            disambiguated_data: DisambiguatedDefPathData {
-                data: DefPathData::MacroDef(proc_macro.0),
-                disambiguator: 0,
-            },
-        };
-        let def_path_hash = key.compute_stable_hash(root_path_hash);
-        table.allocate(key, def_path_hash, ITEM_LIKE_SPACE);
-    }
-    table
 }
