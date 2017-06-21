@@ -148,6 +148,7 @@ enum TargetKind {
     Test, // test file
     Bench, // bench file
     CustomBuild, // build script
+    ProcMacro, // a proc macro implementation
     Other, // plugin,...
 }
 
@@ -155,7 +156,7 @@ impl TargetKind {
     fn should_format(&self) -> bool {
         match *self {
             TargetKind::Lib | TargetKind::Bin | TargetKind::Example | TargetKind::Test |
-            TargetKind::Bench | TargetKind::CustomBuild => true,
+            TargetKind::Bench | TargetKind::CustomBuild | TargetKind::ProcMacro => true,
             _ => false,
         }
     }
@@ -282,6 +283,7 @@ fn target_from_json(jtarget: &Value) -> Target {
         "example" => TargetKind::Example,
         "bench" => TargetKind::Bench,
         "custom-build" => TargetKind::CustomBuild,
+        "proc-macro" => TargetKind::ProcMacro,
         _ => TargetKind::Other,
     };
 
