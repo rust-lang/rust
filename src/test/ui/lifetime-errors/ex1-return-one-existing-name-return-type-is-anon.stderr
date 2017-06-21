@@ -8,7 +8,7 @@ note: ...the reference is valid for the anonymous lifetime #1 defined on the met
   --> $DIR/ex1-return-one-existing-name-return-type-is-anon.rs:16:3
    |
 16 | /   fn foo<'a>(&self, x: &'a i32) -> &i32 {
-17 | |    
+17 | |
 18 | |     x
 19 | |
 20 | |   }
@@ -17,7 +17,7 @@ note: ...but the borrowed content is only valid for the lifetime 'a as defined o
   --> $DIR/ex1-return-one-existing-name-return-type-is-anon.rs:16:3
    |
 16 | /   fn foo<'a>(&self, x: &'a i32) -> &i32 {
-17 | |    
+17 | |
 18 | |     x
 19 | |
 20 | |   }

@@ -27,11 +27,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // Consider the example `fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32`
     // Here, we would return the hir::Arg for y, we return the type &'a
     // i32, which is the type of y but with the anonymous region replaced
-    // with 'a and also the corresponding bound region.
-    fn find_arg_with_anonymous_region(&self,
-                                      anon_region: Region<'tcx>,
-                                      named_region: Region<'tcx>)
-                                      -> Option<(&hir::Arg, ty::Ty<'tcx>, ty::BoundRegion)> {
+    // with 'a, the corresponding bound region and is_first which is true if
+    // the hir::Arg is the first argument in the function declaration.
+    fn find_arg_with_anonymous_region
+        (&self,
+         anon_region: Region<'tcx>,
+         named_region: Region<'tcx>)
+         -> Option<(&hir::Arg, ty::Ty<'tcx>, ty::BoundRegion, bool)> {
 
         match *anon_region {
             ty::ReFree(ref free_region) => {
@@ -39,7 +41,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let id = free_region.scope;
                 let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                 let body_id = self.tcx.hir.maybe_body_owned_by(node_id).unwrap();
-
+                let mut is_first = false;
                 let body = self.tcx.hir.body(body_id);
                 body.arguments
                     .iter()
@@ -56,7 +58,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                           r
                                                       });
                                     if found_anon_region {
-                                        return Some((arg, new_arg_ty, free_region.bound_region));
+                                        if body.arguments.iter().nth(0) == Some(&arg) {
+                                            is_first = true;
+                                        }
+                                        return Some((arg,
+                                                     new_arg_ty,
+                                                     free_region.bound_region,
+                                                     is_first));
                                     } else {
                                         None
                                     }
@@ -86,19 +94,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
-        let (named, (arg, new_ty, br), scope_def_id) =
-            if self.is_named_region(sub) && self.is_suitable_anonymous_region(sup).is_some() {
-                (sub,
-                 self.find_arg_with_anonymous_region(sup, sub).unwrap(),
-                 self.is_suitable_anonymous_region(sup).unwrap())
-            } else if self.is_named_region(sup) &&
-                      self.is_suitable_anonymous_region(sub).is_some() {
-                (sup,
-                 self.find_arg_with_anonymous_region(sub, sup).unwrap(),
-                 self.is_suitable_anonymous_region(sub).unwrap())
-            } else {
-                return false; // inapplicable
-            };
+        let (named, (arg, new_ty, br, is_first), scope_def_id) = if
+            self.is_named_region(sub) && self.is_suitable_anonymous_region(sup).is_some() {
+            (sub,
+             self.find_arg_with_anonymous_region(sup, sub).unwrap(),
+             self.is_suitable_anonymous_region(sup).unwrap())
+        } else if
+            self.is_named_region(sup) && self.is_suitable_anonymous_region(sub).is_some() {
+            (sup,
+             self.find_arg_with_anonymous_region(sub, sup).unwrap(),
+             self.is_suitable_anonymous_region(sub).unwrap())
+        } else {
+            return false; // inapplicable
+        };
 
         // Here, we check for the case where the anonymous region
         // is in the return type.
@@ -114,6 +122,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             _ => {}
+        }
+
+        // Here we check for the case where anonymous region
+        // corresponds to self and if yes, we display E0312.
+        // FIXME(#42700) - Need to format self properly to
+        // enable E0611 for it.
+        if is_first &&
+           self.tcx
+               .opt_associated_item(scope_def_id)
+               .map(|i| i.method_has_self_argument)
+               .unwrap_or(false) {
+            return false;
         }
 
         if let Some(simple_name) = arg.pat.simple_name() {

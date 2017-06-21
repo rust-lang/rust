@@ -3,7 +3,7 @@ error[E0611]: explicit lifetime required in the type of `x`
    |
 16 |   fn foo<'a>(&'a self, x: &i32) -> &i32 {
    |                        - consider changing the type of `x` to `&'a i32`
-17 |    
+17 | 
 18 |     if true { &self.field } else { x }
    |                                    ^ lifetime `'a` required
 
