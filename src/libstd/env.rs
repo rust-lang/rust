@@ -712,7 +712,9 @@ impl DoubleEndedIterator for Args {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Args { .. }")
+        f.debug_struct("Args")
+            .field("inner", &self.inner.inner.inner_debug())
+            .finish()
     }
 }
 
@@ -737,7 +739,9 @@ impl DoubleEndedIterator for ArgsOs {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("ArgsOs { .. }")
+        f.debug_struct("ArgsOs")
+            .field("inner", &self.inner.inner_debug())
+            .finish()
     }
 }
 
@@ -1085,4 +1089,14 @@ mod tests {
                         r#""c:\te;st";c:\"#));
         assert!(join_paths([r#"c:\te"st"#].iter().cloned()).is_err());
     }
+
+    #[test]
+    fn args_debug() {
+        assert_eq!(
+            format!("Args {{ inner: {:?} }}", args().collect::<Vec<_>>()),
+            format!("{:?}", args()));
+        assert_eq!(
+            format!("ArgsOs {{ inner: {:?} }}", args_os().collect::<Vec<_>>()),
+            format!("{:?}", args_os()));
     }
+}
