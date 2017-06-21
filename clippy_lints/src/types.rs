@@ -8,7 +8,7 @@ use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
-use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint, span_lint_and_then,
+use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint, span_lint_and_sugg,
             opt_def_id, last_path_segment, type_size};
 use utils::paths;
 
@@ -210,15 +210,12 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         } else {
                             ""
                         };
-                        span_lint_and_then(cx,
+                        span_lint_and_sugg(cx,
                             BORROWED_BOX,
                             ast_ty.span,
                             "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
-                            |db| {
-                                db.span_suggestion(ast_ty.span,
-                                    "try",
-                                    format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, "..")));
-                            }
+                            "try",
+                            format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, ".."))
                         );
                         return; // don't recurse into the type
                     }};

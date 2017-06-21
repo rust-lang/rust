@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
-use utils::{span_lint_and_then, snippet};
+use utils::{span_lint_and_sugg, snippet};
 
 /// **What it does:** Checks for operations where precedence may be unclear
 /// and suggests to add parentheses. Currently it catches the following:
@@ -38,9 +38,8 @@ impl EarlyLintPass for Precedence {
         if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.node {
             let span_sugg =
                 |expr: &Expr, sugg| {
-                    span_lint_and_then(cx, PRECEDENCE, expr.span, "operator precedence can trip the unwary", |db| {
-                        db.span_suggestion(expr.span, "consider parenthesizing your expression", sugg);
-                    });
+                    span_lint_and_sugg(cx, PRECEDENCE, expr.span, "operator precedence can trip the unwary",
+                                       "consider parenthesizing your expression", sugg);
                 };
 
             if !is_bit_op(op) {
@@ -80,15 +79,12 @@ impl EarlyLintPass for Precedence {
                             LitKind::Int(..) |
                             LitKind::Float(..) |
                             LitKind::FloatUnsuffixed(..) => {
-                                span_lint_and_then(cx,
+                                span_lint_and_sugg(cx,
                                                    PRECEDENCE,
                                                    expr.span,
                                                    "unary minus has lower precedence than method call",
-                                                   |db| {
-                                    db.span_suggestion(expr.span,
-                                                       "consider adding parentheses to clarify your intent",
-                                                       format!("-({})", snippet(cx, rhs.span, "..")));
-                                });
+                                                   "consider adding parentheses to clarify your intent",
+                                                   format!("-({})", snippet(cx, rhs.span, "..")));
                             },
                             _ => (),
                         }

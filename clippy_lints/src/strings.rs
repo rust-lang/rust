@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Spanned;
 use utils::SpanlessEq;
-use utils::{match_type, paths, span_lint, span_lint_and_then, walk_ptrs_ty, get_parent_expr};
+use utils::{match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty, get_parent_expr};
 
 /// **What it does:** Checks for string appends of the form `x = x + y` (without
 /// `let`!).
@@ -147,15 +147,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                 if let ExprLit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
                         if lit_content.as_str().chars().all(|c| c.is_ascii()) && !in_macro(args[0].span) {
-                            span_lint_and_then(cx,
+                            span_lint_and_sugg(cx,
                                                STRING_LIT_AS_BYTES,
                                                e.span,
                                                "calling `as_bytes()` on a string literal",
-                                               |db| {
-                                let sugg = format!("b{}", snippet(cx, args[0].span, r#""foo""#));
-                                db.span_suggestion(e.span, "consider using a byte string literal instead", sugg);
-                            });
-
+                                               "consider using a byte string literal instead",
+                                               format!("b{}", snippet(cx, args[0].span, r#""foo""#)));
                         }
                     }
                 }

@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::ty::{self, Ty};
 use rustc_const_eval::ConstContext;
 use syntax::codemap::Span;
-use utils::{higher, is_copy, snippet, span_lint_and_then};
+use utils::{higher, is_copy, snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
 /// be possible.
@@ -80,11 +80,12 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
         },
     };
 
-    span_lint_and_then(cx,
+    span_lint_and_sugg(cx,
                        USELESS_VEC,
                        span,
                        "useless use of `vec!`",
-                       |db| { db.span_suggestion(span, "you can use a slice directly", snippet); });
+                       "you can use a slice directly",
+                       snippet);
 }
 
 /// Return the item type of the vector (ie. the `T` in `Vec<T>`).
