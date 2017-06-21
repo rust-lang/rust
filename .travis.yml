@@ -11,6 +11,11 @@ before_script:
 - export RUST_SYSROOT=$HOME/rust
 script:
 - |
+  # get ourselves a MIR-ful libstd
+  cd xargo &&
+  RUSTFLAGS='-Zalways-encode-mir' xargo build &&
+  cd ..
+- |
   # Test plain miri
   cargo build &&
   cargo test &&
@@ -22,11 +27,7 @@ script:
   cargo miri test &&
   cd ..
 - |
-  # get ourselves a MIR-ful libstd
-  cd xargo &&
-  RUSTFLAGS='-Zalways-encode-mir' xargo build &&
-  cd .. &&
-  # and run the tests with it
+  # and run all tests with full mir
   MIRI_SYSROOT=~/.xargo/HOST cargo test
 notifications:
   email:

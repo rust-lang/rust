@@ -3,7 +3,6 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use error::{EvalResult, EvalError};
 use eval_context::EvalContext;
-use memory::Pointer;
 use value::PrimVal;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -24,7 +23,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Bool | Char | U8 | U16 | U32 | U64 | U128 => self.cast_int(val.to_u128()?, dest_ty, false),
 
-            FnPtr | Ptr => self.cast_ptr(val.to_ptr()?, dest_ty),
+            FnPtr | Ptr => self.cast_ptr(val, dest_ty),
         }
     }
 
@@ -71,7 +70,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
             TyChar => Err(EvalError::InvalidChar(v)),
 
-            TyRawPtr(_) => Ok(PrimVal::Ptr(Pointer::from_int(v as u64))),
+            TyRawPtr(_) => Ok(PrimVal::Bytes(v % (1 << self.memory.pointer_size()))),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
         }
@@ -92,11 +91,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn cast_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    fn cast_ptr(&self, ptr: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         use rustc::ty::TypeVariants::*;
         match ty.sty {
             TyRef(..) | TyRawPtr(_) | TyFnPtr(_) | TyInt(_) | TyUint(_) =>
-                Ok(PrimVal::Ptr(ptr)),
+                Ok(ptr),
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }

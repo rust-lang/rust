@@ -2,6 +2,7 @@ use rustc::traits::{self, Reveal};
 
 use eval_context::EvalContext;
 use memory::Pointer;
+use value::{Value, PrimVal};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
@@ -9,7 +10,7 @@ use rustc::ty::{self, Ty};
 use syntax::codemap::DUMMY_SP;
 use syntax::ast;
 
-use error::EvalResult;
+use error::{EvalResult, EvalError};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
@@ -73,16 +74,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn read_drop_type_from_vtable(&self, vtable: Pointer) -> EvalResult<'tcx, Option<ty::Instance<'tcx>>> {
-        let drop_fn = self.memory.read_ptr(vtable)?;
-
-        // just a sanity check
-        assert_eq!(drop_fn.offset, 0);
-
-        // some values don't need to call a drop impl, so the value is null
-        if drop_fn == Pointer::from_int(0) {
-            Ok(None)
-        } else {
-            self.memory.get_fn(drop_fn.alloc_id).map(Some)
+        // we don't care about the pointee type, we just want a pointer
+        match self.read_ptr(vtable, self.tcx.mk_nil_ptr())? {
+            // some values don't need to call a drop impl, so the value is null
+            Value::ByVal(PrimVal::Bytes(0)) => Ok(None),
+            Value::ByVal(PrimVal::Ptr(drop_fn)) => self.memory.get_fn(drop_fn.alloc_id).map(Some),
+            _ => Err(EvalError::ReadBytesAsPointer),
         }
     }
 

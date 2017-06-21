@@ -4,5 +4,5 @@ fn main() {
         std::mem::transmute::<&usize, &fn(i32)>(&b)
     };
 
-    (*g)(42) //~ ERROR tried to use an integer pointer or a dangling pointer as a function pointer
+    (*g)(42) //~ ERROR a memory access tried to interpret some bytes as a pointer
 }

@@ -5,7 +5,6 @@ use syntax::codemap::Span;
 use error::EvalResult;
 use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Lvalue, LvalueExtra};
-use memory::Pointer;
 use value::PrimVal;
 use value::Value;
 
@@ -13,9 +12,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(crate) fn drop_lvalue(&mut self, lval: Lvalue<'tcx>, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
         trace!("drop_lvalue: {:#?}", lval);
         let val = match self.force_allocation(lval)? {
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Ptr(vtable)),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len as u128)),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::None } => Value::ByVal(PrimVal::Ptr(ptr)),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => Value::ByValPair(ptr, PrimVal::Ptr(vtable)),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => Value::ByValPair(ptr, PrimVal::Bytes(len as u128)),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::None } => Value::ByVal(ptr),
             _ => bug!("force_allocation broken"),
         };
         self.drop(val, instance, ty, span)
@@ -50,7 +49,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             instance,
             span,
             mir,
-            Lvalue::from_ptr(Pointer::zst_ptr()),
+            Lvalue::zst(),
             StackPopCleanup::None,
         )?;
 

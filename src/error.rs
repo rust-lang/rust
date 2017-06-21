@@ -22,6 +22,7 @@ pub enum EvalError<'tcx> {
         allocation_size: u64,
     },
     ReadPointerAsBytes,
+    ReadBytesAsPointer,
     InvalidPointerMath,
     ReadUndefBytes,
     DeadLocal,
@@ -81,6 +82,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "pointer offset outside bounds of allocation",
             EvalError::ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
+            EvalError::ReadBytesAsPointer =>
+                "a memory access tried to interpret some bytes as a pointer",
             EvalError::InvalidPointerMath =>
                 "attempted to do math or a comparison on pointers into different allocations",
             EvalError::ReadUndefBytes =>
