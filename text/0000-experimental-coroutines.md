@@ -451,16 +451,40 @@ and are likely to be coalesced around as a stable compiler feature.
 [alternatives]: #alternatives
 
 The alternatives to list here, as this is an experimental RFC, are more targeted
-as alternatives to the motivation rather than the feature itself here. For
-example there are many alternative implementations of coroutines (or
-alternatives to naming!) as we've seen in previous RFCs. These alternatives,
-however, are more appropriate for the stabilization RFC of coroutines rather
-than here.
+as alternatives to the motivation rather than the feature itself here. Along
+those lines, you could imagine quite a few alternatives to the goal of tackling
+the 2017 roadmap goal targeted in this RFC. There's quite a bit of discussion on
+the [original rfc thread][rfc], but some highlight alternatives are:
 
-In terms of alternatives for an implementation of async/await, though, there
-don't seem to be all that many! Coroutines have critical benefits in the area of
-being a zero-cost abstraction which many other alternatives, such as green
-threads, do not have. Suggestions for alternatives though would be most welcome!
+* "Stackful coroutines" aka green threads. This strategy has, however, been
+  thoroughly explored in historical versions of Rust. Rust long ago had green
+  threads and libgreen, and consensus was later reached that it should be
+  removed. There are many tradeoffs with an approach like this, but it's safe to
+  say that we've definitely gained a lot of experimental and anecdotal evidence
+  historically!
+
+* User-mode-scheduling is another possibility along the line of green threads.
+  Unfortunately this isn't implemented in all mainstream operating systems
+  (Linux/Mac/Windows) and as a result isn't a viable alternative at this time.
+
+* ["Resumable expressions"][cpp] is a proposal in C++ which attempts to deal
+  with some of the "viral" concerns of async/await, but it's unclear how
+  applicable or easy it would apply to Rust.
+
+[rfc]: https://github.com/rust-lang/rfcs/pull/2033
+[cpp]: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0114r0.pdf
+
+Overall while there are a number of alternatives, the most plausible ones have a
+large amount of experimental and anecdotal evidence already (green
+threads/stackful coroutines). The next-most-viable alternative (stackless
+coroutines) we do not have much experience with. As a result it's believed that
+it's time to explore and experiment with an alternative to M:N threading with
+stackless coroutines, and continue to push on the 2017 roadmap goal.
+
+Some more background about this motivation for exploring async/await vs
+alternatives can also be found [in a comment on the RFC thread][comment].
+
+[comment]: https://github.com/rust-lang/rfcs/pull/2033#issuecomment-309603972
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
