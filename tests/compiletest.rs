@@ -3,19 +3,24 @@ extern crate compiletest_rs as compiletest;
 use std::path::{PathBuf, Path};
 use std::io::Write;
 
-fn compile_fail(sysroot: &Path) {
-    let flags = format!("--sysroot {} -Dwarnings", sysroot.to_str().expect("non utf8 path"));
-    for_all_targets(sysroot, |target| {
-        let mut config = compiletest::default_config();
-        config.host_rustcflags = Some(flags.clone());
-        config.mode = "compile-fail".parse().expect("Invalid mode");
-        config.run_lib_path = Path::new(sysroot).join("lib").join("rustlib").join(&target).join("lib");
-        config.rustc_path = "target/debug/miri".into();
-        config.src_base = PathBuf::from("tests/compile-fail".to_string());
-        config.target = target.to_owned();
-        config.target_rustcflags = Some(flags.clone());
-        compiletest::run_tests(&config);
-    });
+fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: bool) {
+    let mut config = compiletest::default_config();
+    config.mode = "compile-fail".parse().expect("Invalid mode");
+    config.rustc_path = "target/debug/miri".into();
+    if fullmir {
+        if host != target {
+            // skip fullmir on nonhost
+            return;
+        }
+        let sysroot = Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST");
+        config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
+        config.src_base = PathBuf::from(path.to_string());
+    } else {
+        config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
+        config.src_base = PathBuf::from(path.to_string());
+    }
+    config.target = target.to_owned();
+    compiletest::run_tests(&config);
 }
 
 fn run_pass() {
@@ -35,6 +40,10 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool) {
     config.host = host.to_owned();
     config.rustc_path = PathBuf::from("target/debug/miri");
     if fullmir {
+        if host != target {
+            // skip fullmir on nonhost
+            return;
+        }
         let sysroot = Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST");
         config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
     }
@@ -203,9 +212,10 @@ fn compile_test() {
         run_pass();
         for_all_targets(sysroot, |target| {
             miri_pass("tests/run-pass", &target, host, false);
+            compile_fail(sysroot, "tests/compile-fail", &target, host, false);
         });
         miri_pass("tests/run-pass-fullmir", host, host, true);
-        compile_fail(sysroot);
+        compile_fail(sysroot, "tests/compile-fail-fullmir", host, host, true);
     }
 }
 
