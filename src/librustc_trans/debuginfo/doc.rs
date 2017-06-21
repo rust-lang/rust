@@ -156,13 +156,13 @@
 //! (2) Structs, enums and traits have a multipart identifier
 //!
 //!     (1) The first part is the SVH (strict version hash) of the crate they
-//!          wereoriginally defined in
+//!          were originally defined in
 //!
 //!     (2) The second part is the ast::NodeId of the definition in their
-//!          originalcrate
+//!          original crate
 //!
 //!     (3) The final part is a concatenation of the type IDs of their concrete
-//!          typearguments if they are generic types.
+//!          type arguments if they are generic types.
 //!
 //! (3) Tuple-, pointer and function types are structurally identified, which
 //!     means that they are equivalent if their component types are equivalent

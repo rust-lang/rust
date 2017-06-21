@@ -13,7 +13,7 @@
 //! Space for up to N elements is provided on the stack.  If more elements are collected, Vec is
 //! used to store the values on the heap.
 //!
-//! The N above is determined by Array's implementor, by way of an associatated constant.
+//! The N above is determined by Array's implementor, by way of an associated constant.
 
 use std::ops::{Deref, DerefMut};
 use std::iter::{self, IntoIterator, FromIterator};

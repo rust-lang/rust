@@ -529,7 +529,7 @@ pub fn current() -> Thread {
 /// Thus the pattern of `yield`ing after a failed poll is rather common when
 /// implementing low-level shared resources or synchronization primitives.
 ///
-/// However programmers will usualy prefer to use, [`channel`]s, [`Condvar`]s,
+/// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
 /// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
 /// thinking about thread schedulling.
 ///
@@ -893,7 +893,7 @@ struct Inner {
 /// The [`thread::current`] function is available even for threads not spawned
 /// by the APIs of this module.
 ///
-/// There is usualy no need to create a `Thread` struct yourself, one
+/// There is usually no need to create a `Thread` struct yourself, one
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///

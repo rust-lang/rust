@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> Children {
     }
 
     /// Attempt to insert an impl into this set of children, while comparing for
-    /// specialiation relationships.
+    /// specialization relationships.
     fn insert(&mut self,
               tcx: TyCtxt<'a, 'gcx, 'tcx>,
               impl_def_id: DefId,

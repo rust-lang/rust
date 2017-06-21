@@ -435,7 +435,7 @@ pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
     mk_spanned_attr_inner(span, id, item)
 }
 
-/// Returns an innter attribute with the given value and span.
+/// Returns an inner attribute with the given value and span.
 pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
         id: id,
