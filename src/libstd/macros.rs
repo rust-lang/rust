@@ -238,6 +238,16 @@ macro_rules! assert_approx_eq {
 /// into libsyntax itself.
 #[cfg(dox)]
 pub mod builtin {
+
+    /// Unconditionally causes compilation to fail with the given error message when encountered.
+    ///
+    /// For more information, see the [RFC].
+    ///
+    /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
+    #[unstable(feature = "compile_error_macro", issue = "40872")]
+    #[macro_export]
+    macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
+
     /// The core macro for formatted string creation & output.
     ///
     /// This macro produces a value of type [`fmt::Arguments`]. This value can be
