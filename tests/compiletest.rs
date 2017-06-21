@@ -27,13 +27,17 @@ fn run_pass() {
     compiletest::run_tests(&config);
 }
 
-fn miri_pass(path: &str, target: &str, host: &str) {
+fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool) {
     let mut config = compiletest::default_config();
     config.mode = "mir-opt".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
     config.rustc_path = PathBuf::from("target/debug/miri");
+    if fullmir {
+        let sysroot = Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST");
+        config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
+    }
     // don't actually execute the final binary, it might be for other targets and we only care
     // about running miri, not the binary.
     config.runtool = Some("echo \"\" || ".to_owned());
@@ -116,6 +120,7 @@ fn compile_test() {
             let sysroot = libs.join("rustlib").join(&host).join("lib");
             let paths = std::env::join_paths(&[libs, sysroot]).unwrap();
             cmd.env(compiletest::procsrv::dylib_env_var(), paths);
+            cmd.env("MIRI_SYSROOT", Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST"));
 
             match cmd.output() {
                 Ok(ref output) if output.status.success() => {
@@ -197,8 +202,9 @@ fn compile_test() {
     } else {
         run_pass();
         for_all_targets(sysroot, |target| {
-            miri_pass("tests/run-pass", &target, host);
+            miri_pass("tests/run-pass", &target, host, false);
         });
+        miri_pass("tests/run-pass-fullmir", host, host, true);
         compile_fail(sysroot);
     }
 }
