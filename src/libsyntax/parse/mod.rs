@@ -687,7 +687,7 @@ mod tests {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 6),
-                        segments: vec![ast::PathSegment::crate_root(),
+                        segments: vec![ast::PathSegment::crate_root(sp(0, 2)),
                                        str2seg("a", 2, 3),
                                        str2seg("b", 5, 6)]
                     }),

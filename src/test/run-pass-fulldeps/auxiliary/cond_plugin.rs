@@ -11,7 +11,7 @@
 // no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
-#![feature(proc_macro, proc_macro_lib)]
+#![feature(proc_macro)]
 
 extern crate proc_macro;
 
@@ -23,7 +23,7 @@ pub fn cond(input: TokenStream) -> TokenStream {
     let mut input = input.into_iter().peekable();
     while let Some(tree) = input.next() {
         let cond = match tree.kind {
-            TokenNode::Sequence(_, cond) => cond,
+            TokenNode::Group(_, cond) => cond,
             _ => panic!("Invalid input"),
         };
         let mut cond_trees = cond.clone().into_iter();
@@ -33,7 +33,7 @@ pub fn cond(input: TokenStream) -> TokenStream {
             panic!("Invalid macro usage in cond: {}", cond);
         }
         let is_else = match test.kind {
-            TokenNode::Word(word) => word.as_str() == "else",
+            TokenNode::Term(word) => word.as_str() == "else",
             _ => false,
         };
         conds.push(if is_else || input.peek().is_none() {

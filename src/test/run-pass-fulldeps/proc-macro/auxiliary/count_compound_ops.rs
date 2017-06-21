@@ -15,7 +15,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::{TokenStream, TokenNode, OpKind, Literal, quote};
+use proc_macro::{TokenStream, TokenNode, Spacing, Literal, quote};
 
 #[proc_macro]
 pub fn count_compound_ops(input: TokenStream) -> TokenStream {
@@ -27,8 +27,8 @@ fn count_compound_ops_helper(input: TokenStream) -> u32 {
     let mut count = 0;
     for token in input {
         match token.kind {
-            TokenNode::Op(c, OpKind::Alone) => count += 1,
-            TokenNode::Sequence(_, tokens) => count += count_compound_ops_helper(tokens),
+            TokenNode::Op(c, Spacing::Alone) => count += 1,
+            TokenNode::Group(_, tokens) => count += count_compound_ops_helper(tokens),
             _ => {}
         }
     }

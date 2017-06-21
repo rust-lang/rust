@@ -20,7 +20,7 @@ use std::iter::Peekable;
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new(FilePathMapping::empty());
-    filemap_to_stream(&ps, ps.codemap().new_filemap("bogofile".to_string(), source_str))
+    filemap_to_stream(&ps, ps.codemap().new_filemap("bogofile".to_string(), source_str), None)
 }
 
 /// Map string to parser (via tts)
