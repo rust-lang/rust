@@ -25,8 +25,9 @@ use llvm;
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Subst, Substs};
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use syntax_pos::Span;
@@ -248,6 +249,21 @@ impl<'a, 'tcx> TransItem<'tcx> {
         } else {
             None
         }
+    }
+
+    /// Returns whether this instance is instantiable - whether it has no unsatisfied
+    /// predicates.
+    pub fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        debug!("is_instantiable({:?})", self);
+        let (def_id, substs) = match *self {
+            TransItem::Fn(ref instance) => (instance.def_id(), instance.substs),
+            TransItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
+            // global asm never has predicates
+            TransItem::GlobalAsm(..) => return true
+        };
+
+        let predicates = tcx.predicates_of(def_id).predicates.subst(tcx, substs);
+        traits::normalize_and_test_predicates(tcx, predicates)
     }
 
     pub fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
