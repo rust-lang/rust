@@ -76,7 +76,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
             break;
         }
 
-        ptr_swap_n(
+        ptr::swap_nonoverlapping(
             mid.offset(-(left as isize)),
             mid.offset((right-delta) as isize),
             delta);
@@ -101,12 +101,5 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         ptr::copy_nonoverlapping(mid, buf, right);
         ptr::copy(mid.offset(-(left as isize)), dim, left);
         ptr::copy_nonoverlapping(buf, mid.offset(-(left as isize)), right);
-    }
-}
-
-unsafe fn ptr_swap_n<T>(a: *mut T, b: *mut T, n: usize) {
-    for i in 0..n {
-        // These are nonoverlapping, so use mem::swap instead of ptr::swap
-        mem::swap(&mut *a.offset(i as isize), &mut *b.offset(i as isize));
     }
 }

@@ -117,6 +117,90 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     mem::forget(tmp);
 }
 
+/// Swaps a sequence of values at two mutable locations of the same type.
+///
+/// # Safety
+///
+/// The two arguments must each point to the beginning of `count` locations
+/// of valid memory, and the two memory ranges must not overlap.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// #![feature(swap_nonoverlapping)]
+///
+/// use std::ptr;
+///
+/// let mut x = [1, 2, 3, 4];
+/// let mut y = [7, 8, 9];
+///
+/// unsafe {
+///     ptr::swap_nonoverlapping(x.as_mut_ptr(), y.as_mut_ptr(), 2);
+/// }
+///
+/// assert_eq!(x, [7, 8, 3, 4]);
+/// assert_eq!(y, [1, 2, 9]);
+/// ```
+#[inline]
+#[unstable(feature = "swap_nonoverlapping", issue = "42818")]
+pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
+    let x = x as *mut u8;
+    let y = y as *mut u8;
+    let len = mem::size_of::<T>() * count;
+    swap_nonoverlapping_bytes(x, y, len)
+}
+
+#[inline]
+unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
+    // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
+    // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
+    // Haswell E processors. LLVM is more able to optimize if we give a struct a
+    // #[repr(simd)], even if we don't actually use this struct directly.
+    //
+    // FIXME repr(simd) broken on emscripten and redox
+    #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox")), repr(simd))]
+    struct Block(u64, u64, u64, u64);
+    struct UnalignedBlock(u64, u64, u64, u64);
+
+    let block_size = mem::size_of::<Block>();
+
+    // Loop through x & y, copying them `Block` at a time
+    // The optimizer should unroll the loop fully for most types
+    // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
+    let mut i = 0;
+    while i + block_size <= len {
+        // Create some uninitialized memory as scratch space
+        // Declaring `t` here avoids aligning the stack when this loop is unused
+        let mut t: Block = mem::uninitialized();
+        let t = &mut t as *mut _ as *mut u8;
+        let x = x.offset(i as isize);
+        let y = y.offset(i as isize);
+
+        // Swap a block of bytes of x & y, using t as a temporary buffer
+        // This should be optimized into efficient SIMD operations where available
+        copy_nonoverlapping(x, t, block_size);
+        copy_nonoverlapping(y, x, block_size);
+        copy_nonoverlapping(t, y, block_size);
+        i += block_size;
+    }
+
+    if i < len {
+        // Swap any remaining bytes
+        let mut t: UnalignedBlock = mem::uninitialized();
+        let rem = len - i;
+
+        let t = &mut t as *mut _ as *mut u8;
+        let x = x.offset(i as isize);
+        let y = y.offset(i as isize);
+
+        copy_nonoverlapping(x, t, rem);
+        copy_nonoverlapping(y, x, rem);
+        copy_nonoverlapping(t, y, rem);
+    }
+}
+
 /// Replaces the value at `dest` with `src`, returning the old
 /// value, without dropping either.
 ///

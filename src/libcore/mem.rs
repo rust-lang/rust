@@ -499,59 +499,7 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
-        // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
-        // Haswell E processors. LLVM is more able to optimize if we give a struct a
-        // #[repr(simd)], even if we don't actually use this struct directly.
-        //
-        // FIXME repr(simd) broken on emscripten and redox
-        #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox")), repr(simd))]
-        struct Block(u64, u64, u64, u64);
-        struct UnalignedBlock(u64, u64, u64, u64);
-
-        let block_size = size_of::<Block>();
-
-        // Get raw pointers to the bytes of x & y for easier manipulation
-        let x = x as *mut T as *mut u8;
-        let y = y as *mut T as *mut u8;
-
-        // Loop through x & y, copying them `Block` at a time
-        // The optimizer should unroll the loop fully for most types
-        // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
-        let len = size_of::<T>();
-        let mut i = 0;
-        while i + block_size <= len {
-            // Create some uninitialized memory as scratch space
-            // Declaring `t` here avoids aligning the stack when this loop is unused
-            let mut t: Block = uninitialized();
-            let t = &mut t as *mut _ as *mut u8;
-            let x = x.offset(i as isize);
-            let y = y.offset(i as isize);
-
-            // Swap a block of bytes of x & y, using t as a temporary buffer
-            // This should be optimized into efficient SIMD operations where available
-            ptr::copy_nonoverlapping(x, t, block_size);
-            ptr::copy_nonoverlapping(y, x, block_size);
-            ptr::copy_nonoverlapping(t, y, block_size);
-            i += block_size;
-        }
-
-
-        if i < len {
-            // Swap any remaining bytes, using aligned types to copy
-            // where appropriate (this information is lost by conversion
-            // to *mut u8, so restore it manually here)
-            let mut t: UnalignedBlock = uninitialized();
-            let rem = len - i;
-
-            let t = &mut t as *mut _ as *mut u8;
-            let x = x.offset(i as isize);
-            let y = y.offset(i as isize);
-
-            ptr::copy_nonoverlapping(x, t, rem);
-            ptr::copy_nonoverlapping(y, x, rem);
-            ptr::copy_nonoverlapping(t, y, rem);
-        }
+        ptr::swap_nonoverlapping(x, y, 1);
     }
 }
 
