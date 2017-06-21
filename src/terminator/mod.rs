@@ -670,12 +670,63 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "getenv" => {
-                {
+                let result = {
                     let name_ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                     let name = self.memory.read_c_str(name_ptr)?;
-                    info!("ignored env var request for `{:?}`", ::std::str::from_utf8(name));
+                    match self.env_vars.get(name) {
+                        Some(&var) => PrimVal::Ptr(var),
+                        None => PrimVal::Bytes(0),
+                    }
+                };
+                self.write_primval(dest, result, dest_ty)?;
+            }
+
+            "unsetenv" => {
+                let mut success = None;
+                {
+                    let name_ptr = args[0].read_ptr(&self.memory)?;
+                    if !name_ptr.is_null()? {
+                        let name = self.memory.read_c_str(name_ptr.to_ptr()?)?;
+                        if !name.is_empty() && !name.contains(&b'=') {
+                            success = Some(self.env_vars.remove(name));
+                        }
+                    }
                 }
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                if let Some(old) = success {
+                    if let Some(var) = old {
+                        self.memory.deallocate(var)?;
+                    }
+                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                } else {
+                    self.write_primval(dest, PrimVal::from_i128(-1), dest_ty)?;
+                }
+            }
+
+            "setenv" => {
+                let mut new = None;
+                {
+                    let name_ptr = args[0].read_ptr(&self.memory)?;
+                    let value_ptr = args[1].read_ptr(&self.memory)?.to_ptr()?;
+                    let value = self.memory.read_c_str(value_ptr)?;
+                    if !name_ptr.is_null()? {
+                        let name = self.memory.read_c_str(name_ptr.to_ptr()?)?;
+                        if !name.is_empty() && !name.contains(&b'=') {
+                            new = Some((name.to_owned(), value.to_owned()));
+                        }
+                    }
+                }
+                if let Some((name, value)) = new {
+                    // +1 for the null terminator
+                    let value_copy = self.memory.allocate((value.len() + 1) as u64, 1)?;
+                    self.memory.write_bytes(value_copy, &value)?;
+                    self.memory.write_bytes(value_copy.offset(value.len() as u64, self.memory.layout)?, &[0])?;
+                    if let Some(var) = self.env_vars.insert(name.to_owned(), value_copy) {
+                        self.memory.deallocate(var)?;
+                    }
+                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                } else {
+                    self.write_primval(dest, PrimVal::from_i128(-1), dest_ty)?;
+                }
             }
 
             "write" => {
@@ -696,6 +747,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Bytes(result as u128), dest_ty)?;
             }
 
+            "strlen" => {
+                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
+                let n = self.memory.read_c_str(ptr)?.len();
+                self.write_primval(dest, PrimVal::Bytes(n as u128), dest_ty)?;
+            }
+
             // Some things needed for sys::thread initialization to go through
             "signal" | "sigaction" | "sigaltstack" => {
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
@@ -705,10 +762,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let name = self.value_to_primval(args[0], usize)?.to_u64()?;
                 trace!("sysconf() called with name {}", name);
                 let result = match name {
-                    30 => 4096, // _SC_PAGESIZE
+                    30 => PrimVal::Bytes(4096), // _SC_PAGESIZE
+                    70 => PrimVal::from_i128(-1), // _SC_GETPW_R_SIZE_MAX
                     _ => return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)))
                 };
-                self.write_primval(dest, PrimVal::Bytes(result), dest_ty)?;
+                self.write_primval(dest, result, dest_ty)?;
             }
 
             "mmap" => {
