@@ -504,8 +504,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         // Haswell E processors. LLVM is more able to optimize if we give a struct a
         // #[repr(simd)], even if we don't actually use this struct directly.
         //
-        // FIXME repr(simd) broken on emscripten
-        #[cfg_attr(not(target_os = "emscripten"), repr(simd))]
+        // FIXME repr(simd) broken on emscripten and redox
+        #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox")), repr(simd))]
         struct Block(u64, u64, u64, u64);
         struct UnalignedBlock(u64, u64, u64, u64);
 
