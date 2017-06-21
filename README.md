@@ -5,10 +5,10 @@ A tool for formatting Rust code according to style guidelines.
 If you'd like to help out (and you should, it's a fun project!), see
 [Contributing.md](Contributing.md).
 
-We are changing the default style used by rustfmt. There is an ongoing [RFC process](https://github.com/rust-lang-nursery/fmt-rfcs).
-The last version using the old style was 0.8.6. From 0.9 onwards, the RFC style
-is the default. If you want the old style back, you can use [legacy-rustfmt.toml](legacy-rustfmt.toml)
-as your rustfmt.toml.
+We are changing the default style used by rustfmt. There is an ongoing [RFC
+process][fmt rfcs]. The last version using the old style was 0.8.6. From 0.9
+onwards, the RFC style is the default. If you want the old style back, you can
+use [legacy-rustfmt.toml](legacy-rustfmt.toml) as your rustfmt.toml.
 
 The current `master` branch uses libsyntax (part of the compiler). It is
 published as `rustfmt-nightly`. The `syntex` branch uses Syntex instead of
@@ -187,13 +187,10 @@ directory and it will apply the options in that file. See `rustfmt
 --config-help` for the options which are available, or if you prefer to see
 visual style previews, [Configurations.md](Configurations.md).
 
-By default, Rustfmt uses a style which (mostly) conforms to the
-[Rust style guidelines](https://doc.rust-lang.org/1.12.0/style/README.html).
-There are many details which the style guidelines do not cover, and in these
-cases we try to adhere to a style similar to that used in the
-[Rust repo](https://github.com/rust-lang/rust). Once Rustfmt is more complete, and
-able to re-format large repositories like Rust, we intend to go through the Rust
-RFC process to nail down the default style in detail.
+By default, Rustfmt uses a style which conforms to the [Rust style guide][style
+guide]. For details that have not yet been formalized through the [style RFC
+process][fmt rfcs], we try to adhere to a style similar to that used in the
+[Rust repo][rust].
 
 If there are styling choices you don't agree with, we are usually happy to add
 options covering different styles. File an issue, or even better, submit a PR.
@@ -222,3 +219,7 @@ Rustfmt is distributed under the terms of both the MIT license and the
 Apache License (Version 2.0).
 
 See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.
+
+[rust]: https://github.com/rust-lang/rust
+[fmt rfcs]: https://github.com/rust-lang-nursery/fmt-rfcs
+[style guide]: https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/guide/guide.md
