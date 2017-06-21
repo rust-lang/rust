@@ -1,0 +1,29 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `Abc`
+  --> $REPO_PATH/tests/examples/enum.rs:12:5
+   |
+12 | /     pub enum Abc {
+13 | |         Abc,
+14 | |     }
+   | |_____^
+   |
+warning: Breaking (VariantAdded)
+  --> $REPO_PATH/tests/examples/enum.rs:13:9
+   |
+13 |         Abc,
+   |         ^^^
+
+warning: Breaking changes in `Bcd`
+  --> $REPO_PATH/tests/examples/enum.rs:16:5
+   |
+16 | /     pub enum Bcd {
+17 | |
+18 | |     }
+   | |_____^
+   |
+warning: Breaking (VariantRemoved)
+  --> $REPO_PATH/tests/examples/enum.rs:7:9
+   |
+7  |         Abc,
+   |         ^^^
+

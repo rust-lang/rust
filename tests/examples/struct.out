@@ -1,11 +1,69 @@
-version bump: 1.0.0 -> (NonBreaking) -> 1.1.0
-warning: NonBreaking changes in `Def`
-  --> $REPO_PATH/tests/examples/struct.rs:22:5
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Removal of at least one path to `Hij` (Breaking)
+  --> $REPO_PATH/tests/examples/struct.rs:23:5
    |
-22 | /     pub struct Def<A=u8> {
-23 | |         field: A,
-24 | |     }
+23 |     pub struct Hij(u8);
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: NonBreaking changes in `Def`
+  --> $REPO_PATH/tests/examples/struct.rs:32:5
+   |
+32 | /     pub struct Def<A=u8> {
+33 | |         field: A,
+34 | |     }
    | |_____^
    |
    = note: NonBreaking (TypeParameterAdded { defaulted: true })
+
+warning: TechnicallyBreaking changes in `Fgh`
+  --> $REPO_PATH/tests/examples/struct.rs:40:5
+   |
+40 | /     pub struct Fgh {
+41 | |         pub field: u8,
+42 | |     }
+   | |_____^
+   |
+note: TechnicallyBreaking (ItemMadePublic)
+  --> $REPO_PATH/tests/examples/struct.rs:16:9
+   |
+16 |         field: u8,
+   |         ^^^^^^^^^
+
+warning: Breaking changes in `Ghi`
+  --> $REPO_PATH/tests/examples/struct.rs:44:5
+   |
+44 | /     pub struct Ghi {
+45 | |         field: u8,
+46 | |     }
+   | |_____^
+   |
+warning: Breaking (ItemMadePrivate)
+  --> $REPO_PATH/tests/examples/struct.rs:20:9
+   |
+20 |         pub field: u8,
+   |         ^^^^^^^^^^^^^
+
+warning: Breaking changes in `Hij`
+  --> $REPO_PATH/tests/examples/struct.rs:48:5
+   |
+48 | /     pub struct Hij {
+49 | |         field: u8,
+50 | |     }
+   | |_____^
+   |
+warning: Breaking (VariantFieldAdded { public: false, total_public: false })
+  --> $REPO_PATH/tests/examples/struct.rs:49:9
+   |
+49 |         field: u8,
+   |         ^^^^^^^^^
+warning: Breaking (VariantFieldRemoved { public: false, total_public: false })
+  --> $REPO_PATH/tests/examples/struct.rs:23:20
+   |
+23 |     pub struct Hij(u8);
+   |                    ^^^
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/examples/struct.rs:23:5
+   |
+23 |     pub struct Hij(u8);
+   |     ^^^^^^^^^^^^^^^^^^^
 

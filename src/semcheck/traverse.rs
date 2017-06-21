@@ -301,7 +301,7 @@ fn diff_item_structures(changes: &mut ChangeSet,
                             changes.add_binary(c, old_def_id, Some(tcx.def_span(o.did)));
                         },
                         (None, Some(n)) => {
-                            let c = VariantFieldRemoved {
+                            let c = VariantFieldAdded {
                                 public: n.vis == Public,
                                 total_public: total_public
                             };

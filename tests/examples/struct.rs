@@ -11,6 +11,16 @@ pub mod old {
     pub struct Efg {
         pub field: u8,
     }
+
+    pub struct Fgh {
+        field: u8,
+    }
+
+    pub struct Ghi {
+        pub field: u8,
+    }
+
+    pub struct Hij(u8);
 }
 
 #[allow(dead_code)]
@@ -25,5 +35,17 @@ pub mod new {
 
     pub struct Efg {
         pub field: u16,
+    }
+
+    pub struct Fgh {
+        pub field: u8,
+    }
+
+    pub struct Ghi {
+        field: u8,
+    }
+
+    pub struct Hij {
+        field: u8,
     }
 }
