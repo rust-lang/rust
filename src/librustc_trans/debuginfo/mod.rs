@@ -43,7 +43,7 @@ use std::ptr;
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use rustc::ty::layout;
+use rustc::ty::layout::{self, LayoutTyper};
 
 pub mod gdb;
 mod utils;
@@ -320,8 +320,32 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         };
 
         // Arguments types
-        for &argument_type in inputs {
-            signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
+        if cx.sess().target.target.options.is_like_msvc {
+            // FIXME(#42800):
+            // There is a bug in MSDIA that leads to a crash when it encounters
+            // a fixed-size array of `u8` or something zero-sized in a
+            // function-type (see #40477).
+            // As a workaround, we replace those fixed-size arrays with a
+            // pointer-type. So a function `fn foo(a: u8, b: [u8; 4])` would
+            // appear as `fn foo(a: u8, b: *const u8)` in debuginfo,
+            // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
+            // This transformed type is wrong, but these function types are
+            // already inaccurate due to ABI adjustments (see #42800).
+            signature.extend(inputs.iter().map(|&t| {
+                let t = match t.sty {
+                    ty::TyArray(ct, _)
+                        if (ct == cx.tcx().types.u8) ||
+                           (cx.layout_of(ct).size(cx).bytes() == 0) => {
+                        cx.tcx().mk_imm_ptr(ct)
+                    }
+                    _ => t
+                };
+                type_metadata(cx, t, syntax_pos::DUMMY_SP)
+            }));
+        } else {
+            signature.extend(inputs.iter().map(|t| {
+                type_metadata(cx, t, syntax_pos::DUMMY_SP)
+            }));
         }
 
         if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
