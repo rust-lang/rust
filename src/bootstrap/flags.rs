@@ -163,7 +163,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         let mut pass_sanity_check = true;
         match matches.free.get(0) {
             Some(check_subcommand) => {
-                if &check_subcommand != subcommand {
+                if check_subcommand != subcommand {
                     pass_sanity_check = false;
                 }
             },
