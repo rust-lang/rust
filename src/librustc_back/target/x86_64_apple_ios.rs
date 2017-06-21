@@ -26,6 +26,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             max_atomic_width: Some(64),
+            stack_probes: true,
             .. base
         }
     })

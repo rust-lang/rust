@@ -25,6 +25,7 @@ pub fn target() -> TargetResult {
     base.disable_redzone = true;
     base.no_default_libraries = false;
     base.exe_allocation_crate = None;
+    base.stack_probes = true;
 
     Ok(Target {
         llvm_target: "x86_64-rumprun-netbsd".to_string(),
