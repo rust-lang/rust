@@ -30,6 +30,7 @@ extern crate rustc_errors as errors;
 
 mod asm;
 mod cfg;
+mod compile_error;
 mod concat;
 mod concat_idents;
 mod env;
@@ -105,6 +106,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         option_env: env::expand_option_env,
         log_syntax: log_syntax::expand_syntax_ext,
         trace_macros: trace_macros::expand_trace_macros,
+        compile_error: compile_error::expand_compile_error,
     }
 
     // format_args uses `unstable` things internally.
