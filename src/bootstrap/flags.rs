@@ -122,16 +122,15 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         // the subcommand. Therefore we must manually identify the subcommand first, so that we can
         // complete the definition of the options.  Then we can use the getopt::Matches object from
         // there on out.
-        let mut possible_subcommands = args.iter().collect::<Vec<_>>();
-        possible_subcommands.retain(|&s|
-                                           (s == "build")
-                                        || (s == "test")
-                                        || (s == "bench")
-                                        || (s == "doc")
-                                        || (s == "clean")
-                                        || (s == "dist")
-                                        || (s == "install"));
-        let subcommand = match possible_subcommands.first() {
+        let subcommand = args.iter().find(|&s|
+            (s == "build")
+            || (s == "test")
+            || (s == "bench")
+            || (s == "doc")
+            || (s == "clean")
+            || (s == "dist")
+            || (s == "install"));
+        let subcommand = match subcommand {
             Some(s) => s,
             None => {
                 // No subcommand -- show the general usage and subcommand help
