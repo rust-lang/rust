@@ -567,7 +567,6 @@ pub fn rust_src(build: &Build) {
         "src/rustc/libc_shim",
         "src/libtest",
         "src/libterm",
-        "src/libgetopts",
         "src/compiler-rt",
         "src/jemalloc",
         "src/libprofiler_builtins",

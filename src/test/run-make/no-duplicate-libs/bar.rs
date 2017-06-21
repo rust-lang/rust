@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, libc, compiler_builtins_lib)]
+#![feature(lang_items, alloc_system, compiler_builtins_lib)]
 #![crate_type = "dylib"]
 #![no_std]
 
-extern crate libc;
+extern crate alloc_system;
 extern crate compiler_builtins;
 
 #[no_mangle]

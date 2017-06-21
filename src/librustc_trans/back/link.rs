@@ -42,7 +42,8 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
-use flate;
+use flate2::Compression;
+use flate2::write::ZlibEncoder;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
@@ -570,7 +571,9 @@ fn link_rlib<'a>(sess: &'a Session,
                                                  e))
                 }
 
-                let bc_data_deflated = flate::deflate_bytes(&bc_data);
+                let mut bc_data_deflated = Vec::new();
+                ZlibEncoder::new(&mut bc_data_deflated, Compression::Default)
+                    .write_all(&bc_data).unwrap();
 
                 let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
                     Ok(file) => file,

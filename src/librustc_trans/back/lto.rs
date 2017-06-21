@@ -21,8 +21,9 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use back::write::{ModuleConfig, with_llvm_pmb};
 
 use libc;
-use flate;
+use flate2::read::ZlibDecoder;
 
+use std::io::Read;
 use std::ffi::CString;
 use std::path::Path;
 
@@ -112,13 +113,14 @@ pub fn run(sess: &session::Session,
                             link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET..
                             (link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as usize)];
 
-                        match flate::inflate_bytes(compressed_data) {
-                            Ok(inflated) => inflated,
-                            Err(_) => {
-                                sess.fatal(&format!("failed to decompress bc of `{}`",
-                                                   name))
-                            }
+                        let mut inflated = Vec::new();
+                        let res = ZlibDecoder::new(compressed_data)
+                            .read_to_end(&mut inflated);
+                        if res.is_err() {
+                            sess.fatal(&format!("failed to decompress bc of `{}`",
+                                               name))
                         }
+                        inflated
                     } else {
                         sess.fatal(&format!("Unsupported bytecode format version {}",
                                            version))
@@ -129,13 +131,14 @@ pub fn run(sess: &session::Session,
                     // the object must be in the old, pre-versioning format, so
                     // simply inflate everything and let LLVM decide if it can
                     // make sense of it
-                    match flate::inflate_bytes(bc_encoded) {
-                        Ok(bc) => bc,
-                        Err(_) => {
-                            sess.fatal(&format!("failed to decompress bc of `{}`",
-                                               name))
-                        }
+                    let mut inflated = Vec::new();
+                    let res = ZlibDecoder::new(bc_encoded)
+                        .read_to_end(&mut inflated);
+                    if res.is_err() {
+                        sess.fatal(&format!("failed to decompress bc of `{}`",
+                                           name))
                     }
+                    inflated
                 })
             };
 

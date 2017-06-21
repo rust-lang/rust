@@ -372,30 +372,31 @@ impl TestOpts {
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, String>;
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-fn optgroups() -> Vec<getopts::OptGroup> {
-    vec![getopts::optflag("", "ignored", "Run ignored tests"),
-      getopts::optflag("", "test", "Run tests and not benchmarks"),
-      getopts::optflag("", "bench", "Run benchmarks instead of tests"),
-      getopts::optflag("", "list", "List all tests and benchmarks"),
-      getopts::optflag("h", "help", "Display this message (longer with --help)"),
-      getopts::optopt("", "logfile", "Write logs to the specified file instead \
-                          of stdout", "PATH"),
-      getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
-                                         task, allow printing directly"),
-      getopts::optopt("", "test-threads", "Number of threads used for running tests \
-                                           in parallel", "n_threads"),
-      getopts::optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
-                                     be used multiple times)","FILTER"),
-      getopts::optflag("q", "quiet", "Display one character per test instead of one line"),
-      getopts::optflag("", "exact", "Exactly match filters rather than by substring"),
-      getopts::optopt("", "color", "Configure coloring of output:
+fn optgroups() -> getopts::Options {
+    let mut opts = getopts::Options::new();
+    opts.optflag("", "ignored", "Run ignored tests")
+        .optflag("", "test", "Run tests and not benchmarks")
+        .optflag("", "bench", "Run benchmarks instead of tests")
+        .optflag("", "list", "List all tests and benchmarks")
+        .optflag("h", "help", "Display this message (longer with --help)")
+        .optopt("", "logfile", "Write logs to the specified file instead \
+                                of stdout", "PATH")
+        .optflag("", "nocapture", "don't capture stdout/stderr of each \
+                                   task, allow printing directly")
+        .optopt("", "test-threads", "Number of threads used for running tests \
+                                     in parallel", "n_threads")
+        .optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
+                               be used multiple times)","FILTER")
+        .optflag("q", "quiet", "Display one character per test instead of one line")
+        .optflag("", "exact", "Exactly match filters rather than by substring")
+        .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never")]
+            never  = never colorize output;", "auto|always|never");
+    return opts
 }
 
-fn usage(binary: &str) {
+fn usage(binary: &str, options: &getopts::Options) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
     println!(r#"{usage}
 
@@ -424,19 +425,19 @@ Test Attributes:
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
                      tests."#,
-             usage = getopts::usage(&message, &optgroups()));
+             usage = options.usage(&message));
 }
 
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
-    let args_ = &args[1..];
-    let matches = match getopts::getopts(args_, &optgroups()) {
+    let opts = optgroups();
+    let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => return Some(Err(f.to_string())),
     };
 
     if matches.opt_present("h") {
-        usage(&args[0]);
+        usage(&args[0], &opts);
         return None;
     }
 

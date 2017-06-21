@@ -22,12 +22,6 @@ The Rust Project includes packages written by third parties.
 The following third party packages are included, and carry
 their own copyright notices and license terms:
 
-* The src/rt/miniz.c file, carrying an implementation of
-  RFC1950/RFC1951 DEFLATE, by Rich Geldreich
-  <richgel99@gmail.com>. All uses of this file are
-  permitted by the embedded "unlicense" notice
-  (effectively: public domain with warranty disclaimer).
-
 * LLVM. Code for this package is found in src/llvm.
 
     Copyright (c) 2003-2013 University of Illinois at
