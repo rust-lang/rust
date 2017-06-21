@@ -3,7 +3,15 @@ extern crate compiletest_rs as compiletest;
 use std::path::{PathBuf, Path};
 use std::io::Write;
 
+macro_rules! eprintln {
+    ($($arg:tt)*) => {
+        let stderr = std::io::stderr();
+        writeln!(stderr.lock(), $($arg)*).unwrap();
+    }
+}
+
 fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: bool) {
+    eprintln!("## Running compile-fail tests in {} against miri for target {}", path, target);
     let mut config = compiletest::default_config();
     config.mode = "compile-fail".parse().expect("Invalid mode");
     config.rustc_path = "target/debug/miri".into();
@@ -23,16 +31,18 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
     compiletest::run_tests(&config);
 }
 
-fn run_pass() {
+fn run_pass(path: &str) {
+    eprintln!("## Running run-pass tests in {} against rustc", path);
     let mut config = compiletest::default_config();
     config.mode = "run-pass".parse().expect("Invalid mode");
-    config.src_base = PathBuf::from("tests/run-pass".to_string());
+    config.src_base = PathBuf::from(path);
     config.target_rustcflags = Some("-Dwarnings".to_string());
     config.host_rustcflags = Some("-Dwarnings".to_string());
     compiletest::run_tests(&config);
 }
 
 fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool) {
+    eprintln!("## Running run-pass tests in {} against miri for target {}", path, target);
     let mut config = compiletest::default_config();
     config.mode = "mir-opt".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
@@ -65,13 +75,10 @@ fn is_target_dir<P: Into<PathBuf>>(path: P) -> bool {
 
 fn for_all_targets<F: FnMut(String)>(sysroot: &Path, mut f: F) {
     let target_dir = sysroot.join("lib").join("rustlib");
-    println!("target dir: {}", target_dir.to_str().unwrap());
     for entry in std::fs::read_dir(target_dir).expect("invalid sysroot") {
         let entry = entry.unwrap();
         if !is_target_dir(entry.path()) { continue; }
         let target = entry.file_name().into_string().unwrap();
-        let stderr = std::io::stderr();
-        writeln!(stderr.lock(), "running tests for target {}", target).unwrap();
         f(target);
     }
 }
@@ -209,7 +216,8 @@ fn compile_test() {
 
         panic!("ran miri on rustc test suite. Test failing for convenience");
     } else {
-        run_pass();
+        run_pass("tests/run-pass");
+        run_pass("tests/run-pass-fullmir");
         for_all_targets(sysroot, |target| {
             miri_pass("tests/run-pass", &target, host, false);
             compile_fail(sysroot, "tests/compile-fail", &target, host, false);
