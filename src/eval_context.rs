@@ -892,19 +892,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn pointer_offset(&self, ptr: PrimVal, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, PrimVal> {
-        if offset == 0 {
-            // rustc relies on Offset-by-0 to be well-defined even for "bad" pointers like Unique::empty().
-            return Ok(ptr);
+        if ptr == PrimVal::from_u128(0) { // rule out NULL pointers
+            return Err(EvalError::InvalidPointerMath);
         }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-        if pointee_size == 0 {
-            // rustc relies on offsetting pointers to zsts to be a nop
-            return Ok(ptr);
-        }
         return if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.signed_offset(offset, self.memory.layout)?;
-            self.memory.check_bounds(ptr.to_ptr()?, false)?;
+            // Do not do bounds-checking for integers or ZST; they can never alias a normal pointer anyway.
+            if let PrimVal::Ptr(ptr) = ptr {
+                if !ptr.points_to_zst() {
+                    self.memory.check_bounds(ptr, false)?;
+                }
+            }
             Ok(ptr)
         } else {
             Err(EvalError::OverflowingMath)
