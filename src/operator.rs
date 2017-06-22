@@ -3,6 +3,7 @@ use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
+use memory::Pointer;
 use lvalue::Lvalue;
 use value::{
     PrimVal,
@@ -130,19 +131,6 @@ macro_rules! f64_arithmetic {
     )
 }
 
-macro_rules! ptr_add {
-    ($signed:expr, $ptr:expr, $int:expr, $layout:expr) => ({
-        let ptr = $ptr;
-        let int = $int;
-        let (res, over) = if $signed {
-            ptr.overflowing_signed_offset(int as i128, $layout)
-        } else {
-            ptr.overflowing_offset(int as u64, $layout)
-        };
-        (PrimVal::Ptr(res), over)
-    })
-}
-
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     /// Returns the result of the specified operation and whether it overflowed.
     pub fn binary_op(
@@ -202,27 +190,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
                 // These work if one operand is a pointer, the other an integer
-                Sub
+                Add | Sub
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize)
                 && left.is_ptr() && right.is_bytes() => {
-                    let left = left.to_ptr()?;
-                    let right = right.to_bytes()? as i128; // this cast is fine as the kind is max. 64bit
-                    let (res, over) = left.overflowing_signed_offset(-right, self.memory.layout);
-                    return Ok((PrimVal::Ptr(res), over))
-                }
-                Add
-                if left_kind == right_kind && (left_kind == usize || left_kind == isize)
-                && left.is_ptr() && right.is_bytes() => {
-                    let left = left.to_ptr()?;
-                    let right = right.to_bytes()?;
-                    return Ok(ptr_add!(left_kind == isize, left, right, self.memory.layout));
+                    // Cast to i128 is fine as we checked the kind to be ptr-sized
+                    let (res, over) = self.ptr_int_arithmetic(bin_op, left.to_ptr()?, right.to_bytes()? as i128, left_kind == isize)?;
+                    return Ok((PrimVal::Ptr(res), over));
                 }
                 Add
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize)
                 && left.is_bytes() && right.is_ptr() => {
-                    let left = left.to_bytes()?;
-                    let right = right.to_ptr()?;
-                    return Ok(ptr_add!(left_kind == isize, right, left, self.memory.layout));
+                    // This is a commutative operation, just swap the operands
+                    let (res, over) = self.ptr_int_arithmetic(bin_op, right.to_ptr()?, left.to_bytes()? as i128, left_kind == isize)?;
+                    return Ok((PrimVal::Ptr(res), over));
                 }
                 _ => {}
             }
@@ -299,6 +279,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
 
         Ok((val, false))
+    }
+
+    fn ptr_int_arithmetic(
+        &self,
+        bin_op: mir::BinOp,
+        left: Pointer,
+        right: i128,
+        signed: bool,
+    ) -> EvalResult<'tcx, (Pointer, bool)> {
+        use rustc::mir::BinOp::*;
+
+        Ok(match bin_op {
+            Sub =>
+                // The only way this can overflow is by underflowing, so signdeness of the right operands does not matter
+                left.overflowing_signed_offset(-right, self.memory.layout),
+            Add if signed =>
+                left.overflowing_signed_offset(right, self.memory.layout),
+            Add if !signed =>
+                left.overflowing_offset(right as u64, self.memory.layout),
+            _ => bug!("ptr_int_arithmetic called on unsupported operation")
+        })
     }
 }
 
