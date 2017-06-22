@@ -906,7 +906,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             let ptr = ptr.signed_offset(offset, self.memory.layout)?;
             // Do not do bounds-checking for integers or ZST; they can never alias a normal pointer anyway.
             if let PrimVal::Ptr(ptr) = ptr {
-                if !(ptr.points_to_zst() && pointee_size == 0) {
+                if !(ptr.points_to_zst() && (offset == 0 || pointee_size == 0)) {
                     self.memory.check_bounds(ptr, false)?;
                 }
             } else if ptr.is_null()? {
