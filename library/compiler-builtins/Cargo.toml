@@ -27,5 +27,9 @@ utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japa
 utest-macros = { git = "https://github.com/japaric/utest" }
 
 
+[[example]]
+name = "intrinsics"
+required-features = ["c"]
+
 
 [workspace]

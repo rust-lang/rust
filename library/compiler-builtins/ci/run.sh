@@ -34,7 +34,9 @@ case $1 in
         ;;
     *)
         cargo test --no-default-features --features gen-tests --target $1
+        cargo test --no-default-features --features 'gen-tests c' --target $1
         cargo test --no-default-features --features gen-tests --target $1 --release
+        cargo test --no-default-features --features 'gen-tests c' --target $1 --release
         ;;
 esac
 

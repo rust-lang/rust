@@ -6,17 +6,17 @@
 #![allow(unused_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
+#![feature(alloc_system)]
 #![feature(asm)]
 #![feature(compiler_builtins_lib)]
 #![feature(core_float)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(start)]
 #![feature(i128_type)]
 #![no_std]
 
 #[cfg(not(thumb))]
-extern crate libc;
+extern crate alloc_system;
 extern crate compiler_builtins;
 
 // NOTE cfg(not(thumbv6m)) means that the operation is not supported on ARMv6-M at all. Not even
@@ -27,7 +27,6 @@ extern crate compiler_builtins;
 // convention for its intrinsics that's different from other architectures; that's why some function
 // have an additional comment: the function name is the ARM name for the intrinsic and the comment
 // in the non-ARM name for the intrinsic.
-#[cfg(feature = "c")]
 mod intrinsics {
     use core::num::Float;
 
@@ -339,7 +338,6 @@ mod intrinsics {
     }
 }
 
-#[cfg(feature = "c")]
 fn run() {
     use intrinsics::*;
 
@@ -404,30 +402,17 @@ fn run() {
     bb(modti3(bb(2), bb(2)));
 }
 
-#[cfg(all(feature = "c", not(thumb)))]
+#[cfg(not(thumb))]
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {
     run();
-
     0
 }
 
-#[cfg(all(not(feature = "c"), not(thumb)))]
-#[start]
-fn main(_: isize, _: *const *const u8) -> isize {
-    0
-}
-
-#[cfg(all(feature = "c", thumb))]
+#[cfg(thumb)]
 #[no_mangle]
 pub fn _start() -> ! {
     run();
-    loop {}
-}
-
-#[cfg(all(not(feature = "c"), thumb))]
-#[no_mangle]
-pub fn _start() -> ! {
     loop {}
 }
 
@@ -447,9 +432,11 @@ pub fn _Unwind_Resume() {}
 #[cfg(not(test))]
 #[lang = "eh_personality"]
 #[no_mangle]
+#[allow(private_no_mangle_fns)]
 extern "C" fn eh_personality() {}
 
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
 #[no_mangle]
+#[allow(private_no_mangle_fns)]
 extern "C" fn panic_fmt() {}

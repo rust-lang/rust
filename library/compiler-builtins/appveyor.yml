@@ -5,7 +5,7 @@ environment:
 
 install:
   - git submodule update --init
-  - curl -sSf -o rustup-init.exe https://win.rustup.rs
+  - appveyor-retry appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init.exe --default-host x86_64-pc-windows-msvc --default-toolchain nightly -y
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
   - if "%TARGET%"=="i686-pc-windows-msvc" ( rustup target add %TARGET% )
@@ -18,4 +18,6 @@ test_script:
   - cargo build --target %TARGET%
   - cargo build --release --target %TARGET%
   - cargo test --no-default-features --features gen-tests --target %TARGET%
+  - cargo test --no-default-features --features "gen-tests c" --target %TARGET%
   - cargo test --no-default-features --features gen-tests --release --target %TARGET%
+  - cargo test --no-default-features --features "gen-tests c" --release --target %TARGET%
