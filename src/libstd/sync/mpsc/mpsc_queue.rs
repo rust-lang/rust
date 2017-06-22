@@ -114,6 +114,19 @@ impl<T> Queue<T> {
             if self.head.load(Ordering::Acquire) == tail {Empty} else {Inconsistent}
         }
     }
+
+    pub fn can_pop(&self) -> bool {
+        unsafe {
+            let tail = *self.tail.get();
+            let next = (*tail).next.load(Ordering::Acquire);
+
+            if !next.is_null() {
+                true
+            } else {
+                self.head.load(Ordering::Acquire) != tail
+            }
+        }
+    }
 }
 
 impl<T> Drop for Queue<T> {
