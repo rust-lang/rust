@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that non constant exprs fail for vector repeat syntax
+// Check that non constant exprs fail for array repeat syntax
 
 fn main() {
     fn bar(n: usize) {
         let _x = [0; n];
         //~^ ERROR attempt to use a non-constant value in a constant [E0435]
-        //~| NOTE non-constant used with constant
+        //~| NOTE non-constant value
     }
 }
