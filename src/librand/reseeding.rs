@@ -24,7 +24,7 @@ pub struct ReseedingRng<R, Rsdr> {
     rng: R,
     generation_threshold: usize,
     bytes_generated: usize,
-    /// Controls the behaviour when reseeding the RNG.
+    /// Controls the behavior when reseeding the RNG.
     pub reseeder: Rsdr,
 }
 
