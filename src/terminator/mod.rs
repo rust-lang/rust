@@ -614,7 +614,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                 self.write_primval(arg_dest, data, u8_ptr_ty)?;
 
-                // We ourselbes return 0
+                // We ourselves return 0
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
 
                 // Don't fall through
