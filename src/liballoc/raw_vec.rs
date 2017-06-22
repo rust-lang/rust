@@ -244,7 +244,11 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
+    /// # #![feature(alloc)]
+    /// # extern crate alloc;
+    /// # use std::ptr;
+    /// # use alloc::raw_vec::RawVec;
     /// struct MyVec<T> {
     ///     buf: RawVec<T>,
     ///     len: usize,
@@ -261,6 +265,10 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///         self.len += 1;
     ///     }
     /// }
+    /// # fn main() {
+    /// #   let mut vec = MyVec { buf: RawVec::new(), len: 0 };
+    /// #   vec.push(1);
+    /// # }
     /// ```
     #[inline(never)]
     #[cold]
@@ -440,13 +448,17 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
+    /// # #![feature(alloc)]
+    /// # extern crate alloc;
+    /// # use std::ptr;
+    /// # use alloc::raw_vec::RawVec;
     /// struct MyVec<T> {
     ///     buf: RawVec<T>,
     ///     len: usize,
     /// }
     ///
-    /// impl<T> MyVec<T> {
+    /// impl<T: Clone> MyVec<T> {
     ///     pub fn push_all(&mut self, elems: &[T]) {
     ///         self.buf.reserve(self.len, elems.len());
     ///         // reserve would have aborted or panicked if the len exceeded
@@ -459,6 +471,10 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///         }
     ///     }
     /// }
+    /// # fn main() {
+    /// #   let mut vector = MyVec { buf: RawVec::new(), len: 0 };
+    /// #   vector.push_all(&[1, 3, 5, 7, 9]);
+    /// # }
     /// ```
     pub fn reserve(&mut self, used_cap: usize, needed_extra_cap: usize) {
         unsafe {

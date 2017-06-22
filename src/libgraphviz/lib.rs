@@ -111,7 +111,7 @@
 //!
 //! Output from first example (in `example1.dot`):
 //!
-//! ```ignore
+//! ```dot
 //! digraph example1 {
 //!     N0[label="N0"];
 //!     N1[label="N1"];

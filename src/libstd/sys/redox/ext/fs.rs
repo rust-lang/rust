@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unix-specific extensions to primitives in the `std::fs` module.
+//! Redox-specific extensions to primitives in the `std::fs` module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -18,23 +18,25 @@ use path::Path;
 use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 
-/// Unix-specific extensions to `Permissions`
+/// Redox-specific extensions to `Permissions`
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
-    /// Returns the underlying raw `mode_t` bits that are the standard Unix
+    /// Returns the underlying raw `mode_t` bits that are the standard Redox
     /// permissions for this file.
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
     /// use std::fs::File;
-    /// use std::os::unix::fs::PermissionsExt;
+    /// use std::os::redox::fs::PermissionsExt;
     ///
+    /// # fn run() -> std::io::Result<()> {
     /// let f = File::create("foo.txt")?;
     /// let metadata = f.metadata()?;
     /// let permissions = metadata.permissions();
     ///
     /// println!("permissions: {}", permissions.mode());
+    /// # Ok(()) }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
@@ -43,28 +45,30 @@ pub trait PermissionsExt {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
     /// use std::fs::File;
-    /// use std::os::unix::fs::PermissionsExt;
+    /// use std::os::redox::fs::PermissionsExt;
     ///
+    /// # fn run() -> std::io::Result<()> {
     /// let f = File::create("foo.txt")?;
     /// let metadata = f.metadata()?;
     /// let mut permissions = metadata.permissions();
     ///
     /// permissions.set_mode(0o644); // Read/write for owner and read for others.
     /// assert_eq!(permissions.mode(), 0o644);
+    /// # Ok(()) }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: u32);
 
-    /// Creates a new instance of `Permissions` from the given set of Unix
+    /// Creates a new instance of `Permissions` from the given set of Redox
     /// permission bits.
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```
     /// use std::fs::Permissions;
-    /// use std::os::unix::fs::PermissionsExt;
+    /// use std::os::redox::fs::PermissionsExt;
     ///
     /// // Read/write for owner and read for others.
     /// let permissions = Permissions::from_mode(0o644);
@@ -89,7 +93,7 @@ impl PermissionsExt for Permissions {
     }
 }
 
-/// Unix-specific extensions to `OpenOptions`
+/// Redox-specific extensions to `OpenOptions`
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait OpenOptionsExt {
     /// Sets the mode bits that a new file will be created with.
@@ -102,14 +106,17 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
+    /// # #![feature(libc)]
     /// extern crate libc;
     /// use std::fs::OpenOptions;
-    /// use std::os::unix::fs::OpenOptionsExt;
+    /// use std::os::redox::fs::OpenOptionsExt;
     ///
+    /// # fn main() {
     /// let mut options = OpenOptions::new();
     /// options.mode(0o644); // Give read/write for owner and read for others.
     /// let file = options.open("foo.txt");
+    /// # }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
@@ -124,17 +131,20 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```no_run
+    /// # #![feature(libc)]
     /// extern crate libc;
     /// use std::fs::OpenOptions;
-    /// use std::os::unix::fs::OpenOptionsExt;
+    /// use std::os::redox::fs::OpenOptionsExt;
     ///
+    /// # fn main() {
     /// let mut options = OpenOptions::new();
     /// options.write(true);
-    /// if cfg!(unix) {
+    /// if cfg!(target_os = "redox") {
     ///     options.custom_flags(libc::O_NOFOLLOW);
     /// }
     /// let file = options.open("foo.txt");
+    /// # }
     /// ```
     #[stable(feature = "open_options_ext", since = "1.10.0")]
     fn custom_flags(&mut self, flags: i32) -> &mut Self;
@@ -226,7 +236,7 @@ impl MetadataExt for fs::Metadata {
     }
 }
 
-/// Add special unix types (block/char device, fifo and socket)
+/// Add special Redox types (block/char device, fifo and socket)
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
@@ -267,7 +277,7 @@ impl FileTypeExt for fs::FileType {
 /// # Examples
 ///
 /// ```
-/// use std::os::unix::fs;
+/// use std::os::redox::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
 /// fs::symlink("a.txt", "b.txt")?;
@@ -281,16 +291,16 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 }
 
 #[stable(feature = "dir_builder", since = "1.6.0")]
-/// An extension trait for `fs::DirBuilder` for unix-specific options.
+/// An extension trait for `fs::DirBuilder` for Redox-specific options.
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::fs::DirBuilder;
-    /// use std::os::unix::fs::DirBuilderExt;
+    /// use std::os::redox::fs::DirBuilderExt;
     ///
     /// let mut builder = DirBuilder::new();
     /// builder.mode(0o755);

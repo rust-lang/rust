@@ -117,7 +117,8 @@ struct Context<'a, 'b: 'a> {
 /// expressions.
 ///
 /// If parsing succeeds, the return value is:
-/// ```ignore
+///
+/// ```text
 /// Some((fmtstr, parsed arguments, index map for named arguments))
 /// ```
 fn parse_args(ecx: &mut ExtCtxt,
