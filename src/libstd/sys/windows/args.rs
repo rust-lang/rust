@@ -16,6 +16,7 @@ use slice;
 use ops::Range;
 use ffi::OsString;
 use libc::{c_int, c_void};
+use fmt;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) { }
 
@@ -37,6 +38,36 @@ pub fn args() -> Args {
 pub struct Args {
     range: Range<isize>,
     cur: *mut *mut u16,
+}
+
+pub struct ArgsInnerDebug<'a> {
+    args: &'a Args,
+}
+
+impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("[")?;
+        let mut first = true;
+        for i in self.args.range.clone() {
+            if !first {
+                f.write_str(", ")?;
+            }
+            first = false;
+
+            // Here we do allocation which could be avoided.
+            fmt::Debug::fmt(&unsafe { os_string_from_ptr(*self.args.cur.offset(i)) }, f)?;
+        }
+        f.write_str("]")?;
+        Ok(())
+    }
+}
+
+impl Args {
+    pub fn inner_debug(&self) -> ArgsInnerDebug {
+        ArgsInnerDebug {
+            args: self
+        }
+    }
 }
 
 unsafe fn os_string_from_ptr(ptr: *mut u16) -> OsString {
