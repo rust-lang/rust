@@ -47,8 +47,8 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let query = tcx.dep_graph.query();
 
     if tcx.sess.opts.debugging_opts.incremental_info {
-        println!("incremental: {} nodes in dep-graph", query.graph.len_nodes());
-        println!("incremental: {} edges in dep-graph", query.graph.len_edges());
+        eprintln!("incremental: {} nodes in dep-graph", query.graph.len_nodes());
+        eprintln!("incremental: {} edges in dep-graph", query.graph.len_edges());
     }
 
     let mut hcx = HashContext::new(tcx, incremental_hashes_map);
@@ -258,9 +258,9 @@ pub fn encode_dep_graph(tcx: TyCtxt,
     graph.encode(encoder)?;
 
     if tcx.sess.opts.debugging_opts.incremental_info {
-        println!("incremental: {} nodes in reduced dep-graph", graph.nodes.len());
-        println!("incremental: {} edges in serialized dep-graph", graph.edge_list_data.len());
-        println!("incremental: {} hashes in serialized dep-graph", graph.hashes.len());
+        eprintln!("incremental: {} nodes in reduced dep-graph", graph.nodes.len());
+        eprintln!("incremental: {} edges in serialized dep-graph", graph.edge_list_data.len());
+        eprintln!("incremental: {} hashes in serialized dep-graph", graph.hashes.len());
     }
 
     if tcx.sess.opts.debugging_opts.incremental_dump_hash {
