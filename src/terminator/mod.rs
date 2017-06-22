@@ -561,14 +561,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match &link_name[..] {
             "malloc" => {
                 let size = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let align = self.memory.pointer_size();
-                let ptr = self.memory.allocate(size, align)?;
-                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                if size == 0 {
+                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                } else {
+                    let align = self.memory.pointer_size();
+                    let ptr = self.memory.allocate(size, align)?;
+                    self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                }
             }
 
             "free" => {
-                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
-                self.memory.deallocate(ptr)?;
+                let ptr = args[0].read_ptr(&self.memory)?;
+                if !ptr.is_null() {
+                    self.memory.deallocate(ptr.to_ptr()?)?;
+                }
             }
 
             "syscall" => {
