@@ -190,19 +190,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
                 // These work if one operand is a pointer, the other an integer
-                Add | Sub
+                Add | BitAnd | Sub
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize)
                 && left.is_ptr() && right.is_bytes() => {
                     // Cast to i128 is fine as we checked the kind to be ptr-sized
-                    let (res, over) = self.ptr_int_arithmetic(bin_op, left.to_ptr()?, right.to_bytes()? as i128, left_kind == isize)?;
-                    return Ok((PrimVal::Ptr(res), over));
+                    return self.ptr_int_arithmetic(bin_op, left.to_ptr()?, right.to_bytes()? as i128, left_kind == isize);
                 }
-                Add
+                Add | BitAnd
                 if left_kind == right_kind && (left_kind == usize || left_kind == isize)
                 && left.is_bytes() && right.is_ptr() => {
                     // This is a commutative operation, just swap the operands
-                    let (res, over) = self.ptr_int_arithmetic(bin_op, right.to_ptr()?, left.to_bytes()? as i128, left_kind == isize)?;
-                    return Ok((PrimVal::Ptr(res), over));
+                    return self.ptr_int_arithmetic(bin_op, right.to_ptr()?, left.to_bytes()? as i128, left_kind == isize);
                 }
                 _ => {}
             }
@@ -287,18 +285,40 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         left: Pointer,
         right: i128,
         signed: bool,
-    ) -> EvalResult<'tcx, (Pointer, bool)> {
+    ) -> EvalResult<'tcx, (PrimVal, bool)> {
         use rustc::mir::BinOp::*;
+
+        fn map_to_primval((res, over) : (Pointer, bool)) -> (PrimVal, bool) {
+            (PrimVal::Ptr(res), over)
+        }
 
         Ok(match bin_op {
             Sub =>
                 // The only way this can overflow is by underflowing, so signdeness of the right operands does not matter
-                left.overflowing_signed_offset(-right, self.memory.layout),
+                map_to_primval(left.overflowing_signed_offset(-right, self.memory.layout)),
             Add if signed =>
-                left.overflowing_signed_offset(right, self.memory.layout),
+                map_to_primval(left.overflowing_signed_offset(right, self.memory.layout)),
             Add if !signed =>
-                left.overflowing_offset(right as u64, self.memory.layout),
-            _ => bug!("ptr_int_arithmetic called on unsupported operation")
+                map_to_primval(left.overflowing_offset(right as u64, self.memory.layout)),
+
+            BitAnd if !signed => {
+                let base_mask : u64 = !(self.memory.get(left.alloc_id)?.align - 1);
+                let right = right as u64;
+                if right & base_mask == base_mask {
+                    // Case 1: The base address bits are all preserved, i.e., right is all-1 there
+                    (PrimVal::Ptr(Pointer::new(left.alloc_id, left.offset & right)), false)
+                } else if right & base_mask == 0 {
+                    // Case 2: The base address bits are all taken away, i.e., right is all-0 there
+                    (PrimVal::from_u128((left.offset & right) as u128), false)
+                } else {
+                    return Err(EvalError::ReadPointerAsBytes);
+                }
+            }
+
+            _ => {
+                let msg = format!("unimplemented binary op on pointer {:?}: {:?}, {:?} ({})", bin_op, left, right, if signed { "signed" } else { "unsigned" });
+                return Err(EvalError::Unimplemented(msg));
+            }
         })
     }
 }

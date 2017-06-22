@@ -546,7 +546,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 StaticKind::Immutable => " (immutable)",
                 StaticKind::NotStatic => "",
             };
-            trace!("{}({} bytes){}", msg, alloc.bytes.len(), immutable);
+            trace!("{}({} bytes, alignment {}){}", msg, alloc.bytes.len(), alloc.align, immutable);
 
             if !relocations.is_empty() {
                 msg.clear();
