@@ -585,14 +585,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "dlsym" => {
-                let handle = args[0].read_ptr(&self.memory)?;
-                {
-                    let symbol = args[1].read_ptr(&self.memory)?.to_ptr()?;
-                    let symbol_name = self.memory.read_c_str(symbol)?;
-                    let err = format!("bad c unicode symbol: {:?}", symbol_name);
-                    let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
-                    return Err(EvalError::Unimplemented(format!("miri does not support dynamically loading libraries (requested symbol: {})", symbol_name)));
-                }
+                let _handle = args[0].read_ptr(&self.memory)?;
+                let symbol = args[1].read_ptr(&self.memory)?.to_ptr()?;
+                let symbol_name = self.memory.read_c_str(symbol)?;
+                let err = format!("bad c unicode symbol: {:?}", symbol_name);
+                let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
+                return Err(EvalError::Unimplemented(format!("miri does not support dynamically loading libraries (requested symbol: {})", symbol_name)));
             }
 
             "__rust_allocate" => {

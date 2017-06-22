@@ -892,19 +892,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn pointer_offset(&self, ptr: PrimVal, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, PrimVal> {
-        if offset == 0 {
-            // rustc relies on Offset-by-0 to be well-defined even for "bad" pointers like Unique::empty().
-            return Ok(ptr);
+        // This function raises an error if the offset moves the pointer outside of its allocation.  We consider
+        // ZSTs their own huge allocation that doesn't overlap with anything (and nothing moves in there because the size is 0).
+        // We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
+        // allocation.
+
+        if ptr.is_null()? { // NULL pointers must only be offset by 0
+            return if offset == 0 { Ok(ptr) } else { Err(EvalError::NullPointerOutOfBounds) };
         }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-        if pointee_size == 0 {
-            // rustc relies on offsetting pointers to zsts to be a nop
-            return Ok(ptr);
-        }
         return if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.signed_offset(offset, self.memory.layout)?;
-            self.memory.check_bounds(ptr.to_ptr()?, false)?;
+            // Do not do bounds-checking for integers or ZST; they can never alias a normal pointer anyway.
+            if let PrimVal::Ptr(ptr) = ptr {
+                if !(ptr.points_to_zst() && (offset == 0 || pointee_size == 0)) {
+                    self.memory.check_bounds(ptr, false)?;
+                }
+            } else if ptr.is_null()? {
+                // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
+                return Err(EvalError::NullPointerOutOfBounds);
+            }
             Ok(ptr)
         } else {
             Err(EvalError::OverflowingMath)
