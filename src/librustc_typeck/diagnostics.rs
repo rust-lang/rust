@@ -4174,6 +4174,253 @@ println!("x: {}, y: {}", variable.x, variable.y);
 For more information see The Rust Book: https://doc.rust-lang.org/book/
 "##,
 
+E0611: r##"
+Attempted to access a private field on a tuple-struct.
+
+Erroneous code example:
+
+```compile_fail,E0611
+mod some_module {
+    pub struct Foo(u32);
+
+    impl Foo {
+        pub fn new() -> Foo { Foo(0) }
+    }
+}
+
+let y = some_module::Foo::new();
+println!("{}", y.0); // error: field `0` of tuple-struct `some_module::Foo`
+                     //        is private
+```
+
+Since the field is private, you have two solutions:
+
+1) Make the field public:
+
+```
+mod some_module {
+    pub struct Foo(pub u32); // The field is now public.
+
+    impl Foo {
+        pub fn new() -> Foo { Foo(0) }
+    }
+}
+
+let y = some_module::Foo::new();
+println!("{}", y.0); // So we can access it directly.
+```
+
+2) Add a getter function to keep the field private but allow for accessing its
+value:
+
+```
+mod some_module {
+    pub struct Foo(u32);
+
+    impl Foo {
+        pub fn new() -> Foo { Foo(0) }
+
+        // We add the getter function.
+        pub fn get(&self) -> &u32 { &self.0 }
+    }
+}
+
+let y = some_module::Foo::new();
+println!("{}", y.get()); // So we can get the value through the function.
+```
+"##,
+
+E0612: r##"
+Attempted out-of-bounds tuple index.
+
+Erroneous code example:
+
+```compile_fail,E0612
+struct Foo(u32);
+
+let y = Foo(0);
+println!("{}", y.1); // error: attempted out-of-bounds tuple index `1`
+                     //        on type `Foo`
+```
+
+If a tuple/tuple-struct type has n fields, you can only try to access these n
+fields from 0 to (n - 1). So in this case, you can only index `0`. Example:
+
+```
+struct Foo(u32);
+
+let y = Foo(0);
+println!("{}", y.0); // ok!
+```
+"##,
+
+E0613: r##"
+Attempted tuple index on a type which isn't a tuple nor a tuple-struct.
+
+Erroneous code example:
+
+```compile_fail,E0613
+struct Foo;
+
+let y = Foo;
+println!("{}", y.1); // error: attempted to access tuple index `1` on type
+                     //        `Foo`, but the type was not a tuple or tuple
+                     //        struct
+```
+
+Only tuple and tuple-struct types can be indexed this way. Example:
+
+```
+// Let's create a tuple first:
+let x: (u32, u32, u32, u32) = (0, 1, 1, 2);
+// You can index its fields this way:
+println!("({}, {}, {}, {})", x.0, x.1, x.2, x.3);
+
+// Now let's declare a tuple-struct:
+struct TupleStruct(u32, u32, u32, u32);
+// Let's instantiate it:
+let x = TupleStruct(0, 1, 1, 2);
+// And just like the tuple:
+println!("({}, {}, {}, {})", x.0, x.1, x.2, x.3);
+```
+
+If you want to index into an array, use `[]` instead:
+
+```
+let x = &[0, 1, 1, 2];
+println!("[{}, {}, {}, {}]", x[0], x[1], x[2], x[3]);
+```
+
+If you want to access a field of a struct, check the field's name wasn't
+misspelled:
+
+```
+struct SomeStruct {
+    x: u32,
+    y: i32,
+}
+
+let s = SomeStruct {
+    x: 0,
+    y: -1,
+};
+println!("x: {} y: {}", s.x, s.y);
+```
+"##,
+
+E0614: r##"
+Attempted to dereference a variable which cannot be dereferenced.
+
+Erroneous code example:
+
+```compile_fail,E0614
+let y = 0u32;
+*y; // error: type `u32` cannot be dereferenced
+```
+
+Only types implementing `std::ops::Deref` can be dereferenced (such as `&T`).
+Example:
+
+```
+let y = 0u32;
+let x = &y;
+// So here, `x` is a `&u32`, so we can dereference it:
+*x; // ok!
+```
+"##,
+
+E0615: r##"
+Attempted to access a method like a field.
+
+Erroneous code example:
+
+```compile_fail,E0615
+struct Foo {
+    x: u32,
+}
+
+impl Foo {
+    fn method(&self) {}
+}
+
+let f = Foo { x: 0 };
+f.method; // error: attempted to take value of method `method` on type `Foo`
+```
+
+If you want to use a method, add `()` after it:
+
+```ignore
+f.method();
+```
+
+However, if you wanted to access a field of a struct check that the field name
+is spelled correctly. Example:
+
+```ignore
+println!("{}", f.x);
+```
+"##,
+
+E0616: r##"
+Attempted to access a private field on a struct.
+
+Erroneous code example:
+
+```compile_fail,E0616
+mod some_module {
+    pub struct Foo {
+        x: u32, // So `x` is private in here.
+    }
+
+    impl Foo {
+        pub fn new() -> Foo { Foo { x: 0 } }
+    }
+}
+
+let f = some_module::Foo::new();
+println!("{}", f.x); // error: field `x` of struct `some_module::Foo` is private
+```
+
+If you want to access this field, you have two options:
+
+1) Set the field public:
+
+```
+mod some_module {
+    pub struct Foo {
+        pub x: u32, // `x` is now public.
+    }
+
+    impl Foo {
+        pub fn new() -> Foo { Foo { x: 0 } }
+    }
+}
+
+let f = some_module::Foo::new();
+println!("{}", f.x); // ok!
+```
+
+2) Add a getter function:
+
+```
+mod some_module {
+    pub struct Foo {
+        x: u32, // So `x` is still private in here.
+    }
+
+    impl Foo {
+        pub fn new() -> Foo { Foo { x: 0 } }
+
+        // We create the getter function here:
+        pub fn get_x(&self) -> &u32 { &self.x }
+    }
+}
+
+let f = some_module::Foo::new();
+println!("{}", f.get_x()); // ok!
+```
+"##,
+
 E0617: r##"
 Attempted to pass an invalid type of variable into a variadic function.
 

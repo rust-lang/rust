@@ -2950,8 +2950,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);
-            let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
-            let mut err = self.tcx().sess.struct_span_err(expr.span, &msg);
+            let mut err = struct_span_err!(self.tcx().sess, expr.span, E0616,
+                                           "field `{}` of struct `{}` is private",
+                                           field.node, struct_path);
             // Also check if an accessible method exists, which is often what is meant.
             if self.method_exists(field.span, field.node, expr_t, expr.id, false) {
                 err.note(&format!("a method `{}` also exists, perhaps you wish to call it",
@@ -2962,10 +2963,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else if field.node == keywords::Invalid.name() {
             self.tcx().types.err
         } else if self.method_exists(field.span, field.node, expr_t, expr.id, true) {
-            self.type_error_struct(field.span, |actual| {
-                format!("attempted to take value of method `{}` on type \
-                         `{}`", field.node, actual)
-            }, expr_t)
+            type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
+                              "attempted to take value of method `{}` on type `{}`",
+                              field.node, expr_t)
                 .help("maybe a `()` to call it is missing? \
                        If not, try an anonymous function")
                 .emit();
@@ -3080,27 +3080,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);
-            let msg = format!("field `{}` of struct `{}` is private", idx.node, struct_path);
-            self.tcx().sess.span_err(expr.span, &msg);
+            struct_span_err!(self.tcx().sess, expr.span, E0611,
+                             "field `{}` of tuple-struct `{}` is private",
+                             idx.node, struct_path).emit();
             return field_ty;
         }
 
-        self.type_error_message(
-            expr.span,
-            |actual| {
-                if tuple_like {
-                    format!("attempted out-of-bounds tuple index `{}` on \
-                                    type `{}`",
-                                   idx.node,
-                                   actual)
-                } else {
-                    format!("attempted tuple index `{}` on type `{}`, but the \
-                                     type was not a tuple or tuple struct",
-                                    idx.node,
-                                    actual)
-                }
-            },
-            expr_t);
+        if tuple_like {
+            type_error_struct!(self.tcx().sess, expr.span, expr_t, E0612,
+                               "attempted out-of-bounds tuple index `{}` on type `{}`",
+                               idx.node, expr_t).emit();
+        } else {
+            type_error_struct!(self.tcx().sess, expr.span, expr_t, E0613,
+                               "attempted to access tuple index `{}` on type `{}`, but the type \
+                                was not a tuple or tuple struct",
+                               idx.node, expr_t).emit();
+        }
 
         self.tcx().types.err
     }
@@ -3201,10 +3196,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 field_type_hint = tcx.types.err;
                 if let Some(_) = variant.find_field_named(field.name.node) {
                     let mut err = struct_span_err!(self.tcx.sess,
-                                                field.name.span,
-                                                E0062,
-                                                "field `{}` specified more than once",
-                                                field.name.node);
+                                                   field.name.span,
+                                                   E0062,
+                                                   "field `{}` specified more than once",
+                                                   field.name.node);
 
                     err.span_label(field.name.span, "used more than once");
 
@@ -3251,15 +3246,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         .join(", ");
 
             struct_span_err!(tcx.sess, span, E0063,
-                        "missing field{} {}{} in initializer of `{}`",
-                        if remaining_fields.len() == 1 {""} else {"s"},
-                        remaining_fields_names,
-                        truncated_fields_error,
-                        adt_ty)
-                        .span_label(span, format!("missing {}{}",
-                            remaining_fields_names,
-                            truncated_fields_error))
-                        .emit();
+                             "missing field{} {}{} in initializer of `{}`",
+                             if remaining_fields.len() == 1 { "" } else { "s" },
+                             remaining_fields_names,
+                             truncated_fields_error,
+                             adt_ty)
+                            .span_label(span, format!("missing {}{}",
+                                        remaining_fields_names,
+                                        truncated_fields_error))
+                            .emit();
         }
     }
 
@@ -3492,10 +3487,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
                             self.write_method_call(expr.id, method);
                         } else {
-                            self.type_error_message(expr.span, |actual| {
-                                format!("type `{}` cannot be \
-                                        dereferenced", actual)
-                            }, oprnd_t);
+                            type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
+                                               "type `{}` cannot be dereferenced",
+                                               oprnd_t).emit();
                             oprnd_t = tcx.types.err;
                         }
                     }

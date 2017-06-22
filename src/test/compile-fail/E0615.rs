@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Point { x: isize, y: isize }
-struct Empty;
+struct Foo {
+    x: u32,
+}
+
+impl Foo {
+    fn method(&self) {}
+}
 
 fn main() {
-    let origin = Point { x: 0, y: 0 };
-    origin.0;
-    //~^ ERROR attempted to access tuple index `0` on type `Point`, but the type was not
-    Empty.0;
-    //~^ ERROR attempted to access tuple index `0` on type `Empty`, but the type was not
+    let f = Foo { x: 0 };
+    f.method; //~ ERROR E0615
 }
