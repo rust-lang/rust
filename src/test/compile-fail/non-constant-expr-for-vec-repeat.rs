@@ -14,6 +14,6 @@ fn main() {
     fn bar(n: usize) {
         let _x = [0; n];
         //~^ ERROR attempt to use a non-constant value in a constant [E0435]
-        //~| NOTE non-constant used with constant
+        //~| NOTE non-constant value
     }
 }
