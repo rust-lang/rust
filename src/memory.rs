@@ -64,8 +64,18 @@ impl Pointer {
         Pointer::new(self.alloc_id, value::wrapping_signed_offset(self.offset, i, layout))
     }
 
+    pub fn overflowing_signed_offset<'tcx>(self, i: i128, layout: &TargetDataLayout) -> (Self, bool) {
+        let (res, over) = value::overflowing_signed_offset(self.offset, i, layout);
+        (Pointer::new(self.alloc_id, res), over)
+    }
+
     pub fn signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         Ok(Pointer::new(self.alloc_id, value::signed_offset(self.offset, i, layout)?))
+    }
+
+    pub fn overflowing_offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> (Self, bool) {
+        let (res, over) = value::overflowing_offset(self.offset, i, layout);
+        (Pointer::new(self.alloc_id, res), over)
     }
 
     pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
@@ -470,11 +480,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, ty::Instance<'tcx>> {
-        debug!("reading fn ptr: {}", id);
-        match self.functions.get(&id) {
+    pub fn get_fn(&self, ptr: Pointer) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+        if ptr.offset != 0 {
+            return Err(EvalError::InvalidFunctionPointer);
+        }
+        debug!("reading fn ptr: {}", ptr.alloc_id);
+        match self.functions.get(&ptr.alloc_id) {
             Some(&fndef) => Ok(fndef),
-            None => match self.alloc_map.get(&id) {
+            None => match self.alloc_map.get(&ptr.alloc_id) {
                 Some(_) => Err(EvalError::ExecuteMemory),
                 None => Err(EvalError::InvalidFunctionPointer),
             }

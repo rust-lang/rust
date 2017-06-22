@@ -78,7 +78,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match self.read_ptr(vtable, self.tcx.mk_nil_ptr())? {
             // some values don't need to call a drop impl, so the value is null
             Value::ByVal(PrimVal::Bytes(0)) => Ok(None),
-            Value::ByVal(PrimVal::Ptr(drop_fn)) => self.memory.get_fn(drop_fn.alloc_id).map(Some),
+            Value::ByVal(PrimVal::Ptr(drop_fn)) => self.memory.get_fn(drop_fn).map(Some),
             _ => Err(EvalError::ReadBytesAsPointer),
         }
     }
