@@ -15,7 +15,7 @@
 
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process;
@@ -410,6 +410,12 @@ impl Config {
             set(&mut config.rust_dist_src, t.src_tarball);
         }
 
+
+        // compat with `./configure` while we're still using that
+        if fs::metadata("config.mk").is_ok() {
+            config.update_with_config_mk();
+        }
+
         return config
     }
 
@@ -418,7 +424,7 @@ impl Config {
     /// While we still have `./configure` this implements the ability to decode
     /// that configuration into this. This isn't exactly a full-blown makefile
     /// parser, but hey it gets the job done!
-    pub fn update_with_config_mk(&mut self) {
+    fn update_with_config_mk(&mut self) {
         let mut config = String::new();
         File::open("config.mk").unwrap().read_to_string(&mut config).unwrap();
         for line in config.lines() {

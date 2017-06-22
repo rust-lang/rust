@@ -26,12 +26,6 @@ use bootstrap::{Flags, Config, Build};
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let flags = Flags::parse(&args);
-    let mut config = Config::parse(&flags.build, flags.config.clone());
-
-    // compat with `./configure` while we're still using that
-    if std::fs::metadata("config.mk").is_ok() {
-        config.update_with_config_mk();
-    }
-
+    let config = Config::parse(&flags.build, flags.config.clone());
     Build::new(flags, config).build();
 }
