@@ -92,7 +92,7 @@
 //! encounters a recursive reference, it will hit the cache and does not try to
 //! describe the type anew.
 //!
-//! This behaviour is encapsulated in the 'RecursiveTypeDescription' enum,
+//! This behavior is encapsulated in the 'RecursiveTypeDescription' enum,
 //! which represents a kind of continuation, storing all state needed to
 //! continue traversal at the type members after the type has been registered
 //! with the cache. (This implementation approach might be a tad over-
