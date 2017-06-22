@@ -81,6 +81,22 @@ pub type Result = result::Result<(), Error>;
 /// This type does not support transmission of an error other than that an error
 /// occurred. Any extra information must be arranged to be transmitted through
 /// some other means.
+///
+/// An important thing to remember is that the type `fmt::Error` should not be
+/// confused with `std::io::Error` or `std::error::Error`, which you may also
+/// have in scope.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::fmt::{self, write};
+///
+/// let mut output = String::new();
+/// match write(&mut output, format_args!("Hello {}!", "world")) {
+///     Err(fmt::Error) => panic!("An error occurred"),
+///     _ => (),
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Error;
