@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that non-constant exprs do fail as count in fixed length vec type
+// Check that non constant exprs fail for array repeat syntax
 
 fn main() {
-    fn bar(n: isize) {
-        let _x: [isize; n];
+    fn bar(n: usize) {
+        let _x = [0; n];
         //~^ ERROR attempt to use a non-constant value in a constant [E0435]
+        //~| NOTE non-constant value
     }
 }
