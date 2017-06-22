@@ -112,7 +112,7 @@ pub struct Instant(time::Instant);
 ///            println!("{}", elapsed.as_secs());
 ///        }
 ///        Err(e) => {
-///            // an error occured!
+///            // an error occurred!
 ///            println!("Error: {:?}", e);
 ///        }
 ///    }

@@ -1632,7 +1632,7 @@ unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 ///     pub fn lock(&self) {
 ///         while !self.flag.compare_and_swap(false, true, Ordering::Relaxed) {}
-///         // This fence syncronizes-with store in `unlock`.
+///         // This fence synchronizes-with store in `unlock`.
 ///         fence(Ordering::Acquire);
 ///     }
 ///

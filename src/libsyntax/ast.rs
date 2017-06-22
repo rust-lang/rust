@@ -547,8 +547,8 @@ pub enum PatKind {
     TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
 
     /// A possibly qualified path pattern.
-    /// Unquailfied path patterns `A::B::C` can legally refer to variants, structs, constants
-    /// or associated constants. Quailfied path patterns `<A>::B::C`/`<A as Trait>::B::C` can
+    /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
+    /// or associated constants. Qualified path patterns `<A>::B::C`/`<A as Trait>::B::C` can
     /// only legally refer to associated constants.
     Path(Option<QSelf>, Path),
 
@@ -775,10 +775,10 @@ pub struct Local {
 ///
 /// E.g. `0...10 => { println!("match!") }` as in
 ///
-/// ```rust,ignore
-/// match n {
+/// ```
+/// match 123 {
 ///     0...10 => { println!("match!") },
-///     // ..
+///     _ => { println!("no match!") },
 /// }
 /// ```
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -977,7 +977,7 @@ pub enum ExprKind {
 /// separately. `position` represents the index of the associated
 /// item qualified with this Self type.
 ///
-/// ```rust,ignore
+/// ```ignore (only-for-syntax-highlight)
 /// <Vec<T> as a::b::Trait>::AssociatedItem
 ///  ^~~~~     ~~~~~~~~~~~~~~^
 ///  ty        position = 3

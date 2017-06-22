@@ -47,11 +47,12 @@ set of scheduled drops up front, and so whenever we exit from the
 scope we only drop the values scheduled thus far. For example, consider
 the scope S corresponding to this loop:
 
-```rust,ignore
+```
+# let cond = true;
 loop {
-    let x = ...;
+    let x = ..;
     if cond { break; }
-    let y = ...;
+    let y = ..;
 }
 ```
 
@@ -112,7 +113,7 @@ pub struct Scope<'tcx> {
     /// for unwinding, for several reasons:
     ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
     ///  * LLVM's memory dependency analysis can't handle it atm
-    ///  * pollutting the cleanup MIR with StorageDead creates
+    ///  * polluting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
     pub(super) needs_cleanup: bool,

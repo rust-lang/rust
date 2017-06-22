@@ -66,7 +66,7 @@ pub trait FileExt {
     /// from the current cursor. The current cursor **is** affected by this
     /// function, it is set to the end of the write.
     ///
-    /// When writing beyond the end of the file, the file is appropiately
+    /// When writing beyond the end of the file, the file is appropriately
     /// extended and the intermediate bytes are left uninitialized.
     ///
     /// Note that similar to `File::write`, it is not an error to return a
@@ -169,8 +169,10 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
+    /// # mod winapi { pub const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x04000000; }
     ///
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
@@ -204,8 +206,10 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
+    /// # mod winapi { pub const FILE_ATTRIBUTE_HIDDEN: u32 = 2; }
     ///
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;

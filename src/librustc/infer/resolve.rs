@@ -46,7 +46,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeResolver<'a, 'g
 }
 
 /// The opportunistic type and region resolver is similar to the
-/// opportunistic type resolver, but also opportunistly resolves
+/// opportunistic type resolver, but also opportunistically resolves
 /// regions. It is useful for canonicalization.
 pub struct OpportunisticTypeAndRegionResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,

@@ -107,7 +107,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 /// Given a selected impl described by `impl_data`, returns the
-/// definition and substitions for the method with the name `name`
+/// definition and substitutions for the method with the name `name`
 /// the kind `kind`, and trait method substitutions `substs`, in
 /// that impl, a less specialized impl, or the trait default,
 /// whichever applies.

@@ -29,7 +29,7 @@ use ty::subst::Substs;
 /// by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
 /// `false`.
 ///
-/// 2. A thin-to-fat coercon involves unsizing the underlying data. We start
+/// 2. A thin-to-fat coercion involves unsizing the underlying data. We start
 /// with a thin pointer, deref a number of times, unsize the underlying data,
 /// then autoref. The 'unsize' phase may change a fixed length array to a
 /// dynamically sized one, a concrete object to a trait object, or statically

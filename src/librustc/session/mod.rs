@@ -108,7 +108,7 @@ pub struct Session {
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
-    /// macro name and defintion span in the source crate.
+    /// macro name and definition span in the source crate.
     pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
 
     incr_comp_session: RefCell<IncrCompSession>,

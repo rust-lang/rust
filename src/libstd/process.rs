@@ -349,15 +349,19 @@ impl Command {
     ///
     /// Only one argument can be passed per use. So instead of:
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # std::process::Command::new("sh")
     /// .arg("-C /path/to/repo")
+    /// # ;
     /// ```
     ///
     /// usage would be:
     ///
-    /// ```ignore
+    /// ```no_run
+    /// # std::process::Command::new("sh")
     /// .arg("-C")
     /// .arg("/path/to/repo")
+    /// # ;
     /// ```
     ///
     /// To pass multiple arguments see [`args`].

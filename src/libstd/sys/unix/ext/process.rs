@@ -47,7 +47,7 @@ pub trait CommandExt {
     /// # Notes
     ///
     /// This closure will be run in the context of the child process after a
-    /// `fork`. This primarily means that any modificatons made to memory on
+    /// `fork`. This primarily means that any modifications made to memory on
     /// behalf of this closure will **not** be visible to the parent process.
     /// This is often a very constrained environment where normal operations
     /// like `malloc` or acquiring a mutex are not guaranteed to work (due to

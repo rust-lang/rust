@@ -1691,7 +1691,7 @@ impl<'a> Parser<'a> {
     ///
     /// Assumes that the leading `<` has been parsed already.
     ///
-    /// Qualifed paths are a part of the universal function call
+    /// Qualified paths are a part of the universal function call
     /// syntax (UFCS).
     ///
     /// `qualified_path = <type [as trait_ref]>::path`
@@ -4436,7 +4436,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an optional `where` clause and places it in `generics`.
     ///
-    /// ```ignore
+    /// ```ignore (only-for-syntax-highlight)
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {

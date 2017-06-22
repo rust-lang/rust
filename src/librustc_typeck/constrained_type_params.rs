@@ -97,7 +97,7 @@ pub fn identify_constrained_type_params<'tcx>(predicates: &[ty::Predicate<'tcx>]
 
 /// Order the predicates in `predicates` such that each parameter is
 /// constrained before it is used, if that is possible, and add the
-/// paramaters so constrained to `input_parameters`. For example,
+/// parameter so constrained to `input_parameters`. For example,
 /// imagine the following impl:
 ///
 ///     impl<T: Debug, U: Iterator<Item=T>> Trait for U

@@ -26,7 +26,7 @@ use fmt;
 /// It does not have an `IntoIterator` implementation, so you can't use it in a
 /// `for` loop directly. This won't compile:
 ///
-/// ```ignore
+/// ```compile_fail,E0277
 /// for i in .. {
 ///    // ...
 /// }
@@ -184,7 +184,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// It does not have an `IntoIterator` implementation, so you can't use it in a
 /// `for` loop directly. This won't compile:
 ///
-/// ```ignore
+/// ```compile_fail,E0277
 /// for i in ..5 {
 ///     // ...
 /// }
@@ -313,7 +313,8 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// It does not have an `IntoIterator` implementation, so you can't use it in a
 /// `for` loop directly. This won't compile:
 ///
-/// ```ignore
+/// ```compile_fail,E0277
+/// #![feature(inclusive_range_syntax)]
 /// for i in ...5 {
 ///     // ...
 /// }
