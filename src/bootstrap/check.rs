@@ -265,7 +265,7 @@ pub fn compiletest(build: &Build,
         let llvm_components = output(Command::new(&llvm_config).arg("--components"));
         let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
         cmd.arg("--cc").arg(build.cc(target))
-           .arg("--cxx").arg(build.cxx(target))
+           .arg("--cxx").arg(build.cxx(target).unwrap())
            .arg("--cflags").arg(build.cflags(target).join(" "))
            .arg("--llvm-components").arg(llvm_components.trim())
            .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());

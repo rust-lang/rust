@@ -452,6 +452,10 @@ impl Build {
             cargo.env(format!("CC_{}", target), self.cc(target))
                  .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
+
+            if let Ok(cxx) = self.cxx(target) {
+                 cargo.env(format!("CXX_{}", target), cxx);
+            }
         }
 
         if self.config.extended && compiler.is_final_stage(self) {
@@ -838,13 +842,13 @@ impl Build {
         self.cc[target].1.as_ref().map(|p| &**p)
     }
 
-    /// Returns the path to the C++ compiler for the target specified, may panic
-    /// if no C++ compiler was configured for the target.
-    fn cxx(&self, target: &str) -> &Path {
+    /// Returns the path to the C++ compiler for the target specified.
+    fn cxx(&self, target: &str) -> Result<&Path, String> {
         match self.cxx.get(target) {
-            Some(p) => p.path(),
-            None => panic!("\n\ntarget `{}` is not configured as a host,
-                            only as a target\n\n", target),
+            Some(p) => Ok(p.path()),
+            None => Err(format!(
+                    "target `{}` is not configured as a host, only as a target",
+                    target))
         }
     }
 

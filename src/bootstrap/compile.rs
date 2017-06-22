@@ -291,7 +291,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
        !target.contains("windows") &&
        !target.contains("apple") {
         cargo.env("LLVM_STATIC_STDCPP",
-                  compiler_file(build.cxx(target), "libstdc++.a"));
+                  compiler_file(build.cxx(target).unwrap(), "libstdc++.a"));
     }
     if build.config.llvm_link_shared {
         cargo.env("LLVM_LINK_SHARED", "1");
