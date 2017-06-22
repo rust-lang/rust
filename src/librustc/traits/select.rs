@@ -514,21 +514,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("evaluate_predicate_recursively({:?})",
                obligation);
 
-        let tcx = self.tcx();
-
-        // Check the cache from the tcx of predicates that we know
-        // have been proven elsewhere. This cache only contains
-        // predicates that are global in scope and hence unaffected by
-        // the current environment.
-        if tcx.fulfilled_predicates.borrow().check_duplicate(tcx, &obligation.predicate) {
-            return EvaluatedToOk;
-        }
-
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 assert!(!t.has_escaping_regions());
                 let obligation = obligation.with(t.clone());
-                self.evaluate_obligation_recursively(previous_stack, &obligation)
+                self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
             ty::Predicate::Equate(ref p) => {
@@ -613,15 +603,23 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn evaluate_obligation_recursively<'o>(&mut self,
-                                           previous_stack: TraitObligationStackList<'o, 'tcx>,
-                                           obligation: &TraitObligation<'tcx>)
-                                           -> EvaluationResult
+    fn evaluate_trait_predicate_recursively<'o>(&mut self,
+                                                previous_stack: TraitObligationStackList<'o, 'tcx>,
+                                                mut obligation: TraitObligation<'tcx>)
+                                                -> EvaluationResult
     {
-        debug!("evaluate_obligation_recursively({:?})",
+        debug!("evaluate_trait_predicate_recursively({:?})",
                obligation);
 
-        let stack = self.push_stack(previous_stack, obligation);
+        if !self.intercrate && obligation.is_global() {
+            // If a param env is consistent, global obligations do not depend on its particular
+            // value in order to work, so we can clear out the param env and get better
+            // caching. (If the current param env is inconsistent, we don't care what happens).
+            debug!("evaluate_trait_predicate_recursively({:?}) - in global", obligation);
+            obligation.param_env = ty::ParamEnv::empty(obligation.param_env.reveal);
+        }
+
+        let stack = self.push_stack(previous_stack, &obligation);
         let fresh_trait_ref = stack.fresh_trait_ref;
         if let Some(result) = self.check_evaluation_cache(obligation.param_env, fresh_trait_ref) {
             debug!("CACHE HIT: EVAL({:?})={:?}",
@@ -676,8 +674,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
         if unbound_input_types &&
               stack.iter().skip(1).any(
-                  |prev| self.match_fresh_trait_refs(&stack.fresh_trait_ref,
-                                                     &prev.fresh_trait_ref))
+                  |prev| stack.obligation.param_env == prev.obligation.param_env &&
+                      self.match_fresh_trait_refs(&stack.fresh_trait_ref,
+                                                  &prev.fresh_trait_ref))
         {
             debug!("evaluate_stack({:?}) --> unbound argument, recursive --> giving up",
                    stack.fresh_trait_ref);
@@ -706,7 +705,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         if let Some(rec_index) =
             stack.iter()
             .skip(1) // skip top-most frame
-            .position(|prev| stack.fresh_trait_ref == prev.fresh_trait_ref)
+            .position(|prev| stack.obligation.param_env == prev.obligation.param_env &&
+                      stack.fresh_trait_ref == prev.fresh_trait_ref)
         {
             debug!("evaluate_stack({:?}) --> recursive",
                    stack.fresh_trait_ref);

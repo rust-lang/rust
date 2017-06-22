@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::DepGraph;
 use infer::{InferCtxt, InferOk};
-use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, TyCtxt, ToPredicate};
+use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
 use syntax::ast;
-use util::nodemap::{FxHashSet, NodeMap};
+use util::nodemap::NodeMap;
 use hir::def_id::DefId;
 
 use super::CodeAmbiguity;
@@ -32,11 +31,6 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     type Predicate = ty::Predicate<'tcx>;
 
     fn as_predicate(&self) -> &Self::Predicate { &self.obligation.predicate }
-}
-
-pub struct GlobalFulfilledPredicates<'tcx> {
-    set: FxHashSet<ty::PolyTraitPredicate<'tcx>>,
-    dep_graph: DepGraph,
 }
 
 /// The fulfillment context is used to drive trait resolution.  It
@@ -183,13 +177,6 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
         assert!(!infcx.is_in_snapshot());
 
-        let tcx = infcx.tcx;
-
-        if tcx.fulfilled_predicates.borrow().check_duplicate(tcx, &obligation.predicate) {
-            debug!("register_predicate_obligation: duplicate");
-            return
-        }
-
         self.predicates.register_obligation(PendingPredicateObligation {
             obligation,
             stalled_on: vec![]
@@ -263,13 +250,6 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
                 region_obligations: &mut self.region_obligations,
             });
             debug!("select: outcome={:?}", outcome);
-
-            // these are obligations that were proven to be true.
-            for pending_obligation in outcome.completed {
-                let predicate = &pending_obligation.obligation.predicate;
-                selcx.tcx().fulfilled_predicates.borrow_mut()
-                           .add_if_global(selcx.tcx(), predicate);
-            }
 
             errors.extend(
                 outcome.errors.into_iter()
@@ -375,21 +355,31 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
-            let tcx = selcx.tcx();
-            if tcx.fulfilled_predicates.borrow().check_duplicate_trait(tcx, data) {
-                return Ok(Some(vec![]));
+            let trait_obligation = obligation.with(data.clone());
+
+            if data.is_global() {
+                // no type variables present, can use evaluation for better caching.
+                // FIXME: consider caching errors too.
+                if
+                    // make defaulted unit go through the slow path for better warnings,
+                    // please remove this when the warnings are removed.
+                    !trait_obligation.predicate.skip_binder().self_ty().is_defaulted_unit() &&
+                    selcx.evaluate_obligation_conservatively(&obligation) {
+                    debug!("selecting trait `{:?}` at depth {} evaluated to holds",
+                           data, obligation.recursion_depth);
+                    return Ok(Some(vec![]))
+                }
             }
 
-            let trait_obligation = obligation.with(data.clone());
             match selcx.select(&trait_obligation) {
                 Ok(Some(vtable)) => {
                     debug!("selecting trait `{:?}` at depth {} yielded Ok(Some)",
-                          data, obligation.recursion_depth);
+                           data, obligation.recursion_depth);
                     Ok(Some(vtable.nested_obligations()))
                 }
                 Ok(None) => {
                     debug!("selecting trait `{:?}` at depth {} yielded Ok(None)",
-                          data, obligation.recursion_depth);
+                           data, obligation.recursion_depth);
 
                     // This is a bit subtle: for the most part, the
                     // only reason we can fail to make progress on
@@ -566,55 +556,6 @@ fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
                       .or_insert(vec![])
                       .push(region_obligation);
 
-}
-
-impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
-    pub fn new(dep_graph: DepGraph) -> GlobalFulfilledPredicates<'gcx> {
-        GlobalFulfilledPredicates {
-            set: FxHashSet(),
-            dep_graph,
-        }
-    }
-
-    pub fn check_duplicate(&self, tcx: TyCtxt, key: &ty::Predicate<'tcx>) -> bool {
-        if let ty::Predicate::Trait(ref data) = *key {
-            self.check_duplicate_trait(tcx, data)
-        } else {
-            false
-        }
-    }
-
-    pub fn check_duplicate_trait(&self, tcx: TyCtxt, data: &ty::PolyTraitPredicate<'tcx>) -> bool {
-        // For the global predicate registry, when we find a match, it
-        // may have been computed by some other task, so we want to
-        // add a read from the node corresponding to the predicate
-        // processing to make sure we get the transitive dependencies.
-        if self.set.contains(data) {
-            debug_assert!(data.is_global());
-            self.dep_graph.read(data.dep_node(tcx));
-            debug!("check_duplicate: global predicate `{:?}` already proved elsewhere", data);
-
-            true
-        } else {
-            false
-        }
-    }
-
-    fn add_if_global(&mut self, tcx: TyCtxt<'a, 'gcx, 'tcx>, key: &ty::Predicate<'tcx>) {
-        if let ty::Predicate::Trait(ref data) = *key {
-            // We only add things to the global predicate registry
-            // after the current task has proved them, and hence
-            // already has the required read edges, so we don't need
-            // to add any more edges here.
-            if data.is_global() {
-                if let Some(data) = tcx.lift_to_global(data) {
-                    if self.set.insert(data.clone()) {
-                        debug!("add_if_global: global predicate `{:?}` added", data);
-                    }
-                }
-            }
-        }
-    }
 }
 
 fn to_fulfillment_error<'tcx>(

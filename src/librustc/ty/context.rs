@@ -507,12 +507,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Merge this with `selection_cache`?
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
-    /// A set of predicates that have been fulfilled *somewhere*.
-    /// This is used to avoid duplicate work. Predicates are only
-    /// added to this set when they mention only "global" names
-    /// (i.e., no type or lifetime parameters).
-    pub fulfilled_predicates: RefCell<traits::GlobalFulfilledPredicates<'tcx>>,
-
     /// Maps Expr NodeId's to `true` iff `&expr` can have 'static lifetime.
     pub rvalue_promotable_to_static: RefCell<NodeMap<bool>>,
 
@@ -686,7 +680,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let dep_graph = hir.dep_graph.clone();
-        let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         let max_cnum = s.cstore.crates().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
@@ -735,7 +728,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             named_region_map,
             trait_map: resolutions.trait_map,
             export_map: resolutions.export_map,
-            fulfilled_predicates: RefCell::new(fulfilled_predicates),
             hir,
             def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
