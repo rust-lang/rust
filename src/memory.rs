@@ -480,11 +480,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, ty::Instance<'tcx>> {
-        debug!("reading fn ptr: {}", id);
-        match self.functions.get(&id) {
+    pub fn get_fn(&self, ptr: Pointer) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+        if ptr.offset != 0 {
+            return Err(EvalError::InvalidFunctionPointer);
+        }
+        debug!("reading fn ptr: {}", ptr.alloc_id);
+        match self.functions.get(&ptr.alloc_id) {
             Some(&fndef) => Ok(fndef),
-            None => match self.alloc_map.get(&id) {
+            None => match self.alloc_map.get(&ptr.alloc_id) {
                 Some(_) => Err(EvalError::ExecuteMemory),
                 None => Err(EvalError::InvalidFunctionPointer),
             }

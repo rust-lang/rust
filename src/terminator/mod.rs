@@ -65,7 +65,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (fn_def, sig) = match func_ty.sty {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
-                        let instance = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        let instance = self.memory.get_fn(fn_ptr)?;
                         let instance_ty = instance.def.def_ty(self.tcx);
                         let instance_ty = self.monomorphize(instance_ty, instance.substs);
                         match instance_ty.sty {
@@ -388,7 +388,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr_size = self.memory.pointer_size();
                 let (_, vtable) = self.eval_operand(&arg_operands[0])?.expect_ptr_vtable_pair(&self.memory)?;
                 let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3), self.memory.layout)?)?;
-                let instance = self.memory.get_fn(fn_ptr.to_ptr()?.alloc_id)?;
+                let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
                 let mut arg_operands = arg_operands.to_vec();
                 let ty = self.operand_ty(&arg_operands[0]);
                 let ty = self.get_field_ty(ty, 0)?;
@@ -596,7 +596,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let u8_ptr_ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
                 let f = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 let data = args[1].read_ptr(&self.memory)?;
-                let f_instance = self.memory.get_fn(f.alloc_id)?;
+                let f_instance = self.memory.get_fn(f)?;
                 self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
 
                 // Now we make a function call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
@@ -723,7 +723,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
                 let dtor = match args[1].read_ptr(&self.memory)? {
-                    PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr.alloc_id)?),
+                    PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
                     PrimVal::Bytes(0) => None,
                     PrimVal::Bytes(_) => return Err(EvalError::ReadBytesAsPointer),
                     PrimVal::Undef => return Err(EvalError::ReadUndefBytes),
