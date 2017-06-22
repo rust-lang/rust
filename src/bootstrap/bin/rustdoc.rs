@@ -41,11 +41,11 @@ fn main() {
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
 
-    // Pass the `rustbuild` feature flag to crates which rustbuild is
-    // building. See the comment in bootstrap/lib.rs where this env var is
-    // set for more details.
-    if env::var_os("RUSTBUILD_UNSTABLE").is_some() {
-        cmd.arg("--cfg").arg("rustbuild");
+    // Force all crates compiled by this compiler to (a) be unstable and (b)
+    // allow the `rustc_private` feature to link to other unstable crates
+    // also in the sysroot.
+    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
+        cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
     std::process::exit(match cmd.status() {

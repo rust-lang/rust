@@ -106,7 +106,8 @@ pub fn run_core(search_paths: SearchPaths,
                 input: Input,
                 triple: Option<String>,
                 maybe_sysroot: Option<PathBuf>,
-                allow_warnings: bool) -> (clean::Crate, RenderInfo)
+                allow_warnings: bool,
+                force_unstable_if_unmarked: bool) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -128,6 +129,10 @@ pub fn run_core(search_paths: SearchPaths,
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,
+        debugging_opts: config::DebuggingOptions {
+            force_unstable_if_unmarked: force_unstable_if_unmarked,
+            ..config::basic_debugging_options()
+        },
         ..config::basic_options().clone()
     };
 
