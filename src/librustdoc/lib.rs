@@ -465,13 +465,17 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     info!("starting to run rustc");
     let display_warnings = matches.opt_present("display-warnings");
 
+    let force_unstable_if_unmarked = matches.opt_strs("Z").iter().any(|x| {
+        *x == "force-unstable-if-unmarked"
+    });
+
     let (tx, rx) = channel();
     rustc_driver::monitor(move || {
         use rustc::session::config::Input;
 
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cr), triple, maybe_sysroot,
-                           display_warnings);
+                           display_warnings, force_unstable_if_unmarked);
 
         info!("finished with rustc");
 
