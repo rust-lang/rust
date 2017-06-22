@@ -755,15 +755,20 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     ///
     /// For example:
     ///
-    /// ```ignore
+    /// ```
     /// let a: i32;
     /// a = 10; // ok, even though a is uninitialized
+    /// ```
     ///
+    /// ```
     /// struct Point { x: u32, y: u32 }
-    /// let p: Point;
+    /// let mut p: Point;
     /// p.x = 22; // ok, even though `p` is uninitialized
+    /// ```
     ///
-    /// let p: Box<Point>;
+    /// ```compile_fail,E0381
+    /// # struct Point { x: u32, y: u32 }
+    /// let mut p: Box<Point>;
     /// (*p).x = 22; // not ok, p is uninitialized, can't deref
     /// ```
     fn check_if_assigned_path_is_moved(&self,

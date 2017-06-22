@@ -22,13 +22,14 @@
 //!
 //! On a technical level, Rust inserts
 //!
-//! ```ignore
+//! ```
 //! extern crate std;
 //! ```
 //!
 //! into the crate root of every crate, and
 //!
-//! ```ignore
+//! ```
+//! # #[allow(unused_imports)]
 //! use std::prelude::v1::*;
 //! ```
 //!

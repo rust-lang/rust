@@ -668,6 +668,7 @@ def bootstrap():
     env["BUILD"] = rb.build
     env["SRC"] = rb.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
+    env["BOOTSTRAP_PYTHON"] = sys.executable
     run(args, env=env, verbose=rb.verbose)
 
 
