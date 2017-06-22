@@ -154,12 +154,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "ctpop" |
             "cttz" |
+            "cttz_nonzero" |
             "ctlz" |
+            "ctlz_nonzero" |
             "bswap" => {
                 let ty = substs.type_at(0);
-                let num = self.value_to_primval(arg_vals[0], ty)?;
+                let num = self.value_to_primval(arg_vals[0], ty)?.to_bytes()?;
                 let kind = self.ty_to_primval_kind(ty)?;
-                let num = numeric_intrinsic(intrinsic_name, num, kind)?;
+                let num = if intrinsic_name.ends_with("_nonzero") {
+                    if num == 0 {
+                        return Err(EvalError::Intrinsic(format!("{} called on 0", intrinsic_name)))
+                    }
+                    numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), num, kind)?
+                } else {
+                    numeric_intrinsic(intrinsic_name, num, kind)?
+                };
                 self.write_primval(dest, num, ty)?;
             }
 
@@ -538,13 +547,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
 fn numeric_intrinsic<'tcx>(
     name: &str,
-    val: PrimVal,
+    bytes: u128,
     kind: PrimValKind
 ) -> EvalResult<'tcx, PrimVal> {
     macro_rules! integer_intrinsic {
         ($method:ident) => ({
-            let bytes = val.to_bytes()?;
-
             use value::PrimValKind::*;
             let result_bytes = match kind {
                 I8 => (bytes as i8).$method() as u128,
@@ -557,7 +564,7 @@ fn numeric_intrinsic<'tcx>(
                 U64 => (bytes as u64).$method() as u128,
                 I128 => (bytes as i128).$method() as u128,
                 U128 => bytes.$method() as u128,
-                _ => bug!("invalid `{}` argument: {:?}", name, val),
+                _ => bug!("invalid `{}` argument: {:?}", name, bytes),
             };
 
             PrimVal::Bytes(result_bytes)
