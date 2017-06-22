@@ -583,7 +583,7 @@ class RustBuild(object):
                                (self.get_toml('jemalloc') or
                                 self.get_mk('CFG_JEMALLOC_ROOT'))))]
         run(["git", "submodule", "update",
-             "--init"] + submodules,
+             "--init", "--recursive"] + submodules,
             cwd=self.rust_root, verbose=self.verbose)
         run(["git", "submodule", "-q", "foreach", "git",
              "reset", "-q", "--hard"],

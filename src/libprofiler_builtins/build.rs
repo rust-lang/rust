@@ -53,7 +53,7 @@ fn main() {
     }
 
     for src in profile_sources {
-        cfg.file(Path::new("../compiler-rt/lib/profile").join(src));
+        cfg.file(Path::new("../libcompiler_builtins/compiler-rt/lib/profile").join(src));
     }
 
     cfg.compile("libprofiler-rt.a");

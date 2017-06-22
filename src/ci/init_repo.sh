@@ -67,13 +67,14 @@ for module in $modules; do
         mv "src/llvm-$commit" src/llvm
         continue
     fi
-    if [ ! -d "$cache_src_dir/$module" ]; then
+    if [ ! -e "$cache_src_dir/$module/.git" ]; then
         echo "WARNING: $module not found in pristine repo"
-        retry sh -c "git submodule deinit -f $module && git submodule update --init $module"
+        retry sh -c "git submodule deinit -f $module && \
+            git submodule update --init --recursive $module"
         continue
     fi
     retry sh -c "git submodule deinit -f $module && \
-        git submodule update --init --reference $cache_src_dir/$module $module"
+        git submodule update --init --recursive --reference $cache_src_dir/$module $module"
 done
 
 travis_fold end update_submodules

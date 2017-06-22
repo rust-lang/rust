@@ -19,7 +19,7 @@ collections = { path = "../libcollections" }
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
 rand = { path = "../librand" }
-compiler_builtins = { path = "../libcompiler_builtins" }
+compiler_builtins = { path = "../rustc/compiler_builtins_shim" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 std_unicode = { path = "../libstd_unicode" }
 unwind = { path = "../libunwind" }

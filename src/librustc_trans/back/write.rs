@@ -1200,8 +1200,7 @@ fn spawn_work<'a>(sess: &'a Session,
     let crate_types = sess.crate_types.borrow().clone();
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(sess, &mut |cnum, path| {
-        // `#![no_builtins]` crates don't participate in LTO.
-        if sess.cstore.is_no_builtins(cnum) {
+        if link::ignored_for_lto(sess, cnum) {
             return
         }
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));

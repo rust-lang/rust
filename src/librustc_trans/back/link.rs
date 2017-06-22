@@ -363,6 +363,24 @@ pub fn each_linked_rlib(sess: &Session,
     Ok(())
 }
 
+/// Returns a boolean indicating whether the specified crate should be ignored
+/// during LTO.
+///
+/// Crates ignored during LTO are not lumped together in the "massive object
+/// file" that we create and are linked in their normal rlib states. See
+/// comments below for what crates do not participate in LTO.
+///
+/// It's unusual for a crate to not participate in LTO. Typically only
+/// compiler-specific and unstable crates have a reason to not participate in
+/// LTO.
+pub fn ignored_for_lto(sess: &Session, cnum: CrateNum) -> bool {
+    // `#![no_builtins]` crates don't participate in LTO because the state
+    // of builtins gets messed up (our crate isn't tagged with no builtins).
+    // Similarly `#![compiler_builtins]` doesn't participate because we want
+    // those builtins!
+    sess.cstore.is_no_builtins(cnum) || sess.cstore.is_compiler_builtins(cnum)
+}
+
 fn out_filename(sess: &Session,
                 crate_type: config::CrateType,
                 outputs: &OutputFilenames,
@@ -698,7 +716,10 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
         let skip_object_files = native_libs.iter().any(|lib| {
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
-        ab.add_rlib(path, &name.as_str(), sess.lto(), skip_object_files).unwrap();
+        ab.add_rlib(path,
+                    &name.as_str(),
+                    sess.lto() && !ignored_for_lto(sess, cnum),
+                    skip_object_files).unwrap();
 
         all_native_libs.extend(sess.cstore.native_libraries(cnum));
     });
@@ -1247,7 +1268,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if !sess.lto() && crate_type != config::CrateTypeDylib && !skip_native {
+        if (!sess.lto() || ignored_for_lto(sess, cnum)) &&
+           crate_type != config::CrateTypeDylib &&
+           !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
             return
         }
