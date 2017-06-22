@@ -5,6 +5,10 @@ pub mod old {
     mod b {
 
     }
+
+    mod c {
+
+    }
 }
 
 pub mod new {
@@ -19,5 +23,10 @@ pub mod new {
     pub mod b {
         #[allow(dead_code)]
         pub struct Cde;
+    }
+
+    mod c {
+        #[allow(dead_code)]
+        pub struct Def;
     }
 }

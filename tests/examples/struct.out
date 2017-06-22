@@ -1,10 +1,4 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Removal of at least one path to `Hij` (Breaking)
-  --> $REPO_PATH/tests/examples/struct.rs:23:5
-   |
-23 |     pub struct Hij(u8);
-   |     ^^^^^^^^^^^^^^^^^^^
-
 warning: NonBreaking changes in `Def`
   --> $REPO_PATH/tests/examples/struct.rs:32:5
    |

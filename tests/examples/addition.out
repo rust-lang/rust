@@ -1,37 +1,37 @@
 version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
 warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
-  --> $REPO_PATH/tests/examples/addition.rs:11:5
+  --> $REPO_PATH/tests/examples/addition.rs:15:5
    |
-11 |     pub struct Abc;
+15 |     pub struct Abc;
    |     ^^^^^^^^^^^^^^^
 
 warning: TechnicallyBreaking changes in `Bcd`
-  --> $REPO_PATH/tests/examples/addition.rs:13:5
+  --> $REPO_PATH/tests/examples/addition.rs:17:5
    |
-13 |     pub struct Bcd;
+17 |     pub struct Bcd;
    |     ^^^^^^^^^^^^^^^
    |
    = note: TechnicallyBreaking (ItemMadePublic)
 
 warning: Addition of at least one path to `a` (TechnicallyBreaking)
-  --> $REPO_PATH/tests/examples/addition.rs:17:5
+  --> $REPO_PATH/tests/examples/addition.rs:21:5
    |
-17 |     }
+21 |     }
    |     ^
 
 warning: TechnicallyBreaking changes in `b`
-  --> $REPO_PATH/tests/examples/addition.rs:20:9
+  --> $REPO_PATH/tests/examples/addition.rs:24:9
    |
-20 | /         #[allow(dead_code)]
-21 | |         pub struct Cde;
-22 | |     }
+24 | /         #[allow(dead_code)]
+25 | |         pub struct Cde;
+26 | |     }
    | |_____^
    |
    = note: TechnicallyBreaking (ItemMadePublic)
 
 warning: Addition of at least one path to `Cde` (TechnicallyBreaking)
-  --> $REPO_PATH/tests/examples/addition.rs:21:9
+  --> $REPO_PATH/tests/examples/addition.rs:25:9
    |
-21 |         pub struct Cde;
+25 |         pub struct Cde;
    |         ^^^^^^^^^^^^^^^
 

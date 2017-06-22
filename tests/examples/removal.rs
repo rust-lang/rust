@@ -11,6 +11,11 @@ pub mod old {
         #[allow(dead_code)]
         pub struct Cde;
     }
+
+    mod c {
+        #[allow(dead_code)]
+        pub struct Def;
+    }
 }
 
 pub mod new {
@@ -18,6 +23,10 @@ pub mod new {
     struct Bcd;
 
     mod b {
+
+    }
+
+    mod c {
 
     }
 }

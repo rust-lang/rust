@@ -18,17 +18,17 @@ warning: Removal of at least one path to `Cde` (Breaking)
    |         ^^^^^^^^^^^^^^^
 
 warning: Breaking changes in `Bcd`
-  --> $REPO_PATH/tests/examples/removal.rs:18:5
+  --> $REPO_PATH/tests/examples/removal.rs:23:5
    |
-18 |     struct Bcd;
+23 |     struct Bcd;
    |     ^^^^^^^^^^^
    |
    = warning: Breaking (ItemMadePrivate)
 
 warning: Breaking changes in `b`
-  --> $REPO_PATH/tests/examples/removal.rs:22:5
+  --> $REPO_PATH/tests/examples/removal.rs:27:5
    |
-22 |     }
+27 |     }
    |     ^
    |
    = warning: Breaking (ItemMadePrivate)

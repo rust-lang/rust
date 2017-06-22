@@ -98,16 +98,14 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     let mut children = HashMap::new();
     let mut mod_queue = VecDeque::new();
 
-    mod_queue.push_back((old, new));
+    mod_queue.push_back((old, new, Public, Public));
 
-    while let Some((old_did, new_did)) = mod_queue.pop_front() {
+    while let Some((old_did, new_did, old_vis, new_vis)) = mod_queue.pop_front() {
         let mut c_old = cstore.item_children(old_did, tcx.sess);
         let mut c_new = cstore.item_children(new_did, tcx.sess);
 
         // TODO: refactor this to avoid storing tons of `Namespace` values.
-        // println!("old");
         for child in c_old.drain(..) {
-            // println!("  {:?}", child.def.def_id());
             let key = (get_namespace(&child.def), child.ident.name);
             children.entry(key).or_insert((None, None)).0 = Some(child);
         }
@@ -121,8 +119,16 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
             match items {
                 (Some(Export { def: Mod(o), .. }), Some(Export { def: Mod(n), .. })) => {
                     if visited.insert((o, n)) {
-                        let o_vis = cstore.visibility(o);
-                        let n_vis = cstore.visibility(n);
+                        let o_vis = if old_vis == Public {
+                            cstore.visibility(o)
+                        } else {
+                            old_vis
+                        };
+                        let n_vis = if new_vis == Public {
+                            cstore.visibility(n)
+                        } else {
+                            new_vis
+                        };
 
                         if o_vis != n_vis {
                             // TODO: ugly
@@ -135,13 +141,21 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                             }
                         }
 
-                        mod_queue.push_back((o, n));
+                        mod_queue.push_back((o, n, o_vis, n_vis));
                     }
                 }
                 (Some(o), Some(n)) => {
                     if !id_mapping.add_export(o, n) {
-                        let o_vis = cstore.visibility(o.def.def_id());
-                        let n_vis = cstore.visibility(n.def.def_id());
+                        let o_vis = if old_vis == Public {
+                            cstore.visibility(o.def.def_id())
+                        } else {
+                            old_vis
+                        };
+                        let n_vis = if new_vis == Public {
+                            cstore.visibility(n.def.def_id())
+                        } else {
+                            new_vis
+                        };
 
                         let output = o_vis == Public || n_vis == Public;
                         changes.new_binary(o, n, output);
@@ -155,11 +169,15 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                         diff_item_structures(&mut changes, &mut id_mapping, tcx, o, n);
                     }
                 }
-                (Some(old), None) => {
-                    changes.new_removal(old);
+                (Some(o), None) => {
+                    if old_vis == Public && cstore.visibility(o.def.def_id()) == Public {
+                        changes.new_removal(o);
+                    }
                 }
-                (None, Some(new)) => {
-                    changes.new_addition(new);
+                (None, Some(n)) => {
+                    if new_vis == Public && cstore.visibility(n.def.def_id()) == Public {
+                        changes.new_addition(n);
+                    }
                 }
                 (None, None) => unreachable!(),
             }
