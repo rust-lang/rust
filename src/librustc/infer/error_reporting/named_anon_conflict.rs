@@ -43,39 +43,36 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let body_id = self.tcx.hir.maybe_body_owned_by(node_id).unwrap();
                 let mut is_first = false;
                 let body = self.tcx.hir.body(body_id);
-                body.arguments
-                    .iter()
-                    .filter_map(|arg| if let Some(tables) = self.in_progress_tables {
-                                    let ty = tables.borrow().node_id_to_type(arg.id);
-                                    let mut found_anon_region = false;
-                                    let new_arg_ty = self.tcx
-                                        .fold_regions(&ty,
-                                                      &mut false,
-                                                      |r, _| if *r == *anon_region {
-                                                          found_anon_region = true;
-                                                          named_region
-                                                      } else {
-                                                          r
-                                                      });
-                                    if found_anon_region {
-                                        if body.arguments.iter().nth(0) == Some(&arg) {
-                                            is_first = true;
-                                        }
-                                        return Some((arg,
-                                                     new_arg_ty,
-                                                     free_region.bound_region,
-                                                     is_first));
-                                    } else {
-                                        None
-                                    }
+                if let Some(tables) = self.in_progress_tables {
+                    body.arguments
+                        .iter()
+                        .filter_map(|arg| {
+                            let ty = tables.borrow().node_id_to_type(arg.id);
+                            let mut found_anon_region = false;
+                            let new_arg_ty = self.tcx
+                                .fold_regions(&ty, &mut false, |r, _| if *r == *anon_region {
+                                    found_anon_region = true;
+                                    named_region
                                 } else {
-                                    None
-                                })
-                    .next()
+                                    r
+                                });
+                            if found_anon_region {
+                                if body.arguments.iter().nth(0) == Some(&arg) {
+                                    is_first = true;
+                                }
+                                Some((arg, new_arg_ty, free_region.bound_region, is_first))
+                            } else {
+                                None
+                            }
+                        })
+                        .next()
+                } else {
+                    None
+                }
             }
             _ => None,
-        }
 
+        }
     }
 
     // This method generates the error message for the case when
