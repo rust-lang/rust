@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use std::fmt;
 use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path, match_trait_method,
-            match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
+            match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then, span_lint_and_sugg,
             span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment, single_segment_path,
             match_def_path, is_self, is_self_ty, iter_input_pats, match_path_old};
 use utils::paths;
@@ -725,15 +725,12 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                     };
 
                     if implements_trait(cx, arg_ty, default_trait_id, &[]) {
-                        span_lint_and_then(cx,
+                        span_lint_and_sugg(cx,
                                            OR_FUN_CALL,
                                            span,
                                            &format!("use of `{}` followed by a call to `{}`", name, path),
-                                           |db| {
-                            db.span_suggestion(span,
-                                               "try this",
-                                               format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")));
-                        });
+                                           "try this",
+                                           format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")));
                         return true;
                     }
                 }
@@ -791,15 +788,12 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
             (false, true) => snippet(cx, fun_span, ".."),
         };
 
-        span_lint_and_then(cx,
+        span_lint_and_sugg(cx,
                            OR_FUN_CALL,
                            span,
                            &format!("use of `{}` followed by a function call", name),
-                           |db| {
-            db.span_suggestion(span,
-                               "try this",
-                               format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
-        });
+                           "try this",
+                           format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
     }
 
     if args.len() == 2 {
@@ -865,14 +859,12 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
             return;
         };
 
-        span_lint_and_then(cx, STRING_EXTEND_CHARS, expr.span, "calling `.extend(_.chars())`", |db| {
-            db.span_suggestion(expr.span,
-                               "try this",
-                               format!("{}.push_str({}{})",
-                                       snippet(cx, args[0].span, "_"),
-                                       ref_str,
-                                       snippet(cx, target.span, "_")));
-        });
+        span_lint_and_sugg(cx, STRING_EXTEND_CHARS, expr.span, "calling `.extend(_.chars())`",
+                           "try this",
+                           format!("{}.push_str({}{})",
+                                   snippet(cx, args[0].span, "_"),
+                                   ref_str,
+                                   snippet(cx, target.span, "_")));
     }
 }
 
@@ -951,20 +943,17 @@ fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &[hir::Expr], i
 
     let mut_str = if is_mut { "_mut" } else { "" };
     let borrow_str = if is_mut { "&mut " } else { "&" };
-    span_lint_and_then(cx,
+    span_lint_and_sugg(cx,
                        GET_UNWRAP,
                        expr.span,
                        &format!("called `.get{0}().unwrap()` on a {1}. Using `[]` is more clear and more concise",
                                 mut_str,
                                 caller_type),
-                       |db| {
-        db.span_suggestion(expr.span,
-                           "try this",
-                           format!("{}{}[{}]",
-                                   borrow_str,
-                                   snippet(cx, get_args[0].span, "_"),
-                                   snippet(cx, get_args[1].span, "_")));
-    });
+                       "try this",
+                       format!("{}{}[{}]",
+                               borrow_str,
+                               snippet(cx, get_args[0].span, "_"),
+                               snippet(cx, get_args[1].span, "_")));
 }
 
 fn lint_iter_skip_next(cx: &LateContext, expr: &hir::Expr) {
@@ -1216,19 +1205,15 @@ fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other:
             return false;
         }
 
-        span_lint_and_then(cx,
+        span_lint_and_sugg(cx,
                            CHARS_NEXT_CMP,
                            expr.span,
                            "you should use the `starts_with` method",
-                           |db| {
-                               let sugg = format!("{}{}.starts_with({})",
-                                                  if eq { "" } else { "!" },
-                                                  snippet(cx, args[0][0].span, "_"),
-                                                  snippet(cx, arg_char[0].span, "_")
-                                                  );
-
-                               db.span_suggestion(expr.span, "like this", sugg);
-                           });
+                           "like this",
+                           format!("{}{}.starts_with({})",
+                                   if eq { "" } else { "!" },
+                                   snippet(cx, args[0][0].span, "_"),
+                                   snippet(cx, arg_char[0].span, "_")));
 
         return true;
     }}

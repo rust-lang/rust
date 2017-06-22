@@ -1,7 +1,7 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::def::Def;
 use rustc::hir::{Expr, Expr_, Stmt, StmtSemi, BlockCheckMode, UnsafeSource, BiAnd, BiOr};
-use utils::{in_macro, span_lint, snippet_opt, span_lint_and_then};
+use utils::{in_macro, span_lint, snippet_opt, span_lint_and_sugg};
 use std::ops::Deref;
 
 /// **What it does:** Checks for statements which have no effect.
@@ -120,11 +120,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         return;
                     }
                 }
-                span_lint_and_then(cx,
+                span_lint_and_sugg(cx,
                                    UNNECESSARY_OPERATION,
                                    stmt.span,
                                    "statement can be reduced",
-                                   |db| { db.span_suggestion(stmt.span, "replace it with", snippet); });
+                                   "replace it with",
+                                   snippet);
             }
         }
     }

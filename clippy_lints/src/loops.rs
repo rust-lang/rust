@@ -377,16 +377,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 // 1) it was ugly with big bodies;
                                 // 2) it was not indented properly;
                                 // 3) it wasn’t very smart (see #675).
-                                span_lint_and_then(cx,
+                                span_lint_and_sugg(cx,
                                                    WHILE_LET_LOOP,
                                                    expr.span,
                                                    "this loop could be written as a `while let` loop",
-                                                   |db| {
-                                    let sug = format!("while let {} = {} {{ .. }}",
-                                                      snippet(cx, arms[0].pats[0].span, ".."),
-                                                      snippet(cx, matchexpr.span, ".."));
-                                    db.span_suggestion(expr.span, "try", sug);
-                                });
+                                                   "try",
+                                                   format!("while let {} = {} {{ .. }}",
+                                                           snippet(cx, arms[0].pats[0].span, ".."),
+                                                           snippet(cx, matchexpr.span, "..")));
                             }
                         },
                         _ => (),
@@ -405,13 +403,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                    !is_iterator_used_after_while_let(cx, iter_expr) {
                     let iterator = snippet(cx, method_args[0].span, "_");
                     let loop_var = snippet(cx, pat_args[0].span, "_");
-                    span_lint_and_then(cx,
+                    span_lint_and_sugg(cx,
                                        WHILE_LET_ON_ITERATOR,
                                        expr.span,
                                        "this loop could be written as a `for` loop",
-                                       |db| {
-                        db.span_suggestion(expr.span, "try", format!("for {} in {} {{ .. }}", loop_var, iterator));
-                    });
+                                       "try",
+                                       format!("for {} in {} {{ .. }}", loop_var, iterator));
                 }
             }
         }

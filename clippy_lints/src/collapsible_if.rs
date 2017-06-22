@@ -15,7 +15,7 @@
 use rustc::lint::*;
 use syntax::ast;
 
-use utils::{in_macro, snippet_block, span_lint_and_then};
+use utils::{in_macro, snippet_block, span_lint_and_then, span_lint_and_sugg};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for nested `if` statements which can be collapsed
@@ -108,12 +108,12 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext, else_: &ast::Expr) {
     ], {
         match else_.node {
             ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => {
-                span_lint_and_then(cx,
+                span_lint_and_sugg(cx,
                                    COLLAPSIBLE_IF,
                                    block.span,
-                                   "this `else { if .. }` block can be collapsed", |db| {
-                    db.span_suggestion(block.span, "try", snippet_block(cx, else_.span, "..").into_owned());
-                });
+                                   "this `else { if .. }` block can be collapsed",
+                                   "try",
+                                   snippet_block(cx, else_.span, "..").into_owned());
             }
             _ => (),
         }
