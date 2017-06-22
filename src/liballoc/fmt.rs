@@ -230,7 +230,7 @@
 //! There are a number of related macros in the `format!` family. The ones that
 //! are currently implemented are:
 //!
-//! ```ignore
+//! ```ignore (only-for-syntax-highlight)
 //! format!      // described above
 //! write!       // first argument is a &mut io::Write, the destination
 //! writeln!     // same as write but appends a newline

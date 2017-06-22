@@ -156,7 +156,7 @@ use Bound::{Excluded, Included, Unbounded};
 /// However be careful: if you try to access an index which isn't in the `Vec`,
 /// your software will panic! You cannot do this:
 ///
-/// ```ignore
+/// ```should_panic
 /// let v = vec![0, 2, 4, 6];
 /// println!("{}", v[6]); // it will panic!
 /// ```
