@@ -10,15 +10,16 @@
 
 use back::link;
 use back::write;
-use back::symbol_export::{self, ExportedSymbols};
-use rustc::session::{self, config};
+use back::symbol_export;
+use rustc::session::config;
+use errors::FatalError;
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
 use rustc::util::common::time;
 use rustc::util::common::path2cstr;
 use rustc::hir::def_id::LOCAL_CRATE;
-use back::write::{ModuleConfig, with_llvm_pmb};
+use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
 
 use libc;
 use flate2::read::ZlibDecoder;
@@ -39,30 +40,31 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     }
 }
 
-pub fn run(sess: &session::Session,
+pub fn run(cgcx: &CodegenContext,
            llmod: ModuleRef,
            tm: TargetMachineRef,
-           exported_symbols: &ExportedSymbols,
            config: &ModuleConfig,
-           temp_no_opt_bc_filename: &Path) {
-    if sess.opts.cg.prefer_dynamic {
-        sess.struct_err("cannot prefer dynamic linking when performing LTO")
+           temp_no_opt_bc_filename: &Path) -> Result<(), FatalError> {
+    let handler = cgcx.handler;
+    if cgcx.opts.cg.prefer_dynamic {
+        handler.struct_err("cannot prefer dynamic linking when performing LTO")
             .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
                    supported with LTO")
             .emit();
-        sess.abort_if_errors();
+        return Err(FatalError)
     }
 
     // Make sure we actually can run LTO
-    for crate_type in sess.crate_types.borrow().iter() {
+    for crate_type in cgcx.crate_types.iter() {
         if !crate_type_allows_lto(*crate_type) {
-            sess.fatal("lto can only be run for executables, cdylibs and \
-                            static library outputs");
+            let e = handler.fatal("lto can only be run for executables, cdylibs and \
+                                   static library outputs");
+            return Err(e)
         }
     }
 
     let export_threshold =
-        symbol_export::crates_export_threshold(&sess.crate_types.borrow());
+        symbol_export::crates_export_threshold(&cgcx.crate_types);
 
     let symbol_filter = &|&(ref name, level): &(String, _)| {
         if symbol_export::is_below_threshold(level, export_threshold) {
@@ -74,7 +76,7 @@ pub fn run(sess: &session::Session,
         }
     };
 
-    let mut symbol_white_list: Vec<CString> = exported_symbols
+    let mut symbol_white_list: Vec<CString> = cgcx.exported_symbols
         .exported_symbols(LOCAL_CRATE)
         .iter()
         .filter_map(symbol_filter)
@@ -83,16 +85,11 @@ pub fn run(sess: &session::Session,
     // For each of our upstream dependencies, find the corresponding rlib and
     // load the bitcode from the archive. Then merge it into the current LLVM
     // module that we've got.
-    link::each_linked_rlib(sess, &mut |cnum, path| {
-        // `#![no_builtins]` crates don't participate in LTO.
-        if sess.cstore.is_no_builtins(cnum) {
-            return;
-        }
-
+    for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
         symbol_white_list.extend(
-            exported_symbols.exported_symbols(cnum)
-                            .iter()
-                            .filter_map(symbol_filter));
+            cgcx.exported_symbols.exported_symbols(cnum)
+                                 .iter()
+                                 .filter_map(symbol_filter));
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let bytecodes = archive.iter().filter_map(|child| {
@@ -102,7 +99,7 @@ pub fn run(sess: &session::Session,
             let bc_encoded = data.data();
 
             let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
-                time(sess.time_passes(), &format!("decode {}", name), || {
+                time(cgcx.time_passes, &format!("decode {}", name), || {
                     // Read the version
                     let version = extract_bytecode_format_version(bc_encoded);
 
@@ -117,17 +114,19 @@ pub fn run(sess: &session::Session,
                         let res = ZlibDecoder::new(compressed_data)
                             .read_to_end(&mut inflated);
                         if res.is_err() {
-                            sess.fatal(&format!("failed to decompress bc of `{}`",
-                                               name))
+                            let msg = format!("failed to decompress bc of `{}`",
+                                              name);
+                            Err(handler.fatal(&msg))
+                        } else {
+                            Ok(inflated)
                         }
-                        inflated
                     } else {
-                        sess.fatal(&format!("Unsupported bytecode format version {}",
-                                           version))
+                        Err(handler.fatal(&format!("Unsupported bytecode format version {}",
+                                                   version)))
                     }
-                })
+                })?
             } else {
-                time(sess.time_passes(), &format!("decode {}", name), || {
+                time(cgcx.time_passes, &format!("decode {}", name), || {
                     // the object must be in the old, pre-versioning format, so
                     // simply inflate everything and let LLVM decide if it can
                     // make sense of it
@@ -135,26 +134,29 @@ pub fn run(sess: &session::Session,
                     let res = ZlibDecoder::new(bc_encoded)
                         .read_to_end(&mut inflated);
                     if res.is_err() {
-                        sess.fatal(&format!("failed to decompress bc of `{}`",
-                                           name))
+                        let msg = format!("failed to decompress bc of `{}`",
+                                          name);
+                        Err(handler.fatal(&msg))
+                    } else {
+                        Ok(inflated)
                     }
-                    inflated
-                })
+                })?
             };
 
             let ptr = bc_decoded.as_ptr();
             debug!("linking {}", name);
-            time(sess.time_passes(), &format!("ll link {}", name), || unsafe {
-                if !llvm::LLVMRustLinkInExternalBitcode(llmod,
-                                                        ptr as *const libc::c_char,
-                                                        bc_decoded.len() as libc::size_t) {
-                    write::llvm_err(sess.diagnostic(),
-                                    format!("failed to load bc of `{}`",
-                                            name));
+            time(cgcx.time_passes, &format!("ll link {}", name), || unsafe {
+                if llvm::LLVMRustLinkInExternalBitcode(llmod,
+                                                       ptr as *const libc::c_char,
+                                                       bc_decoded.len() as libc::size_t) {
+                    Ok(())
+                } else {
+                    let msg = format!("failed to load bc of `{}`", name);
+                    Err(write::llvm_err(handler, msg))
                 }
-            });
+            })?;
         }
-    });
+    }
 
     // Internalize everything but the exported symbols of the current module
     let arr: Vec<*const libc::c_char> = symbol_white_list.iter()
@@ -167,13 +169,13 @@ pub fn run(sess: &session::Session,
                                          arr.len() as libc::size_t);
     }
 
-    if sess.no_landing_pads() {
+    if cgcx.no_landing_pads {
         unsafe {
             llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
         }
     }
 
-    if sess.opts.cg.save_temps {
+    if cgcx.opts.cg.save_temps {
         let cstr = path2cstr(temp_no_opt_bc_filename);
         unsafe {
             llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
@@ -203,12 +205,13 @@ pub fn run(sess: &session::Session,
         assert!(!pass.is_null());
         llvm::LLVMRustAddPass(pm, pass);
 
-        time(sess.time_passes(), "LTO passes", ||
+        time(cgcx.time_passes, "LTO passes", ||
              llvm::LLVMRunPassManager(pm, llmod));
 
         llvm::LLVMDisposePassManager(pm);
     }
     debug!("lto done");
+    Ok(())
 }
 
 fn is_versioned_bytecode_format(bc: &[u8]) -> bool {

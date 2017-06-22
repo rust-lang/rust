@@ -10,10 +10,12 @@
 
 // no-prefer-dynamic
 
-#![feature(allocator, core_intrinsics)]
+#![feature(allocator, core_intrinsics, panic_unwind)]
 #![allocator]
 #![crate_type = "rlib"]
 #![no_std]
+
+extern crate unwind;
 
 pub static mut HITS: usize = 0;
 

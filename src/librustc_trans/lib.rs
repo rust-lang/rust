@@ -40,6 +40,7 @@ use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
 extern crate flate2;
+extern crate crossbeam;
 extern crate libc;
 extern crate owning_ref;
 #[macro_use] extern crate rustc;
@@ -52,6 +53,7 @@ extern crate rustc_const_math;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
+extern crate jobserver;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

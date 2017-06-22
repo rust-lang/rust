@@ -329,34 +329,38 @@ pub fn filename_for_input(sess: &Session,
 }
 
 pub fn each_linked_rlib(sess: &Session,
-                        f: &mut FnMut(CrateNum, &Path)) {
+                        f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
                    .or_else(|| fmts.get(&config::CrateTypeStaticlib))
                    .or_else(|| fmts.get(&config::CrateTypeCdylib))
                    .or_else(|| fmts.get(&config::CrateTypeProcMacro));
-    let fmts = fmts.unwrap_or_else(|| {
-        bug!("could not find formats for rlibs");
-    });
+    let fmts = match fmts {
+        Some(f) => f,
+        None => return Err(format!("could not find formats for rlibs"))
+    };
     for (cnum, path) in crates {
-        match fmts[cnum.as_usize() - 1] {
-            Linkage::NotLinked | Linkage::IncludedFromDylib => continue,
-            _ => {}
+        match fmts.get(cnum.as_usize() - 1) {
+            Some(&Linkage::NotLinked) |
+            Some(&Linkage::IncludedFromDylib) => continue,
+            Some(_) => {}
+            None => return Err(format!("could not find formats for rlibs"))
         }
         let name = sess.cstore.crate_name(cnum).clone();
         let path = match path {
             LibSource::Some(p) => p,
             LibSource::MetadataOnly => {
-                sess.fatal(&format!("could not find rlib for: `{}`, found rmeta (metadata) file",
-                                    name));
+                return Err(format!("could not find rlib for: `{}`, found rmeta (metadata) file",
+                                   name))
             }
             LibSource::None => {
-                sess.fatal(&format!("could not find rlib for: `{}`", name));
+                return Err(format!("could not find rlib for: `{}`", name))
             }
         };
         f(cnum, &path);
     }
+    Ok(())
 }
 
 fn out_filename(sess: &Session,
@@ -669,7 +673,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     let mut ab = link_rlib(sess, None, objects, out_filename, tempdir);
     let mut all_native_libs = vec![];
 
-    each_linked_rlib(sess, &mut |cnum, path| {
+    let res = each_linked_rlib(sess, &mut |cnum, path| {
         let name = sess.cstore.crate_name(cnum);
         let native_libs = sess.cstore.native_libraries(cnum);
 
@@ -694,6 +698,9 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
 
         all_native_libs.extend(sess.cstore.native_libraries(cnum));
     });
+    if let Err(e) = res {
+        sess.fatal(&e);
+    }
 
     ab.update_symbols();
     ab.build();

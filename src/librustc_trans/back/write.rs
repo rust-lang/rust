@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use back::lto;
-use back::link::{get_linker, remove};
+use back::link::{self, get_linker, remove};
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
@@ -19,21 +19,24 @@ use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
+use rustc::hir::def_id::CrateNum;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr};
 use rustc::util::fs::link_or_copy;
-use errors::{self, Handler, Level, DiagnosticBuilder};
+use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
 use errors::emitter::Emitter;
+use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
+use jobserver::{Client, Acquired};
+use crossbeam::{scope, Scope};
 
 use std::cmp;
 use std::ffi::CString;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::str;
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc::channel;
-use std::thread;
+use std::sync::mpsc::{channel, Sender};
 use libc::{c_uint, c_void};
 
 pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
@@ -54,10 +57,10 @@ pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
     ("large", llvm::CodeModel::Large),
 ];
 
-pub fn llvm_err(handler: &errors::Handler, msg: String) -> ! {
+pub fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
     match llvm::last_error() {
-        Some(err) => panic!(handler.fatal(&format!("{}: {}", msg, err))),
-        None => panic!(handler.fatal(&msg)),
+        Some(err) => handler.fatal(&format!("{}: {}", msg, err)),
+        None => handler.fatal(&msg),
     }
 }
 
@@ -67,73 +70,16 @@ pub fn write_output_file(
         pm: llvm::PassManagerRef,
         m: ModuleRef,
         output: &Path,
-        file_type: llvm::FileType) {
+        file_type: llvm::FileType) -> Result<(), FatalError> {
     unsafe {
         let output_c = path2cstr(output);
         let result = llvm::LLVMRustWriteOutputFile(
                 target, pm, m, output_c.as_ptr(), file_type);
         if result.into_result().is_err() {
-            llvm_err(handler, format!("could not write output to {}", output.display()));
-        }
-    }
-}
-
-
-struct Diagnostic {
-    msg: String,
-    code: Option<String>,
-    lvl: Level,
-}
-
-// We use an Arc instead of just returning a list of diagnostics from the
-// child thread because we need to make sure that the messages are seen even
-// if the child thread panics (for example, when `fatal` is called).
-#[derive(Clone)]
-struct SharedEmitter {
-    buffer: Arc<Mutex<Vec<Diagnostic>>>,
-}
-
-impl SharedEmitter {
-    fn new() -> SharedEmitter {
-        SharedEmitter {
-            buffer: Arc::new(Mutex::new(Vec::new())),
-        }
-    }
-
-    fn dump(&mut self, handler: &Handler) {
-        let mut buffer = self.buffer.lock().unwrap();
-        for diag in &*buffer {
-            match diag.code {
-                Some(ref code) => {
-                    handler.emit_with_code(&MultiSpan::new(),
-                                           &diag.msg,
-                                           &code,
-                                           diag.lvl);
-                },
-                None => {
-                    handler.emit(&MultiSpan::new(),
-                                 &diag.msg,
-                                 diag.lvl);
-                },
-            }
-        }
-        buffer.clear();
-    }
-}
-
-impl Emitter for SharedEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
-        self.buffer.lock().unwrap().push(Diagnostic {
-            msg: db.message(),
-            code: db.code.clone(),
-            lvl: db.level,
-        });
-        for child in &db.children {
-            self.buffer.lock().unwrap().push(Diagnostic {
-                msg: child.message(),
-                code: None,
-                lvl: child.level,
-            });
+            let msg = format!("could not write output to {}", output.display());
+            Err(llvm_err(handler, msg))
+        } else {
+            Ok(())
         }
     }
 }
@@ -231,9 +177,9 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
     };
 
     if tm.is_null() {
-        llvm_err(sess.diagnostic(),
-                 format!("Could not create LLVM TargetMachine for triple: {}",
-                         triple).to_string());
+        let msg = format!("Could not create LLVM TargetMachine for triple: {}",
+                          triple);
+        panic!(llvm_err(sess.diagnostic(), msg));
     } else {
         return tm;
     };
@@ -333,36 +279,28 @@ impl ModuleConfig {
 }
 
 /// Additional resources used by optimize_and_codegen (not module specific)
-struct CodegenContext<'a> {
-    // Extra resources used for LTO: (sess, reachable).  This will be `None`
-    // when running in a worker thread.
-    lto_ctxt: Option<(&'a Session, &'a ExportedSymbols)>,
+pub struct CodegenContext<'a> {
+    // Resouces needed when running LTO
+    pub time_passes: bool,
+    pub lto: bool,
+    pub no_landing_pads: bool,
+    pub exported_symbols: &'a ExportedSymbols,
+    pub opts: &'a config::Options,
+    pub crate_types: Vec<config::CrateType>,
+    pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
     // Handler to use for diagnostics produced during codegen.
-    handler: &'a Handler,
+    pub handler: &'a Handler,
     // LLVM passes added by plugins.
-    plugin_passes: Vec<String>,
+    pub plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
-    remark: Passes,
+    pub remark: Passes,
     // Worker thread number
-    worker: usize,
+    pub worker: usize,
     // The incremental compilation session directory, or None if we are not
     // compiling incrementally
-    incr_comp_session_dir: Option<PathBuf>
-}
-
-impl<'a> CodegenContext<'a> {
-    fn new_with_session(sess: &'a Session,
-                        exported_symbols: &'a ExportedSymbols)
-                        -> CodegenContext<'a> {
-        CodegenContext {
-            lto_ctxt: Some((sess, exported_symbols)),
-            handler: sess.diagnostic(),
-            plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
-            remark: sess.opts.cg.remark.clone(),
-            worker: 0,
-            incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone())
-        }
-    }
+    pub incr_comp_session_dir: Option<PathBuf>,
+    // Channel back to the main control thread to send messages to
+    pub tx: Sender<Message>,
 }
 
 struct HandlerFreeVars<'a> {
@@ -373,22 +311,7 @@ struct HandlerFreeVars<'a> {
 unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
                                                msg: &'b str,
                                                cookie: c_uint) {
-    use syntax::ext::hygiene::Mark;
-
-    match cgcx.lto_ctxt {
-        Some((sess, _)) => {
-            match Mark::from_u32(cookie).expn_info() {
-                Some(ei) => sess.span_err(ei.call_site, msg),
-                None     => sess.err(msg),
-            };
-        }
-
-        None => {
-            cgcx.handler.struct_err(msg)
-                        .note("build without -C codegen-units for more exact errors")
-                        .emit();
-        }
-    }
+    drop(cgcx.tx.send(Message::InlineAsmError(cookie as u32, msg.to_string())));
 }
 
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
@@ -437,7 +360,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                mtrans: ModuleTranslation,
                                mllvm: ModuleLlvm,
                                config: ModuleConfig,
-                               output_names: OutputFilenames) {
+                               output_names: OutputFilenames)
+    -> Result<(), FatalError>
+{
     let llmod = mllvm.llmod;
     let llcx = mllvm.llcx;
     let tm = config.tm;
@@ -525,25 +450,21 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
 
-        match cgcx.lto_ctxt {
-            Some((sess, exported_symbols)) if sess.lto() =>  {
-                time(sess.time_passes(), "all lto passes", || {
-                    let temp_no_opt_bc_filename =
-                        output_names.temp_path_ext("no-opt.lto.bc", module_name);
-                    lto::run(sess,
-                             llmod,
-                             tm,
-                             exported_symbols,
-                             &config,
-                             &temp_no_opt_bc_filename);
-                });
-                if config.emit_lto_bc {
-                    let out = output_names.temp_path_ext("lto.bc", module_name);
-                    let out = path2cstr(&out);
-                    llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
-                }
-            },
-            _ => {},
+        if cgcx.lto {
+            time(cgcx.time_passes, "all lto passes", || {
+                let temp_no_opt_bc_filename =
+                    output_names.temp_path_ext("no-opt.lto.bc", module_name);
+                lto::run(cgcx,
+                         llmod,
+                         tm,
+                         &config,
+                         &temp_no_opt_bc_filename)
+            })?;
+            if config.emit_lto_bc {
+                let out = output_names.temp_path_ext("lto.bc", module_name);
+                let out = path2cstr(&out);
+                llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
+            }
         }
     }
 
@@ -555,16 +476,16 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     // pass manager passed to the closure should be ensured to not
     // escape the closure itself, and the manager should only be
     // used once.
-    unsafe fn with_codegen<F>(tm: TargetMachineRef,
-                              llmod: ModuleRef,
-                              no_builtins: bool,
-                              f: F) where
-        F: FnOnce(PassManagerRef),
+    unsafe fn with_codegen<F, R>(tm: TargetMachineRef,
+                                 llmod: ModuleRef,
+                                 no_builtins: bool,
+                                 f: F) -> R
+        where F: FnOnce(PassManagerRef) -> R,
     {
         let cpm = llvm::LLVMCreatePassManager();
         llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
         llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
-        f(cpm);
+        f(cpm)
     }
 
     // Change what we write and cleanup based on whether obj files are
@@ -584,7 +505,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMWriteBitcodeToFile(llmod, bc_out_c.as_ptr());
     }
 
-    time(config.time_passes, &format!("codegen passes [{}]", cgcx.worker), || {
+    time(config.time_passes, &format!("codegen passes [{}]", cgcx.worker),
+         || -> Result<(), FatalError> {
         if config.emit_ir {
             let out = output_names.temp_path(OutputType::LlvmAssembly, module_name);
             let out = path2cstr(&out);
@@ -607,8 +529,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &path,
-                                  llvm::FileType::AssemblyFile);
-            });
+                                  llvm::FileType::AssemblyFile)
+            })?;
             if config.emit_obj {
                 llvm::LLVMDisposeModule(llmod);
             }
@@ -617,10 +539,12 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out,
-                                  llvm::FileType::ObjectFile);
-            });
+                                  llvm::FileType::ObjectFile)
+            })?;
         }
-    });
+
+        Ok(())
+    })?;
 
     if copy_bc_to_obj {
         debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
@@ -637,6 +561,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     }
 
     llvm::LLVMRustDisposeTargetMachine(tm);
+    Ok(())
 }
 
 
@@ -781,19 +706,16 @@ pub fn run_passes(sess: &Session,
         dump_incremental_data(&trans);
     }
 
-    // Process the work items, optionally using worker threads.
-    // NOTE: We are hardcoding a limit of worker threads for now. With
-    //       incremental compilation we can run into situations where we would
-    //       open hundreds of threads otherwise -- which can make things slower
-    //       if things don't fit into memory anymore, or can cause the compiler
-    //       to crash because of too many open file handles. See #39280 for
-    //       some discussion on how to improve this in the future.
-    let num_workers = cmp::min(work_items.len() - 1, 32);
-    if num_workers <= 1 {
-        run_work_singlethreaded(sess, &trans.exported_symbols, work_items);
-    } else {
-        run_work_multithreaded(sess, work_items, num_workers);
-    }
+    let client = sess.jobserver_from_env.clone().unwrap_or_else(|| {
+        // Pick a "reasonable maximum" if we don't otherwise have a jobserver in
+        // our environment, capping out at 32 so we don't take everything down
+        // by hogging the process run queue.
+        let num_workers = cmp::min(work_items.len() - 1, 32);
+        Client::new(num_workers).expect("failed to create jobserver")
+    });
+    scope(|scope| {
+        execute_work(sess, work_items, client, &trans.exported_symbols, scope);
+    });
 
     // If in incr. comp. mode, preserve the `.o` files for potential re-use
     for mtrans in trans.modules.iter() {
@@ -995,8 +917,9 @@ fn build_work_item(sess: &Session,
     }
 }
 
-fn execute_work_item(cgcx: &CodegenContext,
-                     work_item: WorkItem) {
+fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
+    -> Result<(), FatalError>
+{
     unsafe {
         match work_item.mtrans.source {
             ModuleSource::Translated(mllvm) => {
@@ -1005,7 +928,7 @@ fn execute_work_item(cgcx: &CodegenContext,
                                      work_item.mtrans,
                                      mllvm,
                                      work_item.config,
-                                     work_item.output_names);
+                                     work_item.output_names)?;
             }
             ModuleSource::Preexisting(wp) => {
                 let incr_comp_session_dir = cgcx.incr_comp_session_dir
@@ -1033,92 +956,281 @@ fn execute_work_item(cgcx: &CodegenContext,
             }
         }
     }
+
+    Ok(())
 }
 
-fn run_work_singlethreaded(sess: &Session,
-                           exported_symbols: &ExportedSymbols,
-                           work_items: Vec<WorkItem>) {
-    let cgcx = CodegenContext::new_with_session(sess, exported_symbols);
+pub enum Message {
+    Token(io::Result<Acquired>),
+    Diagnostic(Diagnostic),
+    Done { success: bool },
+    InlineAsmError(u32, String),
+    AbortIfErrors,
+}
 
-    // Since we're running single-threaded, we can pass the session to
-    // the proc, allowing `optimize_and_codegen` to perform LTO.
-    for work in work_items.into_iter().rev() {
-        execute_work_item(&cgcx, work);
+pub struct Diagnostic {
+    msg: String,
+    code: Option<String>,
+    lvl: Level,
+}
+
+fn execute_work<'a>(sess: &'a Session,
+                    mut work_items: Vec<WorkItem>,
+                    jobserver: Client,
+                    exported_symbols: &'a ExportedSymbols,
+                    scope: &Scope<'a>) {
+    let (tx, rx) = channel();
+    let tx2 = tx.clone();
+
+    // First up, convert our jobserver into a helper thread so we can use normal
+    // mpsc channels to manage our messages and such. Once we've got the helper
+    // thread then request `n-1` tokens because all of our work items are ready
+    // to go.
+    //
+    // Note that the `n-1` is here because we ourselves have a token (our
+    // process) and we'll use that token to execute at least one unit of work.
+    //
+    // After we've requested all these tokens then we'll, when we can, get
+    // tokens on `rx` above which will get managed in the main loop below.
+    let helper = jobserver.into_helper_thread(move |token| {
+        drop(tx2.send(Message::Token(token)));
+    }).expect("failed to spawn helper thread");
+    for _ in 0..work_items.len() - 1 {
+        helper.request_token();
     }
-}
 
-fn run_work_multithreaded(sess: &Session,
-                          work_items: Vec<WorkItem>,
-                          num_workers: usize) {
-    assert!(num_workers > 0);
+    // This is the "main loop" of parallel work happening for parallel codegen.
+    // It's here that we manage parallelism, schedule work, and work with
+    // messages coming from clients.
+    //
+    // Our channel `rx` created above is a channel of messages coming from our
+    // various worker threads. This includes the jobserver helper thread above
+    // as well as the work we'll spawn off here. Each turn of this loop starts
+    // off by trying to spawn as much work as possible. After we've done that we
+    // then wait for an event and dispatch accordingly once the event is
+    // received. We're only done once all our work items have been drained and
+    // nothing is running, at which point we return back up the stack.
+    //
+    // ## Parallelism management
+    //
+    // It's worth also touching on the management of parallelism here. We don't
+    // want to just spawn a thread per work item because while that's optimal
+    // parallelism it may overload a system with too many threads or violate our
+    // configuration for the maximum amount of cpu to use for this process. To
+    // manage this we use the `jobserver` crate.
+    //
+    // Job servers are an artifact of GNU make and are used to manage
+    // parallelism between processes. A jobserver is a glorified IPC semaphore
+    // basically. Whenever we want to run some work we acquire the semaphore,
+    // and whenever we're done with that work we release the semaphore. In this
+    // manner we can ensure that the maximum number of parallel workers is
+    // capped at any one point in time.
+    //
+    // The jobserver protocol is a little unique, however. We, as a running
+    // process, already have an ephemeral token assigned to us. We're not going
+    // to be doing any productive work in this thread though so we're going to
+    // give this token to a worker thread (there's no actual token to give, this
+    // is just conceptually). As a result you'll see a few `+1` and `-1`
+    // instances below, and it's about working with this ephemeral token.
+    //
+    // To acquire tokens we have our `helper` thread above which is just in a
+    // loop acquiring tokens and sending them to us. We then store all tokens
+    // locally in a `tokens` vector once they're acquired. Currently we don't
+    // literally send a token to a worker thread to assist with management of
+    // our "ephemeral token".
+    //
+    // As a result, our "spawn as much work as possible" basically means that we
+    // fill up the `running` counter up to the limit of the `tokens` list.
+    // Whenever we get a new token this'll mean a new unit of work is spawned,
+    // and then whenever a unit of work finishes we relinquish a token, if we
+    // had one, to maybe get re-acquired later.
+    //
+    // Note that there's a race which may mean that we acquire more tokens than
+    // we originally anticipated. For example let's say we have 2 units of work.
+    // First we request one token from the helper thread and then we
+    // immediately spawn one unit of work with our ephemeral token after. We may
+    // then finish the first piece of work before the token is acquired, but we
+    // can continue to spawn the second piece of work with our ephemeral token.
+    // Before that work finishes, however, we may acquire a token. In that case
+    // we actually wastefully acquired the token, so we relinquish it back to
+    // the jobserver.
+    let mut tokens = Vec::new();
+    let mut running = 0;
+    while work_items.len() > 0 || running > 0 {
 
-    // Run some workers to process the work items.
-    let work_items_arc = Arc::new(Mutex::new(work_items));
-    let mut diag_emitter = SharedEmitter::new();
-    let mut futures = Vec::with_capacity(num_workers);
+        // Spin up what work we can, only doing this while we've got available
+        // parallelism slots and work left to spawn.
+        while work_items.len() > 0 && running < tokens.len() + 1 {
+            let item = work_items.pop().unwrap();
+            let index = work_items.len();
+            spawn_work(sess, exported_symbols, scope, tx.clone(), item, index);
+            running += 1;
+        }
 
-    for i in 0..num_workers {
-        let work_items_arc = work_items_arc.clone();
-        let diag_emitter = diag_emitter.clone();
-        let plugin_passes = sess.plugin_llvm_passes.borrow().clone();
-        let remark = sess.opts.cg.remark.clone();
+        // Relinquish accidentally acquired extra tokens
+        tokens.truncate(running.saturating_sub(1));
 
-        let (tx, rx) = channel();
-        let mut tx = Some(tx);
-        futures.push(rx);
+        match rx.recv().unwrap() {
+            // Save the token locally and the next turn of the loop will use
+            // this to spawn a new unit of work, or it may get dropped
+            // immediately if we have no more work to spawn.
+            Message::Token(token) => {
+                tokens.push(token.expect("failed to acquire jobserver token"));
+            }
 
-        let incr_comp_session_dir = sess.incr_comp_session_dir_opt().map(|r| r.clone());
+            // If a thread exits successfully then we drop a token associated
+            // with that worker and update our `running` count. We may later
+            // re-acquire a token to continue running more work. We may also not
+            // actually drop a token here if the worker was running with an
+            // "ephemeral token"
+            //
+            // Note that if the thread failed that means it panicked, so we
+            // abort immediately.
+            Message::Done { success: true } => {
+                drop(tokens.pop());
+                running -= 1;
+            }
+            Message::Done { success: false } => {
+                sess.fatal("aborting due to worker thread panic");
+            }
 
-        let depth = time_depth();
-        thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
-            set_time_depth(depth);
-
-            let diag_handler = Handler::with_emitter(true, false, box diag_emitter);
-
-            // Must construct cgcx inside the proc because it has non-Send
-            // fields.
-            let cgcx = CodegenContext {
-                lto_ctxt: None,
-                handler: &diag_handler,
-                plugin_passes: plugin_passes,
-                remark: remark,
-                worker: i,
-                incr_comp_session_dir: incr_comp_session_dir
-            };
-
-            loop {
-                // Avoid holding the lock for the entire duration of the match.
-                let maybe_work = work_items_arc.lock().unwrap().pop();
-                match maybe_work {
-                    Some(work) => {
-                        execute_work_item(&cgcx, work);
-
-                        // Make sure to fail the worker so the main thread can
-                        // tell that there were errors.
-                        cgcx.handler.abort_if_errors();
+            // Our worker wants us to emit an error message, so get ahold of our
+            // `sess` and print it out
+            Message::Diagnostic(diag) => {
+                let handler = sess.diagnostic();
+                match diag.code {
+                    Some(ref code) => {
+                        handler.emit_with_code(&MultiSpan::new(),
+                                               &diag.msg,
+                                               &code,
+                                               diag.lvl);
                     }
-                    None => break,
+                    None => {
+                        handler.emit(&MultiSpan::new(),
+                                     &diag.msg,
+                                     diag.lvl);
+                    }
+                }
+            }
+            Message::InlineAsmError(cookie, msg) => {
+                match Mark::from_u32(cookie).expn_info() {
+                    Some(ei) => sess.span_err(ei.call_site, &msg),
+                    None     => sess.err(&msg),
                 }
             }
 
-            tx.take().unwrap().send(()).unwrap();
-        }).unwrap();
+            // Sent to us after a worker sends us a batch of error messages, and
+            // it's the point at which we check for errors.
+            Message::AbortIfErrors => sess.diagnostic().abort_if_errors(),
+        }
     }
 
-    let mut panicked = false;
-    for rx in futures {
-        match rx.recv() {
-            Ok(()) => {},
-            Err(_) => {
-                panicked = true;
-            },
+    // Just in case, check this on the way out.
+    sess.diagnostic().abort_if_errors();
+}
+
+struct SharedEmitter {
+    tx: Sender<Message>,
+}
+
+impl Emitter for SharedEmitter {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
+        drop(self.tx.send(Message::Diagnostic(Diagnostic {
+            msg: db.message(),
+            code: db.code.clone(),
+            lvl: db.level,
+        })));
+        for child in &db.children {
+            drop(self.tx.send(Message::Diagnostic(Diagnostic {
+                msg: child.message(),
+                code: None,
+                lvl: child.level,
+            })));
         }
-        // Display any new diagnostics.
-        diag_emitter.dump(sess.diagnostic());
+        drop(self.tx.send(Message::AbortIfErrors));
     }
-    if panicked {
-        sess.fatal("aborting due to worker thread panic");
-    }
+}
+
+fn spawn_work<'a>(sess: &'a Session,
+                  exported_symbols: &'a ExportedSymbols,
+                  scope: &Scope<'a>,
+                  tx: Sender<Message>,
+                  work: WorkItem,
+                  idx: usize) {
+    let plugin_passes = sess.plugin_llvm_passes.borrow().clone();
+    let remark = sess.opts.cg.remark.clone();
+    let incr_comp_session_dir = sess.incr_comp_session_dir_opt().map(|r| r.clone());
+    let depth = time_depth();
+    let lto = sess.lto();
+    let crate_types = sess.crate_types.borrow().clone();
+    let mut each_linked_rlib_for_lto = Vec::new();
+    drop(link::each_linked_rlib(sess, &mut |cnum, path| {
+        // `#![no_builtins]` crates don't participate in LTO.
+        if sess.cstore.is_no_builtins(cnum) {
+            return
+        }
+        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
+    }));
+    let time_passes = sess.time_passes();
+    let no_landing_pads = sess.no_landing_pads();
+    let opts = &sess.opts;
+
+    scope.spawn(move || {
+        set_time_depth(depth);
+
+        // Set up a destructor which will fire off a message that we're done as
+        // we exit.
+        struct Bomb {
+            tx: Sender<Message>,
+            success: bool,
+        }
+        impl Drop for Bomb {
+            fn drop(&mut self) {
+                drop(self.tx.send(Message::Done { success: self.success }));
+            }
+        }
+        let mut bomb = Bomb {
+            tx: tx.clone(),
+            success: false,
+        };
+
+        // Set up our non-`Send` `CodegenContext` now that we're in a helper
+        // thread and have all our info available to us.
+        let emitter = SharedEmitter { tx: tx.clone() };
+        let diag_handler = Handler::with_emitter(true, false, Box::new(emitter));
+
+        let cgcx = CodegenContext {
+            crate_types: crate_types,
+            each_linked_rlib_for_lto: each_linked_rlib_for_lto,
+            lto: lto,
+            no_landing_pads: no_landing_pads,
+            opts: opts,
+            time_passes: time_passes,
+            exported_symbols: exported_symbols,
+            handler: &diag_handler,
+            plugin_passes: plugin_passes,
+            remark: remark,
+            worker: idx,
+            incr_comp_session_dir: incr_comp_session_dir,
+            tx: tx.clone(),
+        };
+
+        // Execute the work itself, and if it finishes successfully then flag
+        // ourselves as a success as well.
+        //
+        // Note that we ignore the result coming out of `execute_work_item`
+        // which will tell us if the worker failed with a `FatalError`. If that
+        // has happened, however, then a diagnostic was sent off to the main
+        // thread, along with an `AbortIfErrors` message. In that case the main
+        // thread is already exiting anyway most likely.
+        //
+        // In any case, there's no need for us to take further action here, so
+        // we just ignore the result and then send off our message saying that
+        // we're done, which if `execute_work_item` failed is unlikely to be
+        // seen by the main thread, but hey we might as well try anyway.
+        drop(execute_work_item(&cgcx, work).is_err());
+        bomb.success = true;
+    });
 }
 
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
