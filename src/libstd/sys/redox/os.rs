@@ -179,7 +179,7 @@ pub fn getenv(key: &OsStr) -> io::Result<Option<OsString>> {
 
 pub fn setenv(key: &OsStr, value: &OsStr) -> io::Result<()> {
     if ! key.is_empty() {
-        let mut file = ::fs::File::open(&("env:".to_owned() + key.to_str().unwrap()))?;
+        let mut file = ::fs::File::create(&("env:".to_owned() + key.to_str().unwrap()))?;
         file.write_all(value.as_bytes())?;
         file.set_len(value.len() as u64)?;
     }
