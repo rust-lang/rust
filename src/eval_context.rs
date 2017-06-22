@@ -892,7 +892,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn pointer_offset(&self, ptr: PrimVal, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, PrimVal> {
-        if ptr == PrimVal::from_u128(0) { // rule out NULL pointers
+        if ptr.is_null()? { // rule out NULL pointers
             return Err(EvalError::InvalidPointerMath);
         }
         // FIXME: assuming here that type size is < i64::max_value()
