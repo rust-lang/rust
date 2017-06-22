@@ -226,6 +226,14 @@ impl<'tcx> PrimVal {
         }
     }
 
+    pub fn is_null(self) -> EvalResult<'tcx, bool> {
+        match self {
+            PrimVal::Bytes(b) => Ok(b == 0),
+            PrimVal::Ptr(_) => Ok(false),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
+    }
+
     pub fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         match self {
             PrimVal::Bytes(b) => {

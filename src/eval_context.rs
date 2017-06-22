@@ -41,6 +41,10 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) steps_remaining: u64,
+
+    /// Environment variables set by `setenv`
+    /// Miri does not expose env vars from the host to the emulated program
+    pub(crate) env_vars: HashMap<Vec<u8>, Pointer>,
 }
 
 /// A stack frame.
@@ -134,6 +138,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             stack: Vec::new(),
             stack_limit: limits.stack_limit,
             steps_remaining: limits.step_limit,
+            env_vars: HashMap::new(),
         }
     }
 

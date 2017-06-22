@@ -542,12 +542,11 @@ fn numeric_intrinsic<'tcx>(
     kind: PrimValKind
 ) -> EvalResult<'tcx, PrimVal> {
     macro_rules! integer_intrinsic {
-        ($name:expr, $val:expr, $kind:expr, $method:ident) => ({
-            let val = $val;
+        ($method:ident) => ({
             let bytes = val.to_bytes()?;
 
             use value::PrimValKind::*;
-            let result_bytes = match $kind {
+            let result_bytes = match kind {
                 I8 => (bytes as i8).$method() as u128,
                 U8 => (bytes as u8).$method() as u128,
                 I16 => (bytes as i16).$method() as u128,
@@ -558,7 +557,7 @@ fn numeric_intrinsic<'tcx>(
                 U64 => (bytes as u64).$method() as u128,
                 I128 => (bytes as i128).$method() as u128,
                 U128 => bytes.$method() as u128,
-                _ => bug!("invalid `{}` argument: {:?}", $name, val),
+                _ => bug!("invalid `{}` argument: {:?}", name, val),
             };
 
             PrimVal::Bytes(result_bytes)
@@ -566,10 +565,10 @@ fn numeric_intrinsic<'tcx>(
     }
 
     let result_val = match name {
-        "bswap" => integer_intrinsic!("bswap", val, kind, swap_bytes),
-        "ctlz"  => integer_intrinsic!("ctlz",  val, kind, leading_zeros),
-        "ctpop" => integer_intrinsic!("ctpop", val, kind, count_ones),
-        "cttz"  => integer_intrinsic!("cttz",  val, kind, trailing_zeros),
+        "bswap" => integer_intrinsic!(swap_bytes),
+        "ctlz"  => integer_intrinsic!(leading_zeros),
+        "ctpop" => integer_intrinsic!(count_ones),
+        "cttz"  => integer_intrinsic!(trailing_zeros),
         _       => bug!("not a numeric intrinsic: {}", name),
     };
 
