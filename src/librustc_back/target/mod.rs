@@ -282,6 +282,9 @@ pub struct TargetOptions {
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
 
+    /// Environment variables to be set before invoking the linker.
+    pub link_env: Vec<(String, String)>,
+
     /// Extra arguments to pass to the external assembler (when used)
     pub asm_args: Vec<String>,
 
@@ -451,6 +454,7 @@ impl Default for TargetOptions {
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
             late_link_args: LinkArgs::new(),
+            link_env: Vec::new(),
             archive_format: "gnu".to_string(),
             custom_unwind_resume: false,
             lib_allocation_crate: "alloc_system".to_string(),
