@@ -12,17 +12,19 @@
 
 #![feature(libc)]
 
+#![allow(dead_code)]
+
 extern crate libc;
 use std::mem;
 
-struct arena(());
+struct Arena(());
 
 struct Bcx<'a> {
     fcx: &'a Fcx<'a>
 }
 
 struct Fcx<'a> {
-    arena: &'a arena,
+    arena: &'a Arena,
     ccx: &'a Ccx
 }
 
@@ -30,7 +32,7 @@ struct Ccx {
     x: isize
 }
 
-fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
+fn alloc<'a>(_bcx : &'a Arena) -> &'a Bcx<'a> {
     unsafe {
         mem::transmute(libc::malloc(mem::size_of::<Bcx<'a>>()
             as libc::size_t))
@@ -50,7 +52,7 @@ fn g(fcx : &Fcx) {
 }
 
 fn f(ccx : &Ccx) {
-    let a = arena(());
+    let a = Arena(());
     let fcx = Fcx { arena: &a, ccx: ccx };
     return g(&fcx);
 }
