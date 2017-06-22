@@ -645,7 +645,7 @@ pub fn set_link_section(ccx: &CrateContext,
     }
 }
 
-/// Create the `main` function which will initialise the rust runtime and call
+/// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
 pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
