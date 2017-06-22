@@ -10,7 +10,7 @@
 
 
 
-#![feature(std_misc, libc)]
+#![feature(libc)]
 
 extern crate libc;
 use std::ffi::CString;
