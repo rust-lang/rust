@@ -796,12 +796,12 @@ macro_rules! define_provider_struct {
 // the driver creates (using several `rustc_*` crates).
 define_maps! { <'tcx>
     /// Records the type of every item.
-    [] type_of: ItemSignature(DefId) -> Ty<'tcx>,
+    [] type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
-    [] generics_of: ItemSignature(DefId) -> &'tcx ty::Generics,
-    [] predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    [] generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
+    [] predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -809,15 +809,15 @@ define_maps! { <'tcx>
     /// evaluate them even during type conversion, often before the
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
-    [] super_predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    [] super_predicates_of: SuperPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     [] type_param_predicates: type_param_predicates((DefId, DefId))
         -> ty::GenericPredicates<'tcx>,
 
-    [] trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
-    [] adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
+    [] trait_def: TraitDefOfItem(DefId) -> &'tcx ty::TraitDef,
+    [] adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
     [] adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
     [] adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
@@ -829,7 +829,7 @@ define_maps! { <'tcx>
     [] is_foreign_item: IsForeignItem(DefId) -> bool,
 
     /// True if this is a default impl (aka impl Foo for ..)
-    [] is_default_impl: ItemSignature(DefId) -> bool,
+    [] is_default_impl: IsDefaultImpl(DefId) -> bool,
 
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.
@@ -845,8 +845,8 @@ define_maps! { <'tcx>
     /// Maps from a trait item to the trait item "descriptor"
     [] associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
-    [] impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
-    [] impl_polarity: ItemSignature(DefId) -> hir::ImplPolarity,
+    [] impl_trait_ref: ImplTraitRef(DefId) -> Option<ty::TraitRef<'tcx>>,
+    [] impl_polarity: ImplPolarity(DefId) -> hir::ImplPolarity,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
@@ -877,13 +877,13 @@ define_maps! { <'tcx>
 
     /// Type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    [] closure_kind: ItemSignature(DefId) -> ty::ClosureKind,
+    [] closure_kind: ClosureKind(DefId) -> ty::ClosureKind,
 
     /// The signature of functions and closures.
-    [] fn_sig: ItemSignature(DefId) -> ty::PolyFnSig<'tcx>,
+    [] fn_sig: FnSignature(DefId) -> ty::PolyFnSig<'tcx>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
-    [] coerce_unsized_info: ItemSignature(DefId)
+    [] coerce_unsized_info: CoerceUnsizedInfo(DefId)
         -> ty::adjustment::CoerceUnsizedInfo,
 
     [] typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,

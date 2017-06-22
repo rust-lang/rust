@@ -387,11 +387,21 @@ define_dep_nodes!(
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
-    // nodes. Often we map multiple tables to the same node if there
-    // is no point in distinguishing them (e.g., both the type and
-    // predicates for an item wind up in `ItemSignature`).
+    // nodes.
     AssociatedItems(DefId),
-    ItemSignature(DefId),
+    TypeOfItem(DefId),
+    GenericsOfItem(DefId),
+    PredicatesOfItem(DefId),
+    SuperPredicatesOfItem(DefId),
+    TraitDefOfItem(DefId),
+    AdtDefOfItem(DefId),
+    IsDefaultImpl(DefId),
+    ImplTraitRef(DefId),
+    ImplPolarity(DefId),
+    ClosureKind(DefId),
+    FnSignature(DefId),
+    CoerceUnsizedInfo(DefId),
+
     ItemVarianceConstraints(DefId),
     ItemVariances(DefId),
     IsConstFn(DefId),
