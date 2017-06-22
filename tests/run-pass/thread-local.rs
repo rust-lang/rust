@@ -42,7 +42,7 @@ unsafe extern fn dtor(mut ptr: *mut u64) {
     }
 
     // Check if the records matches what we expect. If yes, clear the cannary.
-    // If the record is wrong, the cannary will ever get cleared, leading to a leak -> test fails.
+    // If the record is wrong, the cannary will never get cleared, leading to a leak -> test fails.
     // If the record is incomplete (i.e., more dtor calls happen), the check at the beginning of this function will fail -> test fails.
     // The correct sequence is: First key 0, then key 1, then key 0.
     if RECORD == 0_1_0 {
