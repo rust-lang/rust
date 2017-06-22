@@ -450,6 +450,7 @@ impl Build {
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
             cargo.env(format!("CC_{}", target), self.cc(target))
+                 .env(format!("CXX_{}", target), self.cxx(target))
                  .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
