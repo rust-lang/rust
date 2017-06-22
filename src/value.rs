@@ -160,6 +160,27 @@ impl<'tcx> PrimVal {
         }
     }
 
+    pub fn is_bytes(self) -> bool {
+        match self {
+            PrimVal::Bytes(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_ptr(self) -> bool {
+        match self {
+            PrimVal::Ptr(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_undef(self) -> bool {
+        match self {
+            PrimVal::Undef => true,
+            _ => false,
+        }
+    }
+
     pub fn to_u128(self) -> EvalResult<'tcx, u128> {
         self.to_bytes()
     }
@@ -252,14 +273,11 @@ pub fn signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> EvalR
 }
 
 pub fn offset<'tcx>(val: u64, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
-    if let Some(res) = val.checked_add(i) {
-        if res as u128 >= (1u128 << layout.pointer_size.bits()) {
-            Err(EvalError::OverflowingMath)
-        } else {
-            Ok(res)
-        }
-    } else {
+    let res = val.checked_add(i).ok_or(EvalError::OverflowingMath)?;
+    if res as u128 >= (1u128 << layout.pointer_size.bits()) {
         Err(EvalError::OverflowingMath)
+    } else {
+        Ok(res)
     }
 }
 
@@ -280,6 +298,14 @@ impl PrimValKind {
         use self::PrimValKind::*;
         match self {
             I8 | I16 | I32 | I64 | I128 => true,
+            _ => false,
+        }
+    }
+
+     pub fn is_float(self) -> bool {
+        use self::PrimValKind::*;
+        match self {
+            F32 | F64 => true,
             _ => false,
         }
     }
