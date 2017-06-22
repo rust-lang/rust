@@ -2384,7 +2384,7 @@ impl BuildHasher for RandomState {
 /// [`Hasher`]: ../../hash/trait.Hasher.html
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 #[allow(deprecated)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DefaultHasher(SipHasher13);
 
 impl DefaultHasher {
