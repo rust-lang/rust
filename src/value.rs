@@ -260,21 +260,37 @@ impl<'tcx> PrimVal {
     }
 }
 
-pub fn signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
+// Overflow checking only works properly on the range from -u64 to +u64.
+pub fn overflowing_signed_offset<'tcx>(val: u64, i: i128, layout: &TargetDataLayout) -> (u64, bool) {
     // FIXME: is it possible to over/underflow here?
     if i < 0 {
         // trickery to ensure that i64::min_value() works fine
         // this formula only works for true negative values, it panics for zero!
         let n = u64::max_value() - (i as u64) + 1;
-        val.checked_sub(n).ok_or(EvalError::OverflowingMath)
+        val.overflowing_sub(n)
     } else {
-        offset(val, i as u64, layout)
+        overflowing_offset(val, i as u64, layout)
+    }
+}
+
+pub fn overflowing_offset<'tcx>(val: u64, i: u64, layout: &TargetDataLayout) -> (u64, bool) {
+    let (res, over) = val.overflowing_add(i);
+    ((res as u128 % (1u128 << layout.pointer_size.bits())) as u64,
+     over || res as u128 >= (1u128 << layout.pointer_size.bits()))
+}
+
+pub fn signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
+    let (res, over) = overflowing_signed_offset(val, i as i128, layout);
+    if over {
+        Err(EvalError::OverflowingMath)
+    } else {
+        Ok(res)
     }
 }
 
 pub fn offset<'tcx>(val: u64, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
-    let res = val.checked_add(i).ok_or(EvalError::OverflowingMath)?;
-    if res as u128 >= (1u128 << layout.pointer_size.bits()) {
+    let (res, over) = overflowing_offset(val, i, layout);
+    if over {
         Err(EvalError::OverflowingMath)
     } else {
         Ok(res)
@@ -282,7 +298,7 @@ pub fn offset<'tcx>(val: u64, i: u64, layout: &TargetDataLayout) -> EvalResult<'
 }
 
 pub fn wrapping_signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> u64 {
-    (val.wrapping_add(i as u64) as u128 % (1u128 << layout.pointer_size.bits())) as u64
+    overflowing_signed_offset(val, i as i128, layout).0
 }
 
 impl PrimValKind {

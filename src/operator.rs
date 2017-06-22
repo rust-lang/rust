@@ -130,6 +130,19 @@ macro_rules! f64_arithmetic {
     )
 }
 
+macro_rules! ptr_add {
+    ($signed:expr, $ptr:expr, $int:expr, $layout:expr) => ({
+        let ptr = $ptr;
+        let int = $int;
+        let (res, over) = if $signed {
+            ptr.overflowing_signed_offset(int as i128, $layout)
+        } else {
+            ptr.overflowing_offset(int as u64, $layout)
+        };
+        (PrimVal::Ptr(res), over)
+    })
+}
+
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     /// Returns the result of the specified operation and whether it overflowed.
     pub fn binary_op(
@@ -145,6 +158,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let left_kind  = self.ty_to_primval_kind(left_ty)?;
         let right_kind = self.ty_to_primval_kind(right_ty)?;
+        //trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
 
         // I: Handle operations that support pointers
         let usize = PrimValKind::from_uint_size(self.memory.pointer_size());
@@ -186,6 +200,29 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         // Both are pointers, but from different allocations.
                         return Err(EvalError::InvalidPointerMath);
                     }
+                }
+                // These work if one operand is a pointer, the other an integer
+                Sub
+                if left_kind == right_kind && (left_kind == usize || left_kind == isize)
+                && left.is_ptr() && right.is_bytes() => {
+                    let left = left.to_ptr()?;
+                    let right = right.to_bytes()? as i128; // this cast is fine as the kind is max. 64bit
+                    let (res, over) = left.overflowing_signed_offset(-right, self.memory.layout);
+                    return Ok((PrimVal::Ptr(res), over))
+                }
+                Add
+                if left_kind == right_kind && (left_kind == usize || left_kind == isize)
+                && left.is_ptr() && right.is_bytes() => {
+                    let left = left.to_ptr()?;
+                    let right = right.to_bytes()?;
+                    return Ok(ptr_add!(left_kind == isize, left, right, self.memory.layout));
+                }
+                Add
+                if left_kind == right_kind && (left_kind == usize || left_kind == isize)
+                && left.is_bytes() && right.is_ptr() => {
+                    let left = left.to_bytes()?;
+                    let right = right.to_ptr()?;
+                    return Ok(ptr_add!(left_kind == isize, right, left, self.memory.layout));
                 }
                 _ => {}
             }

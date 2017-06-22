@@ -64,8 +64,18 @@ impl Pointer {
         Pointer::new(self.alloc_id, value::wrapping_signed_offset(self.offset, i, layout))
     }
 
+    pub fn overflowing_signed_offset<'tcx>(self, i: i128, layout: &TargetDataLayout) -> (Self, bool) {
+        let (res, over) = value::overflowing_signed_offset(self.offset, i, layout);
+        (Pointer::new(self.alloc_id, res), over)
+    }
+
     pub fn signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         Ok(Pointer::new(self.alloc_id, value::signed_offset(self.offset, i, layout)?))
+    }
+
+    pub fn overflowing_offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> (Self, bool) {
+        let (res, over) = value::overflowing_offset(self.offset, i, layout);
+        (Pointer::new(self.alloc_id, res), over)
     }
 
     pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
