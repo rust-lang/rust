@@ -545,13 +545,13 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
         let cur_frame = self.cur_frame;
         let alloc = self.get_mut(ptr.alloc_id)?;
+        let lock_infos = alloc.locks.get_mut(&MemoryRange::new(ptr.offset, len))
+            .ok_or(EvalError::InvalidMemoryLockRelease { ptr, len })?;
+        // Find the lock.  There can only be one active write lock, so this is uniquely defined.
+        let lock_info_idx = lock_infos.iter().position(|lock_info| lock_info.status == LockStatus::Held)
+                            .ok_or(EvalError::InvalidMemoryLockRelease { ptr, len })?;
         {
-            let lock_infos = alloc.locks.get_mut(&MemoryRange::new(ptr.offset, len)).ok_or(EvalError::InvalidMemoryLockRelease { ptr, len })?;
-            let lock_info = match lock_infos.len() {
-                0 => return Err(EvalError::InvalidMemoryLockRelease { ptr, len }),
-                1 => &mut lock_infos[0],
-                _ => bug!("There can not be overlapping locks when write access is possible."),
-            };
+            let lock_info = &mut lock_infos[lock_info_idx];
             assert_eq!(lock_info.lifetime.frame, cur_frame);
             if let Some(ce) = release_until {
                 lock_info.status = LockStatus::RecoverAfter(ce);
@@ -559,7 +559,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
         // Falling through to here means we want to entirely remove the lock.  The control-flow is somewhat weird because of lexical lifetimes.
-        alloc.locks.remove(&MemoryRange::new(ptr.offset, len));
+        lock_infos.remove(lock_info_idx);
+        // TODO: It may happen now that we leave an empty vector in the map.  Is it worth getting rid of them?
         Ok(())
     }
 
