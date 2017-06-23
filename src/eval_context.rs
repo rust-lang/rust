@@ -664,6 +664,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
                 let (ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
+                let ty = self.lvalue_ty(lvalue);
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
@@ -672,6 +673,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
+
+                // Check alignment and non-NULLness.
+                let (_, align) = self.size_and_align_of_dst(ty, val)?;
+                if ptr.is_ptr() {
+                    let ptr = ptr.to_ptr()?;
+                    if !ptr.points_to_zst() { // assume ZST pointer to be always fully alignd (and anyway ZST pointers are going to disappear soon)
+                        self.memory.check_align(ptr, align, 0)?;
+                    }
+                } else {
+                    let v = (ptr.to_u128()? % (1 << self.memory.pointer_size())) as u64;
+                    if v == 0 {
+                        return Err(EvalError::InvalidNullPointerUsage);
+                    }
+                    if v % align != 0 {
+                        return Err(EvalError::AlignmentCheckFailed {
+                            has: v % align,
+                            required: align,
+                        });
+                    }
+                }
 
                 self.write_value(val, dest, dest_ty)?;
             }

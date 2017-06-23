@@ -11,6 +11,6 @@ fn main() {
         x: 42,
         y: 99,
     };
-    let p: *const i32 = &foo.x;
-    let x = unsafe { *p + foo.x }; //~ ERROR tried to access memory with alignment 1, but alignment 4 is required
+    let p: *const i32 = &foo.x; //~ ERROR tried to access memory with alignment 1, but alignment 4 is required
+    let x = unsafe { *p + foo.x };
 }
