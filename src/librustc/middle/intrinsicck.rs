@@ -86,17 +86,16 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
             // Special-case transmutting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx.global_tcx(), from);
-            match (&from.sty, sk_to) {
-                (&ty::TyFnDef(..), SizeSkeleton::Known(size_to))
-                        if size_to == Pointer.size(self.tcx) => {
+            if let (&ty::TyFnDef(..), SizeSkeleton::Known(size_to)) = (&from.sty, sk_to) {
+                if size_to == Pointer.size(self.tcx) {
                     struct_span_err!(self.tcx.sess, span, E0591,
-                                     "`{}` is zero-sized and can't be transmuted to `{}`",
-                                     from, to)
-                        .span_note(span, "cast with `as` to a pointer instead")
+                                     "can't transmute zero-sized type")
+                        .note(&format!("source type: {}", from))
+                        .note(&format!("target type: {}", to))
+                        .help("cast with `as` to a pointer instead")
                         .emit();
                     return;
                 }
-                _ => {}
             }
         }
 
@@ -111,7 +110,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
                 }
                 Err(LayoutError::Unknown(bad)) => {
                     if bad == ty {
-                        format!("size can vary")
+                        format!("this type's size can vary")
                     } else {
                         format!("size can vary because of {}", bad)
                     }
@@ -121,14 +120,9 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
         };
 
         struct_span_err!(self.tcx.sess, span, E0512,
-                  "transmute called with differently sized types: \
-                   {} ({}) to {} ({})",
-                  from, skeleton_string(from, sk_from),
-                  to, skeleton_string(to, sk_to))
-            .span_label(span,
-                format!("transmuting between {} and {}",
-                    skeleton_string(from, sk_from),
-                    skeleton_string(to, sk_to)))
+            "transmute called with types of different sizes")
+            .note(&format!("source type: {} ({})", from, skeleton_string(from, sk_from)))
+            .note(&format!("target type: {} ({})", to, skeleton_string(to, sk_to)))
             .emit();
     }
 }

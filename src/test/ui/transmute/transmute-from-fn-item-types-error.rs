@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-x86
+// ignore-arm
+// ignore-emscripten
+// ignore 32-bit platforms (test output is different)
+
 use std::mem;
 
-unsafe fn foo() -> (isize, *const (), Option<fn()>) {
+unsafe fn foo() -> (i32, *const (), Option<fn()>) {
     let i = mem::transmute(bar);
     //~^ ERROR is zero-sized and can't be transmuted
     //~^^ NOTE cast with `as` to a pointer instead
@@ -29,8 +34,8 @@ unsafe fn foo() -> (isize, *const (), Option<fn()>) {
 unsafe fn bar() {
     // Error as usual if the resulting type is not pointer-sized.
     mem::transmute::<_, u8>(main);
-    //~^ ERROR transmute called with differently sized types
-    //~^^ NOTE transmuting between 0 bits and 8 bits
+    //~^ ERROR transmute called with types of different sizes
+    //~^^ NOTE transmuting between fn() {main} and u8
 
     mem::transmute::<_, *mut ()>(foo);
     //~^ ERROR is zero-sized and can't be transmuted
@@ -41,7 +46,7 @@ unsafe fn bar() {
     //~^^ NOTE cast with `as` to a pointer instead
 
     // No error if a coercion would otherwise occur.
-    mem::transmute::<fn(), usize>(main);
+    mem::transmute::<fn(), u32>(main);
 }
 
 unsafe fn baz() {
@@ -58,7 +63,7 @@ unsafe fn baz() {
     //~^^ NOTE cast with `as` to a pointer instead
 
     // No error if a coercion would otherwise occur.
-    mem::transmute::<Option<fn()>, usize>(Some(main));
+    mem::transmute::<Option<fn()>, u32>(Some(main));
 }
 
 fn main() {
