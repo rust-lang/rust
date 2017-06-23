@@ -29,7 +29,7 @@ utest-macros = { git = "https://github.com/japaric/utest" }
 
 [[example]]
 name = "intrinsics"
-required-features = ["c"]
+required-features = ["c", "compiler-builtins"]
 
 
 [workspace]
