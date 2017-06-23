@@ -489,6 +489,12 @@ impl Options {
             self.debugging_opts.query_dep_graph
     }
 
+    #[inline(always)]
+    pub fn enable_dep_node_debug_strs(&self) -> bool {
+        cfg!(debug_assertions) &&
+            (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
+    }
+
     pub fn single_codegen_unit(&self) -> bool {
         self.incremental.is_none() ||
         self.cg.codegen_units == 1

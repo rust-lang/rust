@@ -270,6 +270,14 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
         (&cgu1.name[..]).cmp(&cgu2.name[..])
     });
 
+    if scx.sess().opts.enable_dep_node_debug_strs() {
+        for cgu in &result {
+            let dep_node = cgu.work_product_dep_node();
+            scx.tcx().dep_graph.register_dep_node_debug_str(dep_node,
+                                                            || cgu.name().to_string());
+        }
+    }
+
     result
 }
 

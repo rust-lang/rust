@@ -189,7 +189,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          &serialized_dep_graph.nodes,
                          &dirty_raw_nodes,
                          &mut clean_work_products,
-                         &mut dirty_work_products);
+                         &mut dirty_work_products,
+                         &work_products);
         }
     }
 
@@ -394,7 +395,8 @@ fn process_edge<'a, 'tcx, 'edges>(
     nodes: &IndexVec<DepNodeIndex, DepNode>,
     dirty_raw_nodes: &DirtyNodes,
     clean_work_products: &mut FxHashSet<WorkProductId>,
-    dirty_work_products: &mut FxHashSet<WorkProductId>)
+    dirty_work_products: &mut FxHashSet<WorkProductId>,
+    work_products: &[SerializedWorkProduct])
 {
     // If the target is dirty, skip the edge. If this is an edge
     // that targets a work-product, we can print the blame
@@ -418,9 +420,11 @@ fn process_edge<'a, 'tcx, 'edges>(
                         format!("{:?}", blame)
                     };
 
-                    eprintln!("incremental: module {:?} is dirty because {:?} \
-                               changed or was removed",
-                              wp_id,
+                    let wp = work_products.iter().find(|swp| swp.id == wp_id).unwrap();
+
+                    eprintln!("incremental: module {:?} is dirty because \
+                              {:?} changed or was removed",
+                              wp.work_product.cgu_name,
                               blame_str);
                 }
             }

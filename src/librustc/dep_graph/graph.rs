@@ -157,9 +157,9 @@ impl DepGraph {
     }
 
     #[inline(always)]
-    pub(super) fn register_dep_node_debug_str<F>(&self,
-                                                 dep_node: DepNode,
-                                                 debug_str_gen: F)
+    pub fn register_dep_node_debug_str<F>(&self,
+                                          dep_node: DepNode,
+                                          debug_str_gen: F)
         where F: FnOnce() -> String
     {
         let mut dep_node_debug = self.data.dep_node_debug.borrow_mut();
@@ -206,6 +206,7 @@ impl DepGraph {
 /// previous hash. If it matches up, we can reuse the object file.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct WorkProduct {
+    pub cgu_name: String,
     /// Extra hash used to decide if work-product is still suitable;
     /// note that this is *not* a hash of the work-product itself.
     /// See documentation on `WorkProduct` type for an example.
