@@ -205,6 +205,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub LATE_BOUND_LIFETIME_ARGUMENTS,
+    Deny,
+    "detects generic lifetime arguments in path segments with late bound lifetime parameters"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -249,6 +255,7 @@ impl LintPass for HardwiredLints {
             LEGACY_CONSTRUCTOR_VISIBILITY,
             MISSING_FRAGMENT_SPECIFIER,
             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+            LATE_BOUND_LIFETIME_ARGUMENTS,
             DEPRECATED
         )
     }

@@ -876,11 +876,13 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let has_self = opt_self.is_some();
     let mut parent_has_self = false;
+    let mut parent_has_late_bound_regions = false;
     let mut own_start = has_self as u32;
     let (parent_regions, parent_types) = parent_def_id.map_or((0, 0), |def_id| {
         let generics = tcx.generics_of(def_id);
         assert_eq!(has_self, false);
         parent_has_self = generics.has_self;
+        parent_has_late_bound_regions = generics.has_late_bound_regions;
         own_start = generics.count() as u32;
         (generics.parent_regions + generics.regions.len() as u32,
             generics.parent_types + generics.types.len() as u32)
@@ -898,6 +900,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }).collect::<Vec<_>>();
 
+    let has_late_bound_regions = regions.len() != ast_generics.lifetimes.len();
     let object_lifetime_defaults =
         tcx.named_region_map.object_lifetime_defaults.get(&node_id);
 
@@ -959,7 +962,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         regions: regions,
         types: types,
         type_param_to_index: type_param_to_index,
-        has_self: has_self || parent_has_self
+        has_self: has_self || parent_has_self,
+        has_late_bound_regions: has_late_bound_regions || parent_has_late_bound_regions,
     })
 }
 

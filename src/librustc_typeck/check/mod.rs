@@ -4491,8 +4491,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        self.check_path_parameter_count(span, &mut type_segment);
-        self.check_path_parameter_count(span, &mut fn_segment);
+        self.check_path_parameter_count(span, &mut type_segment, false);
+        self.check_path_parameter_count(span, &mut fn_segment, false);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4618,7 +4618,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report errors if the provided parameters are too few or too many.
     fn check_path_parameter_count(&self,
                                   span: Span,
-                                  segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
+                                  segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
+                                  is_method_call: bool) {
         let (lifetimes, types, infer_types, bindings) = {
             match segment.map(|(s, _)| &s.parameters) {
                 Some(&hir::AngleBracketedParameters(ref data)) => {
@@ -4632,6 +4633,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => (&[][..], &[][..], true, &[][..])
             }
         };
+        let infer_lifetimes = lifetimes.len() == 0;
 
         let count_lifetime_params = |n| {
             format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
@@ -4639,32 +4641,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let count_type_params = |n| {
             format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
         };
-
-        // Check provided lifetime parameters.
-        let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
-        if lifetimes.len() > lifetime_defs.len() {
-            let expected_text = count_lifetime_params(lifetime_defs.len());
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0088,
-                             "too many lifetime parameters provided: \
-                              expected at most {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
-        } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
-            let expected_text = count_lifetime_params(lifetime_defs.len());
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0090,
-                             "too few lifetime parameters provided: \
-                              expected {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
-        }
-
-        // The case where there is not enough lifetime parameters is not checked,
-        // because this is not possible - a function never takes lifetime parameters.
-        // See discussion for Pull Request 36208.
 
         // Check provided type parameters.
         let type_defs = segment.map_or(&[][..], |(_, generics)| {
@@ -4690,7 +4666,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if !infer_types && types.len() < required_len {
+        } else if types.len() < required_len && !infer_types {
             let expected_text = count_type_params(required_len);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
@@ -4705,6 +4681,51 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             span_err!(self.tcx.sess, bindings[0].span, E0182,
                       "unexpected binding of associated item in expression path \
                        (only allowed in type paths)");
+        }
+
+        // Check provided lifetime parameters.
+        let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
+        let required_len = lifetime_defs.len();
+
+        // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
+        let has_late_bound_lifetime_defs =
+            segment.map_or(false, |(_, generics)| generics.has_late_bound_regions);
+        if has_late_bound_lifetime_defs && !lifetimes.is_empty() {
+            // Report this as a lint only if no error was reported previously.
+            if !is_method_call && (lifetimes.len() > lifetime_defs.len() ||
+                                   lifetimes.len() < required_len && !infer_lifetimes) {
+                self.tcx.sess.span_err(lifetimes[0].span,
+                                       "cannot specify lifetime arguments explicitly \
+                                        if late bound lifetime parameters are present");
+            } else {
+                self.tcx.sess.add_lint(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                                       lifetimes[0].id, lifetimes[0].span,
+                                       format!("cannot specify lifetime arguments explicitly \
+                                                if late bound lifetime parameters are present"));
+            }
+            *segment = None;
+            return;
+        }
+
+        if lifetimes.len() > lifetime_defs.len() {
+            let span = lifetimes[lifetime_defs.len()].span;
+            let expected_text = count_lifetime_params(lifetime_defs.len());
+            let actual_text = count_lifetime_params(lifetimes.len());
+            struct_span_err!(self.tcx.sess, span, E0088,
+                             "too many lifetime parameters provided: \
+                              expected at most {}, found {}",
+                             expected_text, actual_text)
+                .span_label(span, format!("expected {}", expected_text))
+                .emit();
+        } else if lifetimes.len() < required_len && !infer_lifetimes {
+            let expected_text = count_lifetime_params(lifetime_defs.len());
+            let actual_text = count_lifetime_params(lifetimes.len());
+            struct_span_err!(self.tcx.sess, span, E0090,
+                             "too few lifetime parameters provided: \
+                              expected {}, found {}",
+                             expected_text, actual_text)
+                .span_label(span, format!("expected {}", expected_text))
+                .emit();
         }
     }
 
