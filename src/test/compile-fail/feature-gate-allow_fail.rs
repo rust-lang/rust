@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
-#![feature(allow_fail)]
+// check that #[allow_fail] is feature-gated
 
-#[test]
-#[allow_fail]
-fn test1() {
-    panic!();
+#[allow_fail] //~ ERROR allow_fail attribute is currently unstable
+fn ok_to_fail() {
+    assert!(false);
 }
 
-#[test]
-#[allow_fail]
-fn test2() {
-    assert!(true);
-}
