@@ -1,102 +1,101 @@
 use int::Int;
 
-macro_rules! div {
-    ($intrinsic:ident: $ty:ty, $uty:ty) => {
-        div!($intrinsic: $ty, $uty, $ty, |i| {i});
-    };
-    ($intrinsic:ident: $ty:ty, $uty:ty, $tyret:ty, $conv:expr) => {
-        /// Returns `a / b`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $tyret {
-            let s_a = a >> (<$ty>::bits() - 1);
-            let s_b = b >> (<$ty>::bits() - 1);
-            // NOTE it's OK to overflow here because of the `as $uty` cast below
-            // This whole operation is computing the absolute value of the inputs
-            // So some overflow will happen when dealing with e.g. `i64::MIN`
-            // where the absolute value is `(-i64::MIN) as u64`
-            let a = (a ^ s_a).wrapping_sub(s_a);
-            let b = (b ^ s_b).wrapping_sub(s_b);
-            let s = s_a ^ s_b;
+trait Div: Int {
+    /// Returns `a / b`
+    fn div(self, other: Self) -> Self {
+        let s_a = self >> (Self::bits() - 1);
+        let s_b = other >> (Self::bits() - 1);
+        // NOTE it's OK to overflow here because of the `as $uty` cast below
+        // This whole operation is computing the absolute value of the inputs
+        // So some overflow will happen when dealing with e.g. `i64::MIN`
+        // where the absolute value is `(-i64::MIN) as u64`
+        let a = (self ^ s_a).wrapping_sub(s_a);
+        let b = (other ^ s_b).wrapping_sub(s_b);
+        let s = s_a ^ s_b;
 
-            let r = udiv!(a as $uty, b as $uty);
-            ($conv)((r as $ty ^ s) - s)
-        }
+        let r = a.unsigned().checked_div(b.unsigned())
+            .unwrap_or_else(|| ::abort());
+        (Self::from_unsigned(r) ^ s) - s
     }
 }
 
-macro_rules! mod_ {
-    ($intrinsic:ident: $ty:ty, $uty:ty) => {
-        mod_!($intrinsic: $ty, $uty, $ty, |i| {i});
-    };
-    ($intrinsic:ident: $ty:ty, $uty:ty, $tyret:ty, $conv:expr) => {
-        /// Returns `a % b`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $tyret {
-            let s = b >> (<$ty>::bits() - 1);
-            // NOTE(wrapping_sub) see comment in the `div` macro
-            let b = (b ^ s).wrapping_sub(s);
-            let s = a >> (<$ty>::bits() - 1);
-            let a = (a ^ s).wrapping_sub(s);
+impl Div for i32 {}
+impl Div for i64 {}
+impl Div for i128 {}
 
-            let r = urem!(a as $uty, b as $uty);
-            ($conv)((r as $ty ^ s) - s)
-        }
+trait Mod: Int {
+    /// Returns `a % b`
+    fn mod_(self, other: Self) -> Self {
+        let s = other >> (Self::bits() - 1);
+        // NOTE(wrapping_sub) see comment in the `div`
+        let b = (other ^ s).wrapping_sub(s);
+        let s = self >> (Self::bits() - 1);
+        let a = (self ^ s).wrapping_sub(s);
+
+        let r = a.unsigned().checked_rem(b.unsigned())
+            .unwrap_or_else(|| ::abort());
+        (Self::from_unsigned(r) ^ s) - s
     }
 }
 
-macro_rules! divmod {
-    ($abi:tt, $intrinsic:ident, $div:ident: $ty:ty) => {
-        /// Returns `a / b` and sets `*rem = n % d`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern $abi fn $intrinsic(a: $ty, b: $ty, rem: &mut $ty) -> $ty {
-            #[cfg(all(feature = "c", any(target_arch = "x86")))]
-            extern {
-                fn $div(a: $ty, b: $ty) -> $ty;
-            }
+impl Mod for i32 {}
+impl Mod for i64 {}
+impl Mod for i128 {}
 
-            let r = match () {
-                #[cfg(not(all(feature = "c", any(target_arch = "x86"))))]
-                () => $div(a, b),
-                #[cfg(all(feature = "c", any(target_arch = "x86")))]
-                () => unsafe { $div(a, b) },
-            };
-            // NOTE won't overflow because it's using the result from the
-            // previous division
-            *rem = a - r.wrapping_mul(b);
-            r
-        }
+trait Divmod: Int {
+    /// Returns `a / b` and sets `*rem = n % d`
+    fn divmod<F>(self, other: Self, rem: &mut Self, div: F) -> Self
+        where F: Fn(Self, Self) -> Self,
+    {
+        let r = div(self, other);
+        // NOTE won't overflow because it's using the result from the
+        // previous division
+        *rem = self - r.wrapping_mul(other);
+        r
     }
 }
 
-#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
-div!(__divsi3: i32, u32);
+impl Divmod for i32 {}
+impl Divmod for i64 {}
 
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-div!(__divdi3: i64, u64);
+intrinsics! {
+    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios"), not(thumbv6m)))]
+    pub extern "C" fn __divsi3(a: i32, b: i32) -> i32 {
+        a.div(b)
+    }
 
-#[cfg(not(all(windows, target_pointer_width="64")))]
-div!(__divti3: i128, u128);
+    #[use_c_shim_if(target_arch = "x86")]
+    pub extern "C" fn __divdi3(a: i64, b: i64) -> i64 {
+        a.div(b)
+    }
 
-#[cfg(all(windows, target_pointer_width="64"))]
-div!(__divti3: i128, u128, ::U64x2, ::sconv);
+    #[win64_128bit_abi_hack]
+    pub extern "C" fn __divti3(a: i128, b: i128) -> i128 {
+        a.div(b)
+    }
 
-#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
-mod_!(__modsi3: i32, u32);
+    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios")))]
+    pub extern "C" fn __modsi3(a: i32, b: i32) -> i32 {
+        a.mod_(b)
+    }
 
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-mod_!(__moddi3: i64, u64);
+    #[use_c_shim_if(target_arch = "x86")]
+    pub extern "C" fn __moddi3(a: i64, b: i64) -> i64 {
+        a.mod_(b)
+    }
 
-#[cfg(not(all(windows, target_pointer_width="64")))]
-mod_!(__modti3: i128, u128);
+    #[win64_128bit_abi_hack]
+    pub extern "C" fn __modti3(a: i128, b: i128) -> i128 {
+        a.mod_(b)
+    }
 
-#[cfg(all(windows, target_pointer_width="64"))]
-mod_!(__modti3: i128, u128, ::U64x2, ::sconv);
+    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios")))]
+    pub extern "C" fn __divmodsi4(a: i32, b: i32, rem: &mut i32) -> i32 {
+        a.divmod(b, rem, |a, b| __divsi3(a, b))
+    }
 
-#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
-divmod!("C", __divmodsi4, __divsi3: i32);
-
-#[cfg(target_arch = "arm")]
-divmod!("aapcs", __divmoddi4, __divdi3: i64);
-
-#[cfg(not(target_arch = "arm"))]
-divmod!("C", __divmoddi4, __divdi3: i64);
+    #[aapcs_on_arm]
+    pub extern "C" fn __divmoddi4(a: i64, b: i64, rem: &mut i64) -> i64 {
+        a.divmod(b, rem, |a, b| __divdi3(a, b))
+    }
+}

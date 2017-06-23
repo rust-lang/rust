@@ -65,7 +65,7 @@ impl Lshr for u64 {}
 impl Lshr for u128 {}
 
 intrinsics! {
-    #[cfg(not(all(feature = "c", target_arch = "x86")))]
+    #[use_c_shim_if(target_arch = "x86")]
     pub extern "C" fn __ashldi3(a: u64, b: u32) -> u64 {
         a.ashl(b)
     }
@@ -74,7 +74,7 @@ intrinsics! {
         a.ashl(b)
     }
 
-    #[cfg(not(all(feature = "c", target_arch = "x86")))]
+    #[use_c_shim_if(target_arch = "x86")]
     pub extern "C" fn __ashrdi3(a: i64, b: u32) -> i64 {
         a.ashr(b)
     }
@@ -83,7 +83,7 @@ intrinsics! {
         a.ashr(b)
     }
 
-    #[cfg(not(all(feature = "c", target_arch = "x86")))]
+    #[use_c_shim_if(target_arch = "x86")]
     pub extern "C" fn __lshrdi3(a: u64, b: u32) -> u64 {
         a.lshr(b)
     }

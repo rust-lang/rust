@@ -99,6 +99,10 @@ fn sconv(i: i128) -> U64x2 {
 #[cfg(test)]
 extern crate core;
 
+fn abort() -> ! {
+    unsafe { core::intrinsics::abort() }
+}
+
 #[macro_use]
 mod macros;
 

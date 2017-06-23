@@ -57,14 +57,17 @@ pub trait Int:
     /// ```
     fn extract_sign(self) -> (bool, Self::UnsignedInt);
 
-    /// Convert to a signed representation
     fn unsigned(self) -> Self::UnsignedInt;
+    fn from_unsigned(unsigned: Self::UnsignedInt) -> Self;
 
     // copied from primitive integers, but put in a trait
     fn max_value() -> Self;
     fn min_value() -> Self;
     fn wrapping_add(self, other: Self) -> Self;
     fn wrapping_mul(self, other: Self) -> Self;
+    fn wrapping_sub(self, other: Self) -> Self;
+    fn checked_div(self, other: Self) -> Option<Self>;
+    fn checked_rem(self, other: Self) -> Option<Self>;
 }
 
 macro_rules! int_impl {
@@ -93,6 +96,10 @@ macro_rules! int_impl {
                 self
             }
 
+            fn from_unsigned(me: $uty) -> Self {
+                me
+            }
+
             fn max_value() -> Self {
                 <Self>::max_value()
             }
@@ -107,6 +114,18 @@ macro_rules! int_impl {
 
             fn wrapping_mul(self, other: Self) -> Self {
                 <Self>::wrapping_mul(self, other)
+            }
+
+            fn wrapping_sub(self, other: Self) -> Self {
+                <Self>::wrapping_sub(self, other)
+            }
+
+            fn checked_div(self, other: Self) -> Option<Self> {
+                <Self>::checked_div(self, other)
+            }
+
+            fn checked_rem(self, other: Self) -> Option<Self> {
+                <Self>::checked_rem(self, other)
             }
         }
 
@@ -138,6 +157,10 @@ macro_rules! int_impl {
                 self as $uty
             }
 
+            fn from_unsigned(me: $uty) -> Self {
+                me as $ity
+            }
+
             fn max_value() -> Self {
                 <Self>::max_value()
             }
@@ -152,6 +175,18 @@ macro_rules! int_impl {
 
             fn wrapping_mul(self, other: Self) -> Self {
                 <Self>::wrapping_mul(self, other)
+            }
+
+            fn wrapping_sub(self, other: Self) -> Self {
+                <Self>::wrapping_sub(self, other)
+            }
+
+            fn checked_div(self, other: Self) -> Option<Self> {
+                <Self>::checked_div(self, other)
+            }
+
+            fn checked_rem(self, other: Self) -> Option<Self> {
+                <Self>::checked_rem(self, other)
             }
         }
     }

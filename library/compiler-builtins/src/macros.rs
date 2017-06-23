@@ -6,7 +6,7 @@ macro_rules! intrinsics {
     // Otherwise if the `c` feature isn't enabled then we'll just have a normal
     // intrinsic.
     (
-        #[cfg(not(all(feature = "c", $($cfg_clause:tt)*)))]
+        #[use_c_shim_if($($cfg_clause:tt)*)]
         $(#[$attr:meta])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
             $($body:tt)*
@@ -37,7 +37,7 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // We recognize the `#[aapcs_only_on_arm]` attribute here and generate the
+    // We recognize the `#[aapcs_on_arm]` attribute here and generate the
     // same intrinsic but force it to have the `"aapcs"` calling convention on
     // ARM and `"C"` elsewhere.
     (
@@ -98,6 +98,39 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
+    // Another attribute we recognize is an "abi hack" for win64 to get the 128
+    // bit calling convention correct.
+    (
+        #[win64_128bit_abi_hack]
+        $(#[$attr:meta])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        #[cfg(all(windows, target_pointer_width = "64"))]
+        intrinsics! {
+            $(#[$attr])*
+            pub extern $abi fn $name( $($argname: $ty),* )
+                -> ::macros::win64_abi_hack::U64x2
+            {
+                let e: $ret = { $($body)* };
+                ::macros::win64_abi_hack::U64x2::from(e)
+            }
+        }
+
+        #[cfg(not(all(windows, target_pointer_width = "64")))]
+        intrinsics! {
+            $(#[$attr])*
+            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
     (
         $(#[$attr:meta])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
@@ -114,4 +147,26 @@ macro_rules! intrinsics {
 
         intrinsics!($($rest)*);
     );
+}
+
+// Hack for LLVM expectations for ABI on windows
+#[cfg(all(windows, target_pointer_width="64"))]
+pub mod win64_abi_hack {
+    #[repr(simd)]
+    pub struct U64x2(u64, u64);
+
+    impl From<i128> for U64x2 {
+        fn from(i: i128) -> U64x2 {
+            use int::LargeInt;
+            let j = i as u128;
+            U64x2(j.low(), j.high())
+        }
+    }
+
+    impl From<u128> for U64x2 {
+        fn from(i: u128) -> U64x2 {
+            use int::LargeInt;
+            U64x2(i.low(), i.high())
+        }
+    }
 }

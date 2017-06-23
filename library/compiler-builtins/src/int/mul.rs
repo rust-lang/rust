@@ -71,7 +71,7 @@ impl Mulo for i64 {}
 impl Mulo for i128 {}
 
 intrinsics! {
-    #[cfg(not(all(feature = "c", target_arch = "x86")))]
+    #[use_c_shim_if(target_arch = "x86")]
     pub extern "C" fn __muldi3(a: u64, b: u64) -> u64 {
         a.mul(b)
     }
