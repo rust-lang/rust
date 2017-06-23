@@ -151,8 +151,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if prev_commandline_args_hash != tcx.sess.opts.dep_tracking_hash() {
         if tcx.sess.opts.debugging_opts.incremental_info {
-            println!("incremental: completely ignoring cache because of \
-                      differing commandline arguments");
+            eprintln!("incremental: completely ignoring cache because of \
+                       differing commandline arguments");
         }
         // We can't reuse the cache, purge it.
         debug!("decode_dep_graph: differing commandline arg hashes");
@@ -309,8 +309,8 @@ fn reconcile_work_products<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     all_files_exist = false;
 
                     if tcx.sess.opts.debugging_opts.incremental_info {
-                        println!("incremental: could not find file for up-to-date work product: {}",
-                                 path.display());
+                        eprintln!("incremental: could not find file for \
+                                   up-to-date work product: {}", path.display());
                     }
                 }
             }
@@ -418,10 +418,10 @@ fn process_edge<'a, 'tcx, 'edges>(
                         format!("{:?}", blame)
                     };
 
-                    println!("incremental: module {:?} is dirty because {:?} \
-                              changed or was removed",
-                             wp_id,
-                             blame_str);
+                    eprintln!("incremental: module {:?} is dirty because {:?} \
+                               changed or was removed",
+                              wp_id,
+                              blame_str);
                 }
             }
         }

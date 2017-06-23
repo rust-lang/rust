@@ -124,7 +124,7 @@ use boxed::Box;
 /// similar, but without the UTF-8 constraint. The second implication is that
 /// you cannot index into a `String`:
 ///
-/// ```ignore
+/// ```compile_fail,E0277
 /// let s = "hello";
 ///
 /// println!("The first letter of s is {}", s[0]); // ERROR!!!

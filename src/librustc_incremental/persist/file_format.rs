@@ -117,9 +117,9 @@ fn report_format_mismatch(sess: &Session, file: &Path, message: &str) {
     debug!("read_file: {}", message);
 
     if sess.opts.debugging_opts.incremental_info {
-        println!("incremental: ignoring cache artifact `{}`: {}",
-                 file.file_name().unwrap().to_string_lossy(),
-                 message);
+        eprintln!("incremental: ignoring cache artifact `{}`: {}",
+                  file.file_name().unwrap().to_string_lossy(),
+                  message);
     }
 }
 

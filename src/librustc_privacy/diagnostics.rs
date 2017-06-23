@@ -32,7 +32,7 @@ To solve this error, please ensure that the trait is also public. The trait
 can be made inaccessible if necessary by placing it into a private inner
 module, but it still has to be marked with `pub`. Example:
 
-```ignore
+```
 pub trait Foo { // we set the Foo trait public
     fn dummy(&self) { }
 }
@@ -75,9 +75,11 @@ mod Foo {
 "##,
 
 E0447: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 The `pub` keyword was used inside a function. Erroneous code example:
 
-```ignore
+```
 fn foo() {
     pub struct Bar; // error: visibility has no effect inside functions
 }
@@ -100,7 +102,7 @@ pub enum Foo {
 Since the enum is already public, adding `pub` on one its elements is
 unnecessary. Example:
 
-```compile_fail,
+```compile_fail
 enum Foo {
     pub Bar, // not ok!
 }
@@ -108,7 +110,7 @@ enum Foo {
 
 This is the correct syntax:
 
-```ignore
+```
 pub enum Foo {
     Bar, // ok!
 }

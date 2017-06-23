@@ -155,7 +155,7 @@ pub fn llvm(build: &Build, target: &str) {
         }
 
         let cc = build.cc(target);
-        let cxx = build.cxx(target);
+        let cxx = build.cxx(target).unwrap();
 
         // Handle msvc + ninja + ccache specially (this is what the bots use)
         if target.contains("msvc") &&

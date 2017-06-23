@@ -33,7 +33,7 @@
 //! Using a dynamically allocated TLS key. Note that this key can be shared
 //! among many threads via an `Arc`.
 //!
-//! ```rust,ignore
+//! ```ignore (cannot-doctest-private-modules)
 //! let key = Key::new(None);
 //! assert!(key.get().is_null());
 //! key.set(1 as *mut u8);
@@ -45,7 +45,7 @@
 //! Sometimes a statically allocated key is either required or easier to work
 //! with, however.
 //!
-//! ```rust,ignore
+//! ```ignore (cannot-doctest-private-modules)
 //! static KEY: StaticKey = INIT;
 //!
 //! unsafe {
@@ -74,7 +74,7 @@ use sys_common::mutex::Mutex;
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```ignore (cannot-doctest-private-modules)
 /// use tls::os::{StaticKey, INIT};
 ///
 /// static KEY: StaticKey = INIT;
@@ -105,7 +105,7 @@ pub struct StaticKey {
 ///
 /// # Examples
 ///
-/// ```rust,ignore
+/// ```ignore (cannot-doctest-private-modules)
 /// use tls::os::Key;
 ///
 /// let key = Key::new(None);

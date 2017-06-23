@@ -16,7 +16,7 @@ E0511: r##"
 Invalid monomorphization of an intrinsic function was used. Erroneous code
 example:
 
-```ignore
+```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
 #![feature(platform_intrinsics)]
 
 extern "platform-intrinsic" {

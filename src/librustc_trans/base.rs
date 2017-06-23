@@ -1150,9 +1150,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     Some(work_product)
                 } else {
                     if scx.sess().opts.debugging_opts.incremental_info {
-                        println!("incremental: CGU `{}` invalidated because of \
-                                  changed partitioning hash.",
-                                 cgu.name());
+                        eprintln!("incremental: CGU `{}` invalidated because of \
+                                   changed partitioning hash.",
+                                   cgu.name());
                     }
                     debug!("trans_reuse_previous_work_products: \
                             not reusing {:?} because hash changed to {:?}",
