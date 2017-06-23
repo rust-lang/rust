@@ -227,13 +227,13 @@ intrinsics! {
         q
     }
 
-    #[use_c_shim_if(target_arch = "x86")]
+    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
     /// Returns `n / d`
     pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
         __udivmoddi4(n, d, None)
     }
 
-    #[use_c_shim_if(target_arch = "x86")]
+    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
     /// Returns `n % d`
     pub extern "C" fn __umoddi3(n: u64, d: u64) -> u64 {
         let mut rem = 0;

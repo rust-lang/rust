@@ -64,7 +64,7 @@ intrinsics! {
         a.div(b)
     }
 
-    #[use_c_shim_if(target_arch = "x86")]
+    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
     pub extern "C" fn __divdi3(a: i64, b: i64) -> i64 {
         a.div(b)
     }
@@ -79,7 +79,7 @@ intrinsics! {
         a.mod_(b)
     }
 
-    #[use_c_shim_if(target_arch = "x86")]
+    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
     pub extern "C" fn __moddi3(a: i64, b: i64) -> i64 {
         a.mod_(b)
     }
