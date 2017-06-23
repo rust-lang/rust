@@ -15,7 +15,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
 
-        #[cfg(all(feature = "c", not($($cfg_clause)*)))]
+        #[cfg(all(feature = "c", $($cfg_clause)*))]
         $(#[$attr])*
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             extern $abi {
@@ -26,7 +26,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(not(all(feature = "c", not($($cfg_clause)*))))]
+        #[cfg(not(all(feature = "c", $($cfg_clause)*)))]
         intrinsics! {
             $(#[$attr])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
