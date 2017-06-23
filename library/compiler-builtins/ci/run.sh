@@ -54,11 +54,11 @@ esac
 # TODO(#79) fix the undefined references problem for debug-assertions+lto
 case $1 in
     thumb*)
-        RUSTFLAGS="-C debug-assertions=no" xargo rustc --no-default-features --features c --target $1 --example intrinsics -- -C lto -C link-arg=-nostartfiles
+        RUSTFLAGS="-C debug-assertions=no" xargo rustc --features c --target $1 --example intrinsics -- -C lto -C link-arg=-nostartfiles
         xargo rustc --no-default-features --features c --target $1 --example intrinsics --release -- -C lto
         ;;
     *)
-        RUSTFLAGS="-C debug-assertions=no" cargo rustc --no-default-features --features c --target $1 --example intrinsics -- -C lto
+        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features c --target $1 --example intrinsics -- -C lto
         cargo rustc --no-default-features --features c --target $1 --example intrinsics --release -- -C lto
         ;;
 esac
