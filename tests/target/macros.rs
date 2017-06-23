@@ -17,6 +17,8 @@ fn main() {
 
     bar!(a, b, c);
 
+    bar!(a, b, c,);
+
     baz!(1 + 2 + 3, quux.kaas());
 
     quux!(
@@ -30,7 +32,7 @@ fn main() {
         b /* another */
     );
 
-    trailingcomma!( a , b , c , );
+    trailingcomma!(a, b, c,);
 
     noexpr!( i am not an expression, OK? );
 
@@ -81,9 +83,7 @@ fn main() {
     ];
     vec![a; unsafe { x + 1 }];
 
-    unknown_bracket_macro__comma_should_not_be_stripped![
-    a,
-    ];
+    unknown_bracket_macro__comma_should_not_be_stripped![a,];
 
     foo(makro!(1, 3));
 
@@ -116,11 +116,6 @@ fn main() {
         10, 11, 12;
         20, 21, 22);
 
-    // #1577
-    let json = json!({
-        "foo": "bar",
-    });
-
     // #1092
     chain!(input, a:take!(max_size), || []);
 }
@@ -129,19 +124,16 @@ impl X {
     empty_invoc!{}
 }
 
-gfx_pipeline!(pipe {
-    vbuf: gfx::VertexBuffer<Vertex> = (),
-    out: gfx::RenderTarget<ColorFormat> = "Target0",
-});
-
 fn issue_1279() {
     println!("dsfs"); // a comment
 }
 
 fn issue_1555() {
-    let hello = &format!("HTTP/1.1 200 OK\r\nServer: {}\r\n\r\n{}",
-                         "65454654654654654654654655464",
-                         "4");
+    let hello = &format!(
+        "HTTP/1.1 200 OK\r\nServer: {}\r\n\r\n{}",
+        "65454654654654654654654655464",
+        "4"
+    );
 }
 
 fn issue1178() {
@@ -151,3 +143,37 @@ fn issue1178() {
 
     foo!(#[doc = "bar"] baz);
 }
+fn issue1739() {
+    sql_function!(
+        add_rss_item,
+        add_rss_item_t,
+        (
+            a: types::Integer,
+            b: types::Timestamptz,
+            c: types::Text,
+            d: types::Text,
+            e: types::Text,
+        )
+    );
+
+    w.slice_mut(s![
+        ..,
+        init_size[1] - extreeeeeeeeeeeeeeeeeeeeeeeem..init_size[1],
+        ..
+    ]).par_map_inplace(|el| *el = 0.);
+}
+
+// Put the following tests with macro invocations whose arguments cannot be parsed as expressioins
+// at the end of the file for now.
+
+// #1577
+fn issue1577() {
+    let json = json!({
+        "foo": "bar",
+    });
+}
+
+gfx_pipeline!(pipe {
+    vbuf: gfx::VertexBuffer<Vertex> = (),
+    out: gfx::RenderTarget<ColorFormat> = "Target0",
+});
