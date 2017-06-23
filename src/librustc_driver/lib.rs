@@ -28,6 +28,8 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 
+#![cfg_attr(stage0, feature(struct_field_attributes))]
+
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
