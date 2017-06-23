@@ -12,6 +12,8 @@ fn main() {
 
     bar!( a , b , c );
 
+    bar!( a , b , c , );
+
     baz!(1+2+3, quux. kaas());
 
     quux!(AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
@@ -85,11 +87,6 @@ fn main() {
         10, 11, 12;
         20, 21, 22);
 
-    // #1577
-    let json = json!({
-        "foo": "bar",
-    });
-
     // #1092
     chain!(input, a:take!(max_size), || []);
 }
@@ -97,11 +94,6 @@ fn main() {
 impl X {
     empty_invoc!{}
 }
-
-gfx_pipeline!(pipe {
-    vbuf: gfx::VertexBuffer<Vertex> = (),
-    out: gfx::RenderTarget<ColorFormat> = "Target0",
-});
 
 fn issue_1279() {
     println!("dsfs"); // a comment
@@ -120,3 +112,30 @@ fn issue1178() {
 
     foo!(#[doc = "bar"] baz);
 }
+fn issue1739() {
+    sql_function!(add_rss_item,
+                  add_rss_item_t,
+                  (a: types::Integer,
+                   b: types::Timestamptz,
+                   c: types::Text,
+                   d: types::Text,
+                   e: types::Text));
+
+    w.slice_mut(s![.., init_size[1] - extreeeeeeeeeeeeeeeeeeeeeeeem..init_size[1], ..])
+        .par_map_inplace(|el| *el = 0.);
+}
+
+// Put the following tests with macro invocations whose arguments cannot be parsed as expressioins
+// at the end of the file for now.
+
+// #1577
+fn issue1577() {
+    let json = json!({
+        "foo": "bar",
+    });
+}
+
+gfx_pipeline!(pipe {
+    vbuf: gfx::VertexBuffer<Vertex> = (),
+    out: gfx::RenderTarget<ColorFormat> = "Target0",
+});
