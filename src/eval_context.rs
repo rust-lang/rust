@@ -676,21 +676,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 // Check alignment and non-NULLness.
                 let (_, align) = self.size_and_align_of_dst(ty, val)?;
-                if ptr.is_ptr() {
-                    let ptr = ptr.to_ptr()?;
-                    if !ptr.points_to_zst() { // assume ZST pointer to be always fully alignd (and anyway ZST pointers are going to disappear soon)
-                        self.memory.check_align(ptr, align, 0)?;
+                match ptr {
+                    PrimVal::Ptr(ptr) => {
+                        if !ptr.points_to_zst() { // assume ZST pointer to be always fully alignd (and anyway ZST pointers are going to disappear soon)
+                            self.memory.check_align(ptr, align, 0)?;
+                        }
                     }
-                } else {
-                    let v = (ptr.to_u128()? % (1 << self.memory.pointer_size())) as u64;
-                    if v == 0 {
-                        return Err(EvalError::InvalidNullPointerUsage);
+                    PrimVal::Bytes(bytes) => {
+                        let v = ((bytes as u128) % (1 << self.memory.pointer_size())) as u64;
+                        if v == 0 {
+                            return Err(EvalError::InvalidNullPointerUsage);
+                        }
+                        if v % align != 0 {
+                            return Err(EvalError::AlignmentCheckFailed {
+                                has: v % align,
+                                required: align,
+                            });
+                        }
                     }
-                    if v % align != 0 {
-                        return Err(EvalError::AlignmentCheckFailed {
-                            has: v % align,
-                            required: align,
-                        });
+                    PrimVal::Undef => {
+                        return Err(EvalError::ReadUndefBytes);
                     }
                 }
 
