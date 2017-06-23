@@ -336,7 +336,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Keys<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list().entries(self.inner.clone()).finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -355,7 +355,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Values<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list().entries(self.inner.clone()).finish()
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
