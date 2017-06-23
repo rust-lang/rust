@@ -1,5 +1,3 @@
-use core::intrinsics;
-
 use int::{Int, LargeInt};
 
 macro_rules! udivmod_inner {
@@ -13,9 +11,11 @@ macro_rules! udivmod_inner {
                 // 0 X
 
                 if let Some(rem) = rem {
-                    *rem = <$ty>::from(urem!(n.low(), d.low()));
+                    *rem = <$ty>::from(n.low().checked_rem(d.low())
+                                        .unwrap_or_else(|| ::abort()));
                 }
-                return <$ty>::from(udiv!(n.low(), d.low()));
+                return <$ty>::from(n.low().checked_div(d.low())
+                                    .unwrap_or_else(|| ::abort()));
             } else {
                 // 0 X
                 // ---
@@ -38,9 +38,7 @@ macro_rules! udivmod_inner {
                 // 0 0
                 // NOTE This should be unreachable in safe Rust because the program will panic before
                 // this intrinsic is called
-                unsafe {
-                    intrinsics::abort()
-                }
+                ::abort();
             }
 
             if n.low() == 0 {
@@ -48,9 +46,11 @@ macro_rules! udivmod_inner {
                 // ---
                 // K 0
                 if let Some(rem) = rem {
-                    *rem = <$ty>::from_parts(0, urem!(n.high(), d.high()));
+                    *rem = <$ty>::from_parts(0, n.high().checked_rem(d.high())
+                                                 .unwrap_or_else(|| ::abort()));
                 }
-                return <$ty>::from(udiv!(n.high(), d.high()));
+                return <$ty>::from(n.high().checked_div(d.high())
+                                    .unwrap_or_else(|| ::abort()));
             }
 
             // K K
@@ -161,9 +161,7 @@ intrinsics! {
         if d == 0 {
             // NOTE This should be unreachable in safe Rust because the program will panic before
             // this intrinsic is called
-            unsafe {
-                intrinsics::abort()
-            }
+            ::abort();
         }
 
         if n == 0 {

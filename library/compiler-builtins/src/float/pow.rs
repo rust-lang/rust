@@ -1,30 +1,34 @@
+/// Returns `a` raised to the power `b`
 macro_rules! pow {
-    ($intrinsic:ident: $fty:ty, $ity:ident) => {
-        /// Returns `a` raised to the power `b`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $fty, b: $ity) -> $fty {
-            let (mut a, mut b) = (a, b);
-            let recip = b < 0;
-            let mut r: $fty = 1.0;
-            loop {
-                if (b & 1) != 0 {
-                    r *= a;
-                }
-                b = sdiv!($ity, b, 2);
-                if b == 0 {
-                    break;
-                }
-                a *= a;
+    ($a: expr, $b: expr) => ({
+        let (mut a, mut b) = ($a, $b);
+        let recip = b < 0;
+        let mut r = 1.0;
+        loop {
+            if (b & 1) != 0 {
+                r *= a;
             }
-
-            if recip {
-                1.0 / r
-            } else {
-                r
+            b = b.checked_div(2).unwrap_or_else(|| ::abort());
+            if b == 0 {
+                break;
             }
+            a *= a;
         }
-    }
+
+        if recip {
+            1.0 / r
+        } else {
+            r
+        }
+    })
 }
 
-pow!(__powisf2: f32, i32);
-pow!(__powidf2: f64, i32);
+intrinsics! {
+    pub extern "C" fn __powisf2(a: f32, b: i32) -> f32 {
+        pow!(a, b)
+    }
+
+    pub extern "C" fn __powidf2(a: f64, b: i32) -> f64 {
+        pow!(a, b)
+    }
+}

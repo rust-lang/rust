@@ -32,52 +32,6 @@
 // that follow "x86 naming convention" (e.g. addsf3). Those aeabi intrinsics must adhere to the
 // AAPCS calling convention (`extern "aapcs"`) because that's how LLVM will call them.
 
-// TODO(rust-lang/rust#37029) use e.g. checked_div(_).unwrap_or_else(|| abort())
-macro_rules! udiv {
-    ($a:expr, $b:expr) => {
-        unsafe {
-            let a = $a;
-            let b = $b;
-
-            if b == 0 {
-                ::core::intrinsics::abort()
-            } else {
-                ::core::intrinsics::unchecked_div(a, b)
-            }
-        }
-    }
-}
-
-macro_rules! sdiv {
-    ($sty:ident, $a:expr, $b:expr) => {
-        unsafe {
-            let a = $a;
-            let b = $b;
-
-            if b == 0 || (b == -1 && a == $sty::min_value()) {
-                ::core::intrinsics::abort()
-            } else {
-                ::core::intrinsics::unchecked_div(a, b)
-            }
-        }
-    }
-}
-
-macro_rules! urem {
-    ($a:expr, $b:expr) => {
-        unsafe {
-            let a = $a;
-            let b = $b;
-
-            if b == 0 {
-                ::core::intrinsics::abort()
-            } else {
-                ::core::intrinsics::unchecked_rem(a, b)
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 extern crate core;
 
