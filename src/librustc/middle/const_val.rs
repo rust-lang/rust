@@ -14,7 +14,7 @@ pub use rustc_const_math::ConstInt;
 use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
-use ty::TyCtxt;
+use ty::{TyCtxt, layout};
 use ty::subst::Substs;
 use util::common::ErrorReported;
 use rustc_const_math::*;
@@ -101,6 +101,7 @@ pub enum ErrKind<'tcx> {
 
     IndexOpFeatureGated,
     Math(ConstMathErr),
+    LayoutError(layout::LayoutError<'tcx>),
 
     ErroneousReferencedConstant(Box<ConstEvalErr<'tcx>>),
 
@@ -164,6 +165,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             MiscCatchAll => simple!("unsupported constant expr"),
             IndexOpFeatureGated => simple!("the index operation on const values is unstable"),
             Math(ref err) => Simple(err.description().into_cow()),
+            LayoutError(ref err) => Simple(err.to_string().into_cow()),
 
             ErroneousReferencedConstant(_) => simple!("could not evaluate referenced constant"),
 

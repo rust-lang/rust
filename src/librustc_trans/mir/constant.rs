@@ -22,7 +22,8 @@ use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use {abi, adt, base, machine};
+use {adt, base, machine};
+use abi::{self, Abi};
 use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
@@ -339,17 +340,34 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                        func, fn_ty)
                     };
 
-                    let mut const_args = IndexVec::with_capacity(args.len());
+                    let mut arg_vals = IndexVec::with_capacity(args.len());
                     for arg in args {
                         match self.const_operand(arg, span) {
-                            Ok(arg) => { const_args.push(arg); },
+                            Ok(arg) => { arg_vals.push(arg); },
                             Err(err) => if failure.is_ok() { failure = Err(err); }
                         }
                     }
                     if let Some((ref dest, target)) = *destination {
-                        match MirConstContext::trans_def(self.ccx, def_id, substs, const_args) {
-                            Ok(value) => self.store(dest, value, span),
-                            Err(err) => if failure.is_ok() { failure = Err(err); }
+                        if fn_ty.fn_sig(tcx).abi() == Abi::RustIntrinsic {
+                            let value = match &tcx.item_name(def_id).as_str()[..] {
+                                "size_of" => {
+                                    let llval = C_uint(self.ccx,
+                                        self.ccx.size_of(substs.type_at(0)));
+                                    Const::new(llval, tcx.types.usize)
+                                }
+                                "min_align_of" => {
+                                    let llval = C_uint(self.ccx,
+                                        self.ccx.align_of(substs.type_at(0)));
+                                    Const::new(llval, tcx.types.usize)
+                                }
+                                _ => span_bug!(span, "{:?} in constant", terminator.kind)
+                            };
+                            self.store(dest, value, span);
+                        } else {
+                            match MirConstContext::trans_def(self.ccx, def_id, substs, arg_vals) {
+                                Ok(value) => self.store(dest, value, span),
+                                Err(err) => if failure.is_ok() { failure = Err(err); }
+                            }
                         }
                         target
                     } else {
