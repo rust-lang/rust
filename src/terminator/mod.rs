@@ -596,6 +596,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "__rust_allocate" => {
                 let size = self.value_to_primval(args[0], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[1], usize)?.to_u64()?;
+                if size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                }
                 let ptr = self.memory.allocate(size, align)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
@@ -603,6 +609,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "__rust_allocate_zeroed" => {
                 let size = self.value_to_primval(args[0], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[1], usize)?.to_u64()?;
+                if size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                }
                 let ptr = self.memory.allocate(size, align)?;
                 self.memory.write_repeat(ptr, 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
@@ -611,8 +623,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "__rust_deallocate" => {
                 let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 // FIXME: insert sanity check for size and align?
-                let _old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
-                let _align = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
+                let align = self.value_to_primval(args[2], usize)?.to_u64()?;
+                if old_size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                }
                 self.memory.deallocate(ptr)?;
             },
 
@@ -620,6 +638,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 let size = self.value_to_primval(args[2], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[3], usize)?.to_u64()?;
+                if size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                }
                 let new_ptr = self.memory.reallocate(ptr, size, align)?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
@@ -640,7 +664,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     f_instance,
                     mir.span,
                     mir,
-                    Lvalue::zst(),
+                    Lvalue::undef(),
                     StackPopCleanup::Goto(dest_block),
                 )?;
 

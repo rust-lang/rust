@@ -73,10 +73,6 @@ impl<'tcx> Lvalue<'tcx> {
         Lvalue::Ptr { ptr, extra: LvalueExtra::None }
     }
 
-    pub fn zst() -> Self {
-        Self::from_ptr(Pointer::zst_ptr())
-    }
-
     pub fn from_ptr(ptr: Pointer) -> Self {
         Self::from_primval_ptr(PrimVal::Ptr(ptr))
     }
