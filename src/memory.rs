@@ -404,22 +404,22 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// with associated destructors, implementations may stop calling destructors,
     /// or they may continue calling destructors until no non-NULL values with
     /// associated destructors exist, even though this might result in an infinite loop.
-    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> Option<(ty::Instance<'tcx>, PrimVal, TlsKey)> {
+    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, PrimVal, TlsKey)>> {
         use std::collections::Bound::*;
         let start = match key {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
         for (&key, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.range_mut((start, Unbounded)) {
-            if *data != PrimVal::Bytes(0) {
+            if !data.is_null()? {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
                     *data = PrimVal::Bytes(0);
-                    return ret;
+                    return Ok(ret);
                 }
             }
         }
-        return None;
+        return Ok(None);
     }
 }
 

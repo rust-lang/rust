@@ -362,7 +362,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StackPopCleanup::None => {},
             StackPopCleanup::Tls(key) => {
                 // either fetch the next dtor or start new from the beginning, if any are left with a non-null data
-                if let Some((instance, ptr, key)) = self.memory.fetch_tls_dtor(key).or_else(|| self.memory.fetch_tls_dtor(None)) {
+                let dtor = match self.memory.fetch_tls_dtor(key)? {
+                    dtor @ Some(_) => dtor,
+                    None => self.memory.fetch_tls_dtor(None)?,
+                };
+                if let Some((instance, ptr, key)) = dtor {
                     trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
                     // TODO: Potentially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
                     let mir = self.load_mir(instance.def)?;
