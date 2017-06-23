@@ -13,7 +13,6 @@ use value::{
     bytes_to_f64,
     f32_to_bytes,
     f64_to_bytes,
-    bytes_to_bool,
 };
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -334,7 +333,7 @@ pub fn unary_op<'tcx>(
     let bytes = val.to_bytes()?;
 
     let result_bytes = match (un_op, val_kind) {
-        (Not, Bool) => !bytes_to_bool(bytes) as u128,
+        (Not, Bool) => !val.to_bool()? as u128,
 
         (Not, U8)  => !(bytes as u8) as u128,
         (Not, U16) => !(bytes as u16) as u128,
