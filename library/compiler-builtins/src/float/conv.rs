@@ -78,6 +78,7 @@ intrinsics! {
         int_to_float!(i, i32, f64)
     }
 
+    #[use_c_shim_if(any(target_arch = "x86", target_arch = "x86_64"))]
     pub extern "C" fn __floatdidf(i: i64) -> f64 {
         int_to_float!(i, i64, f64)
     }
@@ -100,6 +101,7 @@ intrinsics! {
         int_to_float!(i, u32, f64)
     }
 
+    #[use_c_shim_if(any(target_arch = "x86", target_arch = "x86_64"))]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
         int_to_float!(i, u64, f64)
     }

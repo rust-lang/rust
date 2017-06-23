@@ -63,7 +63,6 @@ case $1 in
         ;;
 esac
 
-# Look out for duplicated symbols when we include the compiler-rt (C) implementation
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in
     armv7-*)
@@ -95,6 +94,7 @@ else
     path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
 fi
 
+# Look out for duplicated symbols when we include the compiler-rt (C) implementation
 for rlib in $(echo $path); do
     set +x
     stdout=$($PREFIX$NM -g --defined-only $rlib 2>&1)
@@ -102,6 +102,17 @@ for rlib in $(echo $path); do
     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
     set +e
     echo "$stdout" | sort | uniq -d | grep -v __x86.get_pc_thunk | grep 'T __'
+
+    if test $? = 0; then
+        exit 1
+    fi
+    set -ex
+done
+
+# Ensure no references to a panicking function
+for rlib in $(echo $path); do
+    set +x
+    $PREFIX$NM -u $rlib 2>&1 | grep panicking
 
     if test $? = 0; then
         exit 1
