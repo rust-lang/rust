@@ -78,12 +78,15 @@ intrinsics! {
         int_to_float!(i, i32, f64)
     }
 
-    #[use_c_shim_if(any(
-        all(not(target_env = "msvc"), target_arch = "x86", target_arch = "x86_64"),
-        all(target_env = "msvc", target_arch = "x86_64"),
-    ))]
+    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
     pub extern "C" fn __floatdidf(i: i64) -> f64 {
-        int_to_float!(i, i64, f64)
+        // On x86_64 LLVM will use native instructions for this conversion, we
+        // can just do it directly
+        if cfg!(target_arch = "x86_64") {
+            i as f64
+        } else {
+            int_to_float!(i, i64, f64)
+        }
     }
 
     #[unadjusted_on_win64]

@@ -4132,7 +4132,6 @@ mod c {
             if target_arch == "x86_64" {
                 sources.extend(
                     &[
-                        "x86_64/floatdidf.c",
                         "x86_64/floatdisf.c",
                         "x86_64/floatdixf.c",
                     ],
@@ -4148,7 +4147,6 @@ mod c {
                     &[
                         "x86_64/chkstk.S",
                         "x86_64/chkstk2.S",
-                        "x86_64/floatdidf.c",
                         "x86_64/floatdisf.c",
                         "x86_64/floatdixf.c",
                         "x86_64/floatundidf.S",
