@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ich::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::StableHasher;
 use std::env;
-use super::{DepGraphQuery, DepNode};
+use std::hash::Hash;
+use std::mem;
+use super::{DepGraphQuery, DepKind, DepNode};
 use super::debug::EdgeFilter;
 
 pub struct DepGraphEdges {
@@ -41,6 +45,10 @@ impl IdIndex {
 enum OpenTask {
     Regular {
         node: DepNode,
+        reads: Vec<DepNode>,
+        read_set: FxHashSet<DepNode>,
+    },
+    Anon {
         reads: Vec<DepNode>,
         read_set: FxHashSet<DepNode>,
     },
@@ -114,6 +122,56 @@ impl DepGraphEdges {
         }
     }
 
+    pub fn push_anon_task(&mut self) {
+        self.task_stack.push(OpenTask::Anon {
+            reads: Vec::new(),
+            read_set: FxHashSet(),
+        });
+    }
+
+    pub fn pop_anon_task(&mut self, kind: DepKind) -> DepNode {
+        let popped_node = self.task_stack.pop().unwrap();
+
+        if let OpenTask::Anon {
+            read_set: _,
+            reads
+        } = popped_node {
+            let mut fingerprint = Fingerprint::zero();
+            let mut hasher = StableHasher::new();
+
+            for read in reads.iter() {
+                mem::discriminant(&read.kind).hash(&mut hasher);
+
+                // Fingerprint::combine() is faster than sending Fingerprint
+                // through the StableHasher (at least as long as StableHasher
+                // is so slow).
+                fingerprint = fingerprint.combine(read.hash);
+            }
+
+            fingerprint = fingerprint.combine(hasher.finish());
+
+            let target_dep_node = DepNode {
+                kind,
+                hash: fingerprint,
+            };
+
+            if self.indices.contains_key(&target_dep_node) {
+                return target_dep_node;
+            }
+
+            let target_id = self.get_or_create_node(target_dep_node);
+
+            for read in reads.into_iter() {
+                let source_id = self.get_or_create_node(read);
+                self.edges.insert((source_id, target_id));
+            }
+
+            target_dep_node
+        } else {
+            bug!("pop_anon_task() - Expected anonymous task to be popped")
+        }
+    }
+
     /// Indicates that the current task `C` reads `v` by adding an
     /// edge from `v` to `C`. If there is no current task, has no
     /// effect. Note that *reading* from tracked state is harmless if
@@ -136,6 +194,14 @@ impl DepGraphEdges {
                             }
                         }
                     }
+                }
+            }
+            Some(&mut OpenTask::Anon {
+                ref mut reads,
+                ref mut read_set,
+            }) => {
+                if read_set.insert(source) {
+                    reads.push(source);
                 }
             }
             Some(&mut OpenTask::Ignore) | None => {
