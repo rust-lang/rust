@@ -1,74 +1,94 @@
 use int::{Int, LargeInt};
 
-macro_rules! ashl {
-    ($intrinsic:ident: $ty:ty) => {
-        /// Returns `a << b`, requires `b < $ty::bits()`
-        #[cfg_attr(not(test), no_mangle)]
-        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
-        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
-        pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
-            let half_bits = <$ty>::bits() / 2;
-            if b & half_bits != 0 {
-                <$ty>::from_parts(0, a.low() << (b - half_bits))
-            } else if b == 0 {
-                a
-            } else {
-                <$ty>::from_parts(a.low() << b, (a.high() << b) | (a.low() >> (half_bits - b)))
-            }
+trait Ashl: Int + LargeInt {
+    /// Returns `a << b`, requires `b < $ty::bits()`
+    fn ashl(self, offset: u32) -> Self
+        where Self: LargeInt<HighHalf = <Self as LargeInt>::LowHalf>,
+    {
+        let half_bits = Self::bits() / 2;
+        if offset & half_bits != 0 {
+            Self::from_parts(Int::zero(), self.low() << (offset - half_bits))
+        } else if offset == 0 {
+            self
+        } else {
+            Self::from_parts(self.low() << offset,
+                             (self.high() << offset) |
+                                (self.low() >> (half_bits - offset)))
         }
     }
 }
 
-macro_rules! ashr {
-    ($intrinsic:ident: $ty:ty) => {
-        /// Returns arithmetic `a >> b`, requires `b < $ty::bits()`
-        #[cfg_attr(not(test), no_mangle)]
-        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
-        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
-        pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
-            let half_bits = <$ty>::bits() / 2;
-            if b & half_bits != 0 {
-                <$ty>::from_parts((a.high() >> (b - half_bits)) as <$ty as LargeInt>::LowHalf,
-                                  a.high() >> (half_bits - 1))
-            } else if b == 0 {
-                a
-            } else {
-                let high_unsigned = a.high() as <$ty as LargeInt>::LowHalf;
-                <$ty>::from_parts((high_unsigned << (half_bits - b)) | (a.low() >> b),
-                                  a.high() >> b)
-            }
+impl Ashl for u64 {}
+impl Ashl for u128 {}
+
+trait Ashr: Int + LargeInt {
+    /// Returns arithmetic `a >> b`, requires `b < $ty::bits()`
+    fn ashr(self, offset: u32) -> Self
+        where Self: LargeInt<LowHalf = <<Self as LargeInt>::HighHalf as Int>::UnsignedInt>,
+    {
+        let half_bits = Self::bits() / 2;
+        if offset & half_bits != 0 {
+            Self::from_parts((self.high() >> (offset - half_bits)).unsigned(),
+                              self.high() >> (half_bits - 1))
+        } else if offset == 0 {
+            self
+        } else {
+            let high_unsigned = self.high().unsigned();
+            Self::from_parts((high_unsigned << (half_bits - offset)) | (self.low() >> offset),
+                              self.high() >> offset)
         }
     }
 }
 
-macro_rules! lshr {
-    ($intrinsic:ident: $ty:ty) => {
-        /// Returns logical `a >> b`, requires `b < $ty::bits()`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
-            let half_bits = <$ty>::bits() / 2;
-            if b & half_bits != 0 {
-                <$ty>::from_parts(a.high() >> (b - half_bits), 0)
-            } else if b == 0 {
-                a
-            } else {
-                <$ty>::from_parts((a.high() << (half_bits - b)) | (a.low() >> b), a.high() >> b)
-            }
+impl Ashr for i64 {}
+impl Ashr for i128 {}
+
+trait Lshr: Int + LargeInt {
+    /// Returns logical `a >> b`, requires `b < $ty::bits()`
+    fn lshr(self, offset: u32) -> Self
+        where Self: LargeInt<HighHalf = <Self as LargeInt>::LowHalf>,
+    {
+        let half_bits = Self::bits() / 2;
+        if offset & half_bits != 0 {
+            Self::from_parts(self.high() >> (offset - half_bits), Int::zero())
+        } else if offset == 0 {
+            self
+        } else {
+            Self::from_parts((self.high() << (half_bits - offset)) |
+                                (self.low() >> offset),
+                             self.high() >> offset)
         }
     }
 }
 
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-ashl!(__ashldi3: u64);
+impl Lshr for u64 {}
+impl Lshr for u128 {}
 
-ashl!(__ashlti3: u128);
+intrinsics! {
+    #[cfg(not(all(feature = "c", target_arch = "x86")))]
+    pub extern "C" fn __ashldi3(a: u64, b: u32) -> u64 {
+        a.ashl(b)
+    }
 
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-ashr!(__ashrdi3: i64);
+    pub extern "C" fn __ashlti3(a: u128, b: u32) -> u128 {
+        a.ashl(b)
+    }
 
-ashr!(__ashrti3: i128);
+    #[cfg(not(all(feature = "c", target_arch = "x86")))]
+    pub extern "C" fn __ashrdi3(a: i64, b: u32) -> i64 {
+        a.ashr(b)
+    }
 
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-lshr!(__lshrdi3: u64);
+    pub extern "C" fn __ashrti3(a: i128, b: u32) -> i128 {
+        a.ashr(b)
+    }
 
-lshr!(__lshrti3: u128);
+    #[cfg(not(all(feature = "c", target_arch = "x86")))]
+    pub extern "C" fn __lshrdi3(a: u64, b: u32) -> u64 {
+        a.lshr(b)
+    }
+
+    pub extern "C" fn __lshrti3(a: u128, b: u32) -> u128 {
+        a.lshr(b)
+    }
+}

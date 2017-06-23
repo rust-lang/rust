@@ -1,3 +1,5 @@
+use core::ops;
+
 macro_rules! hty {
     ($ty:ty) => {
         <$ty as LargeInt>::HighHalf
@@ -16,14 +18,24 @@ pub mod shift;
 pub mod udiv;
 
 /// Trait for some basic operations on integers
-pub trait Int {
+pub trait Int:
+    Copy +
+    PartialEq  +
+    ops::Shl<u32, Output = Self> +
+    ops::Shr<u32, Output = Self> +
+    ops::BitOr<Output = Self> +
+    // ops::BitAnd<Output = Self> +
+{
     /// Type with the same width but other signedness
-    type OtherSign;
+    type OtherSign: Int;
     /// Unsigned version of Self
-    type UnsignedInt;
+    type UnsignedInt: Int;
 
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
+
+    /// Returns the zero representation of this number
+    fn zero() -> Self;
 
     /// Extracts the sign from self and returns a tuple.
     ///
@@ -36,6 +48,9 @@ pub trait Int {
     /// assert_eq!(u, 25_u32);
     /// ```
     fn extract_sign(self) -> (bool, Self::UnsignedInt);
+
+    /// Convert to a signed representation
+    fn unsigned(self) -> Self::UnsignedInt;
 }
 
 macro_rules! int_impl {
@@ -44,12 +59,20 @@ macro_rules! int_impl {
             type OtherSign = $ity;
             type UnsignedInt = $uty;
 
+            fn zero() -> Self {
+                0
+            }
+
             fn bits() -> u32 {
                 $bits
             }
 
             fn extract_sign(self) -> (bool, $uty) {
                 (false, self)
+            }
+
+            fn unsigned(self) -> $uty {
+                self
             }
         }
 
@@ -61,12 +84,20 @@ macro_rules! int_impl {
                 $bits
             }
 
+            fn zero() -> Self {
+                0
+            }
+
             fn extract_sign(self) -> (bool, $uty) {
                 if self < 0 {
                     (true, (!(self as $uty)).wrapping_add(1))
                 } else {
                     (false, self as $uty)
                 }
+            }
+
+            fn unsigned(self) -> $uty {
+                self as $uty
             }
         }
     }
@@ -77,9 +108,9 @@ int_impl!(i64, u64, 64);
 int_impl!(i128, u128, 128);
 
 /// Trait to convert an integer to/from smaller parts
-pub trait LargeInt {
-    type LowHalf;
-    type HighHalf;
+pub trait LargeInt: Int {
+    type LowHalf: Int;
+    type HighHalf: Int;
 
     fn low(self) -> Self::LowHalf;
     fn high(self) -> Self::HighHalf;

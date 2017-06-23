@@ -99,6 +99,9 @@ fn sconv(i: i128) -> U64x2 {
 #[cfg(test)]
 extern crate core;
 
+#[macro_use]
+mod macros;
+
 pub mod int;
 pub mod float;
 
