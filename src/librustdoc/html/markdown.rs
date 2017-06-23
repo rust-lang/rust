@@ -15,7 +15,7 @@
 //! functionality through a unit-struct, `Markdown`, which has an implementation
 //! of `fmt::Display`. Example usage:
 //!
-//! ```rust,ignore
+//! ```
 //! use rustdoc::html::markdown::Markdown;
 //!
 //! let s = "My *markdown* _text_";

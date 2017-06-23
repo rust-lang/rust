@@ -942,6 +942,13 @@ impl<'b, T: ?Sized> Ref<'b, T> {
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
 
+#[stable(feature = "std_guard_impls", since = "1.20")]
+impl<'a, T: ?Sized + fmt::Display> fmt::Display for Ref<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
 impl<'b, T: ?Sized> RefMut<'b, T> {
     /// Make a new `RefMut` for a component of the borrowed data, e.g. an enum
     /// variant.
@@ -1033,6 +1040,13 @@ impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
+
+#[stable(feature = "std_guard_impls", since = "1.20")]
+impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
 
 /// The core primitive for interior mutability in Rust.
 ///

@@ -893,7 +893,7 @@ fn dump_incremental_data(trans: &CrateTranslation) {
             ModuleSource::Translated(..) => (),
         }
     }
-    println!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
+    eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
 }
 
 struct WorkItem {

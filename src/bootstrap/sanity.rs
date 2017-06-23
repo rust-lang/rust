@@ -139,7 +139,7 @@ pub fn check(build: &mut Build) {
         }
     }
     for host in build.config.host.iter() {
-        need_cmd(build.cxx(host).as_ref());
+        need_cmd(build.cxx(host).unwrap().as_ref());
     }
 
     // The msvc hosts don't use jemalloc, turn it off globally to

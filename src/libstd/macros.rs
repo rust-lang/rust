@@ -444,7 +444,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore (cannot-doctest-external-file-dependency)
     /// let secret_key = include_str!("secret-key.ascii");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -461,7 +461,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore (cannot-doctest-external-file-dependency)
     /// let secret_key = include_bytes!("secret-key.bin");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -530,13 +530,13 @@ pub mod builtin {
     ///
     /// File 'my_str.in':
     ///
-    /// ```ignore
+    /// ```ignore (only-for-syntax-highlight)
     /// "Hello World!"
     /// ```
     ///
     /// File 'main.rs':
     ///
-    /// ```ignore
+    /// ```ignore (cannot-doctest-external-file-dependency)
     /// fn main() {
     ///     let my_str = include!("my_str.in");
     ///     println!("{}", my_str);
