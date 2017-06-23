@@ -43,10 +43,10 @@ esac
 # Verify that we haven't drop any intrinsic/symbol
 case $1 in
     thumb*)
-        xargo build --features c --target $1 --example intrinsics
+        xargo build --features 'c mem' --target $1 --example intrinsics
         ;;
     *)
-        cargo build --features c --target $1 --example intrinsics
+        cargo build --features 'c mem' --target $1 --example intrinsics
         ;;
 esac
 
@@ -54,12 +54,12 @@ esac
 # TODO(#79) fix the undefined references problem for debug-assertions+lto
 case $1 in
     thumb*)
-        RUSTFLAGS="-C debug-assertions=no" xargo rustc --features c --target $1 --example intrinsics -- -C lto -C link-arg=-nostartfiles
-        xargo rustc --features c --target $1 --example intrinsics --release -- -C lto
+        RUSTFLAGS="-C debug-assertions=no" xargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto -C link-arg=-nostartfiles
+        xargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
         ;;
     *)
-        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features c --target $1 --example intrinsics -- -C lto
-        cargo rustc --features c --target $1 --example intrinsics --release -- -C lto
+        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto
+        cargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
         ;;
 esac
 
