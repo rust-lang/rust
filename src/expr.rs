@@ -2009,6 +2009,11 @@ pub fn rewrite_call_with_binary_search<R>(
 where
     R: Rewrite,
 {
+    let force_trailing_comma = if context.inside_macro {
+        span_ends_with_comma(context, span)
+    } else {
+        false
+    };
     let closure = |callee_max_width| {
         // FIXME using byte lens instead of char lens (and probably all over the
         // place too)
@@ -2027,7 +2032,7 @@ where
             span,
             shape,
             context.config.fn_call_width(),
-            false,
+            force_trailing_comma,
         )
     };
 
@@ -2041,6 +2046,11 @@ pub fn rewrite_call(
     span: Span,
     shape: Shape,
 ) -> Option<String> {
+    let force_trailing_comma = if context.inside_macro {
+        span_ends_with_comma(context, span)
+    } else {
+        false
+    };
     rewrite_call_inner(
         context,
         &callee,
@@ -2048,7 +2058,7 @@ pub fn rewrite_call(
         span,
         shape,
         context.config.fn_call_width(),
-        false,
+        force_trailing_comma,
     ).ok()
 }
 
@@ -2155,15 +2165,13 @@ fn rewrite_call_args<'a, T>(
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
-    let mut item_context = context.clone();
-    item_context.inside_macro = false;
     let items = itemize_list(
         context.codemap,
         args.iter(),
         ")",
         |item| item.span().lo,
         |item| item.span().hi,
-        |item| item.rewrite(&item_context, shape),
+        |item| item.rewrite(context, shape),
         span.lo,
         span.hi,
     );
@@ -2173,7 +2181,7 @@ where
     // indentation. If its first line fits on one line with the other arguments,
     // we format the function arguments horizontally.
     let tactic = try_overflow_last_arg(
-        &item_context,
+        context,
         &mut item_vec,
         &args[..],
         shape,
@@ -2442,6 +2450,13 @@ pub fn wrap_args_with_parens(
             shape.block().indent.to_string(context.config)
         )
     }
+}
+
+fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
+    let snippet = context.snippet(span);
+    snippet
+        .trim_right_matches(|c: char| c == ')' || c.is_whitespace())
+        .ends_with(',')
 }
 
 fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) -> Option<String> {
@@ -2733,6 +2748,11 @@ where
     debug!("rewrite_tuple {:?}", shape);
     if context.use_block_indent() {
         // We use the same rule as funcation call for rewriting tuple.
+        let force_trailing_comma = if context.inside_macro {
+            span_ends_with_comma(context, span)
+        } else {
+            items.len() == 1
+        };
         rewrite_call_inner(
             context,
             &String::new(),
@@ -2740,7 +2760,7 @@ where
             span,
             shape,
             context.config.fn_call_width(),
-            items.len() == 1,
+            force_trailing_comma,
         ).ok()
     } else {
         rewrite_tuple_in_visual_indent_style(context, items, span, shape)

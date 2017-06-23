@@ -33,7 +33,7 @@ fn main() {
     // nesting macro and function call
     try!(foo(
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
-        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
     ));
     try!(foo(try!(
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
