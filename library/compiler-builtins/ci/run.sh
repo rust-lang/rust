@@ -46,7 +46,7 @@ case $1 in
         xargo build --features c --target $1 --example intrinsics
         ;;
     *)
-        cargo build --no-default-features --features c --target $1 --example intrinsics
+        cargo build --features c --target $1 --example intrinsics
         ;;
 esac
 

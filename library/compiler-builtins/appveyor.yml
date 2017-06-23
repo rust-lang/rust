@@ -15,8 +15,8 @@ install:
 build: false
 
 test_script:
-  - cargo build --target %TARGET%
-  - cargo build --release --target %TARGET%
+  - cargo build --target %TARGET% --example intrinsics
+  - cargo build --release --target %TARGET% --example intrinsics
   - cargo test --no-default-features --features gen-tests --target %TARGET%
   - cargo test --no-default-features --features "gen-tests c" --target %TARGET%
   - cargo test --no-default-features --features gen-tests --release --target %TARGET%
