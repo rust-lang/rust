@@ -416,6 +416,10 @@ pub fn _start() -> ! {
     loop {}
 }
 
+#[cfg(windows)]
+#[link(name = "kernel32")]
+extern {}
+
 // ARM targets need these symbols
 #[no_mangle]
 pub fn __aeabi_unwind_cpp_pr0() {}
