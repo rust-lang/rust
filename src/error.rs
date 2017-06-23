@@ -33,6 +33,7 @@ pub enum EvalError<'tcx> {
     ExecuteMemory,
     ArrayIndexOutOfBounds(Span, u64, u64),
     Math(Span, ConstMathErr),
+    Intrinsic(String),
     OverflowingMath,
     InvalidChar(u128),
     OutOfMemory {
@@ -104,6 +105,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "array index out of bounds",
             EvalError::Math(..) =>
                 "mathematical operation failed",
+            EvalError::Intrinsic(..) =>
+                "intrinsic failed",
             EvalError::OverflowingMath =>
                 "attempted to do overflowing math",
             EvalError::NoMirFor(..) =>
@@ -168,6 +171,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "index out of bounds: the len is {} but the index is {} at {:?}", len, index, span),
             EvalError::Math(span, ref err) =>
                 write!(f, "{:?} at {:?}", err, span),
+            EvalError::Intrinsic(ref err) =>
+                write!(f, "{}", err),
             EvalError::InvalidChar(c) =>
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
             EvalError::OutOfMemory { allocation_size, memory_size, memory_usage } =>

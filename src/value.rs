@@ -23,12 +23,6 @@ pub(super) fn f64_to_bytes(f: f64) -> u128 {
     unsafe { transmute::<f64, u64>(f) as u128 }
 }
 
-pub(super) fn bytes_to_bool(n: u128) -> bool {
-    // FIXME(solson): Can we reach here due to user error?
-    debug_assert!(n == 0 || n == 1, "bytes interpreted as bool were {}", n);
-    n & 1 == 1
-}
-
 /// A `Value` represents a single self-contained Rust value.
 ///
 /// A `Value` can either refer to a block of memory inside an allocation (`ByRef`) or to a primitve
