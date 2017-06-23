@@ -77,7 +77,7 @@ case $1 in
         ;;
 esac
 
-case $TRAVIS_OS_NAME in
+case "$TRAVIS_OS_NAME" in
     osx)
         # NOTE OSx's nm doesn't accept the `--defined-only` or provide an equivalent.
         # Use GNU nm instead
@@ -89,14 +89,15 @@ case $TRAVIS_OS_NAME in
         ;;
 esac
 
-if [ $TRAVIS_OS_NAME = osx ]; then
+if [ "$TRAVIS_OS_NAME" = osx ]; then
     path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
 else
     path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
 fi
 
 for rlib in $(echo $path); do
-    stdout=$($PREFIX$NM -g --defined-only $rlib)
+    set +x
+    stdout=$($PREFIX$NM -g --defined-only $rlib 2>&1)
 
     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several times so ignore it
     set +e
@@ -105,6 +106,7 @@ for rlib in $(echo $path); do
     if test $? = 0; then
         exit 1
     fi
+    set -ex
 done
 
 true
