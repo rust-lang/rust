@@ -110,13 +110,21 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg(all(windows, target_pointer_width = "64"))]
-        intrinsics! {
-            $(#[$attr])*
-            pub extern $abi fn $name( $($argname: $ty),* )
-                -> ::macros::win64_abi_hack::U64x2
-            {
-                let e: $ret = { $($body)* };
-                ::macros::win64_abi_hack::U64x2::from(e)
+        $(#[$attr])*
+        pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            $($body)*
+        }
+
+        #[cfg(all(windows, target_pointer_width = "64"))]
+        pub mod $name {
+
+            intrinsics! {
+                pub extern $abi fn $name( $($argname: $ty),* )
+                    -> ::macros::win64_abi_hack::U64x2
+                {
+                    let e: $ret = super::$name($($argname),*);
+                    ::macros::win64_abi_hack::U64x2::from(e)
+                }
             }
         }
 

@@ -78,24 +78,6 @@ macro_rules! urem {
     }
 }
 
-// Hack for LLVM expectations for ABI on windows
-#[cfg(all(windows, target_pointer_width="64"))]
-#[repr(simd)]
-pub struct U64x2(u64, u64);
-
-#[cfg(all(windows, target_pointer_width="64"))]
-fn conv(i: u128) -> U64x2 {
-    use int::LargeInt;
-    U64x2(i.low(), i.high())
-}
-
-#[cfg(all(windows, target_pointer_width="64"))]
-fn sconv(i: i128) -> U64x2 {
-    use int::LargeInt;
-    let j = i as u128;
-    U64x2(j.low(), j.high())
-}
-
 #[cfg(test)]
 extern crate core;
 
