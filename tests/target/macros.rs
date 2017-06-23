@@ -152,7 +152,7 @@ fn issue1739() {
             b: types::Timestamptz,
             c: types::Text,
             d: types::Text,
-            e: types::Text,
+            e: types::Text
         )
     );
 
