@@ -30,7 +30,7 @@ use syntax::util::ThinVec;
 use Shape;
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
-use expr::{rewrite_call, rewrite_array};
+use expr::{rewrite_call_inner, rewrite_array};
 use comment::{FindUncommented, contains_comment};
 use utils::mk_sp;
 
@@ -110,6 +110,7 @@ pub fn rewrite_macro(
     let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
     let mut expr_vec = Vec::new();
     let mut vec_with_semi = false;
+    let mut trailing_comma = false;
 
     if MacroStyle::Braces != style {
         loop {
@@ -162,12 +163,8 @@ pub fn rewrite_macro(
             parser.bump();
 
             if parser.token == Token::Eof {
-                // vec! is a special case of bracket macro which should be formated as an array.
-                if macro_name == "vec!" {
-                    break;
-                } else {
-                    return None;
-                }
+                trailing_comma = true;
+                break;
             }
         }
     }
@@ -176,12 +173,19 @@ pub fn rewrite_macro(
         MacroStyle::Parens => {
             // Format macro invocation as function call, forcing no trailing
             // comma because not all macros support them.
-            rewrite_call(context, &macro_name, &expr_vec, mac.span, shape).map(
-                |rw| match position {
-                    MacroPosition::Item => format!("{};", rw),
-                    _ => rw,
-                },
-            )
+            let rw = rewrite_call_inner(
+                context,
+                &macro_name,
+                &expr_vec.iter().map(|e| &**e).collect::<Vec<_>>()[..],
+                mac.span,
+                shape,
+                context.config.fn_call_width(),
+                trailing_comma,
+            );
+            rw.ok().map(|rw| match position {
+                MacroPosition::Item => format!("{};", rw),
+                _ => rw,
+            })
         }
         MacroStyle::Brackets => {
             let mac_shape = try_opt!(shape.offset_left(macro_name.len()));
@@ -215,7 +219,13 @@ pub fn rewrite_macro(
                     ))
                 }
             } else {
-                // Format macro invocation as array literal.
+                // If we are rewriting `vec!` macro or other special macros,
+                // then we can rewrite this as an usual array literal.
+                // Otherwise, we must preserve the original existence of trailing comma.
+                if FORCED_BRACKET_MACROS.contains(&&macro_name.as_str()) {
+                    context.inside_macro = false;
+                    trailing_comma = false;
+                }
                 let rewrite = try_opt!(rewrite_array(
                     expr_vec.iter().map(|x| &**x),
                     mk_sp(
@@ -226,6 +236,7 @@ pub fn rewrite_macro(
                     ),
                     context,
                     mac_shape,
+                    trailing_comma,
                 ));
 
                 Some(format!("{}{}", macro_name, rewrite))

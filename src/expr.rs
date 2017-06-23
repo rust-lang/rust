@@ -93,6 +93,7 @@ pub fn format_expr(
                 mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi),
                 context,
                 shape,
+                false,
             )
         }
         ast::ExprKind::Lit(ref l) => {
@@ -435,6 +436,7 @@ pub fn rewrite_array<'a, I>(
     span: Span,
     context: &RewriteContext,
     shape: Shape,
+    trailing_comma: bool,
 ) -> Option<String>
 where
     I: Iterator<Item = &'a ast::Expr>,
@@ -507,7 +509,13 @@ where
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::Never,
+        trailing_separator: if trailing_comma {
+            SeparatorTactic::Always
+        } else if context.inside_macro || context.config.array_layout() == IndentStyle::Visual {
+            SeparatorTactic::Never
+        } else {
+            SeparatorTactic::Vertical
+        },
         shape: nested_shape,
         ends_with_newline: false,
         config: context.config,
@@ -524,7 +532,7 @@ where
         }
     } else {
         format!(
-            "[\n{}{},\n{}]",
+            "[\n{}{}\n{}]",
             nested_shape.indent.to_string(context.config),
             list_str,
             shape.block().indent.to_string(context.config)
