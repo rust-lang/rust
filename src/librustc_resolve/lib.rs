@@ -325,7 +325,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              span,
                              E0435,
                              "attempt to use a non-constant value in a constant");
-            err.span_label(span, "non-constant used with constant");
+            err.span_label(span, "non-constant value");
             err
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
