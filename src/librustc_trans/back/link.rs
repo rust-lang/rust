@@ -431,6 +431,10 @@ fn link_binary_output(sess: &Session,
         out_filenames.push(out_filename);
     }
 
+    if sess.opts.cg.save_temps {
+        let _ = tmpdir.into_path();
+    }
+
     out_filenames
 }
 
