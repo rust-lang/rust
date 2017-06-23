@@ -15,8 +15,8 @@ use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
             last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
             trimmed_last_line_width, colon_spaces, mk_sp};
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
-            DefinitiveListTactic, ListTactic, definitive_tactic};
+use lists::{write_list, itemize_list, definitive_tactic, ListItem, ListFormatting,
+            SeparatorTactic, DefinitiveListTactic, ListTactic};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, ExprType};
 use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
 use visitor::FmtVisitor;
@@ -1152,12 +1152,11 @@ fn format_tuple_struct(
             let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
             result.push_str(&generics_str);
 
-            let where_budget = try_opt!(
-                context
-                    .config
-                    .max_width()
-                    .checked_sub(last_line_width(&result))
-            );
+            let where_budget = context
+                .config
+                .max_width()
+                .checked_sub(last_line_width(&result))
+                .unwrap_or(0);
             try_opt!(rewrite_where_clause(
                 context,
                 &generics.where_clause,
@@ -1197,7 +1196,11 @@ fn format_tuple_struct(
             }
             IndentStyle::Block => {
                 (
-                    ListTactic::HorizontalVertical,
+                    if result.contains('\n') {
+                        ListTactic::Vertical
+                    } else {
+                        ListTactic::HorizontalVertical
+                    },
                     offset.block_only().block_indent(&context.config),
                 )
             }
@@ -1233,15 +1236,20 @@ fn format_tuple_struct(
             context
                 .config
                 .max_width()
-                .checked_sub(offset.block_only().width() + result.len() + 3)
+                .checked_sub(offset.block_only().width() + last_line_width(&result) + 3)
         );
-        let body = try_opt!(list_helper(
-            items,
-            // TODO budget is wrong in block case
-            Shape::legacy(body_budget, item_indent),
-            context.config,
-            tactic,
-        ));
+
+        let item_vec: Vec<_> = items.collect();
+        let tactic = definitive_tactic(&item_vec, tactic, body_budget);
+        let fmt = ListFormatting {
+            tactic: tactic,
+            separator: ",",
+            trailing_separator: context.config.trailing_comma(),
+            shape: Shape::indented(item_indent, context.config),
+            ends_with_newline: false,
+            config: context.config,
+        };
+        let body = try_opt!(write_list(&item_vec, &fmt));
 
         if context.config.fn_args_layout() == IndentStyle::Visual || !body.contains('\n') {
             result.push('(');
