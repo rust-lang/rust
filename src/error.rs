@@ -91,7 +91,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::ReadBytesAsPointer =>
                 "a memory access tried to interpret some bytes as a pointer",
             EvalError::InvalidPointerMath =>
-                "attempted to do invalid arithmetic on pointers that would leak base addresses, e.g. compating pointers into different allocations",
+                "attempted to do invalid arithmetic on pointers that would leak base addresses, e.g. comparing pointers into different allocations",
             EvalError::ReadUndefBytes =>
                 "attempted to read undefined bytes",
             EvalError::DeadLocal =>
