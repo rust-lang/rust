@@ -717,19 +717,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
-                            // First, try casting
-                            let dest_val = self.value_to_primval(src, src_ty).and_then(
-                                |src_val| { self.cast_primval(src_val, src_ty, dest_ty) })
-                                // Alternatively, if the sizes are equal, try just reading at the target type
-                                .or_else(|err| {
-                                    let size = self.type_size(src_ty)?;
-                                    if size.is_some() && size == self.type_size(dest_ty)? {
-                                        self.value_to_primval(src, dest_ty)
-                                    } else {
-                                        Err(err)
-                                    }
-                                });
-                            self.write_value(Value::ByVal(dest_val?), dest, dest_ty)?;
+                            let src_val = self.value_to_primval(src, src_ty)?;
+                            let dest_val = self.cast_primval(src_val, src_ty, dest_ty)?;
+                            self.write_value(Value::ByVal(dest_val), dest, dest_ty)?;
                         }
                     }
 
@@ -908,7 +898,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // allocation.
 
         if ptr.is_null()? { // NULL pointers must only be offset by 0
-            return if offset == 0 { Ok(ptr) } else { Err(EvalError::NullPointerOutOfBounds) };
+            return if offset == 0 { Ok(ptr) } else { Err(EvalError::InvalidNullPointerUsage) };
         }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
@@ -919,7 +909,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.check_bounds(ptr, false)?;
             } else if ptr.is_null()? {
                 // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
-                return Err(EvalError::NullPointerOutOfBounds);
+                return Err(EvalError::InvalidNullPointerUsage);
             }
             Ok(ptr)
         } else {
