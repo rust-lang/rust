@@ -81,14 +81,6 @@ impl Pointer {
     pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         Ok(Pointer::new(self.alloc_id, value::offset(self.offset, i, layout)?))
     }
-
-    pub fn points_to_zst(&self) -> bool {
-        self.alloc_id == ZST_ALLOC_ID
-    }
-
-    pub fn zst_ptr() -> Self {
-        Pointer::new(ZST_ALLOC_ID, 0)
-    }
 }
 
 pub type TlsKey = usize;
@@ -157,15 +149,13 @@ pub struct Memory<'a, 'tcx> {
     next_thread_local: TlsKey,
 }
 
-const ZST_ALLOC_ID: AllocId = AllocId(0);
-
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn new(layout: &'a TargetDataLayout, max_memory: u64) -> Self {
         Memory {
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
-            next_id: AllocId(2),
+            next_id: AllocId(0),
             layout,
             memory_size: max_memory,
             memory_usage: 0,
@@ -206,10 +196,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn allocate(&mut self, size: u64, align: u64) -> EvalResult<'tcx, Pointer> {
-        if size == 0 {
-            return Ok(Pointer::zst_ptr());
-        }
         assert_ne!(align, 0);
+        assert!(align.is_power_of_two());
 
         if self.memory_size - self.memory_usage < size {
             return Err(EvalError::OutOfMemory {
@@ -236,12 +224,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
     pub fn reallocate(&mut self, ptr: Pointer, new_size: u64, align: u64) -> EvalResult<'tcx, Pointer> {
+        assert!(align.is_power_of_two());
         // TODO(solson): Report error about non-__rust_allocate'd pointer.
         if ptr.offset != 0 {
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
-        }
-        if ptr.points_to_zst() {
-            return self.allocate(new_size, align);
         }
         if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
             return Err(EvalError::ReallocatedStaticMemory);
@@ -253,6 +239,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             let amount = new_size - size;
             self.memory_usage += amount;
             let alloc = self.get_mut(ptr.alloc_id)?;
+            // FIXME: check alignment here
             assert_eq!(amount as usize as u64, amount);
             alloc.bytes.extend(iter::repeat(0).take(amount as usize));
             alloc.undef_mask.grow(amount, false);
@@ -260,6 +247,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             self.memory_usage -= size - new_size;
             self.clear_relocations(ptr.offset(new_size, self.layout)?, size - new_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
+            // FIXME: check alignment here
             // `as usize` is fine here, since it is smaller than `size`, which came from a usize
             alloc.bytes.truncate(new_size as usize);
             alloc.bytes.shrink_to_fit();
@@ -271,9 +259,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     // TODO(solson): See comment on `reallocate`.
     pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<'tcx> {
-        if ptr.points_to_zst() {
-            return Ok(());
-        }
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
@@ -419,22 +404,22 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// with associated destructors, implementations may stop calling destructors,
     /// or they may continue calling destructors until no non-NULL values with
     /// associated destructors exist, even though this might result in an infinite loop.
-    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> Option<(ty::Instance<'tcx>, PrimVal, TlsKey)> {
+    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, PrimVal, TlsKey)>> {
         use std::collections::Bound::*;
         let start = match key {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
         for (&key, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.range_mut((start, Unbounded)) {
-            if *data != PrimVal::Bytes(0) {
+            if !data.is_null()? {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
                     *data = PrimVal::Bytes(0);
-                    return ret;
+                    return Ok(ret);
                 }
             }
         }
-        return None;
+        return Ok(None);
     }
 }
 
@@ -459,7 +444,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -474,7 +458,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             },
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
-                None if id == ZST_ALLOC_ID => Err(EvalError::InvalidMemoryAccess),
                 None => Err(EvalError::DanglingPointerDeref),
             }
         }
@@ -508,7 +491,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let mut allocs_seen = HashSet::new();
 
         while let Some(id) = allocs_to_print.pop_front() {
-            if id == ZST_ALLOC_ID { continue; }
             let mut msg = format!("Alloc {:<5} ", format!("{}:", id));
             let prefix_len = msg.len();
             let mut relocations = vec![];
@@ -556,10 +538,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 for (i, target_id) in relocations {
                     // this `as usize` is fine, since we can't print more chars than `usize::MAX`
                     write!(msg, "{:1$}", "", ((i - pos) * 3) as usize).unwrap();
-                    let target = match target_id {
-                        ZST_ALLOC_ID => String::from("zst"),
-                        _ => format!("({})", target_id),
-                    };
+                    let target = format!("({})", target_id);
                     // this `as usize` is fine, since we can't print more chars than `usize::MAX`
                     write!(msg, "└{0:─^1$}┘ ", target, relocation_width as usize).unwrap();
                     pos = i + self.pointer_size();
@@ -637,7 +616,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// mark an allocation as being the entry point to a static (see `static_alloc` field)
     pub fn mark_static(&mut self, alloc_id: AllocId) {
         trace!("mark_static: {:?}", alloc_id);
-        if alloc_id != ZST_ALLOC_ID && !self.static_alloc.insert(alloc_id) {
+        if !self.static_alloc.insert(alloc_id) {
             bug!("tried to mark an allocation ({:?}) as static twice", alloc_id);
         }
     }
@@ -667,7 +646,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 // mark recursively
                 mem::replace(relocations, Default::default())
             },
-            None if alloc_id == ZST_ALLOC_ID => return Ok(()),
             None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
             _ => return Ok(()),
         };

@@ -42,7 +42,7 @@ pub enum Value {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `PrimVal` can either represent the raw bytes
 /// of a simple value, a pointer into another `Allocation`, or be undefined.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub enum PrimVal {
     /// The raw bytes of a simple value.
     Bytes(u128),

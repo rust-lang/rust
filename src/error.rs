@@ -59,6 +59,8 @@ pub enum EvalError<'tcx> {
     ReallocatedStaticMemory,
     DeallocatedStaticMemory,
     Layout(layout::LayoutError<'tcx>),
+    HeapAllocZeroBytes,
+    HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
     Panic,
 }
@@ -89,7 +91,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::ReadBytesAsPointer =>
                 "a memory access tried to interpret some bytes as a pointer",
             EvalError::InvalidPointerMath =>
-                "attempted to do invalid arithmetic on pointers that would leak base addresses, e.g. compating pointers into different allocations",
+                "attempted to do invalid arithmetic on pointers that would leak base addresses, e.g. comparing pointers into different allocations",
             EvalError::ReadUndefBytes =>
                 "attempted to read undefined bytes",
             EvalError::DeadLocal =>
@@ -146,6 +148,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "rustc layout computation failed",
             EvalError::UnterminatedCString(_) =>
                 "attempted to get length of a null terminated string, but no null found before end of allocation",
+            EvalError::HeapAllocZeroBytes =>
+                "tried to re-, de- or allocate zero bytes on the heap",
+            EvalError::HeapAllocNonPowerOfTwoAlignment(_) =>
+                "tried to re-, de-, or allocate heap memory with alignment that is not a power of two",
             EvalError::Unreachable =>
                 "entered unreachable code",
             EvalError::Panic =>

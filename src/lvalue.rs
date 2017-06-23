@@ -8,7 +8,7 @@ use eval_context::{EvalContext};
 use memory::Pointer;
 use value::{PrimVal, Value};
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub enum Lvalue<'tcx> {
     /// An lvalue referring to a value allocated in the `Memory` system.
     Ptr {
@@ -71,10 +71,6 @@ impl<'tcx> Lvalue<'tcx> {
 
     fn from_primval_ptr(ptr: PrimVal) -> Self {
         Lvalue::Ptr { ptr, extra: LvalueExtra::None }
-    }
-
-    pub fn zst() -> Self {
-        Self::from_ptr(Pointer::zst_ptr())
     }
 
     pub fn from_ptr(ptr: Pointer) -> Self {

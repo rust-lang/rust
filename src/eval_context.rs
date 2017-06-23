@@ -362,7 +362,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             StackPopCleanup::None => {},
             StackPopCleanup::Tls(key) => {
                 // either fetch the next dtor or start new from the beginning, if any are left with a non-null data
-                if let Some((instance, ptr, key)) = self.memory.fetch_tls_dtor(key).or_else(|| self.memory.fetch_tls_dtor(None)) {
+                let dtor = match self.memory.fetch_tls_dtor(key)? {
+                    dtor @ Some(_) => dtor,
+                    None => self.memory.fetch_tls_dtor(None)?,
+                };
+                if let Some((instance, ptr, key)) = dtor {
                     trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
                     // TODO: Potentially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
                     let mir = self.load_mir(instance.def)?;
@@ -370,7 +374,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         instance,
                         mir.span,
                         mir,
-                        Lvalue::zst(),
+                        Lvalue::undef(),
                         StackPopCleanup::Tls(Some(key)),
                     )?;
                     let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
@@ -673,8 +677,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
-                let ptr = self.alloc_ptr(ty)?;
-                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                // FIXME: call the `exchange_malloc` lang item if available
+                if self.type_size(ty)?.expect("box only works with sized types") == 0 {
+                    let align = self.type_align(ty)?;
+                    self.write_primval(dest, PrimVal::Bytes(align.into()), dest_ty)?;
+                } else {
+                    let ptr = self.alloc_ptr(ty)?;
+                    self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                }
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
@@ -904,11 +914,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
         return if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.signed_offset(offset, self.memory.layout)?;
-            // Do not do bounds-checking for integers or ZST; they can never alias a normal pointer anyway.
+            // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
             if let PrimVal::Ptr(ptr) = ptr {
-                if !(ptr.points_to_zst() && (offset == 0 || pointee_size == 0)) {
-                    self.memory.check_bounds(ptr, false)?;
-                }
+                self.memory.check_bounds(ptr, false)?;
             } else if ptr.is_null()? {
                 // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
                 return Err(EvalError::NullPointerOutOfBounds);
@@ -1697,7 +1705,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 main_instance,
                 main_mir.span,
                 main_mir,
-                Lvalue::zst(),
+                Lvalue::undef(),
                 StackPopCleanup::Tls(None),
             )?;
         }
