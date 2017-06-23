@@ -33,6 +33,7 @@ Compiler
 - [Added a lot][42264] of [new error codes][42302]
 - [Added `target-feature=+crt-static` option][37406] [RFC 1721] Which allows
   libraries with C Run-time Libraries(CRT) to be statically linked.
+- [Fixed various ARM codegen bugs][42740]
 
 Libraries
 ---------
@@ -90,6 +91,8 @@ Misc
 - [Rust will now release XZ compressed packages][rust-installer/57]
 - [rustup will now prefer to download rust packages with
   XZ compression][rustup/1100] over GZip packages.
+- [Added the ability to escape `#` in rust documentation][41785] By adding
+  additional `#`'s ie. `##` is now `#`
 
 Compatibility Notes
 -------------------
@@ -112,6 +115,8 @@ Compatibility Notes
   match patterns is now a hard error][36891] This was previously a warning.
 - [Lifetimes named `'_` are no longer allowed.][36892] This was previously
   a warning.
+- [From the pound escape, lines consisting of multiple `#`s are
+  now visible][41785]
 
 [34537]: https://github.com/rust-lang/rust/issues/34537
 [36886]: https://github.com/rust-lang/rust/issues/36886
@@ -134,6 +139,7 @@ Compatibility Notes
 [41676]: https://github.com/rust-lang/rust/pull/41676
 [41751]: https://github.com/rust-lang/rust/pull/41751
 [41764]: https://github.com/rust-lang/rust/pull/41764
+[41785]: https://github.com/rust-lang/rust/pull/41785
 [41873]: https://github.com/rust-lang/rust/pull/41873
 [41907]: https://github.com/rust-lang/rust/pull/41907
 [41946]: https://github.com/rust-lang/rust/pull/41946
@@ -145,6 +151,7 @@ Compatibility Notes
 [42225]: https://github.com/rust-lang/rust/pull/42225
 [42264]: https://github.com/rust-lang/rust/pull/42264
 [42302]: https://github.com/rust-lang/rust/pull/42302
+[42740]: https://github.com/rust-lang/rust/pull/42740
 [RFC 1444]: https://github.com/rust-lang/rfcs/pull/1444
 [RFC 1506]: https://github.com/rust-lang/rfcs/pull/1506
 [RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
