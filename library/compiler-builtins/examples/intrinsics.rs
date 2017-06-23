@@ -418,6 +418,7 @@ pub fn _start() -> ! {
 
 #[cfg(windows)]
 #[link(name = "kernel32")]
+#[link(name = "msvcrt")]
 extern {}
 
 // ARM targets need these symbols
