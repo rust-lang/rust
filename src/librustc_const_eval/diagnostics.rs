@@ -436,17 +436,19 @@ that happens.
 Qualified names are good practice, and most code works well with them. But if
 you prefer them unqualified, you can import the variants into scope:
 
-```ignore
+```
 use Method::*;
 enum Method { GET, POST }
+# fn main() {}
 ```
 
 If you want others to be able to import variants from your module directly, use
 `pub use`:
 
-```ignore
+```
 pub use Method::*;
-enum Method { GET, POST }
+pub enum Method { GET, POST }
+# fn main() {}
 ```
 "##,
 
