@@ -20,11 +20,19 @@ pub mod udiv;
 /// Trait for some basic operations on integers
 pub trait Int:
     Copy +
-    PartialEq  +
+    PartialEq +
+    PartialOrd +
+    ops::AddAssign +
+    ops::Add<Output = Self> +
+    ops::Sub<Output = Self> +
+    ops::Div<Output = Self> +
     ops::Shl<u32, Output = Self> +
     ops::Shr<u32, Output = Self> +
     ops::BitOr<Output = Self> +
-    // ops::BitAnd<Output = Self> +
+    ops::BitXor<Output = Self> +
+    ops::BitAnd<Output = Self> +
+    ops::BitAndAssign +
+    ops::Not<Output = Self> +
 {
     /// Type with the same width but other signedness
     type OtherSign: Int;
@@ -34,8 +42,8 @@ pub trait Int:
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
 
-    /// Returns the zero representation of this number
     fn zero() -> Self;
+    fn one() -> Self;
 
     /// Extracts the sign from self and returns a tuple.
     ///
@@ -51,6 +59,12 @@ pub trait Int:
 
     /// Convert to a signed representation
     fn unsigned(self) -> Self::UnsignedInt;
+
+    // copied from primitive integers, but put in a trait
+    fn max_value() -> Self;
+    fn min_value() -> Self;
+    fn wrapping_add(self, other: Self) -> Self;
+    fn wrapping_mul(self, other: Self) -> Self;
 }
 
 macro_rules! int_impl {
@@ -63,6 +77,10 @@ macro_rules! int_impl {
                 0
             }
 
+            fn one() -> Self {
+                1
+            }
+
             fn bits() -> u32 {
                 $bits
             }
@@ -73,6 +91,22 @@ macro_rules! int_impl {
 
             fn unsigned(self) -> $uty {
                 self
+            }
+
+            fn max_value() -> Self {
+                <Self>::max_value()
+            }
+
+            fn min_value() -> Self {
+                <Self>::min_value()
+            }
+
+            fn wrapping_add(self, other: Self) -> Self {
+                <Self>::wrapping_add(self, other)
+            }
+
+            fn wrapping_mul(self, other: Self) -> Self {
+                <Self>::wrapping_mul(self, other)
             }
         }
 
@@ -88,6 +122,10 @@ macro_rules! int_impl {
                 0
             }
 
+            fn one() -> Self {
+                1
+            }
+
             fn extract_sign(self) -> (bool, $uty) {
                 if self < 0 {
                     (true, (!(self as $uty)).wrapping_add(1))
@@ -98,6 +136,22 @@ macro_rules! int_impl {
 
             fn unsigned(self) -> $uty {
                 self as $uty
+            }
+
+            fn max_value() -> Self {
+                <Self>::max_value()
+            }
+
+            fn min_value() -> Self {
+                <Self>::min_value()
+            }
+
+            fn wrapping_add(self, other: Self) -> Self {
+                <Self>::wrapping_add(self, other)
+            }
+
+            fn wrapping_mul(self, other: Self) -> Self {
+                <Self>::wrapping_mul(self, other)
             }
         }
     }
@@ -113,7 +167,9 @@ pub trait LargeInt: Int {
     type HighHalf: Int;
 
     fn low(self) -> Self::LowHalf;
+    fn low_as_high(low: Self::LowHalf) -> Self::HighHalf;
     fn high(self) -> Self::HighHalf;
+    fn high_as_low(low: Self::HighHalf) -> Self::LowHalf;
     fn from_parts(low: Self::LowHalf, high: Self::HighHalf) -> Self;
 }
 
@@ -126,8 +182,14 @@ macro_rules! large_int {
             fn low(self) -> $tylow {
                 self as $tylow
             }
+            fn low_as_high(low: $tylow) -> $tyhigh {
+                low as $tyhigh
+            }
             fn high(self) -> $tyhigh {
                 (self >> $halfbits) as $tyhigh
+            }
+            fn high_as_low(high: $tyhigh) -> $tylow {
+                high as $tylow
             }
             fn from_parts(low: $tylow, high: $tyhigh) -> $ty {
                 low as $ty | ((high as $ty) << $halfbits)
