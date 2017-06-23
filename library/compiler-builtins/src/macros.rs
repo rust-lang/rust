@@ -7,7 +7,7 @@ macro_rules! intrinsics {
     // intrinsic.
     (
         #[use_c_shim_if($($cfg_clause:tt)*)]
-        $(#[$attr:meta])*
+        $(#[$($attr:tt)*])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
             $($body:tt)*
         }
@@ -16,7 +16,6 @@ macro_rules! intrinsics {
     ) => (
 
         #[cfg(all(feature = "c", $($cfg_clause)*))]
-        $(#[$attr])*
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             extern $abi {
                 fn $name($($argname: $ty),*) -> $ret;
@@ -28,7 +27,7 @@ macro_rules! intrinsics {
 
         #[cfg(not(all(feature = "c", $($cfg_clause)*)))]
         intrinsics! {
-            $(#[$attr])*
+            $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
                 $($body)*
             }
@@ -42,7 +41,7 @@ macro_rules! intrinsics {
     // ARM and `"C"` elsewhere.
     (
         #[aapcs_on_arm]
-        $(#[$attr:meta])*
+        $(#[$($attr:tt)*])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
             $($body:tt)*
         }
@@ -51,7 +50,7 @@ macro_rules! intrinsics {
     ) => (
         #[cfg(target_arch = "arm")]
         intrinsics! {
-            $(#[$attr])*
+            $(#[$($attr)*])*
             pub extern "aapcs" fn $name( $($argname: $ty),* ) -> $ret {
                 $($body)*
             }
@@ -59,7 +58,7 @@ macro_rules! intrinsics {
 
         #[cfg(not(target_arch = "arm"))]
         intrinsics! {
-            $(#[$attr])*
+            $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
                 $($body)*
             }
@@ -72,7 +71,7 @@ macro_rules! intrinsics {
     // win64 for some methods.
     (
         #[unadjusted_on_win64]
-        $(#[$attr:meta])*
+        $(#[$($attr:tt)*])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
             $($body:tt)*
         }
@@ -81,7 +80,7 @@ macro_rules! intrinsics {
     ) => (
         #[cfg(all(windows, target_pointer_width = "64"))]
         intrinsics! {
-            $(#[$attr])*
+            $(#[$($attr)*])*
             pub extern "unadjusted" fn $name( $($argname: $ty),* ) -> $ret {
                 $($body)*
             }
@@ -89,7 +88,7 @@ macro_rules! intrinsics {
 
         #[cfg(not(all(windows, target_pointer_width = "64")))]
         intrinsics! {
-            $(#[$attr])*
+            $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
                 $($body)*
             }
@@ -102,7 +101,7 @@ macro_rules! intrinsics {
     // bit calling convention correct.
     (
         #[win64_128bit_abi_hack]
-        $(#[$attr:meta])*
+        $(#[$($attr:tt)*])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
             $($body:tt)*
         }
@@ -110,7 +109,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg(all(windows, target_pointer_width = "64"))]
-        $(#[$attr])*
+        $(#[$($attr)*])*
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }
@@ -130,7 +129,49 @@ macro_rules! intrinsics {
 
         #[cfg(not(all(windows, target_pointer_width = "64")))]
         intrinsics! {
-            $(#[$attr])*
+            $(#[$($attr)*])*
+            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
+    // A bunch of intrinsics on ARM are aliased in the standard compiler-rt
+    // build under `__aeabi_*` aliases, and LLVM will call these instead of the
+    // original function. Handle that here
+    (
+        #[arm_aeabi_alias = $alias:ident]
+        $(#[$($attr:tt)*])*
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        #[cfg(target_arch = "arm")]
+        $(#[$($attr)*])*
+        pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            $($body)*
+        }
+
+        #[cfg(target_arch = "arm")]
+        pub mod $name {
+            intrinsics! {
+                pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
+                    super::$name($($argname),*)
+                }
+
+                pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+                    super::$name($($argname),*)
+                }
+            }
+        }
+
+        #[cfg(not(target_arch = "arm"))]
+        intrinsics! {
+            $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
                 $($body)*
             }
@@ -140,14 +181,14 @@ macro_rules! intrinsics {
     );
 
     (
-        $(#[$attr:meta])*
+        $(#[$($attr:tt)*])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
             $($body:tt)*
         }
 
         $($rest:tt)*
     ) => (
-        $(#[$attr])*
+        $(#[$($attr)*])*
         #[cfg_attr(not(test), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*

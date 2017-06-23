@@ -70,15 +70,18 @@ macro_rules! int_to_float {
 }
 
 intrinsics! {
+    #[arm_aeabi_alias = __aeabi_i2f]
     pub extern "C" fn __floatsisf(i: i32) -> f32 {
         int_to_float!(i, i32, f32)
     }
 
+    #[arm_aeabi_alias = __aeabi_i2d]
     pub extern "C" fn __floatsidf(i: i32) -> f64 {
         int_to_float!(i, i32, f64)
     }
 
     #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
+    #[arm_aeabi_alias = __aeabi_l2d]
     pub extern "C" fn __floatdidf(i: i64) -> f64 {
         // On x86_64 LLVM will use native instructions for this conversion, we
         // can just do it directly
@@ -99,16 +102,19 @@ intrinsics! {
         int_to_float!(i, i128, f64)
     }
 
+    #[arm_aeabi_alias = __aeabi_ui2f]
     pub extern "C" fn __floatunsisf(i: u32) -> f32 {
         int_to_float!(i, u32, f32)
     }
 
+    #[arm_aeabi_alias = __aeabi_ui2d]
     pub extern "C" fn __floatunsidf(i: u32) -> f64 {
         int_to_float!(i, u32, f64)
     }
 
     #[use_c_shim_if(all(any(target_arch = "x86", target_arch = "x86_64"),
                         not(target_env = "msvc")))]
+    #[arm_aeabi_alias = __aeabi_ul2d]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
         int_to_float!(i, u64, f64)
     }
@@ -182,10 +188,12 @@ macro_rules! float_to_int {
 }
 
 intrinsics! {
+    #[arm_aeabi_alias = __aeabi_f2iz]
     pub extern "C" fn __fixsfsi(f: f32) -> i32 {
         float_to_int!(f, f32, i32)
     }
 
+    #[arm_aeabi_alias = __aeabi_f2lz]
     pub extern "C" fn __fixsfdi(f: f32) -> i64 {
         float_to_int!(f, f32, i64)
     }
@@ -195,10 +203,12 @@ intrinsics! {
         float_to_int!(f, f32, i128)
     }
 
+    #[arm_aeabi_alias = __aeabi_d2iz]
     pub extern "C" fn __fixdfsi(f: f64) -> i32 {
         float_to_int!(f, f64, i32)
     }
 
+    #[arm_aeabi_alias = __aeabi_d2lz]
     pub extern "C" fn __fixdfdi(f: f64) -> i64 {
         float_to_int!(f, f64, i64)
     }
@@ -208,10 +218,12 @@ intrinsics! {
         float_to_int!(f, f64, i128)
     }
 
+    #[arm_aeabi_alias = __aeabi_f2uiz]
     pub extern "C" fn __fixunssfsi(f: f32) -> u32 {
         float_to_int!(f, f32, u32)
     }
 
+    #[arm_aeabi_alias = __aeabi_f2ulz]
     pub extern "C" fn __fixunssfdi(f: f32) -> u64 {
         float_to_int!(f, f32, u64)
     }
@@ -221,10 +233,12 @@ intrinsics! {
         float_to_int!(f, f32, u128)
     }
 
+    #[arm_aeabi_alias = __aeabi_d2uiz]
     pub extern "C" fn __fixunsdfsi(f: f64) -> u32 {
         float_to_int!(f, f64, u32)
     }
 
+    #[arm_aeabi_alias = __aeabi_d2ulz]
     pub extern "C" fn __fixunsdfdi(f: f64) -> u64 {
         float_to_int!(f, f64, u64)
     }

@@ -50,19 +50,6 @@ case $1 in
         ;;
 esac
 
-# Verify that there are no undefined symbols to `panic` within our implementations
-# TODO(#79) fix the undefined references problem for debug-assertions+lto
-case $1 in
-    thumb*)
-        RUSTFLAGS="-C debug-assertions=no" xargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto -C link-arg=-nostartfiles
-        xargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
-        ;;
-    *)
-        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto
-        cargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
-        ;;
-esac
-
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in
     armv7-*)
@@ -109,9 +96,24 @@ for rlib in $(echo $path); do
     set -ex
 done
 
+rm -f $path
+
+# Verify that there are no undefined symbols to `panic` within our implementations
+# TODO(#79) fix the undefined references problem for debug-assertions+lto
+case $1 in
+    thumb*)
+        RUSTFLAGS="-C debug-assertions=no" xargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto -C link-arg=-nostartfiles
+        xargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
+        ;;
+    *)
+        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto
+        cargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
+        ;;
+esac
+
 # Ensure no references to a panicking function
 for rlib in $(echo $path); do
-    set +x
+    set +ex
     $PREFIX$NM -u $rlib 2>&1 | grep panicking
 
     if test $? = 0; then

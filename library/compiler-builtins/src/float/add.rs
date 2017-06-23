@@ -181,11 +181,13 @@ macro_rules! add {
 
 intrinsics! {
     #[aapcs_on_arm]
+    #[arm_aeabi_alias = __aeabi_fadd]
     pub extern "C" fn __addsf3(a: f32, b: f32) -> f32 {
         add!(a, b, f32)
     }
 
     #[aapcs_on_arm]
+    #[arm_aeabi_alias = __aeabi_dadd]
     pub extern "C" fn __adddf3(a: f64, b: f64) -> f64 {
         add!(a, b, f64)
     }
