@@ -1,140 +1,6 @@
 use core::intrinsics;
+
 use int::{Int, LargeInt};
-
-/// Returns `n / d`
-#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
-#[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
-#[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
-pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
-    // Special cases
-    if d == 0 {
-        // NOTE This should be unreachable in safe Rust because the program will panic before
-        // this intrinsic is called
-        unsafe {
-            intrinsics::abort()
-        }
-    }
-
-    if n == 0 {
-        return 0;
-    }
-
-    let mut sr = d.leading_zeros().wrapping_sub(n.leading_zeros());
-
-    // d > n
-    if sr > u32::bits() - 1 {
-        return 0;
-    }
-
-    // d == 1
-    if sr == u32::bits() - 1 {
-        return n;
-    }
-
-    sr += 1;
-
-    // 1 <= sr <= u32::bits() - 1
-    let mut q = n << (u32::bits() - sr);
-    let mut r = n >> sr;
-
-    let mut carry = 0;
-    for _ in 0..sr {
-        // r:q = ((r:q) << 1) | carry
-        r = (r << 1) | (q >> (u32::bits() - 1));
-        q = (q << 1) | carry;
-
-        // carry = 0;
-        // if r > d {
-        //     r -= d;
-        //     carry = 1;
-        // }
-
-        let s = (d.wrapping_sub(r).wrapping_sub(1)) as i32 >> (u32::bits() - 1);
-        carry = (s & 1) as u32;
-        r -= d & s as u32;
-    }
-
-    (q << 1) | carry
-}
-
-/// Returns `n % d`
-#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
-#[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
-    #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
-    extern "C" {
-        fn __udivsi3(n: u32, d: u32) -> u32;
-    }
-
-    let q = match () {
-        #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios")))]
-        () => unsafe { __udivsi3(n, d) },
-        #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"))))]
-        () => __udivsi3(n, d),
-    };
-
-    n - q * d
-}
-
-/// Returns `n / d` and sets `*rem = n % d`
-#[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
-#[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
-    #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m)))]
-    extern "C" {
-        fn __udivsi3(n: u32, d: u32) -> u32;
-    }
-
-    let q = match () {
-        #[cfg(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m)))]
-        () => unsafe { __udivsi3(n, d) },
-        #[cfg(not(all(feature = "c", target_arch = "arm", not(target_os = "ios"), not(thumbv6m))))]
-        () => __udivsi3(n, d),
-    };
-    if let Some(rem) = rem {
-        *rem = n - (q * d);
-    }
-    q
-}
-
-macro_rules! div_mod_intrinsics {
-    ($udiv_intr:ident, $umod_intr:ident : $ty:ty) => {
-        div_mod_intrinsics!($udiv_intr, $umod_intr : $ty,
-                            __udivmoddi4);
-    };
-    ($udiv_intr:ident, $umod_intr:ident : $ty:ty, $divmod_intr:expr) => {
-        div_mod_intrinsics!($udiv_intr, $umod_intr : $ty,
-                            $divmod_intr, $ty, |i|{ i });
-    };
-    ($udiv_intr:ident, $umod_intr:ident : $ty:ty, $divmod_intr:expr,
-     $tyret:ty, $conv:expr) => {
-        /// Returns `n / d`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $udiv_intr(n: $ty, d: $ty) -> $tyret {
-            let r = $divmod_intr(n, d, None);
-            ($conv)(r)
-        }
-
-        /// Returns `n % d`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn $umod_intr(a: $ty, b: $ty) -> $tyret {
-            use core::mem;
-
-            let mut rem = unsafe { mem::uninitialized() };
-            $divmod_intr(a, b, Some(&mut rem));
-            ($conv)(rem)
-        }
-    }
-}
-
-#[cfg(not(all(feature = "c", target_arch = "x86")))]
-div_mod_intrinsics!(__udivdi3, __umoddi3: u64);
-
-#[cfg(not(all(windows, target_pointer_width="64")))]
-div_mod_intrinsics!(__udivti3, __umodti3: u128, u128_div_mod);
-
-#[cfg(all(windows, target_pointer_width="64"))]
-div_mod_intrinsics!(__udivti3, __umodti3: u128, u128_div_mod, ::U64x2, ::conv);
 
 macro_rules! udivmod_inner {
     ($n:expr, $d:expr, $rem:expr, $ty:ty) => {{
@@ -285,30 +151,120 @@ macro_rules! udivmod_inner {
     }}
 }
 
-/// Returns `n / d` and sets `*rem = n % d`
-#[cfg_attr(not(test), no_mangle)]
-pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
-    udivmod_inner!(n, d, rem, u64)
-}
-
-macro_rules! udivmodti4 {
-    ($tyret:ty, $conv:expr) => {
-        /// Returns `n / d` and sets `*rem = n % d`
-        #[cfg_attr(not(test), no_mangle)]
-        pub extern "C" fn __udivmodti4(n: u128, d: u128, rem: Option<&mut u128>) -> $tyret {
-            let r = u128_div_mod(n, d, rem);
-            ($conv)(r)
+intrinsics! {
+    #[use_c_shim_if(all(target_arch = "arm",
+                        not(target_os = "ios"),
+                        not(thumbv6m)))]
+    /// Returns `n / d`
+    pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
+        // Special cases
+        if d == 0 {
+            // NOTE This should be unreachable in safe Rust because the program will panic before
+            // this intrinsic is called
+            unsafe {
+                intrinsics::abort()
+            }
         }
+
+        if n == 0 {
+            return 0;
+        }
+
+        let mut sr = d.leading_zeros().wrapping_sub(n.leading_zeros());
+
+        // d > n
+        if sr > u32::bits() - 1 {
+            return 0;
+        }
+
+        // d == 1
+        if sr == u32::bits() - 1 {
+            return n;
+        }
+
+        sr += 1;
+
+        // 1 <= sr <= u32::bits() - 1
+        let mut q = n << (u32::bits() - sr);
+        let mut r = n >> sr;
+
+        let mut carry = 0;
+        for _ in 0..sr {
+            // r:q = ((r:q) << 1) | carry
+            r = (r << 1) | (q >> (u32::bits() - 1));
+            q = (q << 1) | carry;
+
+            // carry = 0;
+            // if r > d {
+            //     r -= d;
+            //     carry = 1;
+            // }
+
+            let s = (d.wrapping_sub(r).wrapping_sub(1)) as i32 >> (u32::bits() - 1);
+            carry = (s & 1) as u32;
+            r -= d & s as u32;
+        }
+
+        (q << 1) | carry
+    }
+
+    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios")))]
+    /// Returns `n % d`
+    pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
+        let q = __udivsi3(n, d);
+        n - q * d
+    }
+
+    #[use_c_shim_if(all(target_arch = "arm",
+                        not(target_os = "ios"),
+                        not(thumbv6m)))]
+    /// Returns `n / d` and sets `*rem = n % d`
+    pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
+        let q = __udivsi3(n, d);
+        if let Some(rem) = rem {
+            *rem = n - (q * d);
+        }
+        q
+    }
+
+    #[use_c_shim_if(target_arch = "x86")]
+    /// Returns `n / d`
+    pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
+        __udivmoddi4(n, d, None)
+    }
+
+    #[use_c_shim_if(target_arch = "x86")]
+    /// Returns `n % d`
+    pub extern "C" fn __umoddi3(n: u64, d: u64) -> u64 {
+        let mut rem = 0;
+        __udivmoddi4(n, d, Some(&mut rem));
+        rem
+    }
+
+    #[win64_128bit_abi_hack]
+    /// Returns `n / d`
+    pub extern "C" fn __udivti3(n: u128, d: u128) -> u128 {
+        __udivmodti4(n, d, None)
+    }
+
+    #[win64_128bit_abi_hack]
+    /// Returns `n % d`
+    pub extern "C" fn __umodti3(n: u128, d: u128) -> u128 {
+        let mut rem = 0;
+        __udivmodti4(n, d, Some(&mut rem));
+        rem
+    }
+
+    /// Returns `n / d` and sets `*rem = n % d`
+    pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
+        udivmod_inner!(n, d, rem, u64)
+    }
+
+    #[win64_128bit_abi_hack]
+    /// Returns `n / d` and sets `*rem = n % d`
+    pub extern "C" fn __udivmodti4(n: u128,
+                                   d: u128,
+                                   rem: Option<&mut u128>) -> u128 {
+        udivmod_inner!(n, d, rem, u128)
     }
 }
-
-/// Returns `n / d` and sets `*rem = n % d`
-fn u128_div_mod(n: u128, d: u128, rem: Option<&mut u128>) -> u128 {
-    udivmod_inner!(n, d, rem, u128)
-}
-
-#[cfg(all(windows, target_pointer_width="64"))]
-udivmodti4!(::U64x2, ::conv);
-
-#[cfg(not(all(windows, target_pointer_width="64")))]
-udivmodti4!(u128, |i|{ i });
