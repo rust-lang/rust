@@ -4,5 +4,8 @@
 struct A;
 
 fn main() {
-    assert_eq!(&A as *const A, &A as *const A);
+    // can't use assert_eq, b/c that will try to print the pointer addresses with full MIR enabled
+    if &A as *const A != &A as *const A {
+        panic!();
+    }
 }
