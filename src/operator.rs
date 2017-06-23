@@ -159,10 +159,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 },
                 // These work on anything
                 Eq if left_kind == right_kind => {
-                    return Ok((PrimVal::from_bool(left == right), false));
+                    let result = match (left, right) {
+                        (PrimVal::Bytes(left), PrimVal::Bytes(right)) => left == right,
+                        (PrimVal::Ptr(left), PrimVal::Ptr(right)) => left == right,
+                        (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
+                        _ => false,
+                    };
+                    return Ok((PrimVal::from_bool(result), false));
                 }
                 Ne if left_kind == right_kind => {
-                    return Ok((PrimVal::from_bool(left != right), false));
+                    let result = match (left, right) {
+                        (PrimVal::Bytes(left), PrimVal::Bytes(right)) => left != right,
+                        (PrimVal::Ptr(left), PrimVal::Ptr(right)) => left != right,
+                        (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
+                        _ => true,
+                    };
+                    return Ok((PrimVal::from_bool(result), false));
                 }
                 // These need both pointers to be in the same allocation
                 Lt | Le | Gt | Ge | Sub

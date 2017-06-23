@@ -8,7 +8,7 @@ use eval_context::{EvalContext};
 use memory::Pointer;
 use value::{PrimVal, Value};
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub enum Lvalue<'tcx> {
     /// An lvalue referring to a value allocated in the `Memory` system.
     Ptr {
