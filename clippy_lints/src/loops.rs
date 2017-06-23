@@ -304,8 +304,10 @@ declare_lint! {
     "any loop that will always `break` or `return`"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+#[derive(Copy, Clone, Default)]
+pub struct Pass {
+    loop_count : usize,
+}
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
@@ -327,6 +329,13 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+    fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        match expr.node {
+            ExprWhile(..) | ExprLoop(..) => { self.loop_count -= 1; }
+            _ => ()
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
@@ -336,6 +345,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         match expr.node {
             ExprWhile(_, ref block, _) |
             ExprLoop(ref block, _, _) => {
+                self.loop_count += 1;
                 if never_loop(block, &expr.id) {
                     span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
                 }
@@ -398,7 +408,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if method_name.node == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR) &&
+                if self.loop_count < 2 && method_name.node == "next" &&
+                   match_trait_method(cx, match_expr, &paths::ITERATOR) &&
                    lhs_constructor.name == "Some" && !is_refutable(cx, &pat_args[0]) &&
                    !is_iterator_used_after_while_let(cx, iter_expr) {
                     let iterator = snippet(cx, method_args[0].span, "_");

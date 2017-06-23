@@ -165,4 +165,16 @@ fn refutable() {
     for &(1, 2, 3) in b {}
     for &Option::None in b.next() {}
     // */
+
+    let x = a.iter();
+    loop { // x is reused, so don't lint here
+        while let Some(v) = x.next() {
+        }
+    }
+
+    let y = a.iter();
+    for _ in 0..2 {
+        while let Some(v) = x.next() {
+        }
+    }
 }

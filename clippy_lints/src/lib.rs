@@ -250,7 +250,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box shadow::Pass);
     reg.register_late_lint_pass(box types::LetPass);
     reg.register_late_lint_pass(box types::UnitCmp);
-    reg.register_late_lint_pass(box loops::Pass);
+    reg.register_late_lint_pass(box loops::Pass::default());
     reg.register_late_lint_pass(box lifetimes::LifetimePass);
     reg.register_late_lint_pass(box entry::HashMapLint);
     reg.register_late_lint_pass(box ranges::StepByZero);
