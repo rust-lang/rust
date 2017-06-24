@@ -359,7 +359,7 @@ declare_features! (
     (active, allow_fail, "1.19.0", Some(42219)),
 
     // Allows unsized tuple coercion.
-    (active, unsized_tuple_coercion, "1.20.0", None),
+    (active, unsized_tuple_coercion, "1.20.0", Some(42877)),
 );
 
 declare_features! (

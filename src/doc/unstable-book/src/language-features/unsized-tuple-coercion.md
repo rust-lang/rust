@@ -1,8 +1,8 @@
 # `unsized_tuple_coercion`
 
-The tracking issue for this feature is: [#XXXXX]
+The tracking issue for this feature is: [#42877]
 
-[#XXXXX]: https://github.com/rust-lang/rust/issues/XXXXX
+[#42877]: https://github.com/rust-lang/rust/issues/42877
 
 ------------------------
 
