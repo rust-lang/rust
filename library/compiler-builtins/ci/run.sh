@@ -1,5 +1,19 @@
 set -ex
 
+case $1 in
+    thumb*)
+        cargo=xargo
+        ;;
+    *)
+        cargo=cargo
+        ;;
+esac
+
+INTRINSICS_FEATURES="c"
+if [ -z "$INTRINSICS_FAILS_WITH_MEM_FEATURE" ]; then
+  INTRINSICS_FEATURES="$INTRINSICS_FEATURES mem"
+fi
+
 # Test our implementation
 case $1 in
     thumb*)
@@ -41,14 +55,7 @@ case $1 in
 esac
 
 # Verify that we haven't drop any intrinsic/symbol
-case $1 in
-    thumb*)
-        xargo build --features 'c mem' --target $1 --example intrinsics
-        ;;
-    *)
-        cargo build --features 'c mem' --target $1 --example intrinsics
-        ;;
-esac
+$cargo build --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
 
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in
@@ -100,16 +107,11 @@ rm -f $path
 
 # Verify that there are no undefined symbols to `panic` within our implementations
 # TODO(#79) fix the undefined references problem for debug-assertions+lto
-case $1 in
-    thumb*)
-        RUSTFLAGS="-C debug-assertions=no" xargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto -C link-arg=-nostartfiles
-        xargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
-        ;;
-    *)
-        RUSTFLAGS="-C debug-assertions=no" cargo rustc --features 'c mem' --target $1 --example intrinsics -- -C lto
-        cargo rustc --features 'c mem' --target $1 --example intrinsics --release -- -C lto
-        ;;
-esac
+if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
+  RUSTFLAGS="-C debug-assertions=no" \
+    $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics -- -C lto
+fi
+$cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release -- -C lto
 
 # Ensure no references to a panicking function
 for rlib in $(echo $path); do

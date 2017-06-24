@@ -1,4 +1,6 @@
 environment:
+  DEBUG_LTO_BUILD_DOESNT_WORK: 1
+  INTRINSICS_FAILS_WITH_MEM_FEATURE: 1
   matrix:
     - TARGET: i686-pc-windows-msvc
     - TARGET: x86_64-pc-windows-msvc
