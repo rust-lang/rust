@@ -6,6 +6,5 @@
                 test), no_std)]
 
 // FIXME(#137)
-// FIXME(#158)
-#[cfg(not(any(target_arch = "mips", windows)))]
+#[cfg(not(target_arch = "mips"))]
 include!(concat!(env!("OUT_DIR"), "/udivmodti4.rs"));
