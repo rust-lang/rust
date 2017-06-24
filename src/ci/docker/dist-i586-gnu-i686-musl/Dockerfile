@@ -1,33 +1,11 @@
-FROM ubuntu:16.04
+FROM rust-ci-base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++-multilib \
-  make \
-  file \
-  curl \
-  ca-certificates \
-  python2.7 \
-  git \
-  cmake \
-  xz-utils \
-  sudo \
-  gdb \
-  patch \
-  libssl-dev \
-  pkg-config
+  g++-multilib
 
 WORKDIR /build/
 COPY dist-i586-gnu-i686-musl/musl-libunwind-patch.patch dist-i586-gnu-i686-musl/build-musl.sh /build/
 RUN sh /build/build-musl.sh && rm -rf /build
-
-RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
-    dpkg -i dumb-init_*.deb && \
-    rm dumb-init_*.deb
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
 
 ENV RUST_CONFIGURE_ARGS \
       --target=i686-unknown-linux-musl,i586-unknown-linux-gnu \

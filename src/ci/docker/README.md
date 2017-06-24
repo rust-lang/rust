@@ -21,6 +21,8 @@ Images will output artifacts in an `obj` dir at the root of a repository.
 - Each directory, excluding `scripts` and `disabled`, corresponds to a docker image
 - `scripts` contains files shared by docker images
 - `disabled` contains images that are not build travis
+- `base` contains that is used as a base for most of the remaining images.
+  It cannot be run directly.
 
 ## Cross toolchains
 

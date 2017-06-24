@@ -1,21 +1,4 @@
-FROM ubuntu:16.04
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
-  make \
-  file \
-  curl \
-  ca-certificates \
-  python \
-  git \
-  cmake \
-  sudo \
-  gdb \
-  xz-utils
-
-# dumb-init
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
+FROM rust-ci-base
 
 # emscripten
 COPY scripts/emscripten.sh /scripts/
@@ -35,10 +18,3 @@ ENV TARGETS=asmjs-unknown-emscripten
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS
-
-# cache
-COPY scripts/sccache.sh /scripts/
-RUN sh /scripts/sccache.sh
-
-# init
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]

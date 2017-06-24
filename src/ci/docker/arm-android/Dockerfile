@@ -1,24 +1,4 @@
-FROM ubuntu:16.04
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-  ca-certificates \
-  cmake \
-  curl \
-  file \
-  g++ \
-  git \
-  libssl-dev \
-  make \
-  pkg-config \
-  python2.7 \
-  sudo \
-  unzip \
-  xz-utils
-
-# dumb-init
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
+FROM rust-ci-base
 
 # ndk
 COPY scripts/android-ndk.sh /scripts/
@@ -50,10 +30,6 @@ ENV RUST_CONFIGURE_ARGS \
       --arm-linux-androideabi-ndk=/android/ndk/arm-9
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS
-
-# sccache
-COPY scripts/sccache.sh /scripts/
-RUN sh /scripts/sccache.sh
 
 # init
 COPY scripts/android-start-emulator.sh /scripts/

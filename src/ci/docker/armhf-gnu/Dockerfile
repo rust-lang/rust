@@ -1,22 +1,9 @@
-FROM ubuntu:16.04
+FROM rust-ci-base
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
-      bc \
-      bzip2 \
-      ca-certificates \
-      cmake \
-      cpio \
-      curl \
-      file \
-      g++ \
       gcc-arm-linux-gnueabihf \
-      git \
-      libc6-dev \
       libc6-dev-armhf-cross \
-      make \
-      python2.7 \
       qemu-system-arm \
-      xz-utils
 
 ENV ARCH=arm \
     CROSS_COMPILE=arm-linux-gnueabihf-
@@ -72,15 +59,6 @@ RUN arm-linux-gnueabihf-gcc addentropy.c -o rootfs/addentropy -static
 
 # TODO: What is this?!
 RUN curl -O http://ftp.nl.debian.org/debian/dists/jessie/main/installer-armhf/current/images/device-tree/vexpress-v2p-ca15-tc1.dtb
-
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
-RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
-    dpkg -i dumb-init_*.deb && \
-    rm dumb-init_*.deb
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV RUST_CONFIGURE_ARGS \
       --target=arm-unknown-linux-gnueabihf \

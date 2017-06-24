@@ -1,24 +1,4 @@
-FROM ubuntu:16.04
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-  ca-certificates \
-  cmake \
-  curl \
-  file \
-  g++ \
-  git \
-  libssl-dev \
-  make \
-  pkg-config \
-  python2.7 \
-  sudo \
-  unzip \
-  xz-utils
-
-# dumb-init
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
+FROM rust-ci-base
 
 # ndk
 COPY scripts/android-ndk.sh /scripts/
@@ -47,10 +27,3 @@ ENV RUST_CONFIGURE_ARGS \
       --x86_64-linux-android-ndk=/android/ndk/x86_64-21
 
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
-
-# cache
-COPY scripts/sccache.sh /scripts/
-RUN sh /scripts/sccache.sh
-
-# init
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
