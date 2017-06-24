@@ -146,13 +146,15 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                 }
                 (Some(o), Some(n)) => {
                     if !id_mapping.add_export(o, n) {
+                        let o_def_id = o.def.def_id();
+                        let n_def_id = n.def.def_id();
                         let o_vis = if old_vis == Public {
-                            cstore.visibility(o.def.def_id())
+                            cstore.visibility(o_def_id)
                         } else {
                             old_vis
                         };
                         let n_vis = if new_vis == Public {
-                            cstore.visibility(n.def.def_id())
+                            cstore.visibility(n_def_id)
                         } else {
                             new_vis
                         };
@@ -161,12 +163,58 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                         changes.new_binary(o, n, output);
 
                         if o_vis == Public && n_vis != Public {
-                            changes.add_binary(ItemMadePrivate, o.def.def_id(), None);
+                            changes.add_binary(ItemMadePrivate, o_def_id, None);
                         } else if o_vis != Public && n_vis == Public {
-                            changes.add_binary(ItemMadePublic, o.def.def_id(), None);
+                            changes.add_binary(ItemMadePublic, o_def_id, None);
                         }
 
-                        diff_item_structures(&mut changes, &mut id_mapping, tcx, o, n);
+                        // TODO: extend as needed.
+                        match (o.def, n.def) {
+                            // (matching) things we don't care about (for now)
+                            (Mod(_), Mod(_)) |
+                            (Trait(_), Trait(_)) |
+                            (AssociatedTy(_), AssociatedTy(_)) |
+                            (PrimTy(_), PrimTy(_)) |
+                            (TyParam(_), TyParam(_)) |
+                            (SelfTy(_, _), SelfTy(_, _)) |
+                            (Fn(_), Fn(_)) |
+                            (StructCtor(_, _), StructCtor(_, _)) |
+                            (VariantCtor(_, _), VariantCtor(_, _)) |
+                            (Method(_), Method(_)) |
+                            (AssociatedConst(_), AssociatedConst(_)) |
+                            (Local(_), Local(_)) |
+                            (Upvar(_, _, _), Upvar(_, _, _)) |
+                            (Label(_), Label(_)) |
+                            (GlobalAsm(_), GlobalAsm(_)) |
+                            (Macro(_, _), Macro(_, _)) |
+                            (Variant(_), Variant(_)) |
+                            (Const(_), Const(_)) |
+                            (Static(_, _), Static(_, _)) |
+                            (Err, Err) => {},
+                            (TyAlias(_), TyAlias(_)) => {
+                                let mut generics_changes =
+                                    diff_generics(tcx, o_def_id, n_def_id);
+                                for change_type in generics_changes.drain(..) {
+                                    changes.add_binary(change_type, o_def_id, None);
+                                }
+                            },
+                            // ADTs for now
+                            (Struct(_), Struct(_)) |
+                            (Union(_), Union(_)) |
+                            (Enum(_), Enum(_)) => {
+                                let mut generics_changes =
+                                    diff_generics(tcx, o_def_id, n_def_id);
+                                for change_type in generics_changes.drain(..) {
+                                    changes.add_binary(change_type, o_def_id, None);
+                                }
+
+                                diff_adts(&mut changes, &mut id_mapping, tcx, o, n);
+                            },
+                            // non-matching item pair - register the difference and abort
+                            _ => {
+                                changes.add_binary(KindDifference, o_def_id, None);
+                            },
+                        }
                     }
                 }
                 (Some(o), None) => {
@@ -191,60 +239,17 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     changes
 }
 
-/// Given two items, perform *structural* checks.
+/// Given two ADT items, perform *structural* checks.
 ///
 /// This establishes the needed correspondence relationship between non-toplevel items.
 /// For instance, struct fields, enum variants etc. are matched up against each other here.
-///
-/// If the two items can't be meaningfully compared because they are of different kinds,
-/// we return that difference directly.
-fn diff_item_structures(changes: &mut ChangeSet,
+fn diff_adts(changes: &mut ChangeSet,
                         id_mapping: &mut IdMapping,
                         tcx: TyCtxt,
                         old: Export,
                         new: Export) {
     let old_def_id = old.def.def_id();
     let new_def_id = new.def.def_id();
-
-    let mut generics_changes = diff_generics(tcx, old_def_id, new_def_id);
-    for change_type in generics_changes.drain(..) {
-        changes.add_binary(change_type, old_def_id, None);
-    }
-
-    // TODO: extend as needed.
-    match (old.def, new.def) {
-        // (matching) things we don't care about (for now)
-        (Mod(_), Mod(_)) |
-        (Trait(_), Trait(_)) |
-        (TyAlias(_), TyAlias(_)) |
-        (AssociatedTy(_), AssociatedTy(_)) |
-        (PrimTy(_), PrimTy(_)) |
-        (TyParam(_), TyParam(_)) |
-        (SelfTy(_, _), SelfTy(_, _)) |
-        (Fn(_), Fn(_)) |
-        (StructCtor(_, _), StructCtor(_, _)) |
-        (VariantCtor(_, _), VariantCtor(_, _)) |
-        (Method(_), Method(_)) |
-        (AssociatedConst(_), AssociatedConst(_)) |
-        (Local(_), Local(_)) |
-        (Upvar(_, _, _), Upvar(_, _, _)) |
-        (Label(_), Label(_)) |
-        (GlobalAsm(_), GlobalAsm(_)) |
-        (Macro(_, _), Macro(_, _)) |
-        (Variant(_), Variant(_)) |
-        (Const(_), Const(_)) |
-        (Static(_, _), Static(_, _)) |
-        (Err, Err) => return,
-        // ADTs for now
-        (Struct(_), Struct(_)) |
-        (Union(_), Union(_)) |
-        (Enum(_), Enum(_)) => {},
-        // non-matching item pair - register the difference and abort
-        _ => {
-            changes.add_binary(KindDifference, old_def_id, None);
-            return;
-        },
-    }
 
     let (old_def, new_def) = match (old.def, new.def) {
         (Struct(_), Struct(_)) |
