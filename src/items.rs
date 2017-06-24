@@ -392,7 +392,8 @@ impl<'a> FmtVisitor<'a> {
         generics: &ast::Generics,
         span: Span,
     ) {
-        self.buffer.push_str(&format_header("enum ", ident, vis));
+        let enum_header = format_header("enum ", ident, vis);
+        self.buffer.push_str(&enum_header);
 
         let enum_snippet = self.snippet(span);
         let brace_pos = enum_snippet.find_uncommented("{").unwrap();
@@ -406,6 +407,7 @@ impl<'a> FmtVisitor<'a> {
             enum_def.variants.is_empty(),
             self.block_indent,
             mk_sp(span.lo, body_start),
+            last_line_width(&enum_header),
         ).unwrap();
         self.buffer.push_str(&generics_str);
 
@@ -1071,11 +1073,19 @@ fn format_struct_struct(
                 fields.is_empty(),
                 offset,
                 mk_sp(span.lo, body_lo),
+                last_line_width(&result),
             ))
         }
         None => {
-            if context.config.item_brace_style() == BraceStyle::AlwaysNextLine &&
-                !fields.is_empty()
+            // 3 = ` {}`, 2 = ` {`.
+            let overhead = if fields.is_empty() { 3 } else { 2 };
+            if (context.config.item_brace_style() == BraceStyle::AlwaysNextLine &&
+                    !fields.is_empty()) ||
+                context
+                    .config
+                    .max_width()
+                    .checked_sub(result.len())
+                    .unwrap_or(0) < overhead
             {
                 format!("\n{}{{", offset.block_only().to_string(context.config))
             } else {
@@ -1083,7 +1093,18 @@ fn format_struct_struct(
             }
         }
     };
-    result.push_str(&generics_str);
+    // 1 = `}`
+    let overhead = if fields.is_empty() { 1 } else { 0 };
+    let max_len = context.config.max_width() - offset.width();
+    if !generics_str.contains('\n') && result.len() + generics_str.len() + overhead > max_len {
+        result.push('\n');
+        result.push_str(&offset
+            .block_indent(context.config)
+            .to_string(context.config));
+        result.push_str(&generics_str.trim_left());
+    } else {
+        result.push_str(&generics_str);
+    }
 
     if fields.is_empty() {
         let snippet = context.snippet(mk_sp(body_lo, span.hi - BytePos(1)));
@@ -1147,16 +1168,13 @@ fn format_tuple_struct(
 
     let where_clause_str = match generics {
         Some(generics) => {
-            let shape = Shape::indented(offset + last_line_width(&header_str), context.config);
+            let budget = context.budget(last_line_width(&header_str));
+            let shape = Shape::legacy(budget, offset);
             let g_span = mk_sp(span.lo, body_lo);
             let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
             result.push_str(&generics_str);
 
-            let where_budget = context
-                .config
-                .max_width()
-                .checked_sub(last_line_width(&result))
-                .unwrap_or(0);
+            let where_budget = context.budget(last_line_width(&result));
             try_opt!(rewrite_where_clause(
                 context,
                 &generics.where_clause,
@@ -1173,6 +1191,18 @@ fn format_tuple_struct(
     };
 
     if fields.is_empty() {
+        // 3 = `();`
+        let used_width = if result.contains('\n') {
+            last_line_width(&result) + 3
+        } else {
+            offset.width() + result.len() + 3
+        };
+        if used_width > context.config.max_width() {
+            result.push('\n');
+            result.push_str(&offset
+                .block_indent(context.config)
+                .to_string(context.config))
+        }
         result.push('(');
         let snippet = context.snippet(mk_sp(body_lo, context.codemap.span_before(span, ")")));
         if snippet.is_empty() {
