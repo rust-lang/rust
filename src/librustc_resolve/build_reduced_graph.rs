@@ -264,7 +264,7 @@ impl<'a> Resolver<'a> {
                     id: item.id,
                     parent,
                     imported_module: Cell::new(Some(module)),
-                    subclass: ImportDirectiveSubclass::ExternCrate,
+                    subclass: ImportDirectiveSubclass::ExternCrate { cnum: crate_id },
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),

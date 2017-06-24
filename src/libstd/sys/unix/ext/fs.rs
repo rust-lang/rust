@@ -154,8 +154,6 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
-    /// # #![feature(libc)]
-    /// extern crate libc;
     /// use std::fs::OpenOptions;
     /// use std::os::unix::fs::OpenOptionsExt;
     ///

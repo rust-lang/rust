@@ -797,6 +797,8 @@ pub struct GlobalCtxt<'tcx> {
 
     pub maybe_unused_trait_imports: NodeSet,
 
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span, CrateNum)>,
+
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
@@ -1038,6 +1040,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             mir_passes,
             freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
+            maybe_unused_extern_crates: resolutions.maybe_unused_extern_crates,
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),

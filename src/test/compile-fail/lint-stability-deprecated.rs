@@ -14,7 +14,7 @@
 // aux-build:stability_cfg2.rs
 
 #![warn(deprecated)]
-#![allow(dead_code)]
+#![allow(dead_code, unused_extern_crates)]
 #![feature(staged_api, test_feature, rustc_attrs)]
 
 #![stable(feature = "rust1", since = "1.0.0")]

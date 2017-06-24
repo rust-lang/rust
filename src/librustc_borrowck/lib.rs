@@ -28,9 +28,7 @@ extern crate rustc_errors as errors;
 extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_data_structures;
 extern crate rustc_mir;
-extern crate core; // for NonZero
 
 pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;

@@ -19,7 +19,7 @@ use {resolve_error, ResolutionError};
 
 use rustc::ty;
 use rustc::lint::builtin::PUB_USE_OF_PRIVATE_EXTERN_CRATE;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::def::*;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
@@ -48,7 +48,9 @@ pub enum ImportDirectiveSubclass<'a> {
         max_vis: Cell<ty::Visibility>, // The visibility of the greatest reexport.
         // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
     },
-    ExternCrate,
+    ExternCrate {
+        cnum: CrateNum,
+    },
     MacroUse,
 }
 
@@ -924,7 +926,7 @@ fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> St
     match *subclass {
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),
-        ExternCrate => "<extern crate>".to_string(),
+        ExternCrate { .. } => "<extern crate>".to_string(),
         MacroUse => "#[macro_use]".to_string(),
     }
 }

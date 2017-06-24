@@ -283,7 +283,7 @@
 #![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
-#![feature(panic_unwind)]
+#![cfg_attr(any(unix, target_os = "redox"), feature(panic_unwind))]
 #![feature(peek)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
@@ -358,6 +358,7 @@ extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
+#[cfg(any(unix, target_os = "redox"))]
 extern crate unwind;
 
 // compiler-rt intrinsics

@@ -72,4 +72,14 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let mut visitor = CheckVisitor { tcx, used_trait_imports };
     tcx.hir.krate().visit_all_item_likes(&mut visitor);
+
+    for &(id, span, cnum) in &tcx.maybe_unused_extern_crates {
+        if !tcx.is_compiler_builtins(cnum.as_def_id())
+            && !tcx.is_panic_runtime(cnum.as_def_id())
+            && !tcx.has_global_allocator(cnum.as_def_id()) {
+                let lint = lint::builtin::UNUSED_EXTERN_CRATES;
+                let msg = "unused extern crate";
+                tcx.lint_node(lint, id, span, msg);
+            }
+    }
 }
