@@ -1,3 +1,4 @@
+#[cfg(not(feature = "gen-tests"))]
 use core::intrinsics;
 
 #[cfg(feature = "mem")]

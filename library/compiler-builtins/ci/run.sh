@@ -125,7 +125,8 @@ case $1 in
 esac
 
 # Verify that we haven't drop any intrinsic/symbol
-$cargo build --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
+RUSTFLAGS="-C debug-assertions=no" \
+  $cargo build --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
