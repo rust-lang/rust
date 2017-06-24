@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assertion failed: `(left == right)`
+// error-pattern:assertion failed: `(left != right)`
 // error-pattern: left: `14`
-// error-pattern:right: `15`
+// error-pattern:right: `14`
 
 fn main() {
-    assert_eq!(14, 15);
+    assert_ne!(14, 14);
 }
