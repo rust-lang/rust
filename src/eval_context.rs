@@ -678,9 +678,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (_, align) = self.size_and_align_of_dst(ty, val)?;
                 match ptr {
                     PrimVal::Ptr(ptr) => {
-                        if !ptr.points_to_zst() { // assume ZST pointer to be always fully alignd (and anyway ZST pointers are going to disappear soon)
-                            self.memory.check_align(ptr, align, 0)?;
-                        }
+                        self.memory.check_align(ptr, align, 0)?;
                     }
                     PrimVal::Bytes(bytes) => {
                         let v = ((bytes as u128) % (1 << self.memory.pointer_size())) as u64;
