@@ -1424,6 +1424,15 @@ mod tests {
                 continue
             }
 
+            // `env` tests set and unset randomly generated variables
+            // with names starting with `TEST`. So between variable capture
+            // and process spawn `TEST*` variables can be unset
+            // if `env` tests executed concurrently with this test.
+            // Thus `TEST*` variables must not be checked in this test.
+            if k.starts_with("TEST") {
+                continue;
+            }
+
             // Windows has hidden environment variables whose names start with
             // equals signs (`=`). Those do not show up in the output of the
             // `set` command.
