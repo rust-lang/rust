@@ -974,7 +974,7 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn make_ascii_uppercase(&mut self) {
-        // Determine how position of first lowercase byte.
+        // Determine position of first lowercase byte.
         let pos_first_lower = match self.bytes().position(|c| c.is_ascii_lowercase()) {
             Some(p) => p,
             None => return,
@@ -993,18 +993,18 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn make_ascii_lowercase(&mut self) {
-        // Determine how position of first uppercase byte.
-        let pos_first_lower = match self.bytes().position(|c| c.is_ascii_uppercase()) {
+        // Determine position of first uppercase byte.
+        let pos_first_upper = match self.bytes().position(|c| c.is_ascii_uppercase()) {
             Some(p) => p,
             None => return,
         };
         let mut bytes = Vec::with_capacity(self.len());
-        unsafe { bytes.set_len(pos_first_lower); }
-        bytes.copy_from_slice(&self.as_bytes()[..pos_first_lower]);
+        unsafe { bytes.set_len(pos_first_upper); }
+        bytes.copy_from_slice(&self.as_bytes()[..pos_first_upper]);
         bytes.extend(
             self.bytes()
-                .skip(pos_first_lower)
-                .map(|b| b.to_ascii_uppercase()));
+                .skip(pos_first_upper)
+                .map(|b| b.to_ascii_lowercase()));
         // make_ascii_uppercase() preserves the UTF-8 invariant.
         let s = unsafe { String::from_utf8_unchecked(bytes) };
         *self = Cow::Owned(s)
