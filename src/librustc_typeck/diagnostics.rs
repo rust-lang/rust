@@ -4692,6 +4692,25 @@ match x {
 ```
 "##,
 
+E0620: r##"
+A cast to an unsized type was attempted.
+
+Erroneous code example:
+
+```compile_fail,E0620
+let x = &[1_usize, 2] as [usize]; // error: cast to unsized type: `&[usize; 2]`
+                                  //        as `[usize]`
+```
+
+In Rust, some types don't have a size at compile-time (like slices and traits
+for example). Therefore, you can't cast into them directly. Try casting to a
+reference instead:
+
+```
+let x = &[1_usize, 2] as &[usize]; // ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
