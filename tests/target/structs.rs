@@ -41,7 +41,11 @@ struct Bar;
 
 struct NewType(Type, OtherType);
 
-struct NewInt<T: Copy>(pub i32, SomeType /* inline comment */, T /* sup */);
+struct NewInt<T: Copy>(
+    pub i32,
+    SomeType, // inline comment
+    T, // sup
+);
 
 struct Qux<
     'a,
@@ -108,7 +112,10 @@ struct Baz {
 }
 
 // Will this be a one-liner?
-struct Tuple(A /* Comment */, B);
+struct Tuple(
+    A, // Comment
+    B,
+);
 
 pub struct State<F: FnMut() -> time::Timespec> {
     now: F,
@@ -157,10 +164,18 @@ struct Foo<T>(
     TTTTTTTTTTTTTTTTTTT,
     UUUUUUUUUUUUUUUUUUU,
 );
-struct Foo<T>(TTTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTT)
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUUUUUU,
+    TTTTTTTTTTTTTTTTTTT,
+)
 where
     T: PartialEq;
-struct Foo<T>(TTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTTTT)
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUUUUUU,
+    TTTTTTTTTTTTTTTTTTTTT,
+)
 where
     T: PartialEq;
 struct Foo<T>(

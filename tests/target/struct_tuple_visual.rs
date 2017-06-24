@@ -10,7 +10,7 @@ fn foo() {
         // Comment
         foo(), // Comment
         // Comment
-        bar(), /* Comment */
+        bar(), // Comment
     );
 
     Foo(Bar, f());
@@ -24,7 +24,7 @@ fn foo() {
 
     Baz(
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
-        zzzzz, /* test */
+        zzzzz, // test
     );
 
     A(

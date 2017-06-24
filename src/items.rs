@@ -1419,6 +1419,11 @@ fn rewrite_struct_field_type(
         .map(|ty| format!("{}{}", spacing, ty))
 }
 
+impl Rewrite for ast::StructField {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        rewrite_struct_field(context, self, shape, 0)
+    }
+}
 
 pub fn rewrite_struct_field(
     context: &RewriteContext,

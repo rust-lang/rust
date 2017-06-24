@@ -167,7 +167,9 @@ impl FileLines {
 }
 
 /// FileLines files iterator.
-pub struct Files<'a>(Option<::std::collections::hash_map::Keys<'a, String, Vec<Range>>>);
+pub struct Files<'a>(
+    Option<::std::collections::hash_map::Keys<'a, String, Vec<Range>>>,
+);
 
 impl<'a> iter::Iterator for Files<'a> {
     type Item = &'a String;

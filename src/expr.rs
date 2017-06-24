@@ -3035,8 +3035,7 @@ impl<'a> ToExpr for ast::StructField {
         None
     }
 
-    #[allow(unused_variables)]
-    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
+    fn can_be_overflowed(&self, _: &RewriteContext, _: usize) -> bool {
         false
     }
 }

@@ -73,14 +73,19 @@ struct Bar;
 
 struct NewType(Type, OtherType);
 
-struct NewInt<T: Copy>(pub i32, SomeType /* inline comment */, T /* sup */);
+struct NewInt<T: Copy>(
+    pub i32,
+    SomeType, // inline comment
+    T, // sup
+);
 
-struct Qux<'a,
-           N: Clone + 'a,
-           E: Clone + 'a,
-           G: Labeller<'a, N, E> + GraphWalk<'a, N, E>,
-           W: Write + Copy>
-(
+struct Qux<
+    'a,
+    N: Clone + 'a,
+    E: Clone + 'a,
+    G: Labeller<'a, N, E> + GraphWalk<'a, N, E>,
+    W: Write + Copy,
+>(
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, // Comment
     BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
     #[AnAttr]
@@ -94,7 +99,7 @@ struct Tuple(
     // Comment 1
     AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
     // Comment 2
-    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+    BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
 );
 
 // With a where clause and generics.
@@ -139,7 +144,10 @@ struct Baz {
 }
 
 // Will this be a one-liner?
-struct Tuple(A /* Comment */, B);
+struct Tuple(
+    A, // Comment
+    B,
+);
 
 pub struct State<F: FnMut() -> time::Timespec> {
     now: F,
@@ -186,19 +194,27 @@ struct Foo<T>(
     TTTTTTTTTTTTTTTTT,
     UUUUUUUUUUUUUUUUUUUUUUUU,
     TTTTTTTTTTTTTTTTTTT,
-    UUUUUUUUUUUUUUUUUUU
+    UUUUUUUUUUUUUUUUUUU,
 );
-struct Foo<T>(TTTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTT)
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUUUUUU,
+    TTTTTTTTTTTTTTTTTTT,
+)
 where
     T: PartialEq;
-struct Foo<T>(TTTTTTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUUUUUU, TTTTTTTTTTTTTTTTTTTTT)
+struct Foo<T>(
+    TTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUUUUUU,
+    TTTTTTTTTTTTTTTTTTTTT,
+)
 where
     T: PartialEq;
 struct Foo<T>(
     TTTTTTTTTTTTTTTTT,
     UUUUUUUUUUUUUUUUUUUUUUUU,
     TTTTTTTTTTTTTTTTTTT,
-    UUUUUUUUUUUUUUUUUUU
+    UUUUUUUUUUUUUUUUUUU,
 )
 where
     T: PartialEq;
@@ -208,7 +224,7 @@ struct Foo<T>(
     // Baz
     TTTTTTTTTTTTTTTTTTT,
     // Qux (FIXME #572 - doc comment)
-    UUUUUUUUUUUUUUUUUUU
+    UUUUUUUUUUUUUUUUUUU,
 );
 
 mod m {
@@ -223,7 +239,7 @@ mod m {
 struct Foo<T>(
     TTTTTTTTTTTTTTTTTTT,
     /// Qux
-    UUUUUUUUUUUUUUUUUUU
+    UUUUUUUUUUUUUUUUUUU,
 );
 
 struct Issue677 {
