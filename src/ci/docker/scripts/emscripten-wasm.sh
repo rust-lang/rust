@@ -27,27 +27,38 @@ exit 1
   set -x
 }
 
+# Download emsdk
 cd /
 curl -L https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz | \
     tar -xz
+
+# Download last known good emscripten from WebAssembly waterfall
+BUILD=$(curl -L https://storage.googleapis.com/wasm-llvm/builds/linux/lkgr.json | \
+    jq '.build | tonumber')
+curl -L https://storage.googleapis.com/wasm-llvm/builds/linux/$BUILD/wasm-binaries.tbz2 | \
+    hide_output tar xvkj
+
+# node 8 is required to run wasm
+cd /
+curl -L https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
+    tar -xJ
 
 cd /emsdk-portable
 ./emsdk update
 hide_output ./emsdk install sdk-1.37.13-64bit
 ./emsdk activate sdk-1.37.13-64bit
 
-# Compile and cache libc
-source ./emsdk_env.sh
-echo "main(){}" > a.c
-HOME=/emsdk-portable/ emcc a.c
-HOME=/emsdk-portable/ emcc -s BINARYEN=1 a.c
-rm -f a.*
+# Make emscripten use wasm-ready node and LLVM tools
+echo "NODE_JS='/node-v8.0.0-linux-x64/bin/node'" >> /root/.emscripten
+echo "LLVM_ROOT='/wasm-install/bin'" >> /root/.emscripten
 
 # Make emsdk usable by any user
 cp /root/.emscripten /emsdk-portable
 chmod a+rxw -R /emsdk-portable
 
-# node 8 is required to run wasm
-cd /
-curl -L https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
-  tar -xJ
+# Compile and cache libc
+source ./emsdk_env.sh
+echo "main(){}" > a.c
+HOME=/emsdk-portable/ emcc a.c
+HOME=/emsdk-portable/ emcc -s WASM=1 a.c
+rm -f a.*

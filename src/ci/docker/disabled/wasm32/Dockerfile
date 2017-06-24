@@ -20,8 +20,8 @@ COPY scripts/dumb-init.sh /scripts/
 RUN sh /scripts/dumb-init.sh
 
 # emscripten
-COPY scripts/emscripten.sh /scripts/
-RUN bash /scripts/emscripten.sh
+COPY scripts/emscripten-wasm.sh /scripts/
+RUN bash /scripts/emscripten-wasm.sh
 COPY disabled/wasm32/node.sh /usr/local/bin/node
 
 # cache
