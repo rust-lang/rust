@@ -1338,7 +1338,6 @@ actual:\n\
                              input)
     }
 
-
     fn compose_and_run(&self,
                        ProcArgs{ args, prog }: ProcArgs,
                        procenv: Vec<(String, String)> ,
