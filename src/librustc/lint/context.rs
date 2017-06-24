@@ -291,16 +291,13 @@ impl LintStore {
         self.by_name.insert(name.into(), Removed(reason.into()));
     }
 
-    #[allow(unused_variables)]
-    fn find_lint(&self, lint_name: &str, sess: &Session, span: Option<Span>)
-                 -> Result<LintId, FindLintError>
-    {
+    fn find_lint(&self, lint_name: &str) -> Result<LintId, FindLintError> {
         match self.by_name.get(lint_name) {
             Some(&Id(lint_id)) => Ok(lint_id),
             Some(&Renamed(_, lint_id)) => {
                 Ok(lint_id)
             },
-            Some(&Removed(ref reason)) => {
+            Some(&Removed(_)) => {
                 Err(FindLintError::Removed)
             },
             None => Err(FindLintError::NotFound)
@@ -313,7 +310,7 @@ impl LintStore {
                                     &lint_name[..], level);
 
             let lint_flag_val = Symbol::intern(&lint_name);
-            match self.find_lint(&lint_name[..], sess, None) {
+            match self.find_lint(&lint_name[..]) {
                 Ok(lint_id) => self.levels.set(lint_id, (level, CommandLine(lint_flag_val))),
                 Err(FindLintError::Removed) => { }
                 Err(_) => {
@@ -731,7 +728,7 @@ pub trait LintContext<'tcx>: Sized {
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
-                    match self.lints().find_lint(&lint_name.as_str(), &self.sess(), Some(span)) {
+                    match self.lints().find_lint(&lint_name.as_str()) {
                         Ok(lint_id) => vec![(lint_id, level, span)],
                         Err(FindLintError::NotFound) => {
                             match self.lints().lint_groups.get(&*lint_name.as_str()) {
@@ -1420,7 +1417,7 @@ impl Decodable for LintId {
     fn decode<D: Decoder>(d: &mut D) -> Result<LintId, D::Error> {
         let s = d.read_str()?;
         ty::tls::with(|tcx| {
-            match tcx.sess.lint_store.borrow().find_lint(&s, tcx.sess, None) {
+            match tcx.sess.lint_store.borrow().find_lint(&s) {
                 Ok(id) => Ok(id),
                 Err(_) => panic!("invalid lint-id `{}`", s),
             }
