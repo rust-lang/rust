@@ -974,21 +974,17 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn make_ascii_uppercase(&mut self) {
-        // Determine how many of the first N bytes are _not_ lowercase.
-        let num_not_lowercase =
-            self.bytes().take_while(|c| !c.is_ascii_lowercase()).count();
-        // If all the bytes are not lowercase, we don't need to do anything.
-        if num_not_lowercase == self.len() {
-            return;
-        }
-        // At least one character in the string is lowercase, so we'll need to
-        // build a new string.
+        // Determine how position of first lowercase byte.
+        let pos_first_lower = match self.bytes().position(|c| c.is_ascii_lowercase()) {
+            Some(p) => p,
+            None => return,
+        };
         let mut bytes = Vec::with_capacity(self.len());
-        unsafe { bytes.set_len(num_not_lowercase); }
-        bytes.copy_from_slice(&self.as_bytes()[..num_not_lowercase]);
+        unsafe { bytes.set_len(pos_first_lower); }
+        bytes.copy_from_slice(&self.as_bytes()[..pos_first_lower]);
         bytes.extend(
             self.bytes()
-                .skip(num_not_lowercase)
+                .skip(pos_first_lower)
                 .map(|b| b.to_ascii_uppercase()));
         // make_ascii_uppercase() preserves the UTF-8 invariant.
         let s = unsafe { String::from_utf8_unchecked(bytes) };
@@ -997,21 +993,17 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn make_ascii_lowercase(&mut self) {
-        // Determine how many of the first N bytes are _not_ uppercase.
-        let num_not_uppercase =
-            self.bytes().take_while(|c| !c.is_ascii_uppercase()).count();
-        // If all the bytes are not uppercase, we don't need to do anything.
-        if num_not_uppercase == self.len() {
-            return;
-        }
-        // At least one character in the string is uppercase, so we'll need to
-        // build a new string.
+        // Determine how position of first uppercase byte.
+        let pos_first_lower = match self.bytes().position(|c| c.is_ascii_uppercase()) {
+            Some(p) => p,
+            None => return,
+        };
         let mut bytes = Vec::with_capacity(self.len());
-        unsafe { bytes.set_len(num_not_uppercase); }
-        bytes.copy_from_slice(&self.as_bytes()[..num_not_uppercase]);
+        unsafe { bytes.set_len(pos_first_lower); }
+        bytes.copy_from_slice(&self.as_bytes()[..pos_first_lower]);
         bytes.extend(
             self.bytes()
-                .skip(num_not_uppercase)
+                .skip(pos_first_lower)
                 .map(|b| b.to_ascii_uppercase()));
         // make_ascii_uppercase() preserves the UTF-8 invariant.
         let s = unsafe { String::from_utf8_unchecked(bytes) };
