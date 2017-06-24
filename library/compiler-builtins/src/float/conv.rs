@@ -130,7 +130,7 @@ intrinsics! {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq)]
 enum Sign {
     Positive,
     Negative
