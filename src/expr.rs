@@ -16,12 +16,12 @@ use {Indent, Shape, Spanned};
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
-            DefinitiveListTactic, definitive_tactic, ListItem, format_item_list, struct_lit_shape,
+            DefinitiveListTactic, definitive_tactic, ListItem, struct_lit_shape,
             struct_lit_tactic, shape_for_tactic, struct_lit_formatting};
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
-            colon_spaces, contains_skip, mk_sp, last_line_extendable};
+            colon_spaces, contains_skip, mk_sp, last_line_extendable, paren_overhead};
 use visitor::FmtVisitor;
 use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle, Style};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -2217,7 +2217,7 @@ where
             context.config.trailing_comma()
         },
         shape: shape,
-        ends_with_newline: false,
+        ends_with_newline: context.use_block_indent() && tactic == DefinitiveListTactic::Vertical,
         config: context.config,
     };
 
@@ -2433,14 +2433,6 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         ast::ExprKind::Unary(_, ref expr) |
         ast::ExprKind::Cast(ref expr, _) => can_be_overflowed_expr(context, expr, args_len),
         _ => false,
-    }
-}
-
-fn paren_overhead(context: &RewriteContext) -> usize {
-    if context.config.spaces_within_parens() {
-        4
-    } else {
-        2
     }
 }
 
@@ -2813,7 +2805,21 @@ where
         list_lo,
         span.hi - BytePos(1),
     );
-    let list_str = try_opt!(format_item_list(items, nested_shape, context.config));
+    let item_vec: Vec<_> = items.collect();
+    let tactic = definitive_tactic(
+        &item_vec,
+        ListTactic::HorizontalVertical,
+        nested_shape.width,
+    );
+    let fmt = ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        shape: shape,
+        ends_with_newline: false,
+        config: context.config,
+    };
+    let list_str = try_opt!(write_list(&item_vec, &fmt));
 
     if context.config.spaces_within_parens() && list_str.len() > 0 {
         Some(format!("( {} )", list_str))
@@ -3021,5 +3027,16 @@ impl<'a> ToExpr for TuplePatField<'a> {
 
     fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
         can_be_overflowed_pat(context, self, len)
+    }
+}
+
+impl<'a> ToExpr for ast::StructField {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        None
+    }
+
+    #[allow(unused_variables)]
+    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
+        false
     }
 }

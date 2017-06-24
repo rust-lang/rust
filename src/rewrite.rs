@@ -45,4 +45,8 @@ impl<'a> RewriteContext<'a> {
     pub fn use_block_indent(&self) -> bool {
         self.config.fn_call_style() == IndentStyle::Block || self.use_block
     }
+
+    pub fn budget(&self, used_width: usize) -> usize {
+        self.config.max_width().checked_sub(used_width).unwrap_or(0)
+    }
 }

@@ -15,9 +15,10 @@ use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
             last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
             trimmed_last_line_width, colon_spaces, mk_sp};
-use lists::{write_list, itemize_list, definitive_tactic, ListItem, ListFormatting,
-            SeparatorTactic, DefinitiveListTactic, ListTactic};
-use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, ExprType};
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
+            DefinitiveListTactic, ListTactic, definitive_tactic};
+use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
+           rewrite_call_inner, ExprType};
 use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
@@ -1216,91 +1217,19 @@ fn format_tuple_struct(
         }
         result.push(')');
     } else {
-        let (tactic, item_indent) = match context.config.fn_args_layout() {
-            IndentStyle::Visual => {
-                // 1 = `(`
-                (
-                    ListTactic::HorizontalVertical,
-                    offset.block_only() + result.len() + 1,
-                )
-            }
-            IndentStyle::Block => {
-                (
-                    if result.contains('\n') {
-                        ListTactic::Vertical
-                    } else {
-                        ListTactic::HorizontalVertical
-                    },
-                    offset.block_only().block_indent(&context.config),
-                )
-            }
-        };
         // 3 = `();`
-        let item_budget = try_opt!(
-            context
-                .config
-                .max_width()
-                .checked_sub(item_indent.width() + 3)
+        let body = try_opt!(
+            rewrite_call_inner(
+                context,
+                "",
+                &fields.iter().map(|field| field).collect::<Vec<_>>()[..],
+                span,
+                Shape::legacy(context.budget(last_line_width(&result) + 3), offset),
+                context.config.fn_call_width(),
+                false,
+            ).ok()
         );
-
-        let items = itemize_list(
-            context.codemap,
-            fields.iter(),
-            ")",
-            |field| {
-                // Include attributes and doc comments, if present
-                if !field.attrs.is_empty() {
-                    field.attrs[0].span.lo
-                } else {
-                    field.span.lo
-                }
-            },
-            |field| field.ty.span.hi,
-            |field| {
-                rewrite_struct_field(context, field, Shape::legacy(item_budget, item_indent), 0)
-            },
-            context.codemap.span_after(span, "("),
-            span.hi,
-        );
-        let body_budget = try_opt!(
-            context
-                .config
-                .max_width()
-                .checked_sub(offset.block_only().width() + last_line_width(&result) + 3)
-        );
-
-        let item_vec: Vec<_> = items.collect();
-        let tactic = definitive_tactic(&item_vec, tactic, body_budget);
-        let fmt = ListFormatting {
-            tactic: tactic,
-            separator: ",",
-            trailing_separator: context.config.trailing_comma(),
-            shape: Shape::indented(item_indent, context.config),
-            ends_with_newline: false,
-            config: context.config,
-        };
-        let body = try_opt!(write_list(&item_vec, &fmt));
-
-        if context.config.fn_args_layout() == IndentStyle::Visual || !body.contains('\n') {
-            result.push('(');
-            if context.config.spaces_within_parens() && body.len() > 0 {
-                result.push(' ');
-            }
-
-            result.push_str(&body);
-
-            if context.config.spaces_within_parens() && body.len() > 0 {
-                result.push(' ');
-            }
-            result.push(')');
-        } else {
-            result.push_str("(\n");
-            result.push_str(&item_indent.to_string(&context.config));
-            result.push_str(&body);
-            result.push('\n');
-            result.push_str(&offset.block_only().to_string(&context.config));
-            result.push(')');
-        }
+        result.push_str(&body);
     }
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
@@ -2422,7 +2351,7 @@ fn rewrite_generics(
     span: Span,
 ) -> Option<String> {
     let g_shape = try_opt!(generics_shape_from_config(context.config, shape, 0));
-    let one_line_width = try_opt!(shape.width.checked_sub(2));
+    let one_line_width = shape.width.checked_sub(2).unwrap_or(0);
     rewrite_generics_inner(context, generics, g_shape, one_line_width, span).or_else(|| {
         rewrite_generics_inner(context, generics, g_shape, 0, span)
     })
@@ -2497,8 +2426,11 @@ where
 {
     let item_vec = items.collect::<Vec<_>>();
 
+    let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, one_line_budget);
+    let ends_with_newline = context.config.generics_indent() == IndentStyle::Block &&
+        tactic == DefinitiveListTactic::Vertical;
     let fmt = ListFormatting {
-        tactic: definitive_tactic(&item_vec, ListTactic::HorizontalVertical, one_line_budget),
+        tactic: tactic,
         separator: ",",
         trailing_separator: if context.config.generics_indent() == IndentStyle::Visual {
             SeparatorTactic::Never
@@ -2506,7 +2438,7 @@ where
             context.config.trailing_comma()
         },
         shape: shape,
-        ends_with_newline: false,
+        ends_with_newline: ends_with_newline,
         config: context.config,
     };
 
@@ -2735,8 +2667,9 @@ fn format_generics(
     force_same_line_brace: bool,
     offset: Indent,
     span: Span,
+    used_width: usize,
 ) -> Option<String> {
-    let shape = Shape::indented(offset, context.config);
+    let shape = Shape::legacy(context.budget(used_width + offset.width()), offset);
     let mut result = try_opt!(rewrite_generics(context, generics, shape, span));
 
     if !generics.where_clause.predicates.is_empty() || result.contains('\n') {

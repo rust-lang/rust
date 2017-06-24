@@ -14,7 +14,7 @@ use std::iter::Peekable;
 use syntax::codemap::{CodeMap, BytePos};
 
 use {Indent, Shape};
-use comment::{FindUncommented, rewrite_comment, find_comment_end};
+use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
 use utils::mk_sp;
@@ -68,31 +68,6 @@ pub struct ListFormatting<'a> {
     pub config: &'a Config,
 }
 
-pub fn format_item_list<I>(items: I, shape: Shape, config: &Config) -> Option<String>
-where
-    I: Iterator<Item = ListItem>,
-{
-    list_helper(items, shape, config, ListTactic::HorizontalVertical)
-}
-
-pub fn list_helper<I>(items: I, shape: Shape, config: &Config, tactic: ListTactic) -> Option<String>
-where
-    I: Iterator<Item = ListItem>,
-{
-    let item_vec: Vec<_> = items.collect();
-    let tactic = definitive_tactic(&item_vec, tactic, shape.width);
-    let fmt = ListFormatting {
-        tactic: tactic,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        shape: shape,
-        ends_with_newline: false,
-        config: config,
-    };
-
-    write_list(&item_vec, &fmt)
-}
-
 impl AsRef<ListItem> for ListItem {
     fn as_ref(&self) -> &ListItem {
         self
@@ -118,10 +93,13 @@ impl ListItem {
                 .map_or(false, |s| s.contains('\n'))
     }
 
-    pub fn has_line_pre_comment(&self) -> bool {
+    pub fn has_comment(&self) -> bool {
         self.pre_comment
             .as_ref()
-            .map_or(false, |comment| comment.starts_with("//"))
+            .map_or(false, |comment| comment.starts_with("//")) ||
+            self.post_comment
+                .as_ref()
+                .map_or(false, |comment| comment.starts_with("//"))
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
@@ -150,7 +128,7 @@ where
     let pre_line_comments = items
         .clone()
         .into_iter()
-        .any(|item| item.as_ref().has_line_pre_comment());
+        .any(|item| item.as_ref().has_comment());
 
     let limit = match tactic {
         _ if pre_line_comments => return DefinitiveListTactic::Vertical,
