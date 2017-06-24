@@ -959,16 +959,12 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn to_ascii_uppercase(&self) -> Self::Owned {
-        let mut cow = self.clone();
-        cow.make_ascii_uppercase();
-        cow
+        Cow::Owned((**self).to_ascii_uppercase())
     }
 
     #[inline]
     fn to_ascii_lowercase(&self) -> Self::Owned {
-        let mut cow = self.clone();
-        cow.make_ascii_lowercase();
-        cow
+        Cow::Owned((**self).to_ascii_lowercase())
     }
 
     #[inline]
