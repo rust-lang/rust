@@ -4349,9 +4349,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let &hir::FnDecl {
             output: hir::FunctionRetTy::DefaultReturn(span), ..
         } = fn_decl {
-            err.span_suggestion(span,
-                                "possibly return type missing here?",
-                                format!("-> {} ", ty));
+            if ty.is_suggestable() {
+                err.span_suggestion(span,
+                                    "possibly return type missing here?",
+                                    format!("-> {} ", ty));
+            } else {
+                err.span_label(span, "possibly return type missing here?");
+            }
         }
     }
 
