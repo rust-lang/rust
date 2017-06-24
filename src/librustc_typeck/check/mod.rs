@@ -4391,7 +4391,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hi: original_span.hi,
             ctxt: original_span.ctxt,
         };
-        err.span_help(span_semi, "consider removing this semicolon:");
+        err.span_suggestion(span_semi, "consider removing this semicolon", "".to_string());
     }
 
     // Instantiates the given path, which must refer to an item with the given
