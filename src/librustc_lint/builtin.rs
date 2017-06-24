@@ -684,13 +684,9 @@ fn fl_lit_check_expr(cx: &EarlyContext, expr: &ast::Expr) {
         // These may occur in patterns
         // and can maybe contain float literals
         ExprKind::Unary(_, ref f) => fl_lit_check_expr(cx, f),
-        // These may occur in patterns
-        // and can't contain float literals
-        ExprKind::Path(..) => (),
-        // If something unhandled is encountered, we need to expand the
-        // search or ignore more ExprKinds.
-        _ => span_bug!(expr.span, "Unhandled expression {:?} in float lit pattern lint",
-                       expr.node),
+        // Other kinds of exprs can't occur in patterns so we don't have to check them
+        // (ast_validation will emit an error if they occur)
+        _ => (),
     }
 }
 
