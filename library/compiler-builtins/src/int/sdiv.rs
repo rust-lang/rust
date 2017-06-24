@@ -13,8 +13,7 @@ trait Div: Int {
         let b = (other ^ s_b).wrapping_sub(s_b);
         let s = s_a ^ s_b;
 
-        let r = a.unsigned().checked_div(b.unsigned())
-            .unwrap_or_else(|| ::abort());
+        let r = a.unsigned().aborting_div(b.unsigned());
         (Self::from_unsigned(r) ^ s) - s
     }
 }
@@ -32,8 +31,7 @@ trait Mod: Int {
         let s = self >> (Self::bits() - 1);
         let a = (self ^ s).wrapping_sub(s);
 
-        let r = a.unsigned().checked_rem(b.unsigned())
-            .unwrap_or_else(|| ::abort());
+        let r = a.unsigned().aborting_rem(b.unsigned());
         (Self::from_unsigned(r) ^ s) - s
     }
 }

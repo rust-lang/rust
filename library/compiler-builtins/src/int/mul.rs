@@ -54,11 +54,11 @@ trait Mulo: Int + ops::Neg<Output = Self> {
             return result;
         }
         if sa == sb {
-            if abs_a > Self::max_value().checked_div(abs_b).unwrap_or_else(|| ::abort()) {
+            if abs_a > Self::max_value().aborting_div(abs_b) {
                 *overflow = 1;
             }
         } else {
-            if abs_a > Self::min_value().checked_div(-abs_b).unwrap_or_else(|| ::abort()) {
+            if abs_a > Self::min_value().aborting_div(-abs_b) {
                 *overflow = 1;
             }
         }

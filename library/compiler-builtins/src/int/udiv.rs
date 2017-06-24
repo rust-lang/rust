@@ -11,11 +11,9 @@ macro_rules! udivmod_inner {
                 // 0 X
 
                 if let Some(rem) = rem {
-                    *rem = <$ty>::from(n.low().checked_rem(d.low())
-                                        .unwrap_or_else(|| ::abort()));
+                    *rem = <$ty>::from(n.low().aborting_rem(d.low()));
                 }
-                return <$ty>::from(n.low().checked_div(d.low())
-                                    .unwrap_or_else(|| ::abort()));
+                return <$ty>::from(n.low().aborting_div(d.low()))
             } else {
                 // 0 X
                 // ---
@@ -46,11 +44,9 @@ macro_rules! udivmod_inner {
                 // ---
                 // K 0
                 if let Some(rem) = rem {
-                    *rem = <$ty>::from_parts(0, n.high().checked_rem(d.high())
-                                                 .unwrap_or_else(|| ::abort()));
+                    *rem = <$ty>::from_parts(0, n.high().aborting_rem(d.high()));
                 }
-                return <$ty>::from(n.high().checked_div(d.high())
-                                    .unwrap_or_else(|| ::abort()));
+                return <$ty>::from(n.high().aborting_div(d.high()))
             }
 
             // K K

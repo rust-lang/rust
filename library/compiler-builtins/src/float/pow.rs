@@ -1,3 +1,5 @@
+use int::Int;
+
 /// Returns `a` raised to the power `b`
 macro_rules! pow {
     ($a: expr, $b: expr) => ({
@@ -8,7 +10,7 @@ macro_rules! pow {
             if (b & 1) != 0 {
                 r *= a;
             }
-            b = b.checked_div(2).unwrap_or_else(|| ::abort());
+            b = b.aborting_div(2);
             if b == 0 {
                 break;
             }

@@ -66,8 +66,15 @@ pub trait Int:
     fn wrapping_add(self, other: Self) -> Self;
     fn wrapping_mul(self, other: Self) -> Self;
     fn wrapping_sub(self, other: Self) -> Self;
-    fn checked_div(self, other: Self) -> Option<Self>;
-    fn checked_rem(self, other: Self) -> Option<Self>;
+    fn aborting_div(self, other: Self) -> Self;
+    fn aborting_rem(self, other: Self) -> Self;
+}
+
+fn unwrap<T>(t: Option<T>) -> T {
+    match t {
+        Some(t) => t,
+        None => ::abort(),
+    }
 }
 
 macro_rules! int_impl {
@@ -120,12 +127,12 @@ macro_rules! int_impl {
                 <Self>::wrapping_sub(self, other)
             }
 
-            fn checked_div(self, other: Self) -> Option<Self> {
-                <Self>::checked_div(self, other)
+            fn aborting_div(self, other: Self) -> Self {
+                unwrap(<Self>::checked_div(self, other))
             }
 
-            fn checked_rem(self, other: Self) -> Option<Self> {
-                <Self>::checked_rem(self, other)
+            fn aborting_rem(self, other: Self) -> Self {
+                unwrap(<Self>::checked_rem(self, other))
             }
         }
 
@@ -181,12 +188,12 @@ macro_rules! int_impl {
                 <Self>::wrapping_sub(self, other)
             }
 
-            fn checked_div(self, other: Self) -> Option<Self> {
-                <Self>::checked_div(self, other)
+            fn aborting_div(self, other: Self) -> Self {
+                unwrap(<Self>::checked_div(self, other))
             }
 
-            fn checked_rem(self, other: Self) -> Option<Self> {
-                <Self>::checked_rem(self, other)
+            fn aborting_rem(self, other: Self) -> Self {
+                unwrap(<Self>::checked_rem(self, other))
             }
         }
     }
