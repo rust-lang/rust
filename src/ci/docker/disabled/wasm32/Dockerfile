@@ -38,7 +38,7 @@ ENV EM_CONFIG=/emsdk-portable/.emscripten
 
 ENV TARGETS=wasm32-unknown-emscripten,wasm32-experimental-emscripten
 
-ENV RUST_CONFIGURE_ARGS --target=$TARGETS
+ENV RUST_CONFIGURE_ARGS --target=$TARGETS --experimental-targets=WebAssembly
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS
 
