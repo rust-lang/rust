@@ -721,7 +721,7 @@ pub trait LintContext<'tcx>: Sized {
         let mut pushed = 0;
 
         for result in gather_attrs(attrs) {
-            let v = match result {
+            let (is_group, lint_level_spans) = match result {
                 Err(span) => {
                     span_err!(self.sess(), span, E0452,
                               "malformed lint attribute");
@@ -729,13 +729,14 @@ pub trait LintContext<'tcx>: Sized {
                 }
                 Ok((lint_name, level, span)) => {
                     match self.lints().find_lint(&lint_name.as_str()) {
-                        Ok(lint_id) => vec![(lint_id, level, span)],
+                        Ok(lint_id) => (false, vec![(lint_id, level, span)]),
                         Err(FindLintError::NotFound) => {
                             match self.lints().lint_groups.get(&*lint_name.as_str()) {
-                                Some(&(ref v, _)) => v.iter()
+                                Some(&(ref v, _)) => (true,
+                                                      v.iter()
                                                       .map(|lint_id: &LintId|
                                                            (*lint_id, level, span))
-                                                      .collect(),
+                                                      .collect()),
                                 None => {
                                     // The lint or lint group doesn't exist.
                                     // This is an error, but it was handled
@@ -751,14 +752,18 @@ pub trait LintContext<'tcx>: Sized {
 
             let lint_attr_name = result.expect("lint attribute should be well-formed").0;
 
-            for (lint_id, level, span) in v {
+            for (lint_id, level, span) in lint_level_spans {
                 let (now, now_source) = self.lint_sess().get_source(lint_id);
                 if now == Forbid && level != Forbid {
-                    let lint_name = lint_id.to_string();
+                    let forbidden_lint_name = match now_source {
+                        LintSource::Default => lint_id.to_string(),
+                        LintSource::Node(name, _) => name.to_string(),
+                        LintSource::CommandLine(name) => name.to_string(),
+                    };
                     let mut diag_builder = struct_span_err!(self.sess(), span, E0453,
                                                             "{}({}) overruled by outer forbid({})",
-                                                            level.as_str(), lint_name,
-                                                            lint_name);
+                                                            level.as_str(), lint_attr_name,
+                                                            forbidden_lint_name);
                     diag_builder.span_label(span, "overruled by previous forbid");
                     match now_source {
                         LintSource::Default => &mut diag_builder,
@@ -769,7 +774,10 @@ pub trait LintContext<'tcx>: Sized {
                         LintSource::CommandLine(_) => {
                             diag_builder.note("`forbid` lint level was set on command line")
                         }
-                    }.emit()
+                    }.emit();
+                    if is_group { // don't set a separate error for every lint in the group
+                        break;
+                    }
                 } else if now != level {
                     let cx = self.lint_sess_mut();
                     cx.stack.push((lint_id, (now, now_source)));
