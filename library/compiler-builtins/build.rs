@@ -4138,10 +4138,6 @@ mod c {
                 );
             }
         } else {
-            if target_os != "freebsd" && target_os != "netbsd" {
-                sources.extend(&["gcc_personality_v0.c"]);
-            }
-
             // None of these seem to be used on x86_64 windows, and they've all
             // got the wrong ABI anyway, so we want to avoid them.
             if target_os != "windows" {
