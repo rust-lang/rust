@@ -7,6 +7,11 @@ error[E0599]: no method named `b` found for type `&Self` in the current scope
 error[E0308]: mismatched types
   --> $DIR/issue-3563.rs:13:9
    |
+12 |     fn a(&self) {
+   |                 -
+   |                 |
+   |                 help: possibly return type missing here? `-> [closure@$DIR/issue-3563.rs:13:9: 13:20 self:_] `
+   |                 expected `()` because of this default return type
 13 |         || self.b()
    |         ^^^^^^^^^^^ expected (), found closure
    |

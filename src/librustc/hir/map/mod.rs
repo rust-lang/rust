@@ -594,8 +594,12 @@ impl<'hir> Map<'hir> {
     /// last good node id we found. Note that reaching the crate root (id == 0),
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
-    fn walk_parent_nodes<F>(&self, start_id: NodeId, found: F) -> Result<NodeId, NodeId>
-        where F: Fn(&Node<'hir>) -> bool
+    fn walk_parent_nodes<F, F2>(&self,
+                                start_id: NodeId,
+                                found: F,
+                                bail_early: F2)
+        -> Result<NodeId, NodeId>
+        where F: Fn(&Node<'hir>) -> bool, F2: Fn(&Node<'hir>) -> bool
     {
         let mut id = start_id;
         loop {
@@ -616,6 +620,8 @@ impl<'hir> Map<'hir> {
                 Some(ref node) => {
                     if found(node) {
                         return Ok(parent_node);
+                    } else if bail_early(node) {
+                        return Err(parent_node);
                     }
                 }
                 None => {
@@ -623,6 +629,34 @@ impl<'hir> Map<'hir> {
                 }
             }
             id = parent_node;
+        }
+    }
+
+    pub fn get_return_block(&self, id: NodeId) -> Option<NodeId> {
+        let match_fn = |node: &Node| {
+            match *node {
+                NodeItem(_) |
+                NodeForeignItem(_) |
+                NodeTraitItem(_) |
+                NodeImplItem(_) => true,
+                _ => false,
+            }
+        };
+        let match_non_returning_block = |node: &Node| {
+            match *node {
+                NodeExpr(ref expr) => {
+                    match expr.node {
+                        ExprWhile(..) | ExprLoop(..) => true,
+                        _ => false,
+                    }
+                }
+                _ => false,
+            }
+        };
+
+        match self.walk_parent_nodes(id, match_fn, match_non_returning_block) {
+            Ok(id) => Some(id),
+            Err(_) => None,
         }
     }
 
@@ -637,7 +671,7 @@ impl<'hir> Map<'hir> {
             NodeTraitItem(_) |
             NodeImplItem(_) => true,
             _ => false,
-        }) {
+        }, |_| false) {
             Ok(id) => id,
             Err(id) => id,
         }
@@ -649,7 +683,7 @@ impl<'hir> Map<'hir> {
         let id = match self.walk_parent_nodes(id, |node| match *node {
             NodeItem(&Item { node: Item_::ItemMod(_), .. }) => true,
             _ => false,
-        }) {
+        }, |_| false) {
             Ok(id) => id,
             Err(id) => id,
         };
@@ -668,7 +702,7 @@ impl<'hir> Map<'hir> {
             NodeImplItem(_) |
             NodeBlock(_) => true,
             _ => false,
-        }) {
+        }, |_| false) {
             Ok(id) => Some(id),
             Err(_) => None,
         }
