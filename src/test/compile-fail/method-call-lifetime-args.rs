@@ -16,7 +16,17 @@ impl S {
     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
     fn late_early<'a, 'b>(self, _: &'a u8) -> &'b u8 { loop {} }
     fn late_implicit_early<'b>(self, _: &u8) -> &'b u8 { loop {} }
+    fn late_implicit_self_early<'b>(&self) -> &'b u8 { loop {} }
+    fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
     fn life_and_type<'a, T>(self) -> &'a T { loop {} }
+
+    // 'late lifetimes here belong to nested types not to the tested functions.
+    fn early_tricky_explicit<'a>(_: for<'late> fn(&'late u8),
+                                 _: Box<for<'late> Fn(&'late u8)>)
+                                 -> &'a u8 { loop {} }
+    fn early_tricky_implicit<'a>(_: fn(&u8),
+                                 _: Box<Fn(&u8)>)
+                                 -> &'a u8 { loop {} }
 }
 
 fn method_call() {
@@ -46,21 +56,26 @@ fn ufcs() {
 
     S::late_implicit(S, &0, &0); // OK
     S::late_implicit::<'static>(S, &0, &0);
-    //~^ ERROR expected at most 0 lifetime parameters, found 1 lifetime parameter
-    //FIXME ERROR cannot specify lifetime arguments explicitly
+    //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_implicit::<'static, 'static>(S, &0, &0);
-    //~^ ERROR expected at most 0 lifetime parameters, found 2 lifetime parameters
-    //FIXME ERROR cannot specify lifetime arguments explicitly
+    //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_implicit::<'static, 'static, 'static>(S, &0, &0);
-    //~^ ERROR expected at most 0 lifetime parameters, found 3 lifetime parameters
-    //FIXME ERROR cannot specify lifetime arguments explicitly
+    //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_implicit_early(S, &0); // OK
     S::late_implicit_early::<'static, 'static>(S, &0);
-    //~^ ERROR expected at most 1 lifetime parameter, found 2 lifetime parameters
-    //FIXME ERROR cannot specify lifetime arguments explicitly
+    //~^ ERROR cannot specify lifetime arguments explicitly
     S::late_implicit_early::<'static, 'static, 'static>(S, &0);
-    //~^ ERROR expected at most 1 lifetime parameter, found 3 lifetime parameters
-    //FIXME ERROR cannot specify lifetime arguments explicitly
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    S::late_implicit_self_early(&S); // OK
+    S::late_implicit_self_early::<'static, 'static>(&S);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    S::late_implicit_self_early::<'static, 'static, 'static>(&S);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    S::late_unused_early(S); // OK
+    S::late_unused_early::<'static, 'static>(S);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    S::late_unused_early::<'static, 'static, 'static>(S);
+    //~^ ERROR cannot specify lifetime arguments explicitly
 
     S::early(S); // OK
     S::early::<'static>(S);
@@ -70,6 +85,9 @@ fn ufcs() {
     let _: &u8 = S::life_and_type::<'static>(S);
     S::life_and_type::<u8>(S);
     S::life_and_type::<'static, u8>(S);
+
+    S::early_tricky_explicit::<'static>(loop {}, loop {}); // OK
+    S::early_tricky_implicit::<'static>(loop {}, loop {}); // OK
 }
 
 fn main() {}

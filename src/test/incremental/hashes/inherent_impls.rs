@@ -369,7 +369,7 @@ impl Foo {
 impl Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_lifetime_parameter_to_method<'a>(&self) { }
 }

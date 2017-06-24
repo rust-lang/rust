@@ -42,25 +42,25 @@ fn method_call() {
     //~| WARN this was previously accepted
 
     S.late_implicit(&0, &0); // OK
-    // S.late_implicit::<'static>(&0, &0);
-    //FIXME ERROR cannot specify lifetime arguments explicitly
-    //FIXME WARN this was previously accepted
-    // S.late_implicit::<'static, 'static>(&0, &0);
-    //FIXME ERROR cannot specify lifetime arguments explicitly
-    //FIXME WARN this was previously accepted
-    // S.late_implicit::<'static, 'static, 'static>(&0, &0);
-    //FIXME ERROR cannot specify lifetime arguments explicitly
-    //FIXME WARN this was previously accepted
+    S.late_implicit::<'static>(&0, &0);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    //~| WARN this was previously accepted
+    S.late_implicit::<'static, 'static>(&0, &0);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    //~| WARN this was previously accepted
+    S.late_implicit::<'static, 'static, 'static>(&0, &0);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    //~| WARN this was previously accepted
     S.late_implicit_early(&0); // OK
     S.late_implicit_early::<'static>(&0);
-    //FIXME ERROR cannot specify lifetime arguments explicitly
-    //FIXME WARN this was previously accepted
-    // S.late_implicit_early::<'static, 'static>(&0);
-    //FIXME ERROR cannot specify lifetime arguments explicitly
-    //FIXME WARN this was previously accepted
-    // S.late_implicit_early::<'static, 'static, 'static>(&0);
-    //FIXME ERROR cannot specify lifetime arguments explicitly
-    //FIXME WARN this was previously accepted
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    //~| WARN this was previously accepted
+    S.late_implicit_early::<'static, 'static>(&0);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    //~| WARN this was previously accepted
+    S.late_implicit_early::<'static, 'static, 'static>(&0);
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    //~| WARN this was previously accepted
 }
 
 fn ufcs() {
@@ -69,8 +69,8 @@ fn ufcs() {
     //~| WARN this was previously accepted
 
     S::late_implicit_early::<'static>(S, &0);
-    //FIXME ERROR cannot specify lifetime arguments explicitly
-    //FIXME WARN this was previously accepted
+    //~^ ERROR cannot specify lifetime arguments explicitly
+    //~| WARN this was previously accepted
 }
 
 fn main() {}
