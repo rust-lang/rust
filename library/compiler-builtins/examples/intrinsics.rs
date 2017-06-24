@@ -12,12 +12,14 @@
 #![feature(core_float)]
 #![feature(lang_items)]
 #![feature(start)]
+#![feature(panic_unwind)]
 #![feature(i128_type)]
 #![no_std]
 
 #[cfg(not(thumb))]
 extern crate alloc_system;
 extern crate compiler_builtins;
+extern crate panic_unwind;
 
 // NOTE cfg(not(thumbv6m)) means that the operation is not supported on ARMv6-M at all. Not even
 // compiler-rt provides a C/assembly implementation.
@@ -400,6 +402,20 @@ fn run() {
     bb(umodti3(bb(2), bb(2)));
     bb(divti3(bb(2), bb(2)));
     bb(modti3(bb(2), bb(2)));
+
+    something_with_a_dtor(&|| assert_eq!(bb(1), 1));
+}
+
+fn something_with_a_dtor(f: &Fn()) {
+    struct A<'a>(&'a (Fn() + 'a));
+
+    impl<'a> Drop for A<'a> {
+        fn drop(&mut self) {
+            (self.0)();
+        }
+    }
+    let _a = A(f);
+    f();
 }
 
 #[cfg(not(thumb))]
@@ -427,18 +443,6 @@ pub fn __aeabi_unwind_cpp_pr0() {}
 
 #[no_mangle]
 pub fn __aeabi_unwind_cpp_pr1() {}
-
-// Avoid "undefined reference to `_Unwind_Resume`" errors
-#[allow(non_snake_case)]
-#[no_mangle]
-pub fn _Unwind_Resume() {}
-
-// Lang items
-#[cfg(not(test))]
-#[lang = "eh_personality"]
-#[no_mangle]
-#[allow(private_no_mangle_fns)]
-extern "C" fn eh_personality() {}
 
 #[cfg(not(test))]
 #[lang = "panic_fmt"]

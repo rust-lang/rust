@@ -3,12 +3,29 @@ environment:
     - TARGET: i686-pc-windows-msvc
     - TARGET: x86_64-pc-windows-msvc
 
+    # Ensure MinGW works, but we need to download the 32-bit MinGW compiler from a
+    # custom location.
+    - TARGET: i686-pc-windows-gnu
+      MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
+      MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+      MINGW_DIR: mingw32
+    - TARGET: x86_64-pc-windows-gnu
+      MSYS_BITS: 64
+
 install:
   - git submodule update --init
   - appveyor-retry appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
   - rustup-init.exe --default-host x86_64-pc-windows-msvc --default-toolchain nightly -y
-  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
-  - if "%TARGET%"=="i686-pc-windows-msvc" ( rustup target add %TARGET% )
+  - if NOT "%TARGET%" == "x86_64-pc-windows-msvc" rustup target add %TARGET%
+
+  # Use the system msys if we can
+  - if defined MSYS_BITS set PATH=C:\msys64\mingw%MSYS_BITS%\bin;C:\msys64\usr\bin;%PATH%
+
+  # download a custom compiler otherwise
+  - if defined MINGW_URL appveyor DownloadFile %MINGW_URL%/%MINGW_ARCHIVE%
+  - if defined MINGW_URL 7z x -y %MINGW_ARCHIVE% > nul
+  - if defined MINGW_URL set PATH=C:\Python27;%CD%\%MINGW_DIR%\bin;C:\msys64\usr\bin;%PATH%
+
   - rustc -Vv
   - cargo -V
 
