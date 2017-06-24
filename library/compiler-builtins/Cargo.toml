@@ -18,7 +18,12 @@ compiler-builtins = []
 default = ["compiler-builtins"]
 mem = []
 rustbuild = ["compiler-builtins"]
+
 # generate tests
+#
+# Note that this is an internal-only feature used in testing, this should not
+# be relied on with crates.io! Enabling this may expose you to breaking
+# changes.
 gen-tests = ["cast", "rand"]
 
 [target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
@@ -26,10 +31,8 @@ test = { git = "https://github.com/japaric/utest" }
 utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japaric/utest" }
 utest-macros = { git = "https://github.com/japaric/utest" }
 
-
 [[example]]
 name = "intrinsics"
 required-features = ["c", "compiler-builtins"]
-
 
 [workspace]

@@ -240,7 +240,7 @@ macro_rules! intrinsics {
 
     // This is the final catch-all rule. At this point we just generate an
     // intrinsic with a conditional `#[no_mangle]` directive to avoid
-    // interfereing with duplicate symbols and whatnot.
+    // interfereing with duplicate symbols and whatnot during testing.
     //
     // After the intrinsic is defined we just continue with the rest of the
     // input we were given.
@@ -253,7 +253,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         $(#[$($attr)*])*
-        #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(not(feature = "gen-tests"), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }

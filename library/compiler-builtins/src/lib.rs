@@ -1,6 +1,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 #![cfg_attr(not(test), no_std)]
-#![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
+#![cfg_attr(all(feature = "compiler-builtins",
+                not(feature = "gen-tests")), compiler_builtins)]
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",

@@ -10,6 +10,10 @@ case $1 in
 esac
 
 INTRINSICS_FEATURES="c"
+
+# Some architectures like ARM apparently seem to require the `mem` feature
+# enabled to successfully compile the `intrinsics` example, and... we're not
+# sure why!
 if [ -z "$INTRINSICS_FAILS_WITH_MEM_FEATURE" ]; then
   INTRINSICS_FEATURES="$INTRINSICS_FEATURES mem"
 fi
@@ -47,15 +51,12 @@ case $1 in
         done
         ;;
     *)
-        cargo test --no-default-features --features gen-tests --target $1
-        cargo test --no-default-features --features 'gen-tests c' --target $1
-        cargo test --no-default-features --features gen-tests --target $1 --release
-        cargo test --no-default-features --features 'gen-tests c' --target $1 --release
+        cargo test --features gen-tests --target $1
+        cargo test --features 'gen-tests c' --target $1
+        cargo test --features gen-tests --target $1 --release
+        cargo test --features 'gen-tests c' --target $1 --release
         ;;
 esac
-
-# Verify that we haven't drop any intrinsic/symbol
-$cargo build --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
 
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in
@@ -105,7 +106,22 @@ done
 
 rm -f $path
 
-# Verify that there are no undefined symbols to `panic` within our implementations
+# Verification of the `intrinsics` program doesn't work on thumb targets right
+# now.
+case $1 in
+    thumb*)
+        exit 0
+        ;;
+    *)
+        ;;
+esac
+
+# Verify that we haven't drop any intrinsic/symbol
+$cargo build --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
+
+# Verify that there are no undefined symbols to `panic` within our
+# implementations
+#
 # TODO(#79) fix the undefined references problem for debug-assertions+lto
 if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
   RUSTFLAGS="-C debug-assertions=no" \
