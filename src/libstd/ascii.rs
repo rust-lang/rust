@@ -26,6 +26,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use borrow::Cow;
 use fmt;
 use ops::Range;
 use iter::FusedIterator;
@@ -944,6 +945,123 @@ impl AsciiExt for char {
     #[inline]
     fn is_ascii_control(&self) -> bool {
         (*self as u32 <= 0x7f) && (*self as u8).is_ascii_control()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> AsciiExt for Cow<'a, str> {
+    type Owned = Cow<'a, str>;
+
+    #[inline]
+    fn is_ascii(&self) -> bool {
+        (**self).is_ascii()
+    }
+
+    #[inline]
+    fn to_ascii_uppercase(&self) -> Self::Owned {
+        let mut cow = self.clone();
+        cow.make_ascii_uppercase();
+        cow
+    }
+
+    #[inline]
+    fn to_ascii_lowercase(&self) -> Self::Owned {
+        let mut cow = self.clone();
+        cow.make_ascii_lowercase();
+        cow
+    }
+
+    #[inline]
+    fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+        self.to_ascii_lowercase() == other.to_ascii_lowercase()
+    }
+
+    #[inline]
+    fn make_ascii_uppercase(&mut self) {
+        // FIXME: if there is an ascii lowercase byte, it won't get added to the
+        // final string since it gets consumed here
+        let i = self.bytes().take_while(|c| !c.is_ascii_lowercase()).count();
+        if i == self.len() {
+            return;
+        }
+        // At least one character in the string is lowercase, so we'll need to
+        // build a new string.
+        let mut bytes = Vec::with_capacity(self.len());
+        unsafe { bytes.set_len(i); }
+        bytes.copy_from_slice(&self.as_bytes()[..i]);
+        bytes.extend(self.bytes().skip(i).map(|b| b.to_ascii_lowercase()));
+        // make_ascii_uppercase() preserves the UTF-8 invariant.
+        let s = unsafe { String::from_utf8_unchecked(bytes) };
+        *self = Cow::Owned(s)
+    }
+
+    #[inline]
+    fn make_ascii_lowercase(&mut self) {
+        // FIXME: if there is an ascii uppercase byte, it won't get added to the
+        // final string since it gets consumed here
+        let i = self.bytes().take_while(|c| !c.is_ascii_uppercase()).count();
+        if i == self.len() {
+            return;
+        }
+        // At least one character in the string is lowercase, so we'll need to
+        // build a new string.
+        let mut bytes = Vec::with_capacity(self.len());
+        unsafe { bytes.set_len(i); }
+        bytes.copy_from_slice(&self.as_bytes()[..i]);
+        bytes.extend(self.bytes().skip(i).map(|b| b.to_ascii_uppercase()));
+        // make_ascii_uppercase() preserves the UTF-8 invariant.
+        let s = unsafe { String::from_utf8_unchecked(bytes) };
+        *self = Cow::Owned(s)
+    }
+
+    #[inline]
+    fn is_ascii_alphabetic(&self) -> bool {
+        (**self).is_ascii_alphabetic()
+    }
+
+    #[inline]
+    fn is_ascii_uppercase(&self) -> bool {
+        (**self).is_ascii_uppercase()
+    }
+
+    #[inline]
+    fn is_ascii_lowercase(&self) -> bool {
+        (**self).is_ascii_lowercase()
+    }
+
+    #[inline]
+    fn is_ascii_alphanumeric(&self) -> bool {
+        (**self).is_ascii_alphanumeric()
+    }
+
+    #[inline]
+    fn is_ascii_digit(&self) -> bool {
+        (**self).is_ascii_digit()
+    }
+
+    #[inline]
+    fn is_ascii_hexdigit(&self) -> bool {
+        (**self).is_ascii_hexdigit()
+    }
+
+    #[inline]
+    fn is_ascii_punctuation(&self) -> bool {
+        (**self).is_ascii_punctuation()
+    }
+
+    #[inline]
+    fn is_ascii_graphic(&self) -> bool {
+        (**self).is_ascii_graphic()
+    }
+
+    #[inline]
+    fn is_ascii_whitespace(&self) -> bool {
+        (**self).is_ascii_whitespace()
+    }
+
+    #[inline]
+    fn is_ascii_control(&self) -> bool {
+        (**self).is_ascii_control()
     }
 }
 
