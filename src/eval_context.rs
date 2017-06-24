@@ -664,6 +664,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
                 let (ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
+                let ty = self.lvalue_ty(lvalue);
 
                 let val = match extra {
                     LvalueExtra::None => Value::ByVal(ptr),
@@ -672,6 +673,29 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
+
+                // Check alignment and non-NULLness.
+                let (_, align) = self.size_and_align_of_dst(ty, val)?;
+                match ptr {
+                    PrimVal::Ptr(ptr) => {
+                        self.memory.check_align(ptr, align, 0)?;
+                    }
+                    PrimVal::Bytes(bytes) => {
+                        let v = ((bytes as u128) % (1 << self.memory.pointer_size())) as u64;
+                        if v == 0 {
+                            return Err(EvalError::InvalidNullPointerUsage);
+                        }
+                        if v % align != 0 {
+                            return Err(EvalError::AlignmentCheckFailed {
+                                has: v % align,
+                                required: align,
+                            });
+                        }
+                    }
+                    PrimVal::Undef => {
+                        return Err(EvalError::ReadUndefBytes);
+                    }
+                }
 
                 self.write_value(val, dest, dest_ty)?;
             }
@@ -717,19 +741,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
-                            // First, try casting
-                            let dest_val = self.value_to_primval(src, src_ty).and_then(
-                                |src_val| { self.cast_primval(src_val, src_ty, dest_ty) })
-                                // Alternatively, if the sizes are equal, try just reading at the target type
-                                .or_else(|err| {
-                                    let size = self.type_size(src_ty)?;
-                                    if size.is_some() && size == self.type_size(dest_ty)? {
-                                        self.value_to_primval(src, dest_ty)
-                                    } else {
-                                        Err(err)
-                                    }
-                                });
-                            self.write_value(Value::ByVal(dest_val?), dest, dest_ty)?;
+                            let src_val = self.value_to_primval(src, src_ty)?;
+                            let dest_val = self.cast_primval(src_val, src_ty, dest_ty)?;
+                            self.write_value(Value::ByVal(dest_val), dest, dest_ty)?;
                         }
                     }
 
@@ -908,7 +922,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // allocation.
 
         if ptr.is_null()? { // NULL pointers must only be offset by 0
-            return if offset == 0 { Ok(ptr) } else { Err(EvalError::NullPointerOutOfBounds) };
+            return if offset == 0 { Ok(ptr) } else { Err(EvalError::InvalidNullPointerUsage) };
         }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
@@ -919,7 +933,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.check_bounds(ptr, false)?;
             } else if ptr.is_null()? {
                 // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
-                return Err(EvalError::NullPointerOutOfBounds);
+                return Err(EvalError::InvalidNullPointerUsage);
             }
             Ok(ptr)
         } else {

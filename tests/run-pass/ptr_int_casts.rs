@@ -13,7 +13,7 @@ fn main() {
 
     {   // ptr-int-ptr
         let x = 13;
-        let mut y = &x as *const _ as usize;
+        let mut y = &x as &_ as *const _ as usize;
         y += 13;
         y -= 13;
         let y = y as *const _;
@@ -22,7 +22,7 @@ fn main() {
 
     {   // fnptr-int-fnptr
         let x : fn() -> i32 = f;
-        let y : *mut u8 = unsafe { mem::transmute(x) };
+        let y : *mut u8 = unsafe { mem::transmute(x as fn() -> i32) };
         let mut y = y as usize;
         y += 13;
         y -= 13;

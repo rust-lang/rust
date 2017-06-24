@@ -21,7 +21,7 @@ pub enum EvalError<'tcx> {
         access: bool,
         allocation_size: u64,
     },
-    NullPointerOutOfBounds,
+    InvalidNullPointerUsage,
     ReadPointerAsBytes,
     ReadBytesAsPointer,
     InvalidPointerMath,
@@ -84,8 +84,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "invalid enum discriminant value read",
             EvalError::PointerOutOfBounds { .. } =>
                 "pointer offset outside bounds of allocation",
-            EvalError::NullPointerOutOfBounds =>
-                "invalid NULL pointer offset",
+            EvalError::InvalidNullPointerUsage =>
+                "invalid use of NULL pointer",
             EvalError::ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             EvalError::ReadBytesAsPointer =>

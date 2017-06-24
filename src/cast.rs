@@ -19,9 +19,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             F32 => self.cast_float(val.to_f32()? as f64, dest_ty),
             F64 => self.cast_float(val.to_f64()?, dest_ty),
 
-            I8 | I16 | I32 | I64 | I128 => self.cast_signed_int(val.to_i128()?, dest_ty),
+            I8 | I16 | I32 | I64 | I128 => {
+                if val.is_ptr() {
+                    self.cast_ptr(val, dest_ty)
+                } else {
+                    self.cast_signed_int(val.to_i128()?, dest_ty)
+                }
+            },
 
-            Bool | Char | U8 | U16 | U32 | U64 | U128 => self.cast_int(val.to_u128()?, dest_ty, false),
+            Bool | Char | U8 | U16 | U32 | U64 | U128 => {
+                if val.is_ptr() {
+                    self.cast_ptr(val, dest_ty)
+                } else {
+                    self.cast_int(val.to_u128()?, dest_ty, false)
+                }
+            },
 
             FnPtr | Ptr => self.cast_ptr(val, dest_ty),
         }
@@ -70,6 +82,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
             TyChar => Err(EvalError::InvalidChar(v)),
 
+            // No alignment check needed for raw pointers
             TyRawPtr(_) => Ok(PrimVal::Bytes(v % (1 << self.memory.pointer_size()))),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
@@ -94,8 +107,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn cast_ptr(&self, ptr: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         use rustc::ty::TypeVariants::*;
         match ty.sty {
-            TyRef(..) | TyRawPtr(_) | TyFnPtr(_) | TyInt(_) | TyUint(_) =>
+            // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
+            TyRawPtr(_) | TyInt(IntTy::Is) | TyUint(UintTy::Us) =>
                 Ok(ptr),
+            TyInt(_) | TyUint(_) => Err(EvalError::ReadPointerAsBytes),
             _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }
