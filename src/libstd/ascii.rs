@@ -974,7 +974,7 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn make_ascii_uppercase(&mut self) {
-        // Determine how many bytes are _not_ lowercase.
+        // Determine how many of the first N bytes are _not_ lowercase.
         let num_not_lowercase =
             self.bytes().take_while(|c| !c.is_ascii_lowercase()).count();
         // If all the bytes are not lowercase, we don't need to do anything.
