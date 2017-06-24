@@ -1,4 +1,3 @@
-cache: cargo
 dist: trusty
 language: rust
 rust: nightly
@@ -52,8 +51,6 @@ script:
     else
       sh ci/run.sh $TARGET;
     fi
-  # Travis can't cache files that are not readable by "others"
-  - chmod -R a+r $HOME/.cargo
 
 notifications:
   email:
