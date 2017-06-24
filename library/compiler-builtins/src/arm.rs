@@ -7,6 +7,7 @@ use mem::{memcpy, memmove, memset};
 // calling convention which can't be implemented using a normal Rust function
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
+#[cfg(not(feature = "gen-tests"))]
 pub unsafe fn __aeabi_uidivmod() {
     asm!("push {lr}
           sub sp, sp, #4
@@ -20,6 +21,7 @@ pub unsafe fn __aeabi_uidivmod() {
 
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
+#[cfg(not(feature = "gen-tests"))]
 pub unsafe fn __aeabi_uldivmod() {
     asm!("push {r4, lr}
           sub sp, sp, #16
@@ -35,6 +37,7 @@ pub unsafe fn __aeabi_uldivmod() {
 
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
+#[cfg(not(feature = "gen-tests"))]
 pub unsafe fn __aeabi_idivmod() {
     asm!("push {r0, r1, r4, lr}
           bl __divsi3
@@ -47,6 +50,7 @@ pub unsafe fn __aeabi_idivmod() {
 
 #[naked]
 #[cfg_attr(not(test), no_mangle)]
+#[cfg(not(feature = "gen-tests"))]
 pub unsafe fn __aeabi_ldivmod() {
     asm!("push {r4, lr}
           sub sp, sp, #16
