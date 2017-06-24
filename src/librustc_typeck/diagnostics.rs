@@ -4665,6 +4665,33 @@ i_am_a_function();
 ```
 "##,
 
+E0619: r##"
+A not (yet) known type was used.
+
+Erroneous code example:
+
+```compile_fail,E0619
+let x;
+
+match x {
+    (..) => {} // error: the type of this value must be known in this context
+    _ => {}
+}
+```
+
+To fix this error, just specify the type of the variable. Example:
+
+```
+let x: i32 = 0; // Here, we say that `x` is an `i32` (and give it a value to
+                // avoid another compiler error).
+
+match x {
+    0 => {} // ok!
+    _ => {}
+}
+```
+"##,
+
 }
 
 register_diagnostics! {
