@@ -58,8 +58,8 @@
 #![unstable(feature = "thread_local_internals", issue = "0")]
 #![allow(dead_code)] // sys isn't exported yet
 
+use ptr;
 use sync::atomic::{self, AtomicUsize, Ordering};
-
 use sys::thread_local as imp;
 use sys_common::mutex::Mutex;
 
@@ -235,6 +235,39 @@ impl Drop for Key {
         // Right now Windows doesn't support TLS key destruction, but this also
         // isn't used anywhere other than tests, so just leak the TLS key.
         // unsafe { imp::destroy(self.key) }
+    }
+}
+
+pub unsafe fn register_dtor_fallback(t: *mut u8,
+                                     dtor: unsafe extern fn(*mut u8)) {
+    // The fallback implementation uses a vanilla OS-based TLS key to track
+    // the list of destructors that need to be run for this thread. The key
+    // then has its own destructor which runs all the other destructors.
+    //
+    // The destructor for DTORS is a little special in that it has a `while`
+    // loop to continuously drain the list of registered destructors. It
+    // *should* be the case that this loop always terminates because we
+    // provide the guarantee that a TLS key cannot be set after it is
+    // flagged for destruction.
+
+    static DTORS: StaticKey = StaticKey::new(Some(run_dtors));
+    type List = Vec<(*mut u8, unsafe extern fn(*mut u8))>;
+    if DTORS.get().is_null() {
+        let v: Box<List> = box Vec::new();
+        DTORS.set(Box::into_raw(v) as *mut u8);
+    }
+    let list: &mut List = &mut *(DTORS.get() as *mut List);
+    list.push((t, dtor));
+
+    unsafe extern fn run_dtors(mut ptr: *mut u8) {
+        while !ptr.is_null() {
+            let list: Box<List> = Box::from_raw(ptr as *mut List);
+            for &(ptr, dtor) in list.iter() {
+                dtor(ptr);
+            }
+            ptr = DTORS.get();
+            DTORS.set(ptr::null_mut());
+        }
     }
 }
 
