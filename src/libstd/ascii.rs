@@ -974,18 +974,22 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn make_ascii_uppercase(&mut self) {
-        // FIXME: if there is an ascii lowercase byte, it won't get added to the
-        // final string since it gets consumed here
-        let i = self.bytes().take_while(|c| !c.is_ascii_lowercase()).count();
-        if i == self.len() {
+        // Determine how many bytes are _not_ lowercase.
+        let num_not_lowercase =
+            self.bytes().take_while(|c| !c.is_ascii_lowercase()).count();
+        // If all the bytes are not lowercase, we don't need to do anything.
+        if num_not_lowercase == self.len() {
             return;
         }
         // At least one character in the string is lowercase, so we'll need to
         // build a new string.
         let mut bytes = Vec::with_capacity(self.len());
-        unsafe { bytes.set_len(i); }
-        bytes.copy_from_slice(&self.as_bytes()[..i]);
-        bytes.extend(self.bytes().skip(i).map(|b| b.to_ascii_lowercase()));
+        unsafe { bytes.set_len(num_not_lowercase); }
+        bytes.copy_from_slice(&self.as_bytes()[..num_not_lowercase]);
+        bytes.extend(
+            self.bytes()
+                .skip(num_not_lowercase)
+                .map(|b| b.to_ascii_uppercase()));
         // make_ascii_uppercase() preserves the UTF-8 invariant.
         let s = unsafe { String::from_utf8_unchecked(bytes) };
         *self = Cow::Owned(s)
@@ -993,18 +997,22 @@ impl<'a> AsciiExt for Cow<'a, str> {
 
     #[inline]
     fn make_ascii_lowercase(&mut self) {
-        // FIXME: if there is an ascii uppercase byte, it won't get added to the
-        // final string since it gets consumed here
-        let i = self.bytes().take_while(|c| !c.is_ascii_uppercase()).count();
-        if i == self.len() {
+        // Determine how many of the first N bytes are _not_ uppercase.
+        let num_not_uppercase =
+            self.bytes().take_while(|c| !c.is_ascii_uppercase()).count();
+        // If all the bytes are not uppercase, we don't need to do anything.
+        if num_not_uppercase == self.len() {
             return;
         }
-        // At least one character in the string is lowercase, so we'll need to
+        // At least one character in the string is uppercase, so we'll need to
         // build a new string.
         let mut bytes = Vec::with_capacity(self.len());
-        unsafe { bytes.set_len(i); }
-        bytes.copy_from_slice(&self.as_bytes()[..i]);
-        bytes.extend(self.bytes().skip(i).map(|b| b.to_ascii_uppercase()));
+        unsafe { bytes.set_len(num_not_uppercase); }
+        bytes.copy_from_slice(&self.as_bytes()[..num_not_uppercase]);
+        bytes.extend(
+            self.bytes()
+                .skip(num_not_uppercase)
+                .map(|b| b.to_ascii_uppercase()));
         // make_ascii_uppercase() preserves the UTF-8 invariant.
         let s = unsafe { String::from_utf8_unchecked(bytes) };
         *self = Cow::Owned(s)
