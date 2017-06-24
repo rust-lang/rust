@@ -4142,16 +4142,20 @@ mod c {
                 sources.extend(&["gcc_personality_v0.c"]);
             }
 
-            if target_arch == "x86_64" {
-                sources.extend(
-                    &[
-                        "x86_64/floatdisf.c",
-                        "x86_64/floatdixf.c",
-                        "x86_64/floatundidf.S",
-                        "x86_64/floatundisf.S",
-                        "x86_64/floatundixf.S",
-                    ],
-                );
+            // None of these seem to be used on x86_64 windows, and they've all
+            // got the wrong ABI anyway, so we want to avoid them.
+            if target_os != "windows" {
+                if target_arch == "x86_64" {
+                    sources.extend(
+                        &[
+                            "x86_64/floatdisf.c",
+                            "x86_64/floatdixf.c",
+                            "x86_64/floatundidf.S",
+                            "x86_64/floatundisf.S",
+                            "x86_64/floatundixf.S",
+                        ],
+                    );
+                }
             }
 
             if target_arch == "x86" {
