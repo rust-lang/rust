@@ -75,10 +75,10 @@ case "$TRAVIS_OS_NAME" in
         ;;
 esac
 
-if [ "$TRAVIS_OS_NAME" = osx ]; then
-    path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
-else
+if [ -d /target ]; then
     path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
+else
+    path=target/${1}/debug/deps/libcompiler_builtins-*.rlib
 fi
 
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation

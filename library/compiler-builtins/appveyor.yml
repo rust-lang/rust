@@ -10,7 +10,6 @@ environment:
       MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
       MINGW_DIR: mingw32
     - TARGET: x86_64-pc-windows-gnu
-      MSYS_BITS: 64
 
 install:
   - git submodule update --init
@@ -18,8 +17,8 @@ install:
   - rustup-init.exe --default-host x86_64-pc-windows-msvc --default-toolchain nightly -y
   - if NOT "%TARGET%" == "x86_64-pc-windows-msvc" rustup target add %TARGET%
 
-  # Use the system msys if we can
-  - if defined MSYS_BITS set PATH=C:\msys64\mingw%MSYS_BITS%\bin;C:\msys64\usr\bin;%PATH%
+  # Use the system msys
+  - set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%PATH%
 
   # download a custom compiler otherwise
   - if defined MINGW_URL appveyor DownloadFile %MINGW_URL%/%MINGW_ARCHIVE%
@@ -32,11 +31,4 @@ install:
 build: false
 
 test_script:
-  - cargo build --target %TARGET%
-  - cargo build --target %TARGET% --features c --example intrinsics
-  - cargo build --release --target %TARGET%
-  - cargo build --release --target %TARGET% --features c --example intrinsics
-  - cargo test --no-default-features --features gen-tests --target %TARGET%
-  - cargo test --no-default-features --features "gen-tests c" --target %TARGET%
-  - cargo test --no-default-features --features gen-tests --release --target %TARGET%
-  - cargo test --no-default-features --features "gen-tests c" --release --target %TARGET%
+  - sh ci/run.sh %TARGET%
