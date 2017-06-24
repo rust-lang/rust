@@ -17,6 +17,7 @@
 #![feature(sort_unstable)]
 #![feature(test)]
 
+extern crate rand;
 extern crate test;
 
 mod btree;
