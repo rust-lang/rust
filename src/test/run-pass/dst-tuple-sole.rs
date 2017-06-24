@@ -11,6 +11,8 @@
 // As dst-tuple.rs, but the unsized field is the only field in the tuple.
 
 
+#![feature(unsized_tuple_coercion)]
+
 type Fat<T: ?Sized> = (T,);
 
 // x is a fat pointer

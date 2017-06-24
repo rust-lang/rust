@@ -10,6 +10,8 @@
 
 // Attempt to coerce from unsized to sized.
 
+#![feature(unsized_tuple_coercion)]
+
 struct Fat<T: ?Sized> {
     ptr: T
 }

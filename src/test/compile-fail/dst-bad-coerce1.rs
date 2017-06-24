@@ -10,6 +10,8 @@
 
 // Attempt to change the type as well as unsizing.
 
+#![feature(unsized_tuple_coercion)]
+
 struct Fat<T: ?Sized> {
     ptr: T
 }

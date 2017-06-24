@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unsized_tuple_coercion)]
+
 struct Test<T: ?Sized>(T);
 
 fn main() {

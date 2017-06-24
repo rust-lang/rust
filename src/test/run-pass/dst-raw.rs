@@ -11,6 +11,8 @@
 // Test DST raw pointers
 
 
+#![feature(unsized_tuple_coercion)]
+
 trait Trait {
     fn foo(&self) -> isize;
 }

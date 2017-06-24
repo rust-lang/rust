@@ -10,6 +10,8 @@
 
 // Forbid assignment into a dynamically sized type.
 
+#![feature(unsized_tuple_coercion)]
+
 type Fat<T: ?Sized> = (isize, &'static str, T);
 //~^ WARNING trait bounds are not (yet) enforced
 

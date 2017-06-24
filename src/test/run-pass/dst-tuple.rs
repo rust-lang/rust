@@ -11,6 +11,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
+#![feature(unsized_tuple_coercion)]
 
 type Fat<T: ?Sized> = (isize, &'static str, T);
 

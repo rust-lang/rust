@@ -13,6 +13,8 @@
 // because it would require stack allocation of an unsized temporary (*g in the
 // test).
 
+#![feature(unsized_tuple_coercion)]
+
 pub fn main() {
     let f: ([isize; 3],) = ([5, 6, 7],);
     let g: &([isize],) = &f;
