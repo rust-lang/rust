@@ -5,7 +5,7 @@ type c_int = i16;
 #[cfg(not(target_pointer_width = "16"))]
 type c_int = i32;
 
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn memcpy(dest: *mut u8,
                                 src: *const u8,
                                 n: usize)
@@ -18,7 +18,7 @@ pub unsafe extern "C" fn memcpy(dest: *mut u8,
     dest
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn memmove(dest: *mut u8,
                                  src: *const u8,
                                  n: usize)
@@ -41,7 +41,7 @@ pub unsafe extern "C" fn memmove(dest: *mut u8,
     dest
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) -> *mut u8 {
     let mut i = 0;
     while i < n {
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) -> *mut u8 {
     s
 }
 
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     let mut i = 0;
     while i < n {

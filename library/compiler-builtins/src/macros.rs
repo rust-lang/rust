@@ -253,7 +253,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         $(#[$($attr)*])*
-        #[cfg_attr(not(feature = "gen-tests"), no_mangle)]
+        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }

@@ -18,6 +18,7 @@ compiler-builtins = []
 default = ["compiler-builtins"]
 mem = []
 rustbuild = ["compiler-builtins"]
+mangled-names = []
 
 # generate tests
 #

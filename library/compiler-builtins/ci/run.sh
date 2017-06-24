@@ -51,10 +51,11 @@ case $1 in
         done
         ;;
     *)
-        cargo test --no-default-features --features gen-tests --target $1
-        cargo test --no-default-features --features 'gen-tests c' --target $1
-        cargo test --no-default-features --features gen-tests --target $1 --release
-        cargo test --no-default-features --features 'gen-tests c' --target $1 --release
+        run="cargo test --no-default-features --target $1"
+        $run --features 'gen-tests mangled-names'
+        $run --features 'gen-tests mangled-names' --release
+        $run --features 'gen-tests mangled-names c'
+        $run --features 'gen-tests mangled-names c' --release
         ;;
 esac
 
