@@ -395,11 +395,13 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                     let dummy_ccx = LocalCrateContext::dummy_ccx(shared,
                                                                  local_ccxs.as_mut_slice());
                     let mut str_slice_ty = Type::named_struct(&dummy_ccx, "str_slice");
-
-                    let llptrty = dummy_ccx.llvm_type_of(shared.tcx.mk_str()).ptr_to();
-                    str_slice_ty.set_struct_body(&[llptrty,
-                                                   Type::isize(&dummy_ccx)],
-                                                 false);
+                    str_slice_ty.set_struct_body(&[
+                        Type::array(&Type::i8(&dummy_ccx), 0),
+                        dummy_ccx.llvm_type_of(shared.tcx.mk_str()).ptr_to(),
+                        Type::array(&Type::i8(&dummy_ccx), 0),
+                        Type::isize(&dummy_ccx),
+                        Type::array(&Type::i8(&dummy_ccx), 0)
+                    ], false);
                     (Type::isize(&dummy_ccx), str_slice_ty)
                 };
                 (isize_ty, str_slice_ty, local_ccxs.pop().unwrap())

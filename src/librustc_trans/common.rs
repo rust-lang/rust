@@ -18,6 +18,7 @@ use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::middle::lang_items::LangItem;
+use abi;
 use base;
 use builder::Builder;
 use consts;
@@ -267,7 +268,29 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
         cx.llvm_type_of(cx.tcx().mk_str()).ptr_to());
-    C_named_struct(cx.str_slice_type(), &[cs, C_usize(cx, len as u64)])
+    let empty = C_array(Type::i8(cx), &[]);
+    assert_eq!(abi::FAT_PTR_ADDR, 0);
+    assert_eq!(abi::FAT_PTR_EXTRA, 1);
+    C_named_struct(cx.str_slice_type(), &[
+        empty,
+        cs,
+        empty,
+        C_usize(cx, len as u64),
+        empty
+    ])
+}
+
+pub fn C_fat_ptr(cx: &CrateContext, ptr: ValueRef, meta: ValueRef) -> ValueRef {
+    let empty = C_array(Type::i8(cx), &[]);
+    assert_eq!(abi::FAT_PTR_ADDR, 0);
+    assert_eq!(abi::FAT_PTR_EXTRA, 1);
+    C_struct(cx, &[
+        empty,
+        ptr,
+        empty,
+        meta,
+        empty
+    ], false)
 }
 
 pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {

@@ -202,9 +202,9 @@ fn union_fill(cx: &CrateContext, size: Size, align: Align) -> Type {
     Type::array(&elem_ty, size / abi_align)
 }
 
-/// Double an index to account for padding.
+/// Double an index and add 1 to account for padding.
 pub fn memory_index_to_gep(index: u64) -> u64 {
-    index * 2
+    1 + index * 2
 }
 
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -213,9 +213,8 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  discr: Option<Ty<'tcx>>) -> Vec<Type> {
     let field_count = (discr.is_some() as usize) + layout.field_count();
     debug!("struct_llfields: variant: {:?}", variant);
-    let mut first_field = true;
     let mut offset = Size::from_bytes(0);
-    let mut result: Vec<Type> = Vec::with_capacity(field_count * 2);
+    let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
     let field_iter = variant.field_index_by_increasing_offset().map(|i| {
         let ty = if i == 0 && discr.is_some() {
             cx.layout_of(discr.unwrap())
@@ -229,13 +228,9 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             index, field, offset, target_offset);
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
-        if first_field {
-            assert_eq!(padding.bytes(), 0);
-            first_field = false;
-        } else {
-            result.push(Type::array(&Type::i8(cx), padding.bytes()));
-            debug!("    padding before: {:?}", padding);
-        }
+        result.push(Type::array(&Type::i8(cx), padding.bytes()));
+        debug!("    padding before: {:?}", padding);
+
         let llty = cx.llvm_type_of(field.ty);
         result.push(llty);
 
@@ -259,7 +254,7 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} min_size: {:?} stride: {:?}",
             padding, offset, variant.min_size, variant.stride());
         result.push(Type::array(&Type::i8(cx), padding.bytes()));
-        assert!(result.len() == (field_count * 2));
+        assert!(result.len() == 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} min_size: {:?} stride: {:?}",
                offset, variant.min_size, variant.stride());

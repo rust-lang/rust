@@ -76,7 +76,13 @@ fn compute_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type
             } else {
                 let ptr_ty = cx.llvm_type_of(ty).ptr_to();
                 let info_ty = unsized_info_ty(cx, ty);
-                Type::struct_(cx, &[ptr_ty, info_ty], false)
+                Type::struct_(cx, &[
+                    Type::array(&Type::i8(cx), 0),
+                    ptr_ty,
+                    Type::array(&Type::i8(cx), 0),
+                    info_ty,
+                    Type::array(&Type::i8(cx), 0)
+                ], false)
             }
         } else {
             cx.llvm_type_of(ty).ptr_to()
@@ -240,9 +246,12 @@ impl<'tcx> LayoutLlvmExt for TyLayout<'tcx> {
             }
 
             Layout::Vector { .. } |
-            Layout::Array { .. } |
-            Layout::FatPointer { .. } => {
+            Layout::Array { .. } => {
                 index as u64
+            }
+
+            Layout::FatPointer { .. } => {
+                adt::memory_index_to_gep(index as u64)
             }
 
             Layout::Univariant { ref variant, .. } => {

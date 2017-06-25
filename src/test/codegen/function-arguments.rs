@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -C no-prepopulate-passes
+// ignore-tidy-linelength
 
 #![crate_type = "lib"]
 #![feature(custom_attribute)]
@@ -132,7 +133,7 @@ pub fn trait_borrow(_: &Drop) {
 pub fn trait_box(_: Box<Drop>) {
 }
 
-// CHECK: { [0 x i16]*, [[USIZE]] } @return_slice(i16* noalias nonnull readonly %x.ptr, [[USIZE]] %x.meta)
+// CHECK: { [0 x i8], [0 x i16]*, [0 x i8], [[USIZE]], [0 x i8] } @return_slice(i16* noalias nonnull readonly %x.ptr, [[USIZE]] %x.meta)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
   x
