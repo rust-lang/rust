@@ -4066,28 +4066,8 @@ mod c {
                 "divxc3.c",
                 "extendsfdf2.c",
                 "extendhfsf2.c",
-                "ffsdi2.c",
-                "fixdfdi.c",
-                "fixdfsi.c",
-                "fixsfdi.c",
-                "fixsfsi.c",
-                "fixunsdfdi.c",
-                "fixunsdfsi.c",
-                "fixunssfdi.c",
-                "fixunssfsi.c",
-                "fixunsxfdi.c",
-                "fixunsxfsi.c",
-                "fixxfdi.c",
-                "floatdidf.c",
                 "floatdisf.c",
-                "floatdixf.c",
-                "floatsidf.c",
-                "floatsisf.c",
-                "floatundidf.c",
                 "floatundisf.c",
-                "floatundixf.c",
-                "floatunsidf.c",
-                "floatunsisf.c",
                 "int_util.c",
                 "muldc3.c",
                 "muldf3.c",
@@ -4124,18 +4104,6 @@ mod c {
                     "cmpti2.c",
                     "ctzti2.c",
                     "ffsti2.c",
-                    "fixdfti.c",
-                    "fixsfti.c",
-                    "fixunsdfti.c",
-                    "fixunssfti.c",
-                    "fixunsxfti.c",
-                    "fixxfti.c",
-                    "floattidf.c",
-                    "floattisf.c",
-                    "floattixf.c",
-                    "floatuntidf.c",
-                    "floatuntisf.c",
-                    "floatuntixf.c",
                     "mulvti3.c",
                     "negti2.c",
                     "negvti2.c",
@@ -4164,30 +4132,26 @@ mod c {
             if target_arch == "x86_64" {
                 sources.extend(
                     &[
-                        "x86_64/floatdidf.c",
                         "x86_64/floatdisf.c",
                         "x86_64/floatdixf.c",
                     ],
                 );
             }
         } else {
-            if target_os != "freebsd" && target_os != "netbsd" {
-                sources.extend(&["gcc_personality_v0.c"]);
-            }
-
-            if target_arch == "x86_64" {
-                sources.extend(
-                    &[
-                        "x86_64/chkstk.S",
-                        "x86_64/chkstk2.S",
-                        "x86_64/floatdidf.c",
-                        "x86_64/floatdisf.c",
-                        "x86_64/floatdixf.c",
-                        "x86_64/floatundidf.S",
-                        "x86_64/floatundisf.S",
-                        "x86_64/floatundixf.S",
-                    ],
-                );
+            // None of these seem to be used on x86_64 windows, and they've all
+            // got the wrong ABI anyway, so we want to avoid them.
+            if target_os != "windows" {
+                if target_arch == "x86_64" {
+                    sources.extend(
+                        &[
+                            "x86_64/floatdisf.c",
+                            "x86_64/floatdixf.c",
+                            "x86_64/floatundidf.S",
+                            "x86_64/floatundisf.S",
+                            "x86_64/floatundixf.S",
+                        ],
+                    );
+                }
             }
 
             if target_arch == "x86" {

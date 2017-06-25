@@ -6,18 +6,21 @@
 #![allow(unused_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
+#![feature(alloc_system)]
 #![feature(asm)]
 #![feature(compiler_builtins_lib)]
 #![feature(core_float)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(start)]
 #![feature(i128_type)]
+#![cfg_attr(windows, feature(panic_unwind))]
 #![no_std]
 
 #[cfg(not(thumb))]
-extern crate libc;
+extern crate alloc_system;
 extern crate compiler_builtins;
+#[cfg(windows)]
+extern crate panic_unwind;
 
 // NOTE cfg(not(thumbv6m)) means that the operation is not supported on ARMv6-M at all. Not even
 // compiler-rt provides a C/assembly implementation.
@@ -27,7 +30,6 @@ extern crate compiler_builtins;
 // convention for its intrinsics that's different from other architectures; that's why some function
 // have an additional comment: the function name is the ARM name for the intrinsic and the comment
 // in the non-ARM name for the intrinsic.
-#[cfg(feature = "c")]
 mod intrinsics {
     use core::num::Float;
 
@@ -339,7 +341,6 @@ mod intrinsics {
     }
 }
 
-#[cfg(feature = "c")]
 fn run() {
     use intrinsics::*;
 
@@ -402,34 +403,40 @@ fn run() {
     bb(umodti3(bb(2), bb(2)));
     bb(divti3(bb(2), bb(2)));
     bb(modti3(bb(2), bb(2)));
+
+    something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 }
 
-#[cfg(all(feature = "c", not(thumb)))]
+fn something_with_a_dtor(f: &Fn()) {
+    struct A<'a>(&'a (Fn() + 'a));
+
+    impl<'a> Drop for A<'a> {
+        fn drop(&mut self) {
+            (self.0)();
+        }
+    }
+    let _a = A(f);
+    f();
+}
+
+#[cfg(not(thumb))]
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {
     run();
-
     0
 }
 
-#[cfg(all(not(feature = "c"), not(thumb)))]
-#[start]
-fn main(_: isize, _: *const *const u8) -> isize {
-    0
-}
-
-#[cfg(all(feature = "c", thumb))]
+#[cfg(thumb)]
 #[no_mangle]
 pub fn _start() -> ! {
     run();
     loop {}
 }
 
-#[cfg(all(not(feature = "c"), thumb))]
-#[no_mangle]
-pub fn _start() -> ! {
-    loop {}
-}
+#[cfg(windows)]
+#[link(name = "kernel32")]
+#[link(name = "msvcrt")]
+extern {}
 
 // ARM targets need these symbols
 #[no_mangle]
@@ -438,18 +445,17 @@ pub fn __aeabi_unwind_cpp_pr0() {}
 #[no_mangle]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
-// Avoid "undefined reference to `_Unwind_Resume`" errors
+#[cfg(not(windows))]
 #[allow(non_snake_case)]
 #[no_mangle]
 pub fn _Unwind_Resume() {}
 
-// Lang items
-#[cfg(not(test))]
+#[cfg(not(windows))]
 #[lang = "eh_personality"]
 #[no_mangle]
-extern "C" fn eh_personality() {}
+pub extern "C" fn eh_personality() {}
 
-#[cfg(not(test))]
 #[lang = "panic_fmt"]
 #[no_mangle]
+#[allow(private_no_mangle_fns)]
 extern "C" fn panic_fmt() {}

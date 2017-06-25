@@ -32,72 +32,15 @@
 // that follow "x86 naming convention" (e.g. addsf3). Those aeabi intrinsics must adhere to the
 // AAPCS calling convention (`extern "aapcs"`) because that's how LLVM will call them.
 
-// TODO(rust-lang/rust#37029) use e.g. checked_div(_).unwrap_or_else(|| abort())
-macro_rules! udiv {
-    ($a:expr, $b:expr) => {
-        unsafe {
-            let a = $a;
-            let b = $b;
-
-            if b == 0 {
-                ::core::intrinsics::abort()
-            } else {
-                ::core::intrinsics::unchecked_div(a, b)
-            }
-        }
-    }
-}
-
-macro_rules! sdiv {
-    ($sty:ident, $a:expr, $b:expr) => {
-        unsafe {
-            let a = $a;
-            let b = $b;
-
-            if b == 0 || (b == -1 && a == $sty::min_value()) {
-                ::core::intrinsics::abort()
-            } else {
-                ::core::intrinsics::unchecked_div(a, b)
-            }
-        }
-    }
-}
-
-macro_rules! urem {
-    ($a:expr, $b:expr) => {
-        unsafe {
-            let a = $a;
-            let b = $b;
-
-            if b == 0 {
-                ::core::intrinsics::abort()
-            } else {
-                ::core::intrinsics::unchecked_rem(a, b)
-            }
-        }
-    }
-}
-
-// Hack for LLVM expectations for ABI on windows
-#[cfg(all(windows, target_pointer_width="64"))]
-#[repr(simd)]
-pub struct U64x2(u64, u64);
-
-#[cfg(all(windows, target_pointer_width="64"))]
-fn conv(i: u128) -> U64x2 {
-    use int::LargeInt;
-    U64x2(i.low(), i.high())
-}
-
-#[cfg(all(windows, target_pointer_width="64"))]
-fn sconv(i: i128) -> U64x2 {
-    use int::LargeInt;
-    let j = i as u128;
-    U64x2(j.low(), j.high())
-}
-
 #[cfg(test)]
 extern crate core;
+
+fn abort() -> ! {
+    unsafe { core::intrinsics::abort() }
+}
+
+#[macro_use]
+mod macros;
 
 pub mod int;
 pub mod float;
