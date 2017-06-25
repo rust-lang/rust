@@ -29,7 +29,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// * On Windows, strings are often arbitrary sequences of non-zero 16-bit
 ///   values, interpreted as UTF-16 when it is valid to do so.
 ///
-/// * In Rust, strings are always valid UTF-8, but may contain zeros.
+/// * In Rust, strings are always valid UTF-8, which may contain zeros.
 ///
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
