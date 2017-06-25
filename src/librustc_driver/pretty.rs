@@ -163,13 +163,12 @@ pub fn parse_pretty(sess: &Session,
 
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<'tcx, A, B, F>(&self,
+    fn call_with_pp_support<'tcx, A, F>(&self,
                                            sess: &'tcx Session,
                                            hir_map: Option<&hir_map::Map<'tcx>>,
-                                           payload: B,
                                            f: F)
                                            -> A
-        where F: FnOnce(&PrinterSupport, B) -> A
+        where F: FnOnce(&PrinterSupport) -> A
     {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
@@ -177,7 +176,7 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
-                f(&annotation, payload)
+                f(&annotation)
             }
 
             PpmIdentified | PpmExpandedIdentified => {
@@ -185,18 +184,18 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
-                f(&annotation, payload)
+                f(&annotation)
             }
             PpmExpandedHygiene => {
                 let annotation = HygieneAnnotation {
                     sess: sess,
                 };
-                f(&annotation, payload)
+                f(&annotation)
             }
             _ => panic!("Should use call_with_pp_support_hir"),
         }
     }
-    fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
+    fn call_with_pp_support_hir<'tcx, A, F>(&self,
                                                sess: &'tcx Session,
                                                hir_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis,
@@ -204,10 +203,9 @@ impl PpSourceMode {
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
                                                id: &str,
-                                               payload: B,
                                                f: F)
                                                -> A
-        where F: FnOnce(&HirPrinterSupport, B, &hir::Crate) -> A
+        where F: FnOnce(&HirPrinterSupport, &hir::Crate) -> A
     {
         match *self {
             PpmNormal => {
@@ -215,7 +213,7 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: Some(hir_map.clone()),
                 };
-                f(&annotation, payload, hir_map.forest.krate())
+                f(&annotation, hir_map.forest.krate())
             }
 
             PpmIdentified => {
@@ -223,7 +221,7 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: Some(hir_map.clone()),
                 };
-                f(&annotation, payload, hir_map.forest.krate())
+                f(&annotation, hir_map.forest.krate())
             }
             PpmTyped => {
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
@@ -240,7 +238,7 @@ impl PpSourceMode {
                         tables: Cell::new(&empty_tables)
                     };
                     let _ignore = tcx.dep_graph.in_ignore();
-                    f(&annotation, payload, hir_map.forest.krate())
+                    f(&annotation, hir_map.forest.krate())
                 }),
                              sess)
             }
@@ -825,7 +823,7 @@ pub fn print_after_parsing(sess: &Session,
     if let PpmSource(s) = ppm {
         // Silently ignores an identified node.
         let out: &mut Write = &mut out;
-        s.call_with_pp_support(sess, None, box out, |annotation, out| {
+        s.call_with_pp_support(sess, None, move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 pprust::print_crate(sess.codemap(),
@@ -833,7 +831,7 @@ pub fn print_after_parsing(sess: &Session,
                                     krate,
                                     src_name.to_string(),
                                     &mut rdr,
-                                    out,
+                                    box out,
                                     annotation.pp_ann(),
                                     false)
             })
@@ -883,7 +881,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             (PpmSource(s), _) => {
                 // Silently ignores an identified node.
                 let out: &mut Write = &mut out;
-                s.call_with_pp_support(sess, Some(hir_map), box out, |annotation, out| {
+                s.call_with_pp_support(sess, Some(hir_map), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
@@ -891,7 +889,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                         krate,
                                         src_name.to_string(),
                                         &mut rdr,
-                                        out,
+                                        box out,
                                         annotation.pp_ann(),
                                         true)
                 })
@@ -906,8 +904,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            arena,
                                            arenas,
                                            crate_name,
-                                           box out,
-                                           |annotation, out, krate| {
+                                           move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust_hir::print_crate(sess.codemap(),
@@ -915,7 +912,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                             krate,
                                             src_name.to_string(),
                                             &mut rdr,
-                                            out,
+                                            box out,
                                             annotation.pp_ann(),
                                             true)
                 })
@@ -930,8 +927,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            arena,
                                            arenas,
                                            crate_name,
-                                           (out, uii),
-                                           |annotation, (out, uii), _| {
+                                           move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     let hir_map = annotation.hir_map().expect("--unpretty missing HIR map");
