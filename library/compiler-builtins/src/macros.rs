@@ -3,8 +3,8 @@
 /// The "main macro" used for defining intrinsics.
 ///
 /// The compiler-builtins library is super platform-specific with tons of crazy
-/// little tweaks for various platforms. As a result it *could* involve a lot fo
-/// #[cfg] and macro soup, but the intention is that this macro alleviates a lof
+/// little tweaks for various platforms. As a result it *could* involve a lot of
+/// #[cfg] and macro soup, but the intention is that this macro alleviates a lot
 /// of that complexity. Ideally this macro has all the weird ABI things
 /// platforms need and elsewhere in this library it just looks like normal Rust
 /// code.
@@ -218,10 +218,6 @@ macro_rules! intrinsics {
         pub mod $name {
             intrinsics! {
                 pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
-                    super::$name($($argname),*)
-                }
-
-                pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
                     super::$name($($argname),*)
                 }
             }
