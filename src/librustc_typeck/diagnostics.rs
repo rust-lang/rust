@@ -4223,6 +4223,9 @@ As the error message indicates, only `u8` can be cast into `char`. Example:
 let c = 86u8 as char; // ok!
 assert_eq!(c, 'V');
 ```
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
 "##,
 
 E0605: r##"
@@ -4249,6 +4252,9 @@ x as u32; // ok!
 let v = 0 as *const u8;
 v as *const i8; // ok!
 ```
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
 "##,
 
 E0606: r##"
@@ -4268,6 +4274,9 @@ other. Example:
 let x = &0u8;
 let y: u32 = *x as u32; // We dereference it first and then cast it.
 ```
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
 "##,
 
 E0607: r##"
@@ -4292,6 +4301,9 @@ objects are DSTs. In the case of slices, the additional information the fat
 pointer holds is their size.
 
 To fix this error, don't try to cast directly between thin and fat pointers.
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
 "##,
 
 E0609: r##"
