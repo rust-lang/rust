@@ -1174,12 +1174,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                                              expected, found,
                                                              cause.span, blk_id);
                     }
-                    ObligationCauseCode::ReturnType(ret_id) => {
-                        db = fcx.report_mismatched_types(cause, expected, found, err);
-                        if let Some((fn_decl, _)) = fcx.get_fn_decl(ret_id) {
-                            fcx.point_to_type_requirement(&mut db, &fn_decl, expected);
-                        }
-                    }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
                     }

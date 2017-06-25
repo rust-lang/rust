@@ -4261,32 +4261,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.suggest_missing_semicolon(err, expression, expected, cause_span);
 
         if let Some((fn_decl, is_main)) = self.get_fn_decl(blk_id) {
-            self.point_to_type_requirement(err, &fn_decl, expected);
             // `fn main()` must return `()`, do not suggest changing return type
             if !is_main {
                 self.suggest_missing_return_type(err, &fn_decl, found);
             }
-        }
-    }
-
-    pub fn point_to_type_requirement(&self,
-                                 err: &mut DiagnosticBuilder<'tcx>,
-                                 fn_decl: &hir::FnDecl,
-                                 ty: Ty<'tcx>) {
-        let msg = if let &hir::FnDecl {
-            output: hir::FunctionRetTy::DefaultReturn(_), ..
-        } = fn_decl {
-            "default "
-        } else {
-            ""
-        };
-        let ty = self.resolve_type_vars_if_possible(&ty);
-        if ty.to_string().len() < 10 {
-            err.span_label(fn_decl.output.span(),
-                           format!("expected `{}` because of this {}return type", ty, msg));
-        } else {
-            err.span_label(fn_decl.output.span(),
-                           format!("expected because of this {}return type", msg));
         }
     }
 

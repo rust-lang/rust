@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:26:5
    |
-25 | fn a() -> Foo {
-   |           --- expected `Foo` because of this return type
 26 |     Some(Foo { bar: 1 })
    |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::option::Option`
    |
@@ -12,8 +10,6 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:30:5
    |
-29 | fn a2() -> Foo {
-   |            --- expected `Foo` because of this return type
 30 |     Ok(Foo { bar: 1})
    |     ^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::result::Result`
    |
@@ -23,8 +19,6 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:34:5
    |
-33 | fn b() -> Option<Foo> {
-   |           ----------- expected because of this return type
 34 |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::option::Option`, found struct `Foo`
    |
@@ -34,8 +28,6 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:38:5
    |
-37 | fn c() -> Result<Foo, Bar> {
-   |           ---------------- expected because of this return type
 38 |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::result::Result`, found struct `Foo`
    |
@@ -45,8 +37,6 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:42:5
    |
-41 |   fn d() -> X<X<String, String>, String> {
-   |             ---------------------------- expected because of this return type
 42 | /     X {
 43 | |         x: X {
 44 | |             x: "".to_string(),
@@ -62,8 +52,6 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:52:5
    |
-51 |   fn e() -> X<X<String, String>, String> {
-   |             ---------------------------- expected because of this return type
 52 | /     X {
 53 | |         x: X {
 54 | |             x: "".to_string(),

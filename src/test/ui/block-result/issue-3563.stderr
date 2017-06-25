@@ -8,10 +8,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-3563.rs:13:9
    |
 12 |     fn a(&self) {
-   |                 -
-   |                 |
-   |                 possibly return type missing here?
-   |                 expected `()` because of this default return type
+   |                 - possibly return type missing here?
 13 |         || self.b()
    |         ^^^^^^^^^^^ expected (), found closure
    |
