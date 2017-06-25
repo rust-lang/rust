@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
-#![allow(unreachable_code)]
-#![deny(resolve_trait_on_defaulted_unit)]
+#![allow(unused)]
 
 trait Deserialize: Sized {
     fn deserialize() -> Result<Self, String>;
@@ -38,4 +36,3 @@ fn smeg() {
 fn main() {
     smeg();
 }
-

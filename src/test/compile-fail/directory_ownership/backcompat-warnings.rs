@@ -10,12 +10,8 @@
 
 // error-pattern: cannot declare a new module at this location
 // error-pattern: will become a hard error
-// error-pattern: compilation successful
-
-#![feature(rustc_attrs)]
 
 #[path="mod_file_not_owning_aux3.rs"]
 mod foo;
 
-#[rustc_error]
 fn main() {}

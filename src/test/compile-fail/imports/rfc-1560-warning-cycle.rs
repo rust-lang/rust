@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
 #![allow(unused)]
 
 pub struct Foo;
@@ -20,12 +19,11 @@ mod bar {
         use *; //~ NOTE `Foo` could refer to the name imported here
         use bar::*; //~ NOTE `Foo` could also refer to the name imported here
         fn f(_: Foo) {}
-        //~^ WARN `Foo` is ambiguous
+        //~^ ERROR `Foo` is ambiguous
         //~| WARN hard error in a future release
         //~| NOTE see issue #38260
-        //~| NOTE #[warn(legacy_imports)] on by default
+        //~| NOTE #[deny(legacy_imports)] on by default
     }
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+fn main() {}
