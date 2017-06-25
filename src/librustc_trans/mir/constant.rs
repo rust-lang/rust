@@ -28,7 +28,7 @@ use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_big_integral, C_u32, C_u64};
-use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector};
+use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, C_fat_ptr};
 use common::const_to_opt_u128;
 use consts;
 use type_of::{self, LayoutLlvmExt};
@@ -674,9 +674,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                                      .insert(base, operand.llval);
                             assert!(prev_const.is_none() || prev_const == Some(operand.llval));
                         }
-                        assert_eq!(abi::FAT_PTR_ADDR, 0);
-                        assert_eq!(abi::FAT_PTR_EXTRA, 1);
-                        C_struct(self.ccx, &[base, info], false)
+                        C_fat_ptr(self.ccx, base, info)
                     }
                     mir::CastKind::Misc if common::type_is_immediate(self.ccx, operand.ty) => {
                         debug_assert!(common::type_is_immediate(self.ccx, cast_ty));
@@ -735,7 +733,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             if common::type_is_fat_ptr(self.ccx, cast_ty) {
                                 let llcast_ty = type_of::fat_ptr_base_ty(self.ccx, cast_ty);
                                 let data_cast = consts::ptrcast(data_ptr, llcast_ty);
-                                C_struct(self.ccx, &[data_cast, meta], false)
+                                C_fat_ptr(self.ccx, data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
@@ -778,7 +776,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let ptr = if self.ccx.shared().type_is_sized(ty) {
                     base
                 } else {
-                    C_struct(self.ccx, &[base, tr_lvalue.llextra], false)
+                    C_fat_ptr(self.ccx, base, tr_lvalue.llextra)
                 };
                 Const::new(ptr, ref_ty)
             }
@@ -1119,14 +1117,8 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let parts = st.field_index_by_increasing_offset().map(|i| {
         (vals[i], st.offsets[i])
     });
-    let mut first_field = true;
     for (val, target_offset) in parts {
-        if first_field {
-            first_field = false;
-            assert_eq!(target_offset.bytes(), 0);
-        } else {
-            cfields.push(padding(ccx, target_offset - offset));
-        }
+        cfields.push(padding(ccx, target_offset - offset));
         cfields.push(val.llval);
         offset = target_offset + ccx.size_of(val.ty);
     }
