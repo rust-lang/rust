@@ -19,7 +19,6 @@ use common::*;
 use llvm::{ValueRef};
 use llvm;
 use meth;
-use monomorphize;
 use rustc::ty::layout::LayoutTyper;
 use rustc::ty::{self, Ty};
 use value::Value;
@@ -38,7 +37,19 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
     }
     assert!(!info.is_null());
     match t.sty {
-        ty::TyAdt(..) | ty::TyTuple(..) => {
+        ty::TyDynamic(..) => {
+            // load size/align from vtable
+            (meth::SIZE.get_usize(bcx, info), meth::ALIGN.get_usize(bcx, info))
+        }
+        ty::TySlice(_) | ty::TyStr => {
+            let unit = t.sequence_element_type(bcx.tcx());
+            // The info in this case is the length of the str, so the size is that
+            // times the unit size.
+            let (size, align) = bcx.ccx.size_and_align_of(unit);
+            (bcx.mul(info, C_usize(bcx.ccx, size.bytes())),
+             C_usize(bcx.ccx, align.abi()))
+        }
+        _ => {
             let ccx = bcx.ccx;
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
@@ -63,14 +74,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let field_ty = match t.sty {
-                ty::TyAdt(def, substs) => {
-                    let last_field = def.struct_variant().fields.last().unwrap();
-                    monomorphize::field_ty(bcx.tcx(), substs, last_field)
-                },
-                ty::TyTuple(tys, _) => tys.last().unwrap(),
-                _ => unreachable!(),
-            };
+            let field_ty = layout.field_type(ccx, layout.field_count() - 1);
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding
@@ -113,18 +117,5 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
             (size, align)
         }
-        ty::TyDynamic(..) => {
-            // load size/align from vtable
-            (meth::SIZE.get_usize(bcx, info), meth::ALIGN.get_usize(bcx, info))
-        }
-        ty::TySlice(_) | ty::TyStr => {
-            let unit = t.sequence_element_type(bcx.tcx());
-            // The info in this case is the length of the str, so the size is that
-            // times the unit size.
-            let (size, align) = bcx.ccx.size_and_align_of(unit);
-            (bcx.mul(info, C_usize(bcx.ccx, size.bytes())),
-             C_usize(bcx.ccx, align.abi()))
-        }
-        _ => bug!("Unexpected unsized type, found {}", t)
     }
 }

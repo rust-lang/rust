@@ -143,7 +143,6 @@ mod partitioning;
 mod symbol_names_test;
 mod time_graph;
 mod trans_item;
-mod tvec;
 mod type_;
 mod type_of;
 mod value;

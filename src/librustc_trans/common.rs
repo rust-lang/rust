@@ -22,7 +22,6 @@ use base;
 use builder::Builder;
 use consts;
 use declare;
-use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::traits;
@@ -68,53 +67,11 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     }
 }
 
-/// Returns Some([a, b]) if the type has a pair of fields with types a and b.
-pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
-                                  -> Option<[Ty<'tcx>; 2]> {
-    match ty.sty {
-        ty::TyAdt(adt, substs) => {
-            assert_eq!(adt.variants.len(), 1);
-            let fields = &adt.variants[0].fields;
-            if fields.len() != 2 {
-                return None;
-            }
-            Some([monomorphize::field_ty(ccx.tcx(), substs, &fields[0]),
-                  monomorphize::field_ty(ccx.tcx(), substs, &fields[1])])
-        }
-        ty::TyClosure(def_id, substs) => {
-            let mut tys = substs.upvar_tys(def_id, ccx.tcx());
-            tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
-                if tys.next().is_some() {
-                    None
-                } else {
-                    Some([first_ty, second_ty])
-                }
-            }))
-        }
-        ty::TyGenerator(def_id, substs, _) => {
-            let mut tys = substs.field_tys(def_id, ccx.tcx());
-            tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
-                if tys.next().is_some() {
-                    None
-                } else {
-                    Some([first_ty, second_ty])
-                }
-            }))
-        }
-        ty::TyTuple(tys, _) => {
-            if tys.len() != 2 {
-                return None;
-            }
-            Some([tys[0], tys[1]])
-        }
-        _ => None
-    }
-}
-
 /// Returns true if the type is represented as a pair of immediates.
 pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> bool {
-    match *ccx.layout_of(ty) {
+    let layout = ccx.layout_of(ty);
+    match *layout {
         Layout::FatPointer { .. } => true,
         Layout::Univariant { ref variant, .. } => {
             // There must be only 2 fields.
@@ -122,12 +79,9 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                 return false;
             }
 
-            match type_pair_fields(ccx, ty) {
-                Some([a, b]) => {
-                    type_is_immediate(ccx, a) && type_is_immediate(ccx, b)
-                }
-                None => false
-            }
+            // The two fields must be both immediates.
+            type_is_immediate(ccx, layout.field_type(ccx, 0)) &&
+            type_is_immediate(ccx, layout.field_type(ccx, 1))
         }
         _ => false
     }
@@ -356,13 +310,14 @@ pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(v: ValueRef, i: usize) -> ValueRef {
+pub fn const_get_elt(v: ValueRef, idx: u64) -> ValueRef {
     unsafe {
-        let us = &[i as c_uint];
+        assert_eq!(idx as c_uint as u64, idx);
+        let us = &[idx as c_uint];
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
-        debug!("const_get_elt(v={:?}, i={}, r={:?})",
-               Value(v), i, Value(r));
+        debug!("const_get_elt(v={:?}, idx={}, r={:?})",
+               Value(v), idx, Value(r));
 
         r
     }

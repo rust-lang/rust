@@ -10,18 +10,16 @@
 
 use llvm::ValueRef;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{Align, Layout, LayoutTyper};
+use rustc::ty::layout::LayoutTyper;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 
-use adt;
 use base;
 use common::{self, CrateContext, C_undef};
 use builder::Builder;
 use value::Value;
-use type_of;
-use type_::Type;
+use type_of::{self, LayoutLlvmExt};
 
 use std::fmt;
 use std::ptr;
@@ -49,8 +47,8 @@ pub enum OperandValue {
 ///
 /// NOTE: unless you know a value's type exactly, you should not
 /// generate LLVM opcodes acting on it and instead act via methods,
-/// to avoid nasty edge cases. In particular, using `Builder.store`
-/// directly is sure to cause problems -- use `MirContext.store_operand`
+/// to avoid nasty edge cases. In particular, using `Builder::store`
+/// directly is sure to cause problems -- use `OperandRef::store`
 /// instead.
 #[derive(Copy, Clone)]
 pub struct OperandRef<'tcx> {
@@ -121,15 +119,10 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             let llty = type_of::type_of(bcx.ccx, self.ty);
             let mut llpair = C_undef(llty);
             let elems = [a, b];
+            let layout = bcx.ccx.layout_of(self.ty);
             for i in 0..2 {
                 let elem = base::from_immediate(bcx, elems[i]);
-                let layout = bcx.ccx.layout_of(self.ty);
-                let i = if let Layout::Univariant { ref variant, .. } = *layout {
-                    adt::struct_llfields_index(variant, i)
-                } else {
-                    i
-                };
-                llpair = bcx.insert_value(llpair, elem, i);
+                llpair = bcx.insert_value(llpair, elem, layout.llvm_field_index(i));
             }
             self.val = OperandValue::Immediate(llpair);
         }
@@ -145,72 +138,51 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 debug!("Operand::unpack_if_pair: unpacking {:?}", self);
 
                 let layout = bcx.ccx.layout_of(self.ty);
-                let (ix0, ix1) = if let Layout::Univariant { ref variant, .. } = *layout {
-                    (adt::struct_llfields_index(variant, 0),
-                    adt::struct_llfields_index(variant, 1))
-                } else {
-                    (0, 1)
-                };
 
-                let mut a = bcx.extract_value(llval, ix0);
-                let mut b = bcx.extract_value(llval, ix1);
+                let a = bcx.extract_value(llval, layout.llvm_field_index(0));
+                let a = base::to_immediate(bcx, a, layout.field_type(bcx.ccx, 0));
 
-                let pair_fields = common::type_pair_fields(bcx.ccx, self.ty);
-                if let Some([a_ty, b_ty]) = pair_fields {
-                    if a_ty.is_bool() {
-                        a = bcx.trunc(a, Type::i1(bcx.ccx));
-                    }
-                    if b_ty.is_bool() {
-                        b = bcx.trunc(b, Type::i1(bcx.ccx));
-                    }
-                }
+                let b = bcx.extract_value(llval, layout.llvm_field_index(1));
+                let b = base::to_immediate(bcx, b, layout.field_type(bcx.ccx, 1));
 
                 self.val = OperandValue::Pair(a, b);
             }
         }
         self
     }
+
+    pub fn store(self, bcx: &Builder<'a, 'tcx>, dest: LvalueRef<'tcx>) {
+        debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
+        // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
+        // value is through `undef`, and store itself is useless.
+        if common::type_is_zero_size(bcx.ccx, self.ty) {
+            return;
+        }
+        match self.val {
+            OperandValue::Ref(r, source_align) =>
+                base::memcpy_ty(bcx, dest.llval, r, self.ty,
+                                (source_align | dest.alignment).non_abi()),
+            OperandValue::Immediate(s) => {
+                bcx.store(base::from_immediate(bcx, s), dest.llval, dest.alignment.non_abi());
+            }
+            OperandValue::Pair(a, b) => {
+                // See comment above about zero-sized values.
+                let dest_a = dest.project_field(bcx, 0);
+                if !common::type_is_zero_size(bcx.ccx, dest_a.ty.to_ty(bcx.tcx())) {
+                    let a = base::from_immediate(bcx, a);
+                    bcx.store(a, dest_a.llval, dest_a.alignment.non_abi());
+                }
+                let dest_b = dest.project_field(bcx, 1);
+                if !common::type_is_zero_size(bcx.ccx, dest_b.ty.to_ty(bcx.tcx())) {
+                    let b = base::from_immediate(bcx, b);
+                    bcx.store(b, dest_b.llval, dest_b.alignment.non_abi());
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_load(&mut self,
-                      bcx: &Builder<'a, 'tcx>,
-                      llval: ValueRef,
-                      align: Alignment,
-                      ty: Ty<'tcx>)
-                      -> OperandRef<'tcx>
-    {
-        debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
-
-        let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
-            let (lldata, llextra) = base::load_fat_ptr(bcx, llval, align, ty);
-            OperandValue::Pair(lldata, llextra)
-        } else if common::type_is_imm_pair(bcx.ccx, ty) {
-            let (ix0, ix1, f_align) = match *bcx.ccx.layout_of(ty) {
-                Layout::Univariant { ref variant, .. } => {
-                    (adt::struct_llfields_index(variant, 0),
-                    adt::struct_llfields_index(variant, 1),
-                    Alignment::from_packed(variant.packed) | align)
-                },
-                _ => (0, 1, align)
-            };
-            let [a_ty, b_ty] = common::type_pair_fields(bcx.ccx, ty).unwrap();
-            let a_ptr = bcx.struct_gep(llval, ix0);
-            let b_ptr = bcx.struct_gep(llval, ix1);
-
-            OperandValue::Pair(
-                base::load_ty(bcx, a_ptr, f_align, a_ty),
-                base::load_ty(bcx, b_ptr, f_align, b_ty)
-            )
-        } else if common::type_is_immediate(bcx.ccx, ty) {
-            OperandValue::Immediate(base::load_ty(bcx, llval, align, ty))
-        } else {
-            OperandValue::Ref(llval, align)
-        };
-
-        OperandRef { val: val, ty: ty }
-    }
-
     pub fn trans_consume(&mut self,
                          bcx: &Builder<'a, 'tcx>,
                          lvalue: &mir::Lvalue<'tcx>)
@@ -258,9 +230,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         // for most lvalues, to consume them we just load them
         // out from their home
-        let tr_lvalue = self.trans_lvalue(bcx, lvalue);
-        let ty = tr_lvalue.ty.to_ty(bcx.tcx());
-        self.trans_load(bcx, tr_lvalue.llval, tr_lvalue.alignment, ty)
+        self.trans_lvalue(bcx, lvalue).load(bcx)
     }
 
     pub fn trans_operand(&mut self,
@@ -280,57 +250,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let operand = val.to_operand(bcx.ccx);
                 if let OperandValue::Ref(ptr, align) = operand.val {
                     // If this is a OperandValue::Ref to an immediate constant, load it.
-                    self.trans_load(bcx, ptr, align, operand.ty)
+                    LvalueRef::new_sized(ptr, operand.ty, align).load(bcx)
                 } else {
                     operand
-                }
-            }
-        }
-    }
-
-    pub fn store_operand(&mut self,
-                         bcx: &Builder<'a, 'tcx>,
-                         lldest: ValueRef,
-                         align: Option<Align>,
-                         operand: OperandRef<'tcx>) {
-        debug!("store_operand: operand={:?}, align={:?}", operand, align);
-        // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
-        // value is through `undef`, and store itself is useless.
-        if common::type_is_zero_size(bcx.ccx, operand.ty) {
-            return;
-        }
-        match operand.val {
-            OperandValue::Ref(r, source_align) =>
-                base::memcpy_ty(bcx, lldest, r, operand.ty,
-                                source_align.min_with(align)),
-            OperandValue::Immediate(s) => {
-                bcx.store(base::from_immediate(bcx, s), lldest, align);
-            }
-            OperandValue::Pair(a, b) => {
-                let (ix0, ix1, f_align) = match *bcx.ccx.layout_of(operand.ty) {
-                    Layout::Univariant { ref variant, .. } => {
-                        (adt::struct_llfields_index(variant, 0),
-                        adt::struct_llfields_index(variant, 1),
-                        if variant.packed { Some(variant.align) } else { None })
-                    }
-                    _ => (0, 1, align)
-                };
-
-                let a = base::from_immediate(bcx, a);
-                let b = base::from_immediate(bcx, b);
-
-                // See comment above about zero-sized values.
-                let (a_zst, b_zst) = common::type_pair_fields(bcx.ccx, operand.ty)
-                    .map_or((false, false), |[a_ty, b_ty]| {
-                        (common::type_is_zero_size(bcx.ccx, a_ty),
-                         common::type_is_zero_size(bcx.ccx, b_ty))
-                    });
-
-                if !a_zst {
-                    bcx.store(a, bcx.struct_gep(lldest, ix0), f_align);
-                }
-                if !b_zst {
-                    bcx.store(b, bcx.struct_gep(lldest, ix1), f_align);
                 }
             }
         }

@@ -21,7 +21,7 @@ use rustc::ty::layout::HasDataLayout;
 use debuginfo;
 
 #[derive(Copy, Clone, Debug)]
-pub struct VirtualIndex(usize);
+pub struct VirtualIndex(u64);
 
 pub const DESTRUCTOR: VirtualIndex = VirtualIndex(0);
 pub const SIZE: VirtualIndex = VirtualIndex(1);
@@ -29,14 +29,14 @@ pub const ALIGN: VirtualIndex = VirtualIndex(2);
 
 impl<'a, 'tcx> VirtualIndex {
     pub fn from_index(index: usize) -> Self {
-        VirtualIndex(index + 3)
+        VirtualIndex(index as u64 + 3)
     }
 
     pub fn get_fn(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 
-        let ptr = bcx.load_nonnull(bcx.gepi(llvtable, &[self.0]), None);
+        let ptr = bcx.load_nonnull(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), None);
         // Vtable loads are invariant
         bcx.set_invariant_load(ptr);
         ptr
@@ -47,7 +47,7 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_int({:?}, {:?})", Value(llvtable), self);
 
         let llvtable = bcx.pointercast(llvtable, Type::isize(bcx.ccx).ptr_to());
-        let ptr = bcx.load(bcx.gepi(llvtable, &[self.0]), None);
+        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), None);
         // Vtable loads are invariant
         bcx.set_invariant_load(ptr);
         ptr

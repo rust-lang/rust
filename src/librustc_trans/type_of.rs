@@ -12,7 +12,7 @@ use abi::FnType;
 use adt;
 use common::*;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{Align, LayoutTyper, Size};
+use rustc::ty::layout::{Align, Layout, LayoutTyper, Size, TyLayout};
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
@@ -233,6 +233,50 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
             Some(align)
         } else {
             None
+        }
+    }
+}
+
+pub trait LayoutLlvmExt {
+    fn llvm_field_index(&self, index: usize) -> u64;
+}
+
+impl<'tcx> LayoutLlvmExt for TyLayout<'tcx> {
+    fn llvm_field_index(&self, index: usize) -> u64 {
+        match **self {
+            Layout::Scalar { .. } |
+            Layout::CEnum { .. } |
+            Layout::UntaggedUnion { .. } |
+            Layout::RawNullablePointer { .. } => {
+                bug!("TyLayout::llvm_field_index({:?}): not applicable", self)
+            }
+
+            Layout::Vector { .. } |
+            Layout::Array { .. } |
+            Layout::FatPointer { .. } => {
+                index as u64
+            }
+
+            Layout::Univariant { ref variant, .. } => {
+                adt::memory_index_to_gep(variant.memory_index[index] as u64)
+            }
+
+            Layout::General { ref variants, .. } => {
+                if let Some(v) = self.variant_index {
+                    adt::memory_index_to_gep(variants[v].memory_index[index] as u64)
+                } else {
+                    assert_eq!(index, 0);
+                    index as u64
+                }
+            }
+
+            Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
+                if self.variant_index == Some(nndiscr as usize) {
+                    adt::memory_index_to_gep(nonnull.memory_index[index] as u64)
+                } else {
+                    bug!("TyLayout::llvm_field_index({:?}): not applicable", self)
+                }
+            }
         }
     }
 }

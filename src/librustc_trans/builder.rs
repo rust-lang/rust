@@ -625,25 +625,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    // Simple wrapper around GEP that takes an array of ints and wraps them
-    // in C_i32()
-    #[inline]
-    pub fn gepi(&self, base: ValueRef, ixs: &[usize]) -> ValueRef {
-        // Small vector optimization. This should catch 100% of the cases that
-        // we care about.
-        if ixs.len() < 16 {
-            let mut small_vec = [ C_i32(self.ccx, 0); 16 ];
-            for (small_vec_e, &ix) in small_vec.iter_mut().zip(ixs) {
-                *small_vec_e = C_i32(self.ccx, ix as i32);
-            }
-            self.inbounds_gep(base, &small_vec[..ixs.len()])
-        } else {
-            let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
-            self.count_insn("gepi");
-            self.inbounds_gep(base, &v)
-        }
-    }
-
     pub fn inbounds_gep(&self, ptr: ValueRef, indices: &[ValueRef]) -> ValueRef {
         self.count_insn("inboundsgep");
         unsafe {
@@ -652,8 +633,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn struct_gep(&self, ptr: ValueRef, idx: usize) -> ValueRef {
+    pub fn struct_gep(&self, ptr: ValueRef, idx: u64) -> ValueRef {
         self.count_insn("structgep");
+        assert_eq!(idx as c_uint as u64, idx);
         unsafe {
             llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
         }
@@ -959,16 +941,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn extract_value(&self, agg_val: ValueRef, idx: usize) -> ValueRef {
+    pub fn extract_value(&self, agg_val: ValueRef, idx: u64) -> ValueRef {
         self.count_insn("extractvalue");
+        assert_eq!(idx as c_uint as u64, idx);
         unsafe {
             llvm::LLVMBuildExtractValue(self.llbuilder, agg_val, idx as c_uint, noname())
         }
     }
 
     pub fn insert_value(&self, agg_val: ValueRef, elt: ValueRef,
-                       idx: usize) -> ValueRef {
+                       idx: u64) -> ValueRef {
         self.count_insn("insertvalue");
+        assert_eq!(idx as c_uint as u64, idx);
         unsafe {
             llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint,
                                        noname())

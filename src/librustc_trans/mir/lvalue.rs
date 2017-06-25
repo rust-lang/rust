@@ -10,28 +10,31 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, LayoutTyper};
+use rustc::ty::layout::{self, Align, Layout, LayoutTyper};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
+use abi;
 use adt;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_usize, C_u8, C_i32, C_int, C_null, val_ty};
+use common::{self, CrateContext, C_usize, C_u8, C_u32, C_int, C_null, val_ty};
 use consts;
-use type_of;
+use type_of::{self, LayoutLlvmExt};
 use type_::Type;
 use value::Value;
 use glue;
 
+use std::iter;
 use std::ptr;
 use std::ops;
 
 use super::{MirContext, LocalRef};
+use super::operand::{OperandRef, OperandValue};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Alignment {
-    Packed,
+    Packed(Align),
     AbiAligned,
 }
 
@@ -40,30 +43,40 @@ impl ops::BitOr for Alignment {
 
     fn bitor(self, rhs: Self) -> Self {
         match (self, rhs) {
-            (Alignment::Packed, _) => Alignment::Packed,
-            (Alignment::AbiAligned, a) => a,
+            (Alignment::Packed(a), Alignment::Packed(b)) => {
+                Alignment::Packed(a.min(b))
+            }
+            (Alignment::Packed(x), _) | (_, Alignment::Packed(x)) => {
+                Alignment::Packed(x)
+            }
+            (Alignment::AbiAligned, Alignment::AbiAligned) => {
+                Alignment::AbiAligned
+            }
+        }
+    }
+}
+
+impl<'a> From<&'a Layout> for Alignment {
+    fn from(layout: &Layout) -> Self {
+        let (packed, align) = match *layout {
+            Layout::UntaggedUnion { ref variants } => (variants.packed, variants.align),
+            Layout::Univariant { ref variant, .. } => (variant.packed, variant.align),
+            _ => return Alignment::AbiAligned
+        };
+        if packed {
+            Alignment::Packed(align)
+        } else {
+            Alignment::AbiAligned
         }
     }
 }
 
 impl Alignment {
-    pub fn from_packed(packed: bool) -> Self {
-        if packed {
-            Alignment::Packed
-        } else {
-            Alignment::AbiAligned
-        }
-    }
-
-    pub fn to_align(self) -> Option<Align> {
+    pub fn non_abi(self) -> Option<Align> {
         match self {
-            Alignment::Packed => Some(Align::from_bytes(1, 1).unwrap()),
+            Alignment::Packed(x) => Some(x),
             Alignment::AbiAligned => None,
         }
-    }
-
-    pub fn min_with(self, align: Option<Align>) -> Option<Align> {
-        self.to_align().or(align)
     }
 }
 
@@ -87,13 +100,8 @@ pub struct LvalueRef<'tcx> {
 }
 
 impl<'a, 'tcx> LvalueRef<'tcx> {
-    pub fn new_sized(llval: ValueRef, lvalue_ty: LvalueTy<'tcx>,
-                     alignment: Alignment) -> LvalueRef<'tcx> {
-        LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty, alignment: alignment }
-    }
-
-    pub fn new_sized_ty(llval: ValueRef, ty: Ty<'tcx>, alignment: Alignment) -> LvalueRef<'tcx> {
-        LvalueRef::new_sized(llval, LvalueTy::from_ty(ty), alignment)
+    pub fn new_sized(llval: ValueRef, ty: Ty<'tcx>, alignment: Alignment) -> LvalueRef<'tcx> {
+        LvalueRef { llval, llextra: ptr::null_mut(), ty: LvalueTy::from_ty(ty), alignment }
     }
 
     pub fn alloca(bcx: &Builder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> LvalueRef<'tcx> {
@@ -101,7 +109,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let tmp = bcx.alloca(
             type_of::type_of(bcx.ccx, ty), name, bcx.ccx.over_align_of(ty));
         assert!(!ty.has_param_types());
-        Self::new_sized_ty(tmp, ty, Alignment::AbiAligned)
+        Self::new_sized(tmp, ty, Alignment::AbiAligned)
     }
 
     pub fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
@@ -122,8 +130,74 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         !self.llextra.is_null()
     }
 
+    pub fn load(&self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
+        debug!("LvalueRef::load: {:?}", self);
+
+        assert!(!self.has_extra());
+
+        let ty = self.ty.to_ty(bcx.tcx());
+
+        if common::type_is_zero_size(bcx.ccx, ty) {
+            return OperandRef::new_zst(bcx.ccx, ty);
+        }
+
+        let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
+            let data = self.project_field(bcx, abi::FAT_PTR_ADDR);
+            let lldata = if ty.is_region_ptr() || ty.is_box() {
+                bcx.load_nonnull(data.llval, data.alignment.non_abi())
+            } else {
+                bcx.load(data.llval, data.alignment.non_abi())
+            };
+
+            let extra = self.project_field(bcx, abi::FAT_PTR_EXTRA);
+            let meta_ty = val_ty(extra.llval);
+            // If the 'extra' field is a pointer, it's a vtable, so use load_nonnull
+            // instead
+            let llextra = if meta_ty.element_type().kind() == llvm::TypeKind::Pointer {
+                bcx.load_nonnull(extra.llval, extra.alignment.non_abi())
+            } else {
+                bcx.load(extra.llval, extra.alignment.non_abi())
+            };
+
+            OperandValue::Pair(lldata, llextra)
+        } else if common::type_is_imm_pair(bcx.ccx, ty) {
+            OperandValue::Pair(
+                self.project_field(bcx, 0).load(bcx).pack_if_pair(bcx).immediate(),
+                self.project_field(bcx, 1).load(bcx).pack_if_pair(bcx).immediate())
+        } else if common::type_is_immediate(bcx.ccx, ty) {
+            let mut const_llval = ptr::null_mut();
+            unsafe {
+                let global = llvm::LLVMIsAGlobalVariable(self.llval);
+                if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
+                    const_llval = llvm::LLVMGetInitializer(global);
+                }
+            }
+
+            let llval = if !const_llval.is_null() {
+                const_llval
+            } else if ty.is_bool() {
+                bcx.load_range_assert(self.llval, 0, 2, llvm::False,
+                    self.alignment.non_abi())
+            } else if ty.is_char() {
+                // a char is a Unicode codepoint, and so takes values from 0
+                // to 0x10FFFF inclusive only.
+                bcx.load_range_assert(self.llval, 0, 0x10FFFF + 1, llvm::False,
+                    self.alignment.non_abi())
+            } else if ty.is_region_ptr() || ty.is_box() || ty.is_fn() {
+                bcx.load_nonnull(self.llval, self.alignment.non_abi())
+            } else {
+                bcx.load(self.llval, self.alignment.non_abi())
+            };
+            OperandValue::Immediate(base::to_immediate(bcx, llval, ty))
+        } else {
+            OperandValue::Ref(self.llval, self.alignment)
+        };
+
+        OperandRef { val, ty }
+    }
+
     /// Access a field, at a point when the value's case is known.
-    pub fn trans_field_ptr(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> (ValueRef, Alignment) {
+    pub fn project_field(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> LvalueRef<'tcx> {
         let ccx = bcx.ccx;
         let mut l = ccx.layout_of(self.ty.to_ty(bcx.tcx()));
         match self.ty {
@@ -132,16 +206,16 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 l = l.for_variant(variant_index)
             }
         }
-        let fty = l.field(ccx, ix).ty;
-        let mut ix = ix;
-        let st = match *l {
-            layout::Vector { .. } => {
-                return (bcx.struct_gep(self.llval, ix), self.alignment);
-            }
-            layout::UntaggedUnion { ref variants } => {
+        let fty = l.field_type(ccx, ix);
+
+        let alignment = self.alignment | Alignment::from(&*l);
+
+        // Handle all the non-aggregate cases first.
+        match *l {
+            layout::UntaggedUnion { .. } => {
                 let ty = type_of::in_memory_type_of(ccx, fty);
-                return (bcx.pointercast(self.llval, ty.ptr_to()),
-                    self.alignment | Alignment::from_packed(variants.packed));
+                return LvalueRef::new_sized(
+                    bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
             }
             layout::RawNullablePointer { nndiscr, .. } |
             layout::StructWrappedNullablePointer { nndiscr,  .. }
@@ -150,58 +224,66 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 // (e.d., Result of Either with (), as one side.)
                 let ty = type_of::type_of(ccx, fty);
                 assert_eq!(ccx.size_of(fty).bytes(), 0);
-                return (bcx.pointercast(self.llval, ty.ptr_to()), Alignment::Packed);
+                return LvalueRef::new_sized(
+                    bcx.pointercast(self.llval, ty.ptr_to()), fty,
+                    Alignment::Packed(Align::from_bytes(1, 1).unwrap()));
             }
             layout::RawNullablePointer { .. } => {
                 let ty = type_of::type_of(ccx, fty);
-                return (bcx.pointercast(self.llval, ty.ptr_to()), self.alignment);
+                return LvalueRef::new_sized(
+                    bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
             }
-            layout::Univariant { ref variant, .. } => variant,
-            layout::StructWrappedNullablePointer { ref nonnull, .. } => nonnull,
-            layout::General { ref variants, .. } => {
+            _ => {}
+        }
+
+        // Adjust the index to account for enum discriminants in variants.
+        let mut ix = ix;
+        if let layout::General { .. } = *l {
+            if l.variant_index.is_some() {
                 ix += 1;
-                &variants[l.variant_index.unwrap()]
             }
-            _ => bug!("element access in type without elements: {} represented as {:#?}", l.ty, l)
+        }
+
+        let simple = || {
+            LvalueRef {
+                llval: bcx.struct_gep(self.llval, l.llvm_field_index(ix)),
+                llextra: if !ccx.shared().type_has_metadata(fty) {
+                    ptr::null_mut()
+                } else {
+                    self.llextra
+                },
+                ty: LvalueTy::from_ty(fty),
+                alignment,
+            }
         };
 
-        let alignment = self.alignment | Alignment::from_packed(st.packed);
-
-        let ptr_val = if let layout::General { discr, .. } = *l {
-            let variant_ty = Type::struct_(ccx,
-                &adt::struct_llfields(ccx, l.ty, l.variant_index.unwrap(), st,
-                                      Some(discr.to_ty(bcx.tcx(), false))), st.packed);
-            bcx.pointercast(self.llval, variant_ty.ptr_to())
-        } else {
-            self.llval
+        // Check whether the variant being used is packed, if applicable.
+        let is_packed = match (&*l, l.variant_index) {
+            (&layout::Univariant { ref variant, .. }, _) => variant.packed,
+            (&layout::StructWrappedNullablePointer { ref nonnull, .. }, _) => nonnull.packed,
+            (&layout::General { ref variants, .. }, Some(v)) => variants[v].packed,
+            _ => return simple()
         };
 
         // Simple case - we can just GEP the field
-        //   * First field - Always aligned properly
         //   * Packed struct - There is no alignment padding
         //   * Field is sized - pointer is properly aligned already
-        if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
-            ccx.shared().type_is_sized(fty)
-        {
-            return (bcx.struct_gep(
-                    ptr_val, adt::struct_llfields_index(st, ix)), alignment);
+        if is_packed || ccx.shared().type_is_sized(fty) {
+            return simple();
         }
 
         // If the type of the last field is [T], str or a foreign type, then we don't need to do
         // any adjusments
         match fty.sty {
-            ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => {
-                return (bcx.struct_gep(
-                        ptr_val, adt::struct_llfields_index(st, ix)), alignment);
-            }
+            ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => return simple(),
             _ => ()
         }
 
         // There's no metadata available, log the case and just do the GEP.
         if !self.has_extra() {
             debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
-                ix, Value(ptr_val));
-            return (bcx.struct_gep(ptr_val, adt::struct_llfields_index(st, ix)), alignment);
+                ix, Value(self.llval));
+            return simple();
         }
 
         // We need to get the pointer manually now.
@@ -222,7 +304,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let meta = self.llextra;
 
 
-        let offset = st.offsets[ix].bytes();
+        let offset = l.field_offset(ccx, ix).bytes();
         let unaligned_offset = C_usize(ccx, offset);
 
         // Get the alignment of the field
@@ -241,21 +323,29 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         debug!("struct_field_ptr: DST field offset: {:?}", Value(offset));
 
         // Cast and adjust pointer
-        let byte_ptr = bcx.pointercast(ptr_val, Type::i8p(ccx));
+        let byte_ptr = bcx.pointercast(self.llval, Type::i8p(ccx));
         let byte_ptr = bcx.gep(byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected
         let ll_fty = type_of::in_memory_type_of(ccx, fty);
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
-        (bcx.pointercast(byte_ptr, ll_fty.ptr_to()), alignment)
+
+        LvalueRef {
+            llval: bcx.pointercast(byte_ptr, ll_fty.ptr_to()),
+            llextra: self.llextra,
+            ty: LvalueTy::from_ty(fty),
+            alignment,
+        }
     }
 
     // Double index to account for padding (FieldPath already uses `Struct::memory_index`)
     fn gepi_struct_llfields_path(self, bcx: &Builder, discrfield: &layout::FieldPath) -> ValueRef {
-        let path = discrfield.iter().map(|&i| {
-            adt::memory_index_to_gep(i as usize)
-        }).collect::<Vec<_>>();
-        bcx.gepi(self.llval, &path)
+        let path = iter::once(C_u32(bcx.ccx, 0)).chain(discrfield[1..].iter().map(|&i| {
+            let i = adt::memory_index_to_gep(i as u64);
+            assert_eq!(i as u32 as u64, i);
+            C_u32(bcx.ccx, i as u32)
+        })).collect::<Vec<_>>();
+        bcx.inbounds_gep(self.llval, &path)
     }
 
     /// Helper for cases where the discriminant is simply loaded.
@@ -274,12 +364,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             // rejected by the LLVM verifier (it would mean either an
             // empty set, which is impossible, or the entire range of the
             // type, which is pointless).
-            bcx.load(ptr, self.alignment.to_align())
+            bcx.load(ptr, self.alignment.non_abi())
         } else {
             // llvm::ConstantRange can deal with ranges that wrap around,
             // so an overflow on (max + 1) is fine.
             bcx.load_range_assert(ptr, min, max.wrapping_add(1), /* signed: */ llvm::True,
-                                  self.alignment.to_align())
+                                  self.alignment.non_abi())
         }
     }
 
@@ -292,18 +382,18 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 self.load_discr(bcx, discr, self.llval, min, max)
             }
             layout::General { discr, ref variants, .. } => {
-                let ptr = bcx.struct_gep(self.llval, 0);
-                self.load_discr(bcx, discr, ptr, 0, variants.len() as u64 - 1)
+                let ptr = self.project_field(bcx, 0);
+                self.load_discr(bcx, discr, ptr.llval, 0, variants.len() as u64 - 1)
             }
             layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx, 0),
             layout::RawNullablePointer { nndiscr, .. } => {
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                let discr = bcx.load(self.llval, self.alignment.to_align());
+                let discr = bcx.load(self.llval, self.alignment.non_abi());
                 bcx.icmp(cmp, discr, C_null(val_ty(discr)))
             }
             layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                 let llptrptr = self.gepi_struct_llfields_path(bcx, discrfield);
-                let llptr = bcx.load(llptrptr, self.alignment.to_align());
+                let llptr = bcx.load(llptrptr, self.alignment.non_abi());
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
                 bcx.icmp(cmp, llptr, C_null(val_ty(llptr)))
             },
@@ -324,11 +414,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             layout::CEnum { discr, min, max, .. } => {
                 adt::assert_discr_in_range(min, max, to);
                 bcx.store(C_int(Type::from_integer(bcx.ccx, discr), to as i64),
-                    self.llval, self.alignment.to_align());
+                    self.llval, self.alignment.non_abi());
             }
             layout::General { discr, .. } => {
+                let ptr = self.project_field(bcx, 0);
                 bcx.store(C_int(Type::from_integer(bcx.ccx, discr), to as i64),
-                    bcx.struct_gep(self.llval, 0), self.alignment.to_align());
+                    ptr.llval, ptr.alignment.non_abi());
             }
             layout::Univariant { .. }
             | layout::UntaggedUnion { .. }
@@ -338,7 +429,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             layout::RawNullablePointer { nndiscr, .. } => {
                 if to != nndiscr {
                     let llptrty = val_ty(self.llval).element_type();
-                    bcx.store(C_null(llptrty), self.llval, self.alignment.to_align());
+                    bcx.store(C_null(llptrty), self.llval, self.alignment.non_abi());
                 }
             }
             layout::StructWrappedNullablePointer { nndiscr, ref discrfield, ref nonnull, .. } => {
@@ -350,12 +441,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                         let llptr = bcx.pointercast(self.llval, Type::i8(bcx.ccx).ptr_to());
                         let fill_byte = C_u8(bcx.ccx, 0);
                         let size = C_usize(bcx.ccx, nonnull.stride().bytes());
-                        let align = C_i32(bcx.ccx, nonnull.align.abi() as i32);
+                        let align = C_u32(bcx.ccx, nonnull.align.abi() as u32);
                         base::call_memset(bcx, llptr, fill_byte, size, align, false);
                     } else {
                         let llptrptr = self.gepi_struct_llfields_path(bcx, discrfield);
                         let llptrty = val_ty(llptrptr).element_type();
-                        bcx.store(C_null(llptrty), llptrptr, self.alignment.to_align());
+                        bcx.store(C_null(llptrty), llptrptr, self.alignment.non_abi());
                     }
                 }
             }
@@ -363,13 +454,47 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
     }
 
-    pub fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef) -> ValueRef {
-        if let ty::TySlice(_) = self.ty.to_ty(bcx.tcx()).sty {
-            // Slices already point to the array element type.
-            bcx.inbounds_gep(self.llval, &[llindex])
+    pub fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef)
+                         -> LvalueRef<'tcx> {
+        let ty = self.ty.to_ty(bcx.tcx());
+        let (ptr, elem_ty) = match ty.sty {
+            ty::TySlice(ty) => {
+                // Slices already point to the array element type.
+                (bcx.inbounds_gep(self.llval, &[llindex]), ty)
+            }
+            ty::TyArray(ty, _) => {
+                let zero = common::C_usize(bcx.ccx, 0);
+                (bcx.inbounds_gep(self.llval, &[zero, llindex]), ty)
+            }
+            _ => bug!("unexpected type `{}` in LvalueRef::project_index", ty)
+        };
+        LvalueRef::new_sized(ptr, elem_ty, self.alignment)
+    }
+
+    pub fn project_downcast(&self, bcx: &Builder<'a, 'tcx>, variant_index: usize)
+                            -> LvalueRef<'tcx> {
+        let ty = self.ty.to_ty(bcx.tcx());
+        if let ty::TyAdt(adt_def, substs) = ty.sty {
+            let mut downcast = *self;
+            downcast.ty = LvalueTy::Downcast {
+                adt_def,
+                substs,
+                variant_index,
+            };
+
+            // If this is an enum, cast to the appropriate variant struct type.
+            let layout = bcx.ccx.layout_of(ty).for_variant(variant_index);
+            if let layout::General { discr, ref variants, .. } = *layout {
+                let st = &variants[variant_index];
+                let variant_ty = Type::struct_(bcx.ccx,
+                    &adt::struct_llfields(bcx.ccx, layout, st,
+                        Some(discr.to_ty(bcx.tcx(), false))), st.packed);
+                downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
+            }
+
+            downcast
         } else {
-            let zero = common::C_usize(bcx.ccx, 0);
-            bcx.inbounds_gep(self.llval, &[zero, llindex])
+            bug!("unexpected type `{}` in LvalueRef::project_downcast", ty)
         }
     }
 
@@ -407,7 +532,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Lvalue::Local(_) => bug!(), // handled above
             mir::Lvalue::Static(box mir::Static { def_id, ty }) => {
                 LvalueRef::new_sized(consts::get_static(ccx, def_id),
-                                     LvalueTy::from_ty(self.monomorphize(&ty)),
+                                     self.monomorphize(&ty),
                                      Alignment::AbiAligned)
             },
             mir::Lvalue::Projection(box mir::Projection {
@@ -419,33 +544,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
-                let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
-                let projected_ty = self.monomorphize(&projected_ty);
-                let align = tr_base.alignment;
 
-                let ((llprojected, align), llextra) = match projection.elem {
+                match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let has_metadata = self.ccx.shared()
-                            .type_has_metadata(projected_ty.to_ty(tcx));
-                        let llextra = if !has_metadata {
-                            ptr::null_mut()
-                        } else {
-                            tr_base.llextra
-                        };
-                        (tr_base.trans_field_ptr(bcx, field.index()), llextra)
+                        tr_base.project_field(bcx, field.index())
                     }
                     mir::ProjectionElem::Index(index) => {
                         let index = &mir::Operand::Consume(mir::Lvalue::Local(index));
                         let index = self.trans_operand(bcx, index);
                         let llindex = index.immediate();
-                        ((tr_base.project_index(bcx, llindex), align), ptr::null_mut())
+                        tr_base.project_index(bcx, llindex)
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
                         let lloffset = C_usize(bcx.ccx, offset as u64);
-                        ((tr_base.project_index(bcx, lloffset), align), ptr::null_mut())
+                        tr_base.project_index(bcx, lloffset)
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
@@ -453,39 +568,34 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let lloffset = C_usize(bcx.ccx, offset as u64);
                         let lllen = tr_base.len(bcx.ccx);
                         let llindex = bcx.sub(lllen, lloffset);
-                        ((tr_base.project_index(bcx, llindex), align), ptr::null_mut())
+                        tr_base.project_index(bcx, llindex)
                     }
                     mir::ProjectionElem::Subslice { from, to } => {
-                        let llbase = tr_base.project_index(bcx, C_usize(bcx.ccx, from as u64));
+                        let mut subslice = tr_base.project_index(bcx,
+                            C_usize(bcx.ccx, from as u64));
+                        subslice.ty = tr_base.ty.projection_ty(tcx, &projection.elem);
+                        subslice.ty = self.monomorphize(&subslice.ty);
 
-                        let base_ty = tr_base.ty.to_ty(bcx.tcx());
-                        match base_ty.sty {
+                        match subslice.ty.to_ty(tcx).sty {
                             ty::TyArray(..) => {
                                 // must cast the lvalue pointer type to the new
                                 // array type (*[%_; new_len]).
-                                let base_ty = self.monomorphized_lvalue_ty(lvalue);
-                                let llbasety = type_of::type_of(bcx.ccx, base_ty).ptr_to();
-                                let llbase = bcx.pointercast(llbase, llbasety);
-                                ((llbase, align), ptr::null_mut())
+                                subslice.llval = bcx.pointercast(subslice.llval,
+                                    type_of::type_of(bcx.ccx, subslice.ty.to_ty(tcx)).ptr_to())
                             }
                             ty::TySlice(..) => {
-                                assert!(tr_base.llextra != ptr::null_mut());
-                                let lllen = bcx.sub(tr_base.llextra,
-                                                    C_usize(bcx.ccx, (from as u64)+(to as u64)));
-                                ((llbase, align), lllen)
+                                assert!(tr_base.has_extra());
+                                subslice.llextra = bcx.sub(tr_base.llextra,
+                                    C_usize(bcx.ccx, (from as u64) + (to as u64)));
                             }
-                            _ => bug!("unexpected type {:?} in Subslice", base_ty)
+                            _ => bug!("unexpected type {:?} in Subslice", subslice.ty)
                         }
+
+                        subslice
                     }
-                    mir::ProjectionElem::Downcast(..) => {
-                        ((tr_base.llval, align), tr_base.llextra)
+                    mir::ProjectionElem::Downcast(_, v) => {
+                        tr_base.project_downcast(bcx, v)
                     }
-                };
-                LvalueRef {
-                    llval: llprojected,
-                    llextra,
-                    ty: projected_ty,
-                    alignment: align,
                 }
             }
         };

@@ -13,8 +13,9 @@
 use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
-use abi::{Abi, FnType};
+use abi::{self, Abi, FnType};
 use mir::lvalue::{LvalueRef, Alignment};
+use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;
 use declare;
@@ -105,6 +106,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let name = &*tcx.item_name(def_id);
 
     let llret_ty = type_of::type_of(ccx, ret_ty);
+    let result = LvalueRef::new_sized(llresult, ret_ty, Alignment::AbiAligned);
 
     let simple = get_simple_intrinsic(ccx, name);
     let llval = match name {
@@ -238,9 +240,10 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
+            let dst = LvalueRef::new_sized(llargs[0], tp_ty, Alignment::AbiAligned);
             if type_is_fat_ptr(bcx.ccx, tp_ty) {
-                bcx.volatile_store(llargs[1], get_dataptr(bcx, llargs[0]));
-                bcx.volatile_store(llargs[2], get_meta(bcx, llargs[0]));
+                bcx.volatile_store(llargs[1], dst.project_field(bcx, abi::FAT_PTR_ADDR).llval);
+                bcx.volatile_store(llargs[2], dst.project_field(bcx, abi::FAT_PTR_EXTRA).llval);
             } else {
                 let val = if fn_ty.args[1].is_indirect() {
                     bcx.load(llargs[1], None)
@@ -250,7 +253,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     }
                     from_immediate(bcx, llargs[1])
                 };
-                let ptr = bcx.pointercast(llargs[0], val_ty(val).ptr_to());
+                let ptr = bcx.pointercast(dst.llval, val_ty(val).ptr_to());
                 let store = bcx.volatile_store(val, ptr);
                 unsafe {
                     llvm::LLVMSetAlignment(store, ccx.align_of(tp_ty).abi() as u32);
@@ -306,11 +309,14 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             let llfn = bcx.ccx.get_intrinsic(&intrinsic);
 
                             // Convert `i1` to a `bool`, and write it to the out parameter
-                            let val = bcx.call(llfn, &[llargs[0], llargs[1]], None);
-                            let result = bcx.extract_value(val, 0);
-                            let overflow = bcx.zext(bcx.extract_value(val, 1), Type::bool(ccx));
-                            bcx.store(result, bcx.struct_gep(llresult, 0), None);
-                            bcx.store(overflow, bcx.struct_gep(llresult, 1), None);
+                            let pair = bcx.call(llfn, &[llargs[0], llargs[1]], None);
+                            let val = bcx.extract_value(pair, 0);
+                            let overflow = bcx.zext(bcx.extract_value(pair, 1), Type::bool(ccx));
+
+                            let dest = result.project_field(bcx, 0);
+                            bcx.store(val, dest.llval, dest.alignment.non_abi());
+                            let dest = result.project_field(bcx, 1);
+                            bcx.store(overflow, dest.llval, dest.alignment.non_abi());
 
                             return;
                         },
@@ -373,7 +379,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         "discriminant_value" => {
             let val_ty = substs.type_at(0);
-            let adt_val = LvalueRef::new_sized_ty(llargs[0], val_ty, Alignment::AbiAligned);
+            let adt_val = LvalueRef::new_sized(llargs[0], val_ty, Alignment::AbiAligned);
             match val_ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
                     adt_val.trans_get_discr(bcx, ret_ty)
@@ -446,12 +452,15 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     let ty = substs.type_at(0);
                     if int_type_width_signed(ty, ccx).is_some() {
                         let weak = if split[1] == "cxchgweak" { llvm::True } else { llvm::False };
-                        let val = bcx.atomic_cmpxchg(llargs[0], llargs[1], llargs[2], order,
+                        let pair = bcx.atomic_cmpxchg(llargs[0], llargs[1], llargs[2], order,
                             failorder, weak);
-                        let result = bcx.extract_value(val, 0);
-                        let success = bcx.zext(bcx.extract_value(val, 1), Type::bool(bcx.ccx));
-                        bcx.store(result, bcx.struct_gep(llresult, 0), None);
-                        bcx.store(success, bcx.struct_gep(llresult, 1), None);
+                        let val = bcx.extract_value(pair, 0);
+                        let success = bcx.zext(bcx.extract_value(pair, 1), Type::bool(bcx.ccx));
+
+                        let dest = result.project_field(bcx, 0);
+                        bcx.store(val, dest.llval, dest.alignment.non_abi());
+                        let dest = result.project_field(bcx, 1);
+                        bcx.store(success, dest.llval, dest.alignment.non_abi());
                         return;
                     } else {
                         return invalid_monomorphization(ty);
@@ -589,10 +598,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         // destructors, and the contents are SIMD
                         // etc.
                         assert!(!bcx.ccx.shared().type_needs_drop(arg_type));
-                        let arg = LvalueRef::new_sized_ty(llarg, arg_type, Alignment::AbiAligned);
+                        let arg = LvalueRef::new_sized(llarg, arg_type, Alignment::AbiAligned);
                         (0..contents.len()).map(|i| {
-                            let (ptr, align) = arg.trans_field_ptr(bcx, i);
-                            bcx.load(ptr, align.to_align())
+                            arg.project_field(bcx, i).load(bcx).immediate()
                         }).collect()
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
@@ -654,11 +662,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     assert!(!flatten);
 
                     for i in 0..elems.len() {
-                        let val = bcx.extract_value(val, i);
-                        let lval = LvalueRef::new_sized_ty(llresult, ret_ty,
-                                                           Alignment::AbiAligned);
-                        let (dest, align) = lval.trans_field_ptr(bcx, i);
-                        bcx.store(val, dest, align.to_align());
+                        let dest = result.project_field(bcx, i);
+                        let val = bcx.extract_value(val, i as u64);
+                        bcx.store(val, dest.llval, dest.alignment.non_abi());
                     }
                     return;
                 }
@@ -672,7 +678,10 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let ptr = bcx.pointercast(llresult, ty.llvm_type(ccx).ptr_to());
             bcx.store(llval, ptr, Some(ccx.align_of(ret_ty)));
         } else {
-            store_ty(bcx, llval, llresult, Alignment::AbiAligned, ret_ty);
+            OperandRef {
+                val: OperandValue::Immediate(llval),
+                ty: ret_ty
+            }.unpack_if_pair(bcx).store(bcx, result);
         }
     }
 }
@@ -1071,7 +1080,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
                 let arg_idx = i;
-                let val = const_get_elt(vector, i);
+                let val = const_get_elt(vector, i as u64);
                 match const_to_opt_u128(val, true) {
                     None => {
                         emit_error!("shuffle index #{} is not a constant", arg_idx);
