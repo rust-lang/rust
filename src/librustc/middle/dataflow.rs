@@ -21,7 +21,6 @@ use std::io;
 use std::mem;
 use std::usize;
 use syntax::ast;
-use syntax::print::pp;
 use syntax::print::pprust::PrintState;
 use util::nodemap::NodeMap;
 use hir;
@@ -157,7 +156,7 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
             ps.synth_comment(
                 format!("id {}: {}{}{}{}", id, entry_str,
                         gens_str, action_kills_str, scope_kills_str))?;
-            pp::space(&mut ps.s)?;
+            ps.s.space()?;
         }
         Ok(())
     }

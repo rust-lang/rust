@@ -30,7 +30,7 @@ use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast::{self, BlockCheckMode};
 use syntax::fold::{self, Folder};
-use syntax::print::{pp, pprust};
+use syntax::print::{pprust};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
@@ -357,24 +357,24 @@ impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
             pprust::NodeName(_) => Ok(()),
 
             pprust::NodeItem(item) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(item.id.to_string())
             }
             pprust::NodeSubItem(id) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(id.to_string())
             }
             pprust::NodeBlock(blk) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("block {}", blk.id))
             }
             pprust::NodeExpr(expr) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(expr.id.to_string())?;
                 s.pclose()
             }
             pprust::NodePat(pat) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("pat {}", pat.id))
             }
         }
@@ -414,24 +414,24 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
         match node {
             pprust_hir::NodeName(_) => Ok(()),
             pprust_hir::NodeItem(item) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(item.id.to_string())
             }
             pprust_hir::NodeSubItem(id) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(id.to_string())
             }
             pprust_hir::NodeBlock(blk) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("block {}", blk.id))
             }
             pprust_hir::NodeExpr(expr) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(expr.id.to_string())?;
                 s.pclose()
             }
             pprust_hir::NodePat(pat) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("pat {}", pat.id))
             }
         }
@@ -456,13 +456,13 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
             pprust::NodeIdent(&ast::Ident { name, ctxt }) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
                 s.synth_comment(format!("{}{:?}", name.as_u32(), ctxt))
             }
             pprust::NodeName(&name) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(name.as_u32().to_string())
             }
             _ => Ok(()),
@@ -514,10 +514,10 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     fn post(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
             pprust_hir::NodeExpr(expr) => {
-                pp::space(&mut s.s)?;
-                pp::word(&mut s.s, "as")?;
-                pp::space(&mut s.s)?;
-                pp::word(&mut s.s, &self.tables.get().expr_ty(expr).to_string())?;
+                s.s.space()?;
+                s.s.word("as")?;
+                s.s.space()?;
+                s.s.word(&self.tables.get().expr_ty(expr).to_string())?;
                 s.pclose()
             }
             _ => Ok(()),
@@ -945,13 +945,13 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     for node_id in uii.all_matching_node_ids(hir_map) {
                         let node = hir_map.get(node_id);
                         pp_state.print_node(node)?;
-                        pp::space(&mut pp_state.s)?;
+                        pp_state.s.space()?;
                         let path = annotation.node_path(node_id)
                             .expect("--unpretty missing node paths");
                         pp_state.synth_comment(path)?;
-                        pp::hardbreak(&mut pp_state.s)?;
+                        pp_state.s.hardbreak()?;
                     }
-                    pp::eof(&mut pp_state.s)
+                    pp_state.s.eof()
                 })
             }
             _ => unreachable!(),

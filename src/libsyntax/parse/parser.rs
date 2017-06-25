@@ -1480,10 +1480,9 @@ impl<'a> Parser<'a> {
         match ty.node {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
                 let sum_with_parens = pprust::to_string(|s| {
-                    use print::pp::word;
                     use print::pprust::PrintState;
 
-                    word(&mut s.s, "&")?;
+                    s.s.word("&")?;
                     s.print_opt_lifetime(lifetime)?;
                     s.print_mutability(mut_ty.mutbl)?;
                     s.popen()?;
@@ -2542,14 +2541,13 @@ impl<'a> Parser<'a> {
                         };
                         let sugg = pprust::to_string(|s| {
                             use print::pprust::PrintState;
-                            use print::pp::word;
                             s.popen()?;
                             s.print_expr(&e)?;
-                            word(&mut s.s, ".")?;
+                            s.s.word( ".")?;
                             s.print_usize(float.trunc() as usize)?;
                             s.pclose()?;
-                            word(&mut s.s, ".")?;
-                            word(&mut s.s, fstr.splitn(2, ".").last().unwrap())
+                            s.s.word(".")?;
+                            s.s.word(fstr.splitn(2, ".").last().unwrap())
                         });
                         err.span_suggestion(
                             lo.to(self.prev_span),
