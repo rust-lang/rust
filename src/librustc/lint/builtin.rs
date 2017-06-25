@@ -131,6 +131,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+    Deny,
+    "detect public reexports of private extern crates"
+}
+
+declare_lint! {
     pub INVALID_TYPE_PARAM_DEFAULT,
     Deny,
     "type parameter default erroneously allowed in invalid location"
@@ -230,6 +236,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
+            PUB_USE_OF_PRIVATE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR,
             RENAMED_AND_REMOVED_LINTS,
