@@ -12,13 +12,14 @@
 #![feature(core_float)]
 #![feature(lang_items)]
 #![feature(start)]
-#![feature(panic_unwind)]
 #![feature(i128_type)]
+#![cfg_attr(windows, feature(panic_unwind))]
 #![no_std]
 
 #[cfg(not(thumb))]
 extern crate alloc_system;
 extern crate compiler_builtins;
+#[cfg(windows)]
 extern crate panic_unwind;
 
 // NOTE cfg(not(thumbv6m)) means that the operation is not supported on ARMv6-M at all. Not even
@@ -444,7 +445,16 @@ pub fn __aeabi_unwind_cpp_pr0() {}
 #[no_mangle]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
-#[cfg(not(test))]
+#[cfg(not(windows))]
+#[allow(non_snake_case)]
+#[no_mangle]
+pub fn _Unwind_Resume() {}
+
+#[cfg(not(windows))]
+#[lang = "eh_personality"]
+#[no_mangle]
+pub extern "C" fn eh_personality() {}
+
 #[lang = "panic_fmt"]
 #[no_mangle]
 #[allow(private_no_mangle_fns)]

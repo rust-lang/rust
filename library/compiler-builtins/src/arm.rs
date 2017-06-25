@@ -37,7 +37,7 @@ pub unsafe fn __aeabi_uldivmod() {
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_idivmod() {
     asm!("push {r0, r1, r4, lr}
-          bl __divsi3
+          bl __aeabi_idiv
           pop {r1, r2}
           muls r2, r2, r0
           subs r1, r1, r2

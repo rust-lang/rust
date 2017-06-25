@@ -115,19 +115,9 @@ done
 
 rm -f $path
 
-# Verification of the `intrinsics` program doesn't work on thumb targets right
-# now.
-case $1 in
-    thumb*)
-        exit 0
-        ;;
-    *)
-        ;;
-esac
-
 # Verify that we haven't drop any intrinsic/symbol
 RUSTFLAGS="-C debug-assertions=no" \
-  $cargo build --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
+  $cargo build --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics -v
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
