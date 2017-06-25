@@ -258,7 +258,7 @@ impl TestProps {
             check_stdout: false,
             no_prefer_dynamic: false,
             pretty_expanded: false,
-            pretty_mode: format!("normal"),
+            pretty_mode: "normal".to_string(),
             pretty_compare_only: false,
             forbid_output: vec![],
             incremental_dir: None,
@@ -381,14 +381,11 @@ impl TestProps {
             }
         });
 
-        for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
-            match env::var(key) {
-                Ok(val) => {
-                    if self.exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
-                        self.exec_env.push((key.to_owned(), val))
-                    }
+        for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
+            if let Ok(val) = env::var(key) {
+                if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
+                    self.exec_env.push(((*key).to_owned(), val))
                 }
-                Err(..) => {}
             }
         }
     }
@@ -409,7 +406,7 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
             return;
         } else if ln.starts_with("//[") {
             // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find("]") {
+            if let Some(close_brace) = ln.find(']') {
                 let lncfg = &ln[3..close_brace];
                 let matches = match cfg {
                     Some(s) => s == &lncfg[..],
@@ -521,12 +518,10 @@ impl Config {
     fn parse_pp_exact(&self, line: &str, testfile: &Path) -> Option<PathBuf> {
         if let Some(s) = self.parse_name_value_directive(line, "pp-exact") {
             Some(PathBuf::from(&s))
+        } else if self.parse_name_directive(line, "pp-exact") {
+            testfile.file_name().map(PathBuf::from)
         } else {
-            if self.parse_name_directive(line, "pp-exact") {
-                testfile.file_name().map(PathBuf::from)
-            } else {
-                None
-            }
+            None
         }
     }
 
@@ -555,8 +550,8 @@ pub fn lldb_version_to_int(version_string: &str) -> isize {
     let error_string = format!("Encountered LLDB version string with unexpected format: {}",
                                version_string);
     let error_string = error_string;
-    let major: isize = version_string.parse().ok().expect(&error_string);
-    return major;
+    let major: isize = version_string.parse().expect(&error_string);
+    major
 }
 
 fn expand_variables(mut value: String, config: &Config) -> String {
