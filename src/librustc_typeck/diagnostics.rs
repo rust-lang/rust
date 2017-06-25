@@ -2476,7 +2476,7 @@ trait T2 {
     type Bar;
 
     // error: Baz is used but not declared
-    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+    fn return_bool(&self, _: &Self::Bar, _: &Self::Baz) -> bool;
 }
 ```
 
@@ -2498,7 +2498,7 @@ trait T2 {
     type Baz; // we declare `Baz` in our trait.
 
     // and now we can use it here:
-    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+    fn return_bool(&self, _: &Self::Bar, _: &Self::Baz) -> bool;
 }
 ```
 "##,

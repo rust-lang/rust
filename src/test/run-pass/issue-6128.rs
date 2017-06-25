@@ -14,9 +14,8 @@
 use std::collections::HashMap;
 
 trait Graph<Node, Edge> {
-    fn f(&self, Edge);
-    fn g(&self, Node);
-
+    fn f(&self, _: Edge);
+    fn g(&self, _: Node);
 }
 
 impl<E> Graph<isize, E> for HashMap<isize, isize> {

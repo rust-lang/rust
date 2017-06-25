@@ -442,7 +442,7 @@ pub fn main() {
 }
 
 trait Named {
-    fn new(&'static str) -> Self;
+    fn new(_: &'static str) -> Self;
     fn name(&self) -> &str;
 }
 
@@ -932,9 +932,9 @@ trait Context {
 }
 
 trait PrePost<T> {
-    fn pre(&mut self, &T);
-    fn post(&mut self, &T);
-    fn hit_limit(&mut self, &T);
+    fn pre(&mut self, _: &T);
+    fn post(&mut self, _: &T);
+    fn hit_limit(&mut self, _: &T);
 }
 
 trait Children<'a> {

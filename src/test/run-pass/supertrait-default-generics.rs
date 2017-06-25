@@ -14,7 +14,7 @@
 use std::ops::Add;
 
 trait Positioned<S> {
-  fn SetX(&mut self, S);
+  fn SetX(&mut self, _: S);
   fn X(&self) -> S;
 }
 

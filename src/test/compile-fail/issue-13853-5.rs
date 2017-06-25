@@ -11,7 +11,7 @@
 trait Deserializer<'a> { }
 
 trait Deserializable {
-    fn deserialize_token<'a, D: Deserializer<'a>>(D, &'a str) -> Self;
+    fn deserialize_token<'a, D: Deserializer<'a>>(_: D, _: &'a str) -> Self;
 }
 
 impl<'a, T: Deserializable> Deserializable for &'a str {

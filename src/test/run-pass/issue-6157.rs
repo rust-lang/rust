@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-pub trait OpInt { fn call(&mut self, isize, isize) -> isize; }
+pub trait OpInt { fn call(&mut self, _: isize, _: isize) -> isize; }
 
 impl<F> OpInt for F where F: FnMut(isize, isize) -> isize {
     fn call(&mut self, a:isize, b:isize) -> isize {
