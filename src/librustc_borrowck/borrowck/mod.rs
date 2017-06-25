@@ -103,6 +103,7 @@ pub struct AnalysisResult<'a, 'tcx: 'a> {
     pub safe_loans: Vec<SafeLoan>,
     pub all_loans: Vec<Loan<'tcx>>,
     pub move_data: move_data::MoveData<'tcx>,
+    pub span: Option<Span>,
 }
 
 fn borrowck_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
@@ -163,6 +164,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId, save_ana
             safe_loans,
             all_loans,
             move_data: flowed_moves.move_data,
+            span: tcx.hir.span_if_local(owner_def_id)
         })
     } else {
         None

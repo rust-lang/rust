@@ -206,6 +206,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             scopes: scopes,
             loans: loans,
             moves: moves,
+            span: analysis_result.span.map(|s| self.span_from_span(s))
         };
 
         self.dumper.dump_per_fn_borrow_data(data);

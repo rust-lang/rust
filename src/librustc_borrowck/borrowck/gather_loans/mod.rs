@@ -291,8 +291,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         }
     }
 
-    fn loan_scope_from_region(loan_region: &ty::Region<'tcx>) -> region::CodeExtent {
-        match *loan_region {
+    fn loan_scope_from_region(&self, loan_region: ty::Region<'tcx>) -> Option<region::CodeExtent> {
+        Some(match *loan_region {
             ty::ReScope(scope) => scope,
 
             ty::ReEarlyBound(ref br) => {
@@ -310,12 +310,9 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             ty::ReVar(..) |
             ty::ReSkolemized(..) |
             ty::ReErased => {
-                span_bug!(
-                    cmt.span,
-                    "invalid borrow lifetime: {:?}",
-                    loan_region);
+                return None;
             }
-        }
+        })
     }
 
     /// Guarantees that `addr_of(cmt)` will be valid for the duration of `static_scope_r`, or
@@ -372,7 +369,15 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         // Create the loan record (if needed).
         let loan = match restr {
             RestrictionResult::Safe => {
-                let loan_scope = loan_scope_from_region(loan_region);
+                let loan_scope = match self.loan_scope_from_region(loan_region) {
+                    Some(loan_scope) => loan_scope,
+                    None => {
+                        span_bug!(
+                            cmt.span,
+                            "invalid borrow lifetime: {:?}",
+                            loan_region);
+                    },
+                };
                 debug!("loan_scope = {:?}", loan_scope);
 
                 let borrow_scope = region::CodeExtent::Misc(borrow_id);
@@ -390,7 +395,15 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             }
 
             RestrictionResult::SafeIf(loan_path, restricted_paths) => {
-                let loan_scope = loan_scope_from_region(loan_region);
+                let loan_scope = match self.loan_scope_from_region(loan_region) {
+                    Some(loan_scope) => loan_scope,
+                    None => {
+                        span_bug!(
+                            cmt.span,
+                            "invalid borrow lifetime: {:?}",
+                            loan_region);
+                    },
+                };
                 debug!("loan_scope = {:?}", loan_scope);
 
                 let borrow_scope = region::CodeExtent::Misc(borrow_id);
