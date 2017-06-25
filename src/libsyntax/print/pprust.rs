@@ -31,7 +31,8 @@ use tokenstream::{self, TokenStream, TokenTree};
 
 use std::ascii;
 use std::io::{self, Write, Read};
-use std::iter;
+use std::iter::{self, Peekable};
+use std::vec;
 
 pub enum AnnNode<'a> {
     NodeIdent(&'a ast::Ident),
@@ -53,18 +54,12 @@ pub struct NoAnn;
 
 impl PpAnn for NoAnn {}
 
-#[derive(Copy, Clone)]
-pub struct CurrentCommentAndLiteral {
-    pub cur_cmnt: usize,
-    pub cur_lit: usize,
-}
-
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
     cm: Option<&'a CodeMap>,
     comments: Option<Vec<comments::Comment> >,
-    literals: Option<Vec<comments::Literal> >,
-    cur_cmnt_and_lit: CurrentCommentAndLiteral,
+    literals: Peekable<vec::IntoIter<comments::Literal>>,
+    cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
     ann: &'a (PpAnn+'a),
 }
@@ -80,11 +75,8 @@ pub fn rust_printer_annotated<'a>(writer: Box<Write+'a>,
         s: pp::mk_printer(writer, DEFAULT_COLUMNS),
         cm: None,
         comments: None,
-        literals: None,
-        cur_cmnt_and_lit: CurrentCommentAndLiteral {
-            cur_cmnt: 0,
-            cur_lit: 0
-        },
+        literals: vec![].into_iter().peekable(),
+        cur_cmnt: 0,
         boxes: Vec::new(),
         ann: ann,
     }
@@ -160,11 +152,8 @@ impl<'a> State<'a> {
             s: pp::mk_printer(out, DEFAULT_COLUMNS),
             cm: Some(cm),
             comments: comments,
-            literals: literals,
-            cur_cmnt_and_lit: CurrentCommentAndLiteral {
-                cur_cmnt: 0,
-                cur_lit: 0
-            },
+            literals: literals.unwrap_or_default().into_iter().peekable(),
+            cur_cmnt: 0,
             boxes: Vec::new(),
             ann: ann,
         }
@@ -451,8 +440,9 @@ pub trait PrintState<'a> {
     fn writer(&mut self) -> &mut pp::Printer<'a>;
     fn boxes(&mut self) -> &mut Vec<pp::Breaks>;
     fn comments(&mut self) -> &mut Option<Vec<comments::Comment>>;
-    fn cur_cmnt_and_lit(&mut self) -> &mut CurrentCommentAndLiteral;
-    fn literals(&self) -> &Option<Vec<comments::Literal>>;
+    fn cur_cmnt(&mut self) -> &mut usize;
+    fn cur_lit(&mut self) -> Option<&comments::Literal>;
+    fn bump_lit(&mut self) -> Option<comments::Literal>;
 
     fn word_space(&mut self, w: &str) -> io::Result<()> {
         self.writer().word(w)?;
@@ -518,31 +508,24 @@ pub trait PrintState<'a> {
     }
 
     fn next_lit(&mut self, pos: BytePos) -> Option<comments::Literal> {
-        let mut cur_lit = self.cur_cmnt_and_lit().cur_lit;
+        while let Some(ltrl) = self.cur_lit().cloned() {
+            if ltrl.pos > pos { break; }
 
-        let mut result = None;
-
-        if let Some(ref lits) = *self.literals() {
-            while cur_lit < lits.len() {
-                let ltrl = (*lits)[cur_lit].clone();
-                if ltrl.pos > pos { break; }
-                cur_lit += 1;
-                if ltrl.pos == pos {
-                    result = Some(ltrl);
-                    break;
-                }
+            // we don't need the value here since we're forced to clone cur_lit
+            // due to lack of NLL.
+            self.bump_lit();
+            if ltrl.pos == pos {
+                return Some(ltrl);
             }
         }
 
-        self.cur_cmnt_and_lit().cur_lit = cur_lit;
-        result
+        None
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) -> io::Result<()> {
         while let Some(ref cmnt) = self.next_comment() {
             if cmnt.pos < pos {
                 self.print_comment(cmnt)?;
-                self.cur_cmnt_and_lit().cur_cmnt += 1;
             } else {
                 break
             }
@@ -552,7 +535,7 @@ pub trait PrintState<'a> {
 
     fn print_comment(&mut self,
                      cmnt: &comments::Comment) -> io::Result<()> {
-        match cmnt.style {
+        let r = match cmnt.style {
             comments::Mixed => {
                 assert_eq!(cmnt.lines.len(), 1);
                 self.writer().zerobreak()?;
@@ -600,11 +583,18 @@ pub trait PrintState<'a> {
                 }
                 self.writer().hardbreak()
             }
+        };
+        match r {
+            Ok(()) => {
+                *self.cur_cmnt() = *self.cur_cmnt() + 1;
+                Ok(())
+            }
+            Err(e) => Err(e),
         }
     }
 
     fn next_comment(&mut self) -> Option<comments::Comment> {
-        let cur_cmnt = self.cur_cmnt_and_lit().cur_cmnt;
+        let cur_cmnt = *self.cur_cmnt();
         match *self.comments() {
             Some(ref cmnts) => {
                 if cur_cmnt < cmnts.len() {
@@ -619,8 +609,8 @@ pub trait PrintState<'a> {
 
     fn print_literal(&mut self, lit: &ast::Lit) -> io::Result<()> {
         self.maybe_print_comment(lit.span.lo)?;
-        if let Some(ref ltrl) = self.next_lit(lit.span.lo) {
-            return self.writer().word(&(*ltrl).lit);
+        if let Some(ltrl) = self.next_lit(lit.span.lo) {
+            return self.writer().word(&ltrl.lit);
         }
         match lit.node {
             ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
@@ -860,12 +850,16 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn cur_cmnt_and_lit(&mut self) -> &mut CurrentCommentAndLiteral {
-        &mut self.cur_cmnt_and_lit
+    fn cur_cmnt(&mut self) -> &mut usize {
+        &mut self.cur_cmnt
     }
 
-    fn literals(&self) -> &Option<Vec<comments::Literal>> {
-        &self.literals
+    fn cur_lit(&mut self) -> Option<&comments::Literal> {
+        self.literals.peek()
+    }
+
+    fn bump_lit(&mut self) -> Option<comments::Literal> {
+        self.literals.next()
     }
 }
 
@@ -3021,7 +3015,6 @@ impl<'a> State<'a> {
             let next = next_pos.unwrap_or(cmnt.pos + BytePos(1));
             if span.hi < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
-                self.cur_cmnt_and_lit.cur_cmnt += 1;
             }
         }
         Ok(())
@@ -3035,7 +3028,6 @@ impl<'a> State<'a> {
         }
         while let Some(ref cmnt) = self.next_comment() {
             self.print_comment(cmnt)?;
-            self.cur_cmnt_and_lit.cur_cmnt += 1;
         }
         Ok(())
     }

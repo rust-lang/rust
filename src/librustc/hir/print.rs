@@ -17,7 +17,7 @@ use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pprust::{self as ast_pp, PrintState};
+use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, BytePos};
@@ -27,6 +27,8 @@ use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, Ra
 
 use std::cell::Cell;
 use std::io::{self, Write, Read};
+use std::iter::Peekable;
+use std::vec;
 
 pub enum AnnNode<'a> {
     NodeName(&'a ast::Name),
@@ -77,8 +79,8 @@ pub struct State<'a> {
     pub s: pp::Printer<'a>,
     cm: Option<&'a CodeMap>,
     comments: Option<Vec<comments::Comment>>,
-    literals: Option<Vec<comments::Literal>>,
-    cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral,
+    literals: Peekable<vec::IntoIter<comments::Literal>>,
+    cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
     ann: &'a (PpAnn + 'a),
 }
@@ -96,12 +98,16 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn cur_cmnt_and_lit(&mut self) -> &mut ast_pp::CurrentCommentAndLiteral {
-        &mut self.cur_cmnt_and_lit
+    fn cur_cmnt(&mut self) -> &mut usize {
+        &mut self.cur_cmnt
     }
 
-    fn literals(&self) -> &Option<Vec<comments::Literal>> {
-        &self.literals
+    fn cur_lit(&mut self) -> Option<&comments::Literal> {
+        self.literals.peek()
+    }
+
+    fn bump_lit(&mut self) -> Option<comments::Literal> {
+        self.literals.next()
     }
 }
 
@@ -169,11 +175,8 @@ impl<'a> State<'a> {
             s: pp::mk_printer(out, default_columns),
             cm: Some(cm),
             comments: comments.clone(),
-            literals: literals.clone(),
-            cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral {
-                cur_cmnt: 0,
-                cur_lit: 0,
-            },
+            literals: literals.unwrap_or_default().into_iter().peekable(),
+            cur_cmnt: 0,
             boxes: Vec::new(),
             ann,
         }
@@ -189,11 +192,8 @@ pub fn to_string<F>(ann: &PpAnn, f: F) -> String
             s: pp::mk_printer(Box::new(&mut wr), default_columns),
             cm: None,
             comments: None,
-            literals: None,
-            cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral {
-                cur_cmnt: 0,
-                cur_lit: 0,
-            },
+            literals: vec![].into_iter().peekable(),
+            cur_cmnt: 0,
             boxes: Vec::new(),
             ann,
         };
@@ -2131,7 +2131,6 @@ impl<'a> State<'a> {
             if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
                span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
-                self.cur_cmnt_and_lit.cur_cmnt += 1;
             }
         }
         Ok(())
@@ -2147,7 +2146,6 @@ impl<'a> State<'a> {
             match self.next_comment() {
                 Some(ref cmnt) => {
                     self.print_comment(cmnt)?;
-                    self.cur_cmnt_and_lit.cur_cmnt += 1;
                 }
                 _ => break,
             }
