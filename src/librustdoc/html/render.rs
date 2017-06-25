@@ -1628,12 +1628,13 @@ fn plain_summary_line(s: Option<&str>) -> String {
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     document_stability(w, cx, item)?;
-    document_full(w, item, cx.render_type)?;
+    let prefix = render_assoc_const_value(item);
+    document_full(w, item, cx.render_type, &prefix)?;
     Ok(())
 }
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
-                  render_type: RenderType) -> fmt::Result {
+                  render_type: RenderType, prefix: &str) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",
@@ -1641,42 +1642,33 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        write!(w, "<div class='docblock'>{}</div>",
-               Markdown(&markdown, render_type))?;
+        write!(w, "<div class='docblock'>{}{}</div>", prefix, Markdown(&markdown, render_type))?;
+    } else if !prefix.is_empty() {
+        write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
     Ok(())
 }
 
-fn md_render_assoc_item(item: &clean::Item) -> String {
+fn render_assoc_const_value(item: &clean::Item) -> String {
     match item.inner {
-        clean::AssociatedConstItem(ref ty, ref default) => {
-            if let Some(default) = default.as_ref() {
-                format!("```\n{}: {:#} = {}\n```\n\n", item.name.as_ref().unwrap(), ty, default)
-            } else {
-                format!("```\n{}: {:#}\n```\n\n", item.name.as_ref().unwrap(), ty)
-            }
+        clean::AssociatedConstItem(ref ty, Some(ref default)) => {
+            highlight::render_with_highlighting(
+                &format!("{}: {:#} = {}", item.name.as_ref().unwrap(), ty, default),
+                None,
+                None,
+                None,
+            )
         }
         _ => String::new(),
     }
 }
 
-fn get_doc_value(item: &clean::Item) -> Option<&str> {
-    let x = item.doc_value();
-    if x.is_none() {
-        match item.inner {
-            clean::AssociatedConstItem(_, _) => Some(""),
-            _ => None,
-        }
-    } else {
-        x
-    }
-}
-
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
-                 render_type: RenderType) -> fmt::Result {
-    if let Some(s) = get_doc_value(item) {
-        write!(w, "<div class='docblock'>{}</div>",
-               Markdown(&format!("{}{}", md_render_assoc_item(item), s), render_type))?;
+                 render_type: RenderType, prefix: &str) -> fmt::Result {
+    if let Some(s) = item.doc_value() {
+        write!(w, "<div class='docblock'>{}{}</div>", prefix, Markdown(s, render_type))?;
+    } else if !prefix.is_empty() {
+        write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
     Ok(())
 }
@@ -2960,14 +2952,6 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
                 write!(w, "</code></span></h4>\n")?;
             }
-            clean::ConstantItem(ref c) => {
-                let id = derive_id(format!("{}.{}", item_type, name));
-                let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
-                write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
-                assoc_const(w, item, &c.type_, Some(&c.expr), link.anchor(&id))?;
-                write!(w, "</code></span></h4>\n")?;
-            }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
                 let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
@@ -2981,6 +2965,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
 
         if render_method_item || render_mode == RenderMode::Normal {
+            let prefix = render_assoc_const_value(item);
             if !is_default_item {
                 if let Some(t) = trait_ {
                     // The trait item may have been stripped so we might not
@@ -2989,20 +2974,21 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
                         document_stability(w, cx, it)?;
-                        if get_doc_value(item).is_some() {
-                            document_full(w, item, cx.render_type)?;
+                        if item.doc_value().is_some() {
+                            document_full(w, item, cx.render_type, &prefix)?;
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link, cx.render_type)?;
+                            document_short(w, it, link, cx.render_type, &prefix)?;
                         }
                     }
                 } else {
-                    document(w, cx, item)?;
+                    document_stability(w, cx, item)?;
+                    document_full(w, item, cx.render_type, &prefix)?;
                 }
             } else {
                 document_stability(w, cx, item)?;
-                document_short(w, item, link, cx.render_type)?;
+                document_short(w, item, link, cx.render_type, &prefix)?;
             }
         }
         Ok(())

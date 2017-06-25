@@ -83,7 +83,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
-            clean::ConstantItem(..) | clean::UnionItem(..) => {
+            clean::ConstantItem(..) | clean::UnionItem(..) |
+            clean::AssociatedConstItem(..) => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -117,8 +118,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
 
-            // Associated consts and types are never stripped
-            clean::AssociatedConstItem(..) |
+            // Associated types are never stripped
             clean::AssociatedTypeItem(..) => {}
         }
 
