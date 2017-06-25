@@ -64,13 +64,7 @@ pub struct State<'a> {
     ann: &'a (PpAnn+'a),
 }
 
-pub fn rust_printer<'a>(writer: Box<Write+'a>) -> State<'a> {
-    static NO_ANN: NoAnn = NoAnn;
-    rust_printer_annotated(writer, &NO_ANN)
-}
-
-pub fn rust_printer_annotated<'a>(writer: Box<Write+'a>,
-                                  ann: &'a PpAnn) -> State<'a> {
+fn rust_printer<'a>(writer: Box<Write+'a>, ann: &'a PpAnn) -> State<'a> {
     State {
         s: pp::mk_printer(writer, DEFAULT_COLUMNS),
         cm: None,
@@ -165,14 +159,15 @@ pub fn to_string<F>(f: F) -> String where
 {
     let mut wr = Vec::new();
     {
-        let mut printer = rust_printer(Box::new(&mut wr));
+        let ann = NoAnn;
+        let mut printer = rust_printer(Box::new(&mut wr), &ann);
         f(&mut printer).unwrap();
         printer.s.eof().unwrap();
     }
     String::from_utf8(wr).unwrap()
 }
 
-pub fn binop_to_string(op: BinOpToken) -> &'static str {
+fn binop_to_string(op: BinOpToken) -> &'static str {
     match op {
         token::Plus     => "+",
         token::Minus    => "-",
