@@ -1071,20 +1071,24 @@ impl EmitterWriter {
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
             self.msg_to_buffer(&mut buffer,
-                            &[(suggestion.msg.to_owned(), Style::NoStyle)],
-                            max_line_num_len,
-                            "suggestion",
-                            Some(Style::HeaderMsg));
+                               &[(suggestion.msg.to_owned(), Style::NoStyle)],
+                               max_line_num_len,
+                               "suggestion",
+                               Some(Style::HeaderMsg));
 
             let suggestions = suggestion.splice_lines(cm.borrow());
+            let line_start = cm.lookup_char_pos(primary_span.lo).line - 1;
             let mut row_num = 1;
             for complete in suggestions.iter().take(MAX_SUGGESTIONS) {
 
-                // print the suggestion without any line numbers, but leave
-                // space for them. This helps with lining up with previous
-                // snippets from the actual error being reported.
                 let mut lines = complete.lines();
                 for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
+                    // print the span column to avoid confusion
+                    buffer.puts(row_num,
+                                0,
+                                &((line_start + row_num).to_string()),
+                                Style::LineNumber);
+                    // print the suggestion
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                     buffer.append(row_num, line, Style::NoStyle);
                     row_num += 1;
