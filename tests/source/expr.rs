@@ -308,3 +308,16 @@ fn issue1714() {
     v = &mut {v}[mid..];
     let (left, right) = {v}.split_at_mut(mid);
 }
+
+// Multi-lined index should be put on the next line if it fits in one line.
+fn issue1749() {
+    {
+        {
+            {
+                if self.shape[(r as f32 + self.x_offset) as usize][(c as f32 + self.y_offset) as usize] != 0 {
+                    // hello
+                }
+            }
+        }
+    }
+}

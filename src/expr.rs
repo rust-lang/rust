@@ -2501,31 +2501,53 @@ fn rewrite_index(
     };
 
     let offset = expr_str.len() + lbr.len();
-    if let Some(index_shape) = shape.visual_indent(offset).sub_width(offset + rbr.len()) {
-        if let Some(index_str) = index.rewrite(context, index_shape) {
+    let orig_index_rw = shape
+        .visual_indent(offset)
+        .sub_width(offset + rbr.len())
+        .and_then(|index_shape| index.rewrite(context, index_shape));
+
+    // Return if everything fits in a single line.
+    match orig_index_rw {
+        Some(ref index_str) if !index_str.contains('\n') => {
             return Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr));
         }
+        _ => (),
     }
 
+    // Try putting index on the next line and see if it fits in a single line.
     let indent = shape.indent.block_indent(&context.config);
-    let indent = indent.to_string(&context.config);
-    // FIXME this is not right, since we don't take into account that shape.width
-    // might be reduced from max_width by something on the right.
-    let budget = try_opt!(
-        context
-            .config
-            .max_width()
-            .checked_sub(indent.len() + lbr.len() + rbr.len())
-    );
-    let index_str = try_opt!(index.rewrite(context, Shape::legacy(budget, shape.indent)));
-    Some(format!(
-        "{}\n{}{}{}{}",
-        expr_str,
-        indent,
-        lbr,
-        index_str,
-        rbr
-    ))
+    let rhs_overhead = context
+        .config
+        .max_width()
+        .checked_sub(shape.used_width() + shape.width)
+        .unwrap_or(0);
+    let index_shape = try_opt!(Shape::indented(indent, context.config).offset_left(lbr.len()));
+    let index_shape = try_opt!(index_shape.sub_width(rbr.len() + rhs_overhead));
+    let new_index_rw = index.rewrite(context, index_shape);
+    match (orig_index_rw, new_index_rw) {
+        (_, Some(ref new_index_str)) if !new_index_str.contains('\n') => {
+            Some(format!(
+                "{}\n{}{}{}{}",
+                expr_str,
+                indent.to_string(&context.config),
+                lbr,
+                new_index_str,
+                rbr
+            ))
+        }
+        (None, Some(ref new_index_str)) => {
+            Some(format!(
+                "{}\n{}{}{}{}",
+                expr_str,
+                indent.to_string(&context.config),
+                lbr,
+                new_index_str,
+                rbr
+            ))
+        }
+        (Some(ref index_str), _) => Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr)),
+        _ => None,
+    }
 }
 
 fn rewrite_struct_lit<'a>(
