@@ -789,14 +789,24 @@ impl<T: Write> ConsoleTestState<T> {
         } else {
             self.write_pretty("FAILED", term::color::RED)?;
         }
-        let s = format!(
+        let s = if self.allowed_fail > 0 {
+            format!(
                 ". {} passed; {} failed ({} allowed); {} ignored; {} measured; {} filtered out\n\n",
                 self.passed,
-                self.failed,
+                self.failed + self.allowed_fail,
                 self.allowed_fail,
                 self.ignored,
                 self.measured,
-                self.filtered_out);
+                self.filtered_out)
+        } else {
+            format!(
+                ". {} passed; {} failed; {} ignored; {} measured; {} filtered out\n\n",
+                self.passed,
+                self.failed,
+                self.ignored,
+                self.measured,
+                self.filtered_out)
+        };
         self.write_plain(&s)?;
         return Ok(success);
     }
