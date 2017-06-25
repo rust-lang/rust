@@ -137,8 +137,6 @@ fn main() {
         cmd.arg("--enable-debug");
     }
 
-    // Turn off broken quarantine (see jemalloc/jemalloc#161)
-    cmd.arg("--disable-fill");
     cmd.arg(format!("--host={}", build_helper::gnu_target(&target)));
     cmd.arg(format!("--build={}", build_helper::gnu_target(&host)));
 
