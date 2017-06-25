@@ -761,7 +761,7 @@ pub trait PrintState<'a> {
                         word(self.writer(), "::")?
                     }
                     if segment.identifier.name != keywords::CrateRoot.name() &&
-                       segment.identifier.name != "$crate" {
+                       segment.identifier.name != keywords::DollarCrate.name() {
                         word(self.writer(), &segment.identifier.name.as_str())?;
                     }
                 }
@@ -2375,7 +2375,7 @@ impl<'a> State<'a> {
                           -> io::Result<()>
     {
         if segment.identifier.name != keywords::CrateRoot.name() &&
-           segment.identifier.name != "$crate" {
+           segment.identifier.name != keywords::DollarCrate.name() {
             self.print_ident(segment.identifier)?;
             if let Some(ref parameters) = segment.parameters {
                 self.print_path_parameters(parameters, colons_before_params)?;

@@ -327,7 +327,8 @@ impl Token {
         match self.ident() {
             Some(id) => id.name == keywords::Super.name() ||
                         id.name == keywords::SelfValue.name() ||
-                        id.name == keywords::SelfType.name(),
+                        id.name == keywords::SelfType.name() ||
+                        id.name == keywords::DollarCrate.name(),
             None => false,
         }
     }

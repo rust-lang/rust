@@ -97,9 +97,8 @@ impl Path {
     }
 
     pub fn default_to_global(mut self) -> Path {
-        let name = self.segments[0].identifier.name;
-        if !self.is_global() && name != "$crate" &&
-           name != keywords::SelfValue.name() && name != keywords::Super.name() {
+        if !self.is_global() &&
+           !::parse::token::Ident(self.segments[0].identifier).is_path_segment_keyword() {
             self.segments.insert(0, PathSegment::crate_root());
         }
         self
