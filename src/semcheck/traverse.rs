@@ -6,9 +6,11 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def::Def::*;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
-use rustc::ty::TyCtxt;
+use rustc::ty;
+use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
+use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc::ty::subst::{Subst, Substs};
 
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -233,10 +235,87 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     }
 
     for &(_, old, new) in id_mapping.toplevel_mapping.values() {
+        let mut mismatch = Mismatch {
+            tcx: tcx,
+            toplevel_mapping: &id_mapping.toplevel_mapping,
+            mapping: &mut id_mapping.mapping,
+        };
+
+        let _ = mismatch.tys(tcx.type_of(old.def.def_id()), tcx.type_of(new.def.def_id()));
+    }
+
+    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
         diff_items(&mut changes, &id_mapping, tcx, old, new);
     }
 
     changes
+}
+
+struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a, A: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    toplevel_mapping: &'a HashMap<DefId, A>,
+    mapping: &'a mut HashMap<DefId, DefId>,
+}
+
+impl<'a, 'gcx, 'tcx, A: 'a> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx, A> {
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+        self.tcx
+    }
+
+    fn tag(&self) -> &'static str {
+        "Mismatch"
+    }
+
+    fn a_is_expected(&self) -> bool {
+        true
+    }
+
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             _: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T> {
+        self.relate(a, b)
+    }
+
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        use rustc::ty::TypeVariants::*;
+
+        let matching = match (&a.sty, &b.sty) {
+            (&TyAdt(a_adt, _), &TyAdt(b_adt, _)) => Some((a_adt.did, b_adt.did)),
+            (&TyFnDef(a_did, _, _), &TyFnDef(b_did, _, _)) => Some((a_did, b_did)),
+            (&TyClosure(a_did, _), &TyClosure(b_did, _)) => Some((a_did, b_did)),
+            (&TyProjection(a_proj), &TyProjection(b_proj)) =>
+                Some((a_proj.trait_ref.def_id, b_proj.trait_ref.def_id)),
+            (&TyAnon(a_did, _), &TyAnon(b_did, _)) => Some((a_did, b_did)),
+            _ => None,
+        };
+
+        if let Some((old_did, new_did)) = matching {
+            if !self.toplevel_mapping.contains_key(&old_did) &&
+                !self.mapping.contains_key(&old_did)
+            {
+                println!("adding mapping: {:?} => {:?}", old_did, new_did);
+                self.mapping.insert(old_did, new_did);
+            }
+        }
+
+        ty::relate::super_relate_tys(self, a, b)
+    }
+
+    fn regions(&mut self, a: ty::Region<'tcx>, _: ty::Region<'tcx>)
+        -> RelateResult<'tcx, ty::Region<'tcx>>
+    {
+        // TODO
+        Ok(a)
+    }
+
+    fn binders<T: Relate<'tcx>>(&mut self, a: &ty::Binder<T>, _: &ty::Binder<T>)
+        -> RelateResult<'tcx, ty::Binder<T>>
+    {
+        // TODO
+        Ok(a.clone())
+    }
 }
 
 /// Given two ADT items, perform *structural* checks.
