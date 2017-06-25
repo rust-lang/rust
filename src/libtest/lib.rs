@@ -1740,6 +1740,7 @@ mod tests {
                TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
                DynTestFn, ShouldPanic, TestResult};
     use super::{TestEvent, run_tests};
+    use std::io;
     use std::sync::mpsc::channel;
     use std::sync::{Arc, RwLock};
     use std::thread::sleep;
@@ -2040,6 +2041,16 @@ mod tests {
         }
     }
 
+    fn panic_on_non_ok_result(result: &TestResult) -> io::Result<()> {
+        match *result {
+            TestResult::TrOk => Ok(()),
+            TestResult::TrFailed => panic!("test failed (no message)"),
+            TestResult::TrFailedMsg(ref s) => panic!("test failed: {}", s),
+            TestResult::TrIgnored => panic!("test ignored"),
+            _ => panic!("test returned unexpected result"),
+        }
+    }
+
     #[test]
     pub fn stress_test_serial_tests() {
         let mut opts = TestOpts::new();
@@ -2057,7 +2068,7 @@ mod tests {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
-                    serial: true
+                    serial: true,
                 },
                 testfn: DynTestFn(Box::new(move |()| {
                     let mut c = lock2.write().unwrap();
@@ -2072,7 +2083,7 @@ mod tests {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
-                    serial: true
+                    serial: true,
                 },
                 testfn: DynTestFn(Box::new(move |()| {
                     let mut c = lock3.write().unwrap();
@@ -2086,8 +2097,8 @@ mod tests {
             match e {
                 TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
                 TestEvent::TeTimeout(_) => panic!("timeout"),
-                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk =>
-                    panic!("result not okay"),
+                TestEvent::TeResult(_, ref result, _) =>
+                    panic_on_non_ok_result(result),
                 _ => Ok(())
             }
         }).unwrap();
@@ -2135,8 +2146,8 @@ mod tests {
             match e {
                 TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
                 TestEvent::TeTimeout(_) => panic!("timeout"),
-                TestEvent::TeResult(_, ref result, _) if result != &TestResult::TrOk =>
-                    panic!("result not okay"),
+                TestEvent::TeResult(_, ref result, _) =>
+                    panic_on_non_ok_result(result),
                 _ => Ok(())
             }
         }).unwrap();
