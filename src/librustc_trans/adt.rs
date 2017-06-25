@@ -42,10 +42,9 @@
 //!   taken to it, implementing them for Rust seems difficult.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, HasDataLayout, LayoutTyper, Size};
+use rustc::ty::layout::{self, Align, HasDataLayout, LayoutTyper, Size, TyLayout};
 
 use context::CrateContext;
-use monomorphize;
 use type_::Type;
 use type_of;
 
@@ -75,15 +74,25 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         | layout::UntaggedUnion { .. } | layout::RawNullablePointer { .. } => { }
         layout::Univariant { ..}
         | layout::StructWrappedNullablePointer { .. } => {
-            let (nonnull_variant_index, nonnull_variant, packed) = match *l {
-                layout::Univariant { ref variant, .. } => (0, variant, variant.packed),
+            let (variant_layout, variant) = match *l {
+                layout::Univariant { ref variant, .. } => {
+                    let is_enum = if let ty::TyAdt(def, _) = t.sty {
+                        def.is_enum()
+                    } else {
+                        false
+                    };
+                    if is_enum {
+                        (l.for_variant(0), variant)
+                    } else {
+                        (l, variant)
+                    }
+                }
                 layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } =>
-                    (nndiscr, nonnull, nonnull.packed),
+                    (l.for_variant(nndiscr as usize), nonnull),
                 _ => unreachable!()
             };
-            llty.set_struct_body(&struct_llfields(cx, t, nonnull_variant_index as usize,
-                                                  nonnull_variant, None),
-                                 packed)
+            llty.set_struct_body(&struct_llfields(cx, variant_layout, variant, None),
+                                 variant.packed)
         },
         _ => bug!("This function cannot handle {} with layout {:#?}", t, l)
     }
@@ -97,22 +106,18 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     match *l {
         layout::CEnum { discr, .. } => Type::from_integer(cx, discr),
         layout::RawNullablePointer { nndiscr, .. } => {
-            let (def, substs) = match t.sty {
-                ty::TyAdt(d, s) => (d, s),
-                _ => bug!("{} is not an ADT", t)
-            };
-            let nnty = monomorphize::field_ty(cx.tcx(), substs,
-                &def.variants[nndiscr as usize].fields[0]);
-            if let layout::Scalar { value: layout::Pointer, .. } = *cx.layout_of(nnty) {
+            let nnfield = l.for_variant(nndiscr as usize).field(cx, 0);
+            if let layout::Scalar { value: layout::Pointer, .. } = *nnfield {
                 Type::i8p(cx)
             } else {
-                type_of::type_of(cx, nnty)
+                type_of::type_of(cx, nnfield.ty)
             }
         }
         layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, t, nndiscr as usize, nonnull, None),
+                    Type::struct_(cx, &struct_llfields(cx, l.for_variant(nndiscr as usize),
+                                                       nonnull, None),
                                   nonnull.packed)
                 }
                 Some(name) => {
@@ -123,7 +128,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         layout::Univariant { ref variant, .. } => {
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, t, 0, &variant, None),
+                    Type::struct_(cx, &struct_llfields(cx, l, &variant, None),
                                   variant.packed)
                 }
                 Some(name) => {
@@ -199,61 +204,30 @@ fn union_fill(cx: &CrateContext, size: Size, align: Align) -> Type {
 }
 
 /// Double an index to account for padding.
-pub fn memory_index_to_gep(index: usize) -> usize {
+pub fn memory_index_to_gep(index: u64) -> u64 {
     index * 2
 }
 
-/// Lookup `Struct::memory_index`, double it to account for padding.
-pub fn struct_llfields_index(variant: &layout::Struct, index: usize) -> usize {
-    memory_index_to_gep(variant.memory_index[index] as usize)
-}
-
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 t: Ty<'tcx>,
-                                 variant_index: usize,
+                                 layout: TyLayout<'tcx>,
                                  variant: &layout::Struct,
                                  discr: Option<Ty<'tcx>>) -> Vec<Type> {
-    let field_count = match t.sty {
-        ty::TyAdt(ref def, _) if def.variants.len() == 0 => return vec![],
-        ty::TyAdt(ref def, _) => {
-            discr.is_some() as usize + def.variants[variant_index].fields.len()
-        },
-        ty::TyTuple(fields, _) => fields.len(),
-        ty::TyClosure(def_id, substs) => {
-            if variant_index > 0 { bug!("{} is a closure, which only has one variant", t);}
-            substs.upvar_tys(def_id, cx.tcx()).count()
-        },
-        ty::TyGenerator(def_id, substs, _) => {
-            if variant_index > 0 { bug!("{} is a generator, which only has one variant", t);}
-            substs.field_tys(def_id, cx.tcx()).count()
-        },
-        _ => bug!("{} is not a type that can have fields.", t)
-    };
+    let field_count = (discr.is_some() as usize) + layout.field_count();
     debug!("struct_llfields: variant: {:?}", variant);
     let mut first_field = true;
     let mut offset = Size::from_bytes(0);
     let mut result: Vec<Type> = Vec::with_capacity(field_count * 2);
     let field_iter = variant.field_index_by_increasing_offset().map(|i| {
-        (i, match t.sty {
-            ty::TyAdt(..) if i == 0 && discr.is_some() => discr.unwrap(),
-            ty::TyAdt(ref def, ref substs) => {
-                monomorphize::field_ty(cx.tcx(), substs,
-                    &def.variants[variant_index].fields[i as usize - discr.is_some() as usize])
-            },
-            ty::TyTuple(fields, _) => fields[i as usize],
-            ty::TyClosure(def_id, substs) => {
-                substs.upvar_tys(def_id, cx.tcx()).nth(i).unwrap()
-            },
-            ty::TyGenerator(def_id, substs, _) => {
-                let ty = substs.field_tys(def_id, cx.tcx()).nth(i).unwrap();
-                cx.tcx().normalize_associated_type(&ty)
-            },
-            _ => bug!()
-        }, variant.offsets[i as usize])
+        let ty = if i == 0 && discr.is_some() {
+            cx.layout_of(discr.unwrap())
+        } else {
+            layout.field(cx, i - discr.is_some() as usize)
+        };
+        (i, ty, variant.offsets[i as usize])
     });
-    for (index, ty, target_offset) in field_iter {
-        debug!("struct_llfields: {} ty: {} offset: {:?} target_offset: {:?}",
-            index, ty, offset, target_offset);
+    for (index, field, target_offset) in field_iter {
+        debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
+            index, field, offset, target_offset);
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         if first_field {
@@ -263,19 +237,19 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             result.push(Type::array(&Type::i8(cx), padding.bytes()));
             debug!("    padding before: {:?}", padding);
         }
-        let llty = type_of::in_memory_type_of(cx, ty);
+        let llty = type_of::in_memory_type_of(cx, field.ty);
         result.push(llty);
-        let layout = cx.layout_of(ty);
+
         if variant.packed {
             assert_eq!(padding.bytes(), 0);
         } else {
-            let field_align = layout.align(cx);
+            let field_align = field.align(cx);
             assert!(field_align.abi() <= variant.align.abi(),
                     "non-packed type has field with larger align ({}): {:#?}",
                     field_align.abi(), variant);
         }
-        let target_size = layout.size(&cx.tcx().data_layout);
-        offset = target_offset + target_size;
+
+        offset = target_offset + field.size(cx);
     }
     if variant.sized && field_count > 0 {
         if offset > variant.stride() {

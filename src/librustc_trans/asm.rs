@@ -11,7 +11,6 @@
 //! # Translation of inline assembly.
 
 use llvm::{self, ValueRef};
-use base;
 use common::*;
 use type_of;
 use type_::Type;
@@ -19,8 +18,9 @@ use builder::Builder;
 
 use rustc::hir;
 use rustc::ty::Ty;
+use rustc::ty::layout::Align;
 
-use mir::lvalue::Alignment;
+use mir::lvalue::{LvalueRef, Alignment};
 
 use std::ffi::CString;
 use syntax::ast::AsmDialect;
@@ -40,16 +40,17 @@ pub fn trans_inline_asm<'a, 'tcx>(
     let mut indirect_outputs = vec![];
     for (i, (out, &(val, ty))) in ia.outputs.iter().zip(&outputs).enumerate() {
         let val = if out.is_rw || out.is_indirect {
-            Some(base::load_ty(bcx, val, Alignment::Packed, ty))
+            Some(LvalueRef::new_sized(val, ty,
+                Alignment::Packed(Align::from_bytes(1, 1).unwrap())).load(bcx))
         } else {
             None
         };
         if out.is_rw {
-            inputs.push(val.unwrap());
+            inputs.push(val.unwrap().immediate());
             ext_constraints.push(i.to_string());
         }
         if out.is_indirect {
-            indirect_outputs.push(val.unwrap());
+            indirect_outputs.push(val.unwrap().immediate());
         } else {
             output_types.push(type_of::type_of(bcx.ccx, ty));
         }
@@ -107,7 +108,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
     for (i, (_, &(val, _))) in outputs.enumerate() {
-        let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i) };
+        let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i as u64) };
         bcx.store(v, val, None);
     }
 

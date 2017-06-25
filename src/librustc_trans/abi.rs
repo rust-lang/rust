@@ -30,6 +30,7 @@ use cabi_sparc64;
 use cabi_nvptx;
 use cabi_nvptx64;
 use cabi_hexagon;
+use mir::lvalue::LvalueRef;
 use type_::Type;
 use type_of;
 
@@ -570,20 +571,20 @@ impl<'a, 'tcx> ArgType<'tcx> {
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, bcx: &Builder<'a, 'tcx>, mut val: ValueRef, dst: ValueRef) {
+    pub fn store(&self, bcx: &Builder<'a, 'tcx>, mut val: ValueRef, dst: LvalueRef<'tcx>) {
         if self.is_ignore() {
             return;
         }
         let ccx = bcx.ccx;
         if self.is_indirect() {
             let llsz = C_usize(ccx, self.layout.size(ccx).bytes());
-            base::call_memcpy(bcx, dst, val, llsz, self.layout.align(ccx));
+            base::call_memcpy(bcx, dst.llval, val, llsz, self.layout.align(ccx));
         } else if let Some(ty) = self.cast {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_dst = bcx.pointercast(dst, ty.llvm_type(ccx).ptr_to());
+                let cast_dst = bcx.pointercast(dst.llval, ty.llvm_type(ccx).ptr_to());
                 bcx.store(val, cast_dst, Some(self.layout.align(ccx)));
             } else {
                 // The actual return type is a struct, but the ABI
@@ -610,7 +611,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
 
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bcx,
-                                  bcx.pointercast(dst, Type::i8p(ccx)),
+                                  bcx.pointercast(dst.llval, Type::i8p(ccx)),
                                   bcx.pointercast(llscratch, Type::i8p(ccx)),
                                   C_usize(ccx, self.layout.size(ccx).bytes()),
                                   self.layout.align(ccx).min(ty.align(ccx)));
@@ -618,14 +619,12 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 bcx.lifetime_end(llscratch, scratch_size);
             }
         } else {
-            if self.layout.ty == ccx.tcx().types.bool {
-                val = bcx.zext(val, Type::i8(ccx));
-            }
-            bcx.store(val, dst, None);
+            val = base::from_immediate(bcx, val);
+            bcx.store(val, dst.llval, None);
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: ValueRef) {
+    pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: LvalueRef<'tcx>) {
         if self.pad.is_some() {
             *idx += 1;
         }

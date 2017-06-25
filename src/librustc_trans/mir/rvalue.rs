@@ -12,7 +12,6 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{Layout, LayoutTyper};
-use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
@@ -20,11 +19,9 @@ use base;
 use builder::Builder;
 use callee;
 use common::{self, val_ty, C_bool, C_i32, C_null, C_u8, C_usize, C_uint};
-use adt;
 use monomorphize;
 use type_::Type;
 use type_of;
-use tvec;
 use value::Value;
 
 use super::{MirContext, LocalRef};
@@ -47,7 +44,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                let tr_operand = self.trans_operand(&bcx, operand);
                // FIXME: consider not copying constants through stack. (fixable by translating
                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
-               self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), tr_operand);
+               tr_operand.store(&bcx, dest);
                bcx
            }
 
@@ -58,7 +55,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                    self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), temp);
+                    temp.store(&bcx, dest);
                     return bcx;
                 }
 
@@ -68,9 +65,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // so the (generic) MIR may not be able to expand it.
                 let operand = self.trans_operand(&bcx, source);
                 let operand = operand.pack_if_pair(&bcx);
-                let llref = match operand.val {
+                match operand.val {
                     OperandValue::Pair(..) => bug!(),
-                    OperandValue::Immediate(llval) => {
+                    OperandValue::Immediate(_) => {
                         // unsize from an immediate structure. We don't
                         // really need a temporary alloca here, but
                         // avoiding it would require us to have
@@ -79,100 +76,92 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // important enough for it.
                         debug!("trans_rvalue: creating ugly alloca");
                         let scratch = LvalueRef::alloca(&bcx, operand.ty, "__unsize_temp");
-                        base::store_ty(&bcx, llval, scratch.llval, scratch.alignment, operand.ty);
-                        scratch
+                        scratch.storage_live(&bcx);
+                        operand.store(&bcx, scratch);
+                        base::coerce_unsized_into(&bcx, scratch, dest);
+                        scratch.storage_dead(&bcx);
                     }
                     OperandValue::Ref(llref, align) => {
-                        LvalueRef::new_sized_ty(llref, operand.ty, align)
+                        let source = LvalueRef::new_sized(llref, operand.ty, align);
+                        base::coerce_unsized_into(&bcx, source, dest);
                     }
-                };
-                base::coerce_unsized_into(&bcx, &llref, &dest);
+                }
                 bcx
             }
 
             mir::Rvalue::Repeat(ref elem, count) => {
-                let dest_ty = dest.ty.to_ty(bcx.tcx());
+                let tr_elem = self.trans_operand(&bcx, elem);
 
-                // No need to inizialize memory of a zero-sized slice
+                // Do not generate the loop for zero-sized elements or empty arrays.
+                let dest_ty = dest.ty.to_ty(bcx.tcx());
                 if common::type_is_zero_size(bcx.ccx, dest_ty) {
                     return bcx;
                 }
 
-                let tr_elem = self.trans_operand(&bcx, elem);
-                let count = count.as_u64();
-                let count = C_usize(bcx.ccx, count);
-                let base = base::get_dataptr(&bcx, dest.llval);
-                let align = dest.alignment.to_align();
+                let start = dest.project_index(&bcx, C_usize(bcx.ccx, 0)).llval;
 
                 if let OperandValue::Immediate(v) = tr_elem.val {
-                    let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
+                    let align = dest.alignment.non_abi()
+                        .unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
                     let align = C_i32(bcx.ccx, align.abi() as i32);
                     let size = C_usize(bcx.ccx, bcx.ccx.size_of(dest_ty).bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if common::is_const_integral(v) && common::const_to_uint(v) == 0 {
                         let fill = C_u8(bcx.ccx, 0);
-                        base::call_memset(&bcx, base, fill, size, align, false);
+                        base::call_memset(&bcx, start, fill, size, align, false);
                         return bcx;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     if common::val_ty(v) == Type::i8(bcx.ccx) {
-                        base::call_memset(&bcx, base, v, size, align, false);
+                        base::call_memset(&bcx, start, v, size, align, false);
                         return bcx;
                     }
                 }
 
-                tvec::slice_for_each(&bcx, base, tr_elem.ty, count, |bcx, llslot, loop_bb| {
-                    self.store_operand(bcx, llslot, align, tr_elem);
-                    bcx.br(loop_bb);
-                })
+                let count = count.as_u64();
+                let count = C_usize(bcx.ccx, count);
+                let end = dest.project_index(&bcx, count).llval;
+
+                let header_bcx = bcx.build_sibling_block("repeat_loop_header");
+                let body_bcx = bcx.build_sibling_block("repeat_loop_body");
+                let next_bcx = bcx.build_sibling_block("repeat_loop_next");
+
+                bcx.br(header_bcx.llbb());
+                let current = header_bcx.phi(common::val_ty(start), &[start], &[bcx.llbb()]);
+
+                let keep_going = header_bcx.icmp(llvm::IntNE, current, end);
+                header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
+
+                tr_elem.store(&body_bcx,
+                    LvalueRef::new_sized(current, tr_elem.ty, dest.alignment));
+
+                let next = body_bcx.inbounds_gep(current, &[C_usize(bcx.ccx, 1)]);
+                body_bcx.br(header_bcx.llbb());
+                header_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
+
+                next_bcx
             }
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
-                match **kind {
-                    mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
+                let (dest, active_field_index) = match **kind {
+                    mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
                         dest.trans_set_discr(&bcx, variant_index);
-                        for (i, operand) in operands.iter().enumerate() {
-                            let op = self.trans_operand(&bcx, operand);
-                            // Do not generate stores and GEPis for zero-sized fields.
-                            if !common::type_is_zero_size(bcx.ccx, op.ty) {
-                                let mut val = LvalueRef::new_sized(
-                                    dest.llval, dest.ty, dest.alignment);
-                                let field_index = active_field_index.unwrap_or(i);
-                                val.ty = LvalueTy::Downcast {
-                                    adt_def,
-                                    substs: self.monomorphize(&substs),
-                                    variant_index,
-                                };
-                                let (lldest_i, align) = val.trans_field_ptr(&bcx, field_index);
-                                self.store_operand(&bcx, lldest_i, align.to_align(), op);
-                            }
+                        if adt_def.is_enum() {
+                            (dest.project_downcast(&bcx, variant_index), active_field_index)
+                        } else {
+                            (dest, active_field_index)
                         }
-                    },
-                    _ => {
-                        // If this is a tuple or closure, we need to translate GEP indices.
-                        let layout = bcx.ccx.layout_of(dest.ty.to_ty(bcx.tcx()));
-                        let get_memory_index = |i| {
-                            if let Layout::Univariant { ref variant, .. } = *layout {
-                                adt::struct_llfields_index(variant, i)
-                            } else {
-                                i
-                            }
-                        };
-                        let alignment = dest.alignment;
-                        for (i, operand) in operands.iter().enumerate() {
-                            let op = self.trans_operand(&bcx, operand);
-                            // Do not generate stores and GEPis for zero-sized fields.
-                            if !common::type_is_zero_size(bcx.ccx, op.ty) {
-                                // Note: perhaps this should be StructGep, but
-                                // note that in some cases the values here will
-                                // not be structs but arrays.
-                                let i = get_memory_index(i);
-                                let dest = bcx.gepi(dest.llval, &[0, i]);
-                                self.store_operand(&bcx, dest, alignment.to_align(), op);
-                            }
-                        }
+                    }
+                    _ => (dest, None)
+                };
+                for (i, operand) in operands.iter().enumerate() {
+                    let op = self.trans_operand(&bcx, operand);
+                    // Do not generate stores and GEPis for zero-sized fields.
+                    if !common::type_is_zero_size(bcx.ccx, op.ty) {
+                        let field_index = active_field_index.unwrap_or(i);
+                        op.store(&bcx, dest.project_field(&bcx, field_index));
                     }
                 }
                 bcx
@@ -181,7 +170,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             _ => {
                 assert!(self.rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), temp);
+                temp.store(&bcx, dest);
                 bcx
             }
         }

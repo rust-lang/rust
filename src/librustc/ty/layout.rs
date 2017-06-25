@@ -1700,6 +1700,10 @@ impl<'a, 'tcx> Layout {
         }
     }
 
+    pub fn size_and_align<C: HasDataLayout>(&self, cx: C) -> (Size, Align) {
+        (self.size(cx), self.align(cx))
+    }
+
     /// Returns alignment before repr alignment is applied
     pub fn primitive_align<C: HasDataLayout>(&self, cx: C) -> Align {
         match *self {
@@ -2201,6 +2205,11 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for LayoutCx<'a, 'tcx> {
 
 impl<'a, 'tcx> TyLayout<'tcx> {
     pub fn for_variant(&self, variant_index: usize) -> Self {
+        let is_enum = match self.ty.sty {
+            ty::TyAdt(def, _) => def.is_enum(),
+            _ => false
+        };
+        assert!(is_enum);
         TyLayout {
             variant_index: Some(variant_index),
             ..*self
@@ -2214,13 +2223,26 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     pub fn field_count(&self) -> usize {
         // Handle enum/union through the type rather than Layout.
         if let ty::TyAdt(def, _) = self.ty.sty {
-            let v = self.variant_index.unwrap_or(0);
-            if def.variants.is_empty() {
-                assert_eq!(v, 0);
-                return 0;
+            let v = if def.is_enum() {
+                if def.variants.is_empty() {
+                    return 0;
+                }
+                match self.variant_index {
+                    None => match *self.layout {
+                        // Discriminant field for enums (where applicable).
+                        General { .. } => return 1,
+                        _ if def.variants.len() > 1 => return 0,
+
+                        // Enums with one variant behave like structs.
+                        _ => 0
+                    },
+                    Some(v) => v
+                }
             } else {
-                return def.variants[v].fields.len();
-            }
+                0
+            };
+
+            return def.variants[v].fields.len();
         }
 
         match *self.layout {
@@ -2248,7 +2270,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         }
     }
 
-    pub fn field_type<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> Ty<'tcx> {
+    fn field_type_unnormalized<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> Ty<'tcx> {
         let tcx = cx.tcx();
 
         let ptr_field_type = |pointee: Ty<'tcx>| {
@@ -2314,7 +2336,25 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                def.variants[self.variant_index.unwrap_or(0)].fields[i].ty(tcx, substs)
+                let v = if def.is_enum() {
+                    match self.variant_index {
+                        None => match *self.layout {
+                            // Discriminant field for enums (where applicable).
+                            General { discr, .. } => {
+                                return [discr.to_ty(tcx, false)][i];
+                            }
+                            _ if def.variants.len() > 1 => return [][i],
+
+                            // Enums with one variant behave like structs.
+                            _ => 0
+                        },
+                        Some(v) => v
+                    }
+                } else {
+                    0
+                };
+
+                def.variants[v].fields[i].ty(tcx, substs)
             }
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
@@ -2324,11 +2364,15 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         }
     }
 
+    pub fn field_type<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> Ty<'tcx> {
+        cx.normalize_projections(self.field_type_unnormalized(cx, i))
+    }
+
     pub fn field<C: LayoutTyper<'tcx>>(&self,
                                        cx: C,
                                        i: usize)
                                        -> C::TyLayout {
-        cx.layout_of(cx.normalize_projections(self.field_type(cx, i)))
+        cx.layout_of(self.field_type(cx, i))
     }
 }
 

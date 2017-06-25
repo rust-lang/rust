@@ -48,7 +48,6 @@ use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc_incremental;
-use abi;
 use allocator;
 use mir::lvalue::LvalueRef;
 use attributes;
@@ -56,7 +55,7 @@ use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use collector::{self, TransItemCollectionMode};
-use common::{C_struct_in_context, C_undef, C_array};
+use common::{C_struct_in_context, C_array};
 use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
@@ -66,14 +65,13 @@ use debuginfo;
 use declare;
 use meth;
 use mir;
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
 use trans_item::{TransItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of;
-use value::Value;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
@@ -90,7 +88,7 @@ use syntax::attr;
 use rustc::hir;
 use syntax::ast;
 
-use mir::lvalue::Alignment;
+use mir::operand::{OperandRef, OperandValue};
 
 pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
 pub use rustc_trans_utils::trans_item::linkage_by_name;
@@ -123,14 +121,6 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
             stats.n_llvm_insns = self.istart;
         }
     }
-}
-
-pub fn get_meta(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    bcx.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
-}
-
-pub fn get_dataptr(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
-    bcx.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
 }
 
 pub fn bin_op_to_icmp_predicate(op: hir::BinOp_,
@@ -257,25 +247,29 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                     src: &LvalueRef<'tcx>,
-                                     dst: &LvalueRef<'tcx>) {
+                                     src: LvalueRef<'tcx>,
+                                     dst: LvalueRef<'tcx>) {
     let src_ty = src.ty.to_ty(bcx.tcx());
     let dst_ty = dst.ty.to_ty(bcx.tcx());
     let coerce_ptr = || {
-        let (base, info) = if common::type_is_fat_ptr(bcx.ccx, src_ty) {
-            // fat-ptr to fat-ptr unsize preserves the vtable
-            // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
-            // So we need to pointercast the base to ensure
-            // the types match up.
-            let (base, info) = load_fat_ptr(bcx, src.llval, src.alignment, src_ty);
-            let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, dst_ty);
-            let base = bcx.pointercast(base, llcast_ty);
-            (base, info)
-        } else {
-            let base = load_ty(bcx, src.llval, src.alignment, src_ty);
-            unsize_thin_ptr(bcx, base, src_ty, dst_ty)
+        let (base, info) = match src.load(bcx).val {
+            OperandValue::Pair(base, info) => {
+                // fat-ptr to fat-ptr unsize preserves the vtable
+                // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
+                // So we need to pointercast the base to ensure
+                // the types match up.
+                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, dst_ty);
+                (bcx.pointercast(base, llcast_ty), info)
+            }
+            OperandValue::Immediate(base) => {
+                unsize_thin_ptr(bcx, base, src_ty, dst_ty)
+            }
+            OperandValue::Ref(..) => bug!()
         };
-        store_fat_ptr(bcx, base, info, dst.llval, dst.alignment, dst_ty);
+        OperandRef {
+            val: OperandValue::Pair(base, info),
+            ty: dst_ty
+        }.store(bcx, dst);
     };
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyRef(..), &ty::TyRef(..)) |
@@ -287,32 +281,25 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             coerce_ptr()
         }
 
-        (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
+        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            let src_fields = def_a.variants[0].fields.iter().map(|f| {
-                monomorphize::field_ty(bcx.tcx(), substs_a, f)
-            });
-            let dst_fields = def_b.variants[0].fields.iter().map(|f| {
-                monomorphize::field_ty(bcx.tcx(), substs_b, f)
-            });
+            for i in 0..def_a.variants[0].fields.len() {
+                let src_f = src.project_field(bcx, i);
+                let dst_f = dst.project_field(bcx, i);
 
-            let iter = src_fields.zip(dst_fields).enumerate();
-            for (i, (src_fty, dst_fty)) in iter {
-                if type_is_zero_size(bcx.ccx, dst_fty) {
+                let src_f_ty = src_f.ty.to_ty(bcx.tcx());
+                let dst_f_ty = dst_f.ty.to_ty(bcx.tcx());
+
+                if type_is_zero_size(bcx.ccx, dst_f_ty) {
                     continue;
                 }
 
-                let (src_f, src_f_align) = src.trans_field_ptr(bcx, i);
-                let (dst_f, dst_f_align) = dst.trans_field_ptr(bcx, i);
-                if src_fty == dst_fty {
-                    memcpy_ty(bcx, dst_f, src_f, src_fty, None);
+                if src_f_ty == dst_f_ty {
+                    memcpy_ty(bcx, dst_f.llval, src_f.llval, src_f_ty,
+                        (src_f.alignment | dst_f.alignment).non_abi());
                 } else {
-                    coerce_unsized_into(
-                        bcx,
-                        &LvalueRef::new_sized_ty(src_f, src_fty, src_f_align),
-                        &LvalueRef::new_sized_ty(dst_f, dst_fty, dst_f_align)
-                    );
+                    coerce_unsized_into(bcx, src_f, dst_f);
                 }
             }
         }
@@ -383,94 +370,6 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
     let assume_intrinsic = b.ccx.get_intrinsic("llvm.assume");
     b.call(assume_intrinsic, &[val], None);
-}
-
-/// Helper for loading values from memory. Does the necessary conversion if the in-memory type
-/// differs from the type used for SSA values. Also handles various special cases where the type
-/// gives us better information about what we are loading.
-pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
-                         alignment: Alignment, t: Ty<'tcx>) -> ValueRef {
-    let ccx = b.ccx;
-    if type_is_zero_size(ccx, t) {
-        return C_undef(type_of::type_of(ccx, t));
-    }
-
-    unsafe {
-        let global = llvm::LLVMIsAGlobalVariable(ptr);
-        if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
-            let val = llvm::LLVMGetInitializer(global);
-            if !val.is_null() {
-                if t.is_bool() {
-                    return llvm::LLVMConstTrunc(val, Type::i1(ccx).to_ref());
-                }
-                return val;
-            }
-        }
-    }
-
-    if t.is_bool() {
-        b.trunc(b.load_range_assert(ptr, 0, 2, llvm::False, alignment.to_align()),
-                Type::i1(ccx))
-    } else if t.is_char() {
-        // a char is a Unicode codepoint, and so takes values from 0
-        // to 0x10FFFF inclusive only.
-        b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False, alignment.to_align())
-    } else if (t.is_region_ptr() || t.is_box() || t.is_fn())
-        && !common::type_is_fat_ptr(ccx, t)
-    {
-        b.load_nonnull(ptr, alignment.to_align())
-    } else {
-        b.load(ptr, alignment.to_align())
-    }
-}
-
-/// Helper for storing values in memory. Does the necessary conversion if the in-memory type
-/// differs from the type used for SSA values.
-pub fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef,
-                          dst_align: Alignment, t: Ty<'tcx>) {
-    debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
-
-    if common::type_is_fat_ptr(cx.ccx, t) {
-        let lladdr = cx.extract_value(v, abi::FAT_PTR_ADDR);
-        let llextra = cx.extract_value(v, abi::FAT_PTR_EXTRA);
-        store_fat_ptr(cx, lladdr, llextra, dst, dst_align, t);
-    } else {
-        cx.store(from_immediate(cx, v), dst, dst_align.to_align());
-    }
-}
-
-pub fn store_fat_ptr<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
-                               data: ValueRef,
-                               extra: ValueRef,
-                               dst: ValueRef,
-                               dst_align: Alignment,
-                               _ty: Ty<'tcx>) {
-    // FIXME: emit metadata
-    cx.store(data, get_dataptr(cx, dst), dst_align.to_align());
-    cx.store(extra, get_meta(cx, dst), dst_align.to_align());
-}
-
-pub fn load_fat_ptr<'a, 'tcx>(
-    b: &Builder<'a, 'tcx>, src: ValueRef, alignment: Alignment, t: Ty<'tcx>
-) -> (ValueRef, ValueRef) {
-    let ptr = get_dataptr(b, src);
-    let ptr = if t.is_region_ptr() || t.is_box() {
-        b.load_nonnull(ptr, alignment.to_align())
-    } else {
-        b.load(ptr, alignment.to_align())
-    };
-
-    let meta = get_meta(b, src);
-    let meta_ty = val_ty(meta);
-    // If the 'meta' field is a pointer, it's a vtable, so use load_nonnull
-    // instead
-    let meta = if meta_ty.element_type().kind() == llvm::TypeKind::Pointer {
-        b.load_nonnull(meta, None)
-    } else {
-        b.load(meta, None)
-    };
-
-    (ptr, meta)
 }
 
 pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {

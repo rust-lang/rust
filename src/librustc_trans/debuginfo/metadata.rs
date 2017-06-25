@@ -29,10 +29,9 @@ use rustc::ty::fold::TypeVisitor;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
 use rustc::ich::Fingerprint;
-use monomorphize;
 use common::{self, CrateContext};
 use rustc::ty::{self, AdtKind, Ty};
-use rustc::ty::layout::{self, Align, LayoutTyper, Size};
+use rustc::ty::layout::{self, Align, LayoutTyper, Size, TyLayout};
 use rustc::session::{Session, config};
 use rustc::util::nodemap::FxHashMap;
 use rustc::util::common::path2cstr;
@@ -903,7 +902,6 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 struct StructMemberDescriptionFactory<'tcx> {
     ty: Ty<'tcx>,
     variant: &'tcx ty::VariantDef,
-    substs: &'tcx Substs<'tcx>,
     span: Span,
 }
 
@@ -931,12 +929,11 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             } else {
                 f.name.to_string()
             };
-            let fty = monomorphize::field_ty(cx.tcx(), self.substs, f);
-
-            let (size, align) = cx.size_and_align_of(fty);
+            let field = layout.field(cx, i);
+            let (size, align) = field.size_and_align(cx);
             MemberDescription {
                 name,
-                type_metadata: type_metadata(cx, fty, self.span),
+                type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: offsets[i],
                 size,
                 align,
@@ -954,8 +951,8 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      -> RecursiveTypeDescription<'tcx> {
     let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
 
-    let (struct_def_id, variant, substs) = match struct_type.sty {
-        ty::TyAdt(def, substs) => (def.did, def.struct_variant(), substs),
+    let (struct_def_id, variant) = match struct_type.sty {
+        ty::TyAdt(def, _) => (def.did, def.struct_variant()),
         _ => bug!("prepare_struct_metadata on a non-ADT")
     };
 
@@ -975,7 +972,6 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         StructMDF(StructMemberDescriptionFactory {
             ty: struct_type,
             variant,
-            substs,
             span,
         })
     )
@@ -1046,20 +1042,20 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 //=-----------------------------------------------------------------------------
 
 struct UnionMemberDescriptionFactory<'tcx> {
+    layout: TyLayout<'tcx>,
     variant: &'tcx ty::VariantDef,
-    substs: &'tcx Substs<'tcx>,
     span: Span,
 }
 
 impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
-        self.variant.fields.iter().map(|field| {
-            let fty = monomorphize::field_ty(cx.tcx(), self.substs, field);
-            let (size, align) = cx.size_and_align_of(fty);
+        self.variant.fields.iter().enumerate().map(|(i, f)| {
+            let field = self.layout.field(cx, i);
+            let (size, align) = field.size_and_align(cx);
             MemberDescription {
-                name: field.name.to_string(),
-                type_metadata: type_metadata(cx, fty, self.span),
+                name: f.name.to_string(),
+                type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: Size::from_bytes(0),
                 size,
                 align,
@@ -1076,8 +1072,8 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     -> RecursiveTypeDescription<'tcx> {
     let union_name = compute_debuginfo_type_name(cx, union_type, false);
 
-    let (union_def_id, variant, substs) = match union_type.sty {
-        ty::TyAdt(def, substs) => (def.did, def.struct_variant(), substs),
+    let (union_def_id, variant) = match union_type.sty {
+        ty::TyAdt(def, _) => (def.did, def.struct_variant()),
         _ => bug!("prepare_union_metadata on a non-ADT")
     };
 
@@ -1095,8 +1091,8 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         unique_type_id,
         union_metadata_stub,
         UnionMDF(UnionMemberDescriptionFactory {
+            layout: cx.layout_of(union_type),
             variant,
-            substs,
             span,
         })
     )
@@ -1113,7 +1109,7 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // offset of zero bytes).
 struct EnumMemberDescriptionFactory<'tcx> {
     enum_type: Ty<'tcx>,
-    type_rep: &'tcx layout::Layout,
+    type_rep: TyLayout<'tcx>,
     discriminant_type_metadata: Option<DIType>,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -1124,11 +1120,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
-        let substs = match self.enum_type.sty {
-            ty::TyAdt(def, ref s) if def.adt_kind() == AdtKind::Enum => s,
-            _ => bug!("{} is not an enum", self.enum_type)
-        };
-        match *self.type_rep {
+        match *self.type_rep.layout {
             layout::General { ref variants, .. } => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
                     .expect(""));
@@ -1140,6 +1132,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             describe_enum_variant(cx,
                                                   self.enum_type,
                                                   struct_def,
+                                                  i,
                                                   &adt.variants[i],
                                                   discriminant_info,
                                                   self.containing_scope,
@@ -1171,6 +1164,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         describe_enum_variant(cx,
                                               self.enum_type,
                                               variant,
+                                              0,
                                               &adt.variants[0],
                                               NoDiscriminant,
                                               self.containing_scope,
@@ -1194,19 +1188,19 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     ]
                 }
             }
-            layout::RawNullablePointer { nndiscr: non_null_variant_index, .. } => {
+            layout::RawNullablePointer { nndiscr, .. } => {
                 // As far as debuginfo is concerned, the pointer this enum
                 // represents is still wrapped in a struct. This is to make the
                 // DWARF representation of enums uniform.
 
                 // First create a description of the artificial wrapper struct:
-                let non_null_variant = &adt.variants[non_null_variant_index as usize];
+                let non_null_variant = &adt.variants[nndiscr as usize];
                 let non_null_variant_name = non_null_variant.name.as_str();
 
                 // The llvm type and metadata of the pointer
-                let nnty = monomorphize::field_ty(cx.tcx(), &substs, &non_null_variant.fields[0]);
-                let (size, align) = cx.size_and_align_of(nnty);
-                let non_null_type_metadata = type_metadata(cx, nnty, self.span);
+                let nnfield = self.type_rep.for_variant(nndiscr as usize).field(cx, 0);
+                let (size, align) = nnfield.size_and_align(cx);
+                let non_null_type_metadata = type_metadata(cx, nnfield.ty, self.span);
 
                 // For the metadata of the wrapper struct, we need to create a
                 // MemberDescription of the struct's single field.
@@ -1235,7 +1229,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // Now we can create the metadata of the artificial struct
                 let artificial_struct_metadata =
                     composite_type_metadata(cx,
-                                            nnty,
+                                            nnfield.ty,
                                             &non_null_variant_name,
                                             unique_type_id,
                                             &[sole_struct_member_description],
@@ -1245,8 +1239,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
                 // Encode the information about the null variant in the union
                 // member's name.
-                let null_variant_index = (1 - non_null_variant_index) as usize;
-                let null_variant_name = adt.variants[null_variant_index].name;
+                let null_variant_name = adt.variants[(1 - nndiscr) as usize].name;
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 0,
                                                 null_variant_name);
@@ -1272,6 +1265,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     describe_enum_variant(cx,
                                           self.enum_type,
                                           struct_def,
+                                          nndiscr as usize,
                                           &adt.variants[nndiscr as usize],
                                           OptimizedDiscriminant,
                                           self.containing_scope,
@@ -1357,31 +1351,25 @@ enum EnumDiscriminantInfo {
 fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
                                    struct_def: &'tcx layout::Struct,
+                                   variant_index: usize,
                                    variant: &'tcx ty::VariantDef,
                                    discriminant_info: EnumDiscriminantInfo,
                                    containing_scope: DIScope,
                                    span: Span)
                                    -> (DICompositeType, MemberDescriptionFactory<'tcx>) {
-    let substs = match enum_type.sty {
-        ty::TyAdt(def, s) if def.adt_kind() == AdtKind::Enum => s,
-        ref t @ _ => bug!("{:#?} is not an enum", t)
+    let layout = cx.layout_of(enum_type);
+    let maybe_discr = match *layout {
+        layout::General { .. } => Some(layout.field_type(cx, 0)),
+        _ => None,
     };
 
-    let maybe_discr_and_signed: Option<(layout::Integer, bool)> = match *cx.layout_of(enum_type) {
-        layout::CEnum {discr, ..} => Some((discr, true)),
-        layout::General{discr, ..} => Some((discr, false)),
-        layout::Univariant { .. }
-        | layout::RawNullablePointer { .. }
-        | layout::StructWrappedNullablePointer { .. } => None,
-        ref l @ _ => bug!("This should be unreachable. Type is {:#?} layout is {:#?}", enum_type, l)
-    };
-
-    let mut field_tys = variant.fields.iter().map(|f| {
-        monomorphize::field_ty(cx.tcx(), &substs, f)
+    let layout = layout.for_variant(variant_index);
+    let mut field_tys = (0..layout.field_count()).map(|i| {
+        layout.field_type(cx, i)
     }).collect::<Vec<_>>();
 
-    if let Some((discr, signed)) = maybe_discr_and_signed {
-        field_tys.insert(0, discr.to_ty(cx.tcx(), signed));
+    if let Some(discr) = maybe_discr {
+        field_tys.insert(0, discr);
     }
 
     // Could do some consistency checks here: size, align, field count, discr type
@@ -1531,7 +1519,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ref l @ _ => bug!("Not an enum layout: {:#?}", l)
     };
 
-    let (enum_type_size, enum_type_align) = cx.size_and_align_of(enum_type);
+    let (enum_type_size, enum_type_align) = type_rep.size_and_align(cx);
 
     let enum_name = CString::new(enum_name).unwrap();
     let unique_type_id_str = CString::new(
@@ -1559,7 +1547,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         enum_metadata,
         EnumMDF(EnumMemberDescriptionFactory {
             enum_type,
-            type_rep: type_rep.layout,
+            type_rep,
             discriminant_type_metadata,
             containing_scope,
             file_metadata,

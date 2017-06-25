@@ -31,7 +31,7 @@ use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_big_integral, C_u32, C_u
 use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector};
 use common::const_to_opt_u128;
 use consts;
-use type_of;
+use type_of::{self, LayoutLlvmExt};
 use type_::Type;
 use value::Value;
 
@@ -116,14 +116,7 @@ impl<'a, 'tcx> Const<'tcx> {
     }
 
     fn get_field(&self, ccx: &CrateContext<'a, 'tcx>, i: usize) -> ValueRef {
-        let layout = ccx.layout_of(self.ty);
-        let ix = if let layout::Univariant { ref variant, .. } = *layout {
-            adt::struct_llfields_index(variant, i)
-        } else {
-            i
-        };
-
-        const_get_elt(self.llval, ix)
+        const_get_elt(self.llval, ccx.layout_of(self.ty).llvm_field_index(i))
     }
 
     fn get_pair(&self, ccx: &CrateContext<'a, 'tcx>) -> (ValueRef, ValueRef) {
@@ -493,7 +486,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         // Produce an undef instead of a LLVM assertion on OOB.
                         let len = common::const_to_uint(tr_base.len(self.ccx));
                         let llelem = if iv < len as u128 {
-                            const_get_elt(base.llval, iv as usize)
+                            const_get_elt(base.llval, iv as u64)
                         } else {
                             C_undef(type_of::type_of(self.ccx, projected_ty))
                         };
