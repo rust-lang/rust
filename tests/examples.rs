@@ -1,3 +1,4 @@
+#![feature(pattern)]
 use std::env;
 use std::fs::File;
 use std::io::Write;
@@ -6,6 +7,8 @@ use std::process::{Command, Stdio};
 
 #[test]
 fn examples() {
+    use std::str::pattern::Pattern;
+
     let mut success = true;
 
     let current_dir = env::current_dir().expect("could not determine current dir");
@@ -87,6 +90,16 @@ fn examples() {
         .arg("liboldandnew.rlib")
         .status()
         .expect("could not run rm");
+
+    if !success {
+        println!();
+        for (name, value) in env::vars() {
+            // filter some crap *my* less puts there, rendering the terminal in a bright green :)
+            if !"LESS".is_contained_in(&name) {
+                println!("{}={}", name, value);
+            }
+        }
+    }
 
     assert!(success, "an error occured");
 }
