@@ -15,7 +15,15 @@ not ever.
 Instead, this RFC proposes *epochs*, a mechanism for language evolution without
 breakage, which fits neatly into Rust's existing train and release channel
 process. It's an attempt to provide the next stage of our core principle of
-[stability without stagnation].
+[stability without stagnation], inspired in part by similar mechanisms in
+languages like C++ and Java.
+
+With epochs, it becomes possible to do things like introduce new keywords,
+without breaking existing code or splitting the ecosystem. Each crate specifies
+the epoch it fits within (a bit like "C++11" or "C++14"), and the compiler can
+cope with multiple epochs being used throughout a dependency graph. Thus, we
+retain our stability guarantees, while making it possible to evolve the language
+in some new ways.
 
 [stability without stagnation]: https://blog.rust-lang.org/2014/10/30/Stability.html
 
