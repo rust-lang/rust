@@ -229,10 +229,8 @@ fn diff_structure(changes: &mut ChangeSet,
                             (PrimTy(_), PrimTy(_)) |
                             (TyParam(_), TyParam(_)) |
                             (SelfTy(_, _), SelfTy(_, _)) |
-                            (Fn(_), Fn(_)) |
                             (StructCtor(_, _), StructCtor(_, _)) |
                             (VariantCtor(_, _), VariantCtor(_, _)) |
-                            (Method(_), Method(_)) |
                             (AssociatedConst(_), AssociatedConst(_)) |
                             (Local(_), Local(_)) |
                             (Upvar(_, _, _), Upvar(_, _, _)) |
@@ -243,6 +241,10 @@ fn diff_structure(changes: &mut ChangeSet,
                             (Const(_), Const(_)) |
                             (Static(_, _), Static(_, _)) |
                             (Err, Err) => {},
+                            (Fn(_), Fn(_)) |
+                            (Method(_), Method(_)) => {
+                                diff_fn(changes, tcx, o, n);
+                            },
                             (TyAlias(_), TyAlias(_)) => {
                                 let mut generics_changes =
                                     diff_generics(tcx, o_def_id, n_def_id);
@@ -282,6 +284,45 @@ fn diff_structure(changes: &mut ChangeSet,
                 (None, None) => unreachable!(),
             }
         }
+    }
+}
+
+/// Given two fn items, perform structural checks.
+fn diff_fn(changes: &mut ChangeSet,
+           tcx: TyCtxt,
+           old: Export,
+           new: Export) {
+    use rustc::hir::Unsafety::Unsafe;
+    use rustc::ty::TypeVariants::*;
+
+    let old_def_id = old.def.def_id();
+    let new_def_id = new.def.def_id();
+
+    let old_ty = tcx.type_of(old_def_id);
+    let new_ty = tcx.type_of(new_def_id);
+
+    let (old_sig, new_sig) = match (&old_ty.sty, &new_ty.sty) {
+        (&TyFnDef(_, _, ref o), &TyFnDef(_, _, ref n)) => (o.skip_binder(), n.skip_binder()),
+        (&TyFnPtr(ref o), &TyFnPtr(ref n)) => (o.skip_binder(), n.skip_binder()),
+        _ => return,
+    };
+
+    if old_sig.variadic != new_sig.variadic {
+        changes.add_binary(FnVariadicChanged, old_def_id, None);
+    }
+
+    if old_sig.unsafety != new_sig.unsafety {
+        let change = FnUnsafetyChanged { now_unsafe: new_sig.unsafety == Unsafe };
+        changes.add_binary(change, old_def_id, None);
+    }
+
+    if old_sig.abi != new_sig.abi {
+        // TODO: more sophisticatd comparison
+        changes.add_binary(FnAbiChanged, old_def_id, None);
+    }
+
+    if old_sig.inputs_and_output.len() != new_sig.inputs_and_output.len() {
+        changes.add_binary(FnArityChanged, old_def_id, None);
     }
 }
 
@@ -505,10 +546,4 @@ fn diff_types(changes: &mut ChangeSet,
         // println!("diff: {}", err);
         changes.add_binary(FieldTypeChanged(format!("{}", err)), old_def_id, None);
     }
-
-    /* let mut type_changes = diff_types(id_mapping, tcx, old.def.def_id(), new.def.def_id());
-
-    for change_type in type_changes.drain(..) {
-        changes.add_binary(change_type, old.def.def_id(), None);
-    } */
 }

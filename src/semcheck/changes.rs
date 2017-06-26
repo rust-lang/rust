@@ -155,6 +155,14 @@ pub enum BinaryChangeType {
     TraitImplItemAdded { defaulted: bool },
     /// An impl item has been removed.
     TraitImplItemRemoved,
+    /// A function changed it's variadicity.
+    FnVariadicChanged,
+    /// A function changed it's unsafety.
+    FnUnsafetyChanged { now_unsafe: bool },
+    /// A function's ABI has changed.
+    FnAbiChanged,
+    /// A function's arity changed.
+    FnArityChanged,
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
@@ -180,10 +188,15 @@ impl BinaryChangeType {
             FieldTypeChanged(_) |
             TraitImplItemAdded { .. } |
             TraitImplItemRemoved |
+            FnVariadicChanged |
+            FnUnsafetyChanged { now_unsafe: true } |
+            FnAbiChanged |
+            FnArityChanged |
             Unknown => Breaking,
             TypeGeneralization |
             ItemMadePublic => TechnicallyBreaking,
-            TypeParameterAdded { defaulted: true } => NonBreaking,
+            TypeParameterAdded { defaulted: true } |
+            FnUnsafetyChanged { now_unsafe: false } => NonBreaking,
         }
     }
 }
