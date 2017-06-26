@@ -20,7 +20,7 @@ use base;
 use builder::Builder;
 use common::{self, CrateContext, C_usize, C_u8, C_u32, C_int, C_null, val_ty};
 use consts;
-use type_of::{self, LayoutLlvmExt};
+use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 use glue;
@@ -107,7 +107,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn alloca(bcx: &Builder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, ty);
         let tmp = bcx.alloca(
-            type_of::type_of(bcx.ccx, ty), name, bcx.ccx.over_align_of(ty));
+            bcx.ccx.llvm_type_of(ty), name, bcx.ccx.over_align_of(ty));
         assert!(!ty.has_param_types());
         Self::new_sized(tmp, ty, Alignment::AbiAligned)
     }
@@ -213,7 +213,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         // Handle all the non-aggregate cases first.
         match *l {
             layout::UntaggedUnion { .. } => {
-                let ty = type_of::in_memory_type_of(ccx, fty);
+                let ty = ccx.llvm_type_of(fty);
                 return LvalueRef::new_sized(
                     bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
             }
@@ -222,14 +222,14 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 if l.variant_index.unwrap() as u64 != nndiscr => {
                 // The unit-like case might have a nonzero number of unit-like fields.
                 // (e.d., Result of Either with (), as one side.)
-                let ty = type_of::type_of(ccx, fty);
+                let ty = ccx.llvm_type_of(fty);
                 assert_eq!(ccx.size_of(fty).bytes(), 0);
                 return LvalueRef::new_sized(
                     bcx.pointercast(self.llval, ty.ptr_to()), fty,
                     Alignment::Packed(Align::from_bytes(1, 1).unwrap()));
             }
             layout::RawNullablePointer { .. } => {
-                let ty = type_of::type_of(ccx, fty);
+                let ty = ccx.llvm_type_of(fty);
                 return LvalueRef::new_sized(
                     bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
             }
@@ -327,7 +327,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let byte_ptr = bcx.gep(byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected
-        let ll_fty = type_of::in_memory_type_of(ccx, fty);
+        let ll_fty = ccx.llvm_type_of(fty);
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
         LvalueRef {
@@ -399,7 +399,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             },
             _ => bug!("{} is not an enum", l.ty)
         };
-        let cast_to = type_of::immediate_type_of(bcx.ccx, cast_to);
+        let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
         bcx.intcast(val, cast_to, adt::is_discr_signed(&l))
     }
 
@@ -581,7 +581,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 // must cast the lvalue pointer type to the new
                                 // array type (*[%_; new_len]).
                                 subslice.llval = bcx.pointercast(subslice.llval,
-                                    type_of::type_of(bcx.ccx, subslice.ty.to_ty(tcx)).ptr_to())
+                                    bcx.ccx.llvm_type_of(subslice.ty.to_ty(tcx)).ptr_to())
                             }
                             ty::TySlice(..) => {
                                 assert!(tr_base.has_extra());

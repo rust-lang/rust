@@ -21,7 +21,6 @@ use common::{self, CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
 use type_::Type;
-use type_of;
 use rustc::ty;
 use rustc::ty::layout::Align;
 
@@ -113,7 +112,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     let ty = common::instance_ty(ccx.tcx(), &instance);
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
-        let llty = type_of::type_of(ccx, ty);
+        let llty = ccx.llvm_type_of(ty);
         let (g, attrs) = match ccx.tcx().hir.get(id) {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
@@ -158,7 +157,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                         }
                     };
                     let llty2 = match ty.sty {
-                        ty::TyRawPtr(ref mt) => type_of::type_of(ccx, mt.ty),
+                        ty::TyRawPtr(ref mt) => ccx.llvm_type_of(mt.ty),
                         _ => {
                             ccx.sess().span_fatal(span, "must have type `*const T` or `*mut T`");
                         }
@@ -207,7 +206,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
-        let g = declare::declare_global(ccx, &sym, type_of::type_of(ccx, ty));
+        let g = declare::declare_global(ccx, &sym, ccx.llvm_type_of(ty));
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
         // thread-local attribute locally if it was present remotely. If we
@@ -267,7 +266,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         let instance = Instance::mono(ccx.tcx(), def_id);
         let ty = common::instance_ty(ccx.tcx(), &instance);
-        let llty = type_of::type_of(ccx, ty);
+        let llty = ccx.llvm_type_of(ty);
         let g = if val_llty == llty {
             g
         } else {

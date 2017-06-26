@@ -20,7 +20,6 @@ use base::*;
 use common::*;
 use declare;
 use glue;
-use type_of;
 use type_::Type;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::HasDataLayout;
@@ -105,7 +104,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let ret_ty = sig.output();
     let name = &*tcx.item_name(def_id);
 
-    let llret_ty = type_of::type_of(ccx, ret_ty);
+    let llret_ty = ccx.llvm_type_of(ret_ty);
     let result = LvalueRef::new_sized(llresult, ret_ty, Alignment::AbiAligned);
 
     let simple = get_simple_intrinsic(ccx, name);

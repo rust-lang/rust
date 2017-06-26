@@ -22,10 +22,10 @@ pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
     match ty.sty {
         ty::TyRef(_, ty::TypeAndMut { ty: t, .. }) |
         ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if ccx.shared().type_has_metadata(t) => {
-            in_memory_type_of(ccx, t).ptr_to()
+            ccx.llvm_type_of(t).ptr_to()
         }
         ty::TyAdt(def, _) if def.is_box() => {
-            in_memory_type_of(ccx, ty.boxed_ty()).ptr_to()
+            ccx.llvm_type_of(ty.boxed_ty()).ptr_to()
         }
         _ => bug!("expected fat ptr ty but got {:?}", ty)
     }
@@ -43,44 +43,7 @@ pub fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
     }
 }
 
-pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    if t.is_bool() {
-        Type::i1(cx)
-    } else {
-        type_of(cx, t)
-    }
-}
-
-/// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
-/// This is the right LLVM type for an alloca containing a value of that type,
-/// and the pointee of an Lvalue Datum (which is always a LLVM pointer).
-/// For unsized types, the returned type is a fat pointer, thus the resulting
-/// LLVM type for a `Trait` Lvalue is `{ i8*, void(i8*)** }*`, which is a double
-/// indirection to the actual data, unlike a `i8` Lvalue, which is just `i8*`.
-/// This is needed due to the treatment of immediate values, as a fat pointer
-/// is too large for it to be placed in SSA value (by our rules).
-/// For the raw type without far pointer indirection, see `in_memory_type_of`.
-pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
-    let ty = if cx.shared().type_has_metadata(ty) {
-        cx.tcx().mk_imm_ptr(ty)
-    } else {
-        ty
-    };
-    in_memory_type_of(cx, ty)
-}
-
-/// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
-/// This is the right LLVM type for a field/array element of that type,
-/// and is the same as `type_of` for all Sized types.
-/// Unsized types, however, are represented by a "minimal unit", e.g.
-/// `[T]` becomes `T`, while `str` and `Trait` turn into `i8` - this
-/// is useful for indexing slices, as `&[T]`'s data pointer is `T*`.
-/// If the type is an unsized struct, the regular layout is generated,
-/// with the inner-most trailing unsized field using the "minimal unit"
-/// of that field's type - this is useful for taking the address of
-/// that field and ensuring the struct has the right alignment.
-/// For the LLVM type of a value as a whole, see `type_of`.
-pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+fn compute_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     // Check the cache.
     if let Some(&llty) = cx.lltypes().borrow().get(&t) {
         return llty;
@@ -98,7 +61,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     let t_norm = cx.tcx().erase_regions(&t);
 
     if t != t_norm {
-        let llty = in_memory_type_of(cx, t_norm);
+        let llty = cx.llvm_type_of(t_norm);
         debug!("--> normalized {:?} to {:?} llty={:?}", t, t_norm, llty);
         cx.lltypes().borrow_mut().insert(t, llty);
         return llty;
@@ -111,12 +74,12 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                 // unsized).
                 cx.str_slice_type()
             } else {
-                let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
+                let ptr_ty = cx.llvm_type_of(ty).ptr_to();
                 let info_ty = unsized_info_ty(cx, ty);
                 Type::struct_(cx, &[ptr_ty, info_ty], false)
             }
         } else {
-            in_memory_type_of(cx, ty).ptr_to()
+            cx.llvm_type_of(ty).ptr_to()
         }
     };
 
@@ -147,7 +110,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       }
 
       ty::TyArray(ty, size) => {
-          let llty = in_memory_type_of(cx, ty);
+          let llty = cx.llvm_type_of(ty);
           let size = size.val.to_const_int().unwrap().to_u64().unwrap();
           Type::array(&llty, size)
       }
@@ -156,7 +119,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       // traits have the type of u8. This is so that the data pointer inside
       // fat pointers is of the right type (e.g. for array accesses), even
       // when taking the address of an unsized field in a struct.
-      ty::TySlice(ty) => in_memory_type_of(cx, ty),
+      ty::TySlice(ty) => cx.llvm_type_of(ty),
       ty::TyStr | ty::TyDynamic(..) | ty::TyForeign(..) => Type::i8(cx),
 
       ty::TyFnDef(..) => Type::nil(cx),
@@ -175,7 +138,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                                         a non-machine element type `{}`",
                                        t, e))
           }
-          let llet = in_memory_type_of(cx, e);
+          let llet = cx.llvm_type_of(e);
           let n = t.simd_size(cx.tcx()) as u64;
           Type::vector(&llet, n)
       }
@@ -225,14 +188,37 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     }
 
     /// Returns alignment if it is different than the primitive alignment.
-    pub fn over_align_of(&self, t: Ty<'tcx>) -> Option<Align> {
-        let layout = self.layout_of(t);
+    pub fn over_align_of(&self, ty: Ty<'tcx>) -> Option<Align> {
+        let layout = self.layout_of(ty);
         let align = layout.align(self);
         let primitive_align = layout.primitive_align(self);
         if align != primitive_align {
             Some(align)
         } else {
             None
+        }
+    }
+
+    /// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
+    /// The pointee type of the pointer in `LvalueRef` is always this type.
+    /// For sized types, it is also the right LLVM type for an `alloca`
+    /// containing a value of that type, and most immediates (except `bool`).
+    /// Unsized types, however, are represented by a "minimal unit", e.g.
+    /// `[T]` becomes `T`, while `str` and `Trait` turn into `i8` - this
+    /// is useful for indexing slices, as `&[T]`'s data pointer is `T*`.
+    /// If the type is an unsized struct, the regular layout is generated,
+    /// with the inner-most trailing unsized field using the "minimal unit"
+    /// of that field's type - this is useful for taking the address of
+    /// that field and ensuring the struct has the right alignment.
+    pub fn llvm_type_of(&self, ty: Ty<'tcx>) -> Type {
+        compute_llvm_type(self, ty)
+    }
+
+    pub fn immediate_llvm_type_of(&self, ty: Ty<'tcx>) -> Type {
+        if ty.is_bool() {
+            Type::i1(self)
+        } else {
+            self.llvm_type_of(ty)
         }
     }
 }

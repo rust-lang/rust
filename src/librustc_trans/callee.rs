@@ -25,7 +25,6 @@ use rustc::ty::{self, TypeFoldable};
 use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc_back::PanicStrategy;
-use type_of;
 
 /// Translates a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -56,7 +55,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Create a fn pointer with the substituted signature.
     let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
-    let llptrty = type_of::type_of(ccx, fn_ptr_ty);
+    let llptrty = ccx.llvm_type_of(fn_ptr_ty);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
         // This is subtle and surprising, but sometimes we have to bitcast

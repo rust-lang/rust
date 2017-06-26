@@ -483,7 +483,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     ty::TyAdt(def, _) if def.is_box() => arg_ty.boxed_ty(),
                     _ => bug!()
                 };
-                let data_llty = type_of::in_memory_type_of(bcx.ccx, pointee);
+                let data_llty = bcx.ccx.llvm_type_of(pointee);
                 let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
 
                 let llarg = bcx.pointercast(llarg, data_llty.ptr_to());

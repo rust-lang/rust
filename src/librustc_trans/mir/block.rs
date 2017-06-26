@@ -23,7 +23,7 @@ use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
 use meth;
 use monomorphize;
-use type_of::{self, LayoutLlvmExt};
+use type_of::LayoutLlvmExt;
 use type_::Type;
 
 use syntax::symbol::Symbol;
@@ -906,7 +906,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             src: &mir::Operand<'tcx>,
                             dst: LvalueRef<'tcx>) {
         let val = self.trans_operand(bcx, src);
-        let llty = type_of::type_of(bcx.ccx, val.ty);
+        let llty = bcx.ccx.llvm_type_of(val.ty);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let in_type = val.ty;
         let out_type = dst.ty.to_ty(bcx.tcx());
