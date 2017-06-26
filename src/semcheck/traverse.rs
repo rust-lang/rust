@@ -94,17 +94,58 @@ fn get_namespace(def: &Def) -> Namespace {
     }
 }
 
-/// Traverse the two root modules in an interleaved manner.
+/// The main entry point to our analysis passes.
 ///
-/// Match up pairs of modules from the two crate versions and compare for changes.
-/// Matching children get processed in the same fashion.
-// TODO: describe the passes we do.
-pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
+/// Set up the necessary data structures and run the analysis passes.
+pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
+    let mut changes = Default::default();
+    let mut id_mapping = Default::default();
+
+    // first pass
+    diff_structure(&mut changes, &mut id_mapping, tcx, old, new);
+
+    // second (and third, for now) pass
+    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
+        let old_did = old.def.def_id();
+        let new_did = new.def.def_id();
+
+        {
+            let mut mismatch = Mismatch {
+                tcx: tcx,
+                toplevel_mapping: &id_mapping.toplevel_mapping,
+                mapping: &mut id_mapping.mapping,
+            };
+
+            let _ = mismatch.tys(tcx.type_of(old_did), tcx.type_of(new_did));
+        }
+
+        diff_bounds(&mut changes, tcx, old_did, new_did);
+    }
+
+    // fourth pass
+    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
+        diff_types(&mut changes, &id_mapping, tcx, old, new);
+    }
+
+    changes
+}
+
+// Below functions constitute the first pass of analysis, in which module structure, ADT
+// structure, public and private status of items, and generics are examined for changes.
+
+/// Given two crate root modules, compare their exports and their structure.
+///
+/// Traverse the two root modules in an interleaved manner, matching up pairs of modules
+/// from the two crate versions and compare for changes. Matching children get processed
+/// in the same fashion.
+fn diff_structure(changes: &mut ChangeSet,
+                  id_mapping: &mut IdMapping,
+                  tcx: TyCtxt,
+                  old: DefId,
+                  new: DefId) {
     use rustc::hir::def::Def::*;
 
     let cstore = &tcx.sess.cstore;
-    let mut changes = ChangeSet::default();
-    let mut id_mapping = IdMapping::default();
     let mut visited = HashSet::new();
     let mut children = HashMap::new();
     let mut mod_queue = VecDeque::new();
@@ -219,7 +260,7 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
                                     changes.add_binary(change_type, o_def_id, None);
                                 }
 
-                                diff_adts(&mut changes, &mut id_mapping, tcx, o, n);
+                                diff_adts(changes, id_mapping, tcx, o, n);
                             },
                             // non-matching item pair - register the difference and abort
                             _ => {
@@ -242,29 +283,6 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
             }
         }
     }
-
-    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
-        let old_did = old.def.def_id();
-        let new_did = new.def.def_id();
-
-        {
-            let mut mismatch = Mismatch {
-                tcx: tcx,
-                toplevel_mapping: &id_mapping.toplevel_mapping,
-                mapping: &mut id_mapping.mapping,
-            };
-
-            let _ = mismatch.tys(tcx.type_of(old_did), tcx.type_of(new_did));
-        }
-
-        diff_bounds(&mut changes, tcx, old_did, new_did);
-    }
-
-    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
-        diff_types(&mut changes, &id_mapping, tcx, old, new);
-    }
-
-    changes
 }
 
 /// Given two ADT items, perform structural checks.
@@ -375,6 +393,73 @@ fn diff_adts(changes: &mut ChangeSet,
     }
 }
 
+/// Given two items, compare their type and region parameter sets.
+fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
+    use std::cmp::max;
+
+    let mut ret = Vec::new();
+
+    let old_gen = tcx.generics_of(old);
+    let new_gen = tcx.generics_of(new);
+
+    for i in 0..max(old_gen.regions.len(), new_gen.regions.len()) {
+        match (old_gen.regions.get(i), new_gen.regions.get(i)) {
+            (Some(_ /* old_region */), None) => {
+                ret.push(RegionParameterRemoved);
+            },
+            (None, Some(_ /* new_region */)) => {
+                ret.push(RegionParameterAdded);
+            },
+            (Some(_), Some(_)) => (),
+            (None, None) => unreachable!(),
+        }
+    }
+
+    for i in 0..max(old_gen.types.len(), new_gen.types.len()) {
+        match (old_gen.types.get(i), new_gen.types.get(i)) {
+            (Some(old_type), Some(new_type)) => {
+                if old_type.has_default && !new_type.has_default {
+                    // TODO: major for sure
+                    ret.push(TypeParameterRemoved { defaulted: true });
+                    ret.push(TypeParameterAdded { defaulted: false });
+                } else if !old_type.has_default && new_type.has_default {
+                    // TODO: minor, I guess?
+                    ret.push(TypeParameterRemoved { defaulted: false });
+                    ret.push(TypeParameterAdded { defaulted: true });
+                }
+            },
+            (Some(old_type), None) => {
+                ret.push(TypeParameterRemoved { defaulted: old_type.has_default });
+            },
+            (None, Some(new_type)) => {
+                ret.push(TypeParameterAdded { defaulted: new_type.has_default });
+            },
+            (None, None) => unreachable!(),
+        }
+    }
+
+    ret
+}
+
+// Below functions constitute the third pass of analysis, in which parameter bounds of matching
+// items are compared for changes and used to determine matching relationships between items not
+// being exported.
+
+/// Given two items, compare the bounds on their type and region parameters.
+fn diff_bounds(_changes: &mut ChangeSet, _tcx: TyCtxt, _old: DefId, _new: DefId)
+    -> (Vec<BinaryChangeType>, Vec<(DefId, DefId)>)
+{
+    let res = Default::default();
+
+    // let old_preds = tcx.predicates_of(old).predicates;
+    // let new_preds = tcx.predicates_of(new).predicates;
+
+    res
+}
+
+// Below functions constitute the fourth and last pass of analysis, in which the types of
+// matching items are compared for changes.
+
 /// Given two items, compare their types.
 fn diff_types(changes: &mut ChangeSet,
               id_mapping: &IdMapping,
@@ -426,64 +511,4 @@ fn diff_types(changes: &mut ChangeSet,
     for change_type in type_changes.drain(..) {
         changes.add_binary(change_type, old.def.def_id(), None);
     } */
-}
-
-/// Given two items, compare their type and region parameter sets.
-fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
-    use std::cmp::max;
-
-    let mut ret = Vec::new();
-
-    let old_gen = tcx.generics_of(old);
-    let new_gen = tcx.generics_of(new);
-
-    for i in 0..max(old_gen.regions.len(), new_gen.regions.len()) {
-        match (old_gen.regions.get(i), new_gen.regions.get(i)) {
-            (Some(_ /* old_region */), None) => {
-                ret.push(RegionParameterRemoved);
-            },
-            (None, Some(_ /* new_region */)) => {
-                ret.push(RegionParameterAdded);
-            },
-            (Some(_), Some(_)) => (),
-            (None, None) => unreachable!(),
-        }
-    }
-
-    for i in 0..max(old_gen.types.len(), new_gen.types.len()) {
-        match (old_gen.types.get(i), new_gen.types.get(i)) {
-            (Some(old_type), Some(new_type)) => {
-                if old_type.has_default && !new_type.has_default {
-                    // TODO: major for sure
-                    ret.push(TypeParameterRemoved { defaulted: true });
-                    ret.push(TypeParameterAdded { defaulted: false });
-                } else if !old_type.has_default && new_type.has_default {
-                    // TODO: minor, I guess?
-                    ret.push(TypeParameterRemoved { defaulted: false });
-                    ret.push(TypeParameterAdded { defaulted: true });
-                }
-            },
-            (Some(old_type), None) => {
-                ret.push(TypeParameterRemoved { defaulted: old_type.has_default });
-            },
-            (None, Some(new_type)) => {
-                ret.push(TypeParameterAdded { defaulted: new_type.has_default });
-            },
-            (None, None) => unreachable!(),
-        }
-    }
-
-    ret
-}
-
-/// Given two items, compare the bounds on their type and region parameters.
-fn diff_bounds(_changes: &mut ChangeSet, _tcx: TyCtxt, _old: DefId, _new: DefId)
-    -> (Vec<BinaryChangeType>, Vec<(DefId, DefId)>)
-{
-    let res = Default::default();
-
-    // let old_preds = tcx.predicates_of(old).predicates;
-    // let new_preds = tcx.predicates_of(new).predicates;
-
-    res
 }

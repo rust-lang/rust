@@ -10,7 +10,7 @@ extern crate semver;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::semcheck::traverse::traverse_modules;
+use semverver::semcheck::traverse::run_analysis;
 
 use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
@@ -104,7 +104,7 @@ fn callback(state: &driver::CompileState, version: &str) {
         }
     };
 
-    let changes = traverse_modules(tcx, old_did, new_did);
+    let changes = run_analysis(tcx, old_did, new_did);
 
     changes.output(tcx.sess, version);
 }
