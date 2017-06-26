@@ -1,4 +1,4 @@
-// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,33 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrowck::BorrowckCtxt;
-
 use syntax::ast::{self, MetaItem};
 use syntax_pos::DUMMY_SP;
 
-use rustc::mir::{self, BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
+
+use rustc::mir::{self, Mir, BasicBlock, Location};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
-use rustc_mir::util::elaborate_drops::DropFlagState;
-use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
-
-mod abs_domain;
-pub mod elaborate_drops;
-mod dataflow;
-mod gather_moves;
-// mod graphviz;
-
-use self::dataflow::{BitDenotation};
-use self::dataflow::{DataflowOperator};
-use self::dataflow::{Dataflow, DataflowAnalysis, DataflowResults};
-use self::dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
-use self::dataflow::{DefinitelyInitializedLvals};
-use self::gather_moves::{HasMoveData, MoveData, MovePathIndex, LookupResult};
+use util::elaborate_drops::DropFlagState;
+use rustc_data_structures::indexed_set::{IdxSet};
 
 use std::fmt;
 
-fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> {
+use super::{Dataflow, DataflowBuilder, DataflowAnalysis};
+use super::{BitDenotation, DataflowOperator, DataflowResults};
+use super::indexes::MovePathIndex;
+use super::move_paths::{MoveData, LookupResult};
+
+pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> {
     for attr in attrs {
         if attr.check_name("rustc_mir") {
             let items = attr.meta_item_list();
@@ -50,69 +41,11 @@ fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> 
 }
 
 pub struct MoveDataParamEnv<'tcx> {
-    move_data: MoveData<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    pub(crate) move_data: MoveData<'tcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
 }
 
-pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
-                    id: ast::NodeId,
-                    attributes: &[ast::Attribute]) {
-    let tcx = bcx.tcx;
-    let def_id = tcx.hir.local_def_id(id);
-    debug!("borrowck_mir({:?}) UNIMPLEMENTED", def_id);
-
-    // It is safe for us to borrow `mir_validated()`: `optimized_mir`
-    // steals it, but it forces the `borrowck` query.
-    let mir = &tcx.mir_validated(def_id).borrow();
-
-    let param_env = tcx.param_env(def_id);
-    let move_data = MoveData::gather_moves(mir, tcx, param_env);
-    let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
-    let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
-    let flow_inits =
-        do_dataflow(tcx, mir, id, attributes, &dead_unwinds,
-                    MaybeInitializedLvals::new(tcx, mir, &mdpe),
-                    |bd, i| &bd.move_data().move_paths[i]);
-    let flow_uninits =
-        do_dataflow(tcx, mir, id, attributes, &dead_unwinds,
-                    MaybeUninitializedLvals::new(tcx, mir, &mdpe),
-                    |bd, i| &bd.move_data().move_paths[i]);
-    let flow_def_inits =
-        do_dataflow(tcx, mir, id, attributes, &dead_unwinds,
-                    DefinitelyInitializedLvals::new(tcx, mir, &mdpe),
-                    |bd, i| &bd.move_data().move_paths[i]);
-
-    if has_rustc_mir_with(attributes, "rustc_peek_maybe_init").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &flow_inits);
-    }
-    if has_rustc_mir_with(attributes, "rustc_peek_maybe_uninit").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &flow_uninits);
-    }
-    if has_rustc_mir_with(attributes, "rustc_peek_definite_init").is_some() {
-        dataflow::sanity_check_via_rustc_peek(bcx.tcx, mir, id, attributes, &flow_def_inits);
-    }
-
-    if has_rustc_mir_with(attributes, "stop_after_dataflow").is_some() {
-        bcx.tcx.sess.fatal("stop_after_dataflow ended compilation");
-    }
-
-    let mut mbcx = MirBorrowckCtxt {
-        bcx: bcx,
-        mir: mir,
-        node_id: id,
-        move_data: &mdpe.move_data,
-        flow_inits: flow_inits,
-        flow_uninits: flow_uninits,
-    };
-
-    for bb in mir.basic_blocks().indices() {
-        mbcx.process_basic_block(bb);
-    }
-
-    debug!("borrowck_mir done");
-}
-
-fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 mir: &Mir<'tcx>,
                                 node_id: ast::NodeId,
                                 attributes: &[ast::Attribute],
@@ -142,7 +75,7 @@ fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let print_postflow_to =
         name_found(tcx.sess, attributes, "borrowck_graphviz_postflow");
 
-    let mut mbcx = MirBorrowckCtxtPreDataflow {
+    let mut mbcx = DataflowBuilder {
         node_id: node_id,
         print_preflow_to: print_preflow_to,
         print_postflow_to: print_postflow_to,
@@ -153,46 +86,7 @@ fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mbcx.flow_state.results()
 }
 
-
-pub struct MirBorrowckCtxtPreDataflow<'a, 'tcx: 'a, BD> where BD: BitDenotation
-{
-    node_id: ast::NodeId,
-    flow_state: DataflowAnalysis<'a, 'tcx, BD>,
-    print_preflow_to: Option<String>,
-    print_postflow_to: Option<String>,
-}
-
-#[allow(dead_code)]
-pub struct MirBorrowckCtxt<'b, 'a: 'b, 'tcx: 'a> {
-    bcx: &'b mut BorrowckCtxt<'a, 'tcx>,
-    mir: &'b Mir<'tcx>,
-    node_id: ast::NodeId,
-    move_data: &'b MoveData<'tcx>,
-    flow_inits: DataflowResults<MaybeInitializedLvals<'b, 'tcx>>,
-    flow_uninits: DataflowResults<MaybeUninitializedLvals<'b, 'tcx>>
-}
-
-impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
-    fn process_basic_block(&mut self, bb: BasicBlock) {
-        let BasicBlockData { ref statements, ref terminator, is_cleanup: _ } =
-            self.mir[bb];
-        for stmt in statements {
-            self.process_statement(bb, stmt);
-        }
-
-        self.process_terminator(bb, terminator);
-    }
-
-    fn process_statement(&mut self, bb: BasicBlock, stmt: &Statement<'tcx>) {
-        debug!("MirBorrowckCtxt::process_statement({:?}, {:?}", bb, stmt);
-    }
-
-    fn process_terminator(&mut self, bb: BasicBlock, term: &Option<Terminator<'tcx>>) {
-        debug!("MirBorrowckCtxt::process_terminator({:?}, {:?})", bb, term);
-    }
-}
-
-fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
+pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>
@@ -253,7 +147,7 @@ fn lvalue_contents_drop_state_cannot_differ<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
     }
 }
 
-fn on_lookup_result_bits<'a, 'tcx, F>(
+pub(crate) fn on_lookup_result_bits<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     move_data: &MoveData<'tcx>,
@@ -271,7 +165,7 @@ fn on_lookup_result_bits<'a, 'tcx, F>(
     }
 }
 
-fn on_all_children_bits<'a, 'tcx, F>(
+pub(crate) fn on_all_children_bits<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     move_data: &MoveData<'tcx>,
@@ -312,7 +206,7 @@ fn on_all_children_bits<'a, 'tcx, F>(
     on_all_children_bits(tcx, mir, move_data, move_path_index, &mut each_child);
 }
 
-fn on_all_drop_children_bits<'a, 'tcx, F>(
+pub(crate) fn on_all_drop_children_bits<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'tcx>,
@@ -333,7 +227,7 @@ fn on_all_drop_children_bits<'a, 'tcx, F>(
     })
 }
 
-fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
+pub(crate) fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'tcx>,
@@ -350,7 +244,7 @@ fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
     }
 }
 
-fn drop_flag_effects_for_location<'a, 'tcx, F>(
+pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &Mir<'tcx>,
     ctxt: &MoveDataParamEnv<'tcx>,
