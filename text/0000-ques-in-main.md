@@ -12,7 +12,7 @@ functions and doctests.
 To make this possible, the return type of these functions are
 generalized from `()` to a new trait, provisionally called
 `Termination`.  libstd implements this trait for a set of types
-partially TBD (see [list below](#standard-impls-of-termination);
+partially TBD (see [list below](#standard-impls-of-termination));
 applications can provide impls themselves if they want.
 
 There is no magic added to function signatures in rustc.  If you want
@@ -198,8 +198,8 @@ must be allowed to vary from program to program.  This can be dealt
 with by making the `start` lang item polymorphic (as
 [described below](#changes-to-lang-start)) over a
 trait which both `()` and `Result<(), E>` implement, and similarly for
-[`#[test]` functions](#changes-to-the-test-harness) and
-[doctests](#changes-to-doctests).
+[doctests](#changes-to-doctests) and
+[`#[test]` functions](#changes-to-the-test-harness).
 
 Goals 3 and 4 are largely a matter of quality of implementation; at
 the level of programmer-visible interfaces, people who don't care are
@@ -781,6 +781,9 @@ Some of the components of this proposal may belong in libcore, but
 note that the `start` lang item is not in libcore.  It should not be a
 problem to move pieces from libstd to libcore later.
 
+It would be nice if we could figure out a way to enable use of `?` in
+_dynamic_ test-harness tests, but I do not think this is an urgent problem.
+
 All of the code samples in this RFC need to be reviewed for
 correctness and proper use of idiom.
 
@@ -800,9 +803,11 @@ sure it doesn't conflict and we should also figure out whether we
 would need more impls of `Termination` to make them play well
 together.
 
-The ergonomics of `?` in general would be improved by autowrapping
-fall-off-the-end return values in `Ok` if they're not already
-`Result`s, but that's [still another proposal][autowrap-return].
+There is also an outstanding proposal to improve the ergonomics of
+`?`-using functions by
+[autowrapping fall-off-the-end return values in `Ok`][autowrap-return];
+it would play well with this proposal, but is not necessary nor does
+it conflict.
 
 [exit-status-pre]: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
 [try-trait]: https://github.com/nikomatsakis/rfcs/blob/try-trait/text/0000-try-trait.md
