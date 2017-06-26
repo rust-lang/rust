@@ -1,4 +1,4 @@
-error[E0611]: explicit lifetime required in the type of `y`
+error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/ex2a-push-one-existing-name.rs:16:12
    |
 15 | fn foo<'a>(x: &mut Vec<Ref<'a, i32>>, y: Ref<i32>) {

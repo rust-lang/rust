@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Here we check for the case where anonymous region
         // corresponds to self and if yes, we display E0312.
         // FIXME(#42700) - Need to format self properly to
-        // enable E0611 for it.
+        // enable E0621 for it.
         if is_first &&
            self.tcx
                .opt_associated_item(scope_def_id)
@@ -136,7 +136,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let Some(simple_name) = arg.pat.simple_name() {
             struct_span_err!(self.tcx.sess,
                              span,
-                             E0611,
+                             E0621,
                              "explicit lifetime required in the type of `{}`",
                              simple_name)
                     .span_label(arg.pat.span,
@@ -149,7 +149,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         } else {
             struct_span_err!(self.tcx.sess,
                              span,
-                             E0611,
+                             E0621,
                              "explicit lifetime required in parameter type")
                     .span_label(arg.pat.span,
                                 format!("consider changing type to `{}`", new_ty))

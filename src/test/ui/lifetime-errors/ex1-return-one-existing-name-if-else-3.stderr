@@ -1,4 +1,4 @@
-error[E0611]: explicit lifetime required in parameter type
+error[E0621]: explicit lifetime required in parameter type
   --> $DIR/ex1-return-one-existing-name-if-else-3.rs:12:27
    |
 11 | fn foo<'a>((x, y): (&'a i32, &i32)) -> &'a i32 {

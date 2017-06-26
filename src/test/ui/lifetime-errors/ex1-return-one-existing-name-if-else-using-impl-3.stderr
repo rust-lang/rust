@@ -1,4 +1,4 @@
-error[E0611]: explicit lifetime required in the type of `x`
+error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/ex1-return-one-existing-name-if-else-using-impl-3.rs:18:36
    |
 16 |   fn foo<'a>(&'a self, x: &i32) -> &i32 {

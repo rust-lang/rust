@@ -1946,11 +1946,19 @@ Maybe you just misspelled the lint name or the lint doesn't exist anymore.
 Either way, try to update/remove it in order to fix the error.
 "##,
 
-E0611: r##"
-Lifetime parameter is missing in one of the function argument. Erroneous
-code example:
+E0621: r##"
+This error code indicates a mismatch between the function signature (i.e.,
+the parameter types and the return type) and the function body. Most of
+the time, this indicates that the function signature needs to be changed to
+match the body, but it may be that the body needs to be changed to match
+the signature.
 
-```compile_fail,E0611
+Specifically, one or more of the parameters contain borrowed data that
+needs to have a named lifetime in order for the body to type-check. Most of
+the time, this is because the borrowed data is being returned from the
+function, as in this example:
+
+```compile_fail,E0621
 fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // explicit lifetime required
                                              // in the type of `y`
     if x > y { x } else { y }
@@ -1959,15 +1967,24 @@ fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // explicit lifetime required
 fn main () { }
 ```
 
-Please add the missing lifetime parameter to remove this error. Example:
+Here, the function is returning data borrowed from either x or y, but the
+'a annotation indicates that it is returning data only from x. We can make
+the signature match the body by changing the type of y to &'a i32, like so:
 
 ```
 fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
     if x > y { x } else { y }
 }
 
-fn main() {
+fn main () { }
+```
+Alternatively, you could change the body not to return data from y:
+```
+fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
+    x
 }
+
+fn main () { }
 ```
 "##,
 
