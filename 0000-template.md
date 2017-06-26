@@ -23,13 +23,17 @@ This should get into specifics and corner-cases, and include examples of how the
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-What names and terminology work best for these concepts and why? 
+What names and terminology work best for these concepts and why?
 How is this idea best presented—as a continuation of existing Rust patterns, or as a wholly new one?
 
-Would the acceptance of this proposal change how Rust is taught to new users at any level? 
+Would the acceptance of this proposal change how Rust is taught to new users at any level?
 How should this feature be introduced and taught to existing Rust users?
 
 What additions or changes to the Rust Reference, _The Rust Programming Language_, and/or _Rust by Example_ does it entail?
+
+What would an outline of a new section in the book look like? What should the reader be able to understand by the end of the section in the book?
+
+What's an example that would show off this feature?
 
 # Drawbacks
 [drawbacks]: #drawbacks
