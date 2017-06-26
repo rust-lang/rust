@@ -141,10 +141,11 @@ fn main() {
         }
     }));
 
+    let mut rng = thread_rng();
+
     for len in (1..20).chain(70..MAX_LEN) {
         for &modulus in &[5, 20, 50] {
             for &has_runs in &[false, true] {
-                let mut rng = thread_rng();
                 let mut input = (0..len)
                     .map(|id| {
                         DropCounter {
