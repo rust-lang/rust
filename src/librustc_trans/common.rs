@@ -265,7 +265,8 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 // you will be kicked off fast isel. See issue #4352 for an example of this.
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
-    let cs = consts::ptrcast(C_cstr(cx, s, false), Type::i8p(cx));
+    let cs = consts::ptrcast(C_cstr(cx, s, false),
+        cx.llvm_type_of(cx.tcx().mk_str()).ptr_to());
     C_named_struct(cx.str_slice_type(), &[cs, C_usize(cx, len as u64)])
 }
 

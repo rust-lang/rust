@@ -23,9 +23,10 @@ pub fn helper(_: usize) {
 pub fn no_op_slice_adjustment(x: &[u8]) -> &[u8] {
     // We used to generate an extra alloca and memcpy for the block's trailing expression value, so
     // check that we copy directly to the return value slot
-// CHECK: %0 = insertvalue { i8*, [[USIZE]] } undef, i8* %x.ptr, 0
-// CHECK: %1 = insertvalue { i8*, [[USIZE]] } %0, [[USIZE]] %x.meta, 1
-// CHECK: ret { i8*, [[USIZE]] } %1
+// CHECK: %x.ptr = bitcast i8* %0 to [0 x i8]*
+// CHECK: %1 = insertvalue { [0 x i8]*, [[USIZE]] } undef, [0 x i8]* %x.ptr, 0
+// CHECK: %2 = insertvalue { [0 x i8]*, [[USIZE]] } %1, [[USIZE]] %x.meta, 1
+// CHECK: ret { [0 x i8]*, [[USIZE]] } %2
     { x }
 }
 

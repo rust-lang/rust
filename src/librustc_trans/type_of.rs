@@ -115,12 +115,14 @@ fn compute_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type
           Type::array(&llty, size)
       }
 
-      // Unsized slice types (and str) have the type of their element, and
-      // traits have the type of u8. This is so that the data pointer inside
-      // fat pointers is of the right type (e.g. for array accesses), even
-      // when taking the address of an unsized field in a struct.
-      ty::TySlice(ty) => cx.llvm_type_of(ty),
-      ty::TyStr | ty::TyDynamic(..) | ty::TyForeign(..) => Type::i8(cx),
+      ty::TySlice(ty) => {
+          Type::array(&cx.llvm_type_of(ty), 0)
+      }
+      ty::TyStr => {
+          Type::array(&Type::i8(cx), 0)
+      }
+      ty::TyDynamic(..) |
+      ty::TyForeign(..) => adt::type_of(cx, t),
 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(sig) => {
