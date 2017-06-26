@@ -1,4 +1,4 @@
-//! Checks for useless borrowed references in clojures.
+//! Checks for useless borrowed references.
 //!
 //! This lint is **warn** by default
 
@@ -7,9 +7,9 @@ use rustc::hir::{MutImmutable, Pat, PatKind, BindingMode};
 use rustc::ty;
 use utils::{span_lint, in_macro};
 
-/// **What it does:** Checks for useless borrowed references in clojures.
+/// **What it does:** Checks for useless borrowed references.
 ///
-/// **Why is this bad?** TODO
+/// **Why is this bad?** It is completely useless and make the code look more complex than it actually is.
 ///
 /// **Known problems:** None.
 ///
@@ -18,7 +18,8 @@ use utils::{span_lint, in_macro};
 ///     let mut v = Vec::<String>::new();
 ///     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
 /// ```
-/// It could just be |a| a.is_empty()
+/// This clojure takes a reference on something that has been matched as a reference and de-referenced.
+/// As such, it could just be |a| a.is_empty()
 declare_lint! {
     pub NEEDLESS_BORROWED_REFERENCE,
     Warn,
@@ -50,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
             // This is an immutable reference.
             tam.mutbl == MutImmutable,
         ], {
-            span_lint(cx, NEEDLESS_BORROWED_REFERENCE, pat.span, "this pattern takes a needless borrowed reference")
+            span_lint(cx, NEEDLESS_BORROWED_REFERENCE, pat.span, "this pattern takes a reference on something that is being de-referenced")
         }}
     }
 }
