@@ -287,8 +287,8 @@ fn diff_structure(changes: &mut ChangeSet,
 
 /// Given two ADT items, perform structural checks.
 ///
-/// This establishes the needed correspondence relationship between non-toplevel items.
-/// For instance, struct fields, enum variants etc. are matched up against each other here.
+/// This establishes the needed correspondence relationship between non-toplevel items such as
+/// enum variants, struct fields etc.
 fn diff_adts(changes: &mut ChangeSet,
              id_mapping: &mut IdMapping,
              tcx: TyCtxt,

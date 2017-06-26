@@ -1,29 +1,58 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Breaking changes in `Abc`
-  --> $REPO_PATH/tests/examples/enum.rs:12:5
+  --> $REPO_PATH/tests/examples/enum.rs:21:5
    |
-12 | /     pub enum Abc {
-13 | |         Abc,
-14 | |     }
+21 | /     pub enum Abc {
+22 | |         Abc,
+23 | |     }
    | |_____^
    |
 warning: Breaking (VariantAdded)
-  --> $REPO_PATH/tests/examples/enum.rs:13:9
+  --> $REPO_PATH/tests/examples/enum.rs:22:9
    |
-13 |         Abc,
+22 |         Abc,
    |         ^^^
 
 warning: Breaking changes in `Bcd`
-  --> $REPO_PATH/tests/examples/enum.rs:16:5
+  --> $REPO_PATH/tests/examples/enum.rs:25:5
    |
-16 | /     pub enum Bcd {
-17 | |
-18 | |     }
+25 | /     pub enum Bcd {
+26 | |
+27 | |     }
    | |_____^
    |
 warning: Breaking (VariantRemoved)
   --> $REPO_PATH/tests/examples/enum.rs:7:9
    |
 7  |         Abc,
+   |         ^^^
+
+warning: Breaking changes in `Cde`
+  --> $REPO_PATH/tests/examples/enum.rs:29:5
+   |
+29 | /     pub enum Cde {
+30 | |         Abc,
+31 | |         Bcd,
+32 | |     }
+   | |_____^
+   |
+warning: Breaking (VariantAdded)
+  --> $REPO_PATH/tests/examples/enum.rs:31:9
+   |
+31 |         Bcd,
+   |         ^^^
+
+warning: Breaking changes in `Def`
+  --> $REPO_PATH/tests/examples/enum.rs:34:5
+   |
+34 | /     pub enum Def {
+35 | |         Abc,
+36 | |     }
+   | |_____^
+   |
+warning: Breaking (VariantRemoved)
+  --> $REPO_PATH/tests/examples/enum.rs:16:9
+   |
+16 |         Bcd,
    |         ^^^
 
