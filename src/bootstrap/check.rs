@@ -13,23 +13,22 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
-extern crate build_helper;
-
 use std::collections::HashSet;
 use std::env;
+use std::iter;
 use std::fmt;
 use std::fs::{self, File};
 use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::io::Read;
 
-use build_helper::output;
+use build_helper::{self, output};
 
 use {Build, Compiler, Mode};
 use dist;
 use util::{self, dylib_path, dylib_path_var, exe};
 
-const ADB_TEST_DIR: &'static str = "/data/tmp/work";
+const ADB_TEST_DIR: &str = "/data/tmp/work";
 
 /// The two modes of the test runner; tests or benchmarks.
 #[derive(Copy, Clone)]
@@ -99,7 +98,7 @@ pub fn linkcheck(build: &Build, host: &str) {
 /// This tool in `src/tools` will check out a few Rust projects and run `cargo
 /// test` to ensure that we don't regress the test suites there.
 pub fn cargotest(build: &Build, stage: u32, host: &str) {
-    let ref compiler = Compiler::new(stage, host);
+    let compiler = Compiler::new(stage, host);
 
     // Note that this is a short, cryptic, and not scoped directory name. This
     // is currently to minimize the length of path on Windows where we otherwise
@@ -109,11 +108,11 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
 
     let _time = util::timeit();
     let mut cmd = Command::new(build.tool(&Compiler::new(0, host), "cargotest"));
-    build.prepare_tool_cmd(compiler, &mut cmd);
+    build.prepare_tool_cmd(&compiler, &mut cmd);
     try_run(build, cmd.arg(&build.cargo)
                       .arg(&out_dir)
-                      .env("RUSTC", build.compiler_path(compiler))
-                      .env("RUSTDOC", build.rustdoc(compiler)));
+                      .env("RUSTC", build.compiler_path(&compiler))
+                      .env("RUSTDOC", build.rustdoc(&compiler)));
 }
 
 /// Runs `cargo test` for `cargo` packaged with Rust.
@@ -124,9 +123,8 @@ pub fn cargo(build: &Build, stage: u32, host: &str) {
     // and not RUSTC because the Cargo test suite has tests that will
     // fail if rustc is not spelled `rustc`.
     let path = build.sysroot(compiler).join("bin");
-    let old_path = ::std::env::var("PATH").expect("");
-    let sep = if cfg!(windows) { ";" } else {":" };
-    let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
+    let old_path = env::var_os("PATH").unwrap_or_default();
+    let newpath = env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("");
 
     let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
     cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
@@ -200,7 +198,7 @@ pub fn compiletest(build: &Build,
     cmd.arg("--host").arg(compiler.host);
     cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.config.build));
 
-    if let Some(nodejs) = build.config.nodejs.as_ref() {
+    if let Some(ref nodejs) = build.config.nodejs {
         cmd.arg("--nodejs").arg(nodejs);
     }
 
@@ -520,16 +518,14 @@ fn krate_emscripten(build: &Build,
                     compiler: &Compiler,
                     target: &str,
                     mode: Mode) {
-    let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
-    find_tests(&out_dir.join("deps"), target, &mut tests);
+    let tests = find_tests(&out_dir.join("deps"), target);
 
+    let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
     for test in tests {
-        let test_file_name = test.to_string_lossy().into_owned();
-        println!("running {}", test_file_name);
-        let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
+        println!("running {}", test.display());
         let mut cmd = Command::new(nodejs);
-        cmd.arg(&test_file_name);
+        cmd.arg(&test);
         if build.config.quiet_tests {
             cmd.arg("--quiet");
         }
@@ -541,9 +537,8 @@ fn krate_remote(build: &Build,
                 compiler: &Compiler,
                 target: &str,
                 mode: Mode) {
-    let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
-    find_tests(&out_dir.join("deps"), target, &mut tests);
+    let tests = find_tests(&out_dir.join("deps"), target);
 
     let tool = build.tool(&Compiler::new(0, &build.config.build),
                           "remote-test-client");
@@ -559,9 +554,8 @@ fn krate_remote(build: &Build,
     }
 }
 
-fn find_tests(dir: &Path,
-              target: &str,
-              dst: &mut Vec<PathBuf>) {
+fn find_tests(dir: &Path, target: &str) -> Vec<PathBuf> {
+    let mut dst = Vec::new();
     for e in t!(dir.read_dir()).map(|e| t!(e)) {
         let file_type = t!(e.file_type());
         if !file_type.is_file() {
@@ -576,6 +570,7 @@ fn find_tests(dir: &Path,
             dst.push(e.path());
         }
     }
+    dst
 }
 
 pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
