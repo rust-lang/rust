@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use syntax::ast;
+
 use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
 
-use rustc::ty::TyCtxt;
+use rustc::ty::{TyCtxt};
 use rustc::mir::{self, Mir};
 
 use std::fmt::Debug;
@@ -21,21 +23,31 @@ use std::mem;
 use std::path::PathBuf;
 use std::usize;
 
-use super::MirBorrowckCtxtPreDataflow;
-
-pub use self::sanity_check::sanity_check_via_rustc_peek;
 pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
 pub use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
 
+pub(crate) use self::drop_flag_effects::*;
+
+mod drop_flag_effects;
 mod graphviz;
-mod sanity_check;
 mod impls;
+pub mod move_paths;
+
+pub(crate) use self::move_paths::indexes;
+
+pub(crate) struct DataflowBuilder<'a, 'tcx: 'a, BD> where BD: BitDenotation
+{
+    node_id: ast::NodeId,
+    flow_state: DataflowAnalysis<'a, 'tcx, BD>,
+    print_preflow_to: Option<String>,
+    print_postflow_to: Option<String>,
+}
 
 pub trait Dataflow<BD: BitDenotation> {
     fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> &Debug;
 }
 
-impl<'a, 'tcx: 'a, BD> Dataflow<BD> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
+impl<'a, 'tcx: 'a, BD> Dataflow<BD> for DataflowBuilder<'a, 'tcx, BD>
     where BD: BitDenotation + DataflowOperator
 {
     fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> &Debug {
@@ -135,7 +147,7 @@ fn dataflow_path(context: &str, prepost: &str, path: &str) -> PathBuf {
     path
 }
 
-impl<'a, 'tcx: 'a, BD> MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
+impl<'a, 'tcx: 'a, BD> DataflowBuilder<'a, 'tcx, BD>
     where BD: BitDenotation
 {
     fn pre_dataflow_instrumentation<P>(&self, p: P) -> io::Result<()>
@@ -195,7 +207,7 @@ impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O>
     pub fn mir(&self) -> &'a Mir<'tcx> { self.mir }
 }
 
-pub struct DataflowResults<O>(DataflowState<O>) where O: BitDenotation;
+pub struct DataflowResults<O>(pub(crate) DataflowState<O>) where O: BitDenotation;
 
 impl<O: BitDenotation> DataflowResults<O> {
     pub fn sets(&self) -> &AllSets<O::Idx> {
@@ -213,7 +225,7 @@ pub struct DataflowState<O: BitDenotation>
     pub sets: AllSets<O::Idx>,
 
     /// operator used to initialize, combine, and interpret bits.
-    operator: O,
+    pub(crate) operator: O,
 }
 
 #[derive(Debug)]
@@ -240,9 +252,9 @@ pub struct AllSets<E: Idx> {
 }
 
 pub struct BlockSets<'a, E: Idx> {
-    on_entry: &'a mut IdxSet<E>,
-    gen_set: &'a mut IdxSet<E>,
-    kill_set: &'a mut IdxSet<E>,
+    pub(crate) on_entry: &'a mut IdxSet<E>,
+    pub(crate) gen_set: &'a mut IdxSet<E>,
+    pub(crate) kill_set: &'a mut IdxSet<E>,
 }
 
 impl<'a, E:Idx> BlockSets<'a, E> {
