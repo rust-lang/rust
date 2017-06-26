@@ -15,7 +15,6 @@ use rustc::mir::{BasicBlock, Mir};
 use rustc_data_structures::bitslice::bits_to_string;
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_mir::util as mir_util;
 
 use dot;
 use dot::IntoCow;
@@ -28,8 +27,10 @@ use std::marker::PhantomData;
 use std::mem;
 use std::path::Path;
 
-use super::super::MirBorrowckCtxtPreDataflow;
+use util;
+
 use super::{BitDenotation, DataflowState};
+use super::DataflowBuilder;
 
 impl<O: BitDenotation> DataflowState<O> {
     fn each_bit<F>(&self, words: &IdxSet<O::Idx>, mut f: F)
@@ -86,7 +87,7 @@ pub trait MirWithFlowState<'tcx> {
     fn flow_state(&self) -> &DataflowState<Self::BD>;
 }
 
-impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>
+impl<'a, 'tcx: 'a, BD> MirWithFlowState<'tcx> for DataflowBuilder<'a, 'tcx, BD>
     where 'tcx: 'a, BD: BitDenotation
 {
     type BD = BD;
@@ -103,8 +104,8 @@ struct Graph<'a, 'tcx, MWF:'a, P> where
     render_idx: P,
 }
 
-pub fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
-    mbcx: &MirBorrowckCtxtPreDataflow<'a, 'tcx, BD>,
+pub(crate) fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
+    mbcx: &DataflowBuilder<'a, 'tcx, BD>,
     path: &Path,
     render_idx: P)
     -> io::Result<()>
@@ -220,7 +221,7 @@ impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
             }
             Ok(())
         }
-        mir_util::write_graphviz_node_label(
+        util::write_graphviz_node_label(
             *n, self.mbcx.mir(), &mut v, 4,
             |w| {
                 let flow = self.mbcx.flow_state();

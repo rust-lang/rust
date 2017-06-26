@@ -8,25 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Dataflow analyses are built upon some interpretation of the
+//! bitvectors attached to each basic block, represented via a
+//! zero-sized structure.
+
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
 use rustc_data_structures::bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_mir::util::elaborate_drops::DropFlagState;
 
-use super::super::gather_moves::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex};
-use super::super::MoveDataParamEnv;
-use super::super::drop_flag_effects_for_function_entry;
-use super::super::drop_flag_effects_for_location;
-use super::super::on_lookup_result_bits;
+use super::MoveDataParamEnv;
+use util::elaborate_drops::DropFlagState;
 
+use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex};
 use super::{BitDenotation, BlockSets, DataflowOperator};
 
-// Dataflow analyses are built upon some interpretation of the
-// bitvectors attached to each basic block, represented via a
-// zero-sized structure.
+use super::drop_flag_effects_for_function_entry;
+use super::drop_flag_effects_for_location;
+use super::on_lookup_result_bits;
 
 /// `MaybeInitializedLvals` tracks all l-values that might be
 /// initialized upon reaching a particular point in the control flow
@@ -217,6 +218,16 @@ pub struct MovingOutStatements<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
+}
+
+impl<'a, 'tcx: 'a> MovingOutStatements<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               mir: &'a Mir<'tcx>,
+               mdpe: &'a MoveDataParamEnv<'tcx>)
+               -> Self
+    {
+        MovingOutStatements { tcx: tcx, mir: mir, mdpe: mdpe }
+    }
 }
 
 impl<'a, 'tcx> HasMoveData<'tcx> for MovingOutStatements<'a, 'tcx> {

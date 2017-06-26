@@ -920,6 +920,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // What we need to do constant evaluation.
     passes.push_pass(MIR_CONST, mir::transform::simplify::SimplifyCfg::new("initial"));
     passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);
+    passes.push_pass(MIR_CONST, mir::transform::rustc_peek::SanityCheck);
 
     // What we need to run borrowck etc.
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
@@ -934,7 +935,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // From here on out, regions are gone.
     passes.push_pass(MIR_OPTIMIZED, mir::transform::erase_regions::EraseRegions);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AddCallGuards);
-    passes.push_pass(MIR_OPTIMIZED, borrowck::ElaborateDrops);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::elaborate_drops::ElaborateDrops);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
 
