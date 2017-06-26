@@ -87,7 +87,7 @@ release process, keeping its guarantees while addressing its gaps.
 
 ## The basic idea
 
-At heart, the epoch idea is pretty simple:
+Here's the core idea:
 
 - An *epoch* represents a major shift in Rust features and idioms.
 
