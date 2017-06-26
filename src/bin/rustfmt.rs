@@ -78,7 +78,7 @@ impl CliOptions {
                     format!("Invalid write-mode: {}", write_mode),
                 ));
             }
-        } else {
+        } else if !matches.opt_present("no-warn-write-mode") {
             println!(
                 "Warning: the default write-mode for Rustfmt will soon change to overwrite \
                  - this will not leave backups of changed files."
@@ -120,6 +120,12 @@ fn make_opts() -> Options {
     opts.optflag("h", "help", "show this message");
     opts.optflag("V", "version", "show version information");
     opts.optflag("v", "verbose", "print verbose output");
+    // Suppress warning. Remove this option after the default write mode changed to overwrite.
+    opts.optflag(
+        "w",
+        "no-warn-write-mode",
+        "inhibit warning about write-mode change",
+    );
     opts.optopt(
         "",
         "write-mode",
