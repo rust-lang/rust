@@ -1,0 +1,21 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `a`
+  --> $REPO_PATH/tests/examples/infer.rs:32:5
+   |
+32 | /     pub fn a<A: a::Def>(a: A) -> A {
+33 | |         a
+34 | |     }
+   | |_____^
+   |
+   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+
+warning: Breaking changes in `b`
+  --> $REPO_PATH/tests/examples/infer.rs:36:5
+   |
+36 | /     pub fn b() -> a::Opq {
+37 | |         a::Opq
+38 | |     }
+   | |_____^
+   |
+   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+
