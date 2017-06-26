@@ -270,7 +270,7 @@ pub fn main() {
             // this check ensures that dependencies are built but not linted and the final
             // crate is
             // linted but not built
-            let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
+            let clippy_enabled = env::args().any(|s| s == "--emit=metadata");
 
             if clippy_enabled {
                 args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
@@ -302,7 +302,7 @@ fn process<I>(old_args: I) -> Result<(), i32>
     if !found_dashes {
         args.push("--".to_owned());
     }
-    args.push("-Zno-trans".to_owned());
+    args.push("--emit=metadata".to_owned());
     args.push("--cfg".to_owned());
     args.push(r#"feature="cargo-clippy""#.to_owned());
 
