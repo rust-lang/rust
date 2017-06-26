@@ -23,6 +23,4 @@ warning: function is never used: `no_parens`
 20 | |   return <T as ToString>::to_string(&arg);
 21 | | }
    | |_^
-   |
-   = note: #[warn(dead_code)] on by default
 
