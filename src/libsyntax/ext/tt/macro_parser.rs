@@ -386,12 +386,11 @@ fn inner_parse_loop(sess: &ParseSess,
                         return Error(span, "missing fragment specifier".to_string());
                     }
                 }
-                TokenTree::MetaVarDecl(..) => {
+                TokenTree::MetaVarDecl(_, _, id) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    match *token {
-                        token::CloseDelim(_) => {},
-                        _ => bb_eis.push(ei),
+                    if may_begin_with(&*id.name.as_str(), token) {
+                        bb_eis.push(ei);
                     }
                 }
                 seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
@@ -490,6 +489,73 @@ pub fn parse(sess: &ParseSess,
         }
 
         assert!(!cur_eis.is_empty());
+    }
+}
+
+/// Checks whether a non-terminal may begin with a particular token.
+///
+/// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
+/// token. Be conservative (return true) if not sure.
+fn may_begin_with(name: &str, token: &Token) -> bool {
+    /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
+    fn may_be_ident(nt: &token::Nonterminal) -> bool {
+        match *nt {
+            token::NtItem(_) | token::NtBlock(_) | token::NtVis(_) => false,
+            _ => true,
+        }
+    }
+
+    match name {
+        "expr" => token.can_begin_expr(),
+        "ty" => token.can_begin_type(),
+        "ident" => token.is_ident(),
+        "vis" => match *token { // The follow-set of :vis + "priv" keyword + interpolated
+            Token::Comma | Token::Ident(_) | Token::Interpolated(_) => true,
+            _ => token.can_begin_type(),
+        },
+        "block" => match *token {
+            Token::OpenDelim(token::Brace) => true,
+            Token::Interpolated(ref nt) => match nt.0 {
+                token::NtItem(_) |
+                token::NtPat(_) |
+                token::NtTy(_) |
+                token::NtIdent(_) |
+                token::NtMeta(_) |
+                token::NtPath(_) |
+                token::NtVis(_) => false, // none of these may start with '{'.
+                _ => true,
+            },
+            _ => false,
+        },
+        "path" | "meta" => match *token {
+            Token::ModSep | Token::Ident(_) => true,
+            Token::Interpolated(ref nt) => match nt.0 {
+                token::NtPath(_) | token::NtMeta(_) => true,
+                _ => may_be_ident(&nt.0),
+            },
+            _ => false,
+        },
+        "pat" => match *token {
+            Token::Ident(_) |               // box, ref, mut, and other identifiers (can stricten)
+            Token::OpenDelim(token::Paren) |    // tuple pattern
+            Token::OpenDelim(token::Bracket) |  // slice pattern
+            Token::BinOp(token::And) |          // reference
+            Token::BinOp(token::Minus) |        // negative literal
+            Token::AndAnd |                     // double reference
+            Token::Literal(..) |                // literal
+            Token::DotDot |                     // range pattern (future compat)
+            Token::DotDotDot |                  // range pattern (future compat)
+            Token::ModSep |                     // path
+            Token::Lt |                         // path (UFCS constant)
+            Token::BinOp(token::Shl) |          // path (double UFCS)
+            Token::Underscore => true,          // placeholder
+            Token::Interpolated(ref nt) => may_be_ident(&nt.0),
+            _ => false,
+        },
+        _ => match *token {
+            token::CloseDelim(_) => false,
+            _ => true,
+        },
     }
 }
 
