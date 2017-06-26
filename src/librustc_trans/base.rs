@@ -231,13 +231,13 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bcx.ccx.shared().type_is_sized(a));
-            let ptr_ty = type_of::in_memory_type_of(bcx.ccx, b).ptr_to();
+            let ptr_ty = bcx.ccx.llvm_type_of(b).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bcx.ccx.shared().type_is_sized(a));
-            let ptr_ty = type_of::in_memory_type_of(bcx.ccx, b).ptr_to();
+            let ptr_ty = bcx.ccx.llvm_type_of(b).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),

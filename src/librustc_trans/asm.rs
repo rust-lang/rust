@@ -12,7 +12,6 @@
 
 use llvm::{self, ValueRef};
 use common::*;
-use type_of;
 use type_::Type;
 use builder::Builder;
 
@@ -52,7 +51,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
         if out.is_indirect {
             indirect_outputs.push(val.unwrap().immediate());
         } else {
-            output_types.push(type_of::type_of(bcx.ccx, ty));
+            output_types.push(bcx.ccx.llvm_type_of(ty));
         }
     }
     if !indirect_outputs.is_empty() {

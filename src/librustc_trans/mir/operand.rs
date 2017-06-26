@@ -19,7 +19,7 @@ use base;
 use common::{self, CrateContext, C_undef};
 use builder::Builder;
 use value::Value;
-use type_of::{self, LayoutLlvmExt};
+use type_of::LayoutLlvmExt;
 
 use std::fmt;
 use std::ptr;
@@ -82,7 +82,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
                    ty: Ty<'tcx>) -> OperandRef<'tcx> {
         assert!(common::type_is_zero_size(ccx, ty));
-        let llty = type_of::type_of(ccx, ty);
+        let llty = ccx.llvm_type_of(ty);
         Const::new(C_undef(llty), ty).to_operand(ccx)
     }
 
@@ -116,7 +116,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
             // Reconstruct the immediate aggregate.
-            let llty = type_of::type_of(bcx.ccx, self.ty);
+            let llty = bcx.ccx.llvm_type_of(self.ty);
             let mut llpair = C_undef(llty);
             let elems = [a, b];
             let layout = bcx.ccx.layout_of(self.ty);

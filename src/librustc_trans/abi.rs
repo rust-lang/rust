@@ -32,7 +32,6 @@ use cabi_nvptx64;
 use cabi_hexagon;
 use mir::lvalue::LvalueRef;
 use type_::Type;
-use type_of;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
@@ -564,7 +563,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
     /// Get the LLVM type for an lvalue of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
     pub fn memory_ty(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
-        type_of::type_of(ccx, self.layout.ty)
+        ccx.llvm_type_of(self.layout.ty)
     }
 
     /// Store a direct/indirect value described by this ArgType into a
@@ -975,7 +974,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         } else if let Some(cast) = self.ret.cast {
             cast.llvm_type(ccx)
         } else {
-            type_of::immediate_type_of(ccx, self.ret.layout.ty)
+            ccx.immediate_llvm_type_of(self.ret.layout.ty)
         };
 
         for arg in &self.args {
@@ -992,7 +991,7 @@ impl<'a, 'tcx> FnType<'tcx> {
             } else if let Some(cast) = arg.cast {
                 cast.llvm_type(ccx)
             } else {
-                type_of::immediate_type_of(ccx, arg.layout.ty)
+                ccx.immediate_llvm_type_of(arg.layout.ty)
             };
 
             llargument_tys.push(llarg_ty);

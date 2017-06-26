@@ -46,7 +46,6 @@ use rustc::ty::layout::{self, Align, HasDataLayout, LayoutTyper, Size, TyLayout}
 
 use context::CrateContext;
 use type_::Type;
-use type_of;
 
 /// LLVM-level types are a little complicated.
 ///
@@ -110,7 +109,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if let layout::Scalar { value: layout::Pointer, .. } = *nnfield {
                 Type::i8p(cx)
             } else {
-                type_of::type_of(cx, nnfield.ty)
+                cx.llvm_type_of(nnfield.ty)
             }
         }
         layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
@@ -237,7 +236,7 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             result.push(Type::array(&Type::i8(cx), padding.bytes()));
             debug!("    padding before: {:?}", padding);
         }
-        let llty = type_of::in_memory_type_of(cx, field.ty);
+        let llty = cx.llvm_type_of(field.ty);
         result.push(llty);
 
         if variant.packed {
