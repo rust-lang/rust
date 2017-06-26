@@ -110,8 +110,8 @@ Furthermore:
 - Prior to a new epoch, the current epoch will gain a set of deprecations over time.
 - When cutting a new epoch, existing deprecations may turn into hard errors, and
   the epoch may take advantage of that fact to repurpose existing usage,
-  e.g. introducing a new keyword. **This is the only kind of change a new epoch
-  can make**.
+  e.g. introducing a new keyword. This is the only kind of change a new epoch
+  can make.
 
 Code that compiles without warnings on the previous epoch (under the latest
 compiler release) will compile without warnings or errors on the next epoch
