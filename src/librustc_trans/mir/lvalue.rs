@@ -456,18 +456,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
     pub fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef)
                          -> LvalueRef<'tcx> {
-        let ty = self.ty.to_ty(bcx.tcx());
-        let (ptr, elem_ty) = match ty.sty {
-            ty::TySlice(ty) => {
-                // Slices already point to the array element type.
-                (bcx.inbounds_gep(self.llval, &[llindex]), ty)
-            }
-            ty::TyArray(ty, _) => {
-                let zero = common::C_usize(bcx.ccx, 0);
-                (bcx.inbounds_gep(self.llval, &[zero, llindex]), ty)
-            }
-            _ => bug!("unexpected type `{}` in LvalueRef::project_index", ty)
-        };
+        let ptr = bcx.inbounds_gep(self.llval, &[common::C_usize(bcx.ccx, 0), llindex]);
+        let elem_ty = self.ty.to_ty(bcx.tcx()).builtin_index().unwrap();
         LvalueRef::new_sized(ptr, elem_ty, self.alignment)
     }
 
@@ -577,12 +567,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         subslice.ty = self.monomorphize(&subslice.ty);
 
                         match subslice.ty.to_ty(tcx).sty {
-                            ty::TyArray(..) => {
-                                // must cast the lvalue pointer type to the new
-                                // array type (*[%_; new_len]).
-                                subslice.llval = bcx.pointercast(subslice.llval,
-                                    bcx.ccx.llvm_type_of(subslice.ty.to_ty(tcx)).ptr_to())
-                            }
+                            ty::TyArray(..) => {}
                             ty::TySlice(..) => {
                                 assert!(tr_base.has_extra());
                                 subslice.llextra = bcx.sub(tr_base.llextra,
@@ -590,6 +575,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             }
                             _ => bug!("unexpected type {:?} in Subslice", subslice.ty)
                         }
+
+                        // Cast the lvalue pointer type to the new
+                        // array or slice type (*[%_; new_len]).
+                        subslice.llval = bcx.pointercast(subslice.llval,
+                            bcx.ccx.llvm_type_of(subslice.ty.to_ty(tcx)).ptr_to());
 
                         subslice
                     }
