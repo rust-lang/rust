@@ -791,6 +791,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             let cache = self.tcx().evaluation_cache.hashmap.borrow();
             if let Some(cached) = cache.get(&trait_ref) {
+                let dep_node = trait_ref
+                    .to_poly_trait_predicate()
+                    .dep_node(self.tcx());
+                self.tcx().hir.dep_graph.read(dep_node);
                 return Some(cached.clone());
             }
         }
