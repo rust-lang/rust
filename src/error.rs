@@ -63,6 +63,8 @@ pub enum EvalError<'tcx> {
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
     Panic,
+    NeedsRfc(String),
+    NotConst(String),
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -156,6 +158,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "entered unreachable code",
             EvalError::Panic =>
                 "the evaluated program panicked",
+            EvalError::NeedsRfc(_) =>
+                "this feature needs an rfc before being allowed inside constants",
+            EvalError::NotConst(_) =>
+                "this feature is not compatible with constant evaluation",
         }
     }
 
@@ -191,6 +197,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "expected primitive type, got {}", ty),
             EvalError::Layout(ref err) =>
                 write!(f, "rustc layout computation failed: {:?}", err),
+            EvalError::NeedsRfc(ref msg) =>
+                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg),
+            EvalError::NotConst(ref msg) =>
+                write!(f, "Cannot evaluate within constants: \"{}\"", msg),
             _ => write!(f, "{}", self.description()),
         }
     }
