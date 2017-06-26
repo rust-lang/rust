@@ -22,8 +22,9 @@ With epochs, it becomes possible to do things like introduce new keywords,
 without breaking existing code or splitting the ecosystem. Each crate specifies
 the epoch it fits within (a bit like "C++11" or "C++14"), and the compiler can
 cope with multiple epochs being used throughout a dependency graph. Thus, we
-retain our stability guarantees, while making it possible to evolve the language
-in some new ways.
+continue to guarantee that your code will always continue to compile on the
+latest stable release (modulo the [usual caveats]), while making it possible to
+evolve the language in some new ways.
 
 [stability without stagnation]: https://blog.rust-lang.org/2014/10/30/Stability.html
 
@@ -114,12 +115,12 @@ Furthermore:
 
 Code that compiles without warnings on the previous epoch (under the latest
 compiler release) will compile without warnings or errors on the next epoch
-(modulo
-the
-[usual caveats](https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md) about
-type inference changes and so on). Alternatively, you can continue working with
-the previous epoch on new compiler releases indefinitely, but your code may not
-have access to new features that require new keywords and the like.
+(modulo the [usual caveats] about type inference changes and so
+on). Alternatively, you can continue working with the previous epoch on new
+compiler releases indefinitely, but your code may not have access to new
+features that require new keywords and the like.
+
+[usual caveats]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 
 ## Epoch timing, stabilizations, and the roadmap process
 
