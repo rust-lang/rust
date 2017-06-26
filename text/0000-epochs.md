@@ -258,7 +258,8 @@ before introducing a new epoch.
 ### What epochs can do
 
 Given those basics, let's look in more detail at a few examples of the kinds of
-changes epochs enable.
+changes epochs enable. These are just examples---this RFC doesn't entail any
+commitment to these language changes.
 
 #### Example: new keywords
 
