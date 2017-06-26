@@ -318,7 +318,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                                _marker: PhantomData<&'c PendingPredicateObligation<'tcx>>)
         where I: Clone + Iterator<Item=&'c PendingPredicateObligation<'tcx>>,
     {
-        if coinductive_match(self.selcx, cycle.clone()) {
+        if self.selcx.coinductive_match(cycle.clone().map(|s| s.obligation.predicate)) {
             debug!("process_child_obligations: coinductive match");
         } else {
             let cycle : Vec<_> = cycle.map(|c| c.obligation.clone()).collect();
@@ -549,40 +549,6 @@ fn process_predicate<'a, 'gcx, 'tcx>(
     }
 }
 
-/// For defaulted traits, we use a co-inductive strategy to solve, so
-/// that recursion is ok. This routine returns true if the top of the
-/// stack (`cycle[0]`):
-/// - is a defaulted trait, and
-/// - it also appears in the backtrace at some position `X`; and,
-/// - all the predicates at positions `X..` between `X` an the top are
-///   also defaulted traits.
-fn coinductive_match<'a,'c,'gcx,'tcx,I>(selcx: &mut SelectionContext<'a,'gcx,'tcx>,
-                                        cycle: I) -> bool
-    where I: Iterator<Item=&'c PendingPredicateObligation<'tcx>>,
-          'tcx: 'c
-{
-    let mut cycle = cycle;
-    cycle
-        .all(|bt_obligation| {
-            let result = coinductive_obligation(selcx, &bt_obligation.obligation);
-            debug!("coinductive_match: bt_obligation={:?} coinductive={}",
-                   bt_obligation, result);
-            result
-        })
-}
-
-fn coinductive_obligation<'a,'gcx,'tcx>(selcx: &SelectionContext<'a,'gcx,'tcx>,
-                                          obligation: &PredicateObligation<'tcx>)
-                                          -> bool {
-    match obligation.predicate {
-        ty::Predicate::Trait(ref data) => {
-            selcx.tcx().trait_has_default_impl(data.def_id())
-        }
-        _ => {
-            false
-        }
-    }
-}
 
 fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
                                     r_b: ty::Region<'tcx>,

@@ -703,14 +703,24 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // affect the inferencer state and (b) that if we see two
         // skolemized types with the same index, they refer to the
         // same unbound type variable.
-        if
+        if let Some(rec_index) =
             stack.iter()
             .skip(1) // skip top-most frame
-            .any(|prev| stack.fresh_trait_ref == prev.fresh_trait_ref)
+            .position(|prev| stack.fresh_trait_ref == prev.fresh_trait_ref)
         {
             debug!("evaluate_stack({:?}) --> recursive",
                    stack.fresh_trait_ref);
-            return EvaluatedToOk;
+            let cycle = stack.iter().skip(1).take(rec_index+1);
+            let cycle = cycle.map(|stack| ty::Predicate::Trait(stack.obligation.predicate));
+            if self.coinductive_match(cycle) {
+                debug!("evaluate_stack({:?}) --> recursive, coinductive",
+                       stack.fresh_trait_ref);
+                return EvaluatedToOk;
+            } else {
+                debug!("evaluate_stack({:?}) --> recursive, inductive",
+                       stack.fresh_trait_ref);
+                return EvaluatedToErr;
+            }
         }
 
         match self.candidate_from_obligation(stack) {
@@ -718,6 +728,33 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             Ok(None) => EvaluatedToAmbig,
             Err(..) => EvaluatedToErr
         }
+    }
+
+    /// For defaulted traits, we use a co-inductive strategy to solve, so
+    /// that recursion is ok. This routine returns true if the top of the
+    /// stack (`cycle[0]`):
+    /// - is a defaulted trait, and
+    /// - it also appears in the backtrace at some position `X`; and,
+    /// - all the predicates at positions `X..` between `X` an the top are
+    ///   also defaulted traits.
+    pub fn coinductive_match<I>(&mut self, cycle: I) -> bool
+        where I: Iterator<Item=ty::Predicate<'tcx>>
+    {
+        let mut cycle = cycle;
+        cycle.all(|predicate| self.coinductive_predicate(predicate))
+    }
+
+    fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
+        let result = match predicate {
+            ty::Predicate::Trait(ref data) => {
+                self.tcx().trait_has_default_impl(data.def_id())
+            }
+            _ => {
+                false
+            }
+        };
+        debug!("coinductive_predicate({:?}) = {:?}", predicate, result);
+        result
     }
 
     /// Further evaluate `candidate` to decide whether all type parameters match and whether nested
