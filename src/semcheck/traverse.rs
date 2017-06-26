@@ -1,16 +1,15 @@
 use semcheck::changes::BinaryChangeType;
 use semcheck::changes::BinaryChangeType::*;
 use semcheck::changes::ChangeSet;
+use semcheck::mismatch::Mismatch;
 
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
-use rustc::ty;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::TyCtxt;
 use rustc::ty::Visibility::Public;
-use rustc::ty::error::TypeError;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
-use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc::ty::relate::TypeRelation;
 use rustc::ty::subst::{Subst, Substs};
 
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -50,14 +49,20 @@ impl IdMapping {
     }
 }
 
+/// A representation of a namespace an item belongs to.
 #[derive(PartialEq, Eq, Hash)]
 enum Namespace {
+    /// The type namespace.
     Type,
+    /// The value namespace.
     Value,
+    /// The macro namespace.
     Macro,
+    /// No namespace, so to say.
     Err,
 }
 
+/// Get an item's namespace.
 fn get_namespace(def: &Def) -> Namespace {
     use rustc::hir::def::Def::*;
 
@@ -256,192 +261,13 @@ pub fn traverse_modules(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     }
 
     for &(_, old, new) in id_mapping.toplevel_mapping.values() {
-        diff_items(&mut changes, &id_mapping, tcx, old, new);
+        diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
     changes
 }
 
-fn diff_bounds(_changes: &mut ChangeSet, _tcx: TyCtxt, _old: DefId, _new: DefId)
-    -> (Vec<BinaryChangeType>, Vec<(DefId, DefId)>)
-{
-    let res = Default::default();
-
-    // let old_preds = tcx.predicates_of(old).predicates;
-    // let new_preds = tcx.predicates_of(new).predicates;
-
-    res
-}
-
-struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a, A: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    toplevel_mapping: &'a HashMap<DefId, A>,
-    mapping: &'a mut HashMap<DefId, DefId>,
-}
-
-impl<'a, 'gcx, 'tcx, A: 'a> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx, A> {
-    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
-        self.tcx
-    }
-
-    fn tag(&self) -> &'static str {
-        "Mismatch"
-    }
-
-    fn a_is_expected(&self) -> bool {
-        true
-    }
-
-    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
-                                             _: ty::Variance,
-                                             a: &T,
-                                             b: &T)
-                                             -> RelateResult<'tcx, T> {
-        self.relate(a, b)
-    }
-
-    fn relate<T: Relate<'tcx>>(&mut self, a: &T, b: &T) -> RelateResult<'tcx, T> {
-        Relate::relate(self, a, b)
-    }
-
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        use rustc::ty::TypeVariants::*;
-
-        let matching = match (&a.sty, &b.sty) {
-            (&TyAdt(a_adt, _), &TyAdt(b_adt, _)) => Some((a_adt.did, b_adt.did)),
-            (&TyFnDef(a_did, _, _), &TyFnDef(b_did, _, _)) => Some((a_did, b_did)),
-            (&TyClosure(a_did, _), &TyClosure(b_did, _)) => Some((a_did, b_did)),
-            (&TyProjection(a_proj), &TyProjection(b_proj)) =>
-                Some((a_proj.trait_ref.def_id, b_proj.trait_ref.def_id)),
-            (&TyAnon(a_did, _), &TyAnon(b_did, _)) => Some((a_did, b_did)),
-            _ => {
-                None
-            },
-        };
-
-        if let Some((old_did, new_did)) = matching {
-            if !self.toplevel_mapping.contains_key(&old_did) &&
-                !self.mapping.contains_key(&old_did)
-            {
-                // println!("adding mapping: {:?} => {:?}", old_did, new_did);
-                self.mapping.insert(old_did, new_did);
-            }
-        }
-
-        relate_tys_mismatch(self, a, b)
-    }
-
-    fn regions(&mut self, a: ty::Region<'tcx>, _: ty::Region<'tcx>)
-        -> RelateResult<'tcx, ty::Region<'tcx>>
-    {
-        // TODO
-        Ok(a)
-    }
-
-    fn binders<T: Relate<'tcx>>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-        -> RelateResult<'tcx, ty::Binder<T>>
-    {
-        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
-    }
-}
-fn relate_tys_mismatch<'a, 'gcx, 'tcx, R>(relation: &mut R, a: Ty<'tcx>, b: Ty<'tcx>)
-    -> RelateResult<'tcx, Ty<'tcx>>
-    where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-{
-    use rustc::ty::TypeVariants::*;
-
-    let tcx = relation.tcx();
-    let a_sty = &a.sty;
-    let b_sty = &b.sty;
-    match (a_sty, b_sty) {
-        (&TyInfer(_), _) | (_, &TyInfer(_)) => {
-            // As the original function this is ripped off of, we don't handle these cases.
-            panic!("var types encountered in relate_tys_mismatch")
-        },
-        (&TyError, _) | (_, &TyError) => {
-            Ok(tcx.types.err)
-        },
-        (&TyNever, _) |
-        (&TyChar, _) |
-        (&TyBool, _) |
-        (&TyInt(_), _) |
-        (&TyUint(_), _) |
-        (&TyFloat(_), _) |
-        (&TyStr, _) |
-        (&TyParam(_), _) |
-        (&TyClosure(_, _), _) if a == b => {
-            Ok(a)
-        },
-        (&TyAdt(a_def, a_substs), &TyAdt(_, b_substs)) => {
-            // TODO: possibly do something here
-            let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
-            Ok(tcx.mk_adt(a_def, substs))
-        },
-        (&TyDynamic(_, _), &TyDynamic(_, _)) => {
-            // TODO: decide whether this is needed
-            /*let region_bound = relation.with_cause(Cause::ExistentialRegionBound,
-                                                   |relation| {
-                                                       relation.relate(a_region, b_region)
-                                                   })?;
-            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))*/
-            Err(TypeError::Mismatch)
-        },
-        (&TyRawPtr(ref a_mt), &TyRawPtr(ref b_mt)) => {
-            let mt = relation.relate(a_mt, b_mt)?;
-            Ok(tcx.mk_ptr(mt))
-        },
-        (&TyRef(ref a_r, ref a_mt), &TyRef(ref b_r, ref b_mt)) => {
-            let r = relation.relate(a_r, b_r)?;
-            let mt = relation.relate(a_mt, b_mt)?;
-            Ok(tcx.mk_ref(r, mt))
-        },
-        (&TyArray(a_t, sz_a), &TyArray(b_t, sz_b)) => {
-            let t = relation.relate(&a_t, &b_t)?;
-            if sz_a == sz_b {
-                Ok(tcx.mk_array(t, sz_a))
-            } else {
-                Err(TypeError::Mismatch)
-            }
-        },
-        (&TySlice(a_t), &TySlice(b_t)) => {
-            let t = relation.relate(&a_t, &b_t)?;
-            Ok(tcx.mk_slice(t))
-        },
-        (&TyTuple(as_, a_defaulted), &TyTuple(bs, b_defaulted)) => {
-            let rs = as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b));
-            if as_.len() == bs.len() {
-                let defaulted = a_defaulted || b_defaulted;
-                tcx.mk_tup(rs, defaulted)
-            } else if !(as_.is_empty() || bs.is_empty()) {
-                Err(TypeError::Mismatch)
-            } else {
-                Err(TypeError::Mismatch)
-            }
-        },
-        (&TyFnDef(a_def_id, a_substs, a_fty), &TyFnDef(_, b_substs, b_fty)) => {
-            let substs = ty::relate::relate_substs(relation, None, a_substs, b_substs)?;
-            let fty = relation.relate(&a_fty, &b_fty)?;
-            Ok(tcx.mk_fn_def(a_def_id, substs, fty))
-        },
-        (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
-            let fty = relation.relate(&a_fty, &b_fty)?;
-            Ok(tcx.mk_fn_ptr(fty))
-        },
-        (&TyProjection(ref a_data), &TyProjection(ref b_data)) => {
-            let projection_ty = relation.relate(a_data, b_data)?;
-            Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name(tcx)))
-        },
-        (&TyAnon(a_def_id, a_substs), &TyAnon(_, b_substs)) => {
-            let substs = ty::relate::relate_substs(relation, None, a_substs, b_substs)?;
-            Ok(tcx.mk_anon(a_def_id, substs))
-        },
-        _ => {
-            Err(TypeError::Mismatch)
-        }
-    }
-}
-
-/// Given two ADT items, perform *structural* checks.
+/// Given two ADT items, perform structural checks.
 ///
 /// This establishes the needed correspondence relationship between non-toplevel items.
 /// For instance, struct fields, enum variants etc. are matched up against each other here.
@@ -549,36 +375,24 @@ fn diff_adts(changes: &mut ChangeSet,
     }
 }
 
-/// Given two items, perform *non-structural* checks.
-///
-/// This encompasses all checks for type and requires that the structural checks have already
-/// been performed.
-fn diff_items(changes: &mut ChangeSet,
+/// Given two items, compare their types.
+fn diff_types(changes: &mut ChangeSet,
               id_mapping: &IdMapping,
               tcx: TyCtxt,
               old: Export,
               new: Export) {
-    if !changes.item_breaking(old.def.def_id()) {
-        let mut type_changes = diff_types(id_mapping, tcx, old.def.def_id(), new.def.def_id());
-
-        for change_type in type_changes.drain(..) {
-            changes.add_binary(change_type, old.def.def_id(), None);
-        }
-    }
-}
-
-
-/// Given two items, compare their types for equality.
-fn diff_types(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
-    -> Vec<BinaryChangeType>
-{
     use rustc::ty::AdtDef;
     use rustc::ty::TypeVariants::*;
 
-    let mut res = Vec::new();
+    if changes.item_breaking(old.def.def_id()) {
+        return;
+    }
 
-    let new_ty = tcx.type_of(new);
-    let old_ty = tcx.type_of(old).subst(tcx, Substs::identity_for_item(tcx, new));
+    let old_def_id = old.def.def_id();
+    let new_def_id = new.def.def_id();
+
+    let new_ty = tcx.type_of(new_def_id);
+    let old_ty = tcx.type_of(old_def_id).subst(tcx, Substs::identity_for_item(tcx, new_def_id));
 
     let old_ty_cmp = old_ty.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
         match ty.sty {
@@ -600,14 +414,18 @@ fn diff_types(id_mapping: &IdMapping, tcx: TyCtxt, old: DefId, new: DefId)
     // println!("old_ty: {:?}", old_ty_cmp);
     // println!("new_ty: {:?}", new_ty);
 
-    if let Result::Err(err) = tcx.global_tcx().infer_ctxt()
-        .enter(|infcx| infcx.can_eq(tcx.param_env(new), old_ty_cmp, new_ty))
+    if let Err(err) = tcx.global_tcx().infer_ctxt()
+        .enter(|infcx| infcx.can_eq(tcx.param_env(new_def_id), old_ty_cmp, new_ty))
     {
         // println!("diff: {}", err);
-        res.push(FieldTypeChanged(format!("{}", err))); // FIXME: this is obv a terrible hack
+        changes.add_binary(FieldTypeChanged(format!("{}", err)), old_def_id, None);
     }
 
-    res
+    /* let mut type_changes = diff_types(id_mapping, tcx, old.def.def_id(), new.def.def_id());
+
+    for change_type in type_changes.drain(..) {
+        changes.add_binary(change_type, old.def.def_id(), None);
+    } */
 }
 
 /// Given two items, compare their type and region parameter sets.
@@ -656,4 +474,16 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
     }
 
     ret
+}
+
+/// Given two items, compare the bounds on their type and region parameters.
+fn diff_bounds(_changes: &mut ChangeSet, _tcx: TyCtxt, _old: DefId, _new: DefId)
+    -> (Vec<BinaryChangeType>, Vec<(DefId, DefId)>)
+{
+    let res = Default::default();
+
+    // let old_preds = tcx.predicates_of(old).predicates;
+    // let new_preds = tcx.predicates_of(new).predicates;
+
+    res
 }
