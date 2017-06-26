@@ -18,7 +18,6 @@
 use hir::def_id::DefId;
 use middle::region::RegionMaps;
 use ty::{self, Lift, TyCtxt, Region};
-use ty::wf::ImpliedBound;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 /// Combines a `RegionMaps` (which governs relationships between
@@ -136,23 +135,6 @@ impl<'tcx> FreeRegionMap<'tcx> {
         self.relation.is_empty()
     }
 
-    pub fn relate_free_regions_from_implied_bounds(&mut self,
-                                                   implied_bounds: &[ImpliedBound<'tcx>])
-    {
-        debug!("relate_free_regions_from_implied_bounds()");
-        for implied_bound in implied_bounds {
-            debug!("implied bound: {:?}", implied_bound);
-            match *implied_bound {
-                ImpliedBound::RegionSubRegion(a, b) => {
-                    self.relate_regions(a, b);
-                }
-                ImpliedBound::RegionSubParam(..) |
-                ImpliedBound::RegionSubProjection(..) => {
-                }
-            }
-        }
-    }
-
     pub fn relate_free_regions_from_predicates(&mut self,
                                                predicates: &[ty::Predicate<'tcx>]) {
         debug!("relate_free_regions_from_predicates(predicates={:?})", predicates);
@@ -177,7 +159,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
 
     // Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
     // (with the exception that `'static: 'x` is not notable)
-    fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
+    pub fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
         if (is_free(sub) || *sub == ty::ReStatic) && is_free(sup) {
             self.relation.add(sub, sup)
         }
