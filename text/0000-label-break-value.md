@@ -1,6 +1,6 @@
 - Feature Name: label_break_value
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
+- Start Date: 2017-06-26
+- RFC PR: [#2046](https://github.com/rust-lang/rfcs/pull/2046)
 - Rust Issue: (leave this empty)
 
 # Summary
