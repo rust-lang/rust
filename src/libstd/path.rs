@@ -2215,12 +2215,22 @@ impl Path {
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.
     ///
+    /// If you cannot access the directory containing the file, e.g. because of a
+    /// permission error, this will return `false`.
+    ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::path::Path;
     /// assert_eq!(Path::new("does_not_exist.txt").exists(), false);
     /// ```
+    ///
+    /// # See Also
+    ///
+    /// This is a convenience function that coerces errors to false. If you want to
+    /// check errors, call [fs::metadata].
+    ///
+    /// [fs::metadata]: ../../std/fs/fn.metadata.html
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
@@ -2231,6 +2241,9 @@ impl Path {
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.
     ///
+    /// If you cannot access the directory containing the file, e.g. because of a
+    /// permission error, this will return `false`.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -2238,6 +2251,15 @@ impl Path {
     /// assert_eq!(Path::new("./is_a_directory/").is_file(), false);
     /// assert_eq!(Path::new("a_file.txt").is_file(), true);
     /// ```
+    ///
+    /// # See Also
+    ///
+    /// This is a convenience function that coerces errors to false. If you want to
+    /// check errors, call [fs::metadata] and handle its Result. Then call
+    /// [fs::Metadata::is_file] if it was Ok.
+    ///
+    /// [fs::metadata]: ../../std/fs/fn.metadata.html
+    /// [fs::Metadata::is_file]: ../../std/fs/struct.Metadata.html#method.is_file
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
@@ -2248,6 +2270,9 @@ impl Path {
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.
     ///
+    /// If you cannot access the directory containing the file, e.g. because of a
+    /// permission error, this will return `false`.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -2255,6 +2280,15 @@ impl Path {
     /// assert_eq!(Path::new("./is_a_directory/").is_dir(), true);
     /// assert_eq!(Path::new("a_file.txt").is_dir(), false);
     /// ```
+    ///
+    /// # See Also
+    ///
+    /// This is a convenience function that coerces errors to false. If you want to
+    /// check errors, call [fs::metadata] and handle its Result. Then call
+    /// [fs::Metadata::is_dir] if it was Ok.
+    ///
+    /// [fs::metadata]: ../../std/fs/fn.metadata.html
+    /// [fs::Metadata::is_dir]: ../../std/fs/struct.Metadata.html#method.is_dir
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
