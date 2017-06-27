@@ -41,12 +41,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let id = free_region.scope;
                 let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                 let body_id = self.tcx.hir.maybe_body_owned_by(node_id).unwrap();
-                let mut is_first = false;
                 let body = self.tcx.hir.body(body_id);
                 if let Some(tables) = self.in_progress_tables {
                     body.arguments
                         .iter()
-                        .filter_map(|arg| {
+                        .enumerate()
+                        .filter_map(|(index, arg)| {
                             let ty = tables.borrow().node_id_to_type(arg.id);
                             let mut found_anon_region = false;
                             let new_arg_ty = self.tcx
@@ -57,9 +57,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     r
                                 });
                             if found_anon_region {
-                                if body.arguments.iter().nth(0) == Some(&arg) {
-                                    is_first = true;
-                                }
+                                let is_first = index == 0;
                                 Some((arg, new_arg_ty, free_region.bound_region, is_first))
                             } else {
                                 None
@@ -91,19 +89,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
-        let (named, (arg, new_ty, br, is_first), scope_def_id) = if
-            self.is_named_region(sub) && self.is_suitable_anonymous_region(sup).is_some() {
-            (sub,
-             self.find_arg_with_anonymous_region(sup, sub).unwrap(),
-             self.is_suitable_anonymous_region(sup).unwrap())
-        } else if
-            self.is_named_region(sup) && self.is_suitable_anonymous_region(sub).is_some() {
-            (sup,
-             self.find_arg_with_anonymous_region(sub, sup).unwrap(),
-             self.is_suitable_anonymous_region(sub).unwrap())
-        } else {
-            return false; // inapplicable
-        };
+        let (named, (arg, new_ty, br, is_first), scope_def_id) =
+            if sub.is_named_region() && self.is_suitable_anonymous_region(sup).is_some() {
+                (sub,
+                 self.find_arg_with_anonymous_region(sup, sub).unwrap(),
+                 self.is_suitable_anonymous_region(sup).unwrap())
+            } else if sup.is_named_region() && self.is_suitable_anonymous_region(sub).is_some() {
+                (sup,
+                 self.find_arg_with_anonymous_region(sub, sup).unwrap(),
+                 self.is_suitable_anonymous_region(sub).unwrap())
+            } else {
+                return false; // inapplicable
+            };
 
         // Here, we check for the case where the anonymous region
         // is in the return type.
@@ -179,8 +176,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 // proceed ahead //
                             }
                             Some(hir_map::NodeImplItem(..)) => {
-                                if self.tcx.impl_trait_ref(self.tcx.
-associated_item(anonymous_region_binding_scope).container.id()).is_some() {
+                                let container_id = self.tcx
+                                    .associated_item(anonymous_region_binding_scope)
+                                    .container
+                                    .id();
+                                if self.tcx.impl_trait_ref(container_id).is_some() {
                                     // For now, we do not try to target impls of traits. This is
                                     // because this message is going to suggest that the user
                                     // change the fn signature, but they may not be free to do so,
@@ -189,8 +189,6 @@ associated_item(anonymous_region_binding_scope).container.id()).is_some() {
                                     // FIXME(#42706) -- in some cases, we could do better here.
                                     return None;
                                 }
-                              else{  }
-
                             }
                             _ => return None, // inapplicable
                             // we target only top-level functions

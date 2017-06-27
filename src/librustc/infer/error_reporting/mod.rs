@@ -76,7 +76,6 @@ mod note;
 
 mod need_type_info;
 mod named_anon_conflict;
-mod util;
 
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
