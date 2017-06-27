@@ -315,6 +315,7 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```should_panic
+    /// #![feature(panic_col)]
     /// use std::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
@@ -327,7 +328,7 @@ impl<'a> Location<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
-    #[unstable(feature = "panic_col", issue = "42939")]
+    #[unstable(feature = "panic_col", reason = "recently added", issue = "42939")]
     pub fn column(&self) -> u32 {
         self.col
     }
@@ -520,7 +521,21 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments,
     begin_panic_new(s, file_line_col)
 }
 
-// FIXME: remove begin_panic and rename begin_panic_new to begin_panic when SNAP
+// FIXME: In PR #42938, we have added the column as info passed to the panic
+// handling code. For this, we want to break the ABI of begin_panic.
+// This is not possible to do directly, as the stage0 compiler is hardcoded
+// to emit a call to begin_panic in src/libsyntax/ext/build.rs, only
+// with the file and line number being passed, but not the colum number.
+// By changing the compiler source, we can only affect behaviour of higher
+// stages. We need to perform the switch over two stage0 replacements, using
+// a temporary function begin_panic_new while performing the switch:
+// 0. Right now, we tell stage1 onward to emit a call to begin_panic_new.
+// 1. In the first SNAP, stage0 calls begin_panic_new with the new ABI,
+//    begin_panic stops being used. Now we can change begin_panic to
+//    the new ABI, and start emitting calls to begin_panic in higher
+//    stages again, this time with the new ABI.
+// 2. After the second SNAP, stage0 calls begin_panic with the new ABI,
+//    and we can remove the temporary begin_panic_new function.
 
 /// This is the entry point of panicking for panic!() and assert!().
 #[unstable(feature = "libstd_sys_internals",

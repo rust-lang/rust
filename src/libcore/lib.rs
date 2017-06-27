@@ -160,11 +160,6 @@ pub mod array;
 pub mod sync;
 pub mod cell;
 pub mod char;
-// FIXME: remove when SNAP
-#[cfg(stage0)]
-#[path = "panicking_stage0.rs"]
-pub mod panicking;
-#[cfg(not(stage0))]
 pub mod panicking;
 pub mod iter;
 pub mod option;
