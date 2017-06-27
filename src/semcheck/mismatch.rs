@@ -13,14 +13,15 @@ use std::collections::{HashSet, VecDeque};
 /// their names across versions.
 pub struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// The type context used.
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     /// The queue to append found item pairings.
-    pub item_queue: VecDeque<(DefId, DefId)>,
+    item_queue: VecDeque<(DefId, DefId)>,
     /// All visited items.
-    pub visited: HashSet<(DefId, DefId)>,
+    visited: HashSet<(DefId, DefId)>,
 }
 
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
+    /// Construct a new mismtach type relation.
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, item_queue: VecDeque<(DefId, DefId)>)
         -> Mismatch<'a, 'gcx, 'tcx>
     {
@@ -29,6 +30,19 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
             item_queue: item_queue,
             visited: Default::default(),
         }
+    }
+
+    /// Process the next pair of `DefId`s in the queue and return them.
+    pub fn process_next(&mut self) -> Option<(DefId, DefId)> {
+        let did_pair = self.item_queue.pop_front();
+
+        if let Some((old_did, new_did)) = did_pair {
+            let old_ty = self.tcx.type_of(old_did);
+            let new_ty = self.tcx.type_of(new_did);
+            let _ = self.tys(old_ty, new_ty);
+        }
+
+        did_pair
     }
 }
 
@@ -102,7 +116,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
 /// implementation-internal reasons.
 fn relate_tys_mismatch<'a, 'gcx, 'tcx, R>(relation: &mut R, a: Ty<'tcx>, b: Ty<'tcx>)
     -> RelateResult<'tcx, Ty<'tcx>>
-    where 'gcx: 'a+'tcx, 'tcx: 'a, R: TypeRelation<'a, 'gcx, 'tcx>
+    where 'gcx: 'a + 'tcx, 'tcx: 'a, R: TypeRelation<'a, 'gcx, 'tcx>
 {
     use rustc::ty::TypeVariants::*;
 

@@ -10,7 +10,6 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
-use rustc::ty::relate::TypeRelation;
 use rustc::ty::subst::{Subst, Substs};
 
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -36,9 +35,7 @@ pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 
         let mut mismatch = Mismatch::new(tcx, item_queue);
 
-        while let Some((old_did, new_did)) = mismatch.item_queue.pop_front() {
-            let _ = mismatch.tys(tcx.type_of(old_did), tcx.type_of(new_did));
-
+        while let Some((old_did, new_did)) = mismatch.process_next() {
             if !id_mapping.contains_id(old_did) {
                 // println!("adding mapping: {:?} => {:?}", old_did, new_did);
                 id_mapping.add_item(old_did, new_did);
