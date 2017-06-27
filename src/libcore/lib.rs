@@ -39,9 +39,9 @@
 //! * `rust_begin_panic` - This function takes three arguments, a
 //!   `fmt::Arguments`, a `&'static str`, and a `u32`. These three arguments
 //!   dictate the panic message, the file at which panic was invoked, and the
-//!   line. It is up to consumers of this core library to define this panic
-//!   function; it is only required to never return. This requires a `lang`
-//!   attribute named `panic_fmt`.
+//!   line and column inside the file. It is up to consumers of this core
+//!   library to define this panic function; it is only required to never
+//!   return. This requires a `lang` attribute named `panic_fmt`.
 //!
 //! * `rust_eh_personality` - is used by the failure mechanisms of the
 //!    compiler. This is often mapped to GCC's personality function, but crates
@@ -160,6 +160,11 @@ pub mod array;
 pub mod sync;
 pub mod cell;
 pub mod char;
+// FIXME: remove when SNAP
+#[cfg(stage0)]
+#[path = "panicking_stage0.rs"]
+pub mod panicking;
+#[cfg(not(stage0))]
 pub mod panicking;
 pub mod iter;
 pub mod option;
