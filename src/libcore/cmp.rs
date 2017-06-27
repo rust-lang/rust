@@ -380,8 +380,9 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
-/// ordering based on the top-to-bottom declaration order of the struct's members.
+/// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
+/// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
 ///
 /// ## How can I implement `Ord`?
 ///
@@ -513,8 +514,9 @@ impl PartialOrd for Ordering {
 ///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
-/// ordering based on the top-to-bottom declaration order of the struct's members.
+/// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
+/// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
 ///
 /// ## How can I implement `PartialOrd`?
 ///
