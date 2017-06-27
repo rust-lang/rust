@@ -61,7 +61,7 @@ pub enum Subcommand {
     Test {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
-        no_fail_fast: bool,
+        fail_fast: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -278,7 +278,7 @@ Arguments:
                 Subcommand::Test {
                     paths: paths,
                     test_args: matches.opt_strs("test-args"),
-                    no_fail_fast: matches.opt_present("no-fail-fast"),
+                    fail_fast: !matches.opt_present("no-fail-fast"),
                 }
             }
             "bench" => {
@@ -354,9 +354,9 @@ impl Subcommand {
         }
     }
 
-    pub fn no_fail_fast(&self) -> bool {
+    pub fn fail_fast(&self) -> bool {
         match *self {
-            Subcommand::Test { no_fail_fast, .. } => no_fail_fast,
+            Subcommand::Test { fail_fast, .. } => fail_fast,
             _ => false,
         }
     }
