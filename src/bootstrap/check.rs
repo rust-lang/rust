@@ -109,7 +109,7 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
     let _time = util::timeit();
     let mut cmd = Command::new(build.tool(&Compiler::new(0, host), "cargotest"));
     build.prepare_tool_cmd(&compiler, &mut cmd);
-    try_run(build, cmd.arg(&build.cargo)
+    try_run(build, cmd.arg(&build.initial_cargo)
                       .arg(&out_dir)
                       .env("RUSTC", build.compiler_path(&compiler))
                       .env("RUSTDOC", build.rustdoc(&compiler)));
@@ -654,7 +654,7 @@ pub fn distcheck(build: &Build) {
     build.run(&mut cmd);
 
     let toml = dir.join("rust-src/lib/rustlib/src/rust/src/libstd/Cargo.toml");
-    build.run(Command::new(&build.cargo)
+    build.run(Command::new(&build.initial_cargo)
                      .arg("generate-lockfile")
                      .arg("--manifest-path")
                      .arg(&toml)
@@ -663,12 +663,12 @@ pub fn distcheck(build: &Build) {
 
 /// Test the build system itself
 pub fn bootstrap(build: &Build) {
-    let mut cmd = Command::new(&build.cargo);
+    let mut cmd = Command::new(&build.initial_cargo);
     cmd.arg("test")
        .current_dir(build.src.join("src/bootstrap"))
        .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
        .env("RUSTC_BOOTSTRAP", "1")
-       .env("RUSTC", &build.rustc);
+       .env("RUSTC", &build.initial_rustc);
     if build.flags.cmd.no_fail_fast() {
         cmd.arg("--no-fail-fast");
     }

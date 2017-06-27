@@ -35,7 +35,7 @@ pub struct Flags {
     pub host: Vec<String>,
     pub target: Vec<String>,
     pub config: Option<PathBuf>,
-    pub src: Option<PathBuf>,
+    pub src: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
@@ -319,6 +319,11 @@ Arguments:
             stage = Some(1);
         }
 
+        let cwd = t!(env::current_dir());
+        let src = matches.opt_str("src").map(PathBuf::from)
+            .or_else(|| env::var_os("SRC").map(PathBuf::from))
+            .unwrap_or(cwd);
+
         Flags {
             verbose: matches.opt_count("verbose"),
             stage: stage,
@@ -330,7 +335,7 @@ Arguments:
             host: split(matches.opt_strs("host")),
             target: split(matches.opt_strs("target")),
             config: cfg_file,
-            src: matches.opt_str("src").map(PathBuf::from),
+            src: src,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd: cmd,
             incremental: matches.opt_present("incremental"),

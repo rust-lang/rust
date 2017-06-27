@@ -626,23 +626,23 @@ pub fn plain_source_tarball(build: &Build) {
     if build.src_is_git {
         // Get cargo-vendor installed, if it isn't already.
         let mut has_cargo_vendor = false;
-        let mut cmd = Command::new(&build.cargo);
+        let mut cmd = Command::new(&build.initial_cargo);
         for line in output(cmd.arg("install").arg("--list")).lines() {
             has_cargo_vendor |= line.starts_with("cargo-vendor ");
         }
         if !has_cargo_vendor {
-            let mut cmd = Command::new(&build.cargo);
+            let mut cmd = Command::new(&build.initial_cargo);
             cmd.arg("install")
                .arg("--force")
                .arg("--debug")
                .arg("--vers").arg(CARGO_VENDOR_VERSION)
                .arg("cargo-vendor")
-               .env("RUSTC", &build.rustc);
+               .env("RUSTC", &build.initial_rustc);
             build.run(&mut cmd);
         }
 
         // Vendor all Cargo dependencies
-        let mut cmd = Command::new(&build.cargo);
+        let mut cmd = Command::new(&build.initial_cargo);
         cmd.arg("vendor")
            .current_dir(&plain_dst_src.join("src"));
         build.run(&mut cmd);
