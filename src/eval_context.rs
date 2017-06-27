@@ -655,6 +655,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Len(ref lvalue) => {
+                if self.frame().const_env() {
+                    return Err(EvalError::NeedsRfc("computing the length of arrays".to_string()));
+                }
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
@@ -701,6 +704,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
+                if self.frame().const_env() {
+                    return Err(EvalError::NeedsRfc("\"heap\" allocations".to_string()));
+                }
                 // FIXME: call the `exchange_malloc` lang item if available
                 if self.type_size(ty)?.expect("box only works with sized types") == 0 {
                     let align = self.type_align(ty)?;
@@ -712,6 +718,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
+                if self.frame().const_env() {
+                    return Err(EvalError::NeedsRfc("computing the size of types (size_of)".to_string()));
+                }
                 let size = self.type_size(ty)?.expect("SizeOf nullary MIR operator called for unsized type");
                 self.write_primval(dest, PrimVal::from_u128(size as u128), dest_ty)?;
             }
@@ -1583,6 +1592,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 impl<'tcx> Frame<'tcx> {
+    pub fn const_env(&self) -> bool {
+        match self.return_to_block {
+            StackPopCleanup::MarkStatic(_) => true,
+            _ => false,
+        }
+    }
     pub fn get_local(&self, local: mir::Local, field: Option<usize>) -> EvalResult<'tcx, Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         if let Some(field) = field {
