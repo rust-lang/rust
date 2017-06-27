@@ -4666,28 +4666,41 @@ i_am_a_function();
 "##,
 
 E0619: r##"
-A not (yet) known type was used.
+The type-checker needed to know the type of an expression, but that type had not
+yet been inferred.
 
 Erroneous code example:
 
 ```compile_fail,E0619
-let x;
-
-match x {
-    (..) => {} // error: the type of this value must be known in this context
-    _ => {}
+let mut x = vec![];
+match x.pop() {
+    Some(v) => {
+        // Here, the type of `v` is not (yet) known, so we
+        // cannot resolve this method call:
+        v.to_uppercase(); // error: the type of this value must be known in
+                          //        this context
+    }
+    None => {}
 }
 ```
+
+Type inference typically proceeds from the top of the function to the bottom,
+figuring out types as it goes. In some cases -- notably method calls and
+overloadable operators like `*` -- the type checker may not have enough
+information *yet* to make progress. This can be true even if the rest of the
+function provides enough context (because the type-checker hasn't looked that
+far ahead yet). In this case, type annotations can be used to help it along.
 
 To fix this error, just specify the type of the variable. Example:
 
 ```
-let x: i32 = 0; // Here, we say that `x` is an `i32` (and give it a value to
-                // avoid another compiler error).
-
-match x {
-    0 => {} // ok!
-    _ => {}
+let mut x: Vec<String> = vec![]; // We precise the type of the vec elements.
+match x.pop() {
+    Some(v) => {
+        v.to_uppercase(); // Since rustc now knows the type of the vec elements,
+                          // we can use `v`'s methods.
+    }
+    None => {}
 }
 ```
 "##,
@@ -4702,9 +4715,11 @@ let x = &[1_usize, 2] as [usize]; // error: cast to unsized type: `&[usize; 2]`
                                   //        as `[usize]`
 ```
 
-In Rust, some types don't have a size at compile-time (like slices and traits
-for example). Therefore, you can't cast into them directly. Try casting to a
-reference instead:
+In Rust, some types don't have a known size at compile-time. For example, in a
+slice type like `[u32]`, the number of elements is not known at compile-time and
+hence the overall size cannot be computed. As a result, such types can only be
+manipulated through a reference (e.g., `&T` or `&mut T`) or other pointer-type
+(e.g., `Box` or `Rc`). Try casting to a reference instead:
 
 ```
 let x = &[1_usize, 2] as &[usize]; // ok!
@@ -4782,5 +4797,4 @@ register_diagnostics! {
     E0568, // auto-traits can not have predicates,
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
-    E0619, // intrinsic must be a function
 }
