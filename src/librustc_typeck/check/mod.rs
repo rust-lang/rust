@@ -4214,7 +4214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
-    /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and wether it is
+    /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and whether it is
     /// `fn main` if it is a method, `None` otherwise.
     pub fn get_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
@@ -4227,7 +4227,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }) = parent {
                 decl.clone().and_then(|decl| {
                     // This is less than ideal, it will not present the return type span on any
-                    // method called `main`, regardless of wether it is actually the entry point.
+                    // method called `main`, regardless of whether it is actually the entry point.
                     Some((decl, name == Symbol::intern("main")))
                 })
             } else if let Node::NodeTraitItem(&hir::TraitItem {

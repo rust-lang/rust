@@ -632,6 +632,28 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    /// Retrieve the NodeId for `id`'s enclosing method, unless there's a
+    /// `while` or `loop` before reacing it, as block tail returns are not
+    /// available in them.
+    ///
+    /// ```
+    /// fn foo(x: usize) -> bool {
+    ///     if x == 1 {
+    ///         true  // `get_return_block` gets passed the `id` corresponding
+    ///     } else {  // to this, it will return `foo`'s `NodeId`.
+    ///         false
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```
+    /// fn foo(x: usize) -> bool {
+    ///     loop {
+    ///         true  // `get_return_block` gets passed the `id` corresponding
+    ///     }         // to this, it will return `None`.
+    ///     false
+    /// }
+    /// ```
     pub fn get_return_block(&self, id: NodeId) -> Option<NodeId> {
         let match_fn = |node: &Node| {
             match *node {
