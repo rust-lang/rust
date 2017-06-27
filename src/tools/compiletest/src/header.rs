@@ -549,9 +549,7 @@ impl Config {
 pub fn lldb_version_to_int(version_string: &str) -> isize {
     let error_string = format!("Encountered LLDB version string with unexpected format: {}",
                                version_string);
-    let error_string = error_string;
-    let major: isize = version_string.parse().expect(&error_string);
-    major
+    version_string.parse().expect(&error_string);
 }
 
 fn expand_variables(mut value: String, config: &Config) -> String {

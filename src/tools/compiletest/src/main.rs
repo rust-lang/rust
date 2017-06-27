@@ -598,7 +598,8 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
             Some(idx) => if line.as_bytes()[idx] == b'.' {
                 let patch = &line[idx + 1..];
 
-                let patch_len = patch.find(|c: char| !c.is_digit(10)).unwrap_or_else(|| patch.len());
+                let patch_len = patch.find(|c: char| !c.is_digit(10))
+                                                       .unwrap_or_else(|| patch.len());
                 let patch = &patch[..patch_len];
                 let patch = if patch_len > 3 || patch_len == 0 { None } else { Some(patch) };
 
