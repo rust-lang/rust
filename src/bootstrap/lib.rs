@@ -161,14 +161,16 @@ pub struct Build {
     flags: Flags,
 
     // Derived properties from the above two configurations
-    cargo: PathBuf,
-    rustc: PathBuf,
     src: PathBuf,
     out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
     local_rebuild: bool,
+
+    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
+    initial_rustc: PathBuf,
+    initial_cargo: PathBuf,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
@@ -224,21 +226,8 @@ impl Build {
     /// By default all build output will be placed in the current directory.
     pub fn new(flags: Flags, config: Config) -> Build {
         let cwd = t!(env::current_dir());
-        let src = flags.src.clone().or_else(|| {
-            env::var_os("SRC").map(|x| x.into())
-        }).unwrap_or(cwd.clone());
+        let src = flags.src.clone();
         let out = cwd.join("build");
-
-        let stage0_root = out.join(&config.build).join("stage0/bin");
-        let rustc = match config.rustc {
-            Some(ref s) => PathBuf::from(s),
-            None => stage0_root.join(exe("rustc", &config.build)),
-        };
-        let cargo = match config.cargo {
-            Some(ref s) => PathBuf::from(s),
-            None => stage0_root.join(exe("cargo", &config.build)),
-        };
-        let local_rebuild = config.local_rebuild;
 
         let is_sudo = match env::var_os("SUDO_USER") {
             Some(sudo_user) => {
@@ -255,17 +244,18 @@ impl Build {
         let src_is_git = src.join(".git").exists();
 
         Build {
+            initial_rustc: config.initial_rustc.clone(),
+            initial_cargo: config.initial_cargo.clone(),
+            local_rebuild: config.local_rebuild,
+
             flags: flags,
             config: config,
-            cargo: cargo,
-            rustc: rustc,
             src: src,
             out: out,
 
             rust_info: rust_info,
             cargo_info: cargo_info,
             rls_info: rls_info,
-            local_rebuild: local_rebuild,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             crates: HashMap::new(),
@@ -294,7 +284,7 @@ impl Build {
         sanity::check(self);
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
-            Command::new(&self.rustc).arg("--version").arg("--verbose"));
+            Command::new(&self.initial_rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
@@ -336,7 +326,7 @@ impl Build {
              mode: Mode,
              target: &str,
              cmd: &str) -> Command {
-        let mut cargo = Command::new(&self.cargo);
+        let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
              .arg(cmd)
@@ -420,7 +410,7 @@ impl Build {
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
         if mode == Mode::Libstd {
-            cargo.env("RUSTC_SNAPSHOT", &self.rustc)
+            cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
             cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
@@ -500,7 +490,7 @@ impl Build {
     /// Get a path to the compiler specified.
     fn compiler_path(&self, compiler: &Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
-            self.rustc.clone()
+            self.initial_rustc.clone()
         } else {
             self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
         }
@@ -758,7 +748,7 @@ impl Build {
 
     /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
-        self.rustc.parent().unwrap().parent().unwrap()
+        self.initial_rustc.parent().unwrap().parent().unwrap()
             .join(libdir(&self.config.build))
     }
 
