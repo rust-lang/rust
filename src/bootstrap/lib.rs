@@ -167,6 +167,7 @@ pub struct Build {
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
     local_rebuild: bool,
+    fail_fast: bool,
 
     // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
     initial_rustc: PathBuf,
@@ -240,12 +241,12 @@ impl Build {
         let rust_info = channel::GitInfo::new(&src);
         let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
-        let src_is_git = src.join(".git").exists();
 
         Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
+            fail_fast: flags.cmd.fail_fast(),
 
             flags: flags,
             config: config,

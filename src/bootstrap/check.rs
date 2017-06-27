@@ -59,7 +59,7 @@ impl fmt::Display for TestKind {
 }
 
 fn try_run(build: &Build, cmd: &mut Command) {
-    if build.flags.cmd.no_fail_fast() {
+    if !build.fail_fast {
         if !build.try_run(cmd) {
             let failures = build.delayed_failures.get();
             build.delayed_failures.set(failures + 1);
@@ -70,7 +70,7 @@ fn try_run(build: &Build, cmd: &mut Command) {
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
-    if build.flags.cmd.no_fail_fast() {
+    if !build.fail_fast {
         if !build.try_run_quiet(cmd) {
             let failures = build.delayed_failures.get();
             build.delayed_failures.set(failures + 1);
@@ -128,7 +128,7 @@ pub fn cargo(build: &Build, stage: u32, host: &str) {
 
     let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
     cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
-    if build.flags.cmd.no_fail_fast() {
+    if !build.fail_fast {
         cargo.arg("--no-fail-fast");
     }
 
@@ -448,7 +448,7 @@ pub fn krate(build: &Build,
     cargo.arg("--manifest-path")
          .arg(build.src.join(path).join("Cargo.toml"))
          .arg("--features").arg(features);
-    if test_kind.subcommand() == "test" && build.flags.cmd.no_fail_fast() {
+    if test_kind.subcommand() == "test" && !build.fail_fast {
         cargo.arg("--no-fail-fast");
     }
 
@@ -669,7 +669,7 @@ pub fn bootstrap(build: &Build) {
        .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
        .env("RUSTC_BOOTSTRAP", "1")
        .env("RUSTC", &build.initial_rustc);
-    if build.flags.cmd.no_fail_fast() {
+    if !build.fail_fast {
         cmd.arg("--no-fail-fast");
     }
     cmd.arg("--").args(&build.flags.cmd.test_args());
