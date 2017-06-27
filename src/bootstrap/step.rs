@@ -1218,16 +1218,9 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
 
         rules.into_iter().flat_map(|(rule, _)| {
             let hosts = if rule.only_host_build || rule.only_build {
-                &self.build.config.host[..1]
-            } else if self.build.flags.host.len() > 0 {
-                &self.build.flags.host
+                self.build.build_slice()
             } else {
-                &self.build.config.host
-            };
-            let targets = if self.build.flags.target.len() > 0 {
-                &self.build.flags.target
-            } else {
-                &self.build.config.target
+                &self.build.hosts
             };
             // Determine the actual targets participating in this rule.
             // NOTE: We should keep the full projection from build triple to
@@ -1236,19 +1229,18 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             // the original non-shadowed hosts array is used below.
             let arr = if rule.host {
                 // If --target was specified but --host wasn't specified,
-                // don't run any host-only tests. Also, respect any `--host`
-                // overrides as done for `hosts`.
+                // don't run any host-only tests.
                 if self.build.flags.host.len() > 0 {
-                    &self.build.flags.host[..]
+                    &self.build.hosts
                 } else if self.build.flags.target.len() > 0 {
                     &[]
                 } else if rule.only_build {
-                    &self.build.config.host[..1]
+                    self.build.build_slice()
                 } else {
-                    &self.build.config.host[..]
+                    &self.build.hosts
                 }
             } else {
-                targets
+                &self.build.targets
             };
 
             hosts.iter().flat_map(move |host| {
