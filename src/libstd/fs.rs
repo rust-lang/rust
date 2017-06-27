@@ -653,15 +653,29 @@ impl OpenOptions {
     /// # Errors
     ///
     /// This function will return an error under a number of different
-    /// circumstances, to include but not limited to:
+    /// circumstances. Some of these error conditions are listed here, together
+    /// with their [`ErrorKind`]. The mapping to `ErrorKind`s is not part of
+    /// the compatiblity contract of the function, especially the `Other` kind
+    /// might change to more specific kinds in the future.
     ///
-    /// * Opening a file that does not exist without setting `create` or
-    ///   `create_new`.
-    /// * Attempting to open a file with access that the user lacks
-    ///   permissions for
-    /// * Filesystem-level errors (full disk, etc)
-    /// * Invalid combinations of open options (truncate without write access,
-    ///   no access mode set, etc)
+    /// * `NotFound`: The specified file does not exist and neither `create` or
+    ///   `create_new` is set,
+    /// * `NotFound`: One of the directory components of the file path does not
+    ///   exist.
+    /// * `PermissionDenied`: The user lacks permission to get the specified
+    ///   access rights for the file.
+    /// * `PermissionDenied`: The user lacks permission to open one of the
+    ///   directory components of the specified path.
+    /// * `AlreadyExists`: `create_new` was specified and the file already
+    ///   exists.
+    /// * `InvalidInput`: Invalid combinations of open options (truncate
+    ///   without write access, no access mode set, etc.).
+    /// * `Other`: One of the directory components of the specified file path
+    ///   was not, in fact, a directory.
+    /// * `Other`: Filesystem-level errors: full disk, write permission
+    ///   requested on a read-only file system, exceeded disk quota, too many
+    ///   open files, too long filename, too many symbolic links in the
+    ///   specified path (Unix-like systems only), etc.
     ///
     /// # Examples
     ///
@@ -670,6 +684,8 @@ impl OpenOptions {
     ///
     /// let file = OpenOptions::new().open("foo.txt");
     /// ```
+    ///
+    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         self._open(path.as_ref())
