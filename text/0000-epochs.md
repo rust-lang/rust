@@ -21,10 +21,10 @@ languages like C++ and Java.
 With epochs, it becomes possible to do things like introduce new keywords,
 without breaking existing code or splitting the ecosystem. Each crate specifies
 the epoch it fits within (a bit like "C++11" or "C++14"), and the compiler can
-cope with multiple epochs being used throughout a dependency graph. Thus, we
+cope with multiple epochs being used throughout a dependency graph. Thus we
 continue to guarantee that your code will always continue to compile on the
 latest stable release (modulo the [usual caveats]), while making it possible to
-evolve the language in some new ways.
+evolve the language in some new ways via explicit opt-in.
 
 [stability without stagnation]: https://blog.rust-lang.org/2014/10/30/Stability.html
 
@@ -265,20 +265,60 @@ commitment to these language changes.
 
 We've taken as a running example introducing new keywords, which sometimes
 cannot be done backwards compatibly (because a contextual keyword isn't
-possible). Let's see how this works out for the case of `catch`.
+possible). Let's see how this works out for the case of `catch`, assuming that
+we're currently in epoch 2015.
 
 - First, we deprecate uses of `catch` as identifiers, preparing it to become a new keyword.
 - We may, as today, implement the new `catch` feature using a temporary syntax
   for nightly (like `do catch`).
-- When the next epoch preview is released, opting into it makes `catch` into a
-  keyword, regardless of whether the `catch` feature has been implemented.
+- When epoch `2018-preview` is released, opting into it makes `catch` into a
+  keyword, regardless of whether the `catch` feature has been implemented. This
+  means that opting in may require some adjustment to your code.
 - The `catch` syntax can be hooked into an implementation usable on nightly with
   the preview epoch.
 - When we're confident in the `catch` feature on nightly, we can stabilize it
-  *onto the preview epoch*. It cannot be stabilized onto the current epoch,
+  *onto the stable channel for users opting into `2018-preview`*. It cannot be stabilized onto the epoch `2015`,
   since it requires a new keyword.
-- At some point, the new epoch is fully shipped, removing the need for the preview epoch.
+- At some point, epoch `2018` is fully shipped, meaning that `2018-preview`
+  becomes a deprecated alias for `2018`.
 - `catch` is now a part of Rust.
+
+To make this even more concrete, let's imagine the following (aligned with the diagram above):
+
+| Rust version | Latest available epoch | Status of `catch` in epoch 2015 | Status of `catch` in latest epoch
+| ------------ | ---------------------- | -- | -- |
+| 1.15 | 2015 | Valid identifier | Valid identifier
+| 1.21 | 2015 | Valid identifier; deprecated | Valid identifier; deprecated
+| 1.23 | 2018-preview | Valid identifier; deprecated | Keyword
+| 1.27 | 2018 | Valid identifier; deprecated | Keyword
+
+Now, suppose you have the following code:
+
+```
+Cargo.toml:
+
+epoch = "2015"
+```
+
+```rust
+// main.rs:
+
+fn main() {
+    let catch = "gotcha";
+    println!("{}", catch);
+}
+```
+
+- This code will compile **as-is** on *all* Rust versions. On versions 1.21 and
+above, it will yield a warning, saying that `catch` is deprecated as an
+identifier.
+
+- On version 1.23, if you change `Cargo.toml` to use epoch `2018-preview`, the
+  code will fail to compile due to `catch` being a keyword. Similarly for epoch
+  `2018` on version 1.27.
+
+- However, if you leave it at epoch `2015`, you can upgrade to Rust 1.27 **and
+  use libraries that opt in to the `2018` epoch** with no problem.
 
 #### Example: repurposing corner cases
 
