@@ -50,7 +50,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
     let mut features = build.std_features();
 
-    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
@@ -199,7 +199,7 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
-    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
     cargo.arg("--manifest-path")
@@ -247,7 +247,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     cargo.env("CFG_RELEASE", build.rust_release())
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", build.rust_version())
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()));
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default());
 
     if compiler.stage == 0 {
         cargo.env("CFG_LIBDIR_RELATIVE", "lib");
@@ -385,7 +385,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     let rustc = out_dir.join(exe("rustc", host));
     let bindir = sysroot.join("bin");
     t!(fs::create_dir_all(&bindir));
-    let compiler = build.compiler_path(&Compiler::new(stage, host));
+    let compiler = build.compiler_path(&target_compiler);
     let _ = fs::remove_file(&compiler);
     copy(&rustc, &compiler);
 
@@ -407,6 +407,8 @@ fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
     t!(fs::create_dir_all(&sysroot_dst));
     let mut contents = Vec::new();
     t!(t!(File::open(stamp)).read_to_end(&mut contents));
+    // This is the method we use for extracting paths from the stamp file passed to us. See
+    // run_cargo for more information (in this file).
     for part in contents.split(|b| *b == 0) {
         if part.is_empty() {
             continue
