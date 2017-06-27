@@ -97,7 +97,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
 }
 
 fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
-    let mut found = Vec::new();
+    let mut found = Vec::with_capacity(files.len());
 
     for file in files {
         let file_path =
@@ -119,17 +119,9 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
     //Ask gcc where it keeps its stuff
     let mut cmd = Command::new(build.cc(target_triple));
     cmd.arg("-print-search-dirs");
-    build.run_quiet(&mut cmd);
-    let gcc_out =
-        String::from_utf8(
-                cmd
-                .output()
-                .expect("failed to execute gcc")
-                .stdout).expect("gcc.exe output was not utf8");
+    let gcc_out = output(&mut cmd);
 
-    let mut bin_path: Vec<_> =
-        env::split_paths(&env::var_os("PATH").unwrap_or_default())
-        .collect();
+    let mut bin_path: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap_or_default()).collect();
     let mut lib_path = Vec::new();
 
     for line in gcc_out.lines() {
@@ -140,7 +132,7 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
             line[(idx + 1)..]
                 .trim_left_matches(trim_chars)
                 .split(';')
-                .map(|s| PathBuf::from(s));
+                .map(PathBuf::from);
 
         if key == "programs" {
             bin_path.extend(value);
@@ -149,7 +141,7 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
         }
     }
 
-    let target_tools = vec!["gcc.exe", "ld.exe", "ar.exe", "dlltool.exe", "libwinpthread-1.dll"];
+    let target_tools = ["gcc.exe", "ld.exe", "ar.exe", "dlltool.exe", "libwinpthread-1.dll"];
     let mut rustc_dlls = vec!["libstdc++-6.dll", "libwinpthread-1.dll"];
     if target_triple.starts_with("i686-") {
         rustc_dlls.push("libgcc_s_dw2-1.dll");
@@ -157,7 +149,7 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
         rustc_dlls.push("libgcc_s_seh-1.dll");
     }
 
-    let target_libs = vec![ //MinGW libs
+    let target_libs = [ //MinGW libs
         "libgcc.a",
         "libgcc_eh.a",
         "libgcc_s.a",
@@ -203,7 +195,7 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
     let target_libs = find_files(&target_libs, &lib_path);
 
     fn copy_to_folder(src: &Path, dest_folder: &Path) {
-        let file_name = src.file_name().unwrap().to_os_string();
+        let file_name = src.file_name().unwrap();
         let dest = dest_folder.join(file_name);
         copy(src, &dest);
     }
@@ -234,8 +226,6 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
 ///
 /// This contains all the bits and pieces to run the MinGW Windows targets
 /// without any extra installed software (e.g. we bundle gcc, libraries, etc).
-/// Currently just shells out to a python script, but that should be rewritten
-/// in Rust.
 pub fn mingw(build: &Build, host: &str) {
     println!("Dist mingw ({})", host);
     let name = pkgname(build, "rust-mingw");
@@ -366,9 +356,9 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
 pub fn debugger_scripts(build: &Build,
                         sysroot: &Path,
                         host: &str) {
+    let dst = sysroot.join("lib/rustlib/etc");
+    t!(fs::create_dir_all(&dst));
     let cp_debugger_script = |file: &str| {
-        let dst = sysroot.join("lib/rustlib/etc");
-        t!(fs::create_dir_all(&dst));
         install(&build.src.join("src/etc/").join(file), &dst, 0o644);
     };
     if host.contains("windows-msvc") {
@@ -595,7 +585,7 @@ pub fn rust_src(build: &Build) {
     t!(fs::remove_dir_all(&image));
 }
 
-const CARGO_VENDOR_VERSION: &'static str = "0.1.4";
+const CARGO_VENDOR_VERSION: &str = "0.1.4";
 
 /// Creates the plain source tarball
 pub fn plain_source_tarball(build: &Build) {
