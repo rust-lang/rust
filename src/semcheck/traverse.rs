@@ -105,21 +105,25 @@ pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
     diff_structure(&mut changes, &mut id_mapping, tcx, old, new);
 
     // second (and third, for now) pass
-    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
-        let old_did = old.def.def_id();
-        let new_did = new.def.def_id();
+    {
+        let mut item_queue: VecDeque<_> =
+            id_mapping
+                .toplevel_mapping
+                .values()
+                .map(|&(_, old, new)| (old.def.def_id(), new.def.def_id()))
+                .collect();
 
-        {
-            let mut mismatch = Mismatch {
-                tcx: tcx,
-                toplevel_mapping: &id_mapping.toplevel_mapping,
-                mapping: &mut id_mapping.mapping,
-            };
+        let mut mismatch = Mismatch {
+            tcx: tcx,
+            toplevel_mapping: &id_mapping.toplevel_mapping,
+            mapping: &mut id_mapping.mapping,
+        };
 
+        while let Some((old_did, new_did)) = item_queue.pop_front() {
             let _ = mismatch.tys(tcx.type_of(old_did), tcx.type_of(new_did));
-        }
 
-        diff_bounds(&mut changes, tcx, old_did, new_did);
+            diff_bounds(&mut changes, tcx, old_did, new_did);
+        }
     }
 
     // fourth pass
@@ -302,7 +306,7 @@ fn diff_fn(changes: &mut ChangeSet,
     let new_ty = tcx.type_of(new_def_id);
 
     let (old_sig, new_sig) = match (&old_ty.sty, &new_ty.sty) {
-        (&TyFnDef(_, _, ref o), &TyFnDef(_, _, ref n)) => (o.skip_binder(), n.skip_binder()),
+        (&TyFnDef(_, _, ref o), &TyFnDef(_, _, ref n)) |
         (&TyFnPtr(ref o), &TyFnPtr(ref n)) => (o.skip_binder(), n.skip_binder()),
         _ => return,
     };
@@ -490,12 +494,14 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
 fn diff_bounds(_changes: &mut ChangeSet, _tcx: TyCtxt, _old: DefId, _new: DefId)
     -> (Vec<BinaryChangeType>, Vec<(DefId, DefId)>)
 {
-    let res = Default::default();
+    /* let res = Default::default();
 
-    // let old_preds = tcx.predicates_of(old).predicates;
-    // let new_preds = tcx.predicates_of(new).predicates;
+    let old_preds = tcx.predicates_of(old).predicates;
+    let new_preds = tcx.predicates_of(new).predicates;
 
-    res
+    res */
+
+    Default::default()
 }
 
 // Below functions constitute the fourth and last pass of analysis, in which the types of

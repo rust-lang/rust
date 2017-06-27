@@ -50,11 +50,11 @@ impl<'a, 'gcx, 'tcx, A: 'a> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 
 
         let matching = match (&a.sty, &b.sty) {
             (&TyAdt(a_adt, _), &TyAdt(b_adt, _)) => Some((a_adt.did, b_adt.did)),
-            (&TyFnDef(a_did, _, _), &TyFnDef(b_did, _, _)) => Some((a_did, b_did)),
-            (&TyClosure(a_did, _), &TyClosure(b_did, _)) => Some((a_did, b_did)),
+            (&TyFnDef(a_did, _, _), &TyFnDef(b_did, _, _)) |
+            (&TyClosure(a_did, _), &TyClosure(b_did, _)) |
+            (&TyAnon(a_did, _), &TyAnon(b_did, _)) => Some((a_did, b_did)),
             (&TyProjection(a_proj), &TyProjection(b_proj)) =>
                 Some((a_proj.trait_ref.def_id, b_proj.trait_ref.def_id)),
-            (&TyAnon(a_did, _), &TyAnon(b_did, _)) => Some((a_did, b_did)),
             _ => {
                 None
             },
@@ -123,22 +123,22 @@ fn relate_tys_mismatch<'a, 'gcx, 'tcx, R>(relation: &mut R, a: Ty<'tcx>, b: Ty<'
             let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
             Ok(tcx.mk_adt(a_def, substs))
         },
-        (&TyDynamic(_, _), &TyDynamic(_, _)) => {
+        /* (&TyDynamic(_, _), &TyDynamic(_, _)) => {
             // TODO: decide whether this is needed
-            /*let region_bound = relation.with_cause(Cause::ExistentialRegionBound,
+            let region_bound = relation.with_cause(Cause::ExistentialRegionBound,
                                                    |relation| {
                                                        relation.relate(a_region, b_region)
                                                    })?;
-            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))*/
+            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
             Err(TypeError::Mismatch)
-        },
+        },*/
         (&TyRawPtr(ref a_mt), &TyRawPtr(ref b_mt)) => {
             let mt = relation.relate(a_mt, b_mt)?;
             Ok(tcx.mk_ptr(mt))
         },
-        (&TyRef(ref a_r, ref a_mt), &TyRef(ref b_r, ref b_mt)) => {
-            let r = relation.relate(a_r, b_r)?;
-            let mt = relation.relate(a_mt, b_mt)?;
+        (&TyRef(a_r, a_mt), &TyRef(b_r, b_mt)) => {
+            let r = relation.relate(&a_r, &b_r)?;
+            let mt = relation.relate(&a_mt, &b_mt)?;
             Ok(tcx.mk_ref(r, mt))
         },
         (&TyArray(a_t, sz_a), &TyArray(b_t, sz_b)) => {
@@ -158,8 +158,6 @@ fn relate_tys_mismatch<'a, 'gcx, 'tcx, R>(relation: &mut R, a: Ty<'tcx>, b: Ty<'
             if as_.len() == bs.len() {
                 let defaulted = a_defaulted || b_defaulted;
                 tcx.mk_tup(rs, defaulted)
-            } else if !(as_.is_empty() || bs.is_empty()) {
-                Err(TypeError::Mismatch)
             } else {
                 Err(TypeError::Mismatch)
             }
