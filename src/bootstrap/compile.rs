@@ -158,7 +158,7 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
         return
     }
 
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
     let compiler_path = build.compiler_path(&compiler);
     let src_dir = &build.src.join("src/rtstartup");
     let dst_dir = &build.native_dir(target).join("rtstartup");
@@ -351,7 +351,7 @@ pub fn create_sysroot(build: &Build, compiler: &Compiler) {
 /// Prepare a new compiler from the artifacts in `stage`
 ///
 /// This will assemble a compiler in `build/$host/stage$stage`. The compiler
-/// must have been previously produced by the `stage - 1` build.config.build
+/// must have been previously produced by the `stage - 1` build.build
 /// compiler.
 pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     // nothing to do in stage0
@@ -365,7 +365,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     let target_compiler = Compiler::new(stage, host);
 
     // The compiler that compiled the compiler we're assembling
-    let build_compiler = Compiler::new(stage - 1, &build.config.build);
+    let build_compiler = Compiler::new(stage - 1, &build.build);
 
     // Link in all dylibs to the libdir
     let sysroot = build.sysroot(&target_compiler);
@@ -423,7 +423,7 @@ fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
 pub fn maybe_clean_tools(build: &Build, stage: u32, target: &str, mode: Mode) {
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
 
     let stamp = match mode {
         Mode::Libstd => libstd_stamp(build, &compiler, target),
@@ -443,7 +443,7 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
     println!("Building stage{} tool {} ({})", stage, tool, target);
 
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
     let dir = build.src.join("src/tools").join(tool);

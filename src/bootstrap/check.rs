@@ -196,7 +196,7 @@ pub fn compiletest(build: &Build,
     cmd.arg("--mode").arg(mode);
     cmd.arg("--target").arg(target);
     cmd.arg("--host").arg(compiler.host);
-    cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.config.build));
+    cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.build));
 
     if let Some(ref nodejs) = build.config.nodejs {
         cmd.arg("--nodejs").arg(nodejs);
@@ -222,7 +222,7 @@ pub fn compiletest(build: &Build,
 
     cmd.arg("--docck-python").arg(build.python());
 
-    if build.config.build.ends_with("apple-darwin") {
+    if build.build.ends_with("apple-darwin") {
         // Force /usr/bin/python on macOS for LLDB tests because we're loading the
         // LLDB plugin's compiled module which only works with the system python
         // (namely not Homebrew-installed python)
@@ -277,7 +277,7 @@ pub fn compiletest(build: &Build,
 
     if build.remote_tested(target) {
         cmd.arg("--remote-test-client")
-           .arg(build.tool(&Compiler::new(0, &build.config.build),
+           .arg(build.tool(&Compiler::new(0, &build.build),
                            "remote-test-client"));
     }
 
@@ -366,7 +366,7 @@ pub fn error_index(build: &Build, compiler: &Compiler) {
                              "error_index_generator")
                    .arg("markdown")
                    .arg(&output)
-                   .env("CFG_BUILD", &build.config.build));
+                   .env("CFG_BUILD", &build.build));
 
     markdown_test(build, compiler, &output);
 }
@@ -540,7 +540,7 @@ fn krate_remote(build: &Build,
     let out_dir = build.cargo_out(compiler, mode, target);
     let tests = find_tests(&out_dir.join("deps"), target);
 
-    let tool = build.tool(&Compiler::new(0, &build.config.build),
+    let tool = build.tool(&Compiler::new(0, &build.build),
                           "remote-test-client");
     for test in tests {
         let mut cmd = Command::new(&tool);
@@ -585,7 +585,7 @@ pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
                       .join(exe("remote-test-server", target));
 
     // Spawn the emulator and wait for it to come online
-    let tool = build.tool(&Compiler::new(0, &build.config.build),
+    let tool = build.tool(&Compiler::new(0, &build.build),
                           "remote-test-client");
     let mut cmd = Command::new(&tool);
     cmd.arg("spawn-emulator")
@@ -611,7 +611,7 @@ pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
 
 /// Run "distcheck", a 'make check' from a tarball
 pub fn distcheck(build: &Build) {
-    if build.config.build != "x86_64-unknown-linux-gnu" {
+    if build.build != "x86_64-unknown-linux-gnu" {
         return
     }
     if !build.config.host.iter().any(|s| s == "x86_64-unknown-linux-gnu") {
@@ -636,7 +636,7 @@ pub fn distcheck(build: &Build) {
                      .args(&build.config.configure_args)
                      .arg("--enable-vendor")
                      .current_dir(&dir));
-    build.run(Command::new(build_helper::make(&build.config.build))
+    build.run(Command::new(build_helper::make(&build.build))
                      .arg("check")
                      .current_dir(&dir));
 

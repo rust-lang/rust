@@ -50,7 +50,7 @@ pub fn tmpdir(build: &Build) -> PathBuf {
 }
 
 fn rust_installer(build: &Build) -> Command {
-    build.tool_cmd(&Compiler::new(0, &build.config.build), "rust-installer")
+    build.tool_cmd(&Compiler::new(0, &build.build), "rust-installer")
 }
 
 /// Builds the `rust-docs` installer component.
@@ -89,7 +89,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
 
     // As part of this step, *also* copy the docs directory to a directory which
     // buildbot typically uploads.
-    if host == build.config.build {
+    if host == build.build {
         let dst = distdir(build).join("doc").join(build.rust_package_vers());
         t!(fs::create_dir_all(&dst));
         cp_r(&src, &dst);
@@ -394,7 +394,7 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
 
     // The only true set of target libraries came from the build triple, so
     // let's reduce redundant work by only producing archives from that host.
-    if compiler.host != build.config.build {
+    if compiler.host != build.build {
         println!("\tskipping, not a build host");
         return
     }
@@ -440,7 +440,7 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     assert!(build.config.extended);
     println!("Dist analysis");
 
-    if compiler.host != build.config.build {
+    if compiler.host != build.build {
         println!("\tskipping, not a build host");
         return;
     }
@@ -705,7 +705,7 @@ fn write_file(path: &Path, data: &[u8]) {
 
 pub fn cargo(build: &Build, stage: u32, target: &str) {
     println!("Dist cargo stage{} ({})", stage, target);
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
 
     let src = build.src.join("src/tools/cargo");
     let etc = src.join("src/etc");
@@ -766,7 +766,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 pub fn rls(build: &Build, stage: u32, target: &str) {
     assert!(build.config.extended);
     println!("Dist RLS stage{} ({})", stage, target);
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
 
     let src = build.src.join("src/tools/rls");
     let release_num = build.release_num("rls");
@@ -1198,7 +1198,7 @@ fn add_env(build: &Build, cmd: &mut Command, target: &str) {
 }
 
 pub fn hash_and_sign(build: &Build) {
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
     let mut cmd = build.tool_cmd(&compiler, "build-manifest");
     let sign = build.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
         panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
