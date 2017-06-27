@@ -4,23 +4,35 @@ use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 
-use std::collections::HashMap;
+use std::collections::{HashSet, VecDeque};
 
 /// A relation searching for items appearing at the same spot in a type.
 ///
 /// Keeps track of item pairs found that way that correspond to item matchings not yet known.
 /// This allows to match up some items that aren't exported, and which possibly even differ in
 /// their names across versions.
-pub struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a, A: 'a> {
+pub struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// The type context used.
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    /// The mapping of toplevel items.
-    pub toplevel_mapping: &'a HashMap<DefId, A>,
-    /// The mapping of all other items.
-    pub mapping: &'a mut HashMap<DefId, DefId>,
+    /// The queue to append found item pairings.
+    pub item_queue: VecDeque<(DefId, DefId)>,
+    /// All visited items.
+    pub visited: HashSet<(DefId, DefId)>,
 }
 
-impl<'a, 'gcx, 'tcx, A: 'a> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx, A> {
+impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, item_queue: VecDeque<(DefId, DefId)>)
+        -> Mismatch<'a, 'gcx, 'tcx>
+    {
+        Mismatch {
+            tcx: tcx,
+            item_queue: item_queue,
+            visited: Default::default(),
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
@@ -60,12 +72,10 @@ impl<'a, 'gcx, 'tcx, A: 'a> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 
             },
         };
 
-        if let Some((old_did, new_did)) = matching {
-            if !self.toplevel_mapping.contains_key(&old_did) &&
-                !self.mapping.contains_key(&old_did)
-            {
-                // println!("adding mapping: {:?} => {:?}", old_did, new_did);
-                self.mapping.insert(old_did, new_did);
+        if let Some(dids) = matching {
+            if !self.visited.contains(&dids) {
+                self.visited.insert(dids);
+                self.item_queue.push_back(dids);
             }
         }
 

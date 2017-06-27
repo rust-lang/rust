@@ -47,6 +47,11 @@ impl IdMapping {
             self.mapping[&old]
         }
     }
+
+    /// Tell us whether a `DefId` is present in the mappings.
+    pub fn contains_id(&self, old: DefId) -> bool {
+        self.toplevel_mapping.contains_key(&old) || self.mapping.contains_key(&old)
+    }
 }
 
 /// A representation of a namespace an item belongs to.
@@ -106,21 +111,22 @@ pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 
     // second (and third, for now) pass
     {
-        let mut item_queue: VecDeque<_> =
+        let item_queue: VecDeque<_> =
             id_mapping
                 .toplevel_mapping
                 .values()
                 .map(|&(_, old, new)| (old.def.def_id(), new.def.def_id()))
                 .collect();
 
-        let mut mismatch = Mismatch {
-            tcx: tcx,
-            toplevel_mapping: &id_mapping.toplevel_mapping,
-            mapping: &mut id_mapping.mapping,
-        };
+        let mut mismatch = Mismatch::new(tcx, item_queue);
 
-        while let Some((old_did, new_did)) = item_queue.pop_front() {
+        while let Some((old_did, new_did)) = mismatch.item_queue.pop_front() {
             let _ = mismatch.tys(tcx.type_of(old_did), tcx.type_of(new_did));
+
+            if !id_mapping.contains_id(old_did) {
+                // println!("adding mapping: {:?} => {:?}", old_did, new_did);
+                id_mapping.add_item(old_did, new_did);
+            }
 
             diff_bounds(&mut changes, tcx, old_did, new_did);
         }
