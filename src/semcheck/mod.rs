@@ -1,3 +1,7 @@
 pub mod changes;
+
+mod id_mapping;
 mod mismatch;
-pub mod traverse;
+mod traverse;
+
+pub use self::traverse::run_analysis;

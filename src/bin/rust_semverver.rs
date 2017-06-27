@@ -10,7 +10,7 @@ extern crate semver;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::semcheck::traverse::run_analysis;
+use semverver::semcheck::run_analysis;
 
 use rustc::hir::def_id::*;
 use rustc::session::{config, Session};
