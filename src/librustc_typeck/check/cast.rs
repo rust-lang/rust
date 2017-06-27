@@ -40,9 +40,11 @@
 
 use super::{Diverges, FnCtxt};
 
-use lint;
+use errors::DiagnosticBuilder;
 use hir::def_id::DefId;
+use lint;
 use rustc::hir;
+use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::cast::{CastKind, CastTy};
@@ -112,6 +114,18 @@ enum CastError {
     NonScalar,
 }
 
+fn make_invalid_casting_error<'a, 'gcx, 'tcx>(sess: &'a Session,
+                                              span: Span,
+                                              expr_ty: Ty<'tcx>,
+                                              cast_ty: Ty<'tcx>,
+                                              fcx: &FnCtxt<'a, 'gcx, 'tcx>)
+                                              -> DiagnosticBuilder<'a> {
+    type_error_struct!(sess, span, expr_ty, E0606,
+                       "casting `{}` as `{}` is invalid",
+                       fcx.ty_to_string(expr_ty),
+                       fcx.ty_to_string(cast_ty))
+}
+
 impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     pub fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                expr: &'tcx hir::Expr,
@@ -146,14 +160,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         match e {
             CastError::NeedDeref => {
                 let error_span = self.span;
+                let mut err = make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty,
+                                                         self.cast_ty, fcx);
                 let cast_ty = fcx.ty_to_string(self.cast_ty);
-                let mut err = fcx.type_error_struct(error_span,
-                                       |actual| {
-                                           format!("casting `{}` as `{}` is invalid",
-                                                   actual,
-                                                   cast_ty)
-                                       },
-                                       self.expr_ty);
                 err.span_label(error_span,
                                format!("cannot cast `{}` as `{}`",
                                         fcx.ty_to_string(self.expr_ty),
@@ -166,13 +175,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::NeedViaThinPtr |
             CastError::NeedViaPtr => {
-                let mut err = fcx.type_error_struct(self.span,
-                                                    |actual| {
-                                                        format!("casting `{}` as `{}` is invalid",
-                                                                actual,
-                                                                fcx.ty_to_string(self.cast_ty))
-                                                    },
-                                                    self.expr_ty);
+                let mut err = make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty,
+                                                         self.cast_ty, fcx);
                 if self.cast_ty.is_uint() {
                     err.help(&format!("cast through {} first",
                                       match e {
@@ -184,19 +188,22 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::NeedViaInt => {
-                fcx.type_error_struct(self.span,
-                                      |actual| {
-                                          format!("casting `{}` as `{}` is invalid",
-                                                  actual,
-                                                  fcx.ty_to_string(self.cast_ty))
-                                      },
-                                      self.expr_ty)
+                make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty, self.cast_ty, fcx)
                    .help(&format!("cast through {} first",
                                   match e {
                                       CastError::NeedViaInt => "an integer",
                                       _ => bug!(),
                                   }))
                    .emit();
+            }
+            CastError::IllegalCast => {
+                make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty, self.cast_ty, fcx)
+                    .emit();
+            }
+            CastError::DifferingKinds => {
+                make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty, self.cast_ty, fcx)
+                    .note("vtable kinds may not match")
+                    .emit();
             }
             CastError::CastToBool => {
                 struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`")
@@ -205,51 +212,23 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     .emit();
             }
             CastError::CastToChar => {
-                fcx.type_error_message(self.span,
-                                       |actual| {
-                                           format!("only `u8` can be cast as `char`, not `{}`",
-                                                   actual)
-                                       },
-                                       self.expr_ty);
+                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0604,
+                                 "only `u8` can be cast as `char`, not `{}`", self.expr_ty).emit();
             }
             CastError::NonScalar => {
-                fcx.type_error_message(self.span,
-                                       |actual| {
-                                           format!("non-scalar cast: `{}` as `{}`",
-                                                   actual,
-                                                   fcx.ty_to_string(self.cast_ty))
-                                       },
-                                       self.expr_ty);
-            }
-            CastError::IllegalCast => {
-                fcx.type_error_message(self.span,
-                                       |actual| {
-                                           format!("casting `{}` as `{}` is invalid",
-                                                   actual,
-                                                   fcx.ty_to_string(self.cast_ty))
-                                       },
-                                       self.expr_ty);
+                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0605,
+                                 "non-primitive cast: `{}` as `{}`",
+                                 self.expr_ty,
+                                 fcx.ty_to_string(self.cast_ty))
+                                .note("an `as` expression can only be used to convert between \
+                                       primitive types. Consider using the `From` trait")
+                                .emit();
             }
             CastError::SizedUnsizedCast => {
-                fcx.type_error_message(self.span,
-                                       |actual| {
-                                           format!("cannot cast thin pointer `{}` to fat pointer \
-                                                    `{}`",
-                                                   actual,
-                                                   fcx.ty_to_string(self.cast_ty))
-                                       },
-                                       self.expr_ty)
-            }
-            CastError::DifferingKinds => {
-                fcx.type_error_struct(self.span,
-                                       |actual| {
-                                           format!("casting `{}` as `{}` is invalid",
-                                                   actual,
-                                                   fcx.ty_to_string(self.cast_ty))
-                                       },
-                                       self.expr_ty)
-                    .note("vtable kinds may not match")
-                    .emit();
+                type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0607,
+                                 "cannot cast thin pointer `{}` to fat pointer `{}`",
+                                 self.expr_ty,
+                                 fcx.ty_to_string(self.cast_ty)).emit();
             }
         }
     }
