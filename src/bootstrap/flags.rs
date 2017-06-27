@@ -41,16 +41,6 @@ pub struct Flags {
     pub incremental: bool,
 }
 
-impl Flags {
-    pub fn verbose(&self) -> bool {
-        self.verbose > 0
-    }
-
-    pub fn very_verbose(&self) -> bool {
-        self.verbose > 1
-    }
-}
-
 pub enum Subcommand {
     Build {
         paths: Vec<PathBuf>,

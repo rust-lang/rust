@@ -168,6 +168,7 @@ pub struct Build {
     rls_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
+    verbosity: usize,
 
     // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
     initial_rustc: PathBuf,
@@ -247,6 +248,7 @@ impl Build {
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: flags.cmd.fail_fast(),
+            verbosity: cmp::max(flags.verbose, config.verbose),
 
             flags: flags,
             config: config,
@@ -428,8 +430,7 @@ impl Build {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
-        let verbose = cmp::max(self.config.verbose, self.flags.verbose);
-        cargo.env("RUSTC_VERBOSE", format!("{}", verbose));
+        cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
         // Specify some various options for build scripts used throughout
         // the build.
@@ -467,7 +468,7 @@ impl Build {
         // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
-        if self.config.verbose() || self.flags.verbose() {
+        if self.is_verbose() {
             cargo.arg("-v");
         }
         // FIXME: cargo bench does not accept `--release`
@@ -779,9 +780,17 @@ impl Build {
         try_run_suppressed(cmd)
     }
 
+    pub fn is_verbose(&self) -> bool {
+        self.verbosity > 0
+    }
+
+    pub fn is_very_verbose(&self) -> bool {
+        self.verbosity > 1
+    }
+
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
-        if self.flags.verbose() || self.config.verbose() {
+        if self.is_verbose() {
             println!("{}", msg);
         }
     }
