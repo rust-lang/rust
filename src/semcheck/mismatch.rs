@@ -1,7 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::{Ty, TyCtxt};
-use rustc::ty::error::TypeError;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 
 use std::collections::{HashSet, VecDeque};
@@ -128,83 +127,52 @@ fn relate_tys_mismatch<'a, 'gcx, 'tcx, R>(relation: &mut R, a: Ty<'tcx>, b: Ty<'
             // As the original function this is ripped off of, we don't handle these cases.
             panic!("var types encountered in relate_tys_mismatch")
         },
-        (&TyError, _) | (_, &TyError) => {
+        (&TyAdt(a_def, a_substs), &TyAdt(_, b_substs)) => {
+            let _ = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
             Ok(tcx.types.err)
         },
-        (&TyNever, _) |
-        (&TyChar, _) |
-        (&TyBool, _) |
-        (&TyInt(_), _) |
-        (&TyUint(_), _) |
-        (&TyFloat(_), _) |
-        (&TyStr, _) |
-        (&TyParam(_), _) |
-        (&TyClosure(_, _), _) if a == b => {
-            Ok(a)
+        (&TyDynamic(a_obj, a_r), &TyDynamic(b_obj, b_r)) => {
+            // TODO: more sophiticated mechanism here
+            let _ = relation.relate(&a_r, &b_r);
+            let _ = relation.relate(&a_obj, &b_obj);
+            Ok(tcx.types.err)
         },
-        (&TyAdt(a_def, a_substs), &TyAdt(_, b_substs)) => {
-            // TODO: possibly do something here
-            let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
-            Ok(tcx.mk_adt(a_def, substs))
-        },
-        /* (&TyDynamic(_, _), &TyDynamic(_, _)) => {
-            // TODO: decide whether this is needed
-            let region_bound = relation.with_cause(Cause::ExistentialRegionBound,
-                                                   |relation| {
-                                                       relation.relate(a_region, b_region)
-                                                   })?;
-            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
-            Err(TypeError::Mismatch)
-        },*/
-        (&TyRawPtr(ref a_mt), &TyRawPtr(ref b_mt)) => {
-            let mt = relation.relate(a_mt, b_mt)?;
-            Ok(tcx.mk_ptr(mt))
+        (&TyRawPtr(a_mt), &TyRawPtr(b_mt)) => {
+            let _ = relation.relate(&a_mt, &b_mt);
+            Ok(tcx.types.err)
         },
         (&TyRef(a_r, a_mt), &TyRef(b_r, b_mt)) => {
-            let r = relation.relate(&a_r, &b_r)?;
-            let mt = relation.relate(&a_mt, &b_mt)?;
-            Ok(tcx.mk_ref(r, mt))
+            let _ = relation.relate(&a_r, &b_r);
+            let _ = relation.relate(&a_mt, &b_mt);
+            Ok(tcx.types.err)
         },
-        (&TyArray(a_t, sz_a), &TyArray(b_t, sz_b)) => {
-            let t = relation.relate(&a_t, &b_t)?;
-            if sz_a == sz_b {
-                Ok(tcx.mk_array(t, sz_a))
-            } else {
-                Err(TypeError::Mismatch)
-            }
-        },
+        (&TyArray(a_t, _), &TyArray(b_t, _)) |
         (&TySlice(a_t), &TySlice(b_t)) => {
-            let t = relation.relate(&a_t, &b_t)?;
-            Ok(tcx.mk_slice(t))
+            relation.relate(&a_t, &b_t)
         },
-        (&TyTuple(as_, a_defaulted), &TyTuple(bs, b_defaulted)) => {
-            let rs = as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b));
-            if as_.len() == bs.len() {
-                let defaulted = a_defaulted || b_defaulted;
-                tcx.mk_tup(rs, defaulted)
-            } else {
-                Err(TypeError::Mismatch)
-            }
+        (&TyTuple(as_, _), &TyTuple(bs, _)) => {
+            let _ = as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b));
+            Ok(tcx.types.err)
         },
-        (&TyFnDef(a_def_id, a_substs, a_fty), &TyFnDef(_, b_substs, b_fty)) => {
-            let substs = ty::relate::relate_substs(relation, None, a_substs, b_substs)?;
-            let fty = relation.relate(&a_fty, &b_fty)?;
-            Ok(tcx.mk_fn_def(a_def_id, substs, fty))
+        (&TyFnDef(_, a_substs, a_fty), &TyFnDef(_, b_substs, b_fty)) => {
+            let _ = ty::relate::relate_substs(relation, None, a_substs, b_substs)?;
+            let _ = relation.relate(&a_fty, &b_fty);
+            Ok(tcx.types.err)
         },
         (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
-            let fty = relation.relate(&a_fty, &b_fty)?;
-            Ok(tcx.mk_fn_ptr(fty))
+            let _ = relation.relate(&a_fty, &b_fty);
+            Ok(tcx.types.err)
         },
-        (&TyProjection(ref a_data), &TyProjection(ref b_data)) => {
-            let projection_ty = relation.relate(a_data, b_data)?;
-            Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name(tcx)))
+        (&TyProjection(a_data), &TyProjection(b_data)) => {
+            let _ = relation.relate(&a_data, &b_data);
+            Ok(tcx.types.err)
         },
-        (&TyAnon(a_def_id, a_substs), &TyAnon(_, b_substs)) => {
-            let substs = ty::relate::relate_substs(relation, None, a_substs, b_substs)?;
-            Ok(tcx.mk_anon(a_def_id, substs))
+        (&TyAnon(_, a_substs), &TyAnon(_, b_substs)) => {
+            let _ = ty::relate::relate_substs(relation, None, a_substs, b_substs);
+            Ok(tcx.types.err)
         },
         _ => {
-            Err(TypeError::Mismatch)
+            Ok(tcx.types.err)
         }
     }
 }
