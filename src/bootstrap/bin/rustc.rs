@@ -75,16 +75,11 @@ fn main() {
         Err(_) => 0,
     };
 
-    // Build scripts always use the snapshot compiler which is guaranteed to be
-    // able to produce an executable, whereas intermediate compilers may not
-    // have the standard library built yet and may not be able to produce an
-    // executable. Otherwise we just use the standard compiler we're
-    // bootstrapping with.
-    //
-    // Also note that cargo will detect the version of the compiler to trigger
-    // a rebuild when the compiler changes. If this happens, we want to make
-    // sure to use the actual compiler instead of the snapshot compiler becase
-    // that's the one that's actually changing.
+    // Use a different compiler for build scripts, since there may not yet be a
+    // libstd for the real compiler to use. However, if Cargo is attempting to
+    // determine the version of the compiler, the real compiler needs to be
+    // used. Currently, these two states are differentiated based on whether
+    // --target and -vV is/isn't passed.
     let (rustc, libdir) = if target.is_none() && version.is_none() {
         ("RUSTC_SNAPSHOT", "RUSTC_SNAPSHOT_LIBDIR")
     } else {

@@ -175,7 +175,9 @@ pub struct Build {
     lldb_python_dir: Option<String>,
 
     // Runtime state filled in later on
+    // target -> (cc, ar)
     cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
+    // host -> (cc, ar)
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
     is_sudo: bool,
@@ -202,20 +204,16 @@ struct Crate {
 /// build system, with each mod generating output in a different directory.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
-    /// This cargo is going to build the standard library, placing output in the
-    /// "stageN-std" directory.
+    /// Build the standard library, placing output in the "stageN-std" directory.
     Libstd,
 
-    /// This cargo is going to build libtest, placing output in the
-    /// "stageN-test" directory.
+    /// Build libtest, placing output in the "stageN-test" directory.
     Libtest,
 
-    /// This cargo is going to build librustc and compiler libraries, placing
-    /// output in the "stageN-rustc" directory.
+    /// Build librustc and compiler libraries, placing output in the "stageN-rustc" directory.
     Librustc,
 
-    /// This cargo is going to build some tool, placing output in the
-    /// "stageN-tools" directory.
+    /// Build some tool, placing output in the "stageN-tools" directory.
     Tool,
 }
 
