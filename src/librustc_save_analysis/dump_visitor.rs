@@ -153,46 +153,33 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn process_borrow_analysis(&mut self, def_id: DefId, mut analysis_result: AnalysisResult<'l, 'tcx>) {
-        let mut safe_loans = {
-            let mut safe_loans = vec![];
-            mem::swap(&mut safe_loans, &mut analysis_result.safe_loans);
-            safe_loans.into_iter()
-                .filter_map(|safe_loan| self.process_safe_loan(safe_loan))
-                .collect::<Vec<_>>()
-        };
+        let loans = mem::replace(&mut analysis_result.all_loans, vec![])
+            .into_iter()
+            .filter_map(|loan| self.process_loan(def_id, loan))
+            // Chain safe loans
+            .chain(mem::replace(&mut analysis_result.safe_loans, vec![])
+                .into_iter()
+                .filter_map(|safe_loan| self.process_safe_loan(safe_loan)))
+            .collect::<Vec<_>>();
 
-        let mut loans = {
-            let mut loans = vec![];
-            mem::swap(&mut loans, &mut analysis_result.all_loans);
-            loans.into_iter()
-                .filter_map(|loan| self.process_loan(def_id, loan))
-                .collect::<Vec<_>>()
-        };
-
-        loans.append(&mut safe_loans);
-
-        let moves = {
-            let mut moves = vec![];
-            mem::swap(&mut moves, &mut analysis_result.move_data.moves.borrow_mut());
-            moves.into_iter()
-                .map(|m| self.process_move(m, &analysis_result.move_data))
-                .collect::<Vec<_>>()
-        };
+        let moves = mem::replace(&mut *analysis_result.move_data.moves.borrow_mut(), vec![])
+            .into_iter()
+            .map(|m| self.process_move(m, &analysis_result.move_data))
+            .collect::<Vec<_>>();
 
         let scopes = {
             let move_map: HashMap<Id, &MoveData> = moves.iter()
                 .fold(HashMap::new(), |mut acc, m| {
                     match acc.entry(m.ref_id) {
-                        // we just want the 
+                        // We want the earliest occurring move
                         Entry::Occupied(mut e) => if e.get().span.byte_start > m.span.byte_start { e.insert(m); },
                         Entry::Vacant(e) => { e.insert(m); },
                     }
 
                     acc
                 });
-            let mut assignments = vec![];
-            mem::swap(&mut assignments, &mut analysis_result.move_data.var_assignments.borrow_mut());
-            assignments.into_iter()
+            mem::replace(&mut *analysis_result.move_data.var_assignments.borrow_mut(), vec![])
+                .into_iter()
                 .filter_map(|a| {
                     let id = ::id_from_node_id(a.assignee_id, &self.save_ctxt);
                     let mov = move_map.get(&id);
@@ -201,12 +188,14 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 .collect()
         };
 
+        let span = analysis_result.span.map(|s| self.span_from_span(s));
+
         let data = BorrowData {
             ref_id: ::id_from_def_id(def_id),
             scopes: scopes,
             loans: loans,
             moves: moves,
-            span: analysis_result.span.map(|s| self.span_from_span(s))
+            span: span,
         };
 
         self.dumper.dump_per_fn_borrow_data(data);
@@ -241,7 +230,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     span: self.span_from_span(expanded_span)
                 }
             })
-            .or_else(|| { debug!("No span found for assignment `{:?}-{:?}`", assignment.id, assignment.assignee_id); None })
+            .or_else(|| {
+                debug!("No span found for assignment `{:?}-{:?}`", assignment.id, assignment.assignee_id);
+                None
+            })
     }
 
     fn process_safe_loan(&self, safe_loan: SafeLoan) -> Option<LoanData> {
@@ -254,7 +246,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 kind: ::borrow_kind_from_borrow_kind(safe_loan.kind()),
                 span: self.span_from_span(span),
             })
-            .or_else(|| { debug!("No span found for safe loan `{:?}`", safe_loan.loan_scope()); None })
+            .or_else(|| {
+                debug!("No span found for safe loan `{:?}`", safe_loan.loan_scope());
+                None
+            })
     }
 
     fn process_loan(&self, def_id: DefId, loan: Loan) -> Option<LoanData> {
@@ -265,7 +260,10 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 kind: ::borrow_kind_from_borrow_kind(loan.kind()),
                 span: self.span_from_span(span),
             })
-            .or_else(|| { debug!("No span found for loan `{:?}`", loan.loan_path()); None })
+            .or_else(|| {
+                debug!("No span found for loan `{:?}`", loan.loan_path());
+                None
+            })
     }
 
     fn process_move(&self, mov: Move, move_data: &rustc_borrowck::MoveData) -> MoveData {
