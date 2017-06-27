@@ -24,8 +24,6 @@ pub enum Lvalue<'tcx> {
     Local {
         frame: usize,
         local: mir::Local,
-        /// Optionally, this lvalue can point to a field of the stack value
-        field: Option<(usize, Ty<'tcx>)>,
     },
 
     /// An lvalue referring to a global
@@ -141,8 +139,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 assert_eq!(extra, LvalueExtra::None);
                 Ok(Value::ByRef(ptr.to_ptr()?))
             }
-            Lvalue::Local { frame, local, field } => {
-                self.stack[frame].get_local(local, field.map(|(i, _)| i))
+            Lvalue::Local { frame, local } => {
+                self.stack[frame].get_local(local)
             }
             Lvalue::Global(cid) => {
                 Ok(self.globals.get(&cid).expect("global not cached").value)
@@ -154,7 +152,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
-            Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local, field: None },
+            Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local },
 
             Static(ref static_) => {
                 let instance = ty::Instance::mono(self.tcx, static_.def_id);
@@ -235,48 +233,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             _ => bug!("field access on non-product type: {:?}", base_layout),
         };
 
-        let (base_ptr, base_extra) = match base {
-            Lvalue::Ptr { ptr, extra } => (ptr, extra),
-            Lvalue::Local { frame, local, field } => match self.stack[frame].get_local(local, field.map(|(i, _)| i))? {
-                Value::ByRef(ptr) => {
-                    assert!(field.is_none(), "local can't be ByRef and have a field offset");
-                    (PrimVal::Ptr(ptr), LvalueExtra::None)
-                },
-                Value::ByVal(PrimVal::Undef) => {
-                    // FIXME: allocate in fewer cases
-                    if self.ty_to_primval_kind(base_ty).is_ok() {
-                        return Ok(base);
-                    } else {
-                        (PrimVal::Ptr(self.force_allocation(base)?.to_ptr()?), LvalueExtra::None)
-                    }
-                },
-                Value::ByVal(_) => {
-                    if self.get_field_count(base_ty)? == 1 {
-                        assert_eq!(field_index, 0, "ByVal can only have 1 non zst field with offset 0");
-                        return Ok(base);
-                    }
-                    // this branch is taken when a union creates a large ByVal which is then
-                    // accessed as a struct with multiple small fields
-                    (PrimVal::Ptr(self.force_allocation(base)?.to_ptr()?), LvalueExtra::None)
-                },
-                Value::ByValPair(_, _) => {
-                    let field_count = self.get_field_count(base_ty)?;
-                    if field_count == 1 {
-                        assert_eq!(field_index, 0, "{:?} has only one field", base_ty);
-                        return Ok(base);
-                    }
-                    assert_eq!(field_count, 2);
-                    assert!(field_index < 2);
-                    return Ok(Lvalue::Local {
-                        frame,
-                        local,
-                        field: Some((field_index, field_ty)),
-                    });
-                },
-            },
-            // FIXME: do for globals what we did for locals
-            Lvalue::Global(_) => self.force_allocation(base)?.to_ptr_and_extra(),
-        };
+        let (base_ptr, base_extra) = self.force_allocation(base)?.to_ptr_and_extra();
 
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {

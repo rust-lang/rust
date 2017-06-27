@@ -269,7 +269,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Ok(zero_val)
                 };
                 match dest {
-                    Lvalue::Local { frame, local, field } => self.modify_local(frame, local, field.map(|(i, _)| i), init)?,
+                    Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
                     Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.write_repeat(ptr.to_ptr()?, 0, size)?,
                     Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat ptr target"),
                     Lvalue::Global(cid) => self.modify_global(cid, init)?,
@@ -419,7 +419,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 };
                 match dest {
-                    Lvalue::Local { frame, local, field } => self.modify_local(frame, local, field.map(|(i, _)| i), uninit)?,
+                    Lvalue::Local { frame, local } => self.modify_local(frame, local, uninit)?,
                     Lvalue::Ptr { ptr, extra: LvalueExtra::None } =>
                         self.memory.mark_definedness(ptr, size, false)?,
                     Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat ptr target"),
