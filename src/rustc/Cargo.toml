@@ -20,3 +20,4 @@ rustdoc = { path = "../librustdoc" }
 
 [features]
 jemalloc = ["rustc_back/jemalloc"]
+llvm = ["rustc_driver/llvm"]

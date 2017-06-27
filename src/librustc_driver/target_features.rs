@@ -11,6 +11,7 @@
 use syntax::ast;
 use rustc::session::Session;
 use syntax::symbol::Symbol;
+#[cfg(feature="llvm")]
 use rustc_trans;
 
 /// Add `target_feature = "..."` cfgs for a variety of platform
@@ -21,6 +22,7 @@ use rustc_trans;
 pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     let tf = Symbol::intern("target_feature");
 
+    #[cfg(feature="llvm")]
     for feat in rustc_trans::target_features(sess) {
         cfg.insert((tf, Some(feat)));
     }

@@ -27,6 +27,7 @@ use html::escape::Escape;
 use html::markdown;
 use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, old_find_testable_code};
 use html::markdown::RenderType;
+#[cfg(feature="llvm")]
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.

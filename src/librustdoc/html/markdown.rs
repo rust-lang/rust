@@ -42,6 +42,7 @@ use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
 use html::escape::Escape;
+#[cfg(feature="llvm")]
 use test;
 
 use pulldown_cmark::{html, Event, Tag, Parser};

@@ -87,6 +87,7 @@ pub mod passes;
 pub mod plugins;
 pub mod visit_ast;
 pub mod visit_lib;
+#[cfg(feature="llvm")]
 pub mod test;
 
 use clean::AttributesExt;
