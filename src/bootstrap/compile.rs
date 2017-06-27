@@ -559,23 +559,24 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
             // If this was an output file in the "host dir" we don't actually
             // worry about it, it's not relevant for us.
             if filename.starts_with(&host_root_dir) {
-                continue
+                continue;
+            }
 
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
-            } else if filename.starts_with(&target_deps_dir) {
+            if filename.starts_with(&target_deps_dir) {
                 deps.push(filename.to_path_buf());
+                continue;
+            }
 
             // Otherwise this was a "top level artifact" which right now doesn't
             // have a hash in the name, but there's a version of this file in
             // the `deps` folder which *does* have a hash in the name. That's
             // the one we'll want to we'll probe for it later.
-            } else {
-                toplevel.push((filename.file_stem().unwrap()
-                                       .to_str().unwrap().to_string(),
-                               filename.extension().unwrap().to_owned()
-                                       .to_str().unwrap().to_string()));
-            }
+            toplevel.push((filename.file_stem().unwrap()
+                                    .to_str().unwrap().to_string(),
+                            filename.extension().unwrap().to_owned()
+                                    .to_str().unwrap().to_string()));
         }
     }
 

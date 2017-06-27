@@ -56,7 +56,7 @@ impl Finder {
                     return Some(target);
                 }
             }
-            return None;
+            None
         }).clone()
     }
 
@@ -73,10 +73,8 @@ pub fn check(build: &mut Build) {
     // one is present as part of the PATH then that can lead to the system
     // being unable to identify the files properly. See
     // https://github.com/rust-lang/rust/issues/34959 for more details.
-    if cfg!(windows) {
-        if path.to_string_lossy().contains("\"") {
-            panic!("PATH contains invalid character '\"'");
-        }
+    if cfg!(windows) && path.to_string_lossy().contains("\"") {
+        panic!("PATH contains invalid character '\"'");
     }
 
     let mut cmd_finder = Finder::new();
@@ -95,12 +93,10 @@ pub fn check(build: &mut Build) {
     }
 
     // Ninja is currently only used for LLVM itself.
-    if building_llvm && build.config.ninja {
-        // Some Linux distros rename `ninja` to `ninja-build`.
-        // CMake can work with either binary name.
-        if cmd_finder.maybe_have("ninja-build").is_none() {
-            cmd_finder.must_have("ninja");
-        }
+    // Some Linux distros rename `ninja` to `ninja-build`.
+    // CMake can work with either binary name.
+    if building_llvm && build.config.ninja && cmd_finder.maybe_have("ninja-build").is_none() {
+        cmd_finder.must_have("ninja");
     }
 
     build.config.python = build.config.python.take().map(|p| cmd_finder.must_have(p))

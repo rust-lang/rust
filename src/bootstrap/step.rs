@@ -148,7 +148,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                 }
             }
         }
-        return ret
+        ret
     };
 
     // ========================================================================
@@ -237,7 +237,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                          s.target)
                 }
             });
-            return rule
+            rule
     }
 
     // Similar to the `libstd`, `libtest`, and `librustc` rules above, except
@@ -1326,7 +1326,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         for idx in 0..nodes.len() {
             self.topo_sort(idx, &idx_to_node, &edges, &mut visited, &mut order);
         }
-        return order
+        order
     }
 
     /// Builds the dependency graph rooted at `step`.
@@ -1365,7 +1365,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         }
 
         edges.entry(idx).or_insert(HashSet::new()).extend(deps);
-        return idx
+        idx
     }
 
     /// Given a dependency graph with a finished list of `nodes`, fill out more

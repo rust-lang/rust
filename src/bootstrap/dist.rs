@@ -488,12 +488,11 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
         if spath.ends_with("~") || spath.ends_with(".pyc") {
             return false
         }
-        if spath.contains("llvm/test") || spath.contains("llvm\\test") {
-            if spath.ends_with(".ll") ||
-               spath.ends_with(".td") ||
-               spath.ends_with(".s") {
-                return false
-            }
+        if (spath.contains("llvm/test") || spath.contains("llvm\\test")) &&
+            (spath.ends_with(".ll") ||
+             spath.ends_with(".td") ||
+             spath.ends_with(".s")) {
+            return false
         }
 
         let full_path = Path::new(dir).join(path);

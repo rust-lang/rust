@@ -417,7 +417,7 @@ impl Config {
             config.update_with_config_mk();
         }
 
-        return config
+        config
     }
 
     /// "Temporary" routine to parse `config.mk` into this configuration.
