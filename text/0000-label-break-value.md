@@ -8,8 +8,6 @@
 
 Allow a break not only out of `loop`, but of labelled blocks with no loop. Like `loop`, this break can carry a value.
 
-This depends on [RFC 1624](https://github.com/rust-lang/rfcs/blob/master/text/1624-loop-break-value.md) landing. I proposed this [here](https://github.com/rust-lang/rust/issues/37339#issuecomment-306573033). An identical proposal was part of the [explanation for trait based exception handling](https://github.com/rust-lang/rfcs/blob/master/text/0243-trait-based-exception-handling.md#early-exit-from-any-block).
-
 # Motivation
 [motivation]: #motivation
 
