@@ -104,10 +104,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("llvm", "src/llvm")
          .host(true)
          .dep(move |s| {
-             if s.target == build.config.build {
+             if s.target == build.build {
                  Step::noop()
              } else {
-                 s.target(&build.config.build)
+                 s.target(&build.build)
              }
          })
          .run(move |s| native::llvm(build, s.target));
@@ -124,7 +124,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  Step::noop()
              } else {
                  s.name("librustc")
-                  .host(&build.config.build)
+                  .host(&build.build)
                   .stage(s.stage - 1)
              }
          })
@@ -215,24 +215,24 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         let mut rule = rules.build(&krate, "path/to/nowhere");
         rule.dep(move |s| {
                 if build.force_use_stage1(&s.compiler(), s.target) {
-                    s.host(&build.config.build).stage(1)
-                } else if s.host == build.config.build {
+                    s.host(&build.build).stage(1)
+                } else if s.host == build.build {
                     s.name(dep)
                 } else {
-                    s.host(&build.config.build)
+                    s.host(&build.build)
                 }
             })
             .run(move |s| {
                 if build.force_use_stage1(&s.compiler(), s.target) {
                     link(build,
-                         &s.stage(1).host(&build.config.build).compiler(),
+                         &s.stage(1).host(&build.build).compiler(),
                          &s.compiler(),
                          s.target)
-                } else if s.host == build.config.build {
+                } else if s.host == build.build {
                     link(build, &s.compiler(), &s.compiler(), s.target)
                 } else {
                     link(build,
-                         &s.host(&build.config.build).compiler(),
+                         &s.host(&build.build).compiler(),
                          &s.compiler(),
                          s.target)
                 }
@@ -269,7 +269,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std") {
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("startup-objects"))
-             .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))
+             .dep(move |s| s.name("rustc").host(&build.build).target(s.host))
              .run(move |s| compile::std(build, s.target, &s.compiler()));
     }
     for (krate, path, _default) in krates("test") {
@@ -280,7 +280,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("rustc-main") {
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("libtest-link"))
-             .dep(move |s| s.name("llvm").host(&build.config.build).stage(0))
+             .dep(move |s| s.name("llvm").host(&build.build).stage(0))
              .dep(|s| s.name("may-run-build-script"))
              .run(move |s| compile::rustc(build, s.target, &s.compiler()));
     }
@@ -291,8 +291,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("may-run-build-script", "path/to/nowhere")
          .dep(move |s| {
              s.name("libstd-link")
-              .host(&build.config.build)
-              .target(&build.config.build)
+              .host(&build.build)
+              .target(&build.build)
          });
     rules.build("startup-objects", "src/rtstartup")
          .dep(|s| s.name("create-sysroot").target(s.host))
@@ -332,7 +332,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               "incremental");
     }
 
-    if build.config.build.contains("msvc") {
+    if build.build.contains("msvc") {
         // nothing to do for debuginfo tests
     } else {
         rules.test("check-debuginfo-lldb", "src/test/debuginfo-lldb")
@@ -352,7 +352,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                                          "debuginfo-gdb", "debuginfo"));
         let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
         rule.default(true);
-        if build.config.build.contains("apple") {
+        if build.build.contains("apple") {
             rule.dep(|s| s.name("check-debuginfo-lldb"));
         } else {
             rule.dep(|s| s.name("check-debuginfo-gdb"));
@@ -594,8 +594,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
              // Cargo depends on procedural macros, which requires a full host
              // compiler to be available, so we need to depend on that.
              s.name("librustc-link")
-              .target(&build.config.build)
-              .host(&build.config.build)
+              .target(&build.build)
+              .host(&build.build)
          })
          .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
     rules.build("tool-rls", "src/tools/rls")
@@ -606,8 +606,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(move |s| {
              // rls, like cargo, uses procedural macros
              s.name("librustc-link")
-              .target(&build.config.build)
-              .host(&build.config.build)
+              .target(&build.build)
+              .host(&build.build)
          })
          .run(move |s| compile::tool(build, s.stage, s.target, "rls"));
 
@@ -635,8 +635,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.doc("doc-book", "src/doc/book")
          .dep(move |s| {
              s.name("tool-rustbook")
-              .host(&build.config.build)
-              .target(&build.config.build)
+              .host(&build.build)
+              .target(&build.build)
               .stage(0)
          })
          .default(build.config.docs)
@@ -644,8 +644,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.doc("doc-nomicon", "src/doc/nomicon")
          .dep(move |s| {
              s.name("tool-rustbook")
-              .host(&build.config.build)
-              .target(&build.config.build)
+              .host(&build.build)
+              .target(&build.build)
               .stage(0)
          })
          .default(build.config.docs)
@@ -653,8 +653,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.doc("doc-reference", "src/doc/reference")
          .dep(move |s| {
              s.name("tool-rustbook")
-              .host(&build.config.build)
-              .target(&build.config.build)
+              .host(&build.build)
+              .target(&build.build)
               .stage(0)
          })
          .default(build.config.docs)
@@ -662,8 +662,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.doc("doc-unstable-book", "src/doc/unstable-book")
          .dep(move |s| {
              s.name("tool-rustbook")
-              .host(&build.config.build)
-              .target(&build.config.build)
+              .host(&build.build)
+              .target(&build.build)
               .stage(0)
          })
          .dep(move |s| s.name("doc-unstable-book-gen"))
@@ -675,14 +675,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.doc("doc-standalone", "src/doc")
          .dep(move |s| {
              s.name("rustc")
-              .host(&build.config.build)
-              .target(&build.config.build)
+              .host(&build.build)
+              .target(&build.build)
               .stage(0)
          })
          .default(build.config.docs)
          .run(move |s| doc::standalone(build, s.target));
     rules.doc("doc-error-index", "src/tools/error_index_generator")
-         .dep(move |s| s.name("tool-error-index").target(&build.config.build).stage(0))
+         .dep(move |s| s.name("tool-error-index").target(&build.build).stage(0))
          .dep(move |s| s.name("librustc-link"))
          .default(build.config.docs)
          .host(true)
@@ -690,8 +690,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.doc("doc-unstable-book-gen", "src/tools/unstable-book-gen")
          .dep(move |s| {
              s.name("tool-unstable-book-gen")
-              .host(&build.config.build)
-              .target(&build.config.build)
+              .host(&build.build)
+              .target(&build.build)
               .stage(0)
          })
          .dep(move |s| s.name("libstd-link"))
@@ -725,7 +725,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     // ========================================================================
     // Distribution targets
     rules.dist("dist-rustc", "src/librustc")
-         .dep(move |s| s.name("rustc").host(&build.config.build))
+         .dep(move |s| s.name("rustc").host(&build.build))
          .host(true)
          .only_host_build(true)
          .default(true)
@@ -811,7 +811,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .host(true)
          .only_build(true)
          .only_host_build(true)
-         .dep(move |s| s.name("tool-build-manifest").target(&build.config.build).stage(0))
+         .dep(move |s| s.name("tool-build-manifest").target(&build.build).stage(0))
          .run(move |_| dist::hash_and_sign(build));
 
     rules.install("install-docs", "src/doc")
@@ -861,8 +861,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     /// Helper to depend on a stage0 build-only rust-installer tool.
     fn tool_rust_installer<'a>(build: &'a Build, step: &Step<'a>) -> Step<'a> {
         step.name("tool-rust-installer")
-            .host(&build.config.build)
-            .target(&build.config.build)
+            .host(&build.build)
+            .target(&build.build)
             .stage(0)
     }
 }
@@ -1058,8 +1058,8 @@ impl<'a> Rules<'a> {
             build: build,
             sbuild: Step {
                 stage: build.flags.stage.unwrap_or(2),
-                target: &build.config.build,
-                host: &build.config.build,
+                target: &build.build,
+                host: &build.build,
                 name: "",
             },
             rules: BTreeMap::new(),
@@ -1486,8 +1486,8 @@ mod tests {
         let step = super::Step {
             name: "",
             stage: 2,
-            host: &build.config.build,
-            target: &build.config.build,
+            host: &build.build,
+            target: &build.build,
         };
 
         assert!(plan.contains(&step.name("dist-docs")));
@@ -1509,8 +1509,8 @@ mod tests {
         let step = super::Step {
             name: "",
             stage: 2,
-            host: &build.config.build,
-            target: &build.config.build,
+            host: &build.build,
+            target: &build.build,
         };
 
         assert!(plan.contains(&step.name("dist-docs")));
@@ -1537,8 +1537,8 @@ mod tests {
         let step = super::Step {
             name: "",
             stage: 2,
-            host: &build.config.build,
-            target: &build.config.build,
+            host: &build.build,
+            target: &build.build,
         };
 
         assert!(!plan.iter().any(|s| s.host == "B"));
@@ -1567,8 +1567,8 @@ mod tests {
         let step = super::Step {
             name: "",
             stage: 2,
-            host: &build.config.build,
-            target: &build.config.build,
+            host: &build.build,
+            target: &build.build,
         };
 
         assert!(!plan.iter().any(|s| s.host == "B"));
@@ -1604,8 +1604,8 @@ mod tests {
         let step = super::Step {
             name: "",
             stage: 2,
-            host: &build.config.build,
-            target: &build.config.build,
+            host: &build.build,
+            target: &build.build,
         };
 
         assert!(!plan.iter().any(|s| s.target == "A"));
@@ -1631,8 +1631,8 @@ mod tests {
         let step = super::Step {
             name: "",
             stage: 2,
-            host: &build.config.build,
-            target: &build.config.build,
+            host: &build.build,
+            target: &build.build,
         };
 
         assert!(!plan.iter().any(|s| s.target == "A"));
@@ -1675,8 +1675,8 @@ mod tests {
         let step = super::Step {
             name: "",
             stage: 2,
-            host: &build.config.build,
-            target: &build.config.build,
+            host: &build.build,
+            target: &build.build,
         };
 
         // rustc built for all for of (A, B) x (A, B)

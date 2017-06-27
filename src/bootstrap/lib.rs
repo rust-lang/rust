@@ -1079,7 +1079,7 @@ impl<'a> Compiler<'a> {
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
     fn is_snapshot(&self, build: &Build) -> bool {
-        self.stage == 0 && self.host == build.config.build
+        self.stage == 0 && self.host == build.build
     }
 
     /// Returns if this compiler should be treated as a final stage one in the
