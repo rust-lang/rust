@@ -1963,8 +1963,6 @@ fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // explicit lifetime required
                                              // in the type of `y`
     if x > y { x } else { y }
 }
-
-fn main () { }
 ```
 
 Here, the function is returning data borrowed from either x or y, but the
@@ -1975,16 +1973,14 @@ the signature match the body by changing the type of y to &'a i32, like so:
 fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
     if x > y { x } else { y }
 }
-
-fn main () { }
 ```
+
 Alternatively, you could change the body not to return data from y:
+
 ```
 fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
     x
 }
-
-fn main () { }
 ```
 "##,
 
