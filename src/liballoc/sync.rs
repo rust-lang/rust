@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(specialization)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 //! Thread-safe reference-counting pointers.
@@ -1293,6 +1294,9 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// Two `Arc`s are equal if their inner values are equal.
     ///
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// always equal.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1302,13 +1306,16 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// assert!(five == Arc::new(5));
     /// ```
-    fn eq(&self, other: &Arc<T>) -> bool {
-        *(*self) == *(*other)
+    default fn eq(&self, other: &Arc<T>) -> bool {
+        **self == **other
     }
 
     /// Inequality for two `Arc`s.
     ///
     /// Two `Arc`s are unequal if their inner values are unequal.
+    ///
+    /// If `T` also implements `Eq`, two `Arc`s that point to the same value are
+    /// never unequal.
     ///
     /// # Examples
     ///
@@ -1319,8 +1326,21 @@ impl<T: ?Sized + PartialEq> PartialEq for Arc<T> {
     ///
     /// assert!(five != Arc::new(6));
     /// ```
+    default fn ne(&self, other: &Arc<T>) -> bool {
+        **self != **other
+    }
+}
+#[doc(hidden)]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Eq> PartialEq for Arc<T> {
+    #[inline(always)]
+    fn eq(&self, other: &Arc<T>) -> bool {
+        Arc::ptr_eq(self, other) || **self == **other
+    }
+
+    #[inline(always)]
     fn ne(&self, other: &Arc<T>) -> bool {
-        *(*self) != *(*other)
+        !Arc::ptr_eq(self, other) && **self != **other
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(specialization)]
 #![allow(deprecated)]
 
 //! Single-threaded reference-counting pointers. 'Rc' stands for 'Reference
@@ -906,6 +907,9 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     ///
     /// Two `Rc`s are equal if their inner values are equal.
     ///
+    /// If `T` also implements `Eq`, two `Rc`s that point to the same value are
+    /// always equal.
+    ///
     /// # Examples
     ///
     /// ```
@@ -916,13 +920,16 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// assert!(five == Rc::new(5));
     /// ```
     #[inline(always)]
-    fn eq(&self, other: &Rc<T>) -> bool {
+    default fn eq(&self, other: &Rc<T>) -> bool {
         **self == **other
     }
 
     /// Inequality for two `Rc`s.
     ///
     /// Two `Rc`s are unequal if their inner values are unequal.
+    ///
+    /// If `T` also implements `Eq`, two `Rc`s that point to the same value are
+    /// never unequal.
     ///
     /// # Examples
     ///
@@ -934,8 +941,22 @@ impl<T: ?Sized + PartialEq> PartialEq for Rc<T> {
     /// assert!(five != Rc::new(6));
     /// ```
     #[inline(always)]
-    fn ne(&self, other: &Rc<T>) -> bool {
+    default fn ne(&self, other: &Rc<T>) -> bool {
         **self != **other
+    }
+}
+
+#[doc(hidden)]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Eq> PartialEq for Rc<T> {
+    #[inline(always)]
+    fn eq(&self, other: &Rc<T>) -> bool {
+        Rc::ptr_eq(self, other) || **self == **other
+    }
+
+    #[inline(always)]
+    fn ne(&self, other: &Rc<T>) -> bool {
+        !Rc::ptr_eq(self, other) && **self != **other
     }
 }
 
