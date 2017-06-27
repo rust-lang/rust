@@ -1,9 +1,35 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Breaking changes in `abc`
- --> $REPO_PATH/tests/examples/fn.rs:6:5
-  |
-6 |     pub fn abc() {}
-  |     ^^^^^^^^^^^^^^^
-  |
-  = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+  --> $REPO_PATH/tests/examples/fn.rs:12:5
+   |
+12 |     pub fn abc() {}
+   |     ^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+
+warning: Breaking changes in `bcd`
+  --> $REPO_PATH/tests/examples/fn.rs:14:5
+   |
+14 |     pub fn bcd(_: u8) {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (FnArityChanged)
+
+warning: Breaking changes in `cde`
+  --> $REPO_PATH/tests/examples/fn.rs:16:5
+   |
+16 | /     pub fn cde() -> u16 { // TODO: maybe make this case TechnicallyBreaking
+17 | |         0xcde
+18 | |     }
+   | |_____^
+   |
+   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+
+warning: Breaking changes in `def`
+  --> $REPO_PATH/tests/examples/fn.rs:20:5
+   |
+20 |     pub fn def() {}
+   |     ^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (FnArityChanged)
 
