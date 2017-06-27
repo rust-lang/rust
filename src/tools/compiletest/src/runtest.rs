@@ -692,7 +692,7 @@ actual:\n\
         }
 
         if !debugger_run_result.status.success() {
-            self.fatal("gdb failed to execute");
+            self.fatal_proc_rec("gdb failed to execute", &debugger_run_result);
         }
 
         self.check_debugger_output(&debugger_run_result, &check_lines);
