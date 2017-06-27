@@ -183,7 +183,6 @@ pub struct Build {
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
     is_sudo: bool,
-    src_is_git: bool,
     ci_env: CiEnv,
     delayed_failures: Cell<usize>,
 }
@@ -262,7 +261,6 @@ impl Build {
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
-            src_is_git: src_is_git,
             ci_env: CiEnv::current(),
             delayed_failures: Cell::new(0),
         }

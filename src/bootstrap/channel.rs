@@ -101,4 +101,8 @@ impl GitInfo {
         }
         version
     }
+
+    pub fn is_git(&self) -> bool {
+        self.inner.is_some()
+    }
 }

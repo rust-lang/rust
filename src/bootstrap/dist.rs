@@ -623,7 +623,7 @@ pub fn plain_source_tarball(build: &Build) {
     write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
 
     // If we're building from git sources, we need to vendor a complete distribution.
-    if build.src_is_git {
+    if build.rust_info.is_git() {
         // Get cargo-vendor installed, if it isn't already.
         let mut has_cargo_vendor = false;
         let mut cmd = Command::new(&build.initial_cargo);
