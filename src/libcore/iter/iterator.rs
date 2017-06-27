@@ -500,16 +500,17 @@ pub trait Iterator {
     /// ```
     /// #![feature(iterator_for_each)]
     ///
-    /// let mut v = vec![];
-    /// (0..5).for_each(|x| v.push(x * 100));
+    /// use std::sync::mpsc::channel;
     ///
-    /// let mut v2 = vec![];
-    /// for x in 0..5 { v2.push(x * 100); }
+    /// let (tx, rx) = channel();
+    /// (0..5).map(|x| x * 2 + 1)
+    ///       .for_each(move |x| tx.send(x).unwrap());
     ///
-    /// assert_eq!(v, v2);
+    /// let v: Vec<_> =  rx.iter().collect();
+    /// assert_eq!(v, vec![1, 3, 5, 7, 9]);
     /// ```
     ///
-    /// For such a small example, the `for` loop is cleaner, but `for_each`
+    /// For such a small example, a `for` loop may be cleaner, but `for_each`
     /// might be preferable to keep a functional style with longer iterators:
     ///
     /// ```
