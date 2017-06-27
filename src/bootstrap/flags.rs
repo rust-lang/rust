@@ -315,10 +315,8 @@ Arguments:
 
         let mut stage = matches.opt_str("stage").map(|j| j.parse().unwrap());
 
-        if matches.opt_present("incremental") {
-            if stage.is_none() {
-                stage = Some(1);
-            }
+        if matches.opt_present("incremental") && stage.is_none() {
+            stage = Some(1);
         }
 
         Flags {

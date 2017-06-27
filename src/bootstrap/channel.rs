@@ -99,6 +99,6 @@ impl GitInfo {
             version.push_str(&inner.commit_date);
             version.push_str(")");
         }
-        return version
+        version
     }
 }

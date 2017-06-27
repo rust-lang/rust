@@ -496,7 +496,7 @@ impl Build {
 
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
-        return cargo
+        cargo
     }
 
     /// Get a path to the compiler specified.
@@ -519,7 +519,7 @@ impl Build {
         let mut rustdoc = self.compiler_path(compiler);
         rustdoc.pop();
         rustdoc.push(exe("rustdoc", compiler.host));
-        return rustdoc
+        rustdoc
     }
 
     /// Get a `Command` which is ready to run `tool` in `stage` built for
@@ -527,7 +527,7 @@ impl Build {
     fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
         let mut cmd = Command::new(self.tool(&compiler, tool));
         self.prepare_tool_cmd(compiler, &mut cmd);
-        return cmd
+        cmd
     }
 
     /// Prepares the `cmd` provided to be able to run the `compiler` provided.
@@ -578,7 +578,7 @@ impl Build {
         if self.config.profiler {
             features.push_str(" profiler");
         }
-        return features
+        features
     }
 
     /// Get the space-separated set of activated features for the compiler.
@@ -587,7 +587,7 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
-        return features
+        features
     }
 
     /// Component directory that Cargo will produce output into (e.g.
@@ -834,7 +834,7 @@ impl Build {
         if target == "i686-pc-windows-gnu" {
             base.push("-fno-omit-frame-pointer".into());
         }
-        return base
+        base
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
@@ -866,7 +866,7 @@ impl Build {
             !target.contains("emscripten") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
-        return base
+        base
     }
 
     /// Returns the "musl root" for this `target`, if defined
