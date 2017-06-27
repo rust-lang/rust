@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure that capturing closures are never coerced to fns
-// Especially interesting as non-capturing closures can be.
+// Forbidding a group (here, `unused`) overrules subsequent allowance of both
+// the group, and an individual lint in the group (here, `unused_variables`);
+// and, forbidding an individual lint (here, `non_snake_case`) overrules
+// subsequent allowance of a lint group containing it (here, `bad_style`). See
+// Issue #42873.
 
+#![forbid(unused, non_snake_case)]
+
+#[allow(unused, unused_variables, bad_style)]
 fn main() {
-    let b = 0u8;
-    let baz: fn() -> u8 = (|| { b }) as fn() -> u8;
-    //~^ ERROR non-primitive cast
+    println!("hello forbidden world")
 }

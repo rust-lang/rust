@@ -2170,12 +2170,12 @@ impl<'a> LoweringContext<'a> {
                 //     let result = match ::std::iter::IntoIterator::into_iter(<head>) {
                 //       mut iter => {
                 //         [opt_ident]: loop {
-                //           let mut _next;
+                //           let mut __next;
                 //           match ::std::iter::Iterator::next(&mut iter) {
-                //             ::std::option::Option::Some(val) => _next = val,
+                //             ::std::option::Option::Some(val) => __next = val,
                 //             ::std::option::Option::None => break
                 //           };
-                //           let <pat> = _next;
+                //           let <pat> = __next;
                 //           StmtExpr(<body>);
                 //         }
                 //       }
@@ -2188,7 +2188,7 @@ impl<'a> LoweringContext<'a> {
 
                 let iter = self.str_to_ident("iter");
 
-                let next_ident = self.str_to_ident("_next");
+                let next_ident = self.str_to_ident("__next");
                 let next_pat = self.pat_ident_binding_mode(e.span,
                                                            next_ident,
                                                            hir::BindByValue(hir::MutMutable));
@@ -2237,13 +2237,13 @@ impl<'a> LoweringContext<'a> {
 
                 let next_expr = P(self.expr_ident(e.span, next_ident, next_pat.id));
 
-                // `let mut _next`
+                // `let mut __next`
                 let next_let = self.stmt_let_pat(e.span,
                     None,
                     next_pat,
                     hir::LocalSource::ForLoopDesugar);
 
-                // `let <pat> = _next`
+                // `let <pat> = __next`
                 let pat = self.lower_pat(pat);
                 let pat_let = self.stmt_let_pat(e.span,
                     Some(next_expr),
