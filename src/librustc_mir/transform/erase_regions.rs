@@ -67,12 +67,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_statement(&mut self,
-                       _block: BasicBlock,
+                       block: BasicBlock,
                        statement: &mut Statement<'tcx>,
-                       _location: Location) {
+                       location: Location) {
         if let StatementKind::EndRegion(_) = statement.kind {
             statement.kind = StatementKind::Nop;
         }
+        self.super_statement(block, statement, location);
     }
 }
 
