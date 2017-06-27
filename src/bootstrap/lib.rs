@@ -170,6 +170,11 @@ pub struct Build {
     fail_fast: bool,
     verbosity: usize,
 
+    // Targets for which to build.
+    build: String,
+    hosts: Vec<String>,
+    targets: Vec<String>,
+
     // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
@@ -243,12 +248,37 @@ impl Build {
         let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
 
+        let hosts = if !flags.host.is_empty() {
+            for host in flags.host.iter() {
+                if !config.host.contains(host) {
+                    panic!("specified host `{}` is not in configuration", host);
+                }
+            }
+            flags.host.clone()
+        } else {
+            config.host.clone()
+        };
+        let targets = if !flags.target.is_empty() {
+            for target in flags.target.iter() {
+                if !config.target.contains(target) {
+                    panic!("specified target `{}` is not in configuration", target);
+                }
+            }
+            flags.target.clone()
+        } else {
+            config.target.clone()
+        };
+
         Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: flags.cmd.fail_fast(),
             verbosity: cmp::max(flags.verbose, config.verbose),
+
+            build: config.host[0].clone(),
+            hosts: hosts,
+            targets: targets,
 
             flags: flags,
             config: config,
@@ -266,6 +296,12 @@ impl Build {
             is_sudo: is_sudo,
             ci_env: CiEnv::current(),
             delayed_failures: Cell::new(0),
+        }
+    }
+
+    fn build_slice(&self) -> &[String] {
+        unsafe {
+            std::slice::from_raw_parts(&self.build, 1)
         }
     }
 
@@ -798,7 +834,7 @@ impl Build {
     /// Returns the number of parallel jobs that have been configured for this
     /// build.
     fn jobs(&self) -> u32 {
-        self.flags.jobs.unwrap_or(num_cpus::get() as u32)
+        self.flags.jobs.unwrap_or_else(|| num_cpus::get() as u32)
     }
 
     /// Returns the path to the C compiler for the target specified.

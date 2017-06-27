@@ -194,17 +194,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         }
     }
 
-    for host in build.flags.host.iter() {
-        if !build.config.host.contains(host) {
-            panic!("specified host `{}` is not in configuration", host);
-        }
-    }
-    for target in build.flags.target.iter() {
-        if !build.config.target.contains(target) {
-            panic!("specified target `{}` is not in configuration", target);
-        }
-    }
-
     let run = |cmd: &mut Command| {
         cmd.output().map(|output| {
             String::from_utf8_lossy(&output.stdout)
