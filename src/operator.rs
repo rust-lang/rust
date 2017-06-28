@@ -151,12 +151,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let usize = PrimValKind::from_uint_size(self.memory.pointer_size());
         let isize = PrimValKind::from_int_size(self.memory.pointer_size());
         if !left_kind.is_float() && !right_kind.is_float() {
-            if (!left.is_bytes() && !right.is_bytes()) && self.frame().const_env() {
-                if left.is_ptr() && right.is_ptr() {
-                    return Err(EvalError::NotConst("Comparing pointers".to_string()));
-                } else {
-                    return Err(EvalError::NeedsRfc("Comparing Pointers integers with pointers".to_string()));
-                }
+            if (!left.is_bytes() && !right.is_bytes()) && self.const_env() {
+                return Err(EvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()));
             }
             match bin_op {
                 Offset if left_kind == Ptr && right_kind == usize => {
