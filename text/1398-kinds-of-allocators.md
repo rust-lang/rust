@@ -1227,6 +1227,13 @@ few motivating examples that *are* clearly feasible and useful.
 * Removed uses of `NonZero`. Made `Layout` able to represent zero-sized layouts.
   A given `Allocator` may or may not support zero-sized layouts.
 
+* Various other API revisions were made during development of
+  [PR 42313][], "allocator integration". See the [nightly API docs][]
+  rather than using RFC document as a sole reference.
+
+[PR 42313]: https://github.com/rust-lang/rust/pull/42313
+[nightly API docs]: https://doc.rust-lang.org/nightly/alloc/allocator/trait.Alloc.html
+
 # Appendices
 
 ## Bibliography
