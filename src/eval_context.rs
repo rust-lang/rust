@@ -1347,7 +1347,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     I128 => 16,
                     Is => self.memory.pointer_size(),
                 };
-                // if we cast a ptr to an isize, reading it back into a primval shouldn't panic
+                // if we transmute a ptr to an isize, reading it back into a primval shouldn't panic
                 // Due to read_ptr ignoring the sign, we need to jump around some hoops
                 match self.memory.read_int(ptr, size) {
                     Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr)?,
@@ -1366,7 +1366,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Us => self.memory.pointer_size(),
                 };
                 if size == self.memory.pointer_size() {
-                    // if we cast a ptr to an usize, reading it back into a primval shouldn't panic
+                    // if we transmute a ptr to an usize, reading it back into a primval shouldn't panic
                     self.memory.read_ptr(ptr)?
                 } else {
                     PrimVal::from_u128(self.memory.read_uint(ptr, size)?)
