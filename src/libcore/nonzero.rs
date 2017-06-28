@@ -75,7 +75,7 @@ impl<T: Zeroable> NonZero<T> {
 
     /// Creates an instance of NonZero with the provided value.
     #[inline]
-    pub fn new_checked(inner: T) -> Option<Self> {
+    pub fn new(inner: T) -> Option<Self> {
         if inner.is_zero() {
             None
         } else {
