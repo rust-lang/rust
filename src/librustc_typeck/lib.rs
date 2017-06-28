@@ -198,22 +198,21 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 _ => ()
             }
-            let substs = tcx.intern_substs(&[]);
-            let se_ty = tcx.mk_fn_def(main_def_id, substs,
-                ty::Binder(tcx.mk_fn_sig(
+            let se_ty = tcx.mk_fn_ptr(ty::Binder(
+                tcx.mk_fn_sig(
                     iter::empty(),
                     tcx.mk_nil(),
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust
-                ))
-            );
+                )
+            ));
 
             require_same_types(
                 tcx,
                 &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
                 se_ty,
-                main_t);
+                tcx.mk_fn_ptr(tcx.fn_sig(main_def_id)));
         }
         _ => {
             span_bug!(main_span,
@@ -248,9 +247,8 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => ()
             }
 
-            let substs = tcx.intern_substs(&[]);
-            let se_ty = tcx.mk_fn_def(start_def_id, substs,
-                ty::Binder(tcx.mk_fn_sig(
+            let se_ty = tcx.mk_fn_ptr(ty::Binder(
+                tcx.mk_fn_sig(
                     [
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
@@ -259,14 +257,14 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust
-                ))
-            );
+                )
+            ));
 
             require_same_types(
                 tcx,
                 &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
                 se_ty,
-                start_t);
+                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)));
         }
         _ => {
             span_bug!(start_span,

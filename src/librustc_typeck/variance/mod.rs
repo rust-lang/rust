@@ -54,45 +54,63 @@ fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
 
 fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
                             -> Rc<Vec<ty::Variance>> {
-    let item_id = tcx.hir.as_local_node_id(item_def_id).expect("expected local def-id");
-    let item = tcx.hir.expect_item(item_id);
-    match item.node {
-        hir::ItemTrait(..) => {
-            // Traits are always invariant.
-            let generics = tcx.generics_of(item_def_id);
-            assert!(generics.parent.is_none());
-            Rc::new(vec![ty::Variance::Invariant; generics.count()])
-        }
+    let id = tcx.hir.as_local_node_id(item_def_id).expect("expected local def-id");
+    let unsupported = || {
+        // Variance not relevant.
+        span_bug!(tcx.hir.span(id), "asked to compute variance for wrong kind of item")
+    };
+    match tcx.hir.get(id) {
+        hir::map::NodeItem(item) => match item.node {
+            hir::ItemEnum(..) |
+            hir::ItemStruct(..) |
+            hir::ItemUnion(..) |
+            hir::ItemFn(..) => {}
 
-        hir::ItemEnum(..) |
-        hir::ItemStruct(..) |
-        hir::ItemUnion(..) => {
-            // Everything else must be inferred.
+            _ => unsupported()
+        },
 
-            // Lacking red/green, we read the variances for all items here
-            // but ignore the dependencies, then re-synthesize the ones we need.
-            let crate_map = tcx.dep_graph.with_ignore(|| tcx.crate_variances(LOCAL_CRATE));
-            let dep_node = item_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
+        hir::map::NodeTraitItem(item) => match item.node {
+            hir::TraitItemKind::Method(..) => {}
+
+            _ => unsupported()
+        },
+
+        hir::map::NodeImplItem(item) => match item.node {
+            hir::ImplItemKind::Method(..) => {}
+
+            _ => unsupported()
+        },
+
+        hir::map::NodeForeignItem(item) => match item.node {
+            hir::ForeignItemFn(..) => {}
+
+            _ => unsupported()
+        },
+
+        hir::map::NodeVariant(_) | hir::map::NodeStructCtor(_) => {}
+
+        _ => unsupported()
+    }
+
+    // Everything else must be inferred.
+
+    // Lacking red/green, we read the variances for all items here
+    // but ignore the dependencies, then re-synthesize the ones we need.
+    let crate_map = tcx.dep_graph.with_ignore(|| tcx.crate_variances(LOCAL_CRATE));
+    let dep_node = item_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
+    tcx.dep_graph.read(dep_node);
+    for &dep_def_id in crate_map.dependencies.less_than(&item_def_id) {
+        if dep_def_id.is_local() {
+            let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
             tcx.dep_graph.read(dep_node);
-            for &dep_def_id in crate_map.dependencies.less_than(&item_def_id) {
-                if dep_def_id.is_local() {
-                    let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-                    tcx.dep_graph.read(dep_node);
-                } else {
-                    let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVariances);
-                    tcx.dep_graph.read(dep_node);
-                }
-            }
-
-            crate_map.variances.get(&item_def_id)
-                               .unwrap_or(&crate_map.empty_variance)
-                               .clone()
-        }
-
-        _ => {
-            // Variance not relevant.
-            span_bug!(item.span, "asked to compute variance for wrong kind of item")
+        } else {
+            let dep_node = dep_def_id.to_dep_node(tcx, DepKind::ItemVariances);
+            tcx.dep_graph.read(dep_node);
         }
     }
+
+    crate_map.variances.get(&item_def_id)
+                       .unwrap_or(&crate_map.empty_variance)
+                       .clone()
 }
 

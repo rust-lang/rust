@@ -66,11 +66,8 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        let intrinsic = match self.tcx.type_of(def_id).sty {
-            ty::TyFnDef(.., bfty) => bfty.abi() == RustIntrinsic,
-            _ => return false
-        };
-        intrinsic && self.tcx.item_name(def_id) == "transmute"
+        self.tcx.fn_sig(def_id).abi() == RustIntrinsic &&
+        self.tcx.item_name(def_id) == "transmute"
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
@@ -153,22 +150,14 @@ impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
         } else {
             Def::Err
         };
-        match def {
-            Def::Fn(did) if self.def_id_is_transmute(did) => {
+        if let Def::Fn(did) = def {
+            if self.def_id_is_transmute(did) {
                 let typ = self.tables.node_id_to_type(expr.id);
-                let typ = self.tcx.lift_to_global(&typ).unwrap();
-                match typ.sty {
-                    ty::TyFnDef(.., sig) if sig.abi() == RustIntrinsic => {
-                        let from = sig.inputs().skip_binder()[0];
-                        let to = *sig.output().skip_binder();
-                        self.check_transmute(expr.span, from, to);
-                    }
-                    _ => {
-                        span_bug!(expr.span, "transmute wasn't a bare fn?!");
-                    }
-                }
+                let sig = typ.fn_sig(self.tcx);
+                let from = sig.inputs().skip_binder()[0];
+                let to = *sig.output().skip_binder();
+                self.check_transmute(expr.span, from, to);
             }
-            _ => {}
         }
 
         intravisit::walk_expr(self, expr);

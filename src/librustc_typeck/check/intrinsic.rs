@@ -13,7 +13,6 @@
 
 use intrinsics;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::util::nodemap::FxHashMap;
 use require_same_types;
@@ -35,22 +34,22 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    output: Ty<'tcx>) {
     let def_id = tcx.hir.local_def_id(it.id);
 
-    let substs = Substs::for_item(tcx, def_id,
-                                  |_, _| tcx.types.re_erased,
-                                  |def, _| tcx.mk_param_from_def(def));
+    match it.node {
+        hir::ForeignItemFn(..) => {}
+        _ => {
+            struct_span_err!(tcx.sess, it.span, E0619,
+                             "intrinsic must be a function")
+                .span_label(it.span, "expected a function")
+                .emit();
+            return;
+        }
+    }
 
-    let fty = tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(
-        inputs.into_iter(),
-        output,
-        false,
-        hir::Unsafety::Unsafe,
-        abi
-    )));
     let i_n_tps = tcx.generics_of(def_id).types.len();
     if i_n_tps != n_tps {
         let span = match it.node {
             hir::ForeignItemFn(_, _, ref generics) => generics.span,
-            hir::ForeignItemStatic(..) => it.span
+            _ => bug!()
         };
 
         struct_span_err!(tcx.sess, span, E0094,
@@ -59,14 +58,18 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         i_n_tps, n_tps)
             .span_label(span, format!("expected {} type parameter", n_tps))
             .emit();
-    } else {
-        require_same_types(tcx,
-                           &ObligationCause::new(it.span,
-                                                 it.id,
-                                                 ObligationCauseCode::IntrinsicType),
-                           tcx.type_of(def_id),
-                           fty);
+        return;
     }
+
+    let fty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+        inputs.into_iter(),
+        output,
+        false,
+        hir::Unsafety::Unsafe,
+        abi
+    )));
+    let cause = ObligationCause::new(it.span, it.id, ObligationCauseCode::IntrinsicType);
+    require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
 }
 
 /// Remember to add all intrinsics here, in librustc_trans/trans/intrinsic.rs,
@@ -376,7 +379,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                     let mut structural_to_nomimal = FxHashMap();
 
-                    let sig = tcx.type_of(def_id).fn_sig();
+                    let sig = tcx.fn_sig(def_id);
                     let sig = tcx.no_late_bound_regions(&sig).unwrap();
                     if intr.inputs.len() != sig.inputs().len() {
                         span_err!(tcx.sess, it.span, E0444,

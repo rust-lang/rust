@@ -531,10 +531,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyDynamic(ref trait_ty, ref region) =>
                 ty::TyDynamic(trait_ty.fold_with(folder), region.fold_with(folder)),
             ty::TyTuple(ts, defaulted) => ty::TyTuple(ts.fold_with(folder), defaulted),
-            ty::TyFnDef(def_id, substs, f) => {
-                ty::TyFnDef(def_id,
-                            substs.fold_with(folder),
-                            f.fold_with(folder))
+            ty::TyFnDef(def_id, substs) => {
+                ty::TyFnDef(def_id, substs.fold_with(folder))
             }
             ty::TyFnPtr(f) => ty::TyFnPtr(f.fold_with(folder)),
             ty::TyRef(ref r, tm) => {
@@ -568,9 +566,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyDynamic(ref trait_ty, ref reg) =>
                 trait_ty.visit_with(visitor) || reg.visit_with(visitor),
             ty::TyTuple(ts, _) => ts.visit_with(visitor),
-            ty::TyFnDef(_, substs, ref f) => {
-                substs.visit_with(visitor) || f.visit_with(visitor)
-            }
+            ty::TyFnDef(_, substs) => substs.visit_with(visitor),
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
             ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
             ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),

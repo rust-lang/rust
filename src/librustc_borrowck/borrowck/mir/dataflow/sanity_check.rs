@@ -161,18 +161,13 @@ fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            terminator: &'a Option<mir::Terminator<'tcx>>)
                            -> Option<(&'a [mir::Operand<'tcx>], Span)> {
     if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
-        if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind
-        {
-            if let mir::Operand::Constant(ref func) = *oper
-            {
-                if let ty::TyFnDef(def_id, _, sig) = func.ty.sty
-                {
-                    let abi = sig.abi();
+        if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind {
+            if let mir::Operand::Constant(ref func) = *oper {
+                if let ty::TyFnDef(def_id, _) = func.ty.sty {
+                    let abi = tcx.fn_sig(def_id).abi();
                     let name = tcx.item_name(def_id);
-                    if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                        if name == "rustc_peek" {
-                            return Some((args, source_info.span));
-                        }
+                    if abi == Abi::RustIntrinsic &&  name == "rustc_peek" {
+                        return Some((args, source_info.span));
                     }
                 }
             }

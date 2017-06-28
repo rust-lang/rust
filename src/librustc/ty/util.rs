@@ -679,7 +679,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
             TyAnon(def_id, _) |
-            TyFnDef(def_id, ..) => self.def_id(def_id),
+            TyFnDef(def_id, _) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
                 self.hash(f.unsafety());

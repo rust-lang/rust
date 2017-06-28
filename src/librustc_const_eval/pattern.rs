@@ -12,7 +12,7 @@ use eval;
 
 use rustc::middle::const_val::{ConstEvalErr, ConstVal};
 use rustc::mir::{Field, BorrowKind, Mutability};
-use rustc::ty::{self, TyCtxt, AdtDef, Ty, TypeVariants, Region};
+use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
@@ -549,8 +549,8 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
                     let substs = match ty.sty {
-                        TypeVariants::TyAdt(_, substs) => substs,
-                        TypeVariants::TyFnDef(_, substs, _) => substs,
+                        ty::TyAdt(_, substs) |
+                        ty::TyFnDef(_, substs) => substs,
                         _ => bug!("inappropriate type for def: {:?}", ty.sty),
                     };
                     PatternKind::Variant {

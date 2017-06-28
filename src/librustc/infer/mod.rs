@@ -1369,7 +1369,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Some(self.tcx.closure_kind(def_id))
     }
 
-    pub fn closure_type(&self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
+    /// Obtain the signature of a function or closure.
+    /// For closures, unlike `tcx.fn_sig(def_id)`, this method will
+    /// work during the type-checking of the enclosing function and
+    /// return the closure signature in its partially inferred state.
+    pub fn fn_sig(&self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
         if let Some(tables) = self.in_progress_tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                 if let Some(&ty) = tables.borrow().closure_tys.get(&id) {
@@ -1378,7 +1382,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.tcx.closure_type(def_id)
+        self.tcx.fn_sig(def_id)
     }
 }
 

@@ -143,12 +143,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn has_no_input_arg(&self, method: &AssociatedItem) -> bool {
         match method.def() {
             Def::Method(def_id) => {
-                match self.tcx.type_of(def_id).sty {
-                    ty::TypeVariants::TyFnDef(_, _, sig) => {
-                        sig.inputs().skip_binder().len() == 1
-                    }
-                    _ => false,
-                }
+                self.tcx.fn_sig(def_id).inputs().skip_binder().len() == 1
             }
             _ => false,
         }

@@ -11,6 +11,6 @@
 #![feature(intrinsics)]
 extern "rust-intrinsic" {
     pub static breakpoint : unsafe extern "rust-intrinsic" fn();
-    //~^ ERROR intrinsic has wrong type
+    //~^ ERROR intrinsic must be a function
 }
 fn main() { unsafe { breakpoint(); } }

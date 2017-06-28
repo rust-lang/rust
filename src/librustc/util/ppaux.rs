@@ -753,8 +753,14 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
                 write!(f, ")")
             }
-            TyFnDef(def_id, substs, ref bare_fn) => {
-                write!(f, "{} {{", bare_fn.0)?;
+            TyFnDef(def_id, substs) => {
+                ty::tls::with(|tcx| {
+                    let mut sig = tcx.fn_sig(def_id);
+                    if let Some(substs) = tcx.lift(&substs) {
+                        sig = sig.subst(tcx, substs);
+                    }
+                    write!(f, "{} {{", sig.0)
+                })?;
                 parameterized(f, substs, def_id, &[])?;
                 write!(f, "}}")
             }

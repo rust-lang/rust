@@ -401,8 +401,9 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                         output);
                 }
             },
-            ty::TyFnDef(.., sig) |
-            ty::TyFnPtr(sig) => {
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(_) => {
+                let sig = t.fn_sig(self.tcx);
                 if sig.unsafety() == hir::Unsafety::Unsafe {
                     output.push_str("unsafe ");
                 }

@@ -495,12 +495,12 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            -> ty::PolyFnSig<'tcx>
 {
     match ty.sty {
-        ty::TyFnDef(_, _, sig) => sig,
+        ty::TyFnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(sig) => sig,
+        ty::TyFnPtr(_) => ty.fn_sig(ccx.tcx()),
         ty::TyClosure(def_id, substs) => {
             let tcx = ccx.tcx();
-            let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
+            let sig = tcx.fn_sig(def_id).subst(tcx, substs.substs);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = match tcx.closure_kind(def_id) {

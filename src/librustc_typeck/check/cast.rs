@@ -356,8 +356,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
-                if let ty::TyFnDef(.., f) = self.expr_ty.sty {
+                if let ty::TyFnDef(..) = self.expr_ty.sty {
                     // Attempt a coercion to a fn pointer type.
+                    let f = self.expr_ty.fn_sig(fcx.tcx);
                     let res = fcx.try_coerce(self.expr,
                                              self.expr_ty,
                                              self.expr_diverges,
