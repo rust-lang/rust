@@ -74,7 +74,8 @@ use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem;
 #[cfg(not(test))]
 use core::num::Float;
-use core::ops::{InPlace, Index, IndexMut, Place, Placer};
+use core::ops::{InPlace, Index, IndexMut, Place, Placer, RangeArgument};
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops;
 use core::ptr;
 use core::ptr::Shared;
@@ -84,8 +85,6 @@ use borrow::ToOwned;
 use borrow::Cow;
 use boxed::Box;
 use raw_vec::RawVec;
-use super::range::RangeArgument;
-use Bound::{Excluded, Included, Unbounded};
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///

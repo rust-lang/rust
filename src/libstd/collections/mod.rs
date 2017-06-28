@@ -436,6 +436,8 @@ pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(reason = "moved to std::ops", since = "1.19.0")]
+#[allow(deprecated)]
 pub use alloc::range;
 
 mod hash;

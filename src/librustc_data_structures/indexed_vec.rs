@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::range::RangeArgument;
 use std::fmt::Debug;
 use std::iter::{self, FromIterator};
 use std::slice;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut, Range};
+use std::ops::{Index, IndexMut, Range, RangeArgument};
 use std::fmt;
 use std::vec;
 use std::u32;

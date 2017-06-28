@@ -46,6 +46,7 @@ pub use alloc::binary_heap;
 pub use alloc::borrow;
 pub use alloc::fmt;
 pub use alloc::linked_list;
+#[allow(deprecated)]
 pub use alloc::range;
 pub use alloc::slice;
 pub use alloc::str;

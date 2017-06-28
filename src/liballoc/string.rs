@@ -59,15 +59,14 @@
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
-use core::ops::{self, Add, AddAssign, Index, IndexMut};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeArgument};
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ptr;
 use core::str::pattern::Pattern;
 use std_unicode::lossy;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
-use range::RangeArgument;
-use Bound::{Excluded, Included, Unbounded};
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
