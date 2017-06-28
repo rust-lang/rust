@@ -126,8 +126,63 @@ impl<'tcx> Global<'tcx> {
 }
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+    /// Reads a value from the lvalue without going through the intermediate step of obtaining
+    /// a `miri::Lvalue`
+    pub fn try_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+        use rustc::mir::Lvalue::*;
+        match *lvalue {
+            // Might allow this in the future, right now there's no way to do this from Rust code anyway
+            Local(mir::RETURN_POINTER) => Err(EvalError::ReadFromReturnPointer),
+            // Directly reading a local will always succeed
+            Local(local) => self.frame().get_local(local).map(Some),
+            // Directly reading a static will always succeed
+            Static(ref static_) => {
+                let instance = ty::Instance::mono(self.tcx, static_.def_id);
+                let cid = GlobalId { instance, promoted: None };
+                Ok(Some(self.globals.get(&cid).expect("global not cached").value))
+            },
+            Projection(ref proj) => self.try_read_lvalue_projection(proj),
+        }
+    }
+
+    fn try_read_lvalue_projection(&mut self, proj: &mir::LvalueProjection<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+        use rustc::mir::ProjectionElem::*;
+        let base = match self.try_read_lvalue(&proj.base)? {
+            Some(base) => base,
+            None => return Ok(None),
+        };
+        let base_ty = self.lvalue_ty(&proj.base);
+        match proj.elem {
+            Field(field, _) => match (field.index(), base) {
+                // the only field of a struct
+                (0, Value::ByVal(val)) => Ok(Some(Value::ByVal(val))),
+                // split fat pointers, 2 element tuples, ...
+                (0...1, Value::ByValPair(a, b)) if self.get_field_count(base_ty)? == 2 => {
+                    let val = [a, b][field.index()];
+                    Ok(Some(Value::ByVal(val)))
+                },
+                // the only field of a struct is a fat pointer
+                (0, Value::ByValPair(..)) => Ok(Some(base)),
+                _ => Ok(None),
+            },
+            // The NullablePointer cases should work fine, need to take care for normal enums
+            Downcast(..) |
+            Subslice { .. } |
+            // reading index 0 or index 1 from a ByVal or ByVal pair could be optimized
+            ConstantIndex { .. } | Index(_) |
+            // No way to optimize this projection any better than the normal lvalue path
+            Deref => Ok(None),
+        }
+    }
+
     pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
         let ty = self.lvalue_ty(lvalue);
+        // Shortcut for things like accessing a fat pointer's field,
+        // which would otherwise (in the `eval_lvalue` path) require moving a `ByValPair` to memory
+        // and returning an `Lvalue::Ptr` to it
+        if let Some(val) = self.try_read_lvalue(lvalue)? {
+            return Ok(val);
+        }
         let lvalue = self.eval_lvalue(lvalue)?;
 
         if ty.is_never() {
@@ -233,7 +288,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             _ => bug!("field access on non-product type: {:?}", base_layout),
         };
 
-        let (base_ptr, base_extra) = self.force_allocation(base)?.to_ptr_and_extra();
+        // Do not allocate in trivial cases
+        let (base_ptr, base_extra) = match base {
+            Lvalue::Ptr { ptr, extra } => (ptr, extra),
+            Lvalue::Local { frame, local } => match self.stack[frame].get_local(local)? {
+                // in case the type has a single field, just return the value
+                Value::ByVal(_) if self.get_field_count(base_ty).map(|c| c == 1).unwrap_or(false) => {
+                    assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
+                    return Ok(base);
+                },
+                Value::ByRef(_) |
+                Value::ByValPair(..) |
+                Value::ByVal(_) => self.force_allocation(base)?.to_ptr_and_extra(),
+            },
+            Lvalue::Global(cid) => match self.globals.get(&cid).expect("uncached global").value {
+                // in case the type has a single field, just return the value
+                Value::ByVal(_) if self.get_field_count(base_ty).map(|c| c == 1).unwrap_or(false) => {
+                    assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
+                    return Ok(base);
+                },
+                Value::ByRef(_) |
+                Value::ByValPair(..) |
+                Value::ByVal(_) => self.force_allocation(base)?.to_ptr_and_extra(),
+            },
+        };
 
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {

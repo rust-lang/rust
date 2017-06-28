@@ -65,6 +65,7 @@ pub enum EvalError<'tcx> {
     Panic,
     NeedsRfc(String),
     NotConst(String),
+    ReadFromReturnPointer,
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -162,6 +163,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "this feature needs an rfc before being allowed inside constants",
             EvalError::NotConst(_) =>
                 "this feature is not compatible with constant evaluation",
+            EvalError::ReadFromReturnPointer =>
+                "tried to read from the return pointer",
         }
     }
 

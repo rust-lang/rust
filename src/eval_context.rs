@@ -807,7 +807,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
+    pub(super) fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
             ty::TyRawPtr(ref tam) |
             ty::TyRef(_, ref tam) => !self.type_is_sized(tam.ty),
@@ -868,6 +868,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
         match ty.sty {
             ty::TyAdt(adt_def, _) if adt_def.is_box() => self.get_fat_field(ty.boxed_ty(), field_index),
+            ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
+                use rustc::ty::layout::Layout::*;
+                match *self.type_layout(ty)? {
+                    RawNullablePointer { nndiscr, .. } |
+                    StructWrappedNullablePointer { nndiscr, .. } => Ok(adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs)),
+                    _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle enum type: {:?}, {:?}", ty, ty.sty))),
+                }
+            }
             ty::TyAdt(adt_def, substs) => {
                 Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
             }
@@ -876,6 +884,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             ty::TyRef(_, ref tam) |
             ty::TyRawPtr(ref tam) => self.get_fat_field(tam.ty, field_index),
+
+            ty::TyArray(ref inner, _) => Ok(inner),
+
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }
     }
@@ -902,14 +913,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, usize> {
+    pub fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         let layout = self.type_layout(ty)?;
 
         use rustc::ty::layout::Layout::*;
         match *layout {
-            Univariant { ref variant, .. } => Ok(variant.offsets.len()),
+            Univariant { ref variant, .. } => Ok(variant.offsets.len() as u64),
             FatPointer { .. } => Ok(2),
-            StructWrappedNullablePointer { ref nonnull, .. } => Ok(nonnull.offsets.len()),
+            StructWrappedNullablePointer { ref nonnull, .. } => Ok(nonnull.offsets.len() as u64),
+            Vector { count , .. } |
+            Array { count, .. } => Ok(count),
+            Scalar { .. } => Ok(0),
             _ => {
                 let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
                 Err(EvalError::Unimplemented(msg))
