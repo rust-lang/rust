@@ -1,4 +1,5 @@
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc::hir::def::Def;
 use rustc::mir;
 use rustc::ty::{self, TypeVariants, Ty};
 use rustc::ty::layout::Layout;
@@ -12,6 +13,8 @@ use lvalue::Lvalue;
 use memory::{MemoryPointer, TlsKey};
 use value::{PrimVal, Value};
 use rustc_data_structures::indexed_vec::Idx;
+
+use std::mem;
 
 mod drop;
 mod intrinsic;
@@ -932,5 +935,35 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.dump_local(dest);
         self.goto_block(dest_block);
         Ok(())
+    }
+    /// Get the definition associated to a path.
+    fn path_to_def(&self, path: &[&str]) -> Option<Def> {
+        let cstore = &self.tcx.sess.cstore;
+
+        let crates = cstore.crates();
+        crates.iter()
+            .find(|&&krate| cstore.crate_name(krate) == path[0])
+            .and_then(|krate| {
+                let krate = DefId {
+                    krate: *krate,
+                    index: CRATE_DEF_INDEX,
+                };
+                let mut items = cstore.item_children(krate, self.tcx.sess);
+                let mut path_it = path.iter().skip(1).peekable();
+
+                while let Some(segment) = path_it.next() {
+                    for item in &mem::replace(&mut items, vec![]) {
+                        if item.ident.name == *segment {
+                            if path_it.peek().is_none() {
+                                return Some(item.def);
+                            }
+
+                            items = cstore.item_children(item.def.def_id(), self.tcx.sess);
+                            break;
+                        }
+                    }
+                }
+                None
+            })
     }
 }
