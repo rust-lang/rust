@@ -8,22 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
+#![feature(alloc, allocator_api, heap_api, unique)]
 
-#![feature(i128_type)]
-#![feature(rand)]
-#![feature(repr_simd)]
-#![feature(slice_rotate)]
-#![feature(sort_unstable)]
-#![feature(test)]
+extern crate alloc;
 
-extern crate rand;
-extern crate test;
+use alloc::heap::HeapAlloc;
+use alloc::allocator::Alloc;
 
-mod btree;
-mod linked_list;
-mod string;
-mod str;
-mod slice;
-mod vec;
-mod vec_deque;
+fn main() {
+    unsafe {
+        let ptr = HeapAlloc.alloc_one::<i32>().unwrap_or_else(|e| {
+            HeapAlloc.oom(e)
+        });
+        *ptr.as_ptr() = 4;
+        assert_eq!(*ptr.as_ptr(), 4);
+        HeapAlloc.dealloc_one(ptr);
+    }
+}

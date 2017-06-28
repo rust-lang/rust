@@ -396,18 +396,44 @@ fn test_sort() {
     let mut rng = thread_rng();
 
     for len in (2..25).chain(500..510) {
-        for _ in 0..100 {
-            let mut v: Vec<_> = rng.gen_iter::<i32>().take(len).collect();
-            let mut v1 = v.clone();
+        for &modulus in &[5, 10, 100, 1000] {
+            for _ in 0..10 {
+                let orig: Vec<_> = rng.gen_iter::<i32>()
+                    .map(|x| x % modulus)
+                    .take(len)
+                    .collect();
 
-            v.sort();
-            assert!(v.windows(2).all(|w| w[0] <= w[1]));
+                // Sort in default order.
+                let mut v = orig.clone();
+                v.sort();
+                assert!(v.windows(2).all(|w| w[0] <= w[1]));
 
-            v1.sort_by(|a, b| a.cmp(b));
-            assert!(v1.windows(2).all(|w| w[0] <= w[1]));
+                // Sort in ascending order.
+                let mut v = orig.clone();
+                v.sort_by(|a, b| a.cmp(b));
+                assert!(v.windows(2).all(|w| w[0] <= w[1]));
 
-            v1.sort_by(|a, b| b.cmp(a));
-            assert!(v1.windows(2).all(|w| w[0] >= w[1]));
+                // Sort in descending order.
+                let mut v = orig.clone();
+                v.sort_by(|a, b| b.cmp(a));
+                assert!(v.windows(2).all(|w| w[0] >= w[1]));
+
+                // Sort with many pre-sorted runs.
+                let mut v = orig.clone();
+                v.sort();
+                v.reverse();
+                for _ in 0..5 {
+                    let a = rng.gen::<usize>() % len;
+                    let b = rng.gen::<usize>() % len;
+                    if a < b {
+                        v[a..b].reverse();
+                    } else {
+                        v.swap(a, b);
+                    }
+                }
+                v.sort();
+                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+            }
         }
     }
 

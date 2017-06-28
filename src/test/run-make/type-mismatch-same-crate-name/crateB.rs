@@ -8,22 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
+extern crate crateA;
 
-#![feature(i128_type)]
-#![feature(rand)]
-#![feature(repr_simd)]
-#![feature(slice_rotate)]
-#![feature(sort_unstable)]
-#![feature(test)]
-
-extern crate rand;
-extern crate test;
-
-mod btree;
-mod linked_list;
-mod string;
-mod str;
-mod slice;
-mod vec;
-mod vec_deque;
+pub fn try_foo(x: crateA::Foo){}
+pub fn try_bar(x: Box<crateA::Bar>){}

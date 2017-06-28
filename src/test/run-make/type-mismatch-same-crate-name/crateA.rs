@@ -8,22 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
+mod foo {
+    pub struct Foo;
+}
 
-#![feature(i128_type)]
-#![feature(rand)]
-#![feature(repr_simd)]
-#![feature(slice_rotate)]
-#![feature(sort_unstable)]
-#![feature(test)]
+mod bar {
+    pub trait Bar{}
 
-extern crate rand;
-extern crate test;
+    pub fn bar() -> Box<Bar> {
+        unimplemented!()
+    }
+}
 
-mod btree;
-mod linked_list;
-mod string;
-mod str;
-mod slice;
-mod vec;
-mod vec_deque;
+// This makes the publicly accessible path
+// differ from the internal one.
+pub use foo::Foo;
+pub use bar::{Bar, bar};
