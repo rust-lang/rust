@@ -893,7 +893,7 @@ impl<T> VecDeque<T> {
         self.head = drain_tail;
 
         Drain {
-            deque: unsafe { Shared::new(self as *mut _) },
+            deque: unsafe { Shared::new_unchecked(self as *mut _) },
             after_tail: drain_head,
             after_head: head,
             iter: Iter {

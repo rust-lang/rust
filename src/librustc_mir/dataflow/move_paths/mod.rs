@@ -42,7 +42,7 @@ pub(crate) mod indexes {
 
             impl Idx for $Index {
                 fn new(idx: usize) -> Self {
-                    unsafe { $Index(NonZero::new(idx + 1)) }
+                    unsafe { $Index(NonZero::new_unchecked(idx + 1)) }
                 }
                 fn index(self) -> usize {
                     self.0.get() - 1

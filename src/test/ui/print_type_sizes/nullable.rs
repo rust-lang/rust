@@ -57,7 +57,7 @@ pub struct NestedNonZero<T: Zeroable> {
 impl<T: Zeroable+Default> Default for NestedNonZero<T> {
     fn default() -> Self {
         unsafe {
-            NestedNonZero { pre: 0, val: NonZero::new(Default::default()), post: 0 }
+            NestedNonZero { pre: 0, val: NonZero::new_unchecked(Default::default()), post: 0 }
         }
     }
 }

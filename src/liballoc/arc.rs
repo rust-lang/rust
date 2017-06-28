@@ -280,7 +280,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data: data,
         };
-        Arc { ptr: unsafe { Shared::new(Box::into_raw(x)) } }
+        Arc { ptr: unsafe { Shared::new_unchecked(Box::into_raw(x)) } }
     }
 
     /// Returns the contained value, if the `Arc` has exactly one strong reference.
@@ -382,7 +382,7 @@ impl<T> Arc<T> {
         // `data` field from the pointer.
         let ptr = (ptr as *const u8).offset(-offset_of!(ArcInner<T>, data));
         Arc {
-            ptr: Shared::new(ptr as *mut u8 as *mut _),
+            ptr: Shared::new_unchecked(ptr as *mut u8 as *mut _),
         }
     }
 }
@@ -842,7 +842,7 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Shared::new(Box::into_raw(box ArcInner {
+                ptr: Shared::new_unchecked(Box::into_raw(box ArcInner {
                     strong: atomic::AtomicUsize::new(0),
                     weak: atomic::AtomicUsize::new(1),
                     data: uninitialized(),

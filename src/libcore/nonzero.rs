@@ -69,7 +69,7 @@ impl<T: Zeroable> NonZero<T> {
     /// Creates an instance of NonZero with the provided value.
     /// You must indeed ensure that the value is actually "non-zero".
     #[inline]
-    pub const unsafe fn new(inner: T) -> Self {
+    pub const unsafe fn new_unchecked(inner: T) -> Self {
         NonZero(inner)
     }
 

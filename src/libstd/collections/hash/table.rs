@@ -44,7 +44,7 @@ impl TaggedHashUintPtr {
     #[inline]
     unsafe fn new(ptr: *mut HashUint) -> Self {
         debug_assert!(ptr as usize & 1 == 0 || ptr as usize == EMPTY as usize);
-        TaggedHashUintPtr(Unique::new(ptr))
+        TaggedHashUintPtr(Unique::new_unchecked(ptr))
     }
 
     #[inline]
@@ -56,7 +56,7 @@ impl TaggedHashUintPtr {
             } else {
                 usize_ptr &= !1;
             }
-            self.0 = Unique::new(usize_ptr as *mut HashUint)
+            self.0 = Unique::new_unchecked(usize_ptr as *mut HashUint)
         }
     }
 
@@ -877,7 +877,7 @@ impl<K, V> RawTable<K, V> {
                 elems_left: elems_left,
                 marker: marker::PhantomData,
             },
-            table: unsafe { Shared::new(self) },
+            table: unsafe { Shared::new_unchecked(self) },
             marker: marker::PhantomData,
         }
     }

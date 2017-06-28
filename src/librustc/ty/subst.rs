@@ -47,7 +47,7 @@ impl<'tcx> From<Ty<'tcx>> for Kind<'tcx> {
         let ptr = ty as *const _ as usize;
         Kind {
             ptr: unsafe {
-                NonZero::new(ptr | TYPE_TAG)
+                NonZero::new_unchecked(ptr | TYPE_TAG)
             },
             marker: PhantomData
         }
@@ -62,7 +62,7 @@ impl<'tcx> From<ty::Region<'tcx>> for Kind<'tcx> {
         let ptr = r as *const _ as usize;
         Kind {
             ptr: unsafe {
-                NonZero::new(ptr | REGION_TAG)
+                NonZero::new_unchecked(ptr | REGION_TAG)
             },
             marker: PhantomData
         }

@@ -1126,7 +1126,7 @@ impl<T> Vec<T> {
                 tail_start: end,
                 tail_len: len - end,
                 iter: range_slice.iter(),
-                vec: Shared::new(self as *mut _),
+                vec: Shared::new_unchecked(self as *mut _),
             }
         }
     }
@@ -1727,7 +1727,7 @@ impl<T> IntoIterator for Vec<T> {
             let cap = self.buf.cap();
             mem::forget(self);
             IntoIter {
-                buf: Shared::new(begin),
+                buf: Shared::new_unchecked(begin),
                 cap: cap,
                 ptr: begin,
                 end: end,

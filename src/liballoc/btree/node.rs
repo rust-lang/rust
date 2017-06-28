@@ -141,23 +141,23 @@ struct BoxedNode<K, V> {
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
         unsafe {
-            BoxedNode { ptr: Unique::new(Box::into_raw(node)) }
+            BoxedNode { ptr: Unique::new_unchecked(Box::into_raw(node)) }
         }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
         unsafe {
-            BoxedNode { ptr: Unique::new(Box::into_raw(node) as *mut LeafNode<K, V>) }
+            BoxedNode { ptr: Unique::new_unchecked(Box::into_raw(node) as *mut LeafNode<K, V>) }
         }
     }
 
     unsafe fn from_ptr(ptr: NonZero<*const LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::new(ptr.get() as *mut LeafNode<K, V>) }
+        BoxedNode { ptr: Unique::new_unchecked(ptr.get() as *mut LeafNode<K, V>) }
     }
 
     fn as_ptr(&self) -> NonZero<*const LeafNode<K, V>> {
         unsafe {
-            NonZero::new(self.ptr.as_ptr())
+            NonZero::new_unchecked(self.ptr.as_ptr())
         }
     }
 }
@@ -391,7 +391,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
                 node: NodeRef {
                     height: self.height + 1,
                     node: unsafe {
-                        NonZero::new(self.as_leaf().parent as *mut LeafNode<K, V>)
+                        NonZero::new_unchecked(self.as_leaf().parent as *mut LeafNode<K, V>)
                     },
                     root: self.root,
                     _marker: PhantomData

@@ -1098,7 +1098,7 @@ impl<T: Sized> Unique<T> {
     pub fn empty() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
-            Unique::new(ptr)
+            Unique::new_unchecked(ptr)
         }
     }
 }
@@ -1110,8 +1110,8 @@ impl<T: ?Sized> Unique<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub const unsafe fn new(ptr: *mut T) -> Self {
-        Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
+    pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
+        Unique { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
     }
 
     /// Creates a new `Unique` if `ptr` is non-null.
@@ -1217,7 +1217,7 @@ impl<T: Sized> Shared<T> {
     pub fn empty() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
-            Shared::new(ptr)
+            Shared::new_unchecked(ptr)
         }
     }
 }
@@ -1229,8 +1229,8 @@ impl<T: ?Sized> Shared<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub const unsafe fn new(ptr: *mut T) -> Self {
-        Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
+    pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
+        Shared { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
     }
 
     /// Creates a new `Shared` if `ptr` is non-null.

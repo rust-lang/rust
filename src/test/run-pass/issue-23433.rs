@@ -16,7 +16,7 @@ use std::ptr::Unique;
 
 fn main() {
     let mut a = [0u8; 5];
-    let b: Option<Unique<[u8]>> = unsafe { Some(Unique::new(&mut a)) };
+    let b: Option<Unique<[u8]>> = unsafe { Some(Unique::new_unchecked(&mut a)) };
     match b {
         Some(_) => println!("Got `Some`"),
         None => panic!("Unexpected `None`"),
