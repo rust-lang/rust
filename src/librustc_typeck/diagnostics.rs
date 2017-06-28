@@ -4666,6 +4666,7 @@ i_am_a_function();
 "##,
 
 E0619: r##"
+<<<<<<< HEAD
 The type-checker needed to know the type of an expression, but that type had not
 yet been inferred.
 
@@ -4724,6 +4725,26 @@ manipulated through a reference (e.g., `&T` or `&mut T`) or other pointer-type
 ```
 let x = &[1_usize, 2] as &[usize]; // ok!
 ```
+"##,
+
+E0621: r##"
+An intrinsic was declared without being a function.
+
+Erroneous code example:
+
+```compile_fail,E0621
+#![feature(intrinsics)]
+extern "rust-intrinsic" {
+    pub static breakpoint : unsafe extern "rust-intrinsic" fn();
+    // error: intrinsic must be a function
+}
+
+fn main() { unsafe { breakpoint(); } }
+```
+
+An intrinsic is a function available for use in a given programming language
+whose implementation is handled specially by the compiler. In order to fix this
+error, just declare a function.
 "##,
 
 }
