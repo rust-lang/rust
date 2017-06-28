@@ -108,7 +108,7 @@ impl<'a, 'tcx: 'a> Value {
                 assert_eq!(len as u64 as u128, len);
                 Ok((ptr, len as u64))
             },
-            _ => unimplemented!(),
+            ByVal(_) => unimplemented!(),
         }
     }
 }
