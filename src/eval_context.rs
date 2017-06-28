@@ -169,6 +169,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
+    /// Returns true if the current frame or any parent frame is part of a ctfe.
+    ///
+    /// Used to disable features in const eval, which do not have a rfc enabling
+    /// them or which can't be written in a way that they produce the same output
+    /// that evaluating the code at runtime would produce.
+    pub fn const_env(&self) -> bool {
+        for frame in self.stack.iter().rev() {
+            if let StackPopCleanup::MarkStatic(_) = frame.return_to_block {
+                return true;
+            }
+        }
+        false
+    }
+
     pub(crate) fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         let ptr = self.memory.allocate_cached(s.as_bytes())?;
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
@@ -655,7 +669,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Len(ref lvalue) => {
-                if self.frame().const_env() {
+                if self.const_env() {
                     return Err(EvalError::NeedsRfc("computing the length of arrays".to_string()));
                 }
                 let src = self.eval_lvalue(lvalue)?;
@@ -704,7 +718,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
-                if self.frame().const_env() {
+                if self.const_env() {
                     return Err(EvalError::NeedsRfc("\"heap\" allocations".to_string()));
                 }
                 // FIXME: call the `exchange_malloc` lang item if available
@@ -718,7 +732,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                if self.frame().const_env() {
+                if self.const_env() {
                     return Err(EvalError::NeedsRfc("computing the size of types (size_of)".to_string()));
                 }
                 let size = self.type_size(ty)?.expect("SizeOf nullary MIR operator called for unsized type");
@@ -1592,12 +1606,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 impl<'tcx> Frame<'tcx> {
-    pub fn const_env(&self) -> bool {
-        match self.return_to_block {
-            StackPopCleanup::MarkStatic(_) => true,
-            _ => false,
-        }
-    }
     pub fn get_local(&self, local: mir::Local) -> EvalResult<'tcx, Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         self.locals[local.index() - 1].ok_or(EvalError::DeadLocal)

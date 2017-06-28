@@ -37,7 +37,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Goto { target } => self.goto_block(target),
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                if self.frame().const_env() {
+                if self.const_env() {
                     return Err(EvalError::NeedsRfc("branching (if, match, loop, ...)".to_string()));
                 }
                 let discr_val = self.eval_operand(discr)?;
@@ -95,7 +95,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Drop { ref location, target, .. } => {
                 trace!("TerminatorKind::drop: {:?}, {:?}", location, self.substs());
-                if self.frame().const_env() {
+                if self.const_env() {
                     return Err(EvalError::NeedsRfc("invoking `Drop::drop`".to_string()));
                 }
                 let lval = self.eval_lvalue(location)?;
@@ -430,7 +430,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError::NoMirFor(path)) => {
-                if self.frame().const_env() {
+                if self.const_env() {
                     return Err(EvalError::NeedsRfc(format!("calling extern function `{}`", path)));
                 }
                 self.call_missing_fn(instance, destination, arg_operands, sig, path)?;
@@ -439,7 +439,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Err(other) => return Err(other),
         };
 
-        if self.frame().const_env() && !self.tcx.is_const_fn(instance.def_id()) {
+        if self.const_env() && !self.tcx.is_const_fn(instance.def_id()) {
             return Err(EvalError::NotConst(format!("calling non-const fn `{}`", instance)));
         }
         
