@@ -2,7 +2,7 @@
 fn main() {
     fn f() {}
 
-    let g = f as fn() as unsafe fn(i32); //~ERROR: non-scalar cast: `fn()` as `unsafe fn(i32)`
+    let g = f as fn() as unsafe fn(i32); //~ERROR: non-primitive cast: `fn()` as `unsafe fn(i32)`
 
     unsafe {
         g(42);
