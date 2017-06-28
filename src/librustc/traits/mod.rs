@@ -608,7 +608,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.infer_ctxt().enter(|infcx| {
+    let result = tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::empty(Reveal::All);
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
@@ -624,7 +624,10 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         fulfill_cx.select_all_or_error(&infcx).is_ok()
-    })
+    });
+    debug!("normalize_and_test_predicates(predicates={:?}) = {:?}",
+           predicates, result);
+    result
 }
 
 /// Given a trait `trait_ref`, iterates the vtable entries

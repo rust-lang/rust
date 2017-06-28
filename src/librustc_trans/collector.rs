@@ -195,7 +195,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
 use rustc::traits;
-use rustc::ty::subst::{Substs, Subst};
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, TypeFoldable, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::{self, Location};
@@ -303,6 +303,11 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         scx.tcx().hir.krate().visit_all_item_likes(&mut visitor);
     }
+
+    // We can only translate items that are instantiable - items all of
+    // whose predicates hold. Luckily, items that aren't instantiable
+    // can't actually be used, so we can just skip translating them.
+    roots.retain(|root| root.is_instantiable(scx.tcx()));
 
     roots
 }
@@ -937,14 +942,9 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                     let instance =
                         monomorphize::resolve(scx, method.def_id, callee_substs);
 
-                    let predicates = tcx.predicates_of(instance.def_id()).predicates
-                        .subst(tcx, instance.substs);
-                    if !traits::normalize_and_test_predicates(tcx, predicates) {
-                        continue;
-                    }
-
-                    if should_trans_locally(tcx, &instance) {
-                        output.push(create_fn_trans_item(instance));
+                    let trans_item = create_fn_trans_item(instance);
+                    if trans_item.is_instantiable(tcx) && should_trans_locally(tcx, &instance) {
+                        output.push(trans_item);
                     }
                 }
             }
