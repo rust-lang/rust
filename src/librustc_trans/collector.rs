@@ -304,7 +304,11 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         scx.tcx().hir.krate().visit_all_item_likes(&mut visitor);
     }
 
+    // We can only translate items that are instantiable - items all of
+    // whose predicates hold. Luckily, items that aren't instantiable
+    // can't actually be used, so we can just skip translating them.
     roots.retain(|root| root.is_instantiable(scx.tcx()));
+
     roots
 }
 

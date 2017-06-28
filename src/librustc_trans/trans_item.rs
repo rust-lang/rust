@@ -253,6 +253,29 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     /// Returns whether this instance is instantiable - whether it has no unsatisfied
     /// predicates.
+    ///
+    /// In order to translate an item, all of its predicates must hold, because
+    /// otherwise the item does not make sense. Type-checking ensures that
+    /// the predicates of every item that is *used by* a valid item *do*
+    /// hold, so we can rely on that.
+    ///
+    /// However, we translate collector roots (reachable items) and functions
+    /// in vtables when they are seen, even if they are not used, and so they
+    /// might not be instantiable. For example, a programmer can define this
+    /// public function:
+    ///
+    ///     pub fn foo<'a>(s: &'a mut ()) where &'a mut (): Clone {
+    ///         <&mut () as Clone>::clone(&s);
+    ///     }
+    ///
+    /// That function can't be translated, because the method `<&mut () as Clone>::clone`
+    /// does not exist. Luckily for us, that function can't ever be used,
+    /// because that would require for `&'a mut (): Clone` to hold, so we
+    /// can just not emit any code, or even a linker reference for it.
+    ///
+    /// Similarly, if a vtable method has such a signature, and therefore can't
+    /// be used, we can just not emit it and have a placeholder (a null pointer,
+    /// which will never be accessed) in its place.
     pub fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self {
