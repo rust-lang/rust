@@ -363,39 +363,29 @@ impl f32 {
     #[inline]
     pub fn signum(self) -> f32 { num::Float::signum(self) }
 
-    /// Returns `true` if `self`'s sign bit is positive, including
-    /// `+0.0` and `INFINITY`.
+    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// positive sign bit and positive infinity.
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let nan = f32::NAN;
     /// let f = 7.0_f32;
     /// let g = -7.0_f32;
     ///
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
-    /// // Requires both tests to determine if is `NaN`
-    /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_sign_positive(self) -> bool { num::Float::is_sign_positive(self) }
 
-    /// Returns `true` if `self`'s sign is negative, including `-0.0`
-    /// and `NEG_INFINITY`.
+    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// negative sign bit and negative infinity.
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let nan = f32::NAN;
     /// let f = 7.0f32;
     /// let g = -7.0f32;
     ///
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
-    /// // Requires both tests to determine if is `NaN`.
-    /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1184,7 +1174,7 @@ mod tests {
         assert!(!nan.is_infinite());
         assert!(!nan.is_finite());
         assert!(!nan.is_normal());
-        assert!(!nan.is_sign_positive());
+        assert!(nan.is_sign_positive());
         assert!(!nan.is_sign_negative());
         assert_eq!(Fp::Nan, nan.classify());
     }
@@ -1428,7 +1418,8 @@ mod tests {
         assert!(!(-1f32).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
         assert!(!(1f32/NEG_INFINITY).is_sign_positive());
-        assert!(!NAN.is_sign_positive());
+        assert!(NAN.is_sign_positive());
+        assert!(!(-NAN).is_sign_positive());
     }
 
     #[test]
@@ -1441,6 +1432,7 @@ mod tests {
         assert!(NEG_INFINITY.is_sign_negative());
         assert!((1f32/NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
+        assert!((-NAN).is_sign_negative());
     }
 
     #[test]
