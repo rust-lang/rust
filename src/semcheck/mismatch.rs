@@ -119,60 +119,48 @@ fn relate_tys_mismatch<'a, 'gcx, 'tcx, R>(relation: &mut R, a: Ty<'tcx>, b: Ty<'
 {
     use rustc::ty::TypeVariants::*;
 
-    let tcx = relation.tcx();
-    let a_sty = &a.sty;
-    let b_sty = &b.sty;
-    match (a_sty, b_sty) {
+    match (&a.sty, &b.sty) {
         (&TyInfer(_), _) | (_, &TyInfer(_)) => {
             // As the original function this is ripped off of, we don't handle these cases.
             panic!("var types encountered in relate_tys_mismatch")
         },
         (&TyAdt(a_def, a_substs), &TyAdt(_, b_substs)) => {
             let _ = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
-            Ok(tcx.types.err)
         },
         (&TyDynamic(a_obj, a_r), &TyDynamic(b_obj, b_r)) => {
             // TODO: more sophiticated mechanism here
             let _ = relation.relate(&a_r, &b_r);
             let _ = relation.relate(&a_obj, &b_obj);
-            Ok(tcx.types.err)
         },
         (&TyRawPtr(a_mt), &TyRawPtr(b_mt)) => {
             let _ = relation.relate(&a_mt, &b_mt);
-            Ok(tcx.types.err)
         },
         (&TyRef(a_r, a_mt), &TyRef(b_r, b_mt)) => {
             let _ = relation.relate(&a_r, &b_r);
             let _ = relation.relate(&a_mt, &b_mt);
-            Ok(tcx.types.err)
         },
         (&TyArray(a_t, _), &TyArray(b_t, _)) |
         (&TySlice(a_t), &TySlice(b_t)) => {
-            relation.relate(&a_t, &b_t)
+            let _ = relation.relate(&a_t, &b_t);
         },
         (&TyTuple(as_, _), &TyTuple(bs, _)) => {
             let _ = as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b));
-            Ok(tcx.types.err)
         },
         (&TyFnDef(_, a_substs, a_fty), &TyFnDef(_, b_substs, b_fty)) => {
             let _ = ty::relate::relate_substs(relation, None, a_substs, b_substs)?;
             let _ = relation.relate(&a_fty, &b_fty);
-            Ok(tcx.types.err)
         },
         (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
             let _ = relation.relate(&a_fty, &b_fty);
-            Ok(tcx.types.err)
         },
         (&TyProjection(a_data), &TyProjection(b_data)) => {
             let _ = relation.relate(&a_data, &b_data);
-            Ok(tcx.types.err)
         },
         (&TyAnon(_, a_substs), &TyAnon(_, b_substs)) => {
             let _ = ty::relate::relate_substs(relation, None, a_substs, b_substs);
-            Ok(tcx.types.err)
         },
-        _ => {
-            Ok(tcx.types.err)
-        }
-    }
+        _ => (),
+    };
+
+    Ok(relation.tcx().types.err)
 }
