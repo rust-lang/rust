@@ -10,6 +10,8 @@ different allocator to be used by default in Rust programs. Additionally, also
 switch the default allocator for dynamic libraries and static libraries to using
 the system malloc instead of jemalloc.
 
+*Note:* this RFC has been superseded by [RFC 1974][].
+
 # Motivation
 
 Note that this issue was [discussed quite a bit][babysteps] in the past, and
@@ -233,3 +235,9 @@ enable us to direct LLVM allocations to jemalloc, which would be quite nice!
 
 Should BSD-like systems use Rust's jemalloc by default? Many of them have
 jemalloc as the system allocator and even the special APIs we use from jemalloc.
+
+# Updates since being accepted
+
+*Note:* this RFC has been superseded by [RFC 1974][].
+
+[RFC 1974]: https://github.com/rust-lang/rfcs/blob/master/text/1974-global-allocators.md
