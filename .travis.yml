@@ -179,8 +179,14 @@ before_script:
           fi
       fi
 
+# Log time information from this machine and an external machine for insight into possible
+# clock drift. Timezones don't matter since relative deltas give all the necessary info.
 script:
+  - >
+      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
   - stamp sh -x -c "$RUN_SCRIPT"
+  - >
+      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
 
 after_success:
   - >
