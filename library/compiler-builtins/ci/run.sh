@@ -31,18 +31,6 @@ case $1 in
                     ;;
             esac
 
-            # FIXME(#150) debug assertion in divmoddi4
-            case $1 in
-                thumbv6m-*)
-                    case $t in
-                        divdi3 | divmoddi4 | moddi3 | modsi3 | udivmoddi4 | udivmodsi4 | umoddi3 | \
-                            umodsi3)
-                            continue
-                            ;;
-                    esac
-                ;;
-            esac
-
             xargo test --test $t --target $1 --features 'mem gen-tests' --no-run
             qemu-arm-static target/${1}/debug/$t-*
 
