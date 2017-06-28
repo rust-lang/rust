@@ -1060,11 +1060,11 @@ impl EmitterWriter {
                                -> io::Result<()> {
         use std::borrow::Borrow;
 
-        let primary_span = suggestion.substitution_spans().next().unwrap();
+        let primary_sub = &suggestion.substitution_parts[0];
         if let Some(ref cm) = self.cm {
             let mut buffer = StyledBuffer::new();
 
-            let lines = cm.span_to_lines(primary_span).unwrap();
+            let lines = cm.span_to_lines(primary_sub.span).unwrap();
 
             assert!(!lines.lines.is_empty());
 
@@ -1077,26 +1077,51 @@ impl EmitterWriter {
                                Some(Style::HeaderMsg));
 
             let suggestions = suggestion.splice_lines(cm.borrow());
-            let line_start = cm.lookup_char_pos(primary_span.lo).line - 1;
-            let mut row_num = 1;
+            let span_start_pos = cm.lookup_char_pos(primary_sub.span.lo);
+            let span_end_pos = cm.lookup_char_pos(primary_sub.span.hi);
+            let line_start = span_start_pos.line;
+            draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
+            let mut row_num = 2;
             for complete in suggestions.iter().take(MAX_SUGGESTIONS) {
+                let mut line_pos = 0;
+                // Only show underline if there's a single suggestion and it is a single line
+                let show_underline = complete.lines().count() == 1
+                    && span_start_pos.line == span_end_pos.line
+                    && primary_sub.substitutions.len() == 1;
 
                 let mut lines = complete.lines();
                 for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
-                    // print the span column to avoid confusion
+                    // Print the span column to avoid confusion
                     buffer.puts(row_num,
                                 0,
-                                &((line_start + row_num).to_string()),
+                                &((line_start + line_pos).to_string()),
                                 Style::LineNumber);
                     // print the suggestion
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                     buffer.append(row_num, line, Style::NoStyle);
                     row_num += 1;
+                    if show_underline {
+                        draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
+
+                        let sub_len = primary_sub.substitutions[0].trim_right().len();
+                        let underline_start = span_start_pos.col.0;
+                        let underline_end = span_start_pos.col.0 + sub_len;
+                        for p in underline_start..underline_end {
+                            buffer.putc(row_num,
+                                        max_line_num_len + 3 + p,
+                                        '^',
+                                        Style::UnderlinePrimary);
+                        }
+                        row_num += 1;
+                    }
+                    line_pos += 1;
                 }
 
                 // if we elided some lines, add an ellipsis
                 if let Some(_) = lines.next() {
                     buffer.append(row_num, "...", Style::NoStyle);
+                } else if !show_underline && suggestions.len() <= MAX_SUGGESTIONS {
+                    draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
                 }
             }
             if suggestions.len() > MAX_SUGGESTIONS {

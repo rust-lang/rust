@@ -2920,10 +2920,6 @@ impl<'a> Parser<'a> {
                         err.cancel();
                         let codemap = self.sess.codemap();
                         let suggestion_span = lhs_span.to(self.prev_span);
-                        let suggestion = match codemap.span_to_snippet(suggestion_span) {
-                            Ok(lstring) => format!("({})", lstring),
-                            _ => format!("(<expression> as <type>)")
-                        };
                         let warn_message = match codemap.span_to_snippet(self.prev_span) {
                             Ok(lstring) => format!("`{}`", lstring),
                             _ => "a type".to_string(),
@@ -2934,6 +2930,10 @@ impl<'a> Parser<'a> {
                         let mut err = self.sess.span_diagnostic.struct_span_err(sp, &msg);
                         err.span_label(sp, "interpreted as generic argument");
                         err.span_label(self.span, "not interpreted as comparison");
+                        let suggestion = match codemap.span_to_snippet(suggestion_span) {
+                            Ok(lstring) => format!("({})", lstring),
+                            _ => format!("(<expression> as <type>)")
+                        };
                         err.span_suggestion(suggestion_span,
                                             "if you want to compare the casted value then write:",
                                             suggestion);

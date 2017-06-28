@@ -7,7 +7,9 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                               not interpreted as comparison
    |
 help: if you want to compare the casted value then write:
+   |
 16 |     println!("{}", (a as usize) < b);
+   |                    ^^^^^^^^^^^^
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:17:33
@@ -18,7 +20,9 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                               not interpreted as comparison
    |
 help: if you want to compare the casted value then write:
+   |
 17 |     println!("{}", (a as usize) < 4);
+   |                    ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

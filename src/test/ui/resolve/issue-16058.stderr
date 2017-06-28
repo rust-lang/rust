@@ -5,9 +5,11 @@ error[E0574]: expected struct, variant or union type, found enum `Result`
    |         ^^^^^^ not a struct, variant or union type
    |
 help: possible better candidates are found in other modules, you can import them into scope
+   |
 12 | use std::fmt::Result;
-13 | use std::io::Result;
-14 | use std::thread::Result;
+12 | use std::io::Result;
+12 | use std::thread::Result;
+   |
 
 error: aborting due to previous error
 
