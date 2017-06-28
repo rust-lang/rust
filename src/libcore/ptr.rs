@@ -1110,8 +1110,13 @@ impl<T: ?Sized> Unique<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub const unsafe fn new(ptr: *mut T) -> Unique<T> {
+    pub const unsafe fn new(ptr: *mut T) -> Self {
         Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
+    }
+
+    /// Creates a new `Unique` if `ptr` is non-null.
+    pub fn new_checked(ptr: *mut T) -> Option<Self> {
+        NonZero::new_checked(ptr as *const T).map(|nz| Unique { pointer: nz, _marker: PhantomData })
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -1224,8 +1229,13 @@ impl<T: ?Sized> Shared<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub unsafe fn new(ptr: *mut T) -> Self {
+    pub const unsafe fn new(ptr: *mut T) -> Self {
         Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
+    }
+
+    /// Creates a new `Shared` if `ptr` is non-null.
+    pub fn new_checked(ptr: *mut T) -> Option<Self> {
+        NonZero::new_checked(ptr as *const T).map(|nz| Shared { pointer: nz, _marker: PhantomData })
     }
 
     /// Acquires the underlying `*mut` pointer.

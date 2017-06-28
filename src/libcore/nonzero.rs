@@ -16,22 +16,48 @@
 use ops::CoerceUnsized;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
-pub unsafe trait Zeroable {}
+pub unsafe trait Zeroable {
+    /// Whether this value is zero
+    fn is_zero(&self) -> bool;
+}
 
-unsafe impl<T:?Sized> Zeroable for *const T {}
-unsafe impl<T:?Sized> Zeroable for *mut T {}
-unsafe impl Zeroable for isize {}
-unsafe impl Zeroable for usize {}
-unsafe impl Zeroable for i8 {}
-unsafe impl Zeroable for u8 {}
-unsafe impl Zeroable for i16 {}
-unsafe impl Zeroable for u16 {}
-unsafe impl Zeroable for i32 {}
-unsafe impl Zeroable for u32 {}
-unsafe impl Zeroable for i64 {}
-unsafe impl Zeroable for u64 {}
-unsafe impl Zeroable for i128 {}
-unsafe impl Zeroable for u128 {}
+macro_rules! impl_zeroable_for_pointer_types {
+    ( $( $Ptr: ty )+ ) => {
+        $(
+            /// For fat pointers to be considered "zero", only the "data" part needs to be null.
+            unsafe impl<T: ?Sized> Zeroable for $Ptr {
+                #[inline]
+                fn is_zero(&self) -> bool {
+                    // Cast because `is_null` is only available on thin pointers
+                    (*self as *mut u8).is_null()
+                }
+            }
+        )+
+    }
+}
+
+macro_rules! impl_zeroable_for_integer_types {
+    ( $( $Int: ty )+ ) => {
+        $(
+            unsafe impl Zeroable for $Int {
+                #[inline]
+                fn is_zero(&self) -> bool {
+                    *self == 0
+                }
+            }
+        )+
+    }
+}
+
+impl_zeroable_for_pointer_types! {
+    *const T
+    *mut T
+}
+
+impl_zeroable_for_integer_types! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+}
 
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
@@ -43,8 +69,18 @@ impl<T: Zeroable> NonZero<T> {
     /// Creates an instance of NonZero with the provided value.
     /// You must indeed ensure that the value is actually "non-zero".
     #[inline]
-    pub const unsafe fn new(inner: T) -> NonZero<T> {
+    pub const unsafe fn new(inner: T) -> Self {
         NonZero(inner)
+    }
+
+    /// Creates an instance of NonZero with the provided value.
+    #[inline]
+    pub fn new_checked(inner: T) -> Option<Self> {
+        if inner.is_zero() {
+            None
+        } else {
+            Some(NonZero(inner))
+        }
     }
 
     /// Gets the inner value.
