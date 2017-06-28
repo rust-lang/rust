@@ -1168,6 +1168,18 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             "`return;` in a function whose return type is not `()`");
                         db.span_label(cause.span, "return type is not ()");
                     }
+                    ObligationCauseCode::BlockTailExpression(blk_id) => {
+                        db = fcx.report_mismatched_types(cause, expected, found, err);
+
+                        let expr = expression.unwrap_or_else(|| {
+                            span_bug!(cause.span,
+                                      "supposed to be part of a block tail expression, but the \
+                                       expression is empty");
+                        });
+                        fcx.suggest_mismatched_types_on_tail(&mut db, expr,
+                                                             expected, found,
+                                                             cause.span, blk_id);
+                    }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
                     }

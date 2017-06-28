@@ -124,6 +124,7 @@ use syntax_pos::{self, BytePos, Span};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
 use rustc_back::slice;
@@ -977,7 +978,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
     let ret_ty = fn_sig.output();
-    fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
+    fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::SizedReturnType);
     let ret_ty = fcx.instantiate_anon_types(&ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
@@ -1900,7 +1901,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     // Require that the predicate holds for the concrete type.
                     let cause = traits::ObligationCause::new(span, self.body_id,
-                                                             traits::ReturnType);
+                                                             traits::SizedReturnType);
                     self.register_predicate(traits::Obligation::new(cause,
                                                                     self.param_env,
                                                                     predicate));
@@ -2839,10 +2840,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              "check_return_expr called outside fn body"));
 
         let ret_ty = ret_coercion.borrow().expected_ty();
-        let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty);
+        let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty.clone());
         ret_coercion.borrow_mut()
                     .coerce(self,
-                            &self.misc(return_expr.span),
+                            &self.cause(return_expr.span,
+                                        ObligationCauseCode::ReturnType(return_expr.id)),
                             return_expr,
                             return_expr_ty,
                             self.diverges.get());
@@ -4161,8 +4163,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut coerce = ctxt.coerce.as_mut().unwrap();
             if let Some(tail_expr_ty) = tail_expr_ty {
                 let tail_expr = tail_expr.unwrap();
+                let cause = self.cause(tail_expr.span,
+                                       ObligationCauseCode::BlockTailExpression(blk.id));
                 coerce.coerce(self,
-                              &self.misc(tail_expr.span),
+                              &cause,
                               tail_expr,
                               tail_expr_ty,
                               self.diverges.get());
@@ -4201,6 +4205,130 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
+    /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and whether it is
+    /// `fn main` if it is a method, `None` otherwise.
+    pub fn get_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, bool)> {
+        // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
+        // `while` before reaching it, as block tail returns are not available in them.
+        if let Some(fn_id) = self.tcx.hir.get_return_block(blk_id) {
+            let parent = self.tcx.hir.get(fn_id);
+
+            if let Node::NodeItem(&hir::Item {
+                name, node: hir::ItemFn(ref decl, ..), ..
+            }) = parent {
+                decl.clone().and_then(|decl| {
+                    // This is less than ideal, it will not present the return type span on any
+                    // method called `main`, regardless of whether it is actually the entry point.
+                    Some((decl, name == Symbol::intern("main")))
+                })
+            } else if let Node::NodeTraitItem(&hir::TraitItem {
+                node: hir::TraitItemKind::Method(hir::MethodSig {
+                    ref decl, ..
+                }, ..), ..
+            }) = parent {
+                decl.clone().and_then(|decl| {
+                    Some((decl, false))
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// On implicit return expressions with mismatched types, provide the following suggestions:
+    ///
+    ///  - Point out the method's return type as the reason for the expected type
+    ///  - Possible missing semicolon
+    ///  - Possible missing return type if the return type is the default, and not `fn main()`
+    pub fn suggest_mismatched_types_on_tail(&self,
+                                            err: &mut DiagnosticBuilder<'tcx>,
+                                            expression: &'gcx hir::Expr,
+                                            expected: Ty<'tcx>,
+                                            found: Ty<'tcx>,
+                                            cause_span: Span,
+                                            blk_id: ast::NodeId) {
+        self.suggest_missing_semicolon(err, expression, expected, cause_span);
+
+        if let Some((fn_decl, is_main)) = self.get_fn_decl(blk_id) {
+            // `fn main()` must return `()`, do not suggest changing return type
+            if !is_main {
+                self.suggest_missing_return_type(err, &fn_decl, found);
+            }
+        }
+    }
+
+    /// A common error is to forget to add a semicolon at the end of a block:
+    ///
+    /// ```
+    /// fn foo() {
+    ///     bar_that_returns_u32()
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the return expression in a block would make sense on its own as a
+    /// statement and the return type has been left as defaultor has been specified as `()`. If so,
+    /// it suggests adding a semicolon.
+    fn suggest_missing_semicolon(&self,
+                                     err: &mut DiagnosticBuilder<'tcx>,
+                                     expression: &'gcx hir::Expr,
+                                     expected: Ty<'tcx>,
+                                     cause_span: Span) {
+        if expected.is_nil() {
+            // `BlockTailExpression` only relevant if the tail expr would be
+            // useful on its own.
+            match expression.node {
+                hir::ExprCall(..) |
+                hir::ExprMethodCall(..) |
+                hir::ExprIf(..) |
+                hir::ExprWhile(..) |
+                hir::ExprLoop(..) |
+                hir::ExprMatch(..) |
+                hir::ExprBlock(..) => {
+                    let sp = cause_span.next_point();
+                    err.span_suggestion(sp,
+                                        "did you mean to add a semicolon here?",
+                                        ";".to_string());
+                }
+                _ => (),
+            }
+        }
+    }
+
+
+    /// A possible error is to forget to add a return type that is needed:
+    ///
+    /// ```
+    /// fn foo() {
+    ///     bar_that_returns_u32()
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the return type is left as default, the method is not part of an
+    /// `impl` block and that it isn't the `main` method. If so, it suggests setting the return
+    /// type.
+    fn suggest_missing_return_type(&self,
+                                   err: &mut DiagnosticBuilder<'tcx>,
+                                   fn_decl: &hir::FnDecl,
+                                   ty: Ty<'tcx>) {
+
+        // Only recommend changing the return type for methods that
+        // haven't set a return type at all (and aren't `fn main()` or an impl).
+        if let &hir::FnDecl {
+            output: hir::FunctionRetTy::DefaultReturn(span), ..
+        } = fn_decl {
+            if ty.is_suggestable() {
+                err.span_suggestion(span,
+                                    "possibly return type missing here?",
+                                    format!("-> {} ", ty));
+            } else {
+                err.span_label(span, "possibly return type missing here?");
+            }
+        }
+    }
+
+
     /// A common error is to add an extra semicolon:
     ///
     /// ```
@@ -4236,7 +4364,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hi: original_span.hi,
             ctxt: original_span.ctxt,
         };
-        err.span_help(span_semi, "consider removing this semicolon:");
+        err.span_suggestion(span_semi, "consider removing this semicolon", "".to_string());
     }
 
     // Instantiates the given path, which must refer to an item with the given

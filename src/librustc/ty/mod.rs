@@ -481,6 +481,18 @@ impl<'tcx> TyS<'tcx> {
             _ => false,
         }
     }
+
+    pub fn is_suggestable(&self) -> bool {
+        match self.sty {
+            TypeVariants::TyAnon(..) |
+            TypeVariants::TyFnDef(..) |
+            TypeVariants::TyFnPtr(..) |
+            TypeVariants::TyDynamic(..) |
+            TypeVariants::TyClosure(..) |
+            TypeVariants::TyProjection(..) => false,
+            _ => true,
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'tcx> {

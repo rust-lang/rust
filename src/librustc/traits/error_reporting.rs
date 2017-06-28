@@ -1088,7 +1088,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");
             }
-            ObligationCauseCode::ReturnType => {
+            ObligationCauseCode::SizedReturnType => {
                 err.note("the return type of a function must have a \
                           statically known size");
             }
@@ -1133,6 +1133,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               but not on the corresponding trait method",
                              predicate));
             }
+            ObligationCauseCode::ReturnType(_) |
+            ObligationCauseCode::BlockTailExpression(_) => (),
         }
     }
 
