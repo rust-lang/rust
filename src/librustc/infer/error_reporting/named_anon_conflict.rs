@@ -107,7 +107,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // FIXME(#42703) - Need to handle certain cases here.
         let ret_ty = self.tcx.type_of(scope_def_id);
         match ret_ty.sty {
-            ty::TyFnDef(_, _, sig) => {
+            ty::TyFnDef(_, _) => {
+                let sig = ret_ty.fn_sig(self.tcx);
                 let late_bound_regions = self.tcx
                     .collect_referenced_late_bound_regions(&sig.output());
                 if late_bound_regions.iter().any(|r| *r == br) {
