@@ -498,12 +498,10 @@ pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
 use string;
 
-/// The format function takes a precompiled format string and a list of
-/// arguments, to return the resulting formatted string.
+/// The `format` function takes an `Arguments` struct and returns the resulting
+/// formatted string.
 ///
-/// # Arguments
-///
-///   * args - a structure of arguments generated via the `format_args!` macro.
+/// The `Arguments` instance can be created with the `format_args!` macro.
 ///
 /// # Examples
 ///
