@@ -10,14 +10,17 @@
 
 // ignore-emscripten no threads support
 
-#![feature(rand)]
 #![feature(const_fn)]
+#![feature(rand)]
+#![feature(sort_unstable)]
 
 use std::__rand::{thread_rng, Rng};
-use std::panic;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
 use std::cell::Cell;
+use std::cmp::Ordering;
+use std::panic;
+use std::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize};
+use std::sync::atomic::Ordering::Relaxed;
+use std::thread;
 
 const MAX_LEN: usize = 80;
 
@@ -45,54 +48,85 @@ static DROP_COUNTS: [AtomicUsize; MAX_LEN] = [
     AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
 ];
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
+static VERSIONS: AtomicUsize = ATOMIC_USIZE_INIT;
+
+#[derive(Clone, Eq)]
 struct DropCounter {
     x: u32,
     id: usize,
+    version: Cell<usize>,
+}
+
+impl PartialEq for DropCounter {
+    fn eq(&self, other: &Self) -> bool {
+        self.partial_cmp(other) == Some(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for DropCounter {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.version.set(self.version.get() + 1);
+        other.version.set(other.version.get() + 1);
+        VERSIONS.fetch_add(2, Relaxed);
+        self.x.partial_cmp(&other.x)
+    }
+}
+
+impl Ord for DropCounter {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
 
 impl Drop for DropCounter {
     fn drop(&mut self) {
-        DROP_COUNTS[self.id].fetch_add(1, Ordering::Relaxed);
+        DROP_COUNTS[self.id].fetch_add(1, Relaxed);
+        VERSIONS.fetch_sub(self.version.get(), Relaxed);
     }
 }
 
-fn test(input: &[DropCounter]) {
-    let len = input.len();
+macro_rules! test {
+    ($input:ident, $func:ident) => {
+        let len = $input.len();
 
-    // Work out the total number of comparisons required to sort
-    // this array...
-    let mut count = 0usize;
-    input.to_owned().sort_by(|a, b| { count += 1; a.cmp(b) });
+        // Work out the total number of comparisons required to sort
+        // this array...
+        let mut count = 0usize;
+        $input.to_owned().$func(|a, b| { count += 1; a.cmp(b) });
 
-    // ... and then panic on each and every single one.
-    for panic_countdown in 0..count {
-        // Refresh the counters.
-        for i in 0..len {
-            DROP_COUNTS[i].store(0, Ordering::Relaxed);
-        }
+        // ... and then panic on each and every single one.
+        for panic_countdown in 0..count {
+            // Refresh the counters.
+            VERSIONS.store(0, Relaxed);
+            for i in 0..len {
+                DROP_COUNTS[i].store(0, Relaxed);
+            }
 
-        let v = input.to_owned();
-        let _ = thread::spawn(move || {
-            let mut v = v;
-            let mut panic_countdown = panic_countdown;
-            v.sort_by(|a, b| {
-                if panic_countdown == 0 {
-                    SILENCE_PANIC.with(|s| s.set(true));
-                    panic!();
-                }
-                panic_countdown -= 1;
-                a.cmp(b)
-            })
-        }).join();
+            let v = $input.to_owned();
+            let _ = thread::spawn(move || {
+                let mut v = v;
+                let mut panic_countdown = panic_countdown;
+                v.$func(|a, b| {
+                    if panic_countdown == 0 {
+                        SILENCE_PANIC.with(|s| s.set(true));
+                        panic!();
+                    }
+                    panic_countdown -= 1;
+                    a.cmp(b)
+                })
+            }).join();
 
-        // Check that the number of things dropped is exactly
-        // what we expect (i.e. the contents of `v`).
-        for (i, c) in DROP_COUNTS.iter().enumerate().take(len) {
-            let count = c.load(Ordering::Relaxed);
-            assert!(count == 1,
-                    "found drop count == {} for i == {}, len == {}",
-                    count, i, len);
+            // Check that the number of things dropped is exactly
+            // what we expect (i.e. the contents of `v`).
+            for (i, c) in DROP_COUNTS.iter().enumerate().take(len) {
+                let count = c.load(Relaxed);
+                assert!(count == 1,
+                        "found drop count == {} for i == {}, len == {}",
+                        count, i, len);
+            }
+
+            // Check that the most recent versions of values were dropped.
+            assert_eq!(VERSIONS.load(Relaxed), 0);
         }
     }
 }
@@ -106,33 +140,41 @@ fn main() {
             prev(info);
         }
     }));
+
+    let mut rng = thread_rng();
+
     for len in (1..20).chain(70..MAX_LEN) {
-        // Test on a random array.
-        let mut rng = thread_rng();
-        let input = (0..len).map(|id| {
-            DropCounter {
-                x: rng.next_u32(),
-                id: id,
-            }
-        }).collect::<Vec<_>>();
-        test(&input);
+        for &modulus in &[5, 20, 50] {
+            for &has_runs in &[false, true] {
+                let mut input = (0..len)
+                    .map(|id| {
+                        DropCounter {
+                            x: rng.next_u32() % modulus,
+                            id: id,
+                            version: Cell::new(0),
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
-        // Test on a sorted array with two elements randomly swapped, creating several natural
-        // runs of random lengths. Such arrays have very high chances of hitting all code paths in
-        // the merge procedure.
-        for _ in 0..5 {
-            let mut input = (0..len).map(|i|
-                DropCounter {
-                    x: i as u32,
-                    id: i,
+                if has_runs {
+                    for c in &mut input {
+                        c.x = c.id as u32;
+                    }
+
+                    for _ in 0..5 {
+                        let a = rng.gen::<usize>() % len;
+                        let b = rng.gen::<usize>() % len;
+                        if a < b {
+                            input[a..b].reverse();
+                        } else {
+                            input.swap(a, b);
+                        }
+                    }
                 }
-            ).collect::<Vec<_>>();
 
-            let a = rng.gen::<usize>() % len;
-            let b = rng.gen::<usize>() % len;
-            input.swap(a, b);
-
-            test(&input);
+                test!(input, sort_by);
+                test!(input, sort_unstable_by);
+            }
         }
     }
 }
