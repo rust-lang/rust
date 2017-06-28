@@ -129,7 +129,7 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
         iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
         let hir::ExprLoop(ref block, _, _) = arms[0].body.node,
         block.expr.is_none(),
-        let [ ref let_stmt, ref body ] = *block.stmts,
+        let [ _, _, ref let_stmt, ref body ] = *block.stmts,
         let hir::StmtDecl(ref decl, _) = let_stmt.node,
         let hir::DeclLocal(ref decl) = decl.node,
         let hir::StmtExpr(ref expr, _) = body.node,
