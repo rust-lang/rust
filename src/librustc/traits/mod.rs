@@ -498,7 +498,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ) {
             Ok(predicates) => predicates,
             Err(errors) => {
-                infcx.report_fulfillment_errors(&errors);
+                infcx.report_fulfillment_errors(&errors, None);
                 // An unnormalized env is better than nothing.
                 return elaborated_env;
             }

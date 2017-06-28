@@ -377,7 +377,7 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
 
     fn report_error(&self, t: Ty<'tcx>) {
         if !self.tcx.sess.has_errors() {
-            self.infcx.need_type_info(self.body.id(), self.span.to_span(&self.tcx), t);
+            self.infcx.need_type_info(Some(self.body.id()), self.span.to_span(&self.tcx), t);
         }
     }
 }
