@@ -511,14 +511,13 @@ impl<'a> Parser<'a> {
     }
 
     pub fn this_token_descr(&self) -> String {
-        let s = self.this_token_to_string();
-        if self.token.is_strict_keyword() {
-            format!("keyword `{}`", s)
-        } else if self.token.is_reserved_keyword() {
-            format!("reserved keyword `{}`", s)
-        } else {
-            format!("`{}`", s)
-        }
+        let prefix = match &self.token {
+            t if t.is_special_ident() => "reserved identifier ",
+            t if t.is_used_keyword() => "keyword ",
+            t if t.is_unused_keyword() => "reserved keyword ",
+            _ => "",
+        };
+        format!("{}`{}`", prefix, self.this_token_to_string())
     }
 
     pub fn unexpected_last<T>(&self, t: &token::Token) -> PResult<'a, T> {
@@ -637,10 +636,12 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
-        self.check_strict_keywords();
-        self.check_reserved_keywords();
         match self.token {
             token::Ident(i) => {
+                if self.token.is_reserved_ident() {
+                    self.span_err(self.span, &format!("expected identifier, found {}",
+                                                      self.this_token_descr()));
+                }
                 self.bump();
                 Ok(i)
             }
@@ -710,25 +711,6 @@ impl<'a> Parser<'a> {
             self.unexpected()
         } else {
             Ok(())
-        }
-    }
-
-    /// Signal an error if the given string is a strict keyword
-    pub fn check_strict_keywords(&mut self) {
-        if self.token.is_strict_keyword() {
-            let token_str = self.this_token_to_string();
-            let span = self.span;
-            self.span_err(span,
-                          &format!("expected identifier, found keyword `{}`",
-                                  token_str));
-        }
-    }
-
-    /// Signal an error if the current token is a reserved keyword
-    pub fn check_reserved_keywords(&mut self) {
-        if self.token.is_reserved_keyword() {
-            let token_str = self.this_token_to_string();
-            self.fatal(&format!("`{}` is a reserved keyword", token_str)).emit()
         }
     }
 
@@ -2301,7 +2283,7 @@ impl<'a> Parser<'a> {
                     ex = ExprKind::Break(lt, e);
                     hi = self.prev_span;
                 } else if self.token.is_keyword(keywords::Let) {
-                    // Catch this syntax error here, instead of in `check_strict_keywords`, so
+                    // Catch this syntax error here, instead of in `parse_ident`, so
                     // that we can explicitly mention that let is not to be used as an expression
                     let mut db = self.fatal("expected expression, found statement (`let`)");
                     db.note("variable declaration using `let` is a statement");
@@ -3540,7 +3522,7 @@ impl<'a> Parser<'a> {
                 // Parse box pat
                 let subpat = self.parse_pat()?;
                 pat = PatKind::Box(subpat);
-            } else if self.token.is_ident() && !self.token.is_any_keyword() &&
+            } else if self.token.is_ident() && !self.token.is_reserved_ident() &&
                       self.parse_as_ident() {
                 // Parse ident @ pat
                 // This can give false positives and parse nullary enums,
@@ -3815,7 +3797,7 @@ impl<'a> Parser<'a> {
 
     fn is_union_item(&self) -> bool {
         self.token.is_keyword(keywords::Union) &&
-        self.look_ahead(1, |t| t.is_ident() && !t.is_any_keyword())
+        self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
     }
 
     fn is_defaultness(&self) -> bool {

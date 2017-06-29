@@ -10,11 +10,11 @@
 
 macro_rules! m {
     () => {
-        struct $crate {} //~ ERROR expected identifier, found keyword `$crate`
+        struct $crate {} //~ ERROR expected identifier, found reserved identifier `$crate`
 
         use $crate; // OK
                     //~^ WARN `$crate` may not be imported
-        use $crate as $crate; //~ ERROR expected identifier, found keyword `$crate`
+        use $crate as $crate; //~ ERROR expected identifier, found reserved identifier `$crate`
                               //~^ WARN `$crate` may not be imported
     }
 }

@@ -1283,7 +1283,7 @@ impl<'a> StringReader<'a> {
                     });
                     let keyword_checking_token = &token::Ident(keyword_checking_ident);
                     let last_bpos = self.pos;
-                    if keyword_checking_token.is_any_keyword() &&
+                    if keyword_checking_token.is_reserved_ident() &&
                        !keyword_checking_token.is_keyword(keywords::Static) {
                         self.err_span_(start, last_bpos, "lifetimes cannot use keyword names");
                     }
