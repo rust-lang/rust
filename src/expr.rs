@@ -2404,9 +2404,10 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
             context.use_block_indent() ||
                 context.config.fn_call_style() == IndentStyle::Visual && args_len > 1
         }
+        ast::ExprKind::Array(..) |
         ast::ExprKind::Call(..) |
-        ast::ExprKind::MethodCall(..) |
         ast::ExprKind::Mac(..) |
+        ast::ExprKind::MethodCall(..) |
         ast::ExprKind::Struct(..) |
         ast::ExprKind::Tup(..) => context.use_block_indent() && args_len == 1,
         ast::ExprKind::AddrOf(_, ref expr) |
