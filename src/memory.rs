@@ -772,7 +772,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     4 => !0u32 as u128,
                     8 => !0u64 as u128,
                     16 => !0,
-                    _ => bug!("unexpected PrimVal::Bytes size"),
+                    n => bug!("unexpected PrimVal::Bytes size: {}", n),
                 };
                 self.write_uint(dest.to_ptr()?, bytes & mask, size)
             }
