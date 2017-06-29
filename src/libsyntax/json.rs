@@ -256,8 +256,8 @@ impl DiagnosticSpan {
         });
         DiagnosticSpan {
             file_name: start.file.name.clone(),
-            byte_start: span.lo.0,
-            byte_end: span.hi.0,
+            byte_start: span.lo.0 - start.file.start_pos.0,
+            byte_end: span.hi.0 - start.file.start_pos.0,
             line_start: start.line,
             line_end: end.line,
             column_start: start.col.0 + 1,
@@ -362,4 +362,3 @@ impl JsonEmitter {
         suggestion.splice_lines(&*self.cm).iter().map(|line| line.0.to_owned()).collect()
     }
 }
-
