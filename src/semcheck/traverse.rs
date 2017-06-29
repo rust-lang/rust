@@ -219,7 +219,6 @@ fn diff_fn(changes: &mut ChangeSet,
            old: Export,
            new: Export) {
     use rustc::hir::Unsafety::Unsafe;
-    use rustc::ty::TypeVariants::*;
 
     let old_def_id = old.def.def_id();
     let new_def_id = new.def.def_id();
@@ -227,11 +226,15 @@ fn diff_fn(changes: &mut ChangeSet,
     let old_ty = tcx.type_of(old_def_id);
     let new_ty = tcx.type_of(new_def_id);
 
-    let (old_sig, new_sig) = match (&old_ty.sty, &new_ty.sty) {
-        // TODO: (&TyFnDef(_, _, ref o), &TyFnDef(_, _, ref n)) |
-        (&TyFnPtr(ref o), &TyFnPtr(ref n)) => (o.skip_binder(), n.skip_binder()),
-        _ => return,
-    };
+    if !old_ty.is_fn() || !new_ty.is_fn() {
+        return;
+    }
+
+    let old_poly_sig = old_ty.fn_sig(tcx);
+    let new_poly_sig = new_ty.fn_sig(tcx);
+
+    let old_sig = old_poly_sig.skip_binder();
+    let new_sig = new_poly_sig.skip_binder();
 
     if old_sig.variadic != new_sig.variadic {
         changes.add_binary(FnVariadicChanged, old_def_id, None);
