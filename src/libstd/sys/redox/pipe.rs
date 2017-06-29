@@ -49,8 +49,8 @@ pub fn read2(p1: AnonPipe,
     //FIXME: Use event based I/O multiplexing
     //unimplemented!()
 
-    p1.read_to_end(v1)?;
-    p2.read_to_end(v2)?;
+    p1.0.read_to_end(v1)?;
+    p2.0.read_to_end(v2)?;
 
     Ok(())
 
