@@ -741,7 +741,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                 let substs = cx.tables.node_substs(arg.id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
 
-                let fn_arg_tys = method_type.fn_sig().inputs();
+                let fn_arg_tys = method_type.fn_sig(cx.tcx).inputs();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
                     lint_iter_method(cx, args, arg, &method_name);

@@ -94,8 +94,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
             has_self &&
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                let impl_ty = cx.tcx.type_of(did);
-                impl_ty.fn_sig().inputs().skip_binder().len() == 1
+                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
             }
         } else {
             false
@@ -121,8 +120,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
             has_self &&
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                let impl_ty = cx.tcx.type_of(did);
-                impl_ty.fn_sig().inputs().skip_binder().len() == 1
+                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
             }
         } else {
             false
@@ -184,7 +182,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if item.name == "is_empty" {
-                let sig = cx.tcx.type_of(item.def_id).fn_sig();
+                let sig = cx.tcx.fn_sig(item.def_id);
                 let ty = sig.skip_binder();
                 ty.inputs().len() == 1
             } else {

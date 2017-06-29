@@ -176,7 +176,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
             hir::ExprCall(ref f, ref args) => {
                 let ty = self.cx.tables.expr_ty(f);
 
-                if type_is_unsafe_function(ty) {
+                if type_is_unsafe_function(self.cx, ty) {
                     for arg in args {
                         self.check_arg(arg);
                     }
@@ -186,7 +186,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                 let def_id = self.cx.tables.type_dependent_defs[&expr.id].def_id();
                 let base_type = self.cx.tcx.type_of(def_id);
 
-                if type_is_unsafe_function(base_type) {
+                if type_is_unsafe_function(self.cx, base_type) {
                     for arg in args {
                         self.check_arg(arg);
                     }

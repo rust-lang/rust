@@ -764,7 +764,7 @@ pub fn camel_case_from(s: &str) -> usize {
 /// Convenience function to get the return type of a function
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
-    let ret_ty = cx.tcx.type_of(fn_def_id).fn_sig().output();
+    let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
     cx.tcx.erase_late_bound_regions(&ret_ty)
 }
 
@@ -776,10 +776,10 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) 
 }
 
 /// Return whether the given type is an `unsafe` function.
-pub fn type_is_unsafe_function(ty: Ty) -> bool {
+pub fn type_is_unsafe_function<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::TyFnDef(_, _, f) |
-        ty::TyFnPtr(f) => f.unsafety() == Unsafety::Unsafe,
+        ty::TyFnDef(..) |
+        ty::TyFnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
         _ => false,
     }
 }
