@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME - This test gives different results on different machines.
 fn invoke<'a, F>(x: &'a i32, f: F) -> &'a i32
 where F: FnOnce(&'a i32, &i32) -> &'a i32
 {
@@ -15,10 +16,8 @@ where F: FnOnce(&'a i32, &i32) -> &'a i32
     f(x, &y)
 }
 
-fn foo<'a>(x: &'a i32) {
+fn foo<'a>(x: &'a i32) { //~ ERROR E0495
     invoke(&x, |a, b| if a > b { a } else { b });
 }
 
-fn main() {
-}
-
+fn main() {}
