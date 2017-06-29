@@ -1,14 +1,13 @@
-#![feature(pattern)]
 use std::env;
 use std::fs::File;
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 #[test]
 fn examples() {
-    use std::str::pattern::Pattern;
-
     let mut success = true;
 
     let current_dir = env::current_dir().expect("could not determine current dir");
@@ -91,14 +90,28 @@ fn examples() {
         .status()
         .expect("could not run rm");
 
-    if !success {
-        println!();
-        for (name, value) in env::vars() {
-            // filter some crap *my* less puts there, rendering the terminal in a bright green :)
-            if !"LESS".is_contained_in(&name) {
-                println!("{}={}", name, value);
-            }
-        }
+    if let Ok(path) = env::var("LD_LIBRARY_PATH") {
+        let mut dump =
+            File::create(Path::new("tests/debug.sh")).expect("could not create dump file");
+
+        let metadata = dump.metadata().expect("could not access dump file metadata");
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(0o755);
+        let _ = dump.set_permissions(permissions);
+
+        let _ = writeln!(dump, r#"#!/bin/sh
+rustc --crate-type=lib -o liboldandnew.rlib "$1"
+
+export LD_LIBRARY_PATH={}
+export RUST_SEMVERVER_TEST=1
+export RUST_LOG=debug
+export RUST_BACKTRACE=full
+export RUST_SEMVER_CRATE_VERSION=1.0.0
+
+arg_str="set args --crate-type=lib --extern oldandnew=liboldandnew.rlib - < tests/helper/test.rs"
+
+rust-gdb ./target/debug/rust-semverver -iex "$arg_str"
+rm liboldandnew.rlib"#, path);
     }
 
     assert!(success, "an error occured");

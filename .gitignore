@@ -2,3 +2,4 @@ target/
 **/*.rs.bk
 Cargo.lock
 *.rlib
+tests/debug.sh
