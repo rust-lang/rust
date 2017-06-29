@@ -87,7 +87,7 @@ impl Lit {
 fn ident_can_begin_expr(ident: ast::Ident) -> bool {
     let ident_token: Token = Ident(ident);
 
-    !ident_token.is_any_keyword() ||
+    !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
     [
         keywords::Do.name(),
@@ -110,7 +110,7 @@ fn ident_can_begin_expr(ident: ast::Ident) -> bool {
 fn ident_can_begin_type(ident: ast::Ident) -> bool {
     let ident_token: Token = Ident(ident);
 
-    !ident_token.is_any_keyword() ||
+    !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
     [
         keywords::For.name(),
@@ -315,7 +315,7 @@ impl Token {
 
     pub fn is_path_start(&self) -> bool {
         self == &ModSep || self.is_qpath_start() || self.is_path() ||
-        self.is_path_segment_keyword() || self.is_ident() && !self.is_any_keyword()
+        self.is_path_segment_keyword() || self.is_ident() && !self.is_reserved_ident()
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
@@ -327,18 +327,23 @@ impl Token {
         match self.ident() {
             Some(id) => id.name == keywords::Super.name() ||
                         id.name == keywords::SelfValue.name() ||
-                        id.name == keywords::SelfType.name(),
+                        id.name == keywords::SelfType.name() ||
+                        id.name == keywords::DollarCrate.name(),
             None => false,
         }
     }
 
-    /// Returns `true` if the token is either a strict or reserved keyword.
-    pub fn is_any_keyword(&self) -> bool {
-        self.is_strict_keyword() || self.is_reserved_keyword()
+    // Returns true for reserved identifiers used internally for elided lifetimes,
+    // unnamed method parameters, crate root module, error recovery etc.
+    pub fn is_special_ident(&self) -> bool {
+        match self.ident() {
+            Some(id) => id.name <= keywords::DollarCrate.name(),
+            _ => false,
+        }
     }
 
-    /// Returns `true` if the token is a strict keyword.
-    pub fn is_strict_keyword(&self) -> bool {
+    /// Returns `true` if the token is a keyword used in the language.
+    pub fn is_used_keyword(&self) -> bool {
         match self.ident() {
             Some(id) => id.name >= keywords::As.name() && id.name <= keywords::While.name(),
             _ => false,
@@ -346,11 +351,16 @@ impl Token {
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
-    pub fn is_reserved_keyword(&self) -> bool {
+    pub fn is_unused_keyword(&self) -> bool {
         match self.ident() {
             Some(id) => id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name(),
             _ => false,
         }
+    }
+
+    /// Returns `true` if the token is either a special identifier or a keyword.
+    pub fn is_reserved_ident(&self) -> bool {
+        self.is_special_ident() || self.is_used_keyword() || self.is_unused_keyword()
     }
 }
 

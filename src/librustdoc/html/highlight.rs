@@ -300,7 +300,7 @@ impl<'a> Classifier<'a> {
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
 
                     "$crate" => Class::KeyWord,
-                    _ if tas.tok.is_any_keyword() => Class::KeyWord,
+                    _ if tas.tok.is_reserved_ident() => Class::KeyWord,
 
                     _ => {
                         if self.in_macro_nonterminal {

@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+struct S;
 
-fn macro() {  //~ ERROR expected identifier, found reserved keyword `macro`
+impl S {
+    fn f() {}
+    fn g() {
+        use Self::f; //~ ERROR unresolved import
+        pub(in Self::f) struct Z; //~ ERROR Use of undeclared type or module `Self`
+    }
 }
 
-pub fn main() {
-}
+fn main() {}

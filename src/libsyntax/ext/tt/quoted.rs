@@ -12,7 +12,7 @@ use ast;
 use ext::tt::macro_parser;
 use parse::{ParseSess, token};
 use print::pprust;
-use symbol::{keywords, Symbol};
+use symbol::keywords;
 use syntax_pos::{DUMMY_SP, Span, BytePos};
 use tokenstream;
 
@@ -196,7 +196,7 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
             Some(tokenstream::TokenTree::Token(ident_span, token::Ident(ident))) => {
                 let span = Span { lo: span.lo, ..ident_span };
                 if ident.name == keywords::Crate.name() {
-                    let ident = ast::Ident { name: Symbol::intern("$crate"), ..ident };
+                    let ident = ast::Ident { name: keywords::DollarCrate.name(), ..ident };
                     TokenTree::Token(span, token::Ident(ident))
                 } else {
                     TokenTree::Token(span, token::SubstNt(ident))

@@ -149,14 +149,15 @@ impl<'a> Resolver<'a> {
                             resolve_error(self,
                                           view_path.span,
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
-                        } else if source_name == "$crate" && full_path.segments.len() == 1 {
+                        } else if source_name == keywords::DollarCrate.name() &&
+                                  full_path.segments.len() == 1 {
                             let crate_root = self.resolve_crate_root(source.ctxt);
                             let crate_name = match crate_root.kind {
                                 ModuleKind::Def(_, name) => name,
                                 ModuleKind::Block(..) => unreachable!(),
                             };
                             source.name = crate_name;
-                            if binding.name == "$crate" {
+                            if binding.name == keywords::DollarCrate.name() {
                                 binding.name = crate_name;
                             }
 
