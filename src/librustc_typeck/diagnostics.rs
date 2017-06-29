@@ -4666,7 +4666,6 @@ i_am_a_function();
 "##,
 
 E0619: r##"
-<<<<<<< HEAD
 The type-checker needed to know the type of an expression, but that type had not
 yet been inferred.
 
