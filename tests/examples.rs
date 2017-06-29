@@ -109,8 +109,9 @@ export RUST_BACKTRACE=full
 export RUST_SEMVER_CRATE_VERSION=1.0.0
 
 arg_str="set args --crate-type=lib --extern oldandnew=liboldandnew.rlib - < tests/helper/test.rs"
+src_str="set substitute-path /checkout $(rustc --print sysroot)/lib/rustlib/src/rust"
 
-rust-gdb ./target/debug/rust-semverver -iex "$arg_str"
+rust-gdb ./target/debug/rust-semverver -iex "$arg_str" -iex "$src_str"
 rm liboldandnew.rlib"#, path);
     }
 
