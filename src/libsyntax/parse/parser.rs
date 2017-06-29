@@ -1659,8 +1659,10 @@ impl<'a> Parser<'a> {
         Ok(codemap::Spanned { node: lit, span: lo.to(self.prev_span) })
     }
 
-    /// matches '-' lit | lit
+    /// matches '-' lit | lit (cf. ast_validation::AstValidator::check_expr_within_pat)
     pub fn parse_pat_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
+        maybe_whole_expr!(self);
+
         let minus_lo = self.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
         let lo = self.span;

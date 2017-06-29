@@ -93,6 +93,17 @@ impl<'a> AstValidator<'a> {
             }
         }
     }
+
+    /// matches '-' lit | lit (cf. parser::Parser::parse_pat_literal_maybe_minus)
+    fn check_expr_within_pat(&self, expr: &Expr) {
+        match expr.node {
+            ExprKind::Lit(..) | ExprKind::Path(..) => {}
+            ExprKind::Unary(UnOp::Neg, ref inner)
+                if match inner.node { ExprKind::Lit(_) => true, _ => false } => {}
+            _ => self.err_handler().span_err(expr.span, "arbitrary expressions aren't allowed \
+                                                         in patterns")
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
@@ -307,6 +318,21 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
         visit::walk_generics(self, g)
+    }
+
+    fn visit_pat(&mut self, pat: &'a Pat) {
+        match pat.node {
+            PatKind::Lit(ref expr) => {
+                self.check_expr_within_pat(expr);
+            }
+            PatKind::Range(ref start, ref end, _) => {
+                self.check_expr_within_pat(start);
+                self.check_expr_within_pat(end);
+            }
+            _ => {}
+        }
+
+        visit::walk_pat(self, pat)
     }
 }
 

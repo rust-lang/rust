@@ -873,7 +873,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
-            unsafe { self.alloc(k).map(|p|Unique::new(*p as *mut T)) }
+            unsafe { self.alloc(k).map(|p| Unique::new(p as *mut T)) }
         } else {
             Err(AllocErr::invalid_input("zero-sized type invalid for alloc_one"))
         }

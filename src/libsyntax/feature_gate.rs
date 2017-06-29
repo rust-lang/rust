@@ -354,6 +354,9 @@ declare_features! (
 
     // rustc internal
     (active, abi_thiscall, "1.19.0", None),
+
+    // Allows a test to fail without failing the whole suite
+    (active, allow_fail, "1.19.0", Some(42219)),
 );
 
 declare_features! (
@@ -811,6 +814,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                              "rustc_derive_registrar",
                                              "used internally by rustc",
                                              cfg_fn!(rustc_attrs))),
+
+    ("allow_fail", Normal, Gated(Stability::Unstable,
+                                 "allow_fail",
+                                 "allow_fail attribute is currently unstable",
+                                 cfg_fn!(allow_fail))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),

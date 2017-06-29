@@ -171,16 +171,22 @@ before_script:
       if [[ "$SKIP_BUILD" == true ]]; then
           export RUN_SCRIPT="echo 'skipping, not a full build'";
       else
-          RUN_SCRIPT="stamp src/ci/init_repo.sh . $HOME/rustsrc";
+          RUN_SCRIPT="src/ci/init_repo.sh . $HOME/rustsrc";
           if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-              export RUN_SCRIPT="$RUN_SCRIPT && stamp src/ci/run.sh";
+              export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
           else
-              export RUN_SCRIPT="$RUN_SCRIPT && stamp src/ci/docker/run.sh $IMAGE";
+              export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
           fi
       fi
 
+# Log time information from this machine and an external machine for insight into possible
+# clock drift. Timezones don't matter since relative deltas give all the necessary info.
 script:
-  - sh -x -c "$RUN_SCRIPT"
+  - >
+      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
+  - stamp sh -x -c "$RUN_SCRIPT"
+  - >
+      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
 
 after_success:
   - >

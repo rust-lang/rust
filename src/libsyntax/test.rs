@@ -52,7 +52,8 @@ struct Test {
     path: Vec<Ident> ,
     bench: bool,
     ignore: bool,
-    should_panic: ShouldPanic
+    should_panic: ShouldPanic,
+    allow_fail: bool,
 }
 
 struct TestCtxt<'a> {
@@ -133,7 +134,8 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         path: self.cx.path.clone(),
                         bench: is_bench_fn(&self.cx, &i),
                         ignore: is_ignored(&i),
-                        should_panic: should_panic(&i, &self.cx)
+                        should_panic: should_panic(&i, &self.cx),
+                        allow_fail: is_allowed_fail(&i),
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
@@ -381,6 +383,10 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
 fn is_ignored(i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| attr.check_name("ignore"))
+}
+
+fn is_allowed_fail(i: &ast::Item) -> bool {
+    i.attrs.iter().any(|attr| attr.check_name("allow_fail"))
 }
 
 fn should_panic(i: &ast::Item, cx: &TestCtxt) -> ShouldPanic {
@@ -668,6 +674,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
             }
         }
     };
+    let allow_fail_expr = ecx.expr_bool(span, test.allow_fail);
 
     // self::test::TestDesc { ... }
     let desc_expr = ecx.expr_struct(
@@ -675,7 +682,8 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
         test_path("TestDesc"),
         vec![field("name", name_expr),
              field("ignore", ignore_expr),
-             field("should_panic", fail_expr)]);
+             field("should_panic", fail_expr),
+             field("allow_fail", allow_fail_expr)]);
 
 
     let mut visible_path = match cx.toplevel_reexport {

@@ -79,10 +79,10 @@ pub struct Session {
     pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<lint::LintTable>,
-    /// Set of (LintId, span, message) tuples tracking lint (sub)diagnostics
-    /// that have been set once, but should not be set again, in order to avoid
-    /// redundantly verbose output (Issue #24690).
-    pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Span, String)>>,
+    /// Set of (LintId, Option<Span>, message) tuples tracking lint
+    /// (sub)diagnostics that have been set once, but should not be set again,
+    /// in order to avoid redundantly verbose output (Issue #24690).
+    pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Option<Span>, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
@@ -155,6 +155,13 @@ pub struct PerfStats {
     pub symbol_hash_time: Cell<Duration>,
     // The accumulated time spent decoding def path tables from metadata
     pub decode_def_path_tables_time: Cell<Duration>,
+}
+
+/// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
+enum DiagnosticBuilderMethod {
+    Note,
+    SpanNote,
+    // add more variants as needed to support one-time diagnostics
 }
 
 impl Session {
@@ -329,32 +336,51 @@ impl Session {
         &self.parse_sess.span_diagnostic
     }
 
-    /// Analogous to calling `.span_note` on the given DiagnosticBuilder, but
-    /// deduplicates on lint ID, span, and message for this `Session` if we're
-    /// not outputting in JSON mode.
-    //
-    // FIXME: if the need arises for one-time diagnostics other than
-    // `span_note`, we almost certainly want to generalize this
-    // "check/insert-into the one-time diagnostics map, then set message if
-    // it's not already there" code to accomodate all of them
-    pub fn diag_span_note_once<'a, 'b>(&'a self,
-                                       diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                       lint: &'static lint::Lint, span: Span, message: &str) {
+    /// Analogous to calling methods on the given `DiagnosticBuilder`, but
+    /// deduplicates on lint ID, span (if any), and message for this `Session`
+    /// if we're not outputting in JSON mode.
+    fn diag_once<'a, 'b>(&'a self,
+                         diag_builder: &'b mut DiagnosticBuilder<'a>,
+                         method: DiagnosticBuilderMethod,
+                         lint: &'static lint::Lint, message: &str, span: Option<Span>) {
+        let mut do_method = || {
+            match method {
+                DiagnosticBuilderMethod::Note => {
+                    diag_builder.note(message);
+                },
+                DiagnosticBuilderMethod::SpanNote => {
+                    diag_builder.span_note(span.expect("span_note expects a span"), message);
+                }
+            }
+        };
+
         match self.opts.error_format {
             // when outputting JSON for tool consumption, the tool might want
             // the duplicates
             config::ErrorOutputType::Json => {
-                diag_builder.span_note(span, &message);
+                do_method()
             },
             _ => {
                 let lint_id = lint::LintId::of(lint);
                 let id_span_message = (lint_id, span, message.to_owned());
                 let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
                 if fresh {
-                    diag_builder.span_note(span, &message);
+                    do_method()
                 }
             }
         }
+    }
+
+    pub fn diag_span_note_once<'a, 'b>(&'a self,
+                                       diag_builder: &'b mut DiagnosticBuilder<'a>,
+                                       lint: &'static lint::Lint, span: Span, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanNote, lint, message, Some(span));
+    }
+
+    pub fn diag_note_once<'a, 'b>(&'a self,
+                                  diag_builder: &'b mut DiagnosticBuilder<'a>,
+                                  lint: &'static lint::Lint, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, lint, message, None);
     }
 
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
