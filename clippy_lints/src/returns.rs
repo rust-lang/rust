@@ -3,8 +3,7 @@ use syntax::ast;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 
-use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast, in_macro,
-            in_external_macro};
+use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast, in_macro, in_external_macro};
 
 /// **What it does:** Checks for return statements at the end of a block.
 ///

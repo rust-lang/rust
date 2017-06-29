@@ -136,8 +136,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                 walk_expr(self, e);
                 let ty = self.cx.tables.node_id_to_type(callee.id);
                 match ty.sty {
-                    ty::TyFnDef(..) |
-                    ty::TyFnPtr(_) => {
+                    ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                         let sig = ty.fn_sig(self.cx.tcx);
                         if sig.skip_binder().output().sty == ty::TyNever {
                             self.divergence += 1;

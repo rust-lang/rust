@@ -169,7 +169,10 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: &Lit, op: &str) {
     if let Spanned { node: LitKind::Int(0, _), .. } = *lit {
         if name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
-            span_lint_and_sugg(cx, LEN_ZERO, span, "length comparison to zero",
+            span_lint_and_sugg(cx,
+                               LEN_ZERO,
+                               span,
+                               "length comparison to zero",
                                "using `is_empty` is more concise:",
                                format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")));
         }
