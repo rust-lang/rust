@@ -2596,8 +2596,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let inner_source = field.subst(tcx, substs_a);
                 let inner_target = field.subst(tcx, substs_b);
 
-                // Check that the source structure with the target's
-                // type parameters is a subtype of the target.
+                // Check that the source struct with the target's
+                // unsized parameters is equal to the target.
                 let params = substs_a.iter().enumerate().map(|(i, &k)| {
                     if ty_params.contains(i) {
                         Kind::from(substs_b.type_at(i))
@@ -2635,7 +2635,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let b_last = tys_b.last().unwrap();
 
                 // Check that the source tuple with the target's
-                // last element is a subtype of the target.
+                // last element is equal to the target.
                 let new_tuple = tcx.mk_tup(a_mid.iter().chain(Some(b_last)), false);
                 let InferOk { obligations, .. } =
                     self.infcx.at(&obligation.cause, obligation.param_env)
