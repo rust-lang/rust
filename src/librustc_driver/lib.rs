@@ -411,7 +411,7 @@ fn show_content_with_pager(content: &String) {
     // If pager fails for whatever reason, we should still print the content
     // to standard output
     if fallback_to_println {
-        println!("{}", content);
+        print!("{}", content);
     }
 }
 
