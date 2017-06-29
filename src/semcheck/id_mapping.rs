@@ -2,7 +2,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 /// A mapping from old to new `DefId`s, as well as exports.
 ///
@@ -19,14 +19,22 @@ pub struct IdMapping {
 impl IdMapping {
     /// Register two exports representing the same item across versions.
     pub fn add_export(&mut self, old: Export, new: Export) -> bool {
-        self.toplevel_mapping
-            .insert(old.def.def_id(), (new.def.def_id(), old, new))
-            .is_some()
+        if !self.toplevel_mapping.contains_key(&old.def.def_id()) {
+            self.toplevel_mapping
+                .insert(old.def.def_id(), (new.def.def_id(), old, new));
+            return true;
+        }
+
+        false
     }
 
     /// Add any other item pair's old and new `DefId`s.
     pub fn add_item(&mut self, old: DefId, new: DefId) {
-        self.mapping.insert(old, new);
+        if !self.mapping.contains_key(&old) {
+            self.mapping.insert(old, new);
+        } else {
+            panic!("bug: overwriting {:?} => {:?} with {:?}!", old, self.mapping[&old], new);
+        }
     }
 
     /// Get the new `DefId` associated with the given old one.
@@ -41,6 +49,13 @@ impl IdMapping {
     /// Tell us whether a `DefId` is present in the mappings.
     pub fn contains_id(&self, old: DefId) -> bool {
         self.toplevel_mapping.contains_key(&old) || self.mapping.contains_key(&old)
+    }
+
+    pub fn construct_queue(&self) -> VecDeque<(DefId, DefId)> {
+        self.toplevel_mapping
+            .values()
+            .map(|&(_, old, new)| (old.def.def_id(), new.def.def_id()))
+            .collect()
     }
 }
 

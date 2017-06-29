@@ -15,8 +15,9 @@ pub mod old {
         a::Klm
     }
 
-    pub struct Hij {
-        pub field: Box<a::Abc>,
+    pub struct Hij<'a> {
+        pub field: &'a a::Abc,
+        pub field2: ::std::rc::Rc<a::Abc>,
     }
 }
 
@@ -37,7 +38,8 @@ pub mod new {
         a::Opq
     }
 
-    pub struct Hij {
-        pub field: Box<a::Def>,
+    pub struct Hij<'a> {
+        pub field: &'a a::Def,
+        pub field2: ::std::rc::Rc<a::Def>,
     }
 }

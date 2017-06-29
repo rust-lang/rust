@@ -1,9 +1,3 @@
-use semcheck::changes::BinaryChangeType;
-use semcheck::changes::BinaryChangeType::*;
-use semcheck::changes::ChangeSet;
-use semcheck::id_mapping::{get_namespace, IdMapping};
-use semcheck::mismatch::Mismatch;
-
 use rustc::hir::def::CtorKind;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
@@ -11,6 +5,12 @@ use rustc::ty::TyCtxt;
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
+
+use semcheck::changes::BinaryChangeType;
+use semcheck::changes::BinaryChangeType::*;
+use semcheck::changes::ChangeSet;
+use semcheck::id_mapping::{get_namespace, IdMapping};
+use semcheck::mismatch::Mismatch;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -26,21 +26,8 @@ pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 
     // second pass
     {
-        let item_queue: VecDeque<_> =
-            id_mapping
-                .toplevel_mapping
-                .values()
-                .map(|&(_, old, new)| (old.def.def_id(), new.def.def_id()))
-                .collect();
-
-        let mut mismatch = Mismatch::new(tcx, item_queue);
-
-        while let Some((old_did, new_did)) = mismatch.process_next() {
-            if !id_mapping.contains_id(old_did) {
-                // println!("adding mapping: {:?} => {:?}", old_did, new_did);
-                id_mapping.add_item(old_did, new_did);
-            }
-        }
+        let mut mismatch = Mismatch::new(tcx, &mut id_mapping);
+        mismatch.process();
     }
 
     // third pass
@@ -123,7 +110,7 @@ fn diff_structure(changes: &mut ChangeSet,
                     }
                 }
                 (Some(o), Some(n)) => {
-                    if !id_mapping.add_export(o, n) {
+                    if id_mapping.add_export(o, n) {
                         let o_def_id = o.def.def_id();
                         let n_def_id = n.def.def_id();
                         let o_vis = if old_vis == Public {
@@ -468,13 +455,10 @@ fn diff_types(changes: &mut ChangeSet,
         }
     }});
 
-    // println!("old_ty: {:?}", old_ty_cmp);
-    // println!("new_ty: {:?}", new_ty);
-
     if let Err(err) = tcx.global_tcx().infer_ctxt()
         .enter(|infcx| infcx.can_eq(tcx.param_env(new_def_id), old_ty_cmp, new_ty))
     {
-        // println!("diff: {}", err);
+        // TODO: possibly rename this.
         changes.add_binary(FieldTypeChanged(format!("{}", err)), old_def_id, None);
     }
 }
