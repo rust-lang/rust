@@ -510,7 +510,6 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
     }
 
     let name = lint.name_lower();
-    let mut def = None;
 
     // Except for possible note details, forbid behaves like deny.
     let effective_level = if level == Forbid { Deny } else { level };
@@ -525,7 +524,8 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
 
     match source {
         Default => {
-            err.note(&format!("#[{}({})] on by default", level.as_str(), name));
+            sess.diag_note_once(&mut err, lint,
+                                &format!("#[{}({})] on by default", level.as_str(), name));
         },
         CommandLine(lint_flag_val) => {
             let flag = match level {
@@ -534,20 +534,24 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
             };
             let hyphen_case_lint_name = name.replace("_", "-");
             if lint_flag_val.as_str() == name {
-                err.note(&format!("requested on the command line with `{} {}`",
-                                  flag, hyphen_case_lint_name));
+                sess.diag_note_once(&mut err, lint,
+                                    &format!("requested on the command line with `{} {}`",
+                                             flag, hyphen_case_lint_name));
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
-                err.note(&format!("`{} {}` implied by `{} {}`",
-                                  flag, hyphen_case_lint_name, flag, hyphen_case_flag_val));
+                sess.diag_note_once(&mut err, lint,
+                                    &format!("`{} {}` implied by `{} {}`",
+                                             flag, hyphen_case_lint_name, flag,
+                                             hyphen_case_flag_val));
             }
         },
         Node(lint_attr_name, src) => {
-            def = Some(src);
+            sess.diag_span_note_once(&mut err, lint, src, "lint level defined here");
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
-                err.note(&format!("#[{}({})] implied by #[{}({})]",
-                                  level_str, name, level_str, lint_attr_name));
+                sess.diag_note_once(&mut err, lint,
+                                    &format!("#[{}({})] implied by #[{}({})]",
+                                             level_str, name, level_str, lint_attr_name));
             }
         }
     }
@@ -561,10 +565,6 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
-    }
-
-    if let Some(span) = def {
-        sess.diag_span_note_once(&mut err, lint, span, "lint level defined here");
     }
 
     err
