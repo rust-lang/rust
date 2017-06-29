@@ -75,7 +75,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
 
         let matching = match (&a.sty, &b.sty) {
             (&TyAdt(a_adt, _), &TyAdt(b_adt, _)) => Some((a_adt.did, b_adt.did)),
-            (&TyFnDef(a_did, _, _), &TyFnDef(b_did, _, _)) |
+            (&TyFnDef(a_did, _), &TyFnDef(b_did, _)) |
             (&TyClosure(a_did, _), &TyClosure(b_did, _)) |
             (&TyAnon(a_did, _), &TyAnon(b_did, _)) => Some((a_did, b_did)),
             (&TyProjection(a_proj), &TyProjection(b_proj)) =>
@@ -146,9 +146,8 @@ fn relate_tys_mismatch<'a, 'gcx, 'tcx, R>(relation: &mut R, a: Ty<'tcx>, b: Ty<'
         (&TyTuple(as_, _), &TyTuple(bs, _)) => {
             let _ = as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b));
         },
-        (&TyFnDef(_, a_substs, a_fty), &TyFnDef(_, b_substs, b_fty)) => {
-            let _ = ty::relate::relate_substs(relation, None, a_substs, b_substs)?;
-            let _ = relation.relate(&a_fty, &b_fty);
+        (&TyFnDef(a_def_id, a_substs), &TyFnDef(_, b_substs)) => {
+            let _ = relation.relate_item_substs(a_def_id, a_substs, b_substs);
         },
         (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
             let _ = relation.relate(&a_fty, &b_fty);

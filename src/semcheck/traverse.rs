@@ -228,7 +228,7 @@ fn diff_fn(changes: &mut ChangeSet,
     let new_ty = tcx.type_of(new_def_id);
 
     let (old_sig, new_sig) = match (&old_ty.sty, &new_ty.sty) {
-        (&TyFnDef(_, _, ref o), &TyFnDef(_, _, ref n)) |
+        // TODO: (&TyFnDef(_, _, ref o), &TyFnDef(_, _, ref n)) |
         (&TyFnPtr(ref o), &TyFnPtr(ref n)) => (o.skip_binder(), n.skip_binder()),
         _ => return,
     };
