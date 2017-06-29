@@ -365,13 +365,12 @@ fn handle_explain(code: &str,
                 if dedented_line.starts_with("```") {
                     is_in_code_block = !is_in_code_block;
                     text.push_str(&line[..(indent_level+3)]);
-                    text.push('\n');
                 } else if is_in_code_block && dedented_line.starts_with("# ") {
                     continue;
                 } else {
                     text.push_str(line);
-                    text.push('\n');
                 }
+                text.push('\n');
             }
 
             show_content_with_pager(&text);
@@ -383,7 +382,7 @@ fn handle_explain(code: &str,
 }
 
 fn show_content_with_pager(content: &String) {
-    let pager_name = env::var_os("PAGER").unwrap_or(if cfg!(windows) {
+    let pager_name = env::var_os("PAGER").unwrap_or_else(|| if cfg!(windows) {
         OsString::from("more.com")
     } else {
         OsString::from("less")
