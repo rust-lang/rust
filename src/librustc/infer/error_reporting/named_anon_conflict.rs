@@ -131,29 +131,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return false;
         }
 
-        if let Some(simple_name) = arg.pat.simple_name() {
-            struct_span_err!(self.tcx.sess,
-                             span,
-                             E0621,
-                             "explicit lifetime required in the type of `{}`",
-                             simple_name)
-                    .span_label(arg.pat.span,
-                                format!("consider changing the type of `{}` to `{}`",
-                                        simple_name,
-                                        new_ty))
-                    .span_label(span, format!("lifetime `{}` required", named))
-                    .emit();
-
+        let (error_var, span_label_var) = if let Some(simple_name) = arg.pat.simple_name() {
+            (format!("the type of `{}`", simple_name), format!("the type of `{}`", simple_name))
         } else {
-            struct_span_err!(self.tcx.sess,
-                             span,
-                             E0621,
-                             "explicit lifetime required in parameter type")
-                    .span_label(arg.pat.span,
-                                format!("consider changing type to `{}`", new_ty))
-                    .span_label(span, format!("lifetime `{}` required", named))
-                    .emit();
-        }
+            (format!("parameter type"), format!("type"))
+        };
+
+
+        struct_span_err!(self.tcx.sess,
+                         span,
+                         E0621,
+                         "explicit lifetime required in {}",
+                         error_var)
+                .span_label(arg.pat.span,
+                            format!("consider changing {} to `{}`", span_label_var, new_ty))
+                .span_label(span, format!("lifetime `{}` required", named))
+                .emit();
+
         return true;
 
     }
