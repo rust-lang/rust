@@ -37,7 +37,7 @@ mod m {
         pub const INHERENT_ASSOC_CONST_GENERIC_SELF: u8 = 0;
     }
     impl Pub<u8> {
-        fn priv_metod(&self) {}
+        fn priv_method(&self) {}
         pub fn method_with_substs<T>(&self) {}
         pub fn method_with_priv_params(&self, _: Priv) {}
     }
@@ -54,8 +54,8 @@ mod m {
         //~^ ERROR type `fn(u8) -> m::PrivTupleStruct {m::PrivTupleStruct::{{constructor}}}` is priv
         PubTupleStruct;
         //~^ ERROR type `fn(u8) -> m::PubTupleStruct {m::PubTupleStruct::{{constructor}}}` is privat
-        Pub(0u8).priv_metod();
-        //~^ ERROR type `fn(&m::Pub<u8>) {<m::Pub<u8>>::priv_metod}` is private
+        Pub(0u8).priv_method();
+        //~^ ERROR type `fn(&m::Pub<u8>) {<m::Pub<u8>>::priv_method}` is private
     }
 
     trait Trait {}

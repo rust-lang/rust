@@ -590,6 +590,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
         self.def_id_visibility(did).is_accessible_from(self.current_item, self.tcx)
     }
 
+    // Take node ID of an expression or pattern and check its type for privacy.
     fn check_expr_pat_type(&mut self, id: ast::NodeId, span: Span) -> bool {
         self.span = span;
         if let Some(ty) = self.tables.node_id_to_type_opt(id) {
@@ -796,6 +797,11 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     let msg = format!("type `{}` is private", ty);
                     self.tcx.sess.span_err(self.span, &msg);
                     return true;
+                }
+                if let ty::TyFnDef(..) = ty.sty {
+                    if self.tcx.fn_sig(def_id).visit_with(self) {
+                        return true;
+                    }
                 }
                 // Inherent static methods don't have self type in substs,
                 // we have to check it additionally.

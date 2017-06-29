@@ -29,7 +29,7 @@ impl Pub<Priv> {
     pub fn static_method() {}
 }
 impl Pub<u8> {
-    fn priv_metod(&self) {}
+    fn priv_method(&self) {}
 }
 
 pub macro m() {
@@ -40,5 +40,5 @@ pub macro m() {
     <u8 as PubTrait>::method;
     PrivTupleStruct;
     PubTupleStruct;
-    Pub(0u8).priv_metod();
+    Pub(0u8).priv_method();
 }
