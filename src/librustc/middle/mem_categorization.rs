@@ -1032,22 +1032,29 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         ret
     }
 
-    pub fn cat_downcast<N:ast_node>(&self,
-                                    node: &N,
-                                    base_cmt: cmt<'tcx>,
-                                    downcast_ty: Ty<'tcx>,
-                                    variant_did: DefId)
-                                    -> cmt<'tcx> {
-        let ret = Rc::new(cmt_ {
-            id: node.id(),
-            span: node.span(),
-            mutbl: base_cmt.mutbl.inherit(),
-            cat: Categorization::Downcast(base_cmt, variant_did),
-            ty: downcast_ty,
-            note: NoteNone
-        });
-        debug!("cat_downcast ret={:?}", ret);
-        ret
+    pub fn cat_downcast_if_needed<N:ast_node>(&self,
+                                              node: &N,
+                                              base_cmt: cmt<'tcx>,
+                                              variant_did: DefId)
+                                              -> cmt<'tcx> {
+        // univariant enums do not need downcasts
+        let base_did = self.tcx.parent_def_id(variant_did).unwrap();
+        if !self.tcx.adt_def(base_did).is_univariant() {
+            let base_ty = base_cmt.ty;
+            let ret = Rc::new(cmt_ {
+                id: node.id(),
+                span: node.span(),
+                mutbl: base_cmt.mutbl.inherit(),
+                cat: Categorization::Downcast(base_cmt, variant_did),
+                ty: base_ty,
+                note: NoteNone
+            });
+            debug!("cat_downcast ret={:?}", ret);
+            ret
+        } else {
+            debug!("cat_downcast univariant={:?}", base_cmt);
+            base_cmt
+        }
     }
 
     pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
@@ -1109,45 +1116,23 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         op(cmt.clone(), pat);
 
-        // Note: This goes up here (rather than within the PatKind::TupleStruct arm
-        // alone) because PatKind::Struct can also refer to variants.
-        let cmt = match pat.node {
-            PatKind::Path(hir::QPath::Resolved(_, ref path)) |
-            PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..) |
-            PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => {
-                match path.def {
-                    Def::Err => {
-                        debug!("access to unresolvable pattern {:?}", pat);
-                        return Err(())
-                    }
-                    Def::Variant(variant_did) |
-                    Def::VariantCtor(variant_did, ..) => {
-                        // univariant enums do not need downcasts
-                        let enum_did = self.tcx.parent_def_id(variant_did).unwrap();
-                        if !self.tcx.adt_def(enum_did).is_univariant() {
-                            self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
-                        } else {
-                            cmt
-                        }
-                    }
-                    _ => cmt
-                }
-            }
-            _ => cmt
-        };
-
         match pat.node {
           PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
             let def = self.tables.qpath_def(qpath, pat.id);
-            let expected_len = match def {
+            let (cmt, expected_len) = match def {
+                Def::Err => {
+                    debug!("access to unresolvable pattern {:?}", pat);
+                    return Err(())
+                }
                 Def::VariantCtor(def_id, CtorKind::Fn) => {
                     let enum_def = self.tcx.parent_def_id(def_id).unwrap();
-                    self.tcx.adt_def(enum_def).variant_with_id(def_id).fields.len()
+                    (self.cat_downcast_if_needed(pat, cmt, def_id),
+                     self.tcx.adt_def(enum_def).variant_with_id(def_id).fields.len())
                 }
                 Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty(&pat)?.sty {
                         ty::TyAdt(adt_def, _) => {
-                            adt_def.struct_variant().fields.len()
+                            (cmt, adt_def.struct_variant().fields.len())
                         }
                         ref ty => {
                             span_bug!(pat.span, "tuple struct pattern unexpected type {:?}", ty);
@@ -1168,8 +1153,21 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          PatKind::Struct(_, ref field_pats, _) => {
+          PatKind::Struct(ref qpath, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
+            let def = self.tables.qpath_def(qpath, pat.id);
+            let cmt = match def {
+                Def::Err => {
+                    debug!("access to unresolvable pattern {:?}", pat);
+                    return Err(())
+                },
+                Def::Variant(variant_did) |
+                Def::VariantCtor(variant_did, ..) => {
+                    self.cat_downcast_if_needed(pat, cmt, variant_did)
+                },
+                _ => cmt
+            };
+
             for fp in field_pats {
                 let field_ty = self.pat_ty(&fp.node.pat)?; // see (*2)
                 let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.name, field_ty);
