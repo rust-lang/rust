@@ -112,7 +112,10 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
                 None
             },
             (&TyFnDef(a_def_id, a_substs), &TyFnDef(_, b_substs)) => {
+                let a_sig = a.fn_sig(self.tcx);
+                let b_sig = b.fn_sig(self.tcx);
                 let _ = self.relate_item_substs(a_def_id, a_substs, b_substs);
+                let _ = self.relate(a_sig.skip_binder(), b_sig.skip_binder());
                 None
             },
             (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
