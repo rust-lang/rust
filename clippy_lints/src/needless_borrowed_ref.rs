@@ -48,11 +48,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
 
         if_let_chain! {[
             // Pat is a pattern whose node
-            // is a binding which "involves" a immutable reference...
+            // is a binding which "involves" an immutable reference...
             let PatKind::Binding(BindingAnnotation::Ref, ..) = pat.node,
             // Pattern's type is a reference. Get the type and mutability of referenced value (tam: TypeAndMut).
             let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
-            // This is an immutable reference.
+            // Only lint immutable refs, because `&mut ref T` may be useful.
             tam.mutbl == MutImmutable,
         ], {
             span_lint(cx, NEEDLESS_BORROWED_REFERENCE, pat.span, "this pattern takes a reference on something that is being de-referenced")
