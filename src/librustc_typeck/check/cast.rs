@@ -239,12 +239,10 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         }
 
         let tstr = fcx.ty_to_string(self.cast_ty);
-        let mut err =
-            fcx.type_error_struct(self.span,
-                                  |actual| {
-                                      format!("cast to unsized type: `{}` as `{}`", actual, tstr)
-                                  },
-                                  self.expr_ty);
+        let mut err = type_error_struct!(fcx.tcx.sess, self.span, self.expr_ty, E0620,
+                                         "cast to unsized type: `{}` as `{}`",
+                                         fcx.resolve_type_vars_if_possible(&self.expr_ty),
+                                         tstr);
         match self.expr_ty.sty {
             ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
                 let mtstr = match mt {

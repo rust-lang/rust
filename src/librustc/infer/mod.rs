@@ -1191,28 +1191,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // types using one of these methods, and should not call span_err directly for such
     // errors.
 
-    pub fn type_error_message<M>(&self,
-                                 sp: Span,
-                                 mk_msg: M,
-                                 actual_ty: Ty<'tcx>)
-        where M: FnOnce(String) -> String,
-    {
-        self.type_error_struct(sp, mk_msg, actual_ty).emit();
-    }
-
-    // FIXME: this results in errors without an error code. Deprecate?
-    pub fn type_error_struct<M>(&self,
-                                sp: Span,
-                                mk_msg: M,
-                                actual_ty: Ty<'tcx>)
-                                -> DiagnosticBuilder<'tcx>
-        where M: FnOnce(String) -> String,
-    {
-        self.type_error_struct_with_diag(sp, |actual_ty| {
-            self.tcx.sess.struct_span_err(sp, &mk_msg(actual_ty))
-        }, actual_ty)
-    }
-
     pub fn type_error_struct_with_diag<M>(&self,
                                           sp: Span,
                                           mk_diag: M,
