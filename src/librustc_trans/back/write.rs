@@ -29,15 +29,18 @@ use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
 use crossbeam::{scope, Scope};
+use rustc_demangle;
 
 use std::cmp;
 use std::ffi::CString;
 use std::fs;
 use std::io;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::mpsc::{channel, Sender};
-use libc::{c_uint, c_void};
+use std::slice;
+use libc::{c_uint, c_void, c_char, size_t};
 
 pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("pic", llvm::RelocMode::PIC),
@@ -510,8 +513,40 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         if config.emit_ir {
             let out = output_names.temp_path(OutputType::LlvmAssembly, module_name);
             let out = path2cstr(&out);
+
+            extern "C" fn demangle_callback(input_ptr: *const c_char,
+                                            input_len: size_t,
+                                            output_ptr: *mut c_char,
+                                            output_len: size_t) -> size_t {
+                let input = unsafe {
+                    slice::from_raw_parts(input_ptr as *const u8, input_len as usize)
+                };
+
+                let input = match str::from_utf8(input) {
+                    Ok(s) => s,
+                    Err(_) => return 0,
+                };
+
+                let output = unsafe {
+                    slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
+                };
+                let mut cursor = io::Cursor::new(output);
+
+                let demangled = match rustc_demangle::try_demangle(input) {
+                    Ok(d) => d,
+                    Err(_) => return 0,
+                };
+
+                if let Err(_) = write!(cursor, "{:#}", demangled) {
+                    // Possible only if provided buffer is not big enough
+                    return 0;
+                }
+
+                cursor.position() as size_t
+            }
+
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr());
+                llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), demangle_callback);
                 llvm::LLVMDisposePassManager(cpm);
             })
         }
