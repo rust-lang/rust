@@ -37,7 +37,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match it.node {
         hir::ForeignItemFn(..) => {}
         _ => {
-            struct_span_err!(tcx.sess, it.span, E0619,
+            struct_span_err!(tcx.sess, it.span, E0622,
                              "intrinsic must be a function")
                 .span_label(it.span, "expected a function")
                 .emit();

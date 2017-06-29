@@ -4666,7 +4666,6 @@ i_am_a_function();
 "##,
 
 E0619: r##"
-<<<<<<< HEAD
 The type-checker needed to know the type of an expression, but that type had not
 yet been inferred.
 
@@ -4727,12 +4726,12 @@ let x = &[1_usize, 2] as &[usize]; // ok!
 ```
 "##,
 
-E0621: r##"
+E0622: r##"
 An intrinsic was declared without being a function.
 
 Erroneous code example:
 
-```compile_fail,E0621
+```compile_fail,E0622
 #![feature(intrinsics)]
 extern "rust-intrinsic" {
     pub static breakpoint : unsafe extern "rust-intrinsic" fn();
