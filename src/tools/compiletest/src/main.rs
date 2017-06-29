@@ -476,6 +476,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             name: make_test_name(config, testpaths),
             ignore: ignore,
             should_panic: should_panic,
+            allow_fail: false,
         },
         testfn: make_test_closure(config, testpaths),
     }
