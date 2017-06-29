@@ -996,7 +996,7 @@ impl MirPass for QualifyAndPromoteConstants {
                                               tcx.require_lang_item(lang_items::SyncTraitLangItem),
                                               cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                    infcx.report_fulfillment_errors(&err);
+                    infcx.report_fulfillment_errors(&err, None);
                 }
             });
         }

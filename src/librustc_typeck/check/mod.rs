@@ -217,6 +217,8 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// environment is for an item or something where the "callee" is
     /// not clear.
     implicit_region_bound: Option<ty::Region<'tcx>>,
+
+    body_id: Option<hir::BodyId>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -605,6 +607,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             deferred_cast_checks: RefCell::new(Vec::new()),
             anon_types: RefCell::new(NodeMap()),
             implicit_region_bound,
+            body_id,
         }
     }
 
@@ -993,16 +996,17 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
-        // The type of the argument must be well-formed.
-        //
-        // NB -- this is now checked in wfcheck, but that
-        // currently only results in warnings, so we issue an
-        // old-style WF obligation here so that we still get the
-        // errors that we used to get.
-        fcx.register_old_wf_obligation(arg_ty, arg.pat.span, traits::MiscObligation);
-
         // Check the pattern.
         fcx.check_pat_arg(&arg.pat, arg_ty, true);
+
+        // Check that argument is Sized.
+        // The check for a non-trivial pattern is a hack to avoid duplicate warnings
+        // for simple cases like `fn foo(x: Trait)`,
+        // where we would error once on the parameter as a whole, and once on the binding `x`.
+        if arg.pat.simple_name().is_none() {
+            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::MiscObligation);
+        }
+
         fcx.write_ty(arg.id, arg_ty);
     }
 
@@ -1980,17 +1984,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Registers an obligation for checking later, during regionck, that the type `ty` must
     /// outlive the region `r`.
-    pub fn register_region_obligation(&self,
-                                      ty: Ty<'tcx>,
-                                      region: ty::Region<'tcx>,
-                                      cause: traits::ObligationCause<'tcx>)
-    {
-        let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
-        fulfillment_cx.register_region_obligation(ty, region, cause);
-    }
-
-    /// Registers an obligation for checking later, during regionck, that the type `ty` must
-    /// outlive the region `r`.
     pub fn register_wf_obligation(&self,
                                   ty: Ty<'tcx>,
                                   span: Span,
@@ -2001,21 +1994,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.register_predicate(traits::Obligation::new(cause,
                                                         self.param_env,
                                                         ty::Predicate::WellFormed(ty)));
-    }
-
-    pub fn register_old_wf_obligation(&self,
-                                      ty: Ty<'tcx>,
-                                      span: Span,
-                                      code: traits::ObligationCauseCode<'tcx>)
-    {
-        // Registers an "old-style" WF obligation that uses the
-        // implicator code.  This is basically a buggy version of
-        // `register_wf_obligation` that is being kept around
-        // temporarily just to help with phasing in the newer rules.
-        //
-        // FIXME(#27579) all uses of this should be migrated to register_wf_obligation eventually
-        let cause = traits::ObligationCause::new(span, self.body_id, code);
-        self.register_region_obligation(ty, self.tcx.types.re_empty, cause);
     }
 
     /// Registers obligations that all types appearing in `substs` are well-formed.
@@ -2145,7 +2123,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match fulfillment_cx.select_all_or_error(self) {
             Ok(()) => { }
-            Err(errors) => { self.report_fulfillment_errors(&errors); }
+            Err(errors) => { self.report_fulfillment_errors(&errors, self.inh.body_id); }
         }
     }
 
@@ -2153,7 +2131,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn select_obligations_where_possible(&self) {
         match self.fulfillment_cx.borrow_mut().select_where_possible(self) {
             Ok(()) => { }
-            Err(errors) => { self.report_fulfillment_errors(&errors); }
+            Err(errors) => { self.report_fulfillment_errors(&errors, self.inh.body_id); }
         }
     }
 
