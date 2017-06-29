@@ -1,0 +1,8 @@
+warning: this pattern takes a reference on something that is being de-referenced
+ --> needless_borrowed_ref.rs:7:35
+  |
+7 |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+  |                                   ^^^^^
+  |
+  = note: #[warn(needless_borrowed_reference)] on by default
+  = help: for further information visit https://github.com/Manishearth/rust-clippy/wiki#needless_borrowed_reference
