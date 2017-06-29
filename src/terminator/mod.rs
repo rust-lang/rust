@@ -72,9 +72,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let instance_ty = instance.def.def_ty(self.tcx);
                         let instance_ty = self.monomorphize(instance_ty, instance.substs);
                         match instance_ty.sty {
-                            ty::TyFnDef(_, _, real_sig) => {
+                            ty::TyFnDef(..) => {
+                                let real_sig = instance_ty.fn_sig(self.tcx);
                                 let sig = self.erase_lifetimes(&sig);
                                 let real_sig = self.erase_lifetimes(&real_sig);
+                                let real_sig = self.tcx.normalize_associated_type(&real_sig);
                                 if !self.check_sig_compat(sig, real_sig)? {
                                     return Err(EvalError::FunctionPointerTyMismatch(real_sig, sig));
                                 }
@@ -83,7 +85,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                         (instance, sig)
                     },
-                    ty::TyFnDef(def_id, substs, sig) => (::eval_context::resolve(self.tcx, def_id, substs), sig),
+                    ty::TyFnDef(def_id, substs) => (::eval_context::resolve(self.tcx, def_id, substs), func_ty.fn_sig(self.tcx)),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
                         return Err(EvalError::Unimplemented(msg));
