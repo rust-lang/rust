@@ -76,6 +76,7 @@ use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::Subst;
 use errors::DiagnosticBuilder;
 use syntax::abi;
+use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax_pos;
 
@@ -520,6 +521,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                                          coerce_source,
                                                          &[coerce_target]));
 
+        let mut has_unsized_tuple_coercion = false;
+
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
         // inference might unify those two inner type variables later.
@@ -527,7 +530,15 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         while let Some(obligation) = queue.pop_front() {
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => tr.clone(),
+                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
+                    if unsize_did == tr.def_id() {
+                        if let ty::TyTuple(..) = tr.0.input_types().nth(1).unwrap().sty {
+                            debug!("coerce_unsized: found unsized tuple coercion");
+                            has_unsized_tuple_coercion = true;
+                        }
+                    }
+                    tr.clone()
+                }
                 _ => {
                     coercion.obligations.push(obligation);
                     continue;
@@ -555,6 +566,14 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                     }
                 }
             }
+        }
+
+        if has_unsized_tuple_coercion && !self.tcx.sess.features.borrow().unsized_tuple_coercion {
+            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
+                                           "unsized_tuple_coercion",
+                                           self.cause.span,
+                                           feature_gate::GateIssue::Language,
+                                           feature_gate::EXPLAIN_UNSIZED_TUPLE_COERCION);
         }
 
         Ok(coercion)

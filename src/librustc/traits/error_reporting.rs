@@ -1060,7 +1060,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note("slice and array elements must have `Sized` type");
             }
             ObligationCauseCode::TupleElem => {
-                err.note("tuple elements must have `Sized` type");
+                err.note("only the last element of a tuple may have a dynamically sized type");
             }
             ObligationCauseCode::ProjectionWf(data) => {
                 err.note(&format!("required so that the projection `{}` is well-formed",
@@ -1096,6 +1096,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
+            }
+            ObligationCauseCode::TupleInitializerSized => {
+                err.note("tuples must have a statically known size to be initialized");
             }
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");

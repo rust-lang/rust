@@ -1651,6 +1651,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 def_id_a == def_id_b
             }
 
+            // (.., T) -> (.., U).
+            (&ty::TyTuple(tys_a, _), &ty::TyTuple(tys_b, _)) => {
+                tys_a.len() == tys_b.len()
+            }
+
             _ => false
         };
 
@@ -2591,8 +2596,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let inner_source = field.subst(tcx, substs_a);
                 let inner_target = field.subst(tcx, substs_b);
 
-                // Check that the source structure with the target's
-                // type parameters is a subtype of the target.
+                // Check that the source struct with the target's
+                // unsized parameters is equal to the target.
                 let params = substs_a.iter().enumerate().map(|(i, &k)| {
                     if ty_params.contains(i) {
                         Kind::from(substs_b.type_at(i))
@@ -2615,6 +2620,37 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     obligation.recursion_depth + 1,
                     inner_source,
                     &[inner_target]));
+            }
+
+            // (.., T) -> (.., U).
+            (&ty::TyTuple(tys_a, _), &ty::TyTuple(tys_b, _)) => {
+                assert_eq!(tys_a.len(), tys_b.len());
+
+                // The last field of the tuple has to exist.
+                let (a_last, a_mid) = if let Some(x) = tys_a.split_last() {
+                    x
+                } else {
+                    return Err(Unimplemented);
+                };
+                let b_last = tys_b.last().unwrap();
+
+                // Check that the source tuple with the target's
+                // last element is equal to the target.
+                let new_tuple = tcx.mk_tup(a_mid.iter().chain(Some(b_last)), false);
+                let InferOk { obligations, .. } =
+                    self.infcx.at(&obligation.cause, obligation.param_env)
+                              .eq(target, new_tuple)
+                              .map_err(|_| Unimplemented)?;
+                self.inferred_obligations.extend(obligations);
+
+                // Construct the nested T: Unsize<U> predicate.
+                nested.push(tcx.predicate_for_trait_def(
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.predicate.def_id(),
+                    obligation.recursion_depth + 1,
+                    a_last,
+                    &[b_last]));
             }
 
             _ => bug!()

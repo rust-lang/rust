@@ -76,7 +76,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
     }
     assert!(!info.is_null());
     match t.sty {
-        ty::TyAdt(def, substs) => {
+        ty::TyAdt(..) | ty::TyTuple(..) => {
             let ccx = bcx.ccx;
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
@@ -101,8 +101,14 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let last_field = def.struct_variant().fields.last().unwrap();
-            let field_ty = monomorphize::field_ty(bcx.tcx(), substs, last_field);
+            let field_ty = match t.sty {
+                ty::TyAdt(def, substs) => {
+                    let last_field = def.struct_variant().fields.last().unwrap();
+                    monomorphize::field_ty(bcx.tcx(), substs, last_field)
+                },
+                ty::TyTuple(tys, _) => tys.last().unwrap(),
+                _ => unreachable!(),
+            };
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding

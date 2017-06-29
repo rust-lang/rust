@@ -357,6 +357,9 @@ declare_features! (
 
     // Allows a test to fail without failing the whole suite
     (active, allow_fail, "1.19.0", Some(42219)),
+
+    // Allows unsized tuple coercion.
+    (active, unsized_tuple_coercion, "1.20.0", Some(42877)),
 );
 
 declare_features! (
@@ -1040,6 +1043,9 @@ pub const EXPLAIN_VIS_MATCHER: &'static str =
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
+
+pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
+    "Unsized tuple coercion is not stable enough for use and is subject to change";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,

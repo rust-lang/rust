@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unsized_tuple_coercion)]
+
 struct Test<T: ?Sized>(T);
 
 fn main() {
@@ -21,4 +23,14 @@ fn main() {
     let slice = &[1,2,3];
     let x = Test(&slice);
     let Test(&_slice) = x;
+
+
+    let x = (10, [1,2,3]);
+    let x : &(i32, [i32]) = &x;
+
+    let & ref _y = x;
+
+    let slice = &[1,2,3];
+    let x = (10, &slice);
+    let (_, &_slice) = x;
 }
