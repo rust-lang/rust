@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME - This test gives different results on different machines.
+// Test that we give the generic E0495 when one of the free regions is
+// bound in a closure (rather than suggesting a change to the signature
+// of the closure, which is not specified in `foo` but rather in `invoke`).
+
+// FIXME - This might be better as a UI test, but the finer details
+// of the error seem to vary on different machines.
 fn invoke<'a, F>(x: &'a i32, f: F) -> &'a i32
 where F: FnOnce(&'a i32, &i32) -> &'a i32
 {
