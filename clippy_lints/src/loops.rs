@@ -434,8 +434,8 @@ fn never_loop(block: &Block, id: &NodeId) -> bool {
 }
 
 fn contains_continue_block(block: &Block, dest: &NodeId) -> bool {
-    block.stmts.iter().any(|e| contains_continue_stmt(e, dest))
-        || block.expr.as_ref().map_or(false, |e| contains_continue_expr(e, dest))
+    block.stmts.iter().any(|e| contains_continue_stmt(e, dest)) ||
+    block.expr.as_ref().map_or(false, |e| contains_continue_expr(e, dest))
 }
 
 fn contains_continue_stmt(stmt: &Stmt, dest: &NodeId) -> bool {
@@ -449,7 +449,7 @@ fn contains_continue_stmt(stmt: &Stmt, dest: &NodeId) -> bool {
 fn contains_continue_decl(decl: &Decl, dest: &NodeId) -> bool {
     match decl.node {
         DeclLocal(ref local) => local.init.as_ref().map_or(false, |e| contains_continue_expr(e, dest)),
-        _ => false
+        _ => false,
     }
 }
 
@@ -466,14 +466,20 @@ fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
         ExprArray(ref es) |
         ExprMethodCall(_, _, ref es) |
         ExprTup(ref es) => es.iter().any(|e| contains_continue_expr(e, dest)),
-        ExprCall(ref e, ref es) => contains_continue_expr(e, dest) || es.iter().any(|e| contains_continue_expr(e, dest)),
+        ExprCall(ref e, ref es) => {
+            contains_continue_expr(e, dest) || es.iter().any(|e| contains_continue_expr(e, dest))
+        },
         ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
         ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| contains_continue_expr(e, dest)),
-        ExprIf(ref e, ref e2, ref e3) => [e, e2].iter().chain(e3.as_ref().iter()).any(|e| contains_continue_expr(e, dest)),
+        ExprIf(ref e, ref e2, ref e3) => {
+            [e, e2].iter().chain(e3.as_ref().iter()).any(|e| contains_continue_expr(e, dest))
+        },
         ExprWhile(ref e, ref b, _) => contains_continue_expr(e, dest) || contains_continue_block(b, dest),
-        ExprMatch(ref e, ref arms, _) => contains_continue_expr(e, dest) || arms.iter().any(|a| contains_continue_expr(&a.body, dest)),
+        ExprMatch(ref e, ref arms, _) => {
+            contains_continue_expr(e, dest) || arms.iter().any(|a| contains_continue_expr(&a.body, dest))
+        },
         ExprBlock(ref block) => contains_continue_block(block, dest),
         ExprStruct(_, _, ref base) => base.as_ref().map_or(false, |e| contains_continue_expr(e, dest)),
         ExprAgain(d) => d.target_id.opt_id().map_or(false, |id| id == *dest),
@@ -482,8 +488,7 @@ fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
 }
 
 fn loop_exit_block(block: &Block) -> bool {
-    block.stmts.iter().any(|e| loop_exit_stmt(e))
-        || block.expr.as_ref().map_or(false, |e| loop_exit_expr(e))
+    block.stmts.iter().any(|e| loop_exit_stmt(e)) || block.expr.as_ref().map_or(false, |e| loop_exit_expr(e))
 }
 
 fn loop_exit_stmt(stmt: &Stmt) -> bool {
@@ -497,7 +502,7 @@ fn loop_exit_stmt(stmt: &Stmt) -> bool {
 fn loop_exit_decl(decl: &Decl) -> bool {
     match decl.node {
         DeclLocal(ref local) => local.init.as_ref().map_or(false, |e| loop_exit_expr(e)),
-        _ => false
+        _ => false,
     }
 }
 
@@ -519,13 +524,13 @@ fn loop_exit_expr(expr: &Expr) -> bool {
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
         ExprIndex(ref e1, ref e2) => [e1, e2].iter().any(|e| loop_exit_expr(e)),
-        ExprIf(ref e, ref e2, ref e3) => loop_exit_expr(e) || e3.as_ref().map_or(false, |e| loop_exit_expr(e)) && loop_exit_expr(e2),
+        ExprIf(ref e, ref e2, ref e3) => {
+            loop_exit_expr(e) || e3.as_ref().map_or(false, |e| loop_exit_expr(e)) && loop_exit_expr(e2)
+        },
         ExprWhile(ref e, ref b, _) => loop_exit_expr(e) || loop_exit_block(b),
         ExprMatch(ref e, ref arms, _) => loop_exit_expr(e) || arms.iter().all(|a| loop_exit_expr(&a.body)),
         ExprBlock(ref b) => loop_exit_block(b),
-        ExprBreak(_, _) |
-        ExprAgain(_) |
-        ExprRet(_) => true,
+        ExprBreak(_, _) | ExprAgain(_) | ExprRet(_) => true,
         _ => false,
     }
 }
@@ -741,7 +746,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                 let substs = cx.tables.node_substs(arg.id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
 
-                let fn_arg_tys = method_type.fn_sig().inputs();
+                let fn_arg_tys = method_type.fn_sig(cx.tcx).inputs();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
                     lint_iter_method(cx, args, arg, &method_name);

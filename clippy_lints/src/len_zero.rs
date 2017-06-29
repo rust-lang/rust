@@ -94,8 +94,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
             has_self &&
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                let impl_ty = cx.tcx.type_of(did);
-                impl_ty.fn_sig().inputs().skip_binder().len() == 1
+                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
             }
         } else {
             false
@@ -121,8 +120,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
             has_self &&
             {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                let impl_ty = cx.tcx.type_of(did);
-                impl_ty.fn_sig().inputs().skip_binder().len() == 1
+                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
             }
         } else {
             false
@@ -171,7 +169,10 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: &Lit, op: &str) {
     if let Spanned { node: LitKind::Int(0, _), .. } = *lit {
         if name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
-            span_lint_and_sugg(cx, LEN_ZERO, span, "length comparison to zero",
+            span_lint_and_sugg(cx,
+                               LEN_ZERO,
+                               span,
+                               "length comparison to zero",
                                "using `is_empty` is more concise:",
                                format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")));
         }
@@ -184,7 +185,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if item.name == "is_empty" {
-                let sig = cx.tcx.type_of(item.def_id).fn_sig();
+                let sig = cx.tcx.fn_sig(item.def_id);
                 let ty = sig.skip_binder();
                 ty.inputs().len() == 1
             } else {

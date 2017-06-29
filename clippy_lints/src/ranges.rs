@@ -58,12 +58,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
                 use rustc_const_math::ConstInt::Usize;
                 if let Some((Constant::Int(Usize(us)), _)) = constant(cx, &args[1]) {
                     if us.as_u64(cx.sess().target.uint_type) == 0 {
-                        span_lint(
-                            cx,
-                            ITERATOR_STEP_BY_ZERO,
-                            expr.span,
-                            "Iterator::step_by(0) will panic at runtime",
-                        );
+                        span_lint(cx,
+                                  ITERATOR_STEP_BY_ZERO,
+                                  expr.span,
+                                  "Iterator::step_by(0) will panic at runtime");
                     }
                 }
             } else if name == "zip" && args.len() == 2 {
@@ -100,9 +98,5 @@ fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
     // can't be called on a borrowed range.
     let ty = cx.tables.expr_ty_adjusted(expr);
 
-    get_trait_def_id(cx, &paths::ITERATOR)
-        .map_or(
-            false,
-            |iterator_trait| implements_trait(cx, ty, iterator_trait, &[])
-        )
+    get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
 }

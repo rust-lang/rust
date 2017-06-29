@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 * Rewrite of the `doc_markdown` lint.
 * Deprecated [`range_step_by_zero`]
 * New lint: [`iterator_step_by_zero`]
+* New lint: [`needless_borrowed_reference`]
+* Update to *rustc 1.20.0-nightly (69c65d296 2017-06-28)*
 
 ## 0.0.140 - 2017-06-16
 * Update to *rustc 1.19.0-nightly (258ae6dd9 2017-06-15)*

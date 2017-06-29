@@ -8,9 +8,9 @@ use std::borrow::Cow;
 use std::fmt;
 use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path, match_trait_method,
-            match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then, span_lint_and_sugg,
-            span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment, single_segment_path,
-            match_def_path, is_self, is_self_ty, iter_input_pats, match_path_old};
+            match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
+            span_lint_and_sugg, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment,
+            single_segment_path, match_def_path, is_self, is_self_ty, iter_input_pats, match_path_old};
 use utils::paths;
 use utils::sugg;
 
@@ -859,7 +859,10 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
             return;
         };
 
-        span_lint_and_sugg(cx, STRING_EXTEND_CHARS, expr.span, "calling `.extend(_.chars())`",
+        span_lint_and_sugg(cx,
+                           STRING_EXTEND_CHARS,
+                           expr.span,
+                           "calling `.extend(_.chars())`",
                            "try this",
                            format!("{}.push_str({}{})",
                                    snippet(cx, args[0].span, "_"),

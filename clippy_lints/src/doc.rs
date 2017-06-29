@@ -62,7 +62,7 @@ struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn new(parser: pulldown_cmark::Parser<'a>) -> Parser<'a> {
-        Self { parser }
+        Self { parser: parser }
     }
 }
 
@@ -89,10 +89,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             let doc = &comment[prefix.len()..];
             let mut doc = doc.to_owned();
             doc.push('\n');
-            return (
-                doc.to_owned(),
-                vec![(doc.len(), Span { lo: span.lo + BytePos(prefix.len() as u32), ..span })]
-            );
+            return (doc.to_owned(), vec![(doc.len(), Span { lo: span.lo + BytePos(prefix.len() as u32), ..span })]);
         }
     }
 
@@ -105,7 +102,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             debug_assert_eq!(offset as u32 as usize, offset);
 
             // +1 for the newline
-            sizes.push((line.len()+1, Span { lo: span.lo + BytePos(offset as u32), ..span }));
+            sizes.push((line.len() + 1, Span { lo: span.lo + BytePos(offset as u32), ..span }));
         }
 
         return (doc.to_string(), sizes);
@@ -154,7 +151,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
                     let mut x = x.into_owned();
                     x.push_str(&y);
                     Ok((x_offset, Text(x.into())))
-                }
+                },
                 (x, y) => Err(((x_offset, x), (y_offset, y))),
             }
         });
@@ -162,7 +159,7 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
     }
 }
 
-fn check_doc<'a, Events: Iterator<Item=(usize, pulldown_cmark::Event<'a>)>>(
+fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
     cx: &EarlyContext,
     valid_idents: &[String],
     docs: Events,
@@ -175,26 +172,27 @@ fn check_doc<'a, Events: Iterator<Item=(usize, pulldown_cmark::Event<'a>)>>(
 
     for (offset, event) in docs {
         match event {
-            Start(CodeBlock(_)) | Start(Code) => in_code = true,
-            End(CodeBlock(_)) | End(Code) => in_code = false,
+            Start(CodeBlock(_)) |
+            Start(Code) => in_code = true,
+            End(CodeBlock(_)) |
+            End(Code) => in_code = false,
             Start(_tag) | End(_tag) => (), // We don't care about other tags
-            Html(_html) | InlineHtml(_html) => (), // HTML is weird, just ignore it
+            Html(_html) |
+            InlineHtml(_html) => (), // HTML is weird, just ignore it
             SoftBreak => (),
             HardBreak => (),
-            FootnoteReference(text) | Text(text) => {
+            FootnoteReference(text) |
+            Text(text) => {
                 if !in_code {
                     let index = match spans.binary_search_by(|c| c.0.cmp(&offset)) {
                         Ok(o) => o,
-                        Err(e) => e-1,
+                        Err(e) => e - 1,
                     };
 
                     let (begin, span) = spans[index];
 
                     // Adjust for the begining of the current `Event`
-                    let span = Span {
-                        lo: span.lo + BytePos::from_usize(offset - begin),
-                        ..span
-                    };
+                    let span = Span { lo: span.lo + BytePos::from_usize(offset - begin), ..span };
 
                     check_text(cx, valid_idents, &text, span);
                 }

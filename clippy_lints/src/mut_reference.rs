@@ -55,11 +55,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     }
 }
 
-fn check_arguments(cx: &LateContext, arguments: &[Expr], type_definition: Ty, name: &str) {
+fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], type_definition: Ty<'tcx>, name: &str) {
     match type_definition.sty {
-        ty::TyFnDef(_, _, fn_type) |
-        ty::TyFnPtr(fn_type) => {
-            let parameters = fn_type.skip_binder().inputs();
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+            let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.sty {
                     ty::TyRef(_, ty::TypeAndMut { mutbl: MutImmutable, .. }) |

@@ -2,8 +2,8 @@ use rustc::lint::*;
 use rustc::hir::*;
 use rustc::ty;
 use syntax::ast;
-use utils::{is_adjusted, match_path, match_trait_method, match_type, remove_blocks, paths, snippet,
-            span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, iter_input_pats};
+use utils::{is_adjusted, match_path, match_trait_method, match_type, remove_blocks, paths, snippet, span_help_and_lint,
+            walk_ptrs_ty, walk_ptrs_ty_depth, iter_input_pats};
 
 /// **What it does:** Checks for mapping `clone()` over an iterator.
 ///

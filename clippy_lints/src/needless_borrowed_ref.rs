@@ -9,7 +9,8 @@ use utils::{span_lint, in_macro};
 
 /// **What it does:** Checks for useless borrowed references.
 ///
-/// **Why is this bad?** It is completely useless and make the code look more complex than it actually is.
+/// **Why is this bad?** It is completely useless and make the code look more complex than it
+/// actually is.
 ///
 /// **Known problems:** None.
 ///
@@ -18,7 +19,8 @@ use utils::{span_lint, in_macro};
 ///     let mut v = Vec::<String>::new();
 ///     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
 /// ```
-/// This clojure takes a reference on something that has been matched as a reference and de-referenced.
+/// This clojure takes a reference on something that has been matched as a reference and
+/// de-referenced.
 /// As such, it could just be |a| a.is_empty()
 declare_lint! {
     pub NEEDLESS_BORROWED_REFERENCE,
@@ -55,4 +57,3 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
         }}
     }
 }
-

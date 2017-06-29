@@ -40,8 +40,12 @@ impl EarlyLintPass for Pass {
     fn check_expr(&mut self, cx: &EarlyContext, e: &Expr) {
         if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.node {
             if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).node {
-                span_lint_and_sugg(cx, DEREF_ADDROF, e.span, "immediately dereferencing a reference",
-                                   "try this", format!("{}", snippet(cx, addrof_target.span, "_")));
+                span_lint_and_sugg(cx,
+                                   DEREF_ADDROF,
+                                   e.span,
+                                   "immediately dereferencing a reference",
+                                   "try this",
+                                   format!("{}", snippet(cx, addrof_target.span, "_")));
             }
         }
     }

@@ -9,8 +9,8 @@ use std::collections::Bound;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, span_lint_and_sugg, in_external_macro, expr_block, walk_ptrs_ty,
-            is_expn_of, remove_blocks};
+use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, span_lint_and_sugg, in_external_macro,
+            expr_block, walk_ptrs_ty, is_expn_of, remove_blocks};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
