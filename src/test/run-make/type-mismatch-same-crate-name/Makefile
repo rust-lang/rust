@@ -8,7 +8,7 @@ all:
 	$(RUSTC) --crate-type=rlib crateB.rs --extern crateA=$(TMPDIR)/libcrateA-1.rlib
 	# make crateC depend on version 2 of crateA
 	$(RUSTC) crateC.rs --extern crateA=$(TMPDIR)/libcrateA-2.rlib 2>&1 | \
-		grep -z \
+		tr -d '\r\n' | grep \
 	"mismatched types.*\
 	crateB::try_foo(foo2);.*\
 	expected struct \`crateA::foo::Foo\`, found struct \`crateA::Foo\`.*\
