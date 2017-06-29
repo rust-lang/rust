@@ -1,3 +1,9 @@
+extern crate byteorder;
+
+use byteorder::{BigEndian, ByteOrder};
+
 fn main() {
-    assert_eq!(5, 5);
+    let buf = &[1,2,3,4];
+    let n = <BigEndian as ByteOrder>::read_u32(buf);
+    assert_eq!(n, 0x01020304);
 }
