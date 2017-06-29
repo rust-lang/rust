@@ -1,11 +1,12 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::Visibility::Public;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 
 use semcheck::id_mapping::IdMapping;
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 /// A relation searching for items appearing at the same spot in a type.
 ///
@@ -80,6 +81,27 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
             },
             (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) => {
                 let _ = self.relate_item_substs(a_def.did, a_substs, b_substs)?;
+                let a_adt = self.tcx.adt_def(a_def.did);
+                let b_adt = self.tcx.adt_def(b_def.did);
+
+                let b_fields: HashMap<_, _> =
+                    b_adt
+                        .all_fields()
+                        .map(|f| (f.did, f))
+                        .collect();
+
+                for field in a_adt.all_fields().filter(|f| f.vis == Public) {
+                    if self.id_mapping.contains_id(field.did) {
+                        let a_field_ty = field.ty(self.tcx, a_substs);
+                        let b_field_ty =
+                            b_fields[&self.id_mapping.get_new_id(field.did)]
+                                .ty(self.tcx, b_substs);
+
+                        // println!("found: {:?}, {:?}", a_field_ty, b_field_ty);
+                        let _ = self.relate(&a_field_ty, &b_field_ty);
+                    }
+                }
+
                 Some((a_def.did, b_def.did))
             },
             (&TyDynamic(a_obj, a_r), &TyDynamic(b_obj, b_r)) => {
