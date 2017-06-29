@@ -1,23 +1,10 @@
-error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/ex1-return-one-existing-name-if-else.rs:12:27
    |
+11 | fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
+   |                        - consider changing the type of `y` to `&'a i32`
 12 |     if x > y { x } else { y }
-   |                           ^
-   |
-note: ...the reference is valid for the lifetime 'a as defined on the function body at 11:1...
-  --> $DIR/ex1-return-one-existing-name-if-else.rs:11:1
-   |
-11 | / fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
-12 | |     if x > y { x } else { y }
-13 | | }
-   | |_^
-note: ...but the borrowed content is only valid for the anonymous lifetime #1 defined on the function body at 11:1
-  --> $DIR/ex1-return-one-existing-name-if-else.rs:11:1
-   |
-11 | / fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
-12 | |     if x > y { x } else { y }
-13 | | }
-   | |_^
+   |                           ^ lifetime `'a` required
 
 error: aborting due to previous error(s)
 
