@@ -3125,11 +3125,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let adt_ty_hint =
             self.expected_inputs_for_expected_output(span, expected, adt_ty, &[adt_ty])
-                .get(0).cloned().unwrap_or(adt_ty);
+            .get(0).cloned().unwrap_or(adt_ty);
+        // re-link the regions that EIfEO can erase.
+        self.demand_eqtype(span, adt_ty_hint, adt_ty);
 
-        let (substs, hint_substs, adt_kind, kind_name) = match (&adt_ty.sty, &adt_ty_hint.sty) {
-            (&ty::TyAdt(adt, substs), &ty::TyAdt(_, hint_substs)) => {
-                (substs, hint_substs, adt.adt_kind(), adt.variant_descr())
+        let (substs, adt_kind, kind_name) = match &adt_ty.sty{
+            &ty::TyAdt(adt, substs) => {
+                (substs, adt.adt_kind(), adt.variant_descr())
             }
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
@@ -3145,14 +3147,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Typecheck each field.
         for field in ast_fields {
-            let final_field_type;
-            let field_type_hint;
-
             let ident = tcx.adjust(field.name.node, variant.did, self.body_id).0;
-            if let Some(v_field) = remaining_fields.remove(&ident) {
-                final_field_type = self.field_ty(field.span, v_field, substs);
-                field_type_hint = self.field_ty(field.span, v_field, hint_substs);
-
+            let field_type = if let Some(v_field) = remaining_fields.remove(&ident) {
                 seen_fields.insert(field.name.node, field.span);
 
                 // we don't look at stability attributes on
@@ -3161,10 +3157,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if adt_kind != ty::AdtKind::Enum {
                     tcx.check_stability(v_field.did, expr_id, field.span);
                 }
+
+                self.field_ty(field.span, v_field, substs)
             } else {
                 error_happened = true;
-                final_field_type = tcx.types.err;
-                field_type_hint = tcx.types.err;
                 if let Some(_) = variant.find_field_named(field.name.node) {
                     let mut err = struct_span_err!(self.tcx.sess,
                                                    field.name.span,
@@ -3182,12 +3178,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     self.report_unknown_field(adt_ty, variant, field, ast_fields, kind_name);
                 }
-            }
+
+                tcx.types.err
+            };
 
             // Make sure to give a type to the field even if there's
             // an error, so we can continue typechecking
-            let ty = self.check_expr_with_hint(&field.expr, field_type_hint);
-            self.demand_coerce(&field.expr, ty, final_field_type);
+            self.check_expr_coercable_to_type(&field.expr, field_type);
         }
 
         // Make sure the programmer specified correct number of fields.

@@ -35,31 +35,19 @@ error[E0308]: mismatched types
               found type `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/abridged.rs:42:5
+  --> $DIR/abridged.rs:49:5
    |
-42 | /     X {
-43 | |         x: X {
-44 | |             x: "".to_string(),
-45 | |             y: 2,
-46 | |         },
-47 | |         y: 3,
-48 | |     }
-   | |_____^ expected struct `std::string::String`, found integral variable
+49 |     x
+   |     ^ expected struct `std::string::String`, found integral variable
    |
    = note: expected type `X<X<_, std::string::String>, std::string::String>`
               found type `X<X<_, {integer}>, {integer}>`
 
 error[E0308]: mismatched types
-  --> $DIR/abridged.rs:52:5
+  --> $DIR/abridged.rs:60:5
    |
-52 | /     X {
-53 | |         x: X {
-54 | |             x: "".to_string(),
-55 | |             y: 2,
-56 | |         },
-57 | |         y: "".to_string(),
-58 | |     }
-   | |_____^ expected struct `std::string::String`, found integral variable
+60 |     x
+   |     ^ expected struct `std::string::String`, found integral variable
    |
    = note: expected type `X<X<_, std::string::String>, _>`
               found type `X<X<_, {integer}>, _>`

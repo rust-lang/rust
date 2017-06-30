@@ -39,23 +39,25 @@ fn c() -> Result<Foo, Bar> {
 }
 
 fn d() -> X<X<String, String>, String> {
-    X {
+    let x = X {
         x: X {
             x: "".to_string(),
             y: 2,
         },
         y: 3,
-    }
+    };
+    x
 }
 
 fn e() -> X<X<String, String>, String> {
-    X {
+    let x = X {
         x: X {
             x: "".to_string(),
             y: 2,
         },
         y: "".to_string(),
-    }
+    };
+    x
 }
 
 fn main() {}
