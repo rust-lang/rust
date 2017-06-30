@@ -522,7 +522,7 @@ pub trait Iterator {
     ///       .for_each(|(i, x)| println!("{}:{}", i, x));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_for_each", issue = "0")]
+    #[unstable(feature = "iterator_for_each", issue = "42986")]
     fn for_each<F>(self, mut f: F) where
         Self: Sized, F: FnMut(Self::Item),
     {
