@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::DepConstructor;
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs};
 use util::ppaux;
@@ -58,27 +57,6 @@ impl<'tcx> InstanceDef<'tcx> {
     #[inline]
     pub fn attrs<'a>(&self, tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
-    }
-
-    pub //(crate)
-     fn dep_node(&self) -> DepConstructor {
-        // HACK: def-id binning, project-style; someone replace this with
-        // real on-demand.
-        let ty = match self {
-            &InstanceDef::FnPtrShim(_, ty) => Some(ty),
-            &InstanceDef::DropGlue(_, ty) => ty,
-            _ => None
-        }.into_iter();
-
-        DepConstructor::MirShim(
-            Some(self.def_id()).into_iter().chain(
-                ty.flat_map(|t| t.walk()).flat_map(|t| match t.sty {
-                   ty::TyAdt(adt_def, _) => Some(adt_def.did),
-                   ty::TyProjection(ref proj) => Some(proj.trait_ref.def_id),
-                   _ => None,
-               })
-            ).collect()
-        )
     }
 }
 

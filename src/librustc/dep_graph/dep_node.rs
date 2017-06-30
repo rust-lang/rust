@@ -64,7 +64,8 @@ use hir::def_id::{CrateNum, DefId};
 use hir::map::DefPathHash;
 
 use ich::Fingerprint;
-use ty::TyCtxt;
+use ty::fast_reject::SimplifiedType;
+use ty::{TyCtxt, Instance, InstanceDef};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
 use std::fmt;
@@ -78,7 +79,8 @@ macro_rules! erase {
 }
 
 macro_rules! define_dep_nodes {
-    ($(
+    (<$tcx:tt>
+    $(
         $variant:ident $(( $($tuple_arg:tt),* ))*
                        $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
       ,)*
@@ -92,7 +94,7 @@ macro_rules! define_dep_nodes {
         impl DepKind {
             #[allow(unreachable_code)]
             #[inline]
-            pub fn can_reconstruct_query_key(&self) -> bool {
+            pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => {
@@ -139,7 +141,7 @@ macro_rules! define_dep_nodes {
             }
         }
 
-        pub enum DepConstructor {
+        pub enum DepConstructor<$tcx> {
             $(
                 $variant $(( $($tuple_arg),* ))*
                          $({ $($struct_arg_name : $struct_arg_ty),* })*
@@ -155,7 +157,7 @@ macro_rules! define_dep_nodes {
 
         impl DepNode {
             #[allow(unreachable_code, non_snake_case)]
-            pub fn new(tcx: TyCtxt, dep: DepConstructor) -> DepNode {
+            pub fn new<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(tcx: TyCtxt<'a, 'gcx, 'tcx>, dep: DepConstructor<'gcx>) -> DepNode {
                 match dep {
                     $(
                         DepConstructor :: $variant $(( $($tuple_arg),* ))*
@@ -336,7 +338,7 @@ impl DefId {
     }
 }
 
-define_dep_nodes!(
+define_dep_nodes!( <'tcx>
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
     // the entire krate, so if you read from `Krate` (e.g., by calling
@@ -374,8 +376,11 @@ define_dep_nodes!(
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
-    Mir(DefId),
-    MirShim(DefIdList),
+    MirConstQualif(DefId),
+    MirConst(DefId),
+    MirValidated(DefId),
+    MirOptimized(DefId),
+    MirShim { instance_def: InstanceDef<'tcx> },
 
     BorrowCheckKrate,
     BorrowCheck(DefId),
@@ -414,8 +419,10 @@ define_dep_nodes!(
     InherentImpls(DefId),
     TypeckBodiesKrate,
     TypeckTables(DefId),
+    HasTypeckTables(DefId),
     ConstEval(DefId),
     SymbolName(DefId),
+    InstanceSymbolName { instance: Instance<'tcx> },
     SpecializationGraph(DefId),
     ObjectSafety(DefId),
     IsCopy(DefId),
@@ -424,14 +431,9 @@ define_dep_nodes!(
     NeedsDrop(DefId),
     Layout(DefId),
 
-    // The set of impls for a given trait. Ultimately, it would be
-    // nice to get more fine-grained here (e.g., to include a
-    // simplified type), but we can't do that until we restructure the
-    // HIR to distinguish the *header* of an impl from its body.  This
-    // is because changes to the header may change the self-type of
-    // the impl and hence would require us to be more conservative
-    // than changes in the impl body.
+    // The set of impls for a given trait.
     TraitImpls(DefId),
+    RelevantTraitImpls(DefId, SimplifiedType),
 
     AllLocalTraitImpls,
 
