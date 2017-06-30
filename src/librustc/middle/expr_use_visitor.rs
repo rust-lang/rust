@@ -816,7 +816,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat, match_mode: MatchMode) {
         debug!("walk_pat cmt_discr={:?} pat={:?}", cmt_discr, pat);
 
-        let tcx = self.tcx();
         let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
             if let PatKind::Binding(bmode, def_id, ..) = pat.node {
@@ -864,13 +863,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             match def {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {
-                    let enum_did = tcx.parent_def_id(variant_did).unwrap();
-                    let downcast_cmt = if tcx.adt_def(enum_did).is_univariant() {
-                        cmt_pat
-                    } else {
-                        let cmt_pat_ty = cmt_pat.ty;
-                        mc.cat_downcast(pat, cmt_pat, cmt_pat_ty, variant_did)
-                    };
+                    let downcast_cmt = mc.cat_downcast_if_needed(pat, cmt_pat, variant_did);
 
                     debug!("variant downcast_cmt={:?} pat={:?}", downcast_cmt, pat);
                     delegate.matched_pat(pat, downcast_cmt, match_mode);
