@@ -20,6 +20,7 @@ use self::UseError::*;
 
 use borrowck::*;
 use borrowck::InteriorKind::{InteriorElement, InteriorField};
+use rustc::lint::builtin::UNUSED_MUT;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::middle::mem_categorization as mc;
@@ -847,7 +848,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let lp = opt_loan_path(&assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
-                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    self.bccx.tcx.lint_node(UNUSED_MUT,
+                                       local_id,
+                                       self.bccx.tcx.hir.span_if_local(local_id),
+                                       "unused mut variables");
                 } else {
                     self.bccx.report_reassigned_immutable_variable(
                         assignment_span,

@@ -17,6 +17,7 @@
 // sure that all of these loans are honored.
 
 use borrowck::*;
+use rustc::lint::builtin::UNUSED_MUT;
 use borrowck::move_data::MoveData;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
@@ -448,7 +449,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 }
                 LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
                     let local_id = self.tcx().hir.def_index_to_node_id(var_id);
-                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    self.bccx.tcx.lint_node(UNUSED_MUT,
+                                       local_id,
+                                       self.bccx.tcx.hir.span_if_local(local_id),
+                                       "unused mut variables");
                     None
                 }
                 LpExtend(ref base, mc::McInherited, LpDeref(pointer_kind)) |
