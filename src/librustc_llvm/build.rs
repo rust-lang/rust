@@ -60,11 +60,7 @@ fn main() {
         });
 
     println!("cargo:rerun-if-changed={}", llvm_config.display());
-
-    if let Some(cfg_toml) = env::var_os("CFG_LLVM_TOML") {
-        let cfg_path = PathBuf::from(cfg_toml);
-        println!("cargo:rerun-if-changed={}", cfg_path.display());
-    }
+    println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case
     // currently where we're producing an LLVM for a different platform than

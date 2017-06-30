@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x;
-
-    match x {
-        (..) => {} //~ ERROR E0619
-        _ => {}
-    }
+struct Ref<'a, T: 'a> {
+    data: &'a T
 }
 
+fn foo<'a>(x: Ref<i32>, y: &mut Vec<Ref<'a, i32>>) {
+    y.push(x);
+}
+
+fn main() { }
