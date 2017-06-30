@@ -1,8 +1,8 @@
 # `iterator_for_each`
 
-The tracking issue for this feature is: [#TBD]
+The tracking issue for this feature is: [#42986]
 
-[#TBD]: https://github.com/rust-lang/rust/issues/TBD
+[#42986]: https://github.com/rust-lang/rust/issues/42986
 
 ------------------------
 
