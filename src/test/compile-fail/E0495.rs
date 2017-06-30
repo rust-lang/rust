@@ -21,8 +21,8 @@ where F: FnOnce(&'a i32, &i32) -> &'a i32
     f(x, &y)
 }
 
-fn foo<'a>(x: &'a i32) { //~ ERROR E0495
-    invoke(&x, |a, b| if a > b { a } else { b });
+fn foo<'a>(x: &'a i32) {
+    invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
 }
 
 fn main() {}
