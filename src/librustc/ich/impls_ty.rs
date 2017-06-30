@@ -661,3 +661,60 @@ for ty::TypeckTables<'tcx> {
         })
     }
 }
+
+impl_stable_hash_for!(enum ty::fast_reject::SimplifiedType {
+    BoolSimplifiedType,
+    CharSimplifiedType,
+    IntSimplifiedType(int_ty),
+    UintSimplifiedType(int_ty),
+    FloatSimplifiedType(float_ty),
+    AdtSimplifiedType(def_id),
+    StrSimplifiedType,
+    ArraySimplifiedType,
+    PtrSimplifiedType,
+    NeverSimplifiedType,
+    TupleSimplifiedType(size),
+    TraitSimplifiedType(def_id),
+    ClosureSimplifiedType(def_id),
+    AnonSimplifiedType(def_id),
+    FunctionSimplifiedType(params),
+    ParameterSimplifiedType
+});
+
+impl_stable_hash_for!(struct ty::Instance<'tcx> {
+    def,
+    substs
+});
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::InstanceDef<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            ty::InstanceDef::Item(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::Intrinsic(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::FnPtrShim(def_id, ty) => {
+                def_id.hash_stable(hcx, hasher);
+                ty.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::Virtual(def_id, n) => {
+                def_id.hash_stable(hcx, hasher);
+                n.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::ClosureOnceShim { call_once } => {
+                call_once.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::DropGlue(def_id, t) => {
+                def_id.hash_stable(hcx, hasher);
+                t.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
