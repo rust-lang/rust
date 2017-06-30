@@ -276,10 +276,6 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     if build.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
-    if let Some(ref cfg_file) = build.flags.config {
-        let cfg_path = t!(PathBuf::from(cfg_file).canonicalize());
-        cargo.env("CFG_LLVM_TOML", cfg_path.into_os_string());
-    }
     cargo.env("LLVM_CONFIG", build.llvm_config(target));
     let target_config = build.config.target_config.get(target);
     if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
