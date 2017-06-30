@@ -30,6 +30,7 @@ use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
 use crossbeam::{scope, Scope};
 use rustc_demangle;
+use back::demangle::demangle_asm_in_file_in_place;
 
 use std::cmp;
 use std::ffi::CString;
@@ -568,6 +569,13 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             })?;
             if config.emit_obj {
                 llvm::LLVMDisposeModule(llmod);
+            }
+
+            // It is hard to plug into LLVM to print annotated assembly
+            // as it is done with IR, so annotation is performed on assembly file.
+            if let Err(e) = demangle_asm_in_file_in_place(&path) {
+                cgcx.handler.err(
+                    &format!("failed to demangle in file {}: {:?}", path.display(), e));
             }
         }
 
