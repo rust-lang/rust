@@ -21,14 +21,16 @@ use std::fmt;
 use std::mem;
 use std::ops::{Index, IndexMut};
 
-use super::abs_domain::{AbstractElem, Lift};
+use self::abs_domain::{AbstractElem, Lift};
+
+mod abs_domain;
 
 // This submodule holds some newtype'd Index wrappers that are using
 // NonZero to ensure that Option<Index> occupies only a single word.
 // They are in a submodule to impose privacy restrictions; namely, to
 // ensure that other code does not accidentally access `index.0`
 // (which is likely to yield a subtle off-by-one error).
-mod indexes {
+pub(crate) mod indexes {
     use std::fmt;
     use core::nonzero::NonZero;
     use rustc_data_structures::indexed_vec::Idx;
@@ -65,7 +67,7 @@ mod indexes {
 pub use self::indexes::MovePathIndex;
 pub use self::indexes::MoveOutIndex;
 
-impl self::indexes::MoveOutIndex {
+impl MoveOutIndex {
     pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
         move_data.moves[*self].path
     }
@@ -128,7 +130,7 @@ pub trait HasMoveData<'tcx> {
 pub struct LocationMap<T> {
     /// Location-indexed (BasicBlock for outer index, index within BB
     /// for inner index) map.
-    map: IndexVec<BasicBlock, Vec<T>>,
+    pub(crate) map: IndexVec<BasicBlock, Vec<T>>,
 }
 
 impl<T> Index<Location> for LocationMap<T> {
@@ -188,7 +190,7 @@ pub struct MovePathLookup<'tcx> {
     projections: FxHashMap<(MovePathIndex, AbstractElem<'tcx>), MovePathIndex>
 }
 
-struct MoveDataBuilder<'a, 'tcx: 'a> {
+pub(super) struct MoveDataBuilder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,

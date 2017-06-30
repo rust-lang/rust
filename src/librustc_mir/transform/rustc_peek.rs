@@ -14,12 +14,67 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir};
+use rustc::mir::transform::{MirPass, MirSource};
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::super::gather_moves::{MovePathIndex, LookupResult};
-use super::BitDenotation;
-use super::DataflowResults;
-use super::super::gather_moves::HasMoveData;
+use dataflow::do_dataflow;
+use dataflow::MoveDataParamEnv;
+use dataflow::BitDenotation;
+use dataflow::DataflowResults;
+use dataflow::{DefinitelyInitializedLvals, MaybeInitializedLvals, MaybeUninitializedLvals};
+use dataflow::move_paths::{MovePathIndex, LookupResult};
+use dataflow::move_paths::{HasMoveData, MoveData};
+use dataflow;
+
+use dataflow::has_rustc_mir_with;
+
+pub struct SanityCheck;
+
+impl MirPass for SanityCheck {
+    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          src: MirSource, mir: &mut Mir<'tcx>) {
+        let id = src.item_id();
+        let def_id = tcx.hir.local_def_id(id);
+        if !tcx.has_attr(def_id, "rustc_mir_borrowck") {
+            debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
+            return;
+        } else {
+            debug!("running rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
+        }
+
+        let attributes = tcx.get_attrs(def_id);
+        let param_env = tcx.param_env(def_id);
+        let move_data = MoveData::gather_moves(mir, tcx, param_env);
+        let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
+        let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
+        let flow_inits =
+            do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+                        MaybeInitializedLvals::new(tcx, mir, &mdpe),
+                        |bd, i| &bd.move_data().move_paths[i]);
+        let flow_uninits =
+            do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+                        MaybeUninitializedLvals::new(tcx, mir, &mdpe),
+                        |bd, i| &bd.move_data().move_paths[i]);
+        let flow_def_inits =
+            do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
+                        DefinitelyInitializedLvals::new(tcx, mir, &mdpe),
+                        |bd, i| &bd.move_data().move_paths[i]);
+
+        if has_rustc_mir_with(&attributes, "rustc_peek_maybe_init").is_some() {
+            sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_inits);
+        }
+        if has_rustc_mir_with(&attributes, "rustc_peek_maybe_uninit").is_some() {
+            sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_uninits);
+        }
+        if has_rustc_mir_with(&attributes, "rustc_peek_definite_init").is_some() {
+            sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_def_inits);
+        }
+        if has_rustc_mir_with(&attributes, "stop_after_dataflow").is_some() {
+            tcx.sess.fatal("stop_after_dataflow ended compilation");
+        }
+    }
+}
 
 /// This function scans `mir` for all calls to the intrinsic
 /// `rustc_peek` that have the expression form `rustc_peek(&expr)`.
@@ -92,7 +147,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // of the argument at time immediate preceding Call to
     // `rustc_peek`).
 
-    let mut sets = super::BlockSets { on_entry: &mut entry,
+    let mut sets = dataflow::BlockSets { on_entry: &mut entry,
                                       gen_set: &mut gen,
                                       kill_set: &mut kill };
 
