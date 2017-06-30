@@ -35,7 +35,9 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedMut;
+pub struct UnusedMut {
+    borrowck_results: Vec<Rc<BorrowCheckResult>>
+}
 
 impl UnusedMut {
     fn check_unused_mut_pat(&self, cx: &LateContext, pats: &[P<hir::Pat>]) {
@@ -84,6 +86,15 @@ impl LintPass for UnusedMut {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
+    fn check_body(&mut self, cx: &LateContext, body: &'tcx hir::Body) {
+        let body_owner_def_id = cx.tcx().hir.body_owner_def_id(body.id());
+        self.borrowck_results.push(cx.tcx().borrowck(body_owner_def_id));
+    }
+
+    fn check_body_post(&mut self, cx: &LateContext, body: &'tcx hir::Body) {
+        self.borrowck_results.pop();
+    }
+
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprMatch(_, ref arms, _) = e.node {
             for a in arms {

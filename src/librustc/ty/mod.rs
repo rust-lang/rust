@@ -2599,3 +2599,10 @@ impl fmt::Display for SymbolName {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
+
+pub struct BorrowCheckResult {
+    /// contains the node-ids for variables within this function where the `mut`
+    /// declaration was used in some way (e.g., by modifying the variable's value,
+    /// or taking an `&mut` borrow of it).
+    used_mut_nodes: NodeSet
+}

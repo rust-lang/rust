@@ -21,7 +21,7 @@ use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
 use traits::specialization_graph;
-use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use ty::{self, BorrowCheckResult, CrateInherentImpls, Ty, TyCtxt};
 use ty::layout::{Layout, LayoutError};
 use ty::item_path;
 use ty::steal::Steal;
@@ -922,7 +922,7 @@ define_maps! { <'tcx>
 
     [] coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
-    [] borrowck: BorrowCheck(DefId) -> (),
+    [] borrowck: BorrowCheck(DefId) -> Rc<BorrowCheckResult>,
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
