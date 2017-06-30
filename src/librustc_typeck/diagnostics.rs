@@ -4726,6 +4726,26 @@ let x = &[1_usize, 2] as &[usize]; // ok!
 ```
 "##,
 
+E0622: r##"
+An intrinsic was declared without being a function.
+
+Erroneous code example:
+
+```compile_fail,E0622
+#![feature(intrinsics)]
+extern "rust-intrinsic" {
+    pub static breakpoint : unsafe extern "rust-intrinsic" fn();
+    // error: intrinsic must be a function
+}
+
+fn main() { unsafe { breakpoint(); } }
+```
+
+An intrinsic is a function available for use in a given programming language
+whose implementation is handled specially by the compiler. In order to fix this
+error, just declare a function.
+"##,
+
 }
 
 register_diagnostics! {
