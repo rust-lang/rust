@@ -166,15 +166,15 @@ fn refutable() {
     for &Option::None in b.next() {}
     // */
 
-    let x = a.iter();
+    let mut y = a.iter();
     loop { // x is reused, so don't lint here
-        while let Some(v) = x.next() {
+        while let Some(v) = y.next() {
         }
     }
 
-    let y = a.iter();
+    let mut y = a.iter();
     for _ in 0..2 {
-        while let Some(v) = x.next() {
+        while let Some(v) = y.next() {
         }
     }
 }
