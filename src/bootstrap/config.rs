@@ -49,6 +49,7 @@ pub struct Config {
     pub target_config: HashMap<String, Target>,
     pub full_bootstrap: bool,
     pub extended: bool,
+    pub build_all_tools: bool,
     pub sanitizers: bool,
     pub profiler: bool,
 
@@ -162,6 +163,7 @@ struct Build {
     python: Option<String>,
     full_bootstrap: Option<bool>,
     extended: Option<bool>,
+    build_all_tools: Option<bool>,
     verbose: Option<usize>,
     sanitizers: Option<bool>,
     profiler: Option<bool>,
@@ -320,6 +322,7 @@ impl Config {
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
+        set(&mut config.build_all_tools, build.build_all_tools);
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
@@ -482,6 +485,7 @@ impl Config {
                 ("VENDOR", self.vendor),
                 ("FULL_BOOTSTRAP", self.full_bootstrap),
                 ("EXTENDED", self.extended),
+                ("BUILD_ALL_TOOLS", self.build_all_tools),
                 ("SANITIZERS", self.sanitizers),
                 ("PROFILER", self.profiler),
                 ("DIST_SRC", self.rust_dist_src),
