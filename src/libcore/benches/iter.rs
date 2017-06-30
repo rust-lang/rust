@@ -99,3 +99,50 @@ fn bench_zip_add(b: &mut Bencher) {
         add_zip(&source, &mut dst)
     });
 }
+
+/// `Iterator::for_each` implemented as a plain loop.
+fn for_each_loop<I, F>(iter: I, mut f: F) where
+    I: Iterator, F: FnMut(I::Item)
+{
+    for item in iter {
+        f(item);
+    }
+}
+
+/// `Iterator::for_each` implemented with `fold` for internal iteration.
+/// (except when `by_ref()` effectively disables that optimization.)
+fn for_each_fold<I, F>(iter: I, mut f: F) where
+    I: Iterator, F: FnMut(I::Item)
+{
+    iter.fold((), move |(), item| f(item));
+}
+
+#[bench]
+fn bench_for_each_chain_loop(b: &mut Bencher) {
+    b.iter(|| {
+        let mut acc = 0;
+        let iter = (0i64..1000000).chain(0..1000000).map(black_box);
+        for_each_loop(iter, |x| acc += x);
+        acc
+    });
+}
+
+#[bench]
+fn bench_for_each_chain_fold(b: &mut Bencher) {
+    b.iter(|| {
+        let mut acc = 0;
+        let iter = (0i64..1000000).chain(0..1000000).map(black_box);
+        for_each_fold(iter, |x| acc += x);
+        acc
+    });
+}
+
+#[bench]
+fn bench_for_each_chain_ref_fold(b: &mut Bencher) {
+    b.iter(|| {
+        let mut acc = 0;
+        let mut iter = (0i64..1000000).chain(0..1000000).map(black_box);
+        for_each_fold(iter.by_ref(), |x| acc += x);
+        acc
+    });
+}
