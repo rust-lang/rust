@@ -284,6 +284,8 @@
 #![feature(needs_panic_runtime)]
 #![feature(needs_drop)]
 #![feature(never_type)]
+#![feature(num_cast)]
+#![feature(num_cast_internals)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]

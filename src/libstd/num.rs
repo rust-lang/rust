@@ -20,6 +20,8 @@
 pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
+#[unstable(feature = "num_cast", issue = "0")]
+pub use core::num::{Cast, CastError};
 
 #[cfg(test)] use fmt;
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};

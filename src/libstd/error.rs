@@ -347,6 +347,12 @@ impl Error for char::ParseCharError {
     }
 }
 
+#[unstable(feature = "num_cast", issue = "0")]
+impl Error for num::CastError {
+    fn description(&self) -> &str {
+        "failed to losslessly cast integral types"
+    }
+}
 
 // copied from any.rs
 impl Error + 'static {
