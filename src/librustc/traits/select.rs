@@ -43,6 +43,7 @@ use middle::lang_items;
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::snapshot_vec::{SnapshotVecDelegate, SnapshotVec};
 use std::cell::RefCell;
+use std::cmp;
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
@@ -271,15 +272,99 @@ enum BuiltinImplConditions<'tcx> {
 /// The result of trait evaluation. The order is important
 /// here as the evaluation of a list is the maximum of the
 /// evaluations.
+///
+/// The evaluation results are ordered:
+///     - `EvaluatedToOk` implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
+///     - `EvaluatedToErr` implies `EvaluatedToRecur`
+///     - the "union" of evaluation results is equal to their maximum -
+///     all the "potential success" candidates can potentially succeed,
+///     so they are no-ops when unioned with a definite error, and within
+///     the categories it's easy to see that the unions are correct.
 enum EvaluationResult {
     /// Evaluation successful
     EvaluatedToOk,
-    /// Evaluation failed because of recursion - treated as ambiguous
-    EvaluatedToUnknown,
-    /// Evaluation is known to be ambiguous
+    /// Evaluation is known to be ambiguous - it *might* hold for some
+    /// assignment of inference variables, but it might not.
+    ///
+    /// While this has the same meaning as `EvaluatedToUnknown` - we can't
+    /// know whether this obligation holds or not - it is the result we
+    /// would get with an empty stack, and therefore is cacheable.
     EvaluatedToAmbig,
+    /// Evaluation failed because of recursion involving inference
+    /// variables. We are somewhat imprecise there, so we don't actually
+    /// know the real result.
+    ///
+    /// This can't be trivially cached for the same reason as `EvaluatedToRecur`.
+    EvaluatedToUnknown,
+    /// Evaluation failed because we encountered an obligation we are already
+    /// trying to prove on this branch.
+    ///
+    /// We know this branch can't be a part of a minimal proof-tree for
+    /// the "root" of our cycle, because then we could cut out the recursion
+    /// and maintain a valid proof tree. However, this does not mean
+    /// that all the obligations on this branch do not hold - it's possible
+    /// that we entered this branch "speculatively", and that there
+    /// might be some other way to prove this obligation that does not
+    /// go through this cycle - so we can't cache this as a failure.
+    ///
+    /// For example, suppose we have this:
+    ///
+    /// ```rust,ignore (pseudo-Rust)
+    ///     pub trait Trait { fn xyz(); }
+    ///     // This impl is "useless", but we can still have
+    ///     // an `impl Trait for SomeUnsizedType` somewhere.
+    ///     impl<T: Trait + Sized> Trait for T { fn xyz() {} }
+    ///
+    ///     pub fn foo<T: Trait + ?Sized>() {
+    ///         <T as Trait>::xyz();
+    ///     }
+    /// ```
+    ///
+    /// When checking `foo`, we have to prove `T: Trait`. This basically
+    /// translates into this:
+    ///
+    ///     (T: Trait + Sized →_\impl T: Trait), T: Trait ⊢ T: Trait
+    ///
+    /// When we try to prove it, we first go the first option, which
+    /// recurses. This shows us that the impl is "useless" - it won't
+    /// tell us that `T: Trait` unless it already implemented `Trait`
+    /// by some other means. However, that does not prevent `T: Trait`
+    /// does not hold, because of the bound (which can indeed be satisfied
+    /// by `SomeUnsizedType` from another crate).
+    ///
+    /// FIXME: when an `EvaluatedToRecur` goes past its parent root, we
+    /// ought to convert it to an `EvaluatedToErr`, because we know
+    /// there definitely isn't a proof tree for that obligation. Not
+    /// doing so is still sound - there isn't any proof tree, so the
+    /// branch still can't be a part of a minimal one - but does not
+    /// re-enable caching.
+    EvaluatedToRecur,
     /// Evaluation failed
     EvaluatedToErr,
+}
+
+impl EvaluationResult {
+    fn may_apply(self) -> bool {
+        match self {
+            EvaluatedToOk |
+            EvaluatedToAmbig |
+            EvaluatedToUnknown => true,
+
+            EvaluatedToErr |
+            EvaluatedToRecur => false
+        }
+    }
+
+    fn is_stack_dependent(self) -> bool {
+        match self {
+            EvaluatedToUnknown |
+            EvaluatedToRecur => true,
+
+            EvaluatedToOk |
+            EvaluatedToAmbig |
+            EvaluatedToErr => false,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -492,15 +577,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let eval = self.evaluate_predicate_recursively(stack, obligation);
             debug!("evaluate_predicate_recursively({:?}) = {:?}",
                    obligation, eval);
-            match eval {
-                EvaluatedToErr => { return EvaluatedToErr; }
-                EvaluatedToAmbig => { result = EvaluatedToAmbig; }
-                EvaluatedToUnknown => {
-                    if result < EvaluatedToUnknown {
-                        result = EvaluatedToUnknown;
-                    }
-                }
-                EvaluatedToOk => { }
+            if let EvaluatedToErr = eval {
+                // fast-path - EvaluatedToErr is the top of the lattice,
+                // so we don't need to look on the other predicates.
+                return EvaluatedToErr;
+            } else {
+                result = cmp::max(result, eval);
             }
         }
         result
@@ -719,7 +801,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             } else {
                 debug!("evaluate_stack({:?}) --> recursive, inductive",
                        stack.fresh_trait_ref);
-                return EvaluatedToErr;
+                return EvaluatedToRecur;
             }
         }
 
@@ -807,10 +889,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                result: EvaluationResult)
     {
         // Avoid caching results that depend on more than just the trait-ref:
-        // The stack can create EvaluatedToUnknown, and closure signatures
+        // The stack can create recursion, and closure signatures
         // being yet uninferred can create "spurious" EvaluatedToAmbig
         // and EvaluatedToOk.
-        if result == EvaluatedToUnknown ||
+        if result.is_stack_dependent() ||
             ((result == EvaluatedToAmbig || result == EvaluatedToOk)
              && trait_ref.has_closure_types())
         {
@@ -3053,17 +3135,5 @@ impl<'o,'tcx> Iterator for TraitObligationStackList<'o,'tcx>{
 impl<'o,'tcx> fmt::Debug for TraitObligationStack<'o,'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TraitObligationStack({:?})", self.obligation)
-    }
-}
-
-impl EvaluationResult {
-    fn may_apply(&self) -> bool {
-        match *self {
-            EvaluatedToOk |
-            EvaluatedToAmbig |
-            EvaluatedToUnknown => true,
-
-            EvaluatedToErr => false
-        }
     }
 }
