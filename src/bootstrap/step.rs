@@ -472,10 +472,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("librustc"))
          .host(true)
          .run(move |s| check::cargotest(build, s.stage, s.target));
-    rules.test("check-cargo", "cargo")
+    rules.test("check-cargo", "src/tools/cargo")
          .dep(|s| s.name("tool-cargo"))
          .host(true)
          .run(move |s| check::cargo(build, s.stage, s.target));
+    rules.test("check-rls", "src/tools/rls")
+         .dep(|s| s.name("tool-rls"))
+         .host(true)
+         .run(move |s| check::rls(build, s.stage, s.target));
     rules.test("check-tidy", "src/tools/tidy")
          .dep(|s| s.name("tool-tidy").stage(0))
          .default(true)
