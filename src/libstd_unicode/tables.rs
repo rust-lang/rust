@@ -12,9 +12,32 @@
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
-/// The version of [Unicode](http://www.unicode.org/)
-/// that the unicode parts of `CharExt` and `UnicodeStrPrelude` traits are based on.
-pub const UNICODE_VERSION: (u32, u32, u32) = (10, 0, 0);
+/// Represents a Unicode Version.
+///
+/// See also: <http://www.unicode.org/versions/>
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct UnicodeVersion {
+    /// Major version.
+    pub major: u32,
+
+    /// Minor version.
+    pub minor: u32,
+
+    /// Micro (or Update) version.
+    pub micro: u32,
+
+    // Private field to keep struct expandable.
+    _priv: (),
+}
+
+/// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
+/// `CharExt` and `UnicodeStrPrelude` traits are based on.
+pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
+    major: 10,
+    minor: 0,
+    micro: 0,
+    _priv: (),
+};
 
 
 // BoolTrie is a trie for representing a set of Unicode codepoints. It is

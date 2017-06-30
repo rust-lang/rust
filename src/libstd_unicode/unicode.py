@@ -560,9 +560,32 @@ if __name__ == "__main__":
             pattern = "for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
-/// The version of [Unicode](http://www.unicode.org/)
-/// that the unicode parts of `CharExt` and `UnicodeStrPrelude` traits are based on.
-pub const UNICODE_VERSION: (u32, u32, u32) = (%s, %s, %s);
+/// Represents a Unicode Version.
+///
+/// See also: <http://www.unicode.org/versions/>
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct UnicodeVersion {
+    /// Major version.
+    pub major: u32,
+
+    /// Minor version.
+    pub minor: u32,
+
+    /// Micro (or Update) version.
+    pub micro: u32,
+
+    // Private field to keep struct expandable.
+    _priv: (),
+}
+
+/// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
+/// `CharExt` and `UnicodeStrPrelude` traits are based on.
+pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
+    major: %s,
+    minor: %s,
+    micro: %s,
+    _priv: (),
+};
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
                 to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
