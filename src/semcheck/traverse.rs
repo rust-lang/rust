@@ -26,7 +26,7 @@ pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 
     // second pass
     {
-        let mut mismatch = Mismatch::new(tcx, &mut id_mapping);
+        let mut mismatch = Mismatch::new(tcx, old.krate, &mut id_mapping);
         mismatch.process();
     }
 

@@ -1,5 +1,3 @@
-kinda found mapping: DefId { krate: CrateNum(11), node: DefIndex(5) => infer/8cd878b::old[0]::a[0]::Abc[0] } => DefId { krate: CrateNum(11), node: DefIndex(12) => infer/8cd878b::new[0]::a[0]::Def[0] }
-kinda found mapping: DefId { krate: CrateNum(11), node: DefIndex(5) => infer/8cd878b::old[0]::a[0]::Abc[0] } => DefId { krate: CrateNum(11), node: DefIndex(12) => infer/8cd878b::new[0]::a[0]::Def[0] }
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Breaking changes in `a`
   --> $REPO_PATH/tests/examples/infer.rs:33:5
