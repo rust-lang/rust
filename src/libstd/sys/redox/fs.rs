@@ -428,7 +428,8 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let fd = cvt(syscall::open(dst.to_str().unwrap(), syscall::O_SYMLINK | syscall::O_CREAT | syscall::O_WRONLY | 0o777))?;
+    let fd = cvt(syscall::open(dst.to_str().unwrap(),
+                               syscall::O_SYMLINK | syscall::O_CREAT | syscall::O_WRONLY | 0o777))?;
     cvt(syscall::write(fd, src.to_str().unwrap().as_bytes()))?;
     cvt(syscall::close(fd))?;
     Ok(())
