@@ -1,0 +1,27 @@
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:18:30
+   |
+18 |         if true { x } else { self }
+   |                              ^^^^
+   |
+note: ...the reference is valid for the lifetime 'a as defined on the method body at 16:5...
+  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:16:5
+   |
+16 | /     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
+17 | |
+18 | |         if true { x } else { self }
+19 | |
+20 | |     }
+   | |_____^
+note: ...but the borrowed content is only valid for the anonymous lifetime #1 defined on the method body at 16:5
+  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:16:5
+   |
+16 | /     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
+17 | |
+18 | |         if true { x } else { self }
+19 | |
+20 | |     }
+   | |_____^
+
+error: aborting due to previous error(s)
+
