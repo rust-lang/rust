@@ -4443,60 +4443,6 @@ println!("{}", y.0); // ok!
 ```
 "##,
 
-E0613: r##"
-Attempted tuple index on a type which isn't a tuple nor a tuple-struct.
-
-Erroneous code example:
-
-```compile_fail,E0613
-struct Foo;
-
-let y = Foo;
-println!("{}", y.1); // error: attempted to access tuple index `1` on type
-                     //        `Foo`, but the type was not a tuple or tuple
-                     //        struct
-```
-
-Only tuple and tuple-struct types can be indexed this way. Example:
-
-```
-// Let's create a tuple first:
-let x: (u32, u32, u32, u32) = (0, 1, 1, 2);
-// You can index its fields this way:
-println!("({}, {}, {}, {})", x.0, x.1, x.2, x.3);
-
-// Now let's declare a tuple-struct:
-struct TupleStruct(u32, u32, u32, u32);
-// Let's instantiate it:
-let x = TupleStruct(0, 1, 1, 2);
-// And just like the tuple:
-println!("({}, {}, {}, {})", x.0, x.1, x.2, x.3);
-```
-
-If you want to index into an array, use `[]` instead:
-
-```
-let x = &[0, 1, 1, 2];
-println!("[{}, {}, {}, {}]", x[0], x[1], x[2], x[3]);
-```
-
-If you want to access a field of a struct, check the field's name wasn't
-misspelled:
-
-```
-struct SomeStruct {
-    x: u32,
-    y: i32,
-}
-
-let s = SomeStruct {
-    x: 0,
-    y: -1,
-};
-println!("x: {} y: {}", s.x, s.y);
-```
-"##,
-
 E0614: r##"
 Attempted to dereference a variable which cannot be dereferenced.
 
@@ -4817,4 +4763,5 @@ register_diagnostics! {
     E0568, // auto-traits can not have predicates,
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
+//  E0613, // Removed (merged with E0609)
 }

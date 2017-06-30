@@ -14,7 +14,7 @@ struct Empty;
 fn main() {
     let origin = Point { x: 0, y: 0 };
     origin.0;
-    //~^ ERROR attempted to access tuple index `0` on type `Point`, but the type was not
+    //~^ ERROR no field `0` on type `Point`
     Empty.0;
-    //~^ ERROR attempted to access tuple index `0` on type `Empty`, but the type was not
+    //~^ ERROR no field `0` on type `Empty`
 }
