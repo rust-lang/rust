@@ -92,7 +92,7 @@
 //! encounters a recursive reference, it will hit the cache and does not try to
 //! describe the type anew.
 //!
-//! This behaviour is encapsulated in the 'RecursiveTypeDescription' enum,
+//! This behavior is encapsulated in the 'RecursiveTypeDescription' enum,
 //! which represents a kind of continuation, storing all state needed to
 //! continue traversal at the type members after the type has been registered
 //! with the cache. (This implementation approach might be a tad over-
@@ -156,13 +156,13 @@
 //! (2) Structs, enums and traits have a multipart identifier
 //!
 //!     (1) The first part is the SVH (strict version hash) of the crate they
-//!          wereoriginally defined in
+//!          were originally defined in
 //!
 //!     (2) The second part is the ast::NodeId of the definition in their
-//!          originalcrate
+//!          original crate
 //!
 //!     (3) The final part is a concatenation of the type IDs of their concrete
-//!          typearguments if they are generic types.
+//!          type arguments if they are generic types.
 //!
 //! (3) Tuple-, pointer and function types are structurally identified, which
 //!     means that they are equivalent if their component types are equivalent

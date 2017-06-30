@@ -51,7 +51,7 @@ pub struct Constraint<'a> {
     pub variance: &'a VarianceTerm<'a>,
 }
 
-/// To build constriants, we visit one item (type, trait) at a time
+/// To build constraints, we visit one item (type, trait) at a time
 /// and look at its contents. So e.g. if we have
 ///
 ///     struct Foo<T> {

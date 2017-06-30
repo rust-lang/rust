@@ -14,7 +14,7 @@
 //! used to store the values on the heap. SmallVec is similar to AccumulateVec, but adds
 //! the ability to push elements.
 //!
-//! The N above is determined by Array's implementor, by way of an associatated constant.
+//! The N above is determined by Array's implementor, by way of an associated constant.
 
 use std::ops::{Deref, DerefMut};
 use std::iter::{IntoIterator, FromIterator};

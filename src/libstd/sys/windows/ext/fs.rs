@@ -66,7 +66,7 @@ pub trait FileExt {
     /// from the current cursor. The current cursor **is** affected by this
     /// function, it is set to the end of the write.
     ///
-    /// When writing beyond the end of the file, the file is appropiately
+    /// When writing beyond the end of the file, the file is appropriately
     /// extended and the intermediate bytes are left uninitialized.
     ///
     /// Note that similar to `File::write`, it is not an error to return a

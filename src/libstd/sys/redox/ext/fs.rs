@@ -121,7 +121,7 @@ pub trait OpenOptionsExt {
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&mut self, mode: u32) -> &mut Self;
 
-    /// Pass custom flags to the `flags` agument of `open`.
+    /// Pass custom flags to the `flags` argument of `open`.
     ///
     /// The bits that define the access mode are masked out with `O_ACCMODE`, to
     /// ensure they do not interfere with the access mode set by Rusts options.

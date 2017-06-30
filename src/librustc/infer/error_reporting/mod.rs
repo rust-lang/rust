@@ -24,7 +24,7 @@
 //! a span, but also more information so that we can generate a meaningful
 //! error message.
 //!
-//! Having a catalogue of all the different reasons an error can arise is
+//! Having a catalog of all the different reasons an error can arise is
 //! also useful for other reasons, like cross-referencing FAQs etc, though
 //! we are not really taking advantage of this yet.
 //!

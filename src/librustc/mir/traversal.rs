@@ -216,7 +216,7 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 ///
 /// Reverse postorder is the reverse order of a postorder traversal.
 /// This is different to a preorder traversal and represents a natural
-/// linearisation of control-flow.
+/// linearization of control-flow.
 ///
 /// ```text
 ///

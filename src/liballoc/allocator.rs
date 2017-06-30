@@ -40,7 +40,7 @@ fn size_align<T>() -> (usize, usize) {
 ///
 /// (Note however that layouts are *not* required to have positive
 /// size, even though many allocators require that all memory
-/// requeusts have positive size. A caller to the `Alloc::alloc`
+/// requests have positive size. A caller to the `Alloc::alloc`
 /// method must either ensure that conditions like this are met, or
 /// use specific allocators with looser requirements.)
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -213,7 +213,7 @@ impl Layout {
     ///
     /// Returns `Some((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
-    /// start of the `next` embedded witnin the concatenated record
+    /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `None`.
@@ -266,11 +266,11 @@ impl Layout {
     /// Creates a layout describing the record for `self` followed by
     /// `next` with no additional padding between the two. Since no
     /// padding is inserted, the alignment of `next` is irrelevant,
-    /// and is not incoporated *at all* into the resulting layout.
+    /// and is not incorporated *at all* into the resulting layout.
     ///
     /// Returns `(k, offset)`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
-    /// start of the `next` embedded witnin the concatenated record
+    /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
     /// (The `offset` is always the same as `self.size()`; we use this
@@ -497,7 +497,7 @@ pub unsafe trait Alloc {
     ///   to allocate that block of memory.
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout);
 
-    /// Allocator-specific method for signalling an out-of-memory
+    /// Allocator-specific method for signaling an out-of-memory
     /// condition.
     ///
     /// `oom` aborts the thread or process, optionally performing
@@ -508,7 +508,7 @@ pub unsafe trait Alloc {
     /// unsatisfied allocation request (signaled by an error such as
     /// `AllocErr::Exhausted`), and wish to abandon computation rather
     /// than attempt to recover locally. Such clients should pass the
-    /// signalling error value back into `oom`, where the allocator
+    /// signaling error value back into `oom`, where the allocator
     /// may incorporate that error value into its diagnostic report
     /// before aborting.
     ///
