@@ -562,7 +562,7 @@ if __name__ == "__main__":
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/)
 /// that the unicode parts of `CharExt` and `UnicodeStrPrelude` traits are based on.
-pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
+pub const UNICODE_VERSION: (u32, u32, u32) = (%s, %s, %s);
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
                 to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")

@@ -14,7 +14,7 @@
 
 /// The version of [Unicode](http://www.unicode.org/)
 /// that the unicode parts of `CharExt` and `UnicodeStrPrelude` traits are based on.
-pub const UNICODE_VERSION: (u64, u64, u64) = (10, 0, 0);
+pub const UNICODE_VERSION: (u32, u32, u32) = (10, 0, 0);
 
 
 // BoolTrie is a trie for representing a set of Unicode codepoints. It is
