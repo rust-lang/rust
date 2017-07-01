@@ -4,7 +4,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder 1.0.0 (git+https://github.com/BurntSushi/byteorder)",
  "cargo_metadata 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiletest_rs 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiletest_rs 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "log_settings 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -35,7 +35,7 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -227,7 +227,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum aho-corasick 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ca972c2ea5f742bfce5687b9aef75506a764f61d37f8f649047846a9686ddb66"
 "checksum byteorder 1.0.0 (git+https://github.com/BurntSushi/byteorder)" = "<none>"
 "checksum cargo_metadata 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5d84cb53c78e573aa126a4b9f963fdb2629f8183b26e235da08bb36dc7381162"
-"checksum compiletest_rs 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "ea3116e739370ad85431a30446b5068ba79171bc6c3d458e90adc834df71359a"
+"checksum compiletest_rs 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "617b23d0ed4f57b3bcff6b5fe0a78f0010f1efb636298317665a960b6dbc0533"
 "checksum dtoa 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "80c8b71fd71146990a9742fc06dcbbde19161a267e0ad4e572c35162f4578c90"
 "checksum env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
 "checksum itoa 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eb2f404fbc66fd9aac13e998248505e7ecb2ad8e44ab6388684c5fb11c6c251c"
