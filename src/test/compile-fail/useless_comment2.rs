@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![allow(warnings)]
+fn foo() {
+    /// a //~ ERROR E0585
+    let x = 12;
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
-    // crash
-    let x = 0;
+    /// b //~ ERROR E0585
+    match x {
+        /// c //~ ERROR E0585
+        1 => {},
+        _ => {}
+    }
+}
+
+fn main() {
+    foo();
 }

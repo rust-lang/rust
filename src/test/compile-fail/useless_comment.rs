@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![allow(warnings)]
+fn foo3() -> i32 {
+    let mut x = 12;
+    /// z //~ ERROR E0585
+    while x < 1 {
+        /// x //~ ERROR E0585
+        //~^ ERROR attributes on non-item statements and expressions are experimental
+        x += 1;
+    }
+    /// d //~ ERROR E0585
+    return x;
+}
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
-    // crash
-    let x = 0;
+fn main() {
+    /// e //~ ERROR E0585
+    foo3();
 }
