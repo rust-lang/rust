@@ -1794,7 +1794,7 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 
     impl<T> Drop for MergeHole<T> {
         fn drop(&mut self) {
-            // `T` is not a zero-sized type, so it's okay to divide by it's size.
+            // `T` is not a zero-sized type, so it's okay to divide by its size.
             let len = (self.end as usize - self.start as usize) / mem::size_of::<T>();
             unsafe { ptr::copy_nonoverlapping(self.start, self.dest, len); }
         }
@@ -1908,7 +1908,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
     // if `Some(r)` is returned, that means `runs[r]` and `runs[r + 1]` must be merged next. If the
     // algorithm should continue building a new run instead, `None` is returned.
     //
-    // TimSort is infamous for it's buggy implementations, as described here:
+    // TimSort is infamous for its buggy implementations, as described here:
     // http://envisage-project.eu/timsort-specification-and-verification/
     //
     // The gist of the story is: we must enforce the invariants on the top four runs on the stack.
