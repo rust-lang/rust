@@ -1,3 +1,9 @@
+//! The logic for the second analysis pass collecting mismatched non-public items to match them.
+//!
+//! Any two items' types found in the same place which are yet not matched with other items are
+//! essentially just renamed instances of the same item (as long as they are both unknown to us
+//! at the time of analysis). Thus, we may match them up to avoid some false positives.
+
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::ty;
 use rustc::ty::{Ty, TyCtxt};

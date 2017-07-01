@@ -1,3 +1,11 @@
+//! Change representation.
+//!
+//! This module provides data types to represent, store and record changes found in various
+//! analysis passes. We distinguish between "unary" and "binary" changes, depending on whether
+//! there is a single item affected in one crate version or a matching item in the other crate
+//! version as well. The ordering of changes and output generation is performed using these data
+//! structures, too.
+
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;

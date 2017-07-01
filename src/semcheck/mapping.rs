@@ -1,3 +1,8 @@
+//! The implementation of various map data structures.
+//!
+//! This module provides facilities to record item correspondence of various kinds, as well as a
+//! map used to temporarily match up unsorted item sequences' elements by name.
+
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 
@@ -12,7 +17,7 @@ use syntax::ast::Name;
 #[derive(Default)]
 pub struct IdMapping {
     /// Toplevel items' old `DefId` mapped to new `DefId`, as well as old and new exports.
-    pub toplevel_mapping: HashMap<DefId, (DefId, Export, Export)>,
+    toplevel_mapping: HashMap<DefId, (DefId, Export, Export)>,
     /// Other item's old `DefId` mapped to new `DefId`.
     mapping: HashMap<DefId, DefId>,
 }
@@ -52,11 +57,19 @@ impl IdMapping {
         self.toplevel_mapping.contains_key(&old) || self.mapping.contains_key(&old)
     }
 
+    /// Construct a queue of toplevel item pairs' `DefId`s.
     pub fn construct_queue(&self) -> VecDeque<(DefId, DefId)> {
         self.toplevel_mapping
             .values()
             .map(|&(_, old, new)| (old.def.def_id(), new.def.def_id()))
             .collect()
+    }
+
+    /// Iterate over the toplevel item pairs.
+    pub fn toplevel_values<'a>(&'a self) -> impl Iterator<Item = (Export, Export)> + 'a {
+        self.toplevel_mapping
+            .values()
+            .map(|&(_, old, new)| (old, new))
     }
 }
 

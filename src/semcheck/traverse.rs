@@ -1,3 +1,14 @@
+//! The traversal logic collecting changes in between crate versions.
+//!
+//! The changes get collected in multiple passes, and recorded in a `ChangeSet`.
+//! The initial pass matches items by name in the module hierarchy, registering item removal
+//! and addition, as well as structural changes to ADTs, type- or region parameters, and
+//! function signatures. The second pass then proceeds find non-public items that are named
+//! differently, yet are compatible in their usage. The (currently not implemented) third pass
+//! performs the same analysis on trait bounds. The fourth and final pass now uses the
+//! information collected in the previous passes to compare the types of all item pairs having
+//! been matched.
+
 use rustc::hir::def::CtorKind;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
@@ -33,12 +44,12 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     }
 
     // third pass
-    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
+    for (old, new) in id_mapping.toplevel_values() {
         diff_bounds(&mut changes, tcx, old.def.def_id(), new.def.def_id());
     }
 
     // fourth pass
-    for &(_, old, new) in id_mapping.toplevel_mapping.values() {
+    for (old, new) in id_mapping.toplevel_values() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
