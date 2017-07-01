@@ -4,7 +4,7 @@ use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 
-use semcheck::id_mapping::IdMapping;
+use semcheck::mapping::IdMapping;
 
 use std::collections::{HashMap, VecDeque};
 

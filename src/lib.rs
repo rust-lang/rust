@@ -1,3 +1,4 @@
+#![feature(conservative_impl_trait)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 

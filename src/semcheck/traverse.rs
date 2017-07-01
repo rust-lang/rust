@@ -9,7 +9,7 @@ use rustc::ty::subst::{Subst, Substs};
 use semcheck::changes::BinaryChangeType;
 use semcheck::changes::BinaryChangeType::*;
 use semcheck::changes::ChangeSet;
-use semcheck::id_mapping::{get_namespace, IdMapping};
+use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -62,27 +62,16 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
     let cstore = &tcx.sess.cstore;
     let mut visited = HashSet::new();
-    let mut children = HashMap::new();
+    let mut children = NameMapping::default();
     let mut mod_queue = VecDeque::new();
 
     mod_queue.push_back((old, new, Public, Public));
 
     while let Some((old_did, new_did, old_vis, new_vis)) = mod_queue.pop_front() {
-        let mut c_old = cstore.item_children(old_did, tcx.sess);
-        let mut c_new = cstore.item_children(new_did, tcx.sess);
+        children.add(cstore.item_children(old_did, tcx.sess),
+                     cstore.item_children(new_did, tcx.sess));
 
-        // TODO: refactor this to avoid storing tons of `Namespace` values.
-        for child in c_old.drain(..) {
-            let key = (get_namespace(&child.def), child.ident.name);
-            children.entry(key).or_insert((None, None)).0 = Some(child);
-        }
-
-        for child in c_new.drain(..) {
-            let key = (get_namespace(&child.def), child.ident.name);
-            children.entry(key).or_insert((None, None)).1 = Some(child);
-        }
-
-        for (_, items) in children.drain() {
+        for items in children.drain() {
             match items {
                 (Some(Export { def: Mod(o), .. }), Some(Export { def: Mod(n), .. })) => {
                     if visited.insert((o, n)) {
@@ -232,7 +221,7 @@ fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Export, new: Export) {
     }
 
     if old_sig.abi != new_sig.abi {
-        // TODO: more sophisticatd comparison
+        // TODO: more sophisticated comparison
         changes.add_binary(FnAbiChanged, old_def_id, None);
     }
 

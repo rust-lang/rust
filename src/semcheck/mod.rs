@@ -1,6 +1,6 @@
 pub mod changes;
 
-mod id_mapping;
+mod mapping;
 mod mismatch;
 mod traverse;
 
