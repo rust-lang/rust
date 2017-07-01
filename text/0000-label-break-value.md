@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Allow a break not only out of `loop`, but of labelled blocks with no loop. Like `loop`, this break can carry a value.
+Allow a `break` of labelled blocks with no loop, which can carry a value.
 
 # Motivation
 [motivation]: #motivation
@@ -26,7 +26,7 @@ In its simplest form, this allows you to terminate a block early, the same way t
     do_last_thing();
 }
 ```
-Following RFC 1624, this, like `return`, can also carry a value:
+In the same manner as `return` and the labelled loop breaks in [RFC 1624](https://github.com/rust-lang/rfcs/blob/master/text/1624-loop-break-value.md), this `break` can carry a value:
 ```
 let result = 'block: {
     if foo() { break 'block 1; }
@@ -37,7 +37,7 @@ let result = 'block: {
 RFC 1624 opted not to allow options to be returned from `for` or `while` loops, since no good option could be found for the syntax, and it was hard to do it in a natural way. This proposal gives us a natural way to handle such loops with no changes to their syntax:
 ```
 let result = 'block: {
-    for v in container.iter() {
+    for &v in container.iter() {
         if v > 0 { break 'block v; }
     }
     0
@@ -46,15 +46,35 @@ let result = 'block: {
 This extension handles searches more complex than loops in the same way:
 ```
 let result = 'block: {
-    for v in first_container.iter() {
+    for &v in first_container.iter() {
         if v > 0 { break 'block v; }
     }
-    for v in second_container.iter() {
-        if v > 0 { break 'block v; }
+    for &v in second_container.iter() {
+        if v < 0 { break 'block v; }
     }
     0
 };
 ```
+Implementing this without a labelled break is much less clear:
+```
+let mut result = None;
+for &v in first_container.iter() {
+    if v > 0 {
+        result = Some(v);
+        break;
+    }
+}
+if result.is_none() {
+    for &v in second_container.iter() {
+        if v < 0 {
+            result = Some(v);
+            break;
+        }
+    }
+}
+let result = result.unwrap_or(0);
+```
+
 # Detailed design
 [design]: #detailed-design
 ```
@@ -81,7 +101,7 @@ The proposal adds new syntax to blocks, requiring updates to parsers and possibl
 # Alternatives
 [alternatives]: #alternatives
 
-This feature isn't necessary; however in my own code, I often find myself breaking something out into a function simply in order to return early, and the accompanying verbosity of passing types and return values is often not worth it. 
+Everything that can be done with this feature can be done without it. However in my own code, I often find myself breaking something out into a function simply in order to return early, and the accompanying verbosity of passing parameters and return values with full type signatures is a real cost. 
 
 Another alternative would be to revisit one of the proposals to add syntax to `for` and `while`.
 
