@@ -1589,8 +1589,6 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(more_io_inner_methods)]
-    ///
     /// # use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1604,7 +1602,7 @@ impl<T, U> Chain<T, U> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn into_inner(self) -> (T, U) {
         (self.first, self.second)
     }
@@ -1614,8 +1612,6 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(more_io_inner_methods)]
-    ///
     /// # use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1629,7 +1625,7 @@ impl<T, U> Chain<T, U> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_ref(&self) -> (&T, &U) {
         (&self.first, &self.second)
     }
@@ -1643,8 +1639,6 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(more_io_inner_methods)]
-    ///
     /// # use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1658,7 +1652,7 @@ impl<T, U> Chain<T, U> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_mut(&mut self) -> (&mut T, &mut U) {
         (&mut self.first, &mut self.second)
     }
@@ -1791,8 +1785,6 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(more_io_inner_methods)]
-    ///
     /// use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1808,7 +1800,7 @@ impl<T> Take<T> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_ref(&self) -> &T {
         &self.inner
     }
@@ -1822,8 +1814,6 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(more_io_inner_methods)]
-    ///
     /// use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1839,7 +1829,7 @@ impl<T> Take<T> {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "more_io_inner_methods", issue="41519")]
+    #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.inner
     }
