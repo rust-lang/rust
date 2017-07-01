@@ -1,8 +1,41 @@
-warning: this pattern takes a reference on something that is being de-referenced
- --> needless_borrowed_ref.rs:7:35
+error: this pattern takes a reference on something that is being de-referenced
+ --> examples/needless_borrowed_ref.rs:8:34
   |
-7 |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
-  |                                   ^^^^^
+8 |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+  |                                  ^^^^^^ help: try removing the `&ref` part and just keep `a`
   |
-  = note: #[warn(needless_borrowed_reference)] on by default
+  = note: `-D needless-borrowed-reference` implied by `-D warnings`
   = help: for further information visit https://github.com/Manishearth/rust-clippy/wiki#needless_borrowed_reference
+
+error: this pattern takes a reference on something that is being de-referenced
+  --> examples/needless_borrowed_ref.rs:13:17
+   |
+13 |     if let Some(&ref v) = thingy {
+   |                 ^^^^^^ help: try removing the `&ref` part and just keep `v`
+   |
+   = note: `-D needless-borrowed-reference` implied by `-D warnings`
+   = help: for further information visit https://github.com/Manishearth/rust-clippy/wiki#needless_borrowed_reference
+
+error: this pattern takes a reference on something that is being de-referenced
+  --> examples/needless_borrowed_ref.rs:42:27
+   |
+42 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
+   |                           ^^^^^^ help: try removing the `&ref` part and just keep `k`
+   |
+   = note: `-D needless-borrowed-reference` implied by `-D warnings`
+   = help: for further information visit https://github.com/Manishearth/rust-clippy/wiki#needless_borrowed_reference
+
+error: this pattern takes a reference on something that is being de-referenced
+  --> examples/needless_borrowed_ref.rs:42:38
+   |
+42 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
+   |                                      ^^^^^^ help: try removing the `&ref` part and just keep `k`
+   |
+   = note: `-D needless-borrowed-reference` implied by `-D warnings`
+   = help: for further information visit https://github.com/Manishearth/rust-clippy/wiki#needless_borrowed_reference
+
+error: aborting due to previous error(s)
+
+error: Could not compile `clippy_tests`.
+
+To learn more, run the command again with --verbose.

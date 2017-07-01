@@ -8,13 +8,24 @@ fn main() {
     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
     //                            ^ should be linted
 
-    let mut var = 5;
-    let thingy = Some(&mut var);
-    if let Some(&mut ref v) = thingy {
+    let var = 3;
+    let thingy = Some(&var);
+    if let Some(&ref v) = thingy {
+        //          ^ should be linted
+    }
+
+    let mut var2 = 5;
+    let thingy2 = Some(&mut var2);
+    if let Some(&mut ref mut v) = thingy2 {
         //          ^ should *not* be linted
-        // here, var is borrowed as immutable.
+        // v is borrowed as mutable.
+        *v = 10;
+    }
+    if let Some(&mut ref v) = thingy2 {
+        //          ^ should *not* be linted
+        // here, v is borrowed as immutable.
         // can't do that:
-        //*v = 10;
+        //*v = 15;
     }
 }
 
