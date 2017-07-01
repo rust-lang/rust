@@ -1947,27 +1947,25 @@ Either way, try to update/remove it in order to fix the error.
 "##,
 
 E0621: r##"
-This error code indicates a mismatch between the function signature (i.e.,
-the parameter types and the return type) and the function body. Most of
-the time, this indicates that the function signature needs to be changed to
-match the body, but it may be that the body needs to be changed to match
-the signature.
+This error code indicates a mismatch between the lifetimes appearing in the
+function signature (i.e., the parameter types and the return type) and the
+data-flow found in the function body.
 
-Specifically, one or more of the parameters contain borrowed data that
-needs to have a named lifetime in order for the body to type-check. Most of
-the time, this is because the borrowed data is being returned from the
-function, as in this example:
+Erroneous code example:
 
 ```compile_fail,E0621
-fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // explicit lifetime required
-                                             // in the type of `y`
+fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // error: explicit lifetime
+                                             //        required in the type of
+                                             //        `y`
     if x > y { x } else { y }
 }
 ```
 
-Here, the function is returning data borrowed from either x or y, but the
-'a annotation indicates that it is returning data only from x. We can make
-the signature match the body by changing the type of y to &'a i32, like so:
+In the code above, the function is returning data borrowed from either `x` or
+`y`, but the `'a` annotation indicates that it is returning data only from `x`.
+To fix the error, the signature and the body must be made to match. Typically,
+this is done by updating the function signature. So, in this case, we change
+the type of `y` to `&'a i32`, like so:
 
 ```
 fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
@@ -1975,7 +1973,8 @@ fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
 }
 ```
 
-Alternatively, you could change the body not to return data from y:
+Now the signature indicates that the function data borrowed from either `x` or
+`y`. Alternatively, you could change the body not to return data from y:
 
 ```
 fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
