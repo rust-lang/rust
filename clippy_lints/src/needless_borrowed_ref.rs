@@ -3,9 +3,14 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
+<<<<<<< HEAD
 use rustc::hir::{MutImmutable, Pat, PatKind, BindingAnnotation};
+=======
+use rustc::hir::{MutImmutable, Pat, PatKind};
+>>>>>>> e30bf721... Improve needless_borrowed_ref and add suggestion to it.
 use rustc::ty;
-use utils::{span_lint, in_macro};
+use utils::{span_lint_and_then, in_macro, snippet};
+use syntax_pos::{Span, BytePos};
 
 /// **What it does:** Checks for useless borrowed references.
 ///
@@ -53,9 +58,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
             // Pattern's type is a reference. Get the type and mutability of referenced value (tam: TypeAndMut).
             let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
             // Only lint immutable refs, because `&mut ref T` may be useful.
-            tam.mutbl == MutImmutable,
+            let PatKind::Ref(ref sub_pat, MutImmutable) = pat.node,
+
+            // Check sub_pat got a 'ref' keyword.
+            let ty::TyRef(_, _) = cx.tables.pat_ty(sub_pat).sty,
         ], {
-            span_lint(cx, NEEDLESS_BORROWED_REFERENCE, pat.span, "this pattern takes a reference on something that is being de-referenced")
+            let part_to_keep = Span{ lo: pat.span.lo + BytePos(5), hi: pat.span.hi, ctxt: pat.span.ctxt };
+            span_lint_and_then(cx, NEEDLESS_BORROWED_REFERENCE, pat.span,
+                               "this pattern takes a reference on something that is being de-referenced",
+                               |db| {
+                                   let hint = snippet(cx, part_to_keep, "..").into_owned();
+                                   db.span_suggestion(pat.span, "try removing the `&ref` part and just keep", hint);
+                               });
         }}
     }
 }
