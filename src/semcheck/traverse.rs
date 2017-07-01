@@ -73,35 +73,33 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
         for items in children.drain() {
             match items {
-                (Some(Export { def: Mod(o), .. }), Some(Export { def: Mod(n), .. })) => {
-                    if visited.insert((o, n)) {
-                        let o_vis = if old_vis == Public {
-                            cstore.visibility(o)
-                        } else {
-                            old_vis
-                        };
-                        let n_vis = if new_vis == Public {
-                            cstore.visibility(n)
-                        } else {
-                            new_vis
-                        };
-
-                        if o_vis != n_vis {
-                            // TODO: ugly
-                            changes.new_binary(items.0.unwrap(), items.1.unwrap(), true);
-
-                            if o_vis == Public && n_vis != Public {
-                                changes.add_binary(ItemMadePrivate, o, None);
-                            } else if o_vis != Public && n_vis == Public {
-                                changes.add_binary(ItemMadePublic, o, None);
-                            }
-                        }
-
-                        mod_queue.push_back((o, n, o_vis, n_vis));
-                    }
-                }
                 (Some(o), Some(n)) => {
-                    if id_mapping.add_export(o, n) {
+                    if let (Mod(o_did), Mod(n_did)) = (o.def, n.def) {
+                        if visited.insert((o_did, n_did)) {
+                            let o_vis = if old_vis == Public {
+                                cstore.visibility(o_did)
+                            } else {
+                                old_vis
+                            };
+                            let n_vis = if new_vis == Public {
+                                cstore.visibility(n_did)
+                            } else {
+                                new_vis
+                            };
+
+                            if o_vis != n_vis {
+                                changes.new_binary(o, n, true);
+
+                                if o_vis == Public && n_vis != Public {
+                                    changes.add_binary(ItemMadePrivate, o_did, None);
+                                } else if o_vis != Public && n_vis == Public {
+                                    changes.add_binary(ItemMadePublic, o_did, None);
+                                }
+                            }
+
+                            mod_queue.push_back((o_did, n_did, o_vis, n_vis));
+                        }
+                    } else if id_mapping.add_export(o, n) {
                         let o_def_id = o.def.def_id();
                         let n_def_id = n.def.def_id();
                         let o_vis = if old_vis == Public {
@@ -369,11 +367,9 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId)
         match (old_gen.types.get(i), new_gen.types.get(i)) {
             (Some(old_type), Some(new_type)) => {
                 if old_type.has_default && !new_type.has_default {
-                    // TODO: major for sure
                     ret.push(TypeParameterRemoved { defaulted: true });
                     ret.push(TypeParameterAdded { defaulted: false });
                 } else if !old_type.has_default && new_type.has_default {
-                    // TODO: minor, I guess?
                     ret.push(TypeParameterRemoved { defaulted: false });
                     ret.push(TypeParameterAdded { defaulted: true });
                 }
