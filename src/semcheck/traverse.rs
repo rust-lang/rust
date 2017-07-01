@@ -303,6 +303,9 @@ fn diff_adts(changes: &mut ChangeSet,
                         total_private: total_private,
                     };
                     changes.add_binary(c, old_def_id, Some(tcx.def_span(old.did)));
+
+                    // TODO: this might need a condition later on.
+                    continue;
                 }
 
                 for (_, items2) in fields.drain() {
