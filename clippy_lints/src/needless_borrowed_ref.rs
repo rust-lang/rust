@@ -3,25 +3,33 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-<<<<<<< HEAD
-use rustc::hir::{MutImmutable, Pat, PatKind, BindingAnnotation};
-=======
-use rustc::hir::{MutImmutable, Pat, PatKind};
-<<<<<<< HEAD
->>>>>>> e30bf721... Improve needless_borrowed_ref and add suggestion to it.
+use rustc::hir::{MutImmutable, Pat, PatKind, BindByRef};
 use rustc::ty;
-=======
->>>>>>> 4ae45c87... Improve needless_borrowed_ref lint: remove the hand rolled span part.
 use utils::{span_lint_and_then, in_macro, snippet};
-use rustc::hir::BindingMode::BindByRef;
 
 /// **What it does:** Checks for useless borrowed references.
 ///
-/// **Why is this bad?** It is completely useless and make the code look more
-/// complex than it
+/// **Why is this bad?** It is mostly useless and make the code look more complex than it
 /// actually is.
 ///
-/// **Known problems:** None.
+/// **Known problems:** It seems that the `&ref` pattern is sometimes useful.
+/// For instance in the following snippet:
+/// ```rust
+/// enum Animal {
+///     Cat(u64),
+///     Dog(u64),
+/// }
+///
+/// fn foo(a: &Animal, b: &Animal) {
+///     match (a, b) {
+///         (&Animal::Cat(v), k) | (k, &Animal::Cat(v)) => (), // lifetime mismatch error
+///         (&Animal::Dog(ref c), &Animal::Dog(_)) => ()
+///     }
+/// }
+/// ```
+/// There is a lifetime mismatch error for `k` (indeed a and b have distinct lifetime).
+/// This can be fixed by using the `&ref` pattern.
+/// However, the code can also be fixed by much cleaner ways
 ///
 /// **Example:**
 /// ```rust
@@ -75,3 +83,4 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
         }}
     }
 }
+
