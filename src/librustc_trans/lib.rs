@@ -52,6 +52,7 @@ extern crate rustc_const_math;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
+extern crate rustc_demangle;
 extern crate jobserver;
 
 #[macro_use] extern crate log;
