@@ -13,11 +13,12 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, Peekable, FusedIterator};
 use core::marker::PhantomData;
-use core::ops::{Index, RangeArgument};
-use core::ops::Bound::{Excluded, Included, Unbounded};
+use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
+use Bound::{Excluded, Included, Unbounded};
+use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use fmt;
-use ops::Bound::{Included, Excluded, Unbounded};
 
 /// An unbounded range. Use `..` (two dots) for its shorthand.
 ///
@@ -72,8 +71,7 @@ impl fmt::Debug for RangeFull {
 ///     assert_eq!(arr[1..3], [  1,2  ]);  // Range
 /// }
 /// ```
-#[derive(Clone, PartialEq, Eq, Hash)]
-// not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -136,8 +134,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///     assert_eq!(arr[1..3], [  1,2  ]);
 /// }
 /// ```
-#[derive(Clone, PartialEq, Eq, Hash)]
-// not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -253,16 +250,17 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///     assert_eq!(arr[1...2], [  1,2  ]);  // RangeInclusive
 /// }
 /// ```
-#[derive(Clone, PartialEq, Eq, Hash)]
-// not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub struct RangeInclusive<Idx> {
     /// The lower bound of the range (inclusive).
-    #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC",
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
                issue = "28237")]
     pub start: Idx,
     /// The upper bound of the range (inclusive).
-    #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC",
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
                issue = "28237")]
     pub end: Idx,
 }
@@ -335,7 +333,8 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub struct RangeToInclusive<Idx> {
     /// The upper bound of the range (inclusive)
-    #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC",
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
                issue = "28237")]
     pub end: Idx,
 }
@@ -366,158 +365,3 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 
 // RangeToInclusive<Idx> cannot impl From<RangeTo<Idx>>
 // because underflow would be possible with (..0).into()
-
-/// `RangeArgument` is implemented by Rust's built-in range types, produced
-/// by range syntax like `..`, `a..`, `..b` or `c..d`.
-#[stable(feature = "range_argument", since = "1.19.0")]
-pub trait RangeArgument<T: ?Sized> {
-    /// Start index bound.
-    ///
-    /// Returns the start value as a `Bound`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::ops::RangeArgument;
-    /// use std::ops::Bound::*;
-    ///
-    /// assert_eq!((..10).start(), Unbounded);
-    /// assert_eq!((3..10).start(), Included(&3));
-    /// ```
-    #[stable(feature = "range_argument", since = "1.19.0")]
-    fn start(&self) -> Bound<&T>;
-
-    /// End index bound.
-    ///
-    /// Returns the end value as a `Bound`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::ops::RangeArgument;
-    /// use std::ops::Bound::*;
-    ///
-    /// assert_eq!((3..).end(), Unbounded);
-    /// assert_eq!((3..10).end(), Excluded(&10));
-    /// ```
-    #[stable(feature = "range_argument", since = "1.19.0")]
-    fn end(&self) -> Bound<&T>;
-}
-
-#[stable(feature = "range_argument", since = "1.19.0")]
-impl<T: ?Sized> RangeArgument<T> for RangeFull {
-    fn start(&self) -> Bound<&T> {
-        Unbounded
-    }
-    fn end(&self) -> Bound<&T> {
-        Unbounded
-    }
-}
-
-#[stable(feature = "range_argument", since = "1.19.0")]
-impl<T> RangeArgument<T> for RangeFrom<T> {
-    fn start(&self) -> Bound<&T> {
-        Included(&self.start)
-    }
-    fn end(&self) -> Bound<&T> {
-        Unbounded
-    }
-}
-
-#[stable(feature = "range_argument", since = "1.19.0")]
-impl<T> RangeArgument<T> for RangeTo<T> {
-    fn start(&self) -> Bound<&T> {
-        Unbounded
-    }
-    fn end(&self) -> Bound<&T> {
-        Excluded(&self.end)
-    }
-}
-
-#[stable(feature = "range_argument", since = "1.19.0")]
-impl<T> RangeArgument<T> for Range<T> {
-    fn start(&self) -> Bound<&T> {
-        Included(&self.start)
-    }
-    fn end(&self) -> Bound<&T> {
-        Excluded(&self.end)
-    }
-}
-
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<T> RangeArgument<T> for RangeInclusive<T> {
-    fn start(&self) -> Bound<&T> {
-        Included(&self.start)
-    }
-    fn end(&self) -> Bound<&T> {
-        Included(&self.end)
-    }
-}
-
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<T> RangeArgument<T> for RangeToInclusive<T> {
-    fn start(&self) -> Bound<&T> {
-        Unbounded
-    }
-    fn end(&self) -> Bound<&T> {
-        Included(&self.end)
-    }
-}
-
-#[stable(feature = "range_argument", since = "1.19.0")]
-impl<T> RangeArgument<T> for (Bound<T>, Bound<T>) {
-    fn start(&self) -> Bound<&T> {
-        match *self {
-            (Included(ref start), _) => Included(start),
-            (Excluded(ref start), _) => Excluded(start),
-            (Unbounded, _) => Unbounded,
-        }
-    }
-
-    fn end(&self) -> Bound<&T> {
-        match *self {
-            (_, Included(ref end)) => Included(end),
-            (_, Excluded(ref end)) => Excluded(end),
-            (_, Unbounded) => Unbounded,
-        }
-    }
-}
-
-#[stable(feature = "range_argument", since = "1.19.0")]
-impl<'a, T: ?Sized + 'a> RangeArgument<T> for (Bound<&'a T>, Bound<&'a T>) {
-    fn start(&self) -> Bound<&T> {
-        self.0
-    }
-
-    fn end(&self) -> Bound<&T> {
-        self.1
-    }
-}
-
-/// An endpoint of a range of keys.
-///
-/// # Examples
-///
-/// `Bound`s are range endpoints:
-///
-/// ```
-/// use std::ops::RangeArgument;
-/// use std::ops::Bound::*;
-///
-/// assert_eq!((..100).start(), Unbounded);
-/// assert_eq!((1..12).start(), Included(&1));
-/// assert_eq!((1..12).end(), Excluded(&12));
-/// ```
-#[stable(feature = "collections_bound", since = "1.17.0")]
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub enum Bound<T> {
-    /// An inclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Included(T),
-    /// An exclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Excluded(T),
-    /// An infinite endpoint. Indicates that there is no bound in this direction.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Unbounded,
-}

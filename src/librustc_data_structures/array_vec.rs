@@ -13,12 +13,13 @@
 use std::marker::Unsize;
 use std::iter::Extend;
 use std::ptr::{self, drop_in_place, Shared};
-use std::ops::{Deref, DerefMut, Range, RangeArgument};
-use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::ops::{Deref, DerefMut, Range};
 use std::hash::{Hash, Hasher};
 use std::slice;
 use std::fmt;
 use std::mem;
+use std::collections::range::RangeArgument;
+use std::collections::Bound::{Excluded, Included, Unbounded};
 use std::mem::ManuallyDrop;
 
 pub unsafe trait Array {
