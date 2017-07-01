@@ -1166,6 +1166,7 @@ fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }) {
         if let Some(istring) = attr.value_str() {
             let istring = istring.as_str();
+            let name = tcx.item_name(def_id).as_str();
             let parser = Parser::new(&istring);
             let types = &generics.types;
             for token in parser {
@@ -1174,13 +1175,14 @@ fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     Piece::NextArgument(a) => match a.position {
                         // `{Self}` is allowed
                         Position::ArgumentNamed(s) if s == "Self" => (),
+                        // `{ThisTraitsName}` is allowed
+                        Position::ArgumentNamed(s) if s == name => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
                             t.name == s
                         }) {
                             Some(_) => (),
                             None => {
-                                let name = tcx.item_name(def_id);
                                 span_err!(tcx.sess, attr.span, E0230,
                                                  "there is no type parameter \
                                                           {} on trait {}",
