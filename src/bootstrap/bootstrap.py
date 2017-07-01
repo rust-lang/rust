@@ -251,7 +251,7 @@ class RustBuild(object):
 
         # At this point we're pretty sure the user is running NixOS
         nix_os_msg = "info: you seem to be running NixOS. Attempting to patch"
-        print(" ".join([nix_os_msg, fname]))
+        print(nix_os_msg, fname)
 
         try:
             interpreter = subprocess.check_output(
