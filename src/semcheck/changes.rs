@@ -1,10 +1,11 @@
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
+use rustc::ty::error::TypeError;
 
 use semver::Version;
 
-use std::collections::{BTreeSet, BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::cmp::Ordering;
 
 use syntax::symbol::Ident;
@@ -119,8 +120,8 @@ impl Ord for UnaryChange {
 
 /// The types of changes we identify between items present in both crate versions.
 // TODO: this needs a lot of refinement still
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum BinaryChangeType {
+#[derive(Clone, Debug)]
+pub enum BinaryChangeType<'tcx> {
     /// An item has been made public.
     ItemMadePublic,
     /// An item has been made private
@@ -150,7 +151,7 @@ pub enum BinaryChangeType {
     /// A variant has changed it's style.
     VariantStyleChanged { now_struct: bool, total_private: bool },
     /// A field in a struct or enum has changed it's type.
-    FieldTypeChanged(String), // FIXME: terrible for obvious reasons
+    FieldTypeChanged(TypeError<'tcx>),
     /// An impl item has been added.
     TraitImplItemAdded { defaulted: bool },
     /// An impl item has been removed.
@@ -169,7 +170,7 @@ pub enum BinaryChangeType {
 
 pub use self::BinaryChangeType::*;
 
-impl BinaryChangeType {
+impl<'tcx> BinaryChangeType<'tcx> {
     // TODO: this will need a lot of changes (it's *very* conservative rn)
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
@@ -208,9 +209,9 @@ impl BinaryChangeType {
 /// by appearance in the *new* source, but possibly could create conflict later on.
 // TODO: we should introduce an invariant that the two exports present are *always*
 // tied together.
-pub struct BinaryChange {
+pub struct BinaryChange<'tcx> {
     /// The type of the change affecting the item.
-    changes: BTreeSet<(BinaryChangeType, Option<Span>)>,
+    changes: Vec<(BinaryChangeType<'tcx>, Option<Span>)>,
     /// The most severe change category already recorded for the item.
     max: ChangeCategory,
     /// The old export of the change item.
@@ -221,11 +222,11 @@ pub struct BinaryChange {
     output: bool
 }
 
-impl BinaryChange {
+impl<'tcx> BinaryChange<'tcx> {
     /// Construct a new empty change record for an item.
-    fn new(old: Export, new: Export, output: bool) -> BinaryChange {
+    fn new(old: Export, new: Export, output: bool) -> BinaryChange<'tcx> {
         BinaryChange {
-            changes: BTreeSet::new(),
+            changes: Vec::new(),
             max: ChangeCategory::default(),
             old: old,
             new: new,
@@ -234,14 +235,14 @@ impl BinaryChange {
     }
 
     /// Add another change type to the change record.
-    fn add(&mut self, type_: BinaryChangeType, span: Option<Span>) {
+    fn add(&mut self, type_: BinaryChangeType<'tcx>, span: Option<Span>) {
         let cat = type_.to_category();
 
         if cat > self.max {
             self.max = cat;
         }
 
-        self.changes.insert((type_, span));
+        self.changes.push((type_, span));
     }
 
     /// Get the change's category.
@@ -289,22 +290,22 @@ impl BinaryChange {
     }
 }
 
-impl PartialEq for BinaryChange {
+impl<'tcx> PartialEq for BinaryChange<'tcx> {
     fn eq(&self, other: &BinaryChange) -> bool {
         self.new_span() == other.new_span()
     }
 }
 
-impl Eq for BinaryChange {}
+impl<'tcx> Eq for BinaryChange<'tcx> {}
 
-impl PartialOrd for BinaryChange {
-    fn partial_cmp(&self, other: &BinaryChange) -> Option<Ordering> {
+impl<'tcx> PartialOrd for BinaryChange<'tcx> {
+    fn partial_cmp(&self, other: &BinaryChange<'tcx>) -> Option<Ordering> {
         self.new_span().partial_cmp(other.new_span())
     }
 }
 
-impl Ord for BinaryChange {
-    fn cmp(&self, other: &BinaryChange) -> Ordering {
+impl<'tcx> Ord for BinaryChange<'tcx> {
+    fn cmp(&self, other: &BinaryChange<'tcx>) -> Ordering {
         self.new_span().cmp(other.new_span())
     }
 }
@@ -314,31 +315,31 @@ impl Ord for BinaryChange {
 /// Consists of all information we need to compute semantic versioning properties of
 /// the change(s) performed on it, as well as data we use to output it in a nice fashion.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum Change {
+pub enum Change<'tcx> {
     /// A wrapper around a unary change.
     Unary(UnaryChange),
     /// A wrapper around a binary change set.
-    Binary(BinaryChange),
+    Binary(BinaryChange<'tcx>),
 }
 
-impl Change {
+impl<'tcx> Change<'tcx> {
     /// Construct a new addition-change for the given export.
-    fn new_addition(item: Export) -> Change {
+    fn new_addition(item: Export) -> Change<'tcx> {
         Change::Unary(UnaryChange::Addition(item))
     }
 
     /// Construct a new removal-change for the given export.
-    fn new_removal(item: Export) -> Change {
+    fn new_removal(item: Export) -> Change<'tcx> {
         Change::Unary(UnaryChange::Removal(item))
     }
 
     /// Construct a new binary change for the given exports.
-    fn new_binary(old: Export, new: Export, output: bool) -> Change {
+    fn new_binary(old: Export, new: Export, output: bool) -> Change<'tcx> {
         Change::Binary(BinaryChange::new(old, new, output))
     }
 
     /// Add a change type to a given binary change.
-    fn add(&mut self, type_: BinaryChangeType, span: Option<Span>) {
+    fn add(&mut self, type_: BinaryChangeType<'tcx>, span: Option<Span>) {
         match *self {
             Change::Unary(_) => panic!("can't add binary change types to unary change"),
             Change::Binary(ref mut b) => b.add(type_, span),
@@ -383,16 +384,16 @@ pub enum ChangeKey {
 
 /// The total set of changes recorded for two crate versions.
 #[derive(Default)]
-pub struct ChangeSet {
+pub struct ChangeSet<'tcx> {
     /// The currently recorded changes.
-    changes: HashMap<ChangeKey, Change>,
+    changes: HashMap<ChangeKey, Change<'tcx>>,
     /// The mapping of spans to changes, for ordering purposes.
     spans: BTreeMap<Span, ChangeKey>,
     /// The most severe change category already recorded.
     max: ChangeCategory,
 }
 
-impl ChangeSet {
+impl<'tcx> ChangeSet<'tcx> {
     /// Add a new addition-change for the given export.
     pub fn new_addition(&mut self, item: Export) {
         self.new_unary_change(Change::new_addition(item), ChangeKey::NewKey(item.def.def_id()));
@@ -404,7 +405,7 @@ impl ChangeSet {
     }
 
     /// Add a new (unary) change for the given key.
-    fn new_unary_change(&mut self, change: Change, key: ChangeKey) {
+    fn new_unary_change(&mut self, change: Change<'tcx>, key: ChangeKey) {
         let cat = change.to_category();
 
         if cat > self.max {
@@ -425,7 +426,7 @@ impl ChangeSet {
     }
 
     /// Add a new binary change to an already existing entry.
-    pub fn add_binary(&mut self, type_: BinaryChangeType, old: DefId, span: Option<Span>) {
+    pub fn add_binary(&mut self, type_: BinaryChangeType<'tcx>, old: DefId, span: Option<Span>) {
         let key = ChangeKey::OldKey(old);
         let cat = type_.to_category();
 
@@ -525,12 +526,6 @@ pub mod tests {
         }
     }
 
-    impl Arbitrary for BinaryChangeType {
-        fn arbitrary<G: Gen>(g: &mut G) -> BinaryChangeType {
-            g.choose(&[BinaryChangeType::Unknown]).unwrap().clone()
-        }
-    }
-
     pub type UnaryChange_ = (UnaryChangeType, Span_);
 
     /// We build these by hand, because symbols can't be sent between threads.
@@ -555,7 +550,7 @@ pub mod tests {
         }
     }
 
-    pub type BinaryChange_ = (BinaryChangeType, Span_, Span_);
+    pub type BinaryChange_ = (Span_, Span_);
 
     fn build_binary_change(t: BinaryChangeType, s1: Span, s2: Span) -> BinaryChange {
         let mut interner = Interner::new();
@@ -617,9 +612,9 @@ pub mod tests {
         fn ord_bchange_transitive(c1: BinaryChange_, c2: BinaryChange_, c3: BinaryChange_)
             -> bool
         {
-            let ch1 = build_binary_change(c1.0, c1.1.inner(), c1.2.inner());
-            let ch2 = build_binary_change(c2.0, c2.1.inner(), c2.2.inner());
-            let ch3 = build_binary_change(c3.0, c3.1.inner(), c3.2.inner());
+            let ch1 = build_binary_change(Unknown, c1.0.inner(), c1.1.inner());
+            let ch2 = build_binary_change(Unknown, c2.0.inner(), c2.1.inner());
+            let ch3 = build_binary_change(Unknown, c3.0.inner(), c3.1.inner());
 
             let mut res = true;
 
@@ -657,11 +652,11 @@ pub mod tests {
         fn max_bchange(changes: Vec<BinaryChange_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let max = changes.iter().map(|c| c.0.to_category()).max().unwrap_or(Patch);
+            let max = changes.iter().map(|_| Unknown.to_category()).max().unwrap_or(Patch);
 
-            for &(ref change, ref span1, ref span2) in changes.iter() {
+            for &(ref span1, ref span2) in changes.iter() {
                 let change =
-                    build_binary_change(change.clone(),
+                    build_binary_change(Unknown,
                                         span1.clone().inner(),
                                         span2.clone().inner());
                 let key = ChangeKey::OldKey(change.old.def.def_id());
@@ -688,12 +683,12 @@ pub mod tests {
 
         /// Difference in spans implies difference in `Change`s.
         fn bchange_span_neq(c1: BinaryChange_, c2: BinaryChange_) -> bool {
-            let s1 = c1.1.inner();
-            let s2 = c2.1.inner();
+            let s1 = c1.0.inner();
+            let s2 = c2.0.inner();
 
             if s1 != s2 {
-                let ch1 = build_binary_change(c1.0, c1.2.inner(), s1);
-                let ch2 = build_binary_change(c2.0, c2.2.inner(), s2);
+                let ch1 = build_binary_change(Unknown, c1.1.inner(), s1);
+                let ch2 = build_binary_change(Unknown, c2.1.inner(), s2);
 
                 ch1 != ch2
             } else {

@@ -5,7 +5,7 @@ warning: Breaking changes in `abc`
 12 |     pub fn abc() {}
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+   = warning: Breaking (FieldTypeChanged(Sorts(ExpectedFound { expected: fn() {oldandnew::old::abc}, found: fn() {oldandnew::new::abc} })))
 
 warning: Breaking changes in `bcd`
   --> $REPO_PATH/tests/examples/fn.rs:14:5
@@ -23,7 +23,7 @@ warning: Breaking changes in `cde`
 18 | |     }
    | |_____^
    |
-   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+   = warning: Breaking (FieldTypeChanged(Sorts(ExpectedFound { expected: fn() {oldandnew::old::cde}, found: fn() -> u16 {oldandnew::new::cde} })))
 
 warning: Breaking changes in `def`
   --> $REPO_PATH/tests/examples/fn.rs:20:5

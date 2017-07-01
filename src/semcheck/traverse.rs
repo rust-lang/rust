@@ -17,7 +17,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 /// The main entry point to our analysis passes.
 ///
 /// Set up the necessary data structures and run the analysis passes.
-pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
+pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefId)
+    -> ChangeSet<'tcx>
+{
     let mut changes = Default::default();
     let mut id_mapping = Default::default();
 
@@ -51,11 +53,11 @@ pub fn run_analysis(tcx: TyCtxt, old: DefId, new: DefId) -> ChangeSet {
 /// Traverse the two root modules in an interleaved manner, matching up pairs of modules
 /// from the two crate versions and compare for changes. Matching children get processed
 /// in the same fashion.
-fn diff_structure(changes: &mut ChangeSet,
-                  id_mapping: &mut IdMapping,
-                  tcx: TyCtxt,
-                  old: DefId,
-                  new: DefId) {
+fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
+                            id_mapping: &mut IdMapping,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            old: DefId,
+                            new: DefId) {
     use rustc::hir::def::Def::*;
 
     let cstore = &tcx.sess.cstore;
@@ -201,10 +203,7 @@ fn diff_structure(changes: &mut ChangeSet,
 }
 
 /// Given two fn items, perform structural checks.
-fn diff_fn(changes: &mut ChangeSet,
-           tcx: TyCtxt,
-           old: Export,
-           new: Export) {
+fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Export, new: Export) {
     use rustc::hir::Unsafety::Unsafe;
 
     let old_def_id = old.def.def_id();
@@ -351,7 +350,9 @@ fn diff_adts(changes: &mut ChangeSet,
 }
 
 /// Given two items, compare their type and region parameter sets.
-fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
+fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId)
+    -> Vec<BinaryChangeType<'static>>
+{
     use std::cmp::max;
 
     let mut ret = Vec::new();
@@ -403,8 +404,11 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId) -> Vec<BinaryChangeType> {
 // being exported.
 
 /// Given two items, compare the bounds on their type and region parameters.
-fn diff_bounds(_changes: &mut ChangeSet, _tcx: TyCtxt, _old: DefId, _new: DefId)
-    -> (Vec<BinaryChangeType>, Vec<(DefId, DefId)>)
+fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
+                         _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         _old: DefId,
+                         _new: DefId)
+    -> (Vec<BinaryChangeType<'tcx>>, Vec<(DefId, DefId)>)
 {
     /* let res = Default::default();
 
@@ -420,12 +424,12 @@ fn diff_bounds(_changes: &mut ChangeSet, _tcx: TyCtxt, _old: DefId, _new: DefId)
 // matching items are compared for changes.
 
 /// Given two items, compare their types.
-fn diff_types(changes: &mut ChangeSet,
-              id_mapping: &IdMapping,
-              tcx: TyCtxt,
-              old: Export,
-              new: Export) {
-    use rustc::ty::AdtDef;
+fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                        id_mapping: &IdMapping,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        old: Export,
+                        new: Export) {
+    use rustc::ty::{AdtDef, Lift};
     use rustc::ty::TypeVariants::*;
 
     if changes.item_breaking(old.def.def_id()) {
@@ -455,10 +459,11 @@ fn diff_types(changes: &mut ChangeSet,
         }
     }});
 
-    if let Err(err) = tcx.global_tcx().infer_ctxt()
-        .enter(|infcx| infcx.can_eq(tcx.param_env(new_def_id), old_ty_cmp, new_ty))
-    {
-        // TODO: possibly rename this.
-        changes.add_binary(FieldTypeChanged(format!("{}", err)), old_def_id, None);
-    }
+    tcx.infer_ctxt().enter(|infcx|
+        if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old_ty_cmp, new_ty) {
+            // TODO: possibly rename this.
+            changes.add_binary(FieldTypeChanged(err.lift_to_tcx(tcx).unwrap()),
+                               old_def_id,
+                               None);
+        });
 }

@@ -45,19 +45,19 @@ warning: Breaking changes in `Hij`
 50 | |     }
    | |_____^
    |
-warning: Breaking (VariantFieldAdded { public: false, total_public: false })
-  --> $REPO_PATH/tests/examples/struct.rs:49:9
-   |
-49 |         field: u8,
-   |         ^^^^^^^^^
-warning: Breaking (VariantFieldRemoved { public: false, total_public: false })
-  --> $REPO_PATH/tests/examples/struct.rs:23:20
-   |
-23 |     pub struct Hij(u8);
-   |                    ^^^
 warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
   --> $REPO_PATH/tests/examples/struct.rs:23:5
    |
 23 |     pub struct Hij(u8);
    |     ^^^^^^^^^^^^^^^^^^^
+warning: Breaking (VariantFieldRemoved { public: false, total_public: false })
+  --> $REPO_PATH/tests/examples/struct.rs:23:20
+   |
+23 |     pub struct Hij(u8);
+   |                    ^^^
+warning: Breaking (VariantFieldAdded { public: false, total_public: false })
+  --> $REPO_PATH/tests/examples/struct.rs:49:9
+   |
+49 |         field: u8,
+   |         ^^^^^^^^^
 

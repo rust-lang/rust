@@ -7,7 +7,7 @@ warning: Breaking changes in `a`
 35 | |     }
    | |_____^
    |
-   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+   = warning: Breaking (FieldTypeChanged(Sorts(ExpectedFound { expected: fn(A) -> A {oldandnew::old::a::<A>}, found: fn(A) -> A {oldandnew::new::a::<A>} })))
 
 warning: Breaking changes in `b`
   --> $REPO_PATH/tests/examples/infer.rs:37:5
@@ -17,5 +17,5 @@ warning: Breaking changes in `b`
 39 | |     }
    | |_____^
    |
-   = warning: Breaking (FieldTypeChanged("expected fn item, found a different fn item"))
+   = warning: Breaking (FieldTypeChanged(Sorts(ExpectedFound { expected: fn() -> oldandnew::old::a::Klm {oldandnew::old::b}, found: fn() -> oldandnew::new::a::Opq {oldandnew::new::b} })))
 
