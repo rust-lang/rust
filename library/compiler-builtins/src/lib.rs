@@ -16,6 +16,7 @@
 #![feature(i128_type)]
 #![feature(repr_simd)]
 #![feature(abi_unadjusted)]
+#![feature(linkage)]
 #![allow(unused_features)]
 #![no_builtins]
 #![unstable(feature = "compiler_builtins_lib",
@@ -45,7 +46,6 @@ mod macros;
 pub mod int;
 pub mod float;
 
-#[cfg(feature = "mem")]
 pub mod mem;
 
 #[cfg(target_arch = "arm")]
