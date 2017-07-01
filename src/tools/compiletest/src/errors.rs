@@ -35,7 +35,7 @@ impl FromStr for ErrorKind {
             "ERROR" => Ok(ErrorKind::Error),
             "NOTE" => Ok(ErrorKind::Note),
             "SUGGESTION" => Ok(ErrorKind::Suggestion),
-            "WARN" => Ok(ErrorKind::Warning),
+            "WARN" |
             "WARNING" => Ok(ErrorKind::Warning),
             _ => Err(()),
         }
@@ -95,7 +95,7 @@ pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<Error> {
 
     let tag = match cfg {
         Some(rev) => format!("//[{}]~", rev),
-        None => format!("//~"),
+        None => "//~".to_string(),
     };
 
     rdr.lines()
@@ -153,7 +153,7 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
     let msg = msg.trim().to_owned();
 
     let (which, line_num) = if follow {
-        assert!(adjusts == 0, "use either //~| or //~^, not both.");
+        assert_eq!(adjusts, 0, "use either //~| or //~^, not both.");
         let line_num = last_nonfollow_error.expect("encountered //~| without \
                                                     preceding //~^ line.");
         (FollowPrevious(line_num), line_num)

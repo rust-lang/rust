@@ -68,7 +68,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
     } else {
         for revision in &base_props.revisions {
             let mut revision_props = base_props.clone();
-            revision_props.load_from(&testpaths.file, Some(&revision), &config);
+            revision_props.load_from(&testpaths.file, Some(revision), &config);
             let rev_cx = TestCx {
                 config: &config,
                 props: &revision_props,
@@ -81,7 +81,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
 
     base_cx.complete_all();
 
-    File::create(::stamp(&config, &testpaths)).unwrap();
+    File::create(::stamp(&config, testpaths)).unwrap();
 }
 
 struct TestCx<'test> {
@@ -101,9 +101,8 @@ impl<'test> TestCx<'test> {
     /// invoked once before any revisions have been processed
     fn init_all(&self) {
         assert!(self.revision.is_none(), "init_all invoked for a revision");
-        match self.config.mode {
-            Incremental => self.init_incremental_test(),
-            _ => { }
+        if let Incremental = self.config.mode {
+            self.init_incremental_test()
         }
     }
 
@@ -111,7 +110,7 @@ impl<'test> TestCx<'test> {
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
         match self.config.mode {
-            CompileFail => self.run_cfail_test(),
+            CompileFail |
             ParseFail => self.run_cfail_test(),
             RunFail => self.run_rfail_test(),
             RunPass => self.run_rpass_test(),
@@ -352,10 +351,10 @@ impl<'test> TestCx<'test> {
                             aux_dir.to_str().unwrap().to_owned()];
         args.extend(self.split_maybe_args(&self.config.target_rustcflags));
         args.extend(self.props.compile_flags.iter().cloned());
-        return ProcArgs {
+        ProcArgs {
             prog: self.config.rustc_path.to_str().unwrap().to_owned(),
             args: args,
-        };
+        }
     }
 
     fn compare_source(&self,
@@ -407,17 +406,17 @@ actual:\n\
                             aux_dir.to_str().unwrap().to_owned()];
         if let Some(revision) = self.revision {
             args.extend(vec![
-                format!("--cfg"),
-                format!("{}", revision),
+                "--cfg".to_string(),
+                revision.to_string(),
             ]);
         }
         args.extend(self.split_maybe_args(&self.config.target_rustcflags));
         args.extend(self.props.compile_flags.iter().cloned());
         // FIXME (#9639): This needs to handle non-utf8 paths
-        return ProcArgs {
+        ProcArgs {
             prog: self.config.rustc_path.to_str().unwrap().to_owned(),
             args: args,
-        };
+        }
     }
 
     fn run_debuginfo_gdb_test(&self) {
@@ -708,7 +707,7 @@ actual:\n\
             }
         }
 
-        return None;
+        None
     }
 
     fn run_debuginfo_lldb_test(&self) {
@@ -875,13 +874,13 @@ actual:\n\
                     for &(ref command_directive, ref check_directive) in &directives {
                         self.config.parse_name_value_directive(
                             &line,
-                            &command_directive).map(|cmd| {
+                            command_directive).map(|cmd| {
                                 commands.push(cmd)
                             });
 
                         self.config.parse_name_value_directive(
                             &line,
-                            &check_directive).map(|cmd| {
+                            check_directive).map(|cmd| {
                                 check_lines.push(cmd)
                             });
                     }
@@ -962,8 +961,7 @@ actual:\n\
                 (line, 0)
             };
 
-            for fragment_index in first_fragment .. check_fragments.len() {
-                let current_fragment = check_fragments[fragment_index];
+            for current_fragment in &check_fragments[first_fragment..] {
                 match rest.find(current_fragment) {
                     Some(pos) => {
                         rest = &rest[pos + current_fragment.len() .. ];
@@ -976,7 +974,7 @@ actual:\n\
                 return false;
             }
 
-            return true;
+            true
         }
     }
 
@@ -1059,7 +1057,7 @@ actual:\n\
         let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
 
         // Parse the JSON output from the compiler and extract out the messages.
-        let actual_errors = json::parse_output(&file_name, &proc_res.stderr, &proc_res);
+        let actual_errors = json::parse_output(&file_name, &proc_res.stderr, proc_res);
         let mut unexpected = Vec::new();
         let mut found = vec![false; expected_errors.len()];
         for actual_error in &actual_errors {
@@ -1092,7 +1090,7 @@ actual:\n\
                                      .map_or(String::from("message"),
                                              |k| k.to_string()),
                                      actual_error.msg));
-                        unexpected.push(actual_error.clone());
+                        unexpected.push(actual_error);
                     }
                 }
             }
@@ -1110,20 +1108,20 @@ actual:\n\
                              .map_or("message".into(),
                                      |k| k.to_string()),
                              expected_error.msg));
-                not_found.push(expected_error.clone());
+                not_found.push(expected_error);
             }
         }
 
-        if unexpected.len() > 0 || not_found.len() > 0 {
+        if !unexpected.is_empty() || !not_found.is_empty() {
             self.error(
                 &format!("{} unexpected errors found, {} expected errors not found",
                          unexpected.len(), not_found.len()));
-            print!("status: {}\ncommand: {}\n",
+            println!("status: {}\ncommand: {}",
                    proc_res.status, proc_res.cmdline);
-            if unexpected.len() > 0 {
+            if !unexpected.is_empty() {
                 println!("unexpected errors (from JSON output): {:#?}\n", unexpected);
             }
-            if not_found.len() > 0 {
+            if !not_found.is_empty() {
                 println!("not found errors (from test file): {:#?}\n", not_found);
             }
             panic!();
@@ -1142,9 +1140,9 @@ actual:\n\
         match actual_error.kind {
             Some(ErrorKind::Help) => expect_help,
             Some(ErrorKind::Note) => expect_note,
-            Some(ErrorKind::Error) => true,
+            Some(ErrorKind::Error) |
             Some(ErrorKind::Warning) => true,
-            Some(ErrorKind::Suggestion) => false,
+            Some(ErrorKind::Suggestion) |
             None => false
         }
     }
@@ -1287,7 +1285,8 @@ actual:\n\
                                                      self.config);
             let mut crate_type = if aux_props.no_prefer_dynamic {
                 Vec::new()
-            } else {
+            } else if (self.config.target.contains("musl") && !aux_props.force_host) ||
+                      self.config.target.contains("emscripten") {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible
                 // for the test suite (otherwise including libstd statically in all
@@ -1297,13 +1296,9 @@ actual:\n\
                 // dynamic libraries so we just go back to building a normal library. Note,
                 // however, that for MUSL if the library is built with `force_host` then
                 // it's ok to be a dylib as the host should always support dylibs.
-                if (self.config.target.contains("musl") && !aux_props.force_host) ||
-                    self.config.target.contains("emscripten")
-                {
-                    vec!["--crate-type=lib".to_owned()]
-                } else {
-                    vec!["--crate-type=dylib".to_owned()]
-                }
+                vec!["--crate-type=lib".to_owned()]
+            } else {
+                vec!["--crate-type=dylib".to_owned()]
             };
             crate_type.extend(extra_link_args.clone());
             let aux_output = {
@@ -1344,7 +1339,7 @@ actual:\n\
                        lib_path: &str,
                        aux_path: Option<&str>,
                        input: Option<String>) -> ProcRes {
-        return self.program_output(lib_path, prog, aux_path, args, procenv, input);
+        self.program_output(lib_path, prog, aux_path, args, procenv, input)
     }
 
     fn make_compile_args(&self,
@@ -1367,7 +1362,7 @@ actual:\n\
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags
             .iter()
-            .fold(false, |acc, ref x| acc || x.starts_with("--target"));
+            .fold(false, |acc, x| acc || x.starts_with("--target"));
 
         if !custom_target {
             args.extend(vec![
@@ -1377,14 +1372,14 @@ actual:\n\
 
         if let Some(revision) = self.revision {
             args.extend(vec![
-                format!("--cfg"),
-                format!("{}", revision),
+                "--cfg".to_string(),
+                revision.to_string(),
             ]);
         }
 
         if let Some(ref incremental_dir) = self.props.incremental_dir {
             args.extend(vec![
-                format!("-Z"),
+                "-Z".to_string(),
                 format!("incremental={}", incremental_dir.display()),
             ]);
         }
@@ -1457,10 +1452,10 @@ actual:\n\
             args.extend(self.split_maybe_args(&self.config.target_rustcflags));
         }
         args.extend(self.props.compile_flags.iter().cloned());
-        return ProcArgs {
+        ProcArgs {
             prog: self.config.rustc_path.to_str().unwrap().to_owned(),
             args: args,
-        };
+        }
     }
 
     fn make_lib_name(&self, auxfile: &Path) -> PathBuf {
@@ -1508,10 +1503,10 @@ actual:\n\
         args.extend(self.split_maybe_args(&self.props.run_flags));
 
         let prog = args.remove(0);
-        return ProcArgs {
+         ProcArgs {
             prog: prog,
             args: args,
-        };
+        }
     }
 
     fn split_maybe_args(&self, argstr: &Option<String>) -> Vec<String> {
@@ -1558,12 +1553,12 @@ actual:\n\
                          env,
                          input).expect(&format!("failed to exec `{}`", prog));
         self.dump_output(&out, &err);
-        return ProcRes {
+        ProcRes {
             status: status,
             stdout: out,
             stderr: err,
             cmdline: cmdline,
-        };
+        }
     }
 
     fn make_cmdline(&self, libpath: &str, prog: &str, args: &[String]) -> String {
@@ -1764,7 +1759,7 @@ actual:\n\
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
 
-        if self.props.check_test_line_numbers_match == true {
+        if self.props.check_test_line_numbers_match {
             self.check_rustdoc_test_option(proc_res);
         } else {
             let root = self.find_rust_src_root().unwrap();
@@ -1791,7 +1786,7 @@ actual:\n\
                .filter_map(|(line_nb, line)| {
                    if (line.trim_left().starts_with("pub mod ") ||
                        line.trim_left().starts_with("mod ")) &&
-                      line.ends_with(";") {
+                      line.ends_with(';') {
                        if let Some(ref mut other_files) = other_files {
                            other_files.push(line.rsplit("mod ")
                                       .next()
@@ -1840,7 +1835,7 @@ actual:\n\
         }
 
         let mut tested = 0;
-        for _ in res.stdout.split("\n")
+        for _ in res.stdout.split('\n')
                            .filter(|s| s.starts_with("test "))
                            .inspect(|s| {
                                let tmp: Vec<&str> = s.split(" - ").collect();
@@ -1853,7 +1848,7 @@ actual:\n\
                                        iter.next();
                                        let line = iter.next()
                                                       .unwrap_or(")")
-                                                      .split(")")
+                                                      .split(')')
                                                       .next()
                                                       .unwrap_or("0")
                                                       .parse()
@@ -1873,7 +1868,7 @@ actual:\n\
             self.fatal_proc_rec(&format!("No test has been found... {:?}", files), &res);
         } else {
             for (entry, v) in &files {
-                if v.len() != 0 {
+                if !v.is_empty() {
                     self.fatal_proc_rec(&format!("Not found test at line{} \"{}\":{:?}",
                                                  if v.len() > 1 { "s" } else { "" }, entry, v),
                                         &res);
@@ -1916,11 +1911,10 @@ actual:\n\
                                                    .find(|ti| ti.name == expected_item.name);
 
             if let Some(actual_item) = actual_item_with_same_name {
-                if !expected_item.codegen_units.is_empty() {
-                    // Also check for codegen units
-                    if expected_item.codegen_units != actual_item.codegen_units {
-                        wrong_cgus.push((expected_item.clone(), actual_item.clone()));
-                    }
+                if !expected_item.codegen_units.is_empty() &&
+                   // Also check for codegen units
+                   expected_item.codegen_units != actual_item.codegen_units {
+                    wrong_cgus.push((expected_item.clone(), actual_item.clone()));
                 }
             } else {
                 missing.push(expected_item.string.clone());
@@ -2005,7 +1999,7 @@ actual:\n\
             let cgus = if parts.len() > 1 {
                 let cgus_str = parts[1];
 
-                cgus_str.split(" ")
+                cgus_str.split(' ')
                         .map(str::trim)
                         .filter(|s| !s.is_empty())
                         .map(str::to_owned)
@@ -2323,7 +2317,7 @@ actual:\n\
         }
     }
 
-    fn compare_mir_test_output(&self, test_name: &str, expected_content: &Vec<&str>) {
+    fn compare_mir_test_output(&self, test_name: &str, expected_content: &[&str]) {
         let mut output_file = PathBuf::new();
         output_file.push(self.get_mir_dump_dir());
         output_file.push(test_name);
