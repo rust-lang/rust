@@ -119,7 +119,6 @@ impl Ord for UnaryChange {
 }
 
 /// The types of changes we identify between items present in both crate versions.
-// TODO: this needs a lot of refinement still
 #[derive(Clone, Debug)]
 pub enum BinaryChangeType<'tcx> {
     /// An item has been made public.
@@ -151,7 +150,7 @@ pub enum BinaryChangeType<'tcx> {
     /// A variant has changed it's style.
     VariantStyleChanged { now_struct: bool, total_private: bool },
     /// A field in a struct or enum has changed it's type.
-    FieldTypeChanged(TypeError<'tcx>),
+    TypeChanged { error: TypeError<'tcx> },
     /// An impl item has been added.
     TraitImplItemAdded { defaulted: bool },
     /// An impl item has been removed.
@@ -186,7 +185,7 @@ impl<'tcx> BinaryChangeType<'tcx> {
             VariantFieldAdded { .. } |
             VariantFieldRemoved { .. } |
             VariantStyleChanged { .. } |
-            FieldTypeChanged(_) |
+            TypeChanged { .. } |
             TraitImplItemAdded { .. } |
             TraitImplItemRemoved |
             FnVariadicChanged |

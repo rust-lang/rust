@@ -5,7 +5,7 @@ warning: Breaking changes in `A`
 12 |     pub type A = u16;
    |     ^^^^^^^^^^^^^^^^^
    |
-   = warning: Breaking (FieldTypeChanged(Sorts(ExpectedFound { expected: u8, found: u16 })))
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
 
 warning: Breaking changes in `B`
   --> $REPO_PATH/tests/examples/ty_alias.rs:13:5
@@ -30,7 +30,7 @@ warning: Breaking changes in `D`
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: NonBreaking (TypeParameterAdded { defaulted: true })
-   = warning: Breaking (FieldTypeChanged(Sorts(ExpectedFound { expected: &'a T, found: (&'a T, U) })))
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: &'a T, found: (&'a T, U) }) })
 
 warning: Breaking changes in `E`
   --> $REPO_PATH/tests/examples/ty_alias.rs:16:5

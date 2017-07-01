@@ -461,8 +461,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     tcx.infer_ctxt().enter(|infcx|
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old_ty_cmp, new_ty) {
-            // TODO: possibly rename this.
-            changes.add_binary(FieldTypeChanged(err.lift_to_tcx(tcx).unwrap()),
+            changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
         });
