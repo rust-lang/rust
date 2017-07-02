@@ -42,10 +42,10 @@ use config::Target;
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
-    for target in build.config.target.iter() {
+    for target in &build.targets {
         let mut cfg = gcc::Config::new();
         cfg.cargo_metadata(false).opt_level(0).debug(false)
-           .target(target).host(&build.config.build);
+           .target(target).host(&build.build);
 
         let config = build.config.target_config.get(target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
@@ -64,10 +64,10 @@ pub fn find(build: &mut Build) {
     }
 
     // For all host triples we need to find a C++ compiler as well
-    for host in build.config.host.iter() {
+    for host in &build.hosts {
         let mut cfg = gcc::Config::new();
         cfg.cargo_metadata(false).opt_level(0).debug(false).cpp(true)
-           .target(host).host(&build.config.build);
+           .target(host).host(&build.build);
         let config = build.config.target_config.get(host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);

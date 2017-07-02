@@ -45,7 +45,7 @@ pub fn rustbook_src(build: &Build, target: &str, name: &str, src: &Path) {
     t!(fs::create_dir_all(&out));
 
     let out = out.join(name);
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
     let src = src.join(name);
     let index = out.join("index.html");
     let rustbook = build.tool(&compiler, "rustbook");
@@ -95,7 +95,7 @@ pub fn book(build: &Build, target: &str, name: &str) {
 fn invoke_rustdoc(build: &Build, target: &str, markdown: &str) {
     let out = build.doc_out(target);
 
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
 
     let path = build.src.join("src/doc").join(markdown);
 
@@ -150,7 +150,7 @@ pub fn standalone(build: &Build, target: &str) {
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
 
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
@@ -217,7 +217,7 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} std ({})", stage, target);
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
     let compiler = if build.force_use_stage1(&compiler, target) {
         Compiler::new(1, compiler.host)
     } else {
@@ -276,7 +276,7 @@ pub fn test(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} test ({})", stage, target);
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
     let compiler = if build.force_use_stage1(&compiler, target) {
         Compiler::new(1, compiler.host)
     } else {
@@ -306,7 +306,7 @@ pub fn rustc(build: &Build, stage: u32, target: &str) {
     println!("Documenting stage{} compiler ({})", stage, target);
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
     let compiler = if build.force_use_stage1(&compiler, target) {
         Compiler::new(1, compiler.host)
     } else {
@@ -351,13 +351,13 @@ pub fn error_index(build: &Build, target: &str) {
     println!("Documenting error index ({})", target);
     let out = build.doc_out(target);
     t!(fs::create_dir_all(&out));
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
     let mut index = build.tool_cmd(&compiler, "error_index_generator");
     index.arg("html");
     index.arg(out.join("error-index.html"));
 
     // FIXME: shouldn't have to pass this env var
-    index.env("CFG_BUILD", &build.config.build);
+    index.env("CFG_BUILD", &build.build);
 
     build.run(&mut index);
 }
@@ -367,7 +367,7 @@ pub fn unstable_book_gen(build: &Build, target: &str) {
     let out = build.md_doc_out(target).join("unstable-book");
     t!(fs::create_dir_all(&out));
     t!(fs::remove_dir_all(&out));
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
     let mut cmd = build.tool_cmd(&compiler, "unstable-book-gen");
     cmd.arg(build.src.join("src"));
     cmd.arg(out);
