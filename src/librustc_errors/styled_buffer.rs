@@ -111,12 +111,6 @@ impl StyledBuffer {
         }
     }
 
-    pub fn set_style(&mut self, line: usize, col: usize, style: Style) {
-        if self.styles.len() > line && self.styles[line].len() > col {
-            self.styles[line][col] = style;
-        }
-    }
-
     pub fn prepend(&mut self, line: usize, string: &str, style: Style) {
         self.ensure_lines(line);
         let string_len = string.len();

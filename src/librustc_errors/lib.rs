@@ -41,9 +41,9 @@ use std::rc::Rc;
 pub mod diagnostic;
 pub mod diagnostic_builder;
 pub mod emitter;
-pub mod snippet;
+mod snippet;
 pub mod registry;
-pub mod styled_buffer;
+mod styled_buffer;
 mod lock;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};

@@ -25,7 +25,6 @@ use std::rc::Rc;
 
 use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned};
 use errors;
-use errors::snippet::{SnippetData};
 use config;
 use entry::{self, EntryPointType};
 use ext::base::{ExtCtxt, Resolver};

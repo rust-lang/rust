@@ -1373,7 +1373,7 @@ impl Destination {
 
     fn apply_style(&mut self, lvl: Level, style: Style) -> io::Result<()> {
         match style {
-            Style::FileNameStyle | Style::LineAndColumn => {}
+            Style::LineAndColumn => {}
             Style::LineNumber => {
                 self.start_attr(term::Attr::Bold)?;
                 if cfg!(windows) {
@@ -1382,16 +1382,8 @@ impl Destination {
                     self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_BLUE))?;
                 }
             }
-            Style::ErrorCode => {
-                self.start_attr(term::Attr::Bold)?;
-                self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA))?;
-            }
             Style::Quotation => {}
-            Style::OldSchoolNote => {
-                self.start_attr(term::Attr::Bold)?;
-                self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_GREEN))?;
-            }
-            Style::OldSchoolNoteText | Style::HeaderMsg => {
+            Style::HeaderMsg => {
                 self.start_attr(term::Attr::Bold)?;
                 if cfg!(windows) {
                     self.start_attr(term::Attr::ForegroundColor(term::color::BRIGHT_WHITE))?;
