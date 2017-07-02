@@ -157,7 +157,7 @@ dependencies = [
 [[package]]
 name = "cargo"
 version = "0.21.0"
-source = "git+https://github.com/rust-lang/cargo#854bc167bbf74053f821f65cb86d506033f3d3a7"
+source = "git+https://github.com/rust-lang/cargo#eb6cf012a6cc23c9c89c4009564de9fccc38b9cb"
 replace = "cargo 0.21.0"
 
 [[package]]
