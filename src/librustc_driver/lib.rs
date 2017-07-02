@@ -56,6 +56,7 @@ extern crate log;
 extern crate syntax;
 extern crate syntax_ext;
 extern crate syntax_pos;
+extern crate isatty;
 
 use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
@@ -99,6 +100,8 @@ use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
+
+use isatty::stdout_isatty;
 
 #[cfg(test)]
 pub mod test;
@@ -373,7 +376,11 @@ fn handle_explain(code: &str,
                 text.push('\n');
             }
 
-            show_content_with_pager(&text);
+            if stdout_isatty() {
+                show_content_with_pager(&text);
+            } else {
+                print!("{}", text);
+            }
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));
