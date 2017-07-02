@@ -195,7 +195,9 @@ pub trait SliceExt {
     fn as_mut_ptr(&mut self) -> *mut Self::Item;
 
     #[stable(feature = "core", since = "1.6.0")]
-    fn contains(&self, x: &Self::Item) -> bool where Self::Item: PartialEq;
+    fn contains<Q: ?Sized>(&self, x: &Q) -> bool
+        where Self::Item: Borrow<Q>,
+              Q: PartialEq;
 
     #[stable(feature = "core", since = "1.6.0")]
     fn starts_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
@@ -616,8 +618,11 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn contains(&self, x: &T) -> bool where T: PartialEq {
-        self.iter().any(|elt| *x == *elt)
+    fn contains<Q: ?Sized>(&self, x: &Q) -> bool
+        where T: Borrow<Q>,
+              Q: PartialEq
+    {
+        self.iter().any(|elt| *x == *elt.borrow())
     }
 
     #[inline]
