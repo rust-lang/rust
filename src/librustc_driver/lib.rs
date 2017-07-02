@@ -56,7 +56,6 @@ extern crate log;
 extern crate syntax;
 extern crate syntax_ext;
 extern crate syntax_pos;
-extern crate isatty;
 
 use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
@@ -100,8 +99,6 @@ use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
-
-use isatty::stdout_isatty;
 
 #[cfg(test)]
 pub mod test;
@@ -346,6 +343,35 @@ pub trait CompilerCalls<'a> {
 // CompilerCalls instance for a regular rustc build.
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
+
+/**
+ * TODO remove these and use winapi 0.3 instead
+ *
+ * These are duplicated in
+ *   - bootstrap/compile.rs#L478
+ *   - librustc_errors/emitter.rs#L1253
+ */
+#[cfg(unix)]
+fn stdout_isatty() -> bool {
+    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+}
+#[cfg(windows)]
+fn stdout_isatty() -> bool {
+    type DWORD = u32;
+    type BOOL = i32;
+    type HANDLE = *mut u8;
+    type LPDWORD = *mut u32;
+    const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
+    extern "system" {
+        fn GetStdHandle(which: DWORD) -> HANDLE;
+        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
+    }
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        let mut out = 0;
+        GetConsoleMode(handle, &mut out) != 0
+    }
+}
 
 fn handle_explain(code: &str,
                   descriptions: &errors::registry::Registry,
