@@ -45,5 +45,5 @@ error[E0061]: this function takes 2 parameters but 3 parameters were supplied
 19 |     bar(1, 2, 3);
    |         ^^^^^^^ expected 2 parameters
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

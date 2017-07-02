@@ -4,5 +4,5 @@ error: expected identifier, found `.`
 13 | pub (.) fn afn() {}
    |      ^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -4,5 +4,5 @@ error[E0609]: no field `zz` on type `Foo`
 17 |     f.zz;
    |       ^^ unknown field
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

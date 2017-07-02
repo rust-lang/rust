@@ -8,5 +8,5 @@ error[E0282]: type annotations needed
    |
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

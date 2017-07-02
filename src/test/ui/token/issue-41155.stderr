@@ -14,5 +14,5 @@ error[E0412]: cannot find type `S` in this scope
 
 error[E0601]: main function not found
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

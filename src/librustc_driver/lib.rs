@@ -113,7 +113,8 @@ const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/mas
 fn abort_msg(err_count: usize) -> String {
     match err_count {
         0 => "aborting with no errors (maybe a bug?)".to_owned(),
-        _ => "aborting due to previous error(s)".to_owned(),
+        1 => "aborting due to previous error".to_owned(),
+        e => format!("aborting due to {} previous errors", e),
     }
 }
 

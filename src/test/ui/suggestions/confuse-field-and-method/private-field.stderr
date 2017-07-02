@@ -4,5 +4,5 @@ error[E0599]: no method named `dog_age` found for type `animal::Dog` in the curr
 26 |     let dog_age = dog.dog_age();
    |                       ^^^^^^^ private field, not a method
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

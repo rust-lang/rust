@@ -246,5 +246,5 @@ help: did you mean `*s`?
 81 |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
    |                              ^
 
-error: aborting due to previous error(s)
+error: aborting due to 34 previous errors
 

@@ -74,5 +74,5 @@ error[E0423]: expected function, found module `a::b`
 
 error[E0601]: main function not found
 
-error: aborting due to previous error(s)
+error: aborting due to 10 previous errors
 

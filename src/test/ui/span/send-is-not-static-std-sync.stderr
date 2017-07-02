@@ -52,5 +52,5 @@ error[E0505]: cannot move out of `y` because it is borrowed
 49 |     drop(y); //~ ERROR cannot move out
    |          ^ move out of `y` occurs here
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 

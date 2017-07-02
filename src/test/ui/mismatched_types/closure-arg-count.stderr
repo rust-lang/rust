@@ -31,5 +31,5 @@ error[E0593]: closure takes 1 argument but 2 arguments are required
    |               |
    |               expected closure that takes 2 arguments
 
-error: aborting due to previous error(s)
+error: aborting due to 7 previous errors
 

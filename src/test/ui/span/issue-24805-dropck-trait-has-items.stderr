@@ -28,5 +28,5 @@ error[E0597]: `d1` does not live long enough
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

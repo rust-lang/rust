@@ -8,5 +8,5 @@ error[E0597]: `*a` does not live long enough
    |     |
    |     `*a` dropped here while still borrowed
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

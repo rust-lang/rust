@@ -48,5 +48,5 @@ error: visibilities can only be restricted to ancestor modules
 33 |         pub (in x) non_parent_invalid: usize,
    |                 ^
 
-error: aborting due to previous error(s)
+error: aborting due to 5 previous errors
 

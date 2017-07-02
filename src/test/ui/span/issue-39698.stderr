@@ -38,5 +38,5 @@ error[E0408]: variable `c` is not bound in all patterns
    |         |             pattern doesn't bind `c`
    |         pattern doesn't bind `c`
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 

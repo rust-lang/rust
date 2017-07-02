@@ -4,5 +4,5 @@ error[E0423]: expected value, found trait `Bar`
 20 |     let any: &Any = &Bar; //~ ERROR expected value, found trait `Bar`
    |                      ^^^ not a value
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
