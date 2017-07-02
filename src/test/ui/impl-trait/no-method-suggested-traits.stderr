@@ -226,5 +226,5 @@ error[E0599]: no method named `method3` found for type `std::rc::Rc<&mut std::bo
 131 |     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method3();
     |                                                                          ^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to 24 previous errors
 

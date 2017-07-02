@@ -6,5 +6,5 @@ error[E0621]: explicit lifetime required in the type of `y`
 16 |     x.push(y);
    |            ^ lifetime `'a` required
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

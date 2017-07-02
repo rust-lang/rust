@@ -102,7 +102,7 @@ use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
 use errors::DiagnosticBuilder;
 use require_c_abi_if_variadic;
-use session::{Session, CompileResult};
+use session::{CompileIncomplete, Session};
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
@@ -691,30 +691,32 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
 }
 
-pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
+pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
         tcx.hir.krate().visit_all_item_likes(&mut visit.as_deep_visitor());
     })
 }
 
-pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
+pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         tcx.hir.krate().visit_all_item_likes(&mut CheckItemTypesVisitor { tcx });
     })
 }
 
-pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
+pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Result<(), CompileIncomplete> {
     tcx.typeck_item_bodies(LOCAL_CRATE)
 }
 
-fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> CompileResult {
+fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
+                                -> Result<(), CompileIncomplete>
+{
     debug_assert!(crate_num == LOCAL_CRATE);
-    tcx.sess.track_errors(|| {
+    Ok(tcx.sess.track_errors(|| {
         for body_owner_def_id in tcx.body_owners() {
             tcx.typeck_tables_of(body_owner_def_id);
         }
-    })
+    })?)
 }
 
 pub fn provide(providers: &mut Providers) {

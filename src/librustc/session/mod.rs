@@ -21,7 +21,7 @@ use session::search_paths::PathKind;
 use session::config::DebugInfoLevel;
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
-use util::common::duration_to_secs_str;
+use util::common::{duration_to_secs_str, ErrorReported};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder};
@@ -255,7 +255,10 @@ impl Session {
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
-    pub fn track_errors<F, T>(&self, f: F) -> Result<T, usize>
+    pub fn compile_status(&self) -> Result<(), CompileIncomplete> {
+        compile_result_from_err_count(self.err_count())
+    }
+    pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorReported>
         where F: FnOnce() -> T
     {
         let old_count = self.err_count();
@@ -264,7 +267,7 @@ impl Session {
         if errors == 0 {
             Ok(result)
         } else {
-            Err(errors)
+            Err(ErrorReported)
         }
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
@@ -802,15 +805,23 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 
-// Err(0) means compilation was stopped, but no errors were found.
-// This would be better as a dedicated enum, but using try! is so convenient.
-pub type CompileResult = Result<(), usize>;
+#[derive(Copy, Clone, Debug)]
+pub enum CompileIncomplete {
+    Stopped,
+    Errored(ErrorReported)
+}
+impl From<ErrorReported> for CompileIncomplete {
+    fn from(err: ErrorReported) -> CompileIncomplete {
+        CompileIncomplete::Errored(err)
+    }
+}
+pub type CompileResult = Result<(), CompileIncomplete>;
 
 pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
     if err_count == 0 {
         Ok(())
     } else {
-        Err(err_count)
+        Err(CompileIncomplete::Errored(ErrorReported))
     }
 }
 

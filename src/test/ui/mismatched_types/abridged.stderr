@@ -52,5 +52,5 @@ error[E0308]: mismatched types
    = note: expected type `X<X<_, std::string::String>, _>`
               found type `X<X<_, {integer}>, _>`
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 

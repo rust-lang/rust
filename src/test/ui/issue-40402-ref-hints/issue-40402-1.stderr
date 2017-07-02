@@ -7,5 +7,5 @@ error[E0507]: cannot move out of indexed content
    |             help: consider using a reference instead `&f.v[0]`
    |             cannot move out of indexed content
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

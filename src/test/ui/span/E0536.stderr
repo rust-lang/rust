@@ -4,5 +4,5 @@ error[E0536]: expected 1 cfg-pattern
 11 | #[cfg(not())] //~ ERROR E0536
    |       ^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

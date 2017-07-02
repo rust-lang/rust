@@ -7,5 +7,5 @@ error[E0507]: cannot move out of captured outer variable in an `Fn` closure
 21 |         y.into_iter();
    |         ^ cannot move out of captured outer variable in an `Fn` closure
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

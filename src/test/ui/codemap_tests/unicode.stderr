@@ -4,5 +4,5 @@ error: invalid ABI: expected one of [cdecl, stdcall, fastcall, vectorcall, thisc
 11 | extern "路濫狼á́́" fn foo() {}
    |        ^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

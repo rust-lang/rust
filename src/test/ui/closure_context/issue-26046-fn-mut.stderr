@@ -16,5 +16,5 @@ note: closure is `FnMut` because it mutates the variable `num` here
 15 |         num += 1;
    |         ^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

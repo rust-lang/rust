@@ -16,5 +16,5 @@ error[E0596]: cannot borrow immutable `Box` content `*x` as mutable
 29 |     x.borrowed_mut(); //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

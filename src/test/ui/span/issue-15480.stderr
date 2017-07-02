@@ -11,5 +11,5 @@ error[E0597]: borrowed value does not live long enough
    |
    = note: consider using a `let` binding to increase its lifetime
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

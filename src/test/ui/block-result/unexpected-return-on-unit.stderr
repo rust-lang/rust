@@ -11,5 +11,5 @@ help: did you mean to add a semicolon here?
 help: possibly return type missing here?
    | fn bar() -> usize {
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

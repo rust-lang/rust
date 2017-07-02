@@ -52,5 +52,5 @@ error[E0613]: attempted to access tuple index `0` on type `{integer}`, but the t
 56 |     let _ = fake_anon_field_expr!();
    |             ----------------------- in this macro invocation
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 

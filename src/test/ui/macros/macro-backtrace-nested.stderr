@@ -16,5 +16,5 @@ error[E0425]: cannot find value `fake` in this scope
 28 |     call_nested_expr_sum!();
    |     ------------------------ in this macro invocation
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

@@ -144,5 +144,5 @@ error[E0425]: cannot find value `bah` in this scope
 
 error[E0601]: main function not found
 
-error: aborting due to previous error(s)
+error: aborting due to 25 previous errors
 

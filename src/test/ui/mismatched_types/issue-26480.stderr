@@ -18,5 +18,5 @@ error[E0605]: non-primitive cast: `{integer}` as `()`
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

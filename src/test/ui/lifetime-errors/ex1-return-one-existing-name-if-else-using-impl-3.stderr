@@ -7,5 +7,5 @@ error[E0621]: explicit lifetime required in the type of `x`
 18 |     if true { &self.field } else { x }
    |                                    ^ lifetime `'a` required
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

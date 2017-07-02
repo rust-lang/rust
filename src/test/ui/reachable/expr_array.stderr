@@ -16,5 +16,5 @@ error: unreachable expression
 25 |     let x: [usize; 2] = [22, return];
    |                         ^^^^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

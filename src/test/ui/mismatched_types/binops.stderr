@@ -46,5 +46,5 @@ error[E0277]: the trait bound `{integer}: std::cmp::PartialEq<std::result::Resul
    |
    = help: the trait `std::cmp::PartialEq<std::result::Result<{integer}, _>>` is not implemented for `{integer}`
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 

@@ -4,5 +4,5 @@ error[E0608]: cannot index into a value of type `({integer},)`
 14 |     println!("☃{}", tup[0]);
    |                     ^^^^^^ help: to access tuple elements, use `tup.0`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

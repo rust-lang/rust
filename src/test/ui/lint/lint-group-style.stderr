@@ -63,5 +63,5 @@ note: lint level defined here
    |                 ^^^^^^^^^
    = note: #[warn(non_camel_case_types)] implied by #[warn(bad_style)]
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 
