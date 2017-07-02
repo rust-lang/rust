@@ -26,6 +26,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use borrow::Cow;
 use fmt;
 use ops::Range;
 use iter::FusedIterator;
@@ -944,6 +945,119 @@ impl AsciiExt for char {
     #[inline]
     fn is_ascii_control(&self) -> bool {
         (*self as u32 <= 0x7f) && (*self as u8).is_ascii_control()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> AsciiExt for Cow<'a, str> {
+    type Owned = Cow<'a, str>;
+
+    #[inline]
+    fn is_ascii(&self) -> bool {
+        (**self).is_ascii()
+    }
+
+    #[inline]
+    fn to_ascii_uppercase(&self) -> Self::Owned {
+        Cow::Owned((**self).to_ascii_uppercase())
+    }
+
+    #[inline]
+    fn to_ascii_lowercase(&self) -> Self::Owned {
+        Cow::Owned((**self).to_ascii_lowercase())
+    }
+
+    #[inline]
+    fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
+        self.to_ascii_lowercase() == other.to_ascii_lowercase()
+    }
+
+    #[inline]
+    fn make_ascii_uppercase(&mut self) {
+        // Determine position of first lowercase byte.
+        let pos_first_lower = match self.bytes().position(|c| c.is_ascii_lowercase()) {
+            Some(p) => p,
+            None => return,
+        };
+        let mut bytes = Vec::with_capacity(self.len());
+        unsafe { bytes.set_len(pos_first_lower); }
+        bytes.copy_from_slice(&self.as_bytes()[..pos_first_lower]);
+        bytes.extend(
+            self.bytes()
+                .skip(pos_first_lower)
+                .map(|b| b.to_ascii_uppercase()));
+        // make_ascii_uppercase() preserves the UTF-8 invariant.
+        let s = unsafe { String::from_utf8_unchecked(bytes) };
+        *self = Cow::Owned(s)
+    }
+
+    #[inline]
+    fn make_ascii_lowercase(&mut self) {
+        // Determine position of first uppercase byte.
+        let pos_first_upper = match self.bytes().position(|c| c.is_ascii_uppercase()) {
+            Some(p) => p,
+            None => return,
+        };
+        let mut bytes = Vec::with_capacity(self.len());
+        unsafe { bytes.set_len(pos_first_upper); }
+        bytes.copy_from_slice(&self.as_bytes()[..pos_first_upper]);
+        bytes.extend(
+            self.bytes()
+                .skip(pos_first_upper)
+                .map(|b| b.to_ascii_lowercase()));
+        // make_ascii_uppercase() preserves the UTF-8 invariant.
+        let s = unsafe { String::from_utf8_unchecked(bytes) };
+        *self = Cow::Owned(s)
+    }
+
+    #[inline]
+    fn is_ascii_alphabetic(&self) -> bool {
+        (**self).is_ascii_alphabetic()
+    }
+
+    #[inline]
+    fn is_ascii_uppercase(&self) -> bool {
+        (**self).is_ascii_uppercase()
+    }
+
+    #[inline]
+    fn is_ascii_lowercase(&self) -> bool {
+        (**self).is_ascii_lowercase()
+    }
+
+    #[inline]
+    fn is_ascii_alphanumeric(&self) -> bool {
+        (**self).is_ascii_alphanumeric()
+    }
+
+    #[inline]
+    fn is_ascii_digit(&self) -> bool {
+        (**self).is_ascii_digit()
+    }
+
+    #[inline]
+    fn is_ascii_hexdigit(&self) -> bool {
+        (**self).is_ascii_hexdigit()
+    }
+
+    #[inline]
+    fn is_ascii_punctuation(&self) -> bool {
+        (**self).is_ascii_punctuation()
+    }
+
+    #[inline]
+    fn is_ascii_graphic(&self) -> bool {
+        (**self).is_ascii_graphic()
+    }
+
+    #[inline]
+    fn is_ascii_whitespace(&self) -> bool {
+        (**self).is_ascii_whitespace()
+    }
+
+    #[inline]
+    fn is_ascii_control(&self) -> bool {
+        (**self).is_ascii_control()
     }
 }
 
