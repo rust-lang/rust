@@ -52,5 +52,5 @@ error[E0512]: transmute called with types of different sizes
    = note: source type: std::option::Option<T> (size can vary because of T)
    = note: target type: i32 (32 bits)
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 

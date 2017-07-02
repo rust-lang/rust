@@ -108,7 +108,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::traits::{FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
-use session::config;
+use session::{CompileIncomplete, config};
 use util::common::time;
 
 use syntax::ast;
@@ -293,7 +293,8 @@ pub fn provide(providers: &mut Providers) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                             -> Result<(), usize> {
+                             -> Result<(), CompileIncomplete>
+{
     let time_passes = tcx.sess.time_passes();
 
     // this ensures that later parts of type checking can assume that items
@@ -328,12 +329,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    let err_count = tcx.sess.err_count();
-    if err_count == 0 {
-        Ok(())
-    } else {
-        Err(err_count)
-    }
+    tcx.sess.compile_status()
 }
 
 /// A quasi-deprecated helper used in rustdoc and save-analysis to get

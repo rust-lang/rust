@@ -67,6 +67,7 @@ use rustc_trans::back::link;
 use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
+use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
@@ -74,7 +75,7 @@ use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
-use rustc::util::common::time;
+use rustc::util::common::{time, ErrorReported};
 
 use serialize::json::ToJson;
 
@@ -109,19 +110,14 @@ mod derive_registrar;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
-#[inline]
-fn abort_msg(err_count: usize) -> String {
-    match err_count {
-        0 => "aborting with no errors (maybe a bug?)".to_owned(),
-        1 => "aborting due to previous error".to_owned(),
-        e => format!("aborting due to {} previous errors", e),
-    }
-}
-
-pub fn abort_on_err<T>(result: Result<T, usize>, sess: &Session) -> T {
+pub fn abort_on_err<T>(result: Result<T, CompileIncomplete>, sess: &Session) -> T {
     match result {
-        Err(err_count) => {
-            sess.fatal(&abort_msg(err_count));
+        Err(CompileIncomplete::Errored(ErrorReported)) => {
+            sess.abort_if_errors();
+            panic!("error reported but abort_if_errors didn't abort???");
+        }
+        Err(CompileIncomplete::Stopped) => {
+            sess.fatal("compilation terminated");
         }
         Ok(x) => x,
     }
@@ -132,19 +128,20 @@ pub fn run<F>(run_compiler: F) -> isize
 {
     monitor(move || {
         let (result, session) = run_compiler();
-        if let Err(err_count) = result {
-            if err_count > 0 {
-                match session {
-                    Some(sess) => sess.fatal(&abort_msg(err_count)),
-                    None => {
-                        let emitter =
-                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None);
-                        let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
-                        handler.emit(&MultiSpan::new(),
-                                     &abort_msg(err_count),
-                                     errors::Level::Fatal);
-                        exit_on_err();
-                    }
+        if let Err(CompileIncomplete::Errored(_)) = result {
+            match session {
+                Some(sess) => {
+                    sess.abort_if_errors();
+                    panic!("error reported but abort_if_errors didn't abort???");
+                }
+                None => {
+                    let emitter =
+                        errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None);
+                    let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
+                    handler.emit(&MultiSpan::new(),
+                                 "aborting due to previous error(s)",
+                                 errors::Level::Fatal);
+                    exit_on_err();
                 }
             }
         }

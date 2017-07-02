@@ -23,5 +23,5 @@ note: ...but the borrowed content is only valid for the anonymous lifetime #1 de
 23 | |     }
    | |_____^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

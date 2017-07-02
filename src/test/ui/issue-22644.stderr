@@ -20,5 +20,5 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
 help: if you want to compare the casted value then write:
    |     println!("{}", (a as usize) < 4);
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

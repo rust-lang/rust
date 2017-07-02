@@ -10,5 +10,5 @@ note: for repeat count here
 16 |     let test_x = [0; issue_38875_b::FOO];
    |                      ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

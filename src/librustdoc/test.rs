@@ -25,7 +25,7 @@ use rustc_lint;
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::intravisit;
-use rustc::session::{self, config};
+use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_back::dynamic_lib::DynamicLibrary;
@@ -253,34 +253,24 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         driver::compile_input(&sess, &cstore, &input, &out, &None, None, &control)
     }));
 
-    match res {
-        Ok(r) => {
-            match r {
-                Err(count) => {
-                    if count > 0 && !compile_fail {
-                        sess.fatal("aborting due to previous error(s)")
-                    } else if count == 0 && compile_fail {
-                        panic!("test compiled while it wasn't supposed to")
-                    }
-                    if count > 0 && error_codes.len() > 0 {
-                        let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
-                        error_codes.retain(|err| !out.contains(err));
-                    }
-                }
-                Ok(()) if compile_fail => {
-                    panic!("test compiled while it wasn't supposed to")
-                }
-                _ => {}
-            }
+    let compile_result = match res {
+        Ok(Ok(())) | Ok(Err(CompileIncomplete::Stopped)) => Ok(()),
+        Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
+    };
+
+    match (compile_result, compile_fail) {
+        (Ok(()), true) => {
+            panic!("test compiled while it wasn't supposed to")
         }
-        Err(_) => {
-            if !compile_fail {
-                panic!("couldn't compile the test");
-            }
+        (Ok(()), false) => {}
+        (Err(()), true) => {
             if error_codes.len() > 0 {
                 let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
                 error_codes.retain(|err| !out.contains(err));
             }
+        }
+        (Err(()), false) => {
+            panic!("couldn't compile the test")
         }
     }
 

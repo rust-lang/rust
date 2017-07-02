@@ -25,5 +25,5 @@ error[E0453]: allow(bad_style) overruled by outer forbid(non_snake_case)
 19 | #[allow(unused, unused_variables, bad_style)]
    |                                   ^^^^^^^^^ overruled by previous forbid
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

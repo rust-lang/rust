@@ -15,5 +15,5 @@ error[E0618]: expected function, found `()`
 17 |     let x = foo(5)(2);
    |             ^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

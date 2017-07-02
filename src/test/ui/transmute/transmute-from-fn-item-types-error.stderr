@@ -104,5 +104,5 @@ error[E0512]: transmute called with types of different sizes
    = note: source type: std::option::Option<fn()> (64 bits)
    = note: target type: u32 (32 bits)
 
-error: aborting due to previous error(s)
+error: aborting due to 11 previous errors
 

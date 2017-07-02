@@ -85,5 +85,5 @@ error[E0046]: not all trait items implemented, missing: `fmt`
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 
