@@ -26,7 +26,6 @@
 #![feature(specialization)]
 #![feature(discriminant_value)]
 #![feature(rustc_private)]
-#![feature(sort_unstable)]
 
 #[macro_use]
 extern crate log;
