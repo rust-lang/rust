@@ -291,6 +291,9 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         }
     }
 
+    /// Given a region for a loan (Loan/SafeLoan), returns the corresponding loan_scope,
+    /// which is a CodeExtent that could represent the gen_scope and/or kill_scope
+    /// of a loan.
     fn loan_scope_from_region(&self, loan_region: ty::Region<'tcx>) -> Option<region::CodeExtent> {
         Some(match *loan_region {
             ty::ReScope(scope) => scope,
