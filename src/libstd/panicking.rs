@@ -262,6 +262,7 @@ impl<'a> PanicInfo<'a> {
 pub struct Location<'a> {
     file: &'a str,
     line: u32,
+    col: u32,
 }
 
 impl<'a> Location<'a> {
@@ -308,6 +309,29 @@ impl<'a> Location<'a> {
     pub fn line(&self) -> u32 {
         self.line
     }
+
+    /// Returns the column from which the panic originated.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// #![feature(panic_col)]
+    /// use std::panic;
+    ///
+    /// panic::set_hook(Box::new(|panic_info| {
+    ///     if let Some(location) = panic_info.location() {
+    ///         println!("panic occured at column {}", location.column());
+    ///     } else {
+    ///         println!("panic occured but can't get location information...");
+    ///     }
+    /// }));
+    ///
+    /// panic!("Normal panic");
+    /// ```
+    #[unstable(feature = "panic_col", reason = "recently added", issue = "42939")]
+    pub fn column(&self) -> u32 {
+        self.col
+    }
 }
 
 fn default_hook(info: &PanicInfo) {
@@ -329,6 +353,7 @@ fn default_hook(info: &PanicInfo) {
 
     let file = info.location.file;
     let line = info.location.line;
+    let col = info.location.col;
 
     let msg = match info.payload.downcast_ref::<&'static str>() {
         Some(s) => *s,
@@ -342,8 +367,8 @@ fn default_hook(info: &PanicInfo) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut ::io::Write| {
-        let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}",
-                         name, msg, file, line);
+        let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}:{}",
+                         name, msg, file, line, col);
 
         #[cfg(feature = "backtrace")]
         {
@@ -467,8 +492,9 @@ pub fn panicking() -> bool {
 #[unwind]
 pub extern fn rust_begin_panic(msg: fmt::Arguments,
                                file: &'static str,
-                               line: u32) -> ! {
-    begin_panic_fmt(&msg, &(file, line))
+                               line: u32,
+                               col: u32) -> ! {
+    begin_panic_fmt(&msg, &(file, line, col))
 }
 
 /// The entry point for panicking with a formatted message.
@@ -482,7 +508,7 @@ pub extern fn rust_begin_panic(msg: fmt::Arguments,
            issue = "0")]
 #[inline(never)] #[cold]
 pub fn begin_panic_fmt(msg: &fmt::Arguments,
-                       file_line: &(&'static str, u32)) -> ! {
+                       file_line_col: &(&'static str, u32, u32)) -> ! {
     use fmt::Write;
 
     // We do two allocations here, unfortunately. But (a) they're
@@ -492,7 +518,39 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments,
 
     let mut s = String::new();
     let _ = s.write_fmt(*msg);
-    begin_panic(s, file_line)
+    begin_panic_new(s, file_line_col)
+}
+
+// FIXME: In PR #42938, we have added the column as info passed to the panic
+// handling code. For this, we want to break the ABI of begin_panic.
+// This is not possible to do directly, as the stage0 compiler is hardcoded
+// to emit a call to begin_panic in src/libsyntax/ext/build.rs, only
+// with the file and line number being passed, but not the colum number.
+// By changing the compiler source, we can only affect behaviour of higher
+// stages. We need to perform the switch over two stage0 replacements, using
+// a temporary function begin_panic_new while performing the switch:
+// 0. Right now, we tell stage1 onward to emit a call to begin_panic_new.
+// 1. In the first SNAP, stage0 calls begin_panic_new with the new ABI,
+//    begin_panic stops being used. Now we can change begin_panic to
+//    the new ABI, and start emitting calls to begin_panic in higher
+//    stages again, this time with the new ABI.
+// 2. After the second SNAP, stage0 calls begin_panic with the new ABI,
+//    and we can remove the temporary begin_panic_new function.
+
+/// This is the entry point of panicking for panic!() and assert!().
+#[unstable(feature = "libstd_sys_internals",
+           reason = "used by the panic! macro",
+           issue = "0")]
+#[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
+pub fn begin_panic_new<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u32)) -> ! {
+    // Note that this should be the only allocation performed in this code path.
+    // Currently this means that panic!() on OOM will invoke this code path,
+    // but then again we're not really ready for panic on OOM anyway. If
+    // we do start doing this, then we should propagate this allocation to
+    // be performed in the parent of this thread instead of the thread that's
+    // panicking.
+
+    rust_panic_with_hook(Box::new(msg), file_line_col)
 }
 
 /// This is the entry point of panicking for panic!() and assert!().
@@ -508,7 +566,10 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line: &(&'static str, u32)) -> ! 
     // be performed in the parent of this thread instead of the thread that's
     // panicking.
 
-    rust_panic_with_hook(Box::new(msg), file_line)
+    let (file, line) = *file_line;
+    let file_line_col = (file, line, 0);
+
+    rust_panic_with_hook(Box::new(msg), &file_line_col)
 }
 
 /// Executes the primary logic for a panic, including checking for recursive
@@ -520,8 +581,8 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line: &(&'static str, u32)) -> ! 
 #[inline(never)]
 #[cold]
 fn rust_panic_with_hook(msg: Box<Any + Send>,
-                        file_line: &(&'static str, u32)) -> ! {
-    let (file, line) = *file_line;
+                        file_line_col: &(&'static str, u32, u32)) -> ! {
+    let (file, line, col) = *file_line_col;
 
     let panics = update_panic_count(1);
 
@@ -540,8 +601,9 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
         let info = PanicInfo {
             payload: &*msg,
             location: Location {
-                file: file,
-                line: line,
+                file,
+                line,
+                col,
             },
         };
         HOOK_LOCK.read();
