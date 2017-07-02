@@ -314,12 +314,6 @@ pub use self::iterator::Iterator;
            reason = "likely to be replaced by finer-grained traits",
            issue = "42168")]
 pub use self::range::Step;
-#[unstable(feature = "step_by", reason = "recent addition",
-           issue = "27741")]
-#[rustc_deprecated(since = "1.19.0",
-                   reason = "replaced by `iter::StepBy`")]
-#[allow(deprecated)]
-pub use self::range::StepBy as DeprecatedStepBy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{Repeat, repeat};

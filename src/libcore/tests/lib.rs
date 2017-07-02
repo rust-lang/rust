@@ -36,7 +36,6 @@
 #![feature(sort_internals)]
 #![feature(sort_unstable)]
 #![feature(specialization)]
-#![feature(step_by)]
 #![feature(step_trait)]
 #![feature(test)]
 #![feature(trusted_len)]
