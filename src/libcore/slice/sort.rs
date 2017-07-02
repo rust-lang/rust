@@ -351,7 +351,7 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
     if start_l < end_l {
         // The left block remains.
-        // Move it's remaining out-of-order elements to the far right.
+        // Move its remaining out-of-order elements to the far right.
         debug_assert_eq!(width(l, r), block_l);
         while start_l < end_l {
             unsafe {
@@ -363,7 +363,7 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
         width(v.as_mut_ptr(), r)
     } else if start_r < end_r {
         // The right block remains.
-        // Move it's remaining out-of-order elements to the far left.
+        // Move its remaining out-of-order elements to the far left.
         debug_assert_eq!(width(l, r), block_r);
         while start_r < end_r {
             unsafe {

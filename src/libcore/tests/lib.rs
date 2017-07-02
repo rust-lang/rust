@@ -34,7 +34,6 @@
 #![feature(slice_patterns)]
 #![feature(slice_rotate)]
 #![feature(sort_internals)]
-#![feature(sort_unstable)]
 #![feature(specialization)]
 #![feature(step_by)]
 #![feature(step_trait)]

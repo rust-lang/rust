@@ -212,15 +212,15 @@ pub trait SliceExt {
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
 
-    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[stable(feature = "sort_unstable", since = "1.20.0")]
     fn sort_unstable(&mut self)
         where Self::Item: Ord;
 
-    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[stable(feature = "sort_unstable", since = "1.20.0")]
     fn sort_unstable_by<F>(&mut self, compare: F)
         where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
 
-    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[stable(feature = "sort_unstable", since = "1.20.0")]
     fn sort_unstable_by_key<B, F>(&mut self, f: F)
         where F: FnMut(&Self::Item) -> B,
               B: Ord;

@@ -1144,6 +1144,10 @@ impl<T> [T] {
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
     ///
+    /// When applicable, unstable sorting is preferred because it is generally faster than stable
+    /// sorting and it doesn't allocate auxiliary memory.
+    /// See [`sort_unstable`](#method.sort_unstable).
+    ///
     /// # Current implementation
     ///
     /// The current algorithm is an adaptive, iterative merge sort inspired by
@@ -1173,6 +1177,10 @@ impl<T> [T] {
     /// Sorts the slice with a comparator function.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
+    ///
+    /// When applicable, unstable sorting is preferred because it is generally faster than stable
+    /// sorting and it doesn't allocate auxiliary memory.
+    /// See [`sort_unstable_by`](#method.sort_unstable_by).
     ///
     /// # Current implementation
     ///
@@ -1206,6 +1214,10 @@ impl<T> [T] {
     /// Sorts the slice with a key extraction function.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
+    ///
+    /// When applicable, unstable sorting is preferred because it is generally faster than stable
+    /// sorting and it doesn't allocate auxiliary memory.
+    /// See [`sort_unstable_by_key`](#method.sort_unstable_by_key).
     ///
     /// # Current implementation
     ///
@@ -1251,8 +1263,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(sort_unstable)]
-    ///
     /// let mut v = [-5, 4, 1, -3, 2];
     ///
     /// v.sort_unstable();
@@ -1260,8 +1270,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
-    // FIXME #40585: Mention `sort_unstable` in the documentation for `sort`.
-    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable(&mut self)
         where T: Ord
@@ -1288,8 +1297,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(sort_unstable)]
-    ///
     /// let mut v = [5, 4, 1, 3, 2];
     /// v.sort_unstable_by(|a, b| a.cmp(b));
     /// assert!(v == [1, 2, 3, 4, 5]);
@@ -1300,8 +1307,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
-    // FIXME #40585: Mention `sort_unstable_by` in the documentation for `sort_by`.
-    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable_by<F>(&mut self, compare: F)
         where F: FnMut(&T, &T) -> Ordering
@@ -1328,8 +1334,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(sort_unstable)]
-    ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// v.sort_unstable_by_key(|k| k.abs());
@@ -1337,8 +1341,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
-    // FIXME #40585: Mention `sort_unstable_by_key` in the documentation for `sort_by_key`.
-    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
     pub fn sort_unstable_by_key<B, F>(&mut self, f: F)
         where F: FnMut(&T) -> B,
