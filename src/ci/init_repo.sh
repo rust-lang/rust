@@ -44,7 +44,7 @@ retry sh -c "rm -rf $cache_src_dir && mkdir -p $cache_src_dir && \
     git clone --depth 1 https://github.com/rust-lang/rust.git $cache_src_dir"
 (cd $cache_src_dir && git rm src/llvm)
 retry sh -c "cd $cache_src_dir && \
-    git submodule deinit -f . && git submodule sync && git submodule update --init"
+    git submodule deinit -f . && git submodule sync && git submodule update --init --recursive"
 
 travis_fold end update_cache
 travis_time_finish
@@ -69,11 +69,12 @@ for module in $modules; do
     fi
     if [ ! -d "$cache_src_dir/$module" ]; then
         echo "WARNING: $module not found in pristine repo"
-        retry sh -c "git submodule deinit -f $module && git submodule update --init $module"
+        retry sh -c "git submodule deinit -f $module && \
+            git submodule update --init --recursive $module"
         continue
     fi
     retry sh -c "git submodule deinit -f $module && \
-        git submodule update --init --reference $cache_src_dir/$module $module"
+        git submodule update --init --recursive --reference $cache_src_dir/$module $module"
 done
 
 travis_fold end update_submodules
