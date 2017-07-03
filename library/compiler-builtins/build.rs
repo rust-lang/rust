@@ -4095,6 +4095,16 @@ mod c {
             ],
         );
 
+        // When compiling in rustbuild (the rust-lang/rust repo) this library
+        // also needs to satisfy intrinsics that jemalloc or C in general may
+        // need, so include a few more that aren't typically needed by
+        // LLVM/Rust.
+        if env::var_os("CARGO_FEATURE_RUSTBUILD").is_some() {
+            sources.exend(&[
+                "ffsdi2.c",
+            ]);
+        }
+
         if target_os != "ios" {
             sources.extend(
                 &[

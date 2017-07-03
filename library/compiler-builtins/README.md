@@ -306,7 +306,7 @@ These builtins are never called by LLVM.
 - ~~ctzdi2.c~~
 - ~~ctzsi2.c~~
 - ~~ctzti2.c~~
-- ~~ffsdi2.c~~
+- ~~ffsdi2.c~~ - this is [called by gcc][jemalloc-fail] though!
 - ~~ffsti2.c~~
 - ~~mulvdi3.c~~
 - ~~mulvsi3.c~~
@@ -332,6 +332,8 @@ These builtins are never called by LLVM.
 - ~~ucmpdi2.c~~
 - ~~ucmpti2.c~~
 - ~~udivmodti4.c~~
+
+[jemalloc-fail]: https://travis-ci.org/rust-lang/rust/jobs/249772758
 
 Rust only exposes atomic types on platforms that support them, and therefore does not need to fall back to software implementations.
 
