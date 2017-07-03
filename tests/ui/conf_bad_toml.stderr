@@ -1,4 +1,4 @@
 error: error reading Clippy's configuration file: expected an equals, found an identifier at line 1
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -11,46 +11,34 @@ warning: use of a blacklisted/placeholder name `toto`
    |
 12 |     let toto = 42;
    |         ^^^^
-   |
-   = note: #[warn(blacklisted_name)] on by default
 
 warning: use of a blacklisted/placeholder name `tata`
   --> $DIR/conf_french_blacklisted_name.rs:13:9
    |
 13 |     let tata = 42;
    |         ^^^^
-   |
-   = note: #[warn(blacklisted_name)] on by default
 
 warning: use of a blacklisted/placeholder name `titi`
   --> $DIR/conf_french_blacklisted_name.rs:14:9
    |
 14 |     let titi = 42;
    |         ^^^^
-   |
-   = note: #[warn(blacklisted_name)] on by default
 
 warning: use of a blacklisted/placeholder name `toto`
   --> $DIR/conf_french_blacklisted_name.rs:20:10
    |
 20 |         (toto, Some(tata), titi @ Some(_)) => (),
    |          ^^^^
-   |
-   = note: #[warn(blacklisted_name)] on by default
 
 warning: use of a blacklisted/placeholder name `tata`
   --> $DIR/conf_french_blacklisted_name.rs:20:21
    |
 20 |         (toto, Some(tata), titi @ Some(_)) => (),
    |                     ^^^^
-   |
-   = note: #[warn(blacklisted_name)] on by default
 
 warning: use of a blacklisted/placeholder name `titi`
   --> $DIR/conf_french_blacklisted_name.rs:20:28
    |
 20 |         (toto, Some(tata), titi @ Some(_)) => (),
    |                            ^^^^
-   |
-   = note: #[warn(blacklisted_name)] on by default
 

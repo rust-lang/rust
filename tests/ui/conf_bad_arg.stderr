@@ -10,5 +10,5 @@ note: Clippy will use default configuration
 4 | #![plugin(clippy(conf_file))]
   |                  ^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

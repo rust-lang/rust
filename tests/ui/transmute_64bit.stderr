@@ -11,6 +11,4 @@ warning: transmute from a `f64` to a pointer
    |
 11 |         let _: *mut usize = std::mem::transmute(6.0f64);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: #[warn(wrong_transmute)] on by default
 
