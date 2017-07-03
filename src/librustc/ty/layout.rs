@@ -609,7 +609,7 @@ impl<'a, 'tcx> Struct {
         };
 
         let mut ret = Struct {
-            align: align,
+            align,
             primitive_align: align,
             packed: repr.packed(),
             sized: true,
@@ -910,10 +910,10 @@ impl<'a, 'tcx> Union {
     fn new(dl: &TargetDataLayout, packed: bool) -> Union {
         let align = if packed { dl.i8_align } else { dl.aggregate_align };
         Union {
-            align: align,
+            align,
             primitive_align: align,
             min_size: Size::from_bytes(0),
-            packed: packed,
+            packed,
         }
     }
 
@@ -1169,8 +1169,8 @@ impl<'a, 'tcx> Layout {
                     sized: true,
                     align: element.align(dl),
                     primitive_align: element.primitive_align(dl),
-                    element_size: element_size,
-                    count: count
+                    element_size,
+                    count,
                 }
             }
             ty::TySlice(element) => {
@@ -1280,9 +1280,9 @@ impl<'a, 'tcx> Layout {
                     // grok.
                     let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
                     return success(CEnum {
-                        discr: discr,
-                        signed: signed,
-                        non_zero: non_zero,
+                        discr,
+                        signed,
+                        non_zero,
                         // FIXME: should be u128?
                         min: min as u64,
                         max: max as u64
@@ -1364,7 +1364,7 @@ impl<'a, 'tcx> Layout {
                             };
                             return success(RawNullablePointer {
                                 nndiscr: discr as u64,
-                                value: value,
+                                value,
                             });
                         }
 
@@ -1491,10 +1491,10 @@ impl<'a, 'tcx> Layout {
 
                 General {
                     discr: ity,
-                    variants: variants,
-                    size: size,
-                    align: align,
-                    primitive_align: primitive_align
+                    variants,
+                    size,
+                    align,
+                    primitive_align,
                 }
             }
 
@@ -1957,7 +1957,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 ty::TyParam(_) | ty::TyProjection(_) => {
                     assert!(tail.has_param_types() || tail.has_self_ty());
                     Ok(SizeSkeleton::Pointer {
-                        non_zero: non_zero,
+                        non_zero,
                         tail: tcx.erase_regions(&tail)
                     })
                 }
@@ -2016,7 +2016,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                         return Ok(SizeSkeleton::Pointer {
                             non_zero: non_zero ||
                                 Some(def.did) == tcx.lang_items.non_zero(),
-                            tail: tail
+                            tail,
                         });
                     } else {
                         return Err(err);
@@ -2030,7 +2030,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                     (None, Some(SizeSkeleton::Pointer { non_zero: true, tail })) => {
                         Ok(SizeSkeleton::Pointer {
                             non_zero: false,
-                            tail: tail
+                            tail,
                         })
                     }
                     _ => Err(err)
@@ -2115,7 +2115,7 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for LayoutCx<'a, 'tcx> {
         let ty = self.normalize_projections(ty);
 
         Ok(TyLayout {
-            ty: ty,
+            ty,
             layout: ty.layout(self.tcx, self.param_env)?,
             variant_index: None
         })

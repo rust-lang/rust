@@ -268,7 +268,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             infcx: self.infcx,
             span: self.trace.cause.span,
             for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
-            ambient_variance: ambient_variance,
+            ambient_variance,
             needs_wf: false,
         };
 

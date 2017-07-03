@@ -458,9 +458,9 @@ impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
             LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.trans_normalize(infcx, param_env) },
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
                 LvalueTy::Downcast {
-                    adt_def: adt_def,
+                    adt_def,
                     substs: substs.trans_normalize(infcx, param_env),
-                    variant_index: variant_index
+                    variant_index,
                 }
             }
         }
@@ -674,7 +674,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                       -> CombineFields<'a, 'gcx, 'tcx> {
         CombineFields {
             infcx: self,
-            trace: trace,
+            trace,
             cause: None,
             param_env,
             obligations: PredicateObligations::new(),
@@ -1235,7 +1235,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.report_and_explain_type_error(
             trace,
             &TypeError::TyParamDefaultMismatch(ExpectedFound {
-                expected: expected,
+                expected,
                 found: actual
             }))
             .emit();
@@ -1279,7 +1279,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let span = cause.span;
         let match_trait_ref = match_a.skip_binder().projection_ty.trait_ref;
         let trace = TypeTrace {
-            cause: cause,
+            cause,
             values: TraitRefs(ExpectedFound::new(true, match_trait_ref, match_b))
         };
 
@@ -1443,10 +1443,10 @@ impl<'tcx> SubregionOrigin<'tcx> {
                                                                        lint_id } =>
                 SubregionOrigin::CompareImplMethodObligation {
                     span: cause.span,
-                    item_name: item_name,
-                    impl_item_def_id: impl_item_def_id,
-                    trait_item_def_id: trait_item_def_id,
-                    lint_id: lint_id,
+                    item_name,
+                    impl_item_def_id,
+                    trait_item_def_id,
+                    lint_id,
                 },
 
             _ => default(),

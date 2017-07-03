@@ -152,11 +152,11 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
                           cause: ObligationCause<'tcx>)
     {
         let trait_ref = ty::TraitRef {
-            def_id: def_id,
+            def_id,
             substs: infcx.tcx.mk_substs_trait(ty, &[]),
         };
         self.register_predicate_obligation(infcx, Obligation {
-            cause: cause,
+            cause,
             recursion_depth: 0,
             param_env,
             predicate: trait_ref.to_predicate()
@@ -191,7 +191,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         }
 
         self.predicates.register_obligation(PendingPredicateObligation {
-            obligation: obligation,
+            obligation,
             stalled_on: vec![]
         });
     }
@@ -259,7 +259,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
             // Process pending obligations.
             let outcome = self.predicates.process_obligations(&mut FulfillProcessor {
-                selcx: selcx,
+                selcx,
                 region_obligations: &mut self.region_obligations,
             });
             debug!("select: outcome={:?}", outcome);
@@ -606,7 +606,7 @@ impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
     pub fn new(dep_graph: DepGraph) -> GlobalFulfilledPredicates<'gcx> {
         GlobalFulfilledPredicates {
             set: FxHashSet(),
-            dep_graph: dep_graph,
+            dep_graph,
         }
     }
 

@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             Ok(HrMatchResult {
                 value: a_value,
-                unconstrained_regions: unconstrained_regions,
+                unconstrained_regions,
             })
         });
     }

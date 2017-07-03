@@ -212,7 +212,7 @@ impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
         Some(match *self {
             BuiltinCandidate { has_nested } => {
                 BuiltinCandidate {
-                    has_nested: has_nested
+                    has_nested,
                 }
             }
             ImplCandidate(def_id) => ImplCandidate(def_id),
@@ -290,7 +290,7 @@ pub struct EvaluationCache<'tcx> {
 impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>) -> SelectionContext<'cx, 'gcx, 'tcx> {
         SelectionContext {
-            infcx: infcx,
+            infcx,
             freshener: infcx.freshener(),
             intercrate: false,
             inferred_obligations: SnapshotVec::new(),
@@ -299,7 +299,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>) -> SelectionContext<'cx, 'gcx, 'tcx> {
         SelectionContext {
-            infcx: infcx,
+            infcx,
             freshener: infcx.freshener(),
             intercrate: true,
             inferred_obligations: SnapshotVec::new(),
@@ -2205,7 +2205,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("vtable_default_impl: obligations={:?}", obligations);
 
         VtableDefaultImplData {
-            trait_def_id: trait_def_id,
+            trait_def_id,
             nested: obligations
         }
     }
@@ -2273,7 +2273,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // e.g. `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
         impl_obligations.append(&mut substs.obligations);
 
-        VtableImplData { impl_def_id: impl_def_id,
+        VtableImplData { impl_def_id,
                          substs: substs.value,
                          nested: impl_obligations }
     }
@@ -2336,7 +2336,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         VtableObjectData {
             upcast_trait_ref: upcast_trait_ref.unwrap(),
-            vtable_base: vtable_base,
+            vtable_base,
             nested: vec![]
         }
     }
@@ -2405,7 +2405,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Predicate::ClosureKind(closure_def_id, kind)));
 
         Ok(VtableClosureData {
-            closure_def_id: closure_def_id,
+            closure_def_id,
             substs: substs.clone(),
             nested: obligations
         })
@@ -2826,8 +2826,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             obligation.predicate.to_poly_trait_ref().fold_with(&mut self.freshener);
 
         TraitObligationStack {
-            obligation: obligation,
-            fresh_trait_ref: fresh_trait_ref,
+            obligation,
+            fresh_trait_ref,
             previous: previous_stack,
         }
     }
@@ -2911,7 +2911,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             predicate.obligations.into_iter().chain(
                 Some(Obligation {
                     cause: cause.clone(),
-                    recursion_depth: recursion_depth,
+                    recursion_depth,
                     param_env,
                     predicate: predicate.value
                 }))

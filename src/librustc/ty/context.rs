@@ -107,7 +107,7 @@ pub struct CtxtInterners<'tcx> {
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx DroplessArena) -> CtxtInterners<'tcx> {
         CtxtInterners {
-            arena: arena,
+            arena,
             type_: RefCell::new(FxHashSet()),
             type_list: RefCell::new(FxHashSet()),
             substs: RefCell::new(FxHashSet()),
@@ -732,12 +732,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_interners: interners,
             dep_graph: dep_graph.clone(),
             types: common_types,
-            named_region_map: named_region_map,
+            named_region_map,
             trait_map: resolutions.trait_map,
             export_map: resolutions.export_map,
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
-            hir: hir,
-            def_path_hash_to_def_id: def_path_hash_to_def_id,
+            hir,
+            def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
             mir_passes,
             freevars: RefCell::new(resolutions.freevars),
@@ -745,7 +745,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
-            lang_items: lang_items,
+            lang_items,
             used_unsafe: RefCell::new(NodeSet()),
             used_mut_nodes: RefCell::new(NodeSet()),
             stability: RefCell::new(stability),
@@ -753,7 +753,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             evaluation_cache: traits::EvaluationCache::new(),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
             crate_name: Symbol::intern(crate_name),
-            data_layout: data_layout,
+            data_layout,
             layout_interner: RefCell::new(FxHashSet()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
@@ -964,8 +964,8 @@ pub mod tls {
             let prev = tls.get();
             tls.set(Some((gcx_ptr, interners_ptr)));
             let ret = f(TyCtxt {
-                gcx: gcx,
-                interners: interners
+                gcx,
+                interners,
             });
             tls.set(prev);
             ret
@@ -980,8 +980,8 @@ pub mod tls {
             let gcx = unsafe { &*(gcx as *const GlobalCtxt) };
             let interners = unsafe { &*(interners as *const CtxtInterners) };
             f(TyCtxt {
-                gcx: gcx,
-                interners: interners
+                gcx,
+                interners,
             })
         })
     }
@@ -1408,7 +1408,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                       substs: &'tcx Substs<'tcx>)
         -> Ty<'tcx> {
         self.mk_closure_from_closure_substs(closure_id, ClosureSubsts {
-            substs: substs
+            substs,
         })
     }
 

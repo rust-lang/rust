@@ -354,7 +354,7 @@ impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
 impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> RegionVarBindings<'a, 'gcx, 'tcx> {
         RegionVarBindings {
-            tcx: tcx,
+            tcx,
             var_origins: RefCell::new(Vec::new()),
             values: RefCell::new(None),
             constraints: RefCell::new(FxHashMap()),
@@ -378,7 +378,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         debug!("RegionVarBindings: start_snapshot({})", length);
         self.undo_log.borrow_mut().push(OpenSnapshot);
         RegionSnapshot {
-            length: length,
+            length,
             region_snapshot: self.unification_table.borrow_mut().snapshot(),
             skolemization_count: self.skolemization_count.get(),
         }
@@ -733,10 +733,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                                 sub: Region<'tcx>,
                                 bound: VerifyBound<'tcx>) {
         self.add_verify(Verify {
-            kind: kind,
-            origin: origin,
+            kind,
+            origin,
             region: sub,
-            bound: bound
+            bound,
         });
     }
 
@@ -1459,7 +1459,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                     ConstrainRegSubVar(region, _) |
                     ConstrainVarSubReg(_, region) => {
                         state.result.push(RegionAndOrigin {
-                            region: region,
+                            region,
                             origin: this.constraints.borrow().get(&edge.data).unwrap().clone(),
                         });
                     }

@@ -156,10 +156,10 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         $( item_refs.insert($name, $variant as usize); )*
 
         LanguageItemCollector {
-            session: session,
-            hir_map: hir_map,
+            session,
+            hir_map,
             items: LanguageItems::new(),
-            item_refs: item_refs,
+            item_refs,
         }
     }
 

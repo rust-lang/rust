@@ -176,7 +176,7 @@ impl<'a> State<'a> {
                 cur_lit: 0,
             },
             boxes: Vec::new(),
-            ann: ann,
+            ann,
         }
     }
 }
@@ -196,7 +196,7 @@ pub fn to_string<F>(ann: &PpAnn, f: F) -> String
                 cur_lit: 0,
             },
             boxes: Vec::new(),
-            ann: ann,
+            ann,
         };
         f(&mut printer).unwrap();
         eof(&mut printer.s).unwrap();

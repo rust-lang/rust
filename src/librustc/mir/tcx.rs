@@ -58,7 +58,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                              })
                              .ty;
                 LvalueTy::Ty {
-                    ty: ty,
+                    ty,
                 }
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
@@ -85,8 +85,8 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                         assert!(adt_def.is_enum());
                         assert!(index < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
-                        LvalueTy::Downcast { adt_def: adt_def,
-                                             substs: substs,
+                        LvalueTy::Downcast { adt_def,
+                                             substs,
                                              variant_index: index }
                     }
                     _ => {
@@ -104,9 +104,9 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
             LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
                 LvalueTy::Downcast {
-                    adt_def: adt_def,
+                    adt_def,
                     substs: substs.fold_with(folder),
-                    variant_index: variant_index
+                    variant_index,
                 }
             }
         }

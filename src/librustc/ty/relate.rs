@@ -182,8 +182,8 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
         Ok(ty::FnSig {
             inputs_and_output: relation.tcx().intern_type_list(&inputs_and_output),
             variadic: a.variadic,
-            unsafety: unsafety,
-            abi: abi
+            unsafety,
+            abi,
         })
     }
 }
@@ -250,9 +250,9 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
             let trait_ref = relation.relate(&a.trait_ref, &b.trait_ref)?;
             let ty = relation.relate(&a.ty, &b.ty)?;
             Ok(ty::ExistentialProjection {
-                trait_ref: trait_ref,
+                trait_ref,
                 item_name: a.item_name,
-                ty: ty
+                ty,
             })
         }
     }

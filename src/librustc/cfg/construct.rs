@@ -58,11 +58,11 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
-        tcx: tcx,
+        tcx,
         owner_def_id,
-        tables: tables,
-        graph: graph,
-        fn_exit: fn_exit,
+        tables,
+        graph,
+        fn_exit,
         loop_scopes: Vec::new(),
         breakable_block_scopes: Vec::new(),
     };
@@ -70,8 +70,8 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cfg_builder.add_contained_edge(body_exit, fn_exit);
     let CFGBuilder { graph, .. } = cfg_builder;
     CFG {
-        graph: graph,
-        entry: entry,
+        graph,
+        entry,
         exit: fn_exit,
     }
 }

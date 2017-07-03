@@ -48,7 +48,7 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> TypeFreshener<'a, 'gcx, 'tcx> {
         TypeFreshener {
-            infcx: infcx,
+            infcx,
             freshen_count: 0,
             freshen_map: FxHashMap(),
         }

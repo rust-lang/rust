@@ -245,11 +245,11 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
            -> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx>
     {
         AssociatedTypeNormalizer {
-            selcx: selcx,
-            param_env: param_env,
-            cause: cause,
+            selcx,
+            param_env,
+            cause,
             obligations: vec![],
-            depth: depth,
+            depth,
         }
     }
 
@@ -371,7 +371,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             let ty_var = selcx.infcx().next_ty_var(
                 TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
             let projection = ty::Binder(ty::ProjectionPredicate {
-                projection_ty: projection_ty,
+                projection_ty,
                 ty: ty_var
             });
             let obligation = Obligation::with_depth(
@@ -514,12 +514,12 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 obligations.extend(normalizer.obligations);
                 Normalized {
                     value: normalized_ty,
-                    obligations: obligations,
+                    obligations,
                 }
             } else {
                 Normalized {
                     value: projected_ty,
-                    obligations: obligations,
+                    obligations,
                 }
             };
             infcx.projection_cache.borrow_mut()
@@ -586,7 +586,7 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
                                       -> NormalizedTy<'tcx>
 {
     let trait_ref = projection_ty.trait_ref.to_poly_trait_ref();
-    let trait_obligation = Obligation { cause: cause,
+    let trait_obligation = Obligation { cause,
                                         recursion_depth: depth,
                                         param_env,
                                         predicate: trait_ref.to_predicate() };
@@ -1232,7 +1232,7 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
         Ok(InferOk { value: ty_match, obligations }) => {
             Progress {
                 ty: ty_match.value,
-                obligations: obligations,
+                obligations,
                 cacheable: ty_match.unconstrained_regions.is_empty(),
             }
         }
@@ -1306,7 +1306,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
         if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
             return specialization_graph::NodeItem {
                 node: specialization_graph::Node::Impl(impl_def_id),
-                item: item,
+                item,
             };
         }
     }

@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             if let Some((i, _)) = stack.iter().enumerate().rev()
                                        .find(|&(_, &(_, ref q))| *q == query) {
                 return Err(CycleError {
-                    span: span,
+                    span,
                     cycle: RefMut::map(stack, |stack| &mut stack[i..])
                 });
             }

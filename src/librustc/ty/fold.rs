@@ -238,10 +238,10 @@ impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
         where F : FnMut(ty::Region<'tcx>, u32) -> ty::Region<'tcx>
     {
         RegionFolder {
-            tcx: tcx,
-            skipped_regions: skipped_regions,
+            tcx,
+            skipped_regions,
             current_depth: 1,
-            fld_r: fld_r,
+            fld_r,
         }
     }
 }
@@ -393,9 +393,9 @@ impl<'a, 'gcx, 'tcx> RegionReplacer<'a, 'gcx, 'tcx> {
         where F : FnMut(ty::BoundRegion) -> ty::Region<'tcx>
     {
         RegionReplacer {
-            tcx: tcx,
+            tcx,
             current_depth: 1,
-            fld_r: fld_r,
+            fld_r,
             map: FxHashMap()
         }
     }
@@ -621,7 +621,7 @@ impl LateBoundRegionsCollector {
         LateBoundRegionsCollector {
             current_depth: 1,
             regions: FxHashSet(),
-            just_constrained: just_constrained,
+            just_constrained,
         }
     }
 }

@@ -190,9 +190,9 @@ impl Decodable for DefPathTable {
         }
 
         Ok(DefPathTable {
-            index_to_key: index_to_key,
-            key_to_index: key_to_index,
-            def_path_hashes: def_path_hashes,
+            index_to_key,
+            key_to_index,
+            def_path_hashes,
         })
     }
 }
@@ -578,7 +578,7 @@ impl Definitions {
         let mut key = DefKey {
             parent: Some(parent),
             disambiguated_data: DisambiguatedDefPathData {
-                data: data,
+                data,
                 disambiguator: 0
             }
         };

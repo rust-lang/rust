@@ -288,7 +288,7 @@ pub fn supertrait_def_ids<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
                                            -> SupertraitDefIds<'cx, 'gcx, 'tcx>
 {
     SupertraitDefIds {
-        tcx: tcx,
+        tcx,
         stack: vec![trait_def_id],
         visited: Some(trait_def_id).into_iter().collect(),
     }
@@ -399,8 +399,8 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 
     generic_bounds.predicates.iter().map(|predicate| {
         Obligation { cause: cause.clone(),
-                     recursion_depth: recursion_depth,
-                     param_env: param_env,
+                     recursion_depth,
+                     param_env,
                      predicate: predicate.clone() }
     }).collect()
 }
@@ -413,9 +413,9 @@ pub fn predicate_for_trait_ref<'tcx>(
     -> PredicateObligation<'tcx>
 {
     Obligation {
-        cause: cause,
-        param_env: param_env,
-        recursion_depth: recursion_depth,
+        cause,
+        param_env,
+        recursion_depth,
         predicate: trait_ref.to_predicate(),
     }
 }

@@ -70,14 +70,14 @@ impl DeprecationEntry {
     fn local(attr: Deprecation, id: DefId) -> DeprecationEntry {
         assert!(id.is_local());
         DeprecationEntry {
-            attr: attr,
+            attr,
             origin: Some(id.index),
         }
     }
 
     fn external(attr: Deprecation) -> DeprecationEntry {
         DeprecationEntry {
-            attr: attr,
+            attr,
             origin: None,
         }
     }
@@ -384,7 +384,7 @@ impl<'a, 'tcx> Index<'tcx> {
 
         let krate = tcx.hir.krate();
         let mut annotator = Annotator {
-            tcx: tcx,
+            tcx,
             index: self,
             parent_stab: None,
             parent_depr: None,
@@ -424,7 +424,7 @@ impl<'a, 'tcx> Index<'tcx> {
         let mut staged_api = FxHashMap();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         Index {
-            staged_api: staged_api,
+            staged_api,
             stab_map: DefIdMap(),
             depr_map: DefIdMap(),
             active_features: FxHashSet(),
@@ -717,8 +717,8 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     if tcx.stability.borrow().staged_api[&LOCAL_CRATE] {
         let krate = tcx.hir.krate();
         let mut missing = MissingStabilityAnnotations {
-            tcx: tcx,
-            access_levels: access_levels,
+            tcx,
+            access_levels,
         };
         missing.check_missing_stability(ast::CRATE_NODE_ID, krate.span);
         intravisit::walk_crate(&mut missing, krate);

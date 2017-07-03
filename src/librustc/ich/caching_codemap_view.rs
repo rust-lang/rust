@@ -44,7 +44,7 @@ impl<'gcx> CachingCodemapView<'gcx> {
         };
 
         CachingCodemapView {
-            codemap: codemap,
+            codemap,
             line_cache: [entry.clone(), entry.clone(), entry.clone()],
             time_stamp: 0,
         }

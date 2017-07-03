@@ -78,7 +78,7 @@ impl DepGraphThreadData {
         }
 
         DepGraphThreadData {
-            enabled: enabled,
+            enabled,
             shadow_graph: ShadowGraph::new(),
             messages: VecCell::with_capacity(INITIAL_CAPACITY),
             swap_in: rx2,

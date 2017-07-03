@@ -78,7 +78,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitRef<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| ty::TraitRef {
             def_id: self.def_id,
-            substs: substs
+            substs,
         })
     }
 }
@@ -88,7 +88,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialTraitRef<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| ty::ExistentialTraitRef {
             def_id: self.def_id,
-            substs: substs
+            substs,
         })
     }
 }
@@ -98,7 +98,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
                              -> Option<ty::TraitPredicate<'tcx>> {
         tcx.lift(&self.trait_ref).map(|trait_ref| ty::TraitPredicate {
-            trait_ref: trait_ref
+            trait_ref,
         })
     }
 }
@@ -117,8 +117,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::SubtypePredicate<'a> {
                              -> Option<ty::SubtypePredicate<'tcx>> {
         tcx.lift(&(self.a, self.b)).map(|(a, b)| ty::SubtypePredicate {
             a_is_expected: self.a_is_expected,
-            a: a,
-            b: b,
+            a,
+            b,
         })
     }
 }
@@ -146,8 +146,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
                              -> Option<ty::ProjectionPredicate<'tcx>> {
         tcx.lift(&(self.projection_ty, self.ty)).map(|(projection_ty, ty)| {
             ty::ProjectionPredicate {
-                projection_ty: projection_ty,
-                ty: ty
+                projection_ty,
+                ty,
             }
         })
     }
@@ -158,9 +158,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&(self.trait_ref, self.ty)).map(|(trait_ref, ty)| {
             ty::ExistentialProjection {
-                trait_ref: trait_ref,
+                trait_ref,
                 item_name: self.item_name,
-                ty: ty
+                ty,
             }
         })
     }
@@ -300,8 +300,8 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::error::ExpectedFound<T> {
         tcx.lift(&self.expected).and_then(|expected| {
             tcx.lift(&self.found).map(|found| {
                 ty::error::ExpectedFound {
-                    expected: expected,
-                    found: found
+                    expected,
+                    found,
                 }
             })
         })
@@ -313,7 +313,7 @@ impl<'a, 'tcx> Lift<'tcx> for type_variable::Default<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.ty).map(|ty| {
             type_variable::Default {
-                ty: ty,
+                ty,
                 origin_span: self.origin_span,
                 def_id: self.def_id
             }
