@@ -64,6 +64,8 @@ check-aux:
 		src/test/run-pass-fulldeps/pretty \
 		src/test/run-fail-fulldeps/pretty \
 		$(BOOTSTRAP_ARGS)
+check-bootstrap:
+	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:
