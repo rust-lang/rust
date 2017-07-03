@@ -1,7 +1,7 @@
 - Feature Name: tiered_browser_support
 - Start Date: 2017-04-25
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1985
+- Rust Issue: https://github.com/rust-lang/rust/issues/43035
 
 # Summary
 [summary]: #summary
