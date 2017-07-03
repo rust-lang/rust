@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.142
+* Update to *rustc 1.20.0-nightly (067971139 2017-07-02)*
+
 ## 0.0.141
 * Rewrite of the `doc_markdown` lint.
 * Deprecated [`range_step_by_zero`]
