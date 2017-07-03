@@ -64,8 +64,9 @@ use hir::def_id::{CrateNum, DefId};
 use hir::map::DefPathHash;
 
 use ich::Fingerprint;
-use ty::fast_reject::SimplifiedType;
 use ty::{TyCtxt, Instance, InstanceDef};
+use ty::fast_reject::SimplifiedType;
+use ty::subst::Substs;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
 use std::fmt;
@@ -420,7 +421,7 @@ define_dep_nodes!( <'tcx>
     TypeckBodiesKrate,
     TypeckTables(DefId),
     HasTypeckTables(DefId),
-    ConstEval(DefId),
+    ConstEval { def_id: DefId, substs: &'tcx Substs<'tcx> },
     SymbolName(DefId),
     InstanceSymbolName { instance: Instance<'tcx> },
     SpecializationGraph(DefId),

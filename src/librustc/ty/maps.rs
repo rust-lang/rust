@@ -1011,8 +1011,8 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node<'tcx>((def_id, _): (DefId, &Substs)) -> DepConstructor<'tcx> {
-    DepConstructor::ConstEval(def_id)
+fn const_eval_dep_node<'tcx>((def_id, substs): (DefId, &'tcx Substs<'tcx>)) -> DepConstructor<'tcx> {
+    DepConstructor::ConstEval { def_id, substs }
 }
 
 fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
