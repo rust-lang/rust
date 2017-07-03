@@ -15,7 +15,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
 
 use rustc::ty::{TyCtxt};
-use rustc::mir::{self, Mir};
+use rustc::mir::{self, Mir, Location};
 
 use std::fmt::Debug;
 use std::io;
@@ -98,12 +98,13 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
 
             let sets = &mut self.flow_state.sets.for_block(bb.index());
             for j_stmt in 0..statements.len() {
-                self.flow_state.operator.statement_effect(sets, bb, j_stmt);
+                let location = Location { block: bb, statement_index: j_stmt };
+                self.flow_state.operator.statement_effect(sets, location);
             }
 
             if terminator.is_some() {
-                let stmts_len = statements.len();
-                self.flow_state.operator.terminator_effect(sets, bb, stmts_len);
+                let location = Location { block: bb, statement_index: statements.len() };
+                self.flow_state.operator.terminator_effect(sets, location);
             }
         }
     }
@@ -341,8 +342,7 @@ pub trait BitDenotation {
     /// the MIR.
     fn statement_effect(&self,
                         sets: &mut BlockSets<Self::Idx>,
-                        bb: mir::BasicBlock,
-                        idx_stmt: usize);
+                        location: Location);
 
     /// Mutates the block-sets (the flow sets for the given
     /// basic block) according to the effects of evaluating
@@ -356,8 +356,7 @@ pub trait BitDenotation {
     /// terminator took.
     fn terminator_effect(&self,
                          sets: &mut BlockSets<Self::Idx>,
-                         bb: mir::BasicBlock,
-                         idx_term: usize);
+                         location: Location);
 
     /// Mutates the block-sets according to the (flow-dependent)
     /// effect of a successful return from a Call terminator.
