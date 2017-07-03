@@ -227,7 +227,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         assert!(align.is_power_of_two());
         // TODO(solson): Report error about non-__rust_allocate'd pointer.
         if ptr.offset != 0 {
-            return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
+            return Err(EvalError::ReallocateNonBasePtr);
         }
         if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
             return Err(EvalError::ReallocatedStaticMemory);
@@ -254,14 +254,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             alloc.undef_mask.truncate(new_size);
         }
 
-        Ok(Pointer::new(ptr.alloc_id, 0))
+        // Change allocation ID.  We do this after the above to be able to re-use methods like `clear_relocations`.
+        let id = {
+            let alloc = self.alloc_map.remove(&ptr.alloc_id).expect("We already used this pointer above");
+            let id = self.next_id;
+            self.next_id.0 += 1;
+            self.alloc_map.insert(id, alloc);
+            id
+        };
+
+        Ok(Pointer::new(id, 0))
     }
 
     // TODO(solson): See comment on `reallocate`.
     pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<'tcx> {
         if ptr.offset != 0 {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
-            return Err(EvalError::Unimplemented(format!("bad pointer offset: {}", ptr.offset)));
+            return Err(EvalError::DeallocateNonBasePtr);
         }
         if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
             return Err(EvalError::DeallocatedStaticMemory);
@@ -271,9 +280,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             self.memory_usage -= alloc.bytes.len() as u64;
         } else {
             debug!("deallocated a pointer twice: {}", ptr.alloc_id);
-            // TODO(solson): Report error about erroneous free. This is blocked on properly tracking
-            // already-dropped state since this if-statement is entered even in safe code without
-            // it.
+            return Err(EvalError::DeallocateNonBasePtr);
         }
         debug!("deallocated : {}", ptr.alloc_id);
 
