@@ -101,11 +101,11 @@ Furthermore:
   can make.
 
 Code that compiles without warnings on the previous epoch (under the latest
-compiler release) will compile without warnings or errors on the next epoch
-(modulo the [usual caveats] about type inference changes and so
-on). Alternatively, you can continue working with the previous epoch on new
-compiler releases indefinitely, but your code may not have access to new
-features that require new keywords and the like.
+compiler release) will compile without errors on the next epoch (modulo the
+[usual caveats] about type inference changes and so on). Alternatively, you can
+continue working with the previous epoch on new compiler releases indefinitely,
+but your code may not have access to new features that require new keywords and
+the like.
 
 [usual caveats]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 
