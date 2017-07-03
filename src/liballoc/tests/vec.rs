@@ -274,6 +274,11 @@ fn test_dedup_by() {
     vec.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
 
     assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
+
+    let mut vec = vec![("foo", 1), ("foo", 2), ("bar", 3), ("bar", 4), ("bar", 5)];
+    vec.dedup_by(|a, b| a.0 == b.0 && { b.1 += a.1; true });
+
+    assert_eq!(vec, [("foo", 3), ("bar", 12)]);
 }
 
 #[test]
