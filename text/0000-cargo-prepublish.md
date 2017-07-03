@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-This RFC proposes the concept of *augmenting sources* for Cargo. Sources can be
+This RFC proposes the concept of *patching sources* for Cargo. Sources can be
 have their existing versions of crates replaced with different copies, and
 sources can also have "prepublished" crates by adding versions of a crate which
 do not currently exist in the source. Dependency resolution will work *as if*
@@ -75,32 +75,32 @@ publication to crates.io.
 [design]: #detailed-design
 
 The design itself is relatively straightforward. The Cargo.toml file will
-support a new section for augmenting a source of crates:
+support a new section for patching a source of crates:
 
 ```toml
-[augment.crates-io]
+[patch.crates-io]
 xml-rs = { path = "path/to/fork" }
 ```
 
 The listed dependencies have the same syntax as the normal `[dependencies]`
 section, but they must all come form a different source than the source being
-augmented. For example you can't augment crates.io with other crates from
+patched. For example you can't patch crates.io with other crates from
 crates.io! Cargo will load the crates and extract the version information for
 each dependency's name, supplementing the source specified with the version it
 finds. If the same name/version pair *already* exists in the source being
-augmented, then this will act just like `[replace]`, replacing its source with
-the one specified in the `[augment]` section.
+patched, then this will act just like `[replace]`, replacing its source with
+the one specified in the `[patch]` section.
 
-Like `[replace]`, the `[augment]` section is only taken into account for the
+Like `[replace]`, the `[patch]` section is only taken into account for the
 root crate (or workspace root); allowing it to accumulate anywhere in the crate
 dependency graph creates intractable problems for dependency resolution.
 
-The sub-table of `[augment]` (where `crates-io` is used above) is used to
-specify the source that's being augmented. Cargo will know ahead of time one
+The sub-table of `[patch]` (where `crates-io` is used above) is used to
+specify the source that's being patched. Cargo will know ahead of time one
 identifier, literally `crates-io`, but otherwise this field will currently be
 interpreted as a URL of a source. The name `crates-io` will correspond to the
 crates.io index, and other urls, such as git repositories, may also be specified
-for augmentation. Eventually it's intended we'll grow support for multiple
+for patching. Eventually it's intended we'll grow support for multiple
 registries here with their own identifiers, but for now just literally
 `crates-io` and other URLs are allowed.
 
@@ -121,7 +121,7 @@ With this setup, the dependency graph for Servo will contain *two* versions of
 `0.9.1` is considered a minor release against `0.9.0`, while `0.9.0` and `0.8.0`
 are incompatible.
 
-### Scenario: augmenting with a bugfix
+### Scenario: patching with a bugfix
 
 Let's say that while developing `foo` we've got a lock file pointing to `xml-rs`
 `0.9.0`, and we found the `0.9.0` branch of `xml-rs` that hasn't been touched
@@ -132,7 +132,7 @@ First we'll check out `foo` locally and implement what we believe is a fix for
 this bug, and next, we change `Cargo.toml` for `foo`:
 
 ```toml
-[augment.crates-io]
+[patch.crates-io]
 xml-rs = { path = "../xml-rs" }
 ```
 
@@ -153,7 +153,7 @@ that all of Servo compiles before pushing the changes through.
 First, we change `Cargo.toml` for `foo`:
 
 ```toml
-[augment.crates-io]
+[patch.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.9.2" }
 
 [dependencies]
@@ -165,7 +165,7 @@ or introduce any `xml-rs` dependencies; it's enough to be using the fork of
 `foo`, which we would be anyway:
 
 ```toml
-[augment.crates-io]
+[patch.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.9.2" }
 foo = { git = "https://github.com/aturon/foo", branch = "fix-xml" }
 ```
@@ -173,7 +173,7 @@ foo = { git = "https://github.com/aturon/foo", branch = "fix-xml" }
 Note that if Servo depended directly on `foo` it would also be valid to do:
 
 ```toml
-[augment.crates-io]
+[patch.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.9.2" }
 
 [dependencies]
@@ -195,7 +195,7 @@ want to do integration testing for (`servo`); no sibling crates needed to be
 changed.
 
 Once `xml-rs` version `0.9.2` is actually published, we will likely be able to
-remove the `[augment]` sections. This is a discrete step that must be taken by
+remove the `[patch]` sections. This is a discrete step that must be taken by
 crate authors, however (e.g. doesn't happen automatically) because the actual
 published 0.9.2 may not be precisely what we thought it was going to be. For
 example more changes could have been merged, it may not actually fix the bug,
@@ -207,7 +207,7 @@ What happens if `foo` instead needs to make a breaking change to `xml-rs`? The
 workflow is identical. For `foo`:
 
 ```toml
-[augment.crates-io]
+[patch.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.10.0" }
 
 [dependencies]
@@ -217,7 +217,7 @@ xml-rs = "0.10.0"
 For `servo`:
 
 ```toml
-[augment.crates-io]
+[patch.crates-io]
 xml-rs = { git = "https://github.com/aturon/xml-rs", branch = "0.10.0" }
 
 [dependencies]
@@ -238,13 +238,13 @@ error message).
 
 ## Impact on `Cargo.lock`
 
-Usage of `[augment]` will perform backwards-incompatible modifications to
-`Cargo.lock`, meaning that usage of `[augment]` will prevent previous versions
+Usage of `[patch]` will perform backwards-incompatible modifications to
+`Cargo.lock`, meaning that usage of `[patch]` will prevent previous versions
 of Cargo from interpreting the lock file. Cargo will unconditionally resolve all
-entries in the `[augment]` section to precise dependencies, encoding them all in
+entries in the `[patch]` section to precise dependencies, encoding them all in
 the lock file whether they're used or not.
 
-Dependencies formed on crates listed in `[augment]` will then be listed directly
+Dependencies formed on crates listed in `[patch]` will then be listed directly
 in Cargo.lock, and the original listed crate will not be listed. In our example
 above we had:
 
@@ -260,7 +260,7 @@ Note, however, that the lock file will still mention `xml-rs-0.8.0` and
 `xml-rs-0.9.1` because `bar` and `baz` depend on it.
 
 To help put some TOML where our mouth is let's say we depend on `env_logger` but
-we're using `[augment]` to depend on a git version of the `log` crate, a
+we're using `[patch]` to depend on a git version of the `log` crate, a
 dependency of `env_logger`. First we'll have our `Cargo.toml` including:
 
 ```toml
@@ -288,11 +288,11 @@ version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 ```
 
-Next up we'll add our `[augment]` section to crates.io:
+Next up we'll add our `[patch]` section to crates.io:
 
 ```toml
 # Cargo.toml
-[augment.crates-io]
+[patch.crates-io]
 log = { git = 'https://github.com/rust-lang-nursery/log' }
 ```
 
@@ -315,17 +315,17 @@ source = "git+https://github.com/rust-lang-nursery/log#cb9fa28812ac27c9cadc4e7b1
 ```
 
 Notably `log` from crates.io *is not mentioned at all here*, and crucially so!
-Additionally Cargo has the fully resolved version of the `log` augmentation
+Additionally Cargo has the fully resolved version of the `log` patch
 available to it, down to the sha of what to check out.
 
 When Cargo rebuilds from this `Cargo.lock` it will not query the registry for
 versions of `log`, instead seeing that there's an exact dependency on the git
-repository (from the `Cargo.lock`) and the repository is listed as an
-augmentation, so it'll follow that pointer.
+repository (from the `Cargo.lock`) and the repository is listed as a
+patch, so it'll follow that pointer.
 
 ## Impact on `[replace]`
 
-The `[augment]` section in the manifest can in many ways be seen as a "replace
+The `[patch]` section in the manifest can in many ways be seen as a "replace
 2.0". It is, in fact, strictly more expressive than the current `[replace]`
 section! For example these two sections are equivalent:
 
@@ -335,11 +335,11 @@ section! For example these two sections are equivalent:
 
 # is the same as...
 
-[augment.crates-io]
+[patch.crates-io]
 log = { git = 'https://github.com/rust-lang-nursery/log' }
 ```
 
-This is not accidental! The intial development of the `[augment]` feature was
+This is not accidental! The intial development of the `[patch]` feature was
 actually focused on prepublishing dependencies and was called `[prepublish]`,
 but while discussing it a conclusion was reached that `[prepublish]` already
 allowed replacing existing versions in a registry, but issued a warning when
@@ -347,18 +347,18 @@ doing so. It turned out that without a warning we ended up having a full-on
 `[replace]` replacement!
 
 At this time, though, it is not planned to deprecate the `[replace]` section,
-nor remove it. After the `[augment]` section is implemented, if it ends up
-working out this may change. If after a few cycles on stable the `[augment]`
+nor remove it. After the `[patch]` section is implemented, if it ends up
+working out this may change. If after a few cycles on stable the `[patch]`
 section seems to be working well we can issue an official deprecation for
 `[replace]`, printing a warning if it's still used.
 
-Documentation, however, will immediately begin to recommend `[augment]` over
+Documentation, however, will immediately begin to recommend `[patch]` over
 `[replace]`.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-Augmentation is a feature intended for large-scale projects spanning many repos
+Patching is a feature intended for large-scale projects spanning many repos
 and crates, where you want to make something like an atomic change across the
 repos. As such, it should likely be explained in a dedicated section for
 large-scale Cargo usage, which would also include build system integration and
@@ -369,8 +369,8 @@ this RFC) is generally enough to explain it. In the docs, these examples should
 be spelled out in greater detail.
 
 Most notably, however, the [overriding dependenices][over] section of Cargo's
-documentation will be rewritten to primarily mention `[augment]`, but
-`[replace]` will be mentioned still with a recommendation to use `[augment]`
+documentation will be rewritten to primarily mention `[patch]`, but
+`[replace]` will be mentioned still with a recommendation to use `[patch]`
 instead if possible.
 
 [over]: http://doc.crates.io/specifying-dependencies.html#overriding-dependencies
