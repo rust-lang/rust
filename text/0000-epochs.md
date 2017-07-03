@@ -6,25 +6,13 @@
 # Summary
 [summary]: #summary
 
-There has been a long-standing question around Rust's evolution: will there ever
-be a Rust 2.0 in the semver sense?
+There has been a long-standing question around Rust's evolution: will there ever be a Rust 2.0 in the semver sense?
 
-This RFC gives the answer: certainly not in the foreseeable future, and probably
-not ever.
+This RFC gives the answer: certainly not in the foreseeable future, and probably not ever.
 
-Instead, this RFC proposes *epochs*, a mechanism for language evolution without
-breakage, which fits neatly into Rust's existing train and release channel
-process. It's an attempt to provide the next stage of our core principle of
-[stability without stagnation], inspired in part by similar mechanisms in
-languages like C++ and Java.
+Instead, this RFC proposes *epochs*, a mechanism for language evolution without breakage, which fits neatly into Rust's existing train and release channel process. It's an attempt to provide the next stage of our core principle of [stability without stagnation], inspired in part by similar mechanisms in languages like C++ and Java.
 
-With epochs, it becomes possible to do things like introduce new keywords
-without breaking existing code or splitting the ecosystem. Each crate specifies
-the epoch it fits within (a bit like "C++11" or "C++14"), and the compiler can
-cope with multiple epochs being used throughout a dependency graph. Thus we
-still guarantee that your code will keep compiling on the latest stable release
-(modulo the [usual caveats]), while making it possible to evolve the language in
-some new ways via explicit opt-in.
+With epochs, it becomes possible to do things like introduce new keywords without breaking existing code or splitting the ecosystem. Each crate specifies the epoch it fits within (a bit like "C++11" or "C++14"), and the compiler can cope with multiple epochs being used throughout a dependency graph. Thus we still guarantee that your code will keep compiling on the latest stable release (modulo the [usual caveats]), while making it possible to evolve the language in some new ways via explicit opt-in.
 
 [stability without stagnation]: https://blog.rust-lang.org/2014/10/30/Stability.html
 
@@ -406,12 +394,12 @@ This is essentially another example of a non-crate-local change.
 We'll wrap up with the full details of the mechanisms at play.
 
 - `rustc` will take a new flag, `--epoch`, which can specify the epoch to
-  use. This flag will default to the current epoch.
+  use. This flag will default to epoch 2015.
   - This flag should not affect the behavior of the core trait system or passes at the MIR level.
 - `Cargo.toml` can include an `epoch` value, which is used to pass to `rustc`.
   - If left off, it will assume epoch 2015.
 - `cargo new` will produce a `Cargo.toml` with the latest `epoch` value,
-  including `-preview` epochs when applicable.
+  including preview epochs when applicable.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -541,3 +529,5 @@ what kinds of changes we want to allow. Downsides:
 
 - Will we ever consider dropping support for very old epochs? Given the
   constraints in this RFC, it seems unlikely to ever be worth it.
+
+- Should `rustc` default to the latest epoch instead?
