@@ -11,42 +11,32 @@ error: this creates an owned instance just for comparison
    |
 10 |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try `"foo"`
-   |
-   = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:17:10
    |
 17 |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try `"foo"`
-   |
-   = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:19:10
    |
 19 |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try `"foo"`
-   |
-   = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:23:5
    |
 23 |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try `Foo`
-   |
-   = note: `-D cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:30:9
    |
 30 |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^ try calling implementing the comparison without allocating
-   |
-   = note: `-D cmp-owned` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 
 
 To learn more, run the command again with --verbose.

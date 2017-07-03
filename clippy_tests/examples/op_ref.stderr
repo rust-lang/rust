@@ -8,7 +8,7 @@ error: needlessly taken reference of both operands
 help: use the values directly
    |     let foo = 5 - 6;
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

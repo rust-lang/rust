@@ -11,10 +11,8 @@ error: this let-binding has unit value. Consider omitting `let _a =`
    |
 18 |         let _a = ();
    |         ^^^^^^^^^^^^
-   |
-   = note: `-D let-unit-value` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

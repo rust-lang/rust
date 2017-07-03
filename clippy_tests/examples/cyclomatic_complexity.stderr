@@ -25,7 +25,6 @@ error: the function has a cyclomatic complexity of 7
 111 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
@@ -36,7 +35,6 @@ error: the function has a cyclomatic complexity of 1
 140 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
@@ -47,7 +45,6 @@ error: the function has a cyclomatic complexity of 1
 145 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
@@ -62,7 +59,6 @@ error: the function has a cyclomatic complexity of 2
 163 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
@@ -78,7 +74,6 @@ error: the function has a cyclomatic complexity of 2
 157 | |     };
     | |_____^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
@@ -92,7 +87,6 @@ error: the function has a cyclomatic complexity of 2
 171 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
@@ -107,7 +101,6 @@ error: the function has a cyclomatic complexity of 2
 192 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
@@ -122,7 +115,6 @@ error: the function has a cyclomatic complexity of 3
 208 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
@@ -137,7 +129,6 @@ error: the function has a cyclomatic complexity of 2
 218 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
@@ -152,7 +143,6 @@ error: the function has a cyclomatic complexity of 3
 234 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
@@ -167,7 +157,6 @@ error: the function has a cyclomatic complexity of 2
 244 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 3
@@ -182,7 +171,6 @@ error: the function has a cyclomatic complexity of 3
 260 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 2
@@ -197,7 +185,6 @@ error: the function has a cyclomatic complexity of 2
 270 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 4
@@ -212,7 +199,6 @@ error: the function has a cyclomatic complexity of 4
 300 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
@@ -226,7 +212,6 @@ error: the function has a cyclomatic complexity of 1
 310 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
@@ -240,7 +225,6 @@ error: the function has a cyclomatic complexity of 1
 324 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
@@ -255,7 +239,6 @@ error: the function has a cyclomatic complexity of 1
 340 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
@@ -270,7 +253,6 @@ error: the function has a cyclomatic complexity of 1
 353 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 8
@@ -285,10 +267,9 @@ error: the function has a cyclomatic complexity of 8
 373 | | }
     | |_^
     |
-    = note: `-D cyclomatic-complexity` implied by `-D warnings`
     = help: you could split it up into multiple smaller functions
 
-error: aborting due to previous error(s)
+error: aborting due to 20 previous errors
 
 
 To learn more, run the command again with --verbose.

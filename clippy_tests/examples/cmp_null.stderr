@@ -11,10 +11,8 @@ error: Comparing with null is better expressed by the .is_null() method
    |
 16 |     if m == ptr::null_mut() {
    |        ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D cmp-null` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

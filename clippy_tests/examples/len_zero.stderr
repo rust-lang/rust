@@ -17,8 +17,6 @@ error: trait `PubTraitsToo` has a `len` method but no `is_empty` method
 56 | |     fn len(self: &Self) -> isize;
 57 | | }
    | |_^
-   |
-   = note: `-D len-without-is-empty` implied by `-D warnings`
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
   --> len_zero.rs:89:1
@@ -31,8 +29,6 @@ error: item `HasIsEmpty` has a public `len` method but a private `is_empty` meth
 96 | |     }
 97 | | }
    | |_^
-   |
-   = note: `-D len-without-is-empty` implied by `-D warnings`
 
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
    --> len_zero.rs:118:1
@@ -45,8 +41,6 @@ error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is
 125 | |     }
 126 | | }
     | |_^
-    |
-    = note: `-D len-without-is-empty` implied by `-D warnings`
 
 error: length comparison to zero
    --> len_zero.rs:130:8
@@ -61,50 +55,38 @@ error: length comparison to zero
     |
 134 |     if "".len() == 0 {
     |        ^^^^^^^^^^^^^ help: using `is_empty` is more concise: `"".is_empty()`
-    |
-    = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
    --> len_zero.rs:148:8
     |
 148 |     if has_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `has_is_empty.is_empty()`
-    |
-    = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
    --> len_zero.rs:151:8
     |
 151 |     if has_is_empty.len() != 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
-    |
-    = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
    --> len_zero.rs:154:8
     |
 154 |     if has_is_empty.len() > 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `!has_is_empty.is_empty()`
-    |
-    = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
    --> len_zero.rs:160:8
     |
 160 |     if with_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is more concise: `with_is_empty.is_empty()`
-    |
-    = note: `-D len-zero` implied by `-D warnings`
 
 error: length comparison to zero
    --> len_zero.rs:172:8
     |
 172 |     if b.len() != 0 {
     |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `!b.is_empty()`
-    |
-    = note: `-D len-zero` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 11 previous errors
 
 
 To learn more, run the command again with --verbose.

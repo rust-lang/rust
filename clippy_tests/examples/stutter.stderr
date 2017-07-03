@@ -11,26 +11,20 @@ error: item name ends with its containing module's name
   |
 9 |     pub fn bar_foo() {}
   |     ^^^^^^^^^^^^^^^^^^^
-  |
-  = note: `-D stutter` implied by `-D warnings`
 
 error: item name starts with its containing module's name
   --> stutter.rs:10:5
    |
 10 |     pub struct FooCake {}
    |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D stutter` implied by `-D warnings`
 
 error: item name ends with its containing module's name
   --> stutter.rs:11:5
    |
 11 |     pub enum CakeFoo {}
    |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D stutter` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 
 
 To learn more, run the command again with --verbose.

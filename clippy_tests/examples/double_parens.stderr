@@ -11,34 +11,26 @@ error: Consider removing unnecessary double parentheses
    |
 20 |     dummy_fn((0));
    |              ^^^
-   |
-   = note: `-D double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
   --> double_parens.rs:24:20
    |
 24 |     x.dummy_method((0));
    |                    ^^^
-   |
-   = note: `-D double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
   --> double_parens.rs:28:5
    |
 28 |     ((1, 2))
    |     ^^^^^^^^
-   |
-   = note: `-D double-parens` implied by `-D warnings`
 
 error: Consider removing unnecessary double parentheses
   --> double_parens.rs:32:5
    |
 32 |     (())
    |     ^^^^
-   |
-   = note: `-D double-parens` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 5 previous errors
 
 
 To learn more, run the command again with --verbose.

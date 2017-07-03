@@ -22,7 +22,6 @@ error: binding's name is too similar to existing binding
 20 |     let cpple: i32;
    |         ^^^^^
    |
-   = note: `-D similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> non_expressive_names.rs:16:9
    |
@@ -40,7 +39,6 @@ error: binding's name is too similar to existing binding
 45 |     let bluby: i32;
    |         ^^^^^
    |
-   = note: `-D similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> non_expressive_names.rs:44:9
    |
@@ -58,7 +56,6 @@ error: binding's name is too similar to existing binding
 50 |     let coke: i32;
    |         ^^^^
    |
-   = note: `-D similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> non_expressive_names.rs:48:9
    |
@@ -71,7 +68,6 @@ error: binding's name is too similar to existing binding
 68 |     let xyzeabc: i32;
    |         ^^^^^^^
    |
-   = note: `-D similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> non_expressive_names.rs:66:9
    |
@@ -84,7 +80,6 @@ error: binding's name is too similar to existing binding
 72 |     let parsee: i32;
    |         ^^^^^^
    |
-   = note: `-D similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> non_expressive_names.rs:70:9
    |
@@ -102,7 +97,6 @@ error: binding's name is too similar to existing binding
 86 |         bpple: sprang } = unimplemented!();
    |                ^^^^^^
    |
-   = note: `-D similar-names` implied by `-D warnings`
 note: existing binding defined here
   --> non_expressive_names.rs:85:22
    |
@@ -122,26 +116,20 @@ error: 5th binding whose name is just one char
     |
 123 |             let e: i32;
     |                 ^
-    |
-    = note: `-D many-single-char-names` implied by `-D warnings`
 
 error: 6th binding whose name is just one char
    --> non_expressive_names.rs:124:17
     |
 124 |             let f: i32;
     |                 ^
-    |
-    = note: `-D many-single-char-names` implied by `-D warnings`
 
 error: 5th binding whose name is just one char
    --> non_expressive_names.rs:129:13
     |
 129 |             e => panic!(),
     |             ^
-    |
-    = note: `-D many-single-char-names` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 11 previous errors
 
 
 To learn more, run the command again with --verbose.

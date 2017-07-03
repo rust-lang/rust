@@ -17,7 +17,6 @@ error: mutable borrow from immutable input(s)
 15 |     fn ouch(x: &Foo) -> &mut Foo;
    |                         ^^^^^^^^
    |
-   = note: `-D mut-from-ref` implied by `-D warnings`
 note: immutable borrow here
   --> mut_from_ref.rs:15:16
    |
@@ -30,7 +29,6 @@ error: mutable borrow from immutable input(s)
 24 | fn fail(x: &u32) -> &mut u16 {
    |                     ^^^^^^^^
    |
-   = note: `-D mut-from-ref` implied by `-D warnings`
 note: immutable borrow here
   --> mut_from_ref.rs:24:12
    |
@@ -43,7 +41,6 @@ error: mutable borrow from immutable input(s)
 28 | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
    |                                                  ^^^^^^^^^^^
    |
-   = note: `-D mut-from-ref` implied by `-D warnings`
 note: immutable borrow here
   --> mut_from_ref.rs:28:25
    |
@@ -56,14 +53,13 @@ error: mutable borrow from immutable input(s)
 32 | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                                                                   ^^^^^^^^^^^
    |
-   = note: `-D mut-from-ref` implied by `-D warnings`
 note: immutable borrow here
   --> mut_from_ref.rs:32:27
    |
 32 | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                           ^^^^^^^     ^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to 5 previous errors
 
 
 To learn more, run the command again with --verbose.

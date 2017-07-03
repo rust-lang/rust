@@ -11,8 +11,6 @@ error: integer arithmetic detected
   |
 9 |     i * 2;
   |     ^^^^^
-  |
-  = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
   --> arithmetic.rs:10:5
@@ -20,24 +18,18 @@ error: integer arithmetic detected
 10 | /     1 %
 11 | |     i / 2; // no error, this is part of the expression in the preceding line
    | |_________^
-   |
-   = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
   --> arithmetic.rs:12:5
    |
 12 |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: integer arithmetic detected
   --> arithmetic.rs:13:5
    |
 13 |     -i;
    |     ^^
-   |
-   = note: `-D integer-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
   --> arithmetic.rs:23:5
@@ -52,42 +44,32 @@ error: floating-point arithmetic detected
    |
 25 |     1.0 + f;
    |     ^^^^^^^
-   |
-   = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
   --> arithmetic.rs:26:5
    |
 26 |     f * 2.0;
    |     ^^^^^^^
-   |
-   = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
   --> arithmetic.rs:27:5
    |
 27 |     f / 2.0;
    |     ^^^^^^^
-   |
-   = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
   --> arithmetic.rs:28:5
    |
 28 |     f - 2.0 * 4.2;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D float-arithmetic` implied by `-D warnings`
 
 error: floating-point arithmetic detected
   --> arithmetic.rs:29:5
    |
 29 |     -f;
    |     ^^
-   |
-   = note: `-D float-arithmetic` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 11 previous errors
 
 
 To learn more, run the command again with --verbose.

@@ -17,7 +17,6 @@ error: unsequenced read of a variable
 11 |     x += { x = 20; 2 };
    |     ^
    |
-   = note: `-D eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
   --> eval_order_dependence.rs:11:12
    |
@@ -30,7 +29,6 @@ error: unsequenced read of a variable
 17 |     let foo = Foo { a: x, .. { x = 6; base } };
    |                        ^
    |
-   = note: `-D eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
   --> eval_order_dependence.rs:17:32
    |
@@ -43,14 +41,13 @@ error: unsequenced read of a variable
 21 |         x += { x = 20; 2 };
    |         ^
    |
-   = note: `-D eval-order-dependence` implied by `-D warnings`
 note: whether read occurs before this write depends on evaluation order
   --> eval_order_dependence.rs:21:16
    |
 21 |         x += { x = 20; 2 };
    |                ^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 
 
 To learn more, run the command again with --verbose.

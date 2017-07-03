@@ -11,10 +11,8 @@ error: don't use glob imports for enum variants
    |
 12 | use self::Enum::*;
    | ^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D enum-glob-use` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

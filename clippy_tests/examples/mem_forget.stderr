@@ -11,18 +11,14 @@ error: usage of mem::forget on Drop type
    |
 21 |     std::mem::forget(seven);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D mem-forget` implied by `-D warnings`
 
 error: usage of mem::forget on Drop type
   --> mem_forget.rs:24:5
    |
 24 |     forgetSomething(eight);
    |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D mem-forget` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 
 
 To learn more, run the command again with --verbose.

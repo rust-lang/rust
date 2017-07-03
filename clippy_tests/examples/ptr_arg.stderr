@@ -11,18 +11,14 @@ error: writing `&String` instead of `&str` involves a new object where a slice w
    |
 14 | fn do_str(x: &String) {
    |              ^^^^^^^
-   |
-   = note: `-D ptr-arg` implied by `-D warnings`
 
 error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices. Consider changing the type to `&[...]`
   --> ptr_arg.rs:27:18
    |
 27 |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^
-   |
-   = note: `-D ptr-arg` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 
 
 To learn more, run the command again with --verbose.

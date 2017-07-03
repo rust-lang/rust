@@ -21,10 +21,9 @@ error: Unnecessary `!=` operation
 18 | |     }
    | |_____^
    |
-   = note: `-D if-not-else` implied by `-D warnings`
    = help: change to `==` and swap the blocks of the if/else
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

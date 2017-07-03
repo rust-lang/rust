@@ -11,18 +11,14 @@ error: useless use of `format!`
   |
 8 |     format!("{}", "foo");
   |     ^^^^^^^^^^^^^^^^^^^^^
-  |
-  = note: `-D useless-format` implied by `-D warnings`
 
 error: useless use of `format!`
   --> format.rs:15:5
    |
 15 |     format!("{}", arg);
    |     ^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D useless-format` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 
 
 To learn more, run the command again with --verbose.

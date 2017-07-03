@@ -20,8 +20,6 @@ error: this loop never actually loops
 30 | |         break
 31 | |     }
    | |_____^
-   |
-   = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
   --> never_loop.rs:47:2
@@ -33,8 +31,6 @@ error: this loop never actually loops
 51 | | 	       return
 52 | | 	}
    | |__^
-   |
-   = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
   --> never_loop.rs:48:9
@@ -43,8 +39,6 @@ error: this loop never actually loops
 49 | |             break
 50 | |         }
    | |_________^
-   |
-   = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
   --> never_loop.rs:57:5
@@ -57,8 +51,6 @@ error: this loop never actually loops
 63 | | 		return
 64 | | 	}
    | |__^
-   |
-   = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
   --> never_loop.rs:59:3
@@ -68,8 +60,6 @@ error: this loop never actually loops
 61 | | 			continue 'outer
 62 | | 		}
    | |___^
-   |
-   = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
   --> never_loop.rs:92:5
@@ -78,8 +68,6 @@ error: this loop never actually loops
 93 | |         return
 94 | |     }
    | |_____^
-   |
-   = note: `-D never-loop` implied by `-D warnings`
 
 error: this loop never actually loops
    --> never_loop.rs:98:5
@@ -91,10 +79,8 @@ error: this loop never actually loops
 102 | |         }
 103 | |     }
     | |_____^
-    |
-    = note: `-D never-loop` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 8 previous errors
 
 
 To learn more, run the command again with --verbose.

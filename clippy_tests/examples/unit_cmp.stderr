@@ -11,10 +11,8 @@ error: >-comparison of unit values detected. This will always be false
    |
 19 |     if { true; } > { false; } {
    |        ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D unit-cmp` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

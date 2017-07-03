@@ -24,16 +24,12 @@ error: this boolean expression can be simplified
    |
 15 |     let _ = !false;
    |             ^^^^^^ help: try `true`
-   |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> booleans.rs:16:13
    |
 16 |     let _ = !!a;
    |             ^^^ help: try `a`
-   |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression contains a logic bug
   --> booleans.rs:17:13
@@ -41,7 +37,6 @@ error: this boolean expression contains a logic bug
 17 |     let _ = false && a;
    |             ^^^^^^^^^^ help: it would look like the following `false`
    |
-   = note: `-D logic-bug` implied by `-D warnings`
 help: this expression can be optimized out by applying boolean operations to the outer expression
   --> booleans.rs:17:22
    |
@@ -53,16 +48,12 @@ error: this boolean expression can be simplified
    |
 18 |     let _ = false || a;
    |             ^^^^^^^^^^ help: try `a`
-   |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression can be simplified
   --> booleans.rs:23:13
    |
 23 |     let _ = !(!a && b);
    |             ^^^^^^^^^^ help: try `!b || a`
-   |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
 
 error: this boolean expression contains a logic bug
   --> booleans.rs:33:13
@@ -70,7 +61,6 @@ error: this boolean expression contains a logic bug
 33 |     let _ = a == b && a != b;
    |             ^^^^^^^^^^^^^^^^ help: it would look like the following `false`
    |
-   = note: `-D logic-bug` implied by `-D warnings`
 help: this expression can be optimized out by applying boolean operations to the outer expression
   --> booleans.rs:33:13
    |
@@ -83,7 +73,6 @@ error: this boolean expression can be simplified
 34 |     let _ = a == b && c == 5 && a == b;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
 help: try
    |     let _ = a == b && c == 5;
    |     let _ = !(c != 5 || a != b);
@@ -94,7 +83,6 @@ error: this boolean expression can be simplified
 35 |     let _ = a == b && c == 5 && b == a;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
 help: try
    |     let _ = a == b && c == 5;
    |     let _ = !(c != 5 || a != b);
@@ -105,7 +93,6 @@ error: this boolean expression contains a logic bug
 36 |     let _ = a < b && a >= b;
    |             ^^^^^^^^^^^^^^^ help: it would look like the following `false`
    |
-   = note: `-D logic-bug` implied by `-D warnings`
 help: this expression can be optimized out by applying boolean operations to the outer expression
   --> booleans.rs:36:13
    |
@@ -118,7 +105,6 @@ error: this boolean expression contains a logic bug
 37 |     let _ = a > b && a <= b;
    |             ^^^^^^^^^^^^^^^ help: it would look like the following `false`
    |
-   = note: `-D logic-bug` implied by `-D warnings`
 help: this expression can be optimized out by applying boolean operations to the outer expression
   --> booleans.rs:37:13
    |
@@ -131,12 +117,11 @@ error: this boolean expression can be simplified
 39 |     let _ = a != b || !(a != b || c == d);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
 help: try
    |     let _ = c != d || a != b;
    |     let _ = !(a == b && c == d);
 
-error: aborting due to previous error(s)
+error: aborting due to 13 previous errors
 
 
 To learn more, run the command again with --verbose.

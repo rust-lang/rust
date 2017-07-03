@@ -26,7 +26,6 @@ error: This else block is redundant.
 133 | |             }
     | |_____________^
     |
-    = note: `-D needless-continue` implied by `-D warnings`
     = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
             if true {
             break;
@@ -34,7 +33,7 @@ error: This else block is redundant.
             }
             
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

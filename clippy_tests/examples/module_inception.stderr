@@ -15,10 +15,8 @@ error: module has the same name as its containing module
 13 | |         mod bar {}
 14 | |     }
    | |_____^
-   |
-   = note: `-D module-inception` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

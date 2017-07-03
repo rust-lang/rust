@@ -11,7 +11,7 @@ help: consider using the uninhabited type `!` or a wrapper around it
 7 | enum Empty {}
   | ^^^^^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

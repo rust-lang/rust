@@ -14,7 +14,6 @@ error: you should consider deriving a `Default` implementation for `Bar`
 16 |     pub fn new() -> Self { Bar }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D new-without-default-derive` implied by `-D warnings`
 help: try this
    | #[derive(Default)]
 
@@ -34,7 +33,7 @@ help: try this
    | 
 ...
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 
 
 To learn more, run the command again with --verbose.

@@ -13,7 +13,7 @@ error: the function has a cyclomatic complexity of 3
    = note: `-D cyclomatic-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

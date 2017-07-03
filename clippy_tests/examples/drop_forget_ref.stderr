@@ -30,7 +30,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 16 |     drop(&owned1);
    |     ^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:16:10
    |
@@ -43,7 +42,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 17 |     drop(&&owned1);
    |     ^^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &&SomeStruct
   --> drop_forget_ref.rs:17:10
    |
@@ -56,7 +54,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 18 |     drop(&mut owned1);
    |     ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &mut SomeStruct
   --> drop_forget_ref.rs:18:10
    |
@@ -69,7 +66,6 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 21 |     forget(&owned2);
    |     ^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:21:12
    |
@@ -82,7 +78,6 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 22 |     forget(&&owned2);
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &&SomeStruct
   --> drop_forget_ref.rs:22:12
    |
@@ -95,7 +90,6 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 23 |     forget(&mut owned2);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &mut SomeStruct
   --> drop_forget_ref.rs:23:12
    |
@@ -108,7 +102,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 27 |     drop(reference1);
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:27:10
    |
@@ -121,7 +114,6 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 28 |     forget(&*reference1);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:28:12
    |
@@ -134,7 +126,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 31 |     drop(reference2);
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &mut SomeStruct
   --> drop_forget_ref.rs:31:10
    |
@@ -147,7 +138,6 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 33 |     forget(reference3);
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &mut SomeStruct
   --> drop_forget_ref.rs:33:12
    |
@@ -160,7 +150,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 36 |     drop(reference4);
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:36:10
    |
@@ -173,7 +162,6 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 37 |     forget(reference4);
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:37:12
    |
@@ -186,7 +174,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 42 |     drop(&val);
    |     ^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &T
   --> drop_forget_ref.rs:42:10
    |
@@ -199,7 +186,6 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 48 |     forget(&val);
    |     ^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &T
   --> drop_forget_ref.rs:48:12
    |
@@ -212,7 +198,6 @@ error: calls to `std::mem::drop` with a reference instead of an owned value. Dro
 56 |     std::mem::drop(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D drop-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:56:20
    |
@@ -225,14 +210,13 @@ error: calls to `std::mem::forget` with a reference instead of an owned value. F
 59 |     std::mem::forget(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D forget-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
   --> drop_forget_ref.rs:59:22
    |
 59 |     std::mem::forget(&SomeStruct);
    |                      ^^^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to 18 previous errors
 
 
 To learn more, run the command again with --verbose.
