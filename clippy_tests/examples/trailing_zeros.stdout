@@ -9,6 +9,6 @@ if_let_chain!{[
     let LitKind::Int(15, _) = lit.node,
     let Expr_::ExprLit(ref lit1) = right.node,
     let LitKind::Int(0, _) = lit1.node,
-]} {
+], {
     // report your lint here
-}
+}}
