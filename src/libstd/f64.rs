@@ -1046,13 +1046,16 @@ impl f64 {
     #[inline]
     pub fn from_bits(mut v: u64) -> Self {
         const EXP_MASK: u64   = 0x7FF0000000000000;
-        const QNAN_MASK: u64  = 0x0001000000000000;
         const FRACT_MASK: u64 = 0x000FFFFFFFFFFFFF;
         if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
-            // If we have a NaN value, we
-            // convert signaling NaN values to quiet NaN
-            // by setting the the highest bit of the fraction
-            v |= QNAN_MASK;
+            // While IEEE 754-2008 specifies encodings for quiet NaNs
+            // and signaling ones, certain MIPS and PA-RISC
+            // CPUs treat signaling NaNs differently.
+            // Therefore to be safe, we pass a known quiet NaN
+            // if v is any kind of NaN.
+            // The check above only assumes IEEE 754-1985 to be
+            // valid.
+            v = unsafe { ::mem::transmute(NAN) };
         }
         unsafe { ::mem::transmute(v) }
     }
