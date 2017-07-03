@@ -76,6 +76,7 @@ mod chains;
 mod macros;
 mod patterns;
 mod summary;
+mod vertical;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.

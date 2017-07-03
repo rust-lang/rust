@@ -1209,6 +1209,33 @@ fn lorem<T: Eq>(t: T) {
 
 See also: [`space_before_bound`](#space_before_bound).
 
+## `struct_field_align_threshold`
+
+The maximum diff of width between struct fields to be aligned with each other.
+
+- **Default value** : 0
+- **Possible values**: any positive integer
+
+#### `0`:
+
+```rust
+struct Foo {
+    x: u32,
+    yy: u32,
+    zzz: u32,
+}
+```
+
+#### `20`:
+
+```rust
+struct Foo {
+    x:   u32,
+    yy:  u32,
+    zzz: u32,
+}
+```
+
 ## `space_after_struct_lit_field_colon`
 
 Leave a space after the colon in a struct literal field
