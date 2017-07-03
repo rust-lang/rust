@@ -116,7 +116,9 @@ fn struct_exprs() {
         ..base
     };
     IntrinsicISizesContribution {
-        content_intrinsic_sizes: IntrinsicISizes { minimum_inline_size: 0 },
+        content_intrinsic_sizes: IntrinsicISizes {
+            minimum_inline_size: 0,
+        },
     };
 }
 
@@ -141,7 +143,9 @@ fn issue491() {
         arm: 0, // Comment
     };
 
-    Foo { arm: 0 /* Comment */ };
+    Foo {
+        arm: 0, // Comment
+    };
 
     Foo {
         a: aaaaaaaaaa,

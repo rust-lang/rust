@@ -421,7 +421,9 @@ pub struct FormatReport {
 
 impl FormatReport {
     fn new() -> FormatReport {
-        FormatReport { file_error_map: HashMap::new() }
+        FormatReport {
+            file_error_map: HashMap::new(),
+        }
     }
 
     pub fn warning_count(&self) -> usize {

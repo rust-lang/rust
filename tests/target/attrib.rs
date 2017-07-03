@@ -56,8 +56,12 @@ struct Foo {
 fn foo() {
     #[cfg(target_os = "freertos")]
     match port_id {
-        'a' | 'A' => GpioPort { port_address: GPIO_A },
-        'b' | 'B' => GpioPort { port_address: GPIO_B },
+        'a' | 'A' => GpioPort {
+            port_address: GPIO_A,
+        },
+        'b' | 'B' => GpioPort {
+            port_address: GPIO_B,
+        },
         _ => panic!(),
     }
 

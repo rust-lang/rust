@@ -12,7 +12,8 @@ fn baz(p: Packet) {
             loop {
                 loop {
                     if let Packet::Transaction {
-                        state: TransactionState::Committed(ts, ..), ..
+                        state: TransactionState::Committed(ts, ..),
+                        ..
                     } = p
                     {
                         unreachable!()
