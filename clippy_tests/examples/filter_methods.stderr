@@ -17,8 +17,6 @@ error: called `filter(p).flat_map(q)` on an `Iterator`. This is more succinctly 
 14 | |                                 .filter(|&x| x == 0)
 15 | |                                 .flat_map(|x| x.checked_mul(2))
    | |_______________________________________________________________^
-   |
-   = note: `-D filter-map` implied by `-D warnings`
 
 error: called `filter_map(p).flat_map(q)` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)` and filtering by returning an empty Iterator.
   --> filter_methods.rs:18:21
@@ -28,8 +26,6 @@ error: called `filter_map(p).flat_map(q)` on an `Iterator`. This is more succinc
 19 | |                                 .filter_map(|x| x.checked_mul(2))
 20 | |                                 .flat_map(|x| x.checked_mul(2))
    | |_______________________________________________________________^
-   |
-   = note: `-D filter-map` implied by `-D warnings`
 
 error: called `filter_map(p).map(q)` on an `Iterator`. This is more succinctly expressed by only calling `.filter_map(..)` instead.
   --> filter_methods.rs:23:21
@@ -39,10 +35,8 @@ error: called `filter_map(p).map(q)` on an `Iterator`. This is more succinctly e
 24 | |                                 .filter_map(|x| x.checked_mul(2))
 25 | |                                 .map(|x| x.checked_mul(2))
    | |__________________________________________________________^
-   |
-   = note: `-D filter-map` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 
 
 To learn more, run the command again with --verbose.

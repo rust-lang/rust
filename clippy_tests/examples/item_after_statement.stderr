@@ -11,10 +11,8 @@ error: adding items after statements is confusing, since items exist from the st
    |
 17 |     fn foo() { println!("foo"); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D items-after-statements` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

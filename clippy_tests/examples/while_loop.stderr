@@ -22,8 +22,6 @@ error: this loop could be written as a `while let` loop
 26 | |         };
 27 | |     }
    | |_____^ help: try `while let Some(_x) = y { .. }`
-   |
-   = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
   --> while_loop.rs:28:5
@@ -36,8 +34,6 @@ error: this loop could be written as a `while let` loop
 34 | |         let _str = "foo";
 35 | |     }
    | |_____^ help: try `while let Some(x) = y { .. }`
-   |
-   = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
   --> while_loop.rs:36:5
@@ -50,8 +46,6 @@ error: this loop could be written as a `while let` loop
 42 | |         { let _b = "foobar"; }
 43 | |     }
    | |_____^ help: try `while let Some(x) = y { .. }`
-   |
-   = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
   --> while_loop.rs:58:5
@@ -64,8 +58,6 @@ error: this loop could be written as a `while let` loop
 64 | |         let _ = (e, l);
 65 | |     }
    | |_____^ help: try `while let Some(word) = "".split_whitespace().next() { .. }`
-   |
-   = note: `-D while-let-loop` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
   --> while_loop.rs:68:5
@@ -84,16 +76,12 @@ error: this loop could be written as a `for` loop
 74 | |         println!("{}", x);
 75 | |     }
    | |_____^ help: try `for x in iter { .. }`
-   |
-   = note: `-D while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
   --> while_loop.rs:78:5
    |
 78 |     while let Some(_) = iter.next() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `for _ in iter { .. }`
-   |
-   = note: `-D while-let-on-iterator` implied by `-D warnings`
 
 error: this loop could be written as a `while let` loop
    --> while_loop.rs:118:5
@@ -106,8 +94,6 @@ error: this loop could be written as a `while let` loop
 123 | |         loop {}
 124 | |     }
     | |_____^ help: try `while let Some(ele) = iter.next() { .. }`
-    |
-    = note: `-D while-let-loop` implied by `-D warnings`
 
 error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
    --> while_loop.rs:123:9
@@ -117,7 +103,7 @@ error: empty `loop {}` detected. You may want to either use `panic!()` or add `s
     |
     = note: `-D empty-loop` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 10 previous errors
 
 
 To learn more, run the command again with --verbose.

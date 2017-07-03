@@ -6,7 +6,7 @@ error: the lint `MISSING_LINT` is not added to any `LintPass`
    |
    = note: `-D lint-without-lint-pass` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

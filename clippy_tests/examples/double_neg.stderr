@@ -6,7 +6,7 @@ error: `--x` could be misinterpreted as pre-decrement by C programmers, is usual
   |
   = note: `-D double-neg` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

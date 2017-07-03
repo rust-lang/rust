@@ -11,10 +11,8 @@ error: Negation by multiplying with -1
    |
 32 |     -1 * x;
    |     ^^^^^^
-   |
-   = note: `-D neg-multiply` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

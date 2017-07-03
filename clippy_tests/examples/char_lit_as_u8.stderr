@@ -8,7 +8,7 @@ error: casting character literal to u8. `char`s are 4 bytes wide in rust, so cas
   = help: Consider using a byte literal instead:
           b'a'
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

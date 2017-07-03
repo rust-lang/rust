@@ -11,24 +11,18 @@ error: Variant name starts with the enum's name
    |
 25 |     FoodGood,
    |     ^^^^^^^^
-   |
-   = note: `-D enum-variant-names` implied by `-D warnings`
 
 error: Variant name starts with the enum's name
   --> enum_variants.rs:26:5
    |
 26 |     FoodMiddle,
    |     ^^^^^^^^^^
-   |
-   = note: `-D enum-variant-names` implied by `-D warnings`
 
 error: Variant name starts with the enum's name
   --> enum_variants.rs:27:5
    |
 27 |     FoodBad,
    |     ^^^^^^^
-   |
-   = note: `-D enum-variant-names` implied by `-D warnings`
 
 error: All variants have the same prefix: `Food`
   --> enum_variants.rs:24:1
@@ -40,7 +34,6 @@ error: All variants have the same prefix: `Food`
 28 | | }
    | |_^
    |
-   = note: `-D enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `CallType`
@@ -53,7 +46,6 @@ error: All variants have the same prefix: `CallType`
 38 | | }
    | |_^
    |
-   = note: `-D enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `Constant`
@@ -66,7 +58,6 @@ error: All variants have the same prefix: `Constant`
 49 | | }
    | |_^
    |
-   = note: `-D enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `With`
@@ -79,7 +70,6 @@ error: All variants have the same prefix: `With`
 82 | | }
    | |_^
    |
-   = note: `-D enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `Prefix`
@@ -92,7 +82,6 @@ error: All variants have the same prefix: `Prefix`
 88 | | }
    | |_^
    |
-   = note: `-D enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
 error: All variants have the same prefix: `With`
@@ -108,7 +97,7 @@ error: All variants have the same prefix: `With`
    = note: `-D pub-enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: aborting due to previous error(s)
+error: aborting due to 10 previous errors
 
 
 To learn more, run the command again with --verbose.

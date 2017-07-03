@@ -17,14 +17,13 @@ error: returning the result of a let binding from a block. Consider returning th
 16 |         x
    |         ^
    |
-   = note: `-D let-and-return` implied by `-D warnings`
 note: this expression can be directly returned
   --> let_return.rs:15:17
    |
 15 |         let x = 5;
    |                 ^
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

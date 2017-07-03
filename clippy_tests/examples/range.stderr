@@ -11,32 +11,24 @@ error: use of deprecated item: replaced by `Iterator::step_by`
    |
 16 |     (0..1).step_by(1);
    |            ^^^^^^^
-   |
-   = note: `-D deprecated` implied by `-D warnings`
 
 error: use of deprecated item: replaced by `Iterator::step_by`
   --> range.rs:18:11
    |
 18 |     (1..).step_by(0);
    |           ^^^^^^^
-   |
-   = note: `-D deprecated` implied by `-D warnings`
 
 error: use of deprecated item: replaced by `Iterator::step_by`
   --> range.rs:19:13
    |
 19 |     (1...2).step_by(0);
    |             ^^^^^^^
-   |
-   = note: `-D deprecated` implied by `-D warnings`
 
 error: use of deprecated item: replaced by `Iterator::step_by`
   --> range.rs:22:7
    |
 22 |     x.step_by(0);
    |       ^^^^^^^
-   |
-   = note: `-D deprecated` implied by `-D warnings`
 
 error: It is more idiomatic to use v1.iter().enumerate()
   --> range.rs:30:14
@@ -54,7 +46,7 @@ error: Iterator::step_by(0) will panic at runtime
    |
    = note: `-D iterator-step-by-zero` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 7 previous errors
 
 
 To learn more, run the command again with --verbose.

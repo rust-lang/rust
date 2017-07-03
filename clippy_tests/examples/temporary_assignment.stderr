@@ -11,10 +11,8 @@ error: assignment to temporary
    |
 30 |     (0, 0).0 = 1;
    |     ^^^^^^^^^^^^
-   |
-   = note: `-D temporary-assignment` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 
 
 To learn more, run the command again with --verbose.

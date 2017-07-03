@@ -7,7 +7,7 @@ error: you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`
    = note: `-D box-vec` implied by `-D warnings`
    = help: `Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

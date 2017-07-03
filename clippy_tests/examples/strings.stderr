@@ -19,8 +19,6 @@ error: you added something to a string. Consider using `String::push_str()` inst
    |
 14 |     let z = y + "...";
    |             ^^^^^^^^^
-   |
-   = note: `-D string-add` implied by `-D warnings`
 
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
   --> strings.rs:24:9
@@ -35,32 +33,24 @@ error: manual implementation of an assign operation
    |
 24 |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with `x += "."`
-   |
-   = note: `-D assign-op-pattern` implied by `-D warnings`
 
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
   --> strings.rs:38:9
    |
 38 |         x = x + ".";
    |         ^^^^^^^^^^^
-   |
-   = note: `-D string-add-assign` implied by `-D warnings`
 
 error: manual implementation of an assign operation
   --> strings.rs:38:9
    |
 38 |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with `x += "."`
-   |
-   = note: `-D assign-op-pattern` implied by `-D warnings`
 
 error: you added something to a string. Consider using `String::push_str()` instead
   --> strings.rs:42:13
    |
 42 |     let z = y + "...";
    |             ^^^^^^^^^
-   |
-   = note: `-D string-add` implied by `-D warnings`
 
 error: calling `as_bytes()` on a string literal
   --> strings.rs:50:14
@@ -75,10 +65,8 @@ error: manual implementation of an assign operation
    |
 65 |     ; x = x + 1;
    |       ^^^^^^^^^ help: replace it with `x += 1`
-   |
-   = note: `-D assign-op-pattern` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 10 previous errors
 
 
 To learn more, run the command again with --verbose.

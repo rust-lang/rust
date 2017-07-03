@@ -13,7 +13,6 @@ error: handle read amount returned or use `Read::read_exact` instead
 13 |     try!(s.read(&mut buf));
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D unused-io-amount` implied by `-D warnings`
    = note: this error originates in a macro outside of the current crate
 
 error: handle written amount returned or use `Write::write_all` instead
@@ -21,34 +20,26 @@ error: handle written amount returned or use `Write::write_all` instead
    |
 18 |     s.write(b"test")?;
    |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D unused-io-amount` implied by `-D warnings`
 
 error: handle read amount returned or use `Read::read_exact` instead
   --> unused_io_amount.rs:20:5
    |
 20 |     s.read(&mut buf)?;
    |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D unused-io-amount` implied by `-D warnings`
 
 error: handle written amount returned or use `Write::write_all` instead
   --> unused_io_amount.rs:25:5
    |
 25 |     s.write(b"test").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D unused-io-amount` implied by `-D warnings`
 
 error: handle read amount returned or use `Read::read_exact` instead
   --> unused_io_amount.rs:27:5
    |
 27 |     s.read(&mut buf).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D unused-io-amount` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 
 
 To learn more, run the command again with --verbose.

@@ -28,8 +28,6 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 43 | |         _ => {}
 44 | |     };
    | |_____^ help: try this `if let (2...3, 7...9) = z { dummy() }`
-   |
-   = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> matches.rs:63:5
@@ -39,8 +37,6 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 65 | |         None => ()
 66 | |     };
    | |_____^ help: try this `if let Some(y) = x { dummy() }`
-   |
-   = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> matches.rs:68:5
@@ -50,8 +46,6 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 70 | |         Err(..) => ()
 71 | |     };
    | |_____^ help: try this `if let Ok(y) = y { dummy() }`
-   |
-   = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> matches.rs:75:5
@@ -61,8 +55,6 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 77 | |         Cow::Owned(..) => (),
 78 | |     };
    | |_____^ help: try this `if let Cow::Borrowed(..) = c { dummy() }`
-   |
-   = note: `-D single-match` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
   --> matches.rs:96:5
@@ -83,8 +75,6 @@ error: you seem to be trying to match on a boolean expression
 104 | |         false => 0,
 105 | |     };
     | |_____^ help: consider using an if/else expression `if option == 1 { 1 } else { 0 }`
-    |
-    = note: `-D match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
    --> matches.rs:107:5
@@ -94,8 +84,6 @@ error: you seem to be trying to match on a boolean expression
 109 | |         false => { println!("Noooo!"); }
 110 | |     };
     | |_____^ help: consider using an if/else expression `if !test { println!("Noooo!"); }`
-    |
-    = note: `-D match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
    --> matches.rs:112:5
@@ -105,8 +93,6 @@ error: you seem to be trying to match on a boolean expression
 114 | |         _ => (),
 115 | |     };
     | |_____^ help: consider using an if/else expression `if !test { println!("Noooo!"); }`
-    |
-    = note: `-D match-bool` implied by `-D warnings`
 
 error: you seem to be trying to match on a boolean expression
    --> matches.rs:117:5
@@ -116,8 +102,6 @@ error: you seem to be trying to match on a boolean expression
 119 | |         _ => (),
 120 | |     };
     | |_____^ help: consider using an if/else expression `if !(test && test) { println!("Noooo!"); }`
-    |
-    = note: `-D match-bool` implied by `-D warnings`
 
 error: equal expressions as operands to `&&`
    --> matches.rs:117:11
@@ -135,8 +119,6 @@ error: you seem to be trying to match on a boolean expression
 124 | |         true => { println!("Yes!"); }
 125 | |     };
     | |_____^ help: consider using an if/else expression `if test { println!("Yes!"); } else { println!("Noooo!"); }`
-    |
-    = note: `-D match-bool` implied by `-D warnings`
 
 error: you don't need to add `&` to all patterns
    --> matches.rs:138:9
@@ -160,7 +142,6 @@ error: you don't need to add `&` to all patterns
 151 | |     }
     | |_____^
     |
-    = note: `-D match-ref-pats` implied by `-D warnings`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |     match *tup { .. }
 
@@ -172,8 +153,6 @@ error: you don't need to add `&` to both the expression and the patterns
 156 | |         &None => println!("none"),
 157 | |     }
     | |_____^ help: try `match w { .. }`
-    |
-    = note: `-D match-ref-pats` implied by `-D warnings`
 
 error: you don't need to add `&` to all patterns
    --> matches.rs:165:5
@@ -183,7 +162,6 @@ error: you don't need to add `&` to all patterns
 167 | |     }
     | |_____^
     |
-    = note: `-D match-ref-pats` implied by `-D warnings`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
     |     if let .. = *a { .. }
 
@@ -194,8 +172,6 @@ error: you don't need to add `&` to both the expression and the patterns
 171 | |         println!("none");
 172 | |     }
     | |_____^ help: try `if let .. = b { .. }`
-    |
-    = note: `-D match-ref-pats` implied by `-D warnings`
 
 error: some ranges overlap
    --> matches.rs:179:9
@@ -216,7 +192,6 @@ error: some ranges overlap
 185 |         0 ... 5 => println!("0 ... 5"),
     |         ^^^^^^^
     |
-    = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
    --> matches.rs:187:9
     |
@@ -229,7 +204,6 @@ error: some ranges overlap
 193 |         0 ... 5 => println!("0 ... 5"),
     |         ^^^^^^^
     |
-    = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
    --> matches.rs:192:9
     |
@@ -242,7 +216,6 @@ error: some ranges overlap
 199 |         0 ... 2 => println!("0 ... 2"),
     |         ^^^^^^^
     |
-    = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
    --> matches.rs:198:9
     |
@@ -255,7 +228,6 @@ error: some ranges overlap
 222 |         0 .. 11 => println!("0 .. 11"),
     |         ^^^^^^^
     |
-    = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
    --> matches.rs:223:9
     |
@@ -277,7 +249,6 @@ error: Err(_) will match all errors, maybe not a good idea
 246 |         Err(_) => {panic!()}
     |         ^^^^^^
     |
-    = note: `-D match-wild-err-arm` implied by `-D warnings`
     = note: to remove this warning, match each error seperately or use unreachable macro
 
 error: Err(_) will match all errors, maybe not a good idea
@@ -286,10 +257,9 @@ error: Err(_) will match all errors, maybe not a good idea
 252 |         Err(_) => {panic!();}
     |         ^^^^^^
     |
-    = note: `-D match-wild-err-arm` implied by `-D warnings`
     = note: to remove this warning, match each error seperately or use unreachable macro
 
-error: aborting due to previous error(s)
+error: aborting due to 26 previous errors
 
 
 To learn more, run the command again with --verbose.

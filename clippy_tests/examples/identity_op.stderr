@@ -11,50 +11,38 @@ error: the operation is ineffective. Consider reducing it to `x`
    |
 14 |     x + (1 - 1);
    |     ^^^^^^^^^^^
-   |
-   = note: `-D identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> identity_op.rs:16:5
    |
 16 |     0 + x;
    |     ^^^^^
-   |
-   = note: `-D identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> identity_op.rs:19:5
    |
 19 |     x | (0);
    |     ^^^^^^^
-   |
-   = note: `-D identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> identity_op.rs:22:5
    |
 22 |     x * 1;
    |     ^^^^^
-   |
-   = note: `-D identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> identity_op.rs:23:5
    |
 23 |     1 * x;
    |     ^^^^^
-   |
-   = note: `-D identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> identity_op.rs:29:5
    |
 29 |     -1 & x;
    |     ^^^^^^
-   |
-   = note: `-D identity-op` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 7 previous errors
 
 
 To learn more, run the command again with --verbose.

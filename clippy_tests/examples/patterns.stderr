@@ -6,7 +6,7 @@ error: the `y @ _` pattern can be written as just `y`
    |
    = note: `-D redundant-pattern` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 
 
 To learn more, run the command again with --verbose.

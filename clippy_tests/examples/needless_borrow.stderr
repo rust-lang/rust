@@ -11,26 +11,20 @@ error: this pattern creates a reference to a reference
    |
 20 |     if let Some(ref cake) = Some(&5) {}
    |                 ^^^^^^^^
-   |
-   = note: `-D needless-borrow` implied by `-D warnings`
 
 error: this expression borrows a reference that is immediately dereferenced by the compiler
   --> needless_borrow.rs:27:15
    |
 27 |         46 => &&a,
    |               ^^^
-   |
-   = note: `-D needless-borrow` implied by `-D warnings`
 
 error: this pattern creates a reference to a reference
   --> needless_borrow.rs:50:31
    |
 50 |     let _ = v.iter().filter(|&ref a| a.is_empty());
    |                               ^^^^^
-   |
-   = note: `-D needless-borrow` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 
 
 To learn more, run the command again with --verbose.

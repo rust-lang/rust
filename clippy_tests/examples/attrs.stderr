@@ -6,6 +6,24 @@ error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usuall
   |
   = note: `-D inline-always` implied by `-D warnings`
 
+error: you have declared `#[inline(always)]` on `false_positive_expr`. This is usually a bad idea
+  --> attrs.rs:11:1
+   |
+11 | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+error: you have declared `#[inline(always)]` on `false_positive_stmt`. This is usually a bad idea
+  --> attrs.rs:16:1
+   |
+16 | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+error: you have declared `#[inline(always)]` on `empty_and_false_positive_stmt`. This is usually a bad idea
+  --> attrs.rs:21:1
+   |
+21 | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
 error: the since field must contain a semver-compliant version
   --> attrs.rs:27:14
    |
@@ -19,10 +37,8 @@ error: the since field must contain a semver-compliant version
    |
 30 | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^
-   |
-   = note: `-D deprecated-semver` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 
 
 To learn more, run the command again with --verbose.

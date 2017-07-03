@@ -28,7 +28,7 @@ error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
 22 |     fn test4(a: &Box<bool>);
    |                 ^^^^^^^^^^ help: try `&bool`
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 
 
 To learn more, run the command again with --verbose.

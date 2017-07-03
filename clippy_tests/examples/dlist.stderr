@@ -13,7 +13,6 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
 14 |     fn foo(LinkedList<u8>);
    |            ^^^^^^^^^^^^^^
    |
-   = note: `-D linkedlist` implied by `-D warnings`
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
@@ -22,7 +21,6 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
 15 |     const BAR : Option<LinkedList<u8>>;
    |                        ^^^^^^^^^^^^^^
    |
-   = note: `-D linkedlist` implied by `-D warnings`
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
@@ -31,7 +29,6 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
 26 |     fn foo(_: LinkedList<u8>) {}
    |               ^^^^^^^^^^^^^^
    |
-   = note: `-D linkedlist` implied by `-D warnings`
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
@@ -40,7 +37,6 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
 29 | pub fn test(my_favourite_linked_list: LinkedList<u8>) {
    |                                       ^^^^^^^^^^^^^^
    |
-   = note: `-D linkedlist` implied by `-D warnings`
    = help: a VecDeque might work
 
 error: I see you're using a LinkedList! Perhaps you meant some other data structure?
@@ -49,10 +45,9 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
 33 | pub fn test_ret() -> Option<LinkedList<u8>> {
    |                             ^^^^^^^^^^^^^^
    |
-   = note: `-D linkedlist` implied by `-D warnings`
    = help: a VecDeque might work
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 
 
 To learn more, run the command again with --verbose.

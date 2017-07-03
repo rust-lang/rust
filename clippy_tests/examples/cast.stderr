@@ -11,40 +11,30 @@ error: casting i64 to f32 causes a loss of precision (i64 is 64 bits wide, but f
   |
 9 |     1i64 as f32;
   |     ^^^^^^^^^^^
-  |
-  = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting i64 to f64 causes a loss of precision (i64 is 64 bits wide, but f64's mantissa is only 52 bits wide)
   --> cast.rs:10:5
    |
 10 |     1i64 as f64;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting u32 to f32 causes a loss of precision (u32 is 32 bits wide, but f32's mantissa is only 23 bits wide)
   --> cast.rs:11:5
    |
 11 |     1u32 as f32;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting u64 to f32 causes a loss of precision (u64 is 64 bits wide, but f32's mantissa is only 23 bits wide)
   --> cast.rs:12:5
    |
 12 |     1u64 as f32;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting u64 to f64 causes a loss of precision (u64 is 64 bits wide, but f64's mantissa is only 52 bits wide)
   --> cast.rs:13:5
    |
 13 |     1u64 as f64;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting f32 to i32 may truncate the value
   --> cast.rs:17:5
@@ -59,8 +49,6 @@ error: casting f32 to u32 may truncate the value
    |
 18 |     1f32 as u32;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting f32 to u32 may lose the sign of the value
   --> cast.rs:18:5
@@ -75,56 +63,42 @@ error: casting f64 to f32 may truncate the value
    |
 19 |     1f64 as f32;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting i32 to i8 may truncate the value
   --> cast.rs:20:5
    |
 20 |     1i32 as i8;
    |     ^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting i32 to u8 may lose the sign of the value
   --> cast.rs:21:5
    |
 21 |     1i32 as u8;
    |     ^^^^^^^^^^
-   |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
 
 error: casting i32 to u8 may truncate the value
   --> cast.rs:21:5
    |
 21 |     1i32 as u8;
    |     ^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting f64 to isize may truncate the value
   --> cast.rs:22:5
    |
 22 |     1f64 as isize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting f64 to usize may truncate the value
   --> cast.rs:23:5
    |
 23 |     1f64 as usize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting f64 to usize may lose the sign of the value
   --> cast.rs:23:5
    |
 23 |     1f64 as usize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
 
 error: casting u8 to i8 may wrap around the value
   --> cast.rs:25:5
@@ -139,200 +113,150 @@ error: casting u16 to i16 may wrap around the value
    |
 26 |     1u16 as i16;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
 
 error: casting u32 to i32 may wrap around the value
   --> cast.rs:27:5
    |
 27 |     1u32 as i32;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
 
 error: casting u64 to i64 may wrap around the value
   --> cast.rs:28:5
    |
 28 |     1u64 as i64;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
 
 error: casting usize to isize may wrap around the value
   --> cast.rs:29:5
    |
 29 |     1usize as isize;
    |     ^^^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
 
 error: casting i32 to u32 may lose the sign of the value
   --> cast.rs:31:5
    |
 31 |     1i32 as u32;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
 
 error: casting isize to usize may lose the sign of the value
   --> cast.rs:32:5
    |
 32 |     1isize as usize;
    |     ^^^^^^^^^^^^^^^
-   |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
 
 error: casting isize to i8 may truncate the value
   --> cast.rs:35:5
    |
 35 |     1isize as i8;
    |     ^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting isize to f64 causes a loss of precision on targets with 64-bit wide pointers (isize is 64 bits wide, but f64's mantissa is only 52 bits wide)
   --> cast.rs:36:5
    |
 36 |     1isize as f64;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting usize to f64 causes a loss of precision on targets with 64-bit wide pointers (usize is 64 bits wide, but f64's mantissa is only 52 bits wide)
   --> cast.rs:37:5
    |
 37 |     1usize as f64;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting isize to f32 causes a loss of precision (isize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
   --> cast.rs:38:5
    |
 38 |     1isize as f32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting usize to f32 causes a loss of precision (usize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
   --> cast.rs:39:5
    |
 39 |     1usize as f32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-precision-loss` implied by `-D warnings`
 
 error: casting isize to i32 may truncate the value on targets with 64-bit wide pointers
   --> cast.rs:40:5
    |
 40 |     1isize as i32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting isize to u32 may lose the sign of the value
   --> cast.rs:41:5
    |
 41 |     1isize as u32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
 
 error: casting isize to u32 may truncate the value on targets with 64-bit wide pointers
   --> cast.rs:41:5
    |
 41 |     1isize as u32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting usize to u32 may truncate the value on targets with 64-bit wide pointers
   --> cast.rs:42:5
    |
 42 |     1usize as u32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting usize to i32 may truncate the value on targets with 64-bit wide pointers
   --> cast.rs:43:5
    |
 43 |     1usize as i32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting usize to i32 may wrap around the value on targets with 32-bit wide pointers
   --> cast.rs:43:5
    |
 43 |     1usize as i32;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
 
 error: casting i64 to isize may truncate the value on targets with 32-bit wide pointers
   --> cast.rs:45:5
    |
 45 |     1i64 as isize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting i64 to usize may lose the sign of the value
   --> cast.rs:46:5
    |
 46 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
 
 error: casting i64 to usize may truncate the value on targets with 32-bit wide pointers
   --> cast.rs:46:5
    |
 46 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting u64 to isize may truncate the value on targets with 32-bit wide pointers
   --> cast.rs:47:5
    |
 47 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting u64 to isize may wrap around the value on targets with 64-bit wide pointers
   --> cast.rs:47:5
    |
 47 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
 
 error: casting u64 to usize may truncate the value on targets with 32-bit wide pointers
   --> cast.rs:48:5
    |
 48 |     1u64 as usize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-truncation` implied by `-D warnings`
 
 error: casting u32 to isize may wrap around the value on targets with 32-bit wide pointers
   --> cast.rs:49:5
    |
 49 |     1u32 as isize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-possible-wrap` implied by `-D warnings`
 
 error: casting i32 to usize may lose the sign of the value
   --> cast.rs:52:5
    |
 52 |     1i32 as usize;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D cast-sign-loss` implied by `-D warnings`
 
 error: casting to the same type is unnecessary (`i32` -> `i32`)
   --> cast.rs:54:5
@@ -347,18 +271,14 @@ error: casting to the same type is unnecessary (`f32` -> `f32`)
    |
 55 |     1f32 as f32;
    |     ^^^^^^^^^^^
-   |
-   = note: `-D unnecessary-cast` implied by `-D warnings`
 
 error: casting to the same type is unnecessary (`bool` -> `bool`)
   --> cast.rs:56:5
    |
 56 |     false as bool;
    |     ^^^^^^^^^^^^^
-   |
-   = note: `-D unnecessary-cast` implied by `-D warnings`
 
-error: aborting due to previous error(s)
+error: aborting due to 45 previous errors
 
 
 To learn more, run the command again with --verbose.

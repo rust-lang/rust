@@ -17,7 +17,6 @@ error: calls to `std::mem::drop` with a value that implements Copy. Dropping a c
 34 |     drop(s2);
    |     ^^^^^^^^
    |
-   = note: `-D drop-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> drop_forget_copy.rs:34:10
    |
@@ -30,7 +29,6 @@ error: calls to `std::mem::drop` with a value that implements Copy. Dropping a c
 36 |     drop(s4);
    |     ^^^^^^^^
    |
-   = note: `-D drop-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> drop_forget_copy.rs:36:10
    |
@@ -56,7 +54,6 @@ error: calls to `std::mem::forget` with a value that implements Copy. Forgetting
 40 |     forget(s2);
    |     ^^^^^^^^^^
    |
-   = note: `-D forget-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> drop_forget_copy.rs:40:12
    |
@@ -69,14 +66,13 @@ error: calls to `std::mem::forget` with a value that implements Copy. Forgetting
 42 |     forget(s4);
    |     ^^^^^^^^^^
    |
-   = note: `-D forget-copy` implied by `-D warnings`
 note: argument has type SomeStruct
   --> drop_forget_copy.rs:42:12
    |
 42 |     forget(s4);
    |            ^^
 
-error: aborting due to previous error(s)
+error: aborting due to 6 previous errors
 
 
 To learn more, run the command again with --verbose.
