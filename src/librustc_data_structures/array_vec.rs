@@ -13,13 +13,12 @@
 use std::marker::Unsize;
 use std::iter::Extend;
 use std::ptr::{self, drop_in_place, Shared};
-use std::ops::{Deref, DerefMut, Range};
+use std::ops::{Deref, DerefMut, Range, RangeBounds};
+use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::hash::{Hash, Hasher};
 use std::slice;
 use std::fmt;
 use std::mem;
-use std::collections::range::RangeArgument;
-use std::collections::Bound::{Excluded, Included, Unbounded};
 use std::mem::ManuallyDrop;
 
 pub unsafe trait Array {
@@ -106,7 +105,7 @@ impl<A: Array> ArrayVec<A> {
     }
 
     pub fn drain<R>(&mut self, range: R) -> Drain<A>
-        where R: RangeArgument<usize>
+        where R: Into<RangeBounds<usize>>
     {
         // Memory safety
         //
@@ -119,14 +118,14 @@ impl<A: Array> ArrayVec<A> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let start = match range.start() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
+        let start = match range.start {
+            Included(n) => n,
+            Excluded(n) => n + 1,
             Unbounded    => 0,
         };
-        let end = match range.end() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
+        let end = match range.end {
+            Included(n) => n + 1,
+            Excluded(n) => n,
             Unbounded    => len,
         };
         assert!(start <= end);
