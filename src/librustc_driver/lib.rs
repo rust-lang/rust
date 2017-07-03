@@ -344,17 +344,13 @@ pub trait CompilerCalls<'a> {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
-/**
- * TODO remove these and use winapi 0.3 instead
- *
- * These are duplicated in
- *   - bootstrap/compile.rs#L478
- *   - librustc_errors/emitter.rs#L1253
- */
+// FIXME remove these and use winapi 0.3 instead
+// Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
 #[cfg(unix)]
 fn stdout_isatty() -> bool {
     unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
 }
+
 #[cfg(windows)]
 fn stdout_isatty() -> bool {
     type DWORD = u32;
