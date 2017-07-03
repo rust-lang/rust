@@ -13,7 +13,7 @@ extern crate rustc_plugin;
 extern crate syntax;
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
-use rustc::session::{config, Session};
+use rustc::session::{config, Session, CompileIncomplete};
 use rustc::session::config::{Input, ErrorOutputType};
 use std::path::PathBuf;
 use std::process::{self, Command};
@@ -278,10 +278,8 @@ pub fn main() {
 
             let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
             let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
-            if let Err(err_count) = result {
-                if err_count > 0 {
-                    std::process::exit(1);
-                }
+            if let Err(CompileIncomplete::Errored(_)) = result {
+                std::process::exit(1);
             }
         })
                 .expect("rustc_thread failed");
