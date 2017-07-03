@@ -1,5 +1,5 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: NonBreaking changes in `Def`
+warning: Breaking changes in `Def`
   --> $REPO_PATH/tests/examples/struct.rs:32:5
    |
 32 | /     pub struct Def<A=u8> {
@@ -8,6 +8,17 @@ warning: NonBreaking changes in `Def`
    | |_____^
    |
    = note: NonBreaking (TypeParameterAdded { defaulted: true })
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: A }) })
+
+warning: Breaking changes in `Efg`
+  --> $REPO_PATH/tests/examples/struct.rs:36:5
+   |
+36 | /     pub struct Efg {
+37 | |         pub field: u16,
+38 | |     }
+   | |_____^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
 
 warning: TechnicallyBreaking changes in `Fgh`
   --> $REPO_PATH/tests/examples/struct.rs:40:5

@@ -6,7 +6,7 @@
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 
 use syntax::ast::Name;
 
@@ -20,27 +20,41 @@ pub struct IdMapping {
     toplevel_mapping: HashMap<DefId, (DefId, Export, Export)>,
     /// Other item's old `DefId` mapped to new `DefId`.
     mapping: HashMap<DefId, DefId>,
+    /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
+    child_mapping: HashMap<DefId, BTreeSet<DefId>>,
 }
 
 impl IdMapping {
     /// Register two exports representing the same item across versions.
     pub fn add_export(&mut self, old: Export, new: Export) -> bool {
-        if !self.toplevel_mapping.contains_key(&old.def.def_id()) {
-            self.toplevel_mapping
-                .insert(old.def.def_id(), (new.def.def_id(), old, new));
-            return true;
+        if self.toplevel_mapping.contains_key(&old.def.def_id()) {
+            return false;
         }
 
-        false
+        self.toplevel_mapping
+            .insert(old.def.def_id(), (new.def.def_id(), old, new));
+
+        true
     }
 
     /// Add any other item pair's old and new `DefId`s.
     pub fn add_item(&mut self, old: DefId, new: DefId) {
-        if !self.mapping.contains_key(&old) {
-            self.mapping.insert(old, new);
-        } else {
-            panic!("bug: overwriting {:?} => {:?} with {:?}!", old, self.mapping[&old], new);
-        }
+        assert!(!self.mapping.contains_key(&old),
+                "bug: overwriting {:?} => {:?} with {:?}!",
+                old,
+                self.mapping[&old],
+                new);
+
+        self.mapping.insert(old, new);
+    }
+
+    /// Add any other item pair's old and new `DefId`s, together with a parent entry.
+    pub fn add_subitem(&mut self, parent: DefId, old: DefId, new: DefId) {
+        self.add_item(old, new);
+        self.child_mapping
+            .entry(parent)
+            .or_insert_with(Default::default)
+            .insert(old);
     }
 
     /// Get the new `DefId` associated with the given old one.
@@ -70,6 +84,15 @@ impl IdMapping {
         self.toplevel_mapping
             .values()
             .map(|&(_, old, new)| (old, new))
+    }
+
+    /// Iterate over the item pairs of all children of a given item.
+    pub fn children_values<'a>(&'a self, parent: DefId)
+        -> Option<impl Iterator<Item = (DefId, DefId)> + 'a>
+    {
+        self.child_mapping
+            .get(&parent)
+            .map(|m| m.iter().map(move |old| (*old, self.mapping[old])))
     }
 }
 

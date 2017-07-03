@@ -12,7 +12,7 @@
 use rustc::hir::def::CtorKind;
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
-use rustc::ty::TyCtxt;
+use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
@@ -210,10 +210,6 @@ fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Export, new: Export) {
     let old_ty = tcx.type_of(old_def_id);
     let new_ty = tcx.type_of(new_def_id);
 
-    if !old_ty.is_fn() || !new_ty.is_fn() {
-        return;
-    }
-
     let old_poly_sig = old_ty.fn_sig(tcx);
     let new_poly_sig = new_ty.fn_sig(tcx);
 
@@ -274,7 +270,7 @@ fn diff_adts(changes: &mut ChangeSet,
     for (_, items) in variants.drain() {
         match items {
             (Some(old), Some(new)) => {
-                id_mapping.add_item(old.did, new.did);
+                id_mapping.add_subitem(old_def_id, old.did, new.did);
 
                 for field in &old.fields {
                     fields.entry(field.name).or_insert((None, None)).0 = Some(field);
@@ -309,7 +305,7 @@ fn diff_adts(changes: &mut ChangeSet,
                 for (_, items2) in fields.drain() {
                     match items2 {
                         (Some(o), Some(n)) => {
-                            id_mapping.add_item(o.did, n.did);
+                            id_mapping.add_subitem(old_def_id, o.did, n.did);
 
                             if o.vis != Public && n.vis == Public {
                                 changes.add_binary(ItemMadePublic,
@@ -428,8 +424,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         old: Export,
                         new: Export) {
-    use rustc::ty::{AdtDef, Lift};
-    use rustc::ty::TypeVariants::*;
+    use rustc::hir::def::Def::*;
 
     if changes.item_breaking(old.def.def_id()) {
         return;
@@ -438,30 +433,81 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     let old_def_id = old.def.def_id();
     let new_def_id = new.def.def_id();
 
+    let substs = Substs::identity_for_item(tcx, new_def_id);
+
+    let old_ty = tcx.type_of(old_def_id).subst(tcx, substs);
     let new_ty = tcx.type_of(new_def_id);
-    let old_ty = tcx.type_of(old_def_id).subst(tcx, Substs::identity_for_item(tcx, new_def_id));
 
-    let old_ty_cmp = old_ty.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
-        match ty.sty {
-            TyAdt(&AdtDef { ref did, .. }, substs) => {
-                let new_did = id_mapping.get_new_id(*did);
-                let new_adt = tcx.adt_def(new_did);
-                tcx.mk_adt(new_adt, substs)
-            },
-            /* TyDynamic(predicates, region) => {
+    match old.def {
+        TyAlias(_) => {
+            cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, old_ty, new_ty);
+        },
+        Fn(_) => {
+            let old_poly_sig = old_ty.fn_sig(tcx);
+            let new_poly_sig = new_ty.fn_sig(tcx);
 
-            }, TyClosure, TyRef (because of region?), TyProjection, TyAnon
-            TyProjection(projection_ty) => {
+            let o_tys = old_poly_sig.skip_binder().inputs_and_output;
+            let n_tys = new_poly_sig.skip_binder().inputs_and_output;
 
-            }, */
-            _ => ty,
-        }
-    }});
+            for (o_ty, n_ty) in o_tys.iter().zip(n_tys.iter()) {
+                cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, o_ty, n_ty);
+            }
+        },
+        Struct(_) | Enum(_) | Union(_) => {
+            if let Some(children) = id_mapping.children_values(old_def_id) {
+                for (o_did, n_did) in children {
+                    let o_ty = tcx.type_of(o_did);
+                    let n_ty = tcx.type_of(n_did);
+
+                    cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, o_ty, n_ty);
+                }
+            }
+        },
+        _ => (),
+    }
+}
+
+/// Compare two types and possibly register the error.
+fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                       id_mapping: &IdMapping,
+                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       old_def_id: DefId,
+                       new_def_id: DefId,
+                       old: Ty<'tcx>,
+                       new: Ty<'tcx>) {
+    use rustc::ty::Lift;
+
+    let old = fold_to_new(id_mapping, tcx, old, new_def_id);
 
     tcx.infer_ctxt().enter(|infcx|
-        if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old_ty_cmp, new_ty) {
+        if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
             changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
         });
+}
+
+/// Fold a type of an old item to be comparable with a new type.
+fn fold_to_new<'a, 'tcx>(id_mapping: &IdMapping,
+                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         old_ty: Ty<'tcx>,
+                         new_def_id: DefId) -> Ty<'tcx> {
+    use rustc::ty::AdtDef;
+    use rustc::ty::TypeVariants::*;
+
+    let substs = Substs::identity_for_item(tcx, new_def_id);
+
+    old_ty.subst(tcx, substs).fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
+        match ty.sty {
+            TyAdt(&AdtDef { ref did, .. }, substs) if id_mapping.contains_id(*did) => {
+                let new_did = id_mapping.get_new_id(*did);
+                let new_adt = tcx.adt_def(new_did);
+                tcx.mk_adt(new_adt, substs)
+            },
+            /* TyDynamic(preds, region) => {
+                TODO
+            }, */
+            _ => ty,
+        }
+    }})
 }
