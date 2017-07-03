@@ -425,6 +425,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                         old: Export,
                         new: Export) {
     use rustc::hir::def::Def::*;
+    use rustc::ty::Binder;
 
     if changes.item_breaking(old.def.def_id()) {
         return;
@@ -443,15 +444,17 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, old_ty, new_ty);
         },
         Fn(_) => {
-            let old_poly_sig = old_ty.fn_sig(tcx);
-            let new_poly_sig = new_ty.fn_sig(tcx);
+            let old_fn_sig =
+                Binder(fold_to_new(id_mapping, tcx, *old_ty.fn_sig(tcx).skip_binder()));
+            let new_fn_sig = new_ty.fn_sig(tcx);
 
-            let o_tys = old_poly_sig.skip_binder().inputs_and_output;
-            let n_tys = new_poly_sig.skip_binder().inputs_and_output;
-
-            for (o_ty, n_ty) in o_tys.iter().zip(n_tys.iter()) {
-                cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, o_ty, n_ty);
-            }
+            cmp_types(changes,
+                      id_mapping,
+                      tcx,
+                      old_def_id,
+                      new_def_id,
+                      tcx.mk_fn_ptr(old_fn_sig),
+                      tcx.mk_fn_ptr(new_fn_sig));
         },
         Struct(_) | Enum(_) | Union(_) => {
             if let Some(children) = id_mapping.children_values(old_def_id) {
@@ -477,7 +480,9 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        new: Ty<'tcx>) {
     use rustc::ty::Lift;
 
-    let old = fold_to_new(id_mapping, tcx, old, new_def_id);
+    let substs = Substs::identity_for_item(tcx, new_def_id);
+
+    let old = fold_to_new(id_mapping, tcx, old.subst(tcx, substs));
 
     tcx.infer_ctxt().enter(|infcx|
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
@@ -488,16 +493,13 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 }
 
 /// Fold a type of an old item to be comparable with a new type.
-fn fold_to_new<'a, 'tcx>(id_mapping: &IdMapping,
-                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         old_ty: Ty<'tcx>,
-                         new_def_id: DefId) -> Ty<'tcx> {
+fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: T) -> T
+    where T: TypeFoldable<'tcx>
+{
     use rustc::ty::AdtDef;
     use rustc::ty::TypeVariants::*;
 
-    let substs = Substs::identity_for_item(tcx, new_def_id);
-
-    old_ty.subst(tcx, substs).fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
+    old.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
         match ty.sty {
             TyAdt(&AdtDef { ref did, .. }, substs) if id_mapping.contains_id(*did) => {
                 let new_did = id_mapping.get_new_id(*did);
