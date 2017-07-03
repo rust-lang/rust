@@ -1111,6 +1111,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
+        // Note that it is really important that the type here is the right one, and matches the type things are read at.
+        // In case `src_val` is a `ByValPair`, we don't do any magic here to handle padding properly, which is only
+        // correct if we never look at this data with the wrong type.
+
         match dest {
             Lvalue::Global(cid) => {
                 let dest = *self.globals.get_mut(&cid).expect("global should be cached");

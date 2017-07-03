@@ -395,16 +395,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "transmute" => {
                 let src_ty = substs.type_at(0);
                 let dest_ty = substs.type_at(1);
-                let src_align = self.type_align(src_ty)?;
-                let dest_align = self.type_align(dest_ty)?;
                 let size = self.type_size(dest_ty)?.expect("transmute() type must be sized");
-                if dest_align < src_align {
-                    let ptr = self.force_allocation(dest)?.to_ptr()?;
-                    self.memory.mark_packed(ptr, size);
-                    self.write_value_to_ptr(arg_vals[0], PrimVal::Ptr(ptr), dest_ty)?;
-                } else {
-                    self.write_value(arg_vals[0], dest, dest_ty)?;
-                }
+                let ptr = self.force_allocation(dest)?.to_ptr()?;
+                self.memory.mark_packed(ptr, size);
+                self.write_value_to_ptr(arg_vals[0], PrimVal::Ptr(ptr), src_ty)?;
             }
 
             "uninit" => {
