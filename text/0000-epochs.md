@@ -7,7 +7,7 @@
 [summary]: #summary
 
 There has been a long-standing question around Rust's evolution: will there ever
-be a Rust 2.0, in the semver sense?
+be a Rust 2.0 in the semver sense?
 
 This RFC gives the answer: certainly not in the foreseeable future, and probably
 not ever.
@@ -18,13 +18,13 @@ process. It's an attempt to provide the next stage of our core principle of
 [stability without stagnation], inspired in part by similar mechanisms in
 languages like C++ and Java.
 
-With epochs, it becomes possible to do things like introduce new keywords,
+With epochs, it becomes possible to do things like introduce new keywords
 without breaking existing code or splitting the ecosystem. Each crate specifies
 the epoch it fits within (a bit like "C++11" or "C++14"), and the compiler can
 cope with multiple epochs being used throughout a dependency graph. Thus we
-continue to guarantee that your code will always continue to compile on the
-latest stable release (modulo the [usual caveats]), while making it possible to
-evolve the language in some new ways via explicit opt-in.
+still guarantee that your code will keep compiling on the latest stable release
+(modulo the [usual caveats]), while making it possible to evolve the language in
+some new ways via explicit opt-in.
 
 [stability without stagnation]: https://blog.rust-lang.org/2014/10/30/Stability.html
 
@@ -69,12 +69,12 @@ There are two desires that the current process doesn't have a good story for:
 - **Lack of clear "chapters" in the evolutionary story**. A downside to rapid
   releases is that, while the constant small changes eventually add up to large
   shifts in idioms, there's not an agreed upon line of demarcation between these
-  major shifts. That is, we don't have a coherent way to talk about these
-  shifts, nor to explain the "big steps" Rust is taking when we talk to those
-  outside the Rust community. If you think about the combination of `?` syntax,
-  ATCs, `impl Trait`, and specialization all becoming available, for example,
-  it's very helpful to have an umbrella moniker like "Rust 2018" to refer to
-  that encompasses them all, and the new idioms they lead to.
+  major shifts. That is, we don't have a simple way to talk about these shifts,
+  nor to explain the "big steps" Rust is taking when we talk to those outside
+  the Rust community. If you think about the combination of `?` syntax, ATCs,
+  `impl Trait`, and specialization all becoming available, for example, it's
+  helpful to have an umbrella moniker like "Rust 2018" to refer to that
+  encompasses them all, and the new idioms they lead to.
 
 At the same time, the commitment to stability and rapid releases has been an
 incredible boon for Rust, and we don't want to give up those existing mechanisms.
@@ -87,13 +87,12 @@ release process, keeping its guarantees while addressing its gaps.
 
 ## The basic idea
 
-Here's the core idea:
+- An *epoch* represents a multi-year accumulation of features, improvements, and
+  idiom shifts for Rust. It covers the language, core libraries, core tooling,
+  and core documentation.
 
-- An *epoch* represents a major shift in Rust features and idioms.
-
-- Epochs are named by the year in which they are introduced, but we do not
-  expect a new epoch every year. (At the outset, one epoch every two years is
-  more likely; see the next section for more.)
+- Epochs are named by the year in which they are introduced, which we expect to
+  happen every two or three years.
 
 - Each **crate** declares an epoch in its `Cargo.toml` (or, if not, is assumed
   to have epoch 2015, coinciding with Rust 1.0): `epoch = "2018"`. Thus, new
@@ -107,7 +106,7 @@ existing code**.
 
 Furthermore:
 
-- Prior to a new epoch, the current epoch will gain a set of deprecations over time.
+- Prior to a new epoch, the current epoch will gain deprecations over time.
 - When cutting a new epoch, existing deprecations may turn into hard errors, and
   the epoch may take advantage of that fact to repurpose existing usage,
   e.g. introducing a new keyword. This is the only kind of change a new epoch
@@ -126,7 +125,7 @@ features that require new keywords and the like.
 
 While this RFC will focus largely on the mechanics around deprecation, a key
 point is that epochs also give a *name* to large idiom shifts, recognizing that
-a significant, coherent set of new features have stabilized and should change
+a significant set of new features have stabilized and should change
 the way you write code and construct APIs.
 
 The proposal is much akin to C++ standards, which are tied to particular years
@@ -136,10 +135,10 @@ language and changes to idioms. Compilers generally take flags to let you select
 take a similar approach.
 
 To some degree, you can understand these as "marketing" releases; they bundle
-together a set of changes into a coherent package that's easy to talk about. But
-the benefits go beyond marketing: it becomes much easier, on a blog post, to
-give context about *which era* of the language you're using without specifying a
-particular compiler version.
+together a set of changes into a (hopefully coherent) package that's easy to
+talk about. But the benefits go beyond marketing: for example, it becomes much
+easier for a blog post to give context about *which era* of the language you're
+using without specifying a particular compiler version.
 
 In the Rust world, we want to layer this kind of narrative on top of our
 existing release and roadmap process:
@@ -175,18 +174,19 @@ first epoch release.
 
 ### Epoch previews
 
-To make this work, we need one additional concept: epoch *previews*, denoted in
-the figure as green, italic compiler releases.
+To provide the clarity discussed above, and to allow us to stabilize
+improvements as they're ready, we'll introduce one more concept: epoch
+*previews*, denoted in the figure as green, italic compiler releases.
 
 The problem is that for changes that rely on a new epoch, such as introducing a
 new keyword, we cannot stabilize them within the existing epoch as-is; that
 would be a breaking change. On the other hand, we *want* to stabilize them as
 they become ready, rather than tying all of the stabilizations to a high-stakes
-epoch release.
+epoch release. And finally, we want to bundle them all together under a new moniker.
 
 We thread the needle by providing an *epoch preview* at some point prior to the
-new epoch being shipped: `epoch = "2018-preview"`. This preview includes *all*
-of the hard errors that will be introduced in the new epoch, but not yet all of
+new epoch being shipped: `epoch = "2015-next"`. This preview includes *all*
+of the hard errors that will be introduced in the next epoch, but not yet all of
 the stabilizations. It is usable from the stable channel.
 
 There are a few reasons to provide such a preview:
@@ -194,7 +194,7 @@ There are a few reasons to provide such a preview:
 - Most importantly, it clears the way to shipping features for the next epoch on
   the stable channel as they become ready, even if they require some existing
   usages to become errors. Again, keyword introduction is a simple example: the
-  `2018-preview` epoch can begin by making it a hard error to use `catch` as an
+  `2015-next` epoch can begin by making it a hard error to use `catch` as an
   identifier (which is allowed today), and then later stabilizing the new
   `catch` feature when it is ready. By "locking in" the hard errors up front,
   however, **the preview of the epoch is guaranteed to be stable**: once code
@@ -212,7 +212,7 @@ deprecations into errors. As the year progresses, features will continue
 stabilize but some may only be available by opting into the preview epoch (since
 they rely on e.g. new keywords). Finally, when we're ready to ship the full new
 product, we enable the new epoch and deprecate the preview version (which will
-behave identically to it).
+just be an alias for it).
 
 There are some alternative ways to achieve similar ends, but with significant
 downsides; these are explored in the Alternatives section.
@@ -271,15 +271,15 @@ we're currently in epoch 2015.
 - First, we deprecate uses of `catch` as identifiers, preparing it to become a new keyword.
 - We may, as today, implement the new `catch` feature using a temporary syntax
   for nightly (like `do catch`).
-- When epoch `2018-preview` is released, opting into it makes `catch` into a
+- When epoch `2015-next` is released, opting into it makes `catch` into a
   keyword, regardless of whether the `catch` feature has been implemented. This
   means that opting in may require some adjustment to your code.
 - The `catch` syntax can be hooked into an implementation usable on nightly with
   the preview epoch.
 - When we're confident in the `catch` feature on nightly, we can stabilize it
-  *onto the stable channel for users opting into `2018-preview`*. It cannot be stabilized onto the epoch `2015`,
+  *onto the stable channel for users opting into `2015-next`*. It cannot be stabilized onto the epoch `2015`,
   since it requires a new keyword.
-- At some point, epoch `2018` is fully shipped, meaning that `2018-preview`
+- At some point, epoch `2018` is fully shipped, meaning that `2015-next`
   becomes a deprecated alias for `2018`.
 - `catch` is now a part of Rust.
 
@@ -289,7 +289,7 @@ To make this even more concrete, let's imagine the following (aligned with the d
 | ------------ | ---------------------- | -- | -- |
 | 1.15 | 2015 | Valid identifier | Valid identifier
 | 1.21 | 2015 | Valid identifier; deprecated | Valid identifier; deprecated
-| 1.23 | 2018-preview | Valid identifier; deprecated | Keyword
+| 1.23 | 2015-next | Valid identifier; deprecated | Keyword
 | 1.27 | 2018 | Valid identifier; deprecated | Keyword
 
 Now, suppose you have the following code:
@@ -313,7 +313,7 @@ fn main() {
 above, it will yield a warning, saying that `catch` is deprecated as an
 identifier.
 
-- On version 1.23, if you change `Cargo.toml` to use epoch `2018-preview`, the
+- On version 1.23, if you change `Cargo.toml` to use epoch `2015-next`, the
   code will fail to compile due to `catch` being a keyword. Similarly for epoch
   `2018` on version 1.27.
 
@@ -406,9 +406,10 @@ This is essentially another example of a non-crate-local change.
 We'll wrap up with the full details of the mechanisms at play.
 
 - `rustc` will take a new flag, `--epoch`, which can specify the epoch to
-  use. If this flag is left off, epoch 2015 is assumed.
+  use. This flag will default to the current epoch.
   - This flag should not affect the behavior of the core trait system or passes at the MIR level.
 - `Cargo.toml` can include an `epoch` value, which is used to pass to `rustc`.
+  - If left off, it will assume epoch 2015.
 - `cargo new` will produce a `Cargo.toml` with the latest `epoch` value,
   including `-preview` epochs when applicable.
 
