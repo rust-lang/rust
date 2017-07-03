@@ -31,6 +31,4 @@ util/gh-pages/lints.json
 
 helper.txt
 
-*.stdout
-
 .vscode
