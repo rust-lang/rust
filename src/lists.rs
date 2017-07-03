@@ -555,8 +555,13 @@ pub fn struct_lit_shape(
             }
         }
     };
-    let h_shape = shape.sub_width(prefix_width + suffix_width);
-    Some((h_shape, v_shape))
+    let shape_width = shape.width.checked_sub(prefix_width + suffix_width);
+    if let Some(w) = shape_width {
+        let shape_width = cmp::min(w, context.config.struct_lit_width());
+        Some((Some(Shape::legacy(shape_width, shape.indent)), v_shape))
+    } else {
+        Some((None, v_shape))
+    }
 }
 
 // Compute the tactic for the internals of a struct-lit-like thing.
@@ -566,16 +571,10 @@ pub fn struct_lit_tactic(
     items: &[ListItem],
 ) -> DefinitiveListTactic {
     if let Some(h_shape) = h_shape {
-        let mut prelim_tactic = match (context.config.struct_lit_style(), items.len()) {
+        let prelim_tactic = match (context.config.struct_lit_style(), items.len()) {
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
             _ => context.config.struct_lit_multiline_style().to_list_tactic(),
         };
-
-        if prelim_tactic == ListTactic::HorizontalVertical && items.len() > 1 {
-            prelim_tactic =
-                ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width());
-        }
-
         definitive_tactic(items, prelim_tactic, h_shape.width)
     } else {
         DefinitiveListTactic::Vertical

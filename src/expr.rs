@@ -2601,32 +2601,35 @@ fn rewrite_struct_lit<'a>(
         span.hi,
     );
     let item_vec = items.collect::<Vec<_>>();
+    let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
+    Some(format!("{} {{{}}}", path_str, fields_str))
 
-    let tactic = struct_lit_tactic(h_shape, context, &item_vec);
-    let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
-    let fmt = struct_lit_formatting(nested_shape, tactic, context, base.is_some());
+    // FIXME if context.config.struct_lit_style() == Visual, but we run out
+    // of space, we should fall back to BlockIndent.
+}
 
-    let fields_str = try_opt!(write_list(&item_vec, &fmt));
-    let fields_str = if context.config.struct_lit_style() == IndentStyle::Block &&
+pub fn wrap_struct_field(
+    context: &RewriteContext,
+    fields_str: &str,
+    shape: Shape,
+    nested_shape: Shape,
+    one_line_width: usize,
+) -> String {
+    if context.config.struct_lit_style() == IndentStyle::Block &&
         (fields_str.contains('\n') ||
              context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti ||
-             fields_str.len() > h_shape.map(|s| s.width).unwrap_or(0))
+             fields_str.len() > one_line_width)
     {
         format!(
             "\n{}{}\n{}",
-            v_shape.indent.to_string(context.config),
+            nested_shape.indent.to_string(context.config),
             fields_str,
             shape.indent.to_string(context.config)
         )
     } else {
         // One liner or visual indent.
         format!(" {} ", fields_str)
-    };
-
-    Some(format!("{} {{{}}}", path_str, fields_str))
-
-    // FIXME if context.config.struct_lit_style() == Visual, but we run out
-    // of space, we should fall back to BlockIndent.
+    }
 }
 
 pub fn struct_lit_field_separator(config: &Config) -> &str {
