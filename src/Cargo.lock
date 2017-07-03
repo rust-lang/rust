@@ -552,16 +552,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "isatty"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "itoa"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1212,7 +1202,6 @@ dependencies = [
  "arena 0.0.0",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
- "isatty 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro_plugin 0.0.0",
  "rustc 0.0.0",
@@ -2067,7 +2056,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum handlebars 0.25.3 (registry+https://github.com/rust-lang/crates.io-index)" = "15bdf598fc3c2de40c6b340213028301c0d225eea55a2294e6cc148074e557a1"
 "checksum hex 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d6a22814455d41612f41161581c2883c0c6a1c41852729b17d5ed88f01e153aa"
 "checksum idna 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2233d4940b1f19f0418c158509cd7396b8d70a5db5705ce410914dc8fa603b37"
-"checksum isatty 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "fa500db770a99afe2a0f2229be2a3d09c7ed9d7e4e8440bf71253141994e240f"
 "checksum itoa 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eb2f404fbc66fd9aac13e998248505e7ecb2ad8e44ab6388684c5fb11c6c251c"
 "checksum jobserver 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "4e28adc987f6d0521ef66ad60b055968107b164b3bb3cf3dc8474e0a380474a6"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
