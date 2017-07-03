@@ -1,13 +1,18 @@
 error: `<` is interpreted as a start of generic arguments for `u32`, not a comparison
   --> $DIR/issue-42954.rs:13:19
    |
-13 |       $i as u32 < 0
-   |                 - ^ interpreted as generic argument
-   |                 |
-   |                 not interpreted as comparison
+13 |         $i as u32 < 0
+   |                   ^ - interpreted as generic arguments
+   |                   |
+   |                   not interpreted as comparison
+...
+19 |     is_plainly_printable!(c);
+   |     ------------------------- in this macro invocation
    |
 help: if you want to compare the casted value then write:
-   |       ($i as u32) < 0
+   |
+13 |         ($i as u32) < 0
+   |         ^^^^^^^^^^^
 
 error: aborting due to previous error
 

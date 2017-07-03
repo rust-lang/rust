@@ -1,48 +1,104 @@
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:16:33
+  --> $DIR/issue-22644.rs:16:31
    |
-16 |     println!("{}", a as usize < b);
-   |                               - ^ interpreted as generic argument
+16 |     println!("{}", a as usize < long_name);
+   |                               ^ --------- interpreted as generic arguments
    |                               |
    |                               not interpreted as comparison
    |
 help: if you want to compare the casted value then write:
    |
-16 |     println!("{}", (a as usize) < b);
+16 |     println!("{}", (a as usize) < long_name);
    |                    ^^^^^^^^^^^^
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:21:20
+  --> $DIR/issue-22644.rs:17:33
    |
-20 |                    <
-   |                    - not interpreted as comparison
-21 |                    4);
-   |                    ^ interpreted as generic argument
+17 |     println!("{}{}", a as usize < long_name, long_name);
+   |                                 ^ -------------------- interpreted as generic arguments
+   |                                 |
+   |                                 not interpreted as comparison
    |
 help: if you want to compare the casted value then write:
    |
-17 |     println!("{}", (a
-18 |                    as
-19 |                    usize)
+17 |     println!("{}{}", (a as usize) < long_name, long_name);
+   |                      ^^^^^^^^^^^^
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:18:31
+   |
+18 |     println!("{}", a as usize < 4);
+   |                               ^ - interpreted as generic arguments
+   |                               |
+   |                               not interpreted as comparison
+   |
+help: if you want to compare the casted value then write:
+   |
+18 |     println!("{}", (a as usize) < 4);
+   |                    ^^^^^^^^^^^^
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:20:31
+   |
+20 |     println!("{}{}", a: usize < long_name, long_name);
+   |                               ^ -------------------- interpreted as generic arguments
+   |                               |
+   |                               not interpreted as comparison
+   |
+help: if you want to compare the casted value then write:
+   |
+20 |     println!("{}{}", (a: usize) < long_name, long_name);
+   |                      ^^^^^^^^^^
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:21:29
+   |
+21 |     println!("{}", a: usize < 4);
+   |                             ^ - interpreted as generic arguments
+   |                             |
+   |                             not interpreted as comparison
+   |
+help: if you want to compare the casted value then write:
+   |
+21 |     println!("{}", (a: usize) < 4);
+   |                    ^^^^^^^^^^
+
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:26:20
+   |
+26 |                    <
+   |                    ^ not interpreted as comparison
+27 |                    4);
+   |                    - interpreted as generic arguments
+   |
+help: if you want to compare the casted value then write:
+   |
+23 |     println!("{}", (a
+24 |                    as
+25 |                    usize)
    |
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:30:20
+  --> $DIR/issue-22644.rs:35:20
    |
-29 |                    <
-   |                    - not interpreted as comparison
-30 |                    5);
-   |                    ^ interpreted as generic argument
+35 |                    <
+   |                    ^ not interpreted as comparison
+36 |                    5);
+   |                    - interpreted as generic arguments
    |
 help: if you want to compare the casted value then write:
    |
-22 |     println!("{}", (a
-23 | 
-24 | 
-25 |                    as
-26 | 
-27 | 
+28 |     println!("{}", (a
+29 | 
+30 | 
+31 |                    as
+32 | 
+33 | 
  ...
 
-error: aborting due to 3 previous errors
+error: expected type, found `4`
+  --> $DIR/issue-22644.rs:38:28
+   |
+38 |     println!("{}", a: &mut 4);
+   |                            ^
 
