@@ -13,7 +13,7 @@ extern crate syntax;
 use semverver::semcheck::run_analysis;
 
 use rustc::hir::def_id::*;
-use rustc::session::{config, Session};
+use rustc::session::{config, CompileIncomplete, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
@@ -218,10 +218,8 @@ fn main() {
 
         let mut cc = SemVerVerCompilerCalls::new(version);
         let (result, _) = rustc_driver::run_compiler(&args, &mut cc, None, None);
-        if let Err(count) = result {
-            if count > 0 {
-                std::process::exit(1);
-            }
+        if let Err(CompileIncomplete::Errored(_)) = result {
+            std::process::exit(1);
         }
     })
             .expect("rustc thread failed");

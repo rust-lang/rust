@@ -445,7 +445,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         },
         Fn(_) => {
             let old_fn_sig =
-                Binder(fold_to_new(id_mapping, tcx, *old_ty.fn_sig(tcx).skip_binder()));
+                Binder(fold_to_new(id_mapping, tcx, old_ty.fn_sig(tcx).skip_binder()));
             let new_fn_sig = new_ty.fn_sig(tcx);
 
             cmp_types(changes,
@@ -482,7 +482,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
 
-    let old = fold_to_new(id_mapping, tcx, old.subst(tcx, substs));
+    let old = fold_to_new(id_mapping, tcx, &old.subst(tcx, substs));
 
     tcx.infer_ctxt().enter(|infcx|
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
@@ -493,7 +493,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 }
 
 /// Fold a type of an old item to be comparable with a new type.
-fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: T) -> T
+fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: &T) -> T
     where T: TypeFoldable<'tcx>
 {
     use rustc::ty::AdtDef;
