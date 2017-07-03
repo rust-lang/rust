@@ -343,7 +343,7 @@ impl Ordering {
 /// ```
 #[derive(PartialEq, Eq, Debug)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
-pub struct Reverse<T>(pub T);
+pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 impl<T: PartialOrd> PartialOrd for Reverse<T> {
