@@ -223,10 +223,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
-    pub fn reallocate(&mut self, ptr: Pointer, new_size: u64, align: u64) -> EvalResult<'tcx, Pointer> {
+    pub fn reallocate(&mut self, ptr: Pointer, old_size: u64, new_size: u64, align: u64) -> EvalResult<'tcx, Pointer> {
         assert!(align.is_power_of_two());
         // TODO(solson): Report error about non-__rust_allocate'd pointer.
-        if ptr.offset != 0 {
+        if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
             return Err(EvalError::ReallocateNonBasePtr);
         }
         if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
@@ -234,12 +234,15 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         let size = self.get(ptr.alloc_id)?.bytes.len() as u64;
+        let real_align = self.get(ptr.alloc_id)?.align;
+        if size != old_size || real_align != align {
+            return Err(EvalError::IncorrectAllocationInformation);
+        }
 
         if new_size > size {
             let amount = new_size - size;
             self.memory_usage += amount;
             let alloc = self.get_mut(ptr.alloc_id)?;
-            // FIXME: check alignment here
             assert_eq!(amount as usize as u64, amount);
             alloc.bytes.extend(iter::repeat(0).take(amount as usize));
             alloc.undef_mask.grow(amount, false);
@@ -247,7 +250,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             self.memory_usage -= size - new_size;
             self.clear_relocations(ptr.offset(new_size, self.layout)?, size - new_size)?;
             let alloc = self.get_mut(ptr.alloc_id)?;
-            // FIXME: check alignment here
             // `as usize` is fine here, since it is smaller than `size`, which came from a usize
             alloc.bytes.truncate(new_size as usize);
             alloc.bytes.shrink_to_fit();
@@ -267,21 +269,28 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     // TODO(solson): See comment on `reallocate`.
-    pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<'tcx> {
-        if ptr.offset != 0 {
+    pub fn deallocate(&mut self, ptr: Pointer, size_and_align: Option<(u64, u64)>) -> EvalResult<'tcx> {
+        if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
             // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::DeallocateNonBasePtr);
         }
-        if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
-            return Err(EvalError::DeallocatedStaticMemory);
+
+        {
+            // Some code somewhere seems to rely on us *not* removing the allocation when we yield this kind of error.
+            // So we do this test in advance.
+            let alloc = self.get(ptr.alloc_id)?;
+            if alloc.static_kind != StaticKind::NotStatic {
+                return Err(EvalError::DeallocatedStaticMemory);
+            }
+            if let Some((size, align)) = size_and_align {
+                if size != alloc.bytes.len() as u64 || align != alloc.align {
+                    return Err(EvalError::IncorrectAllocationInformation);
+                }
+            }
         }
 
-        if let Some(alloc) = self.alloc_map.remove(&ptr.alloc_id) {
-            self.memory_usage -= alloc.bytes.len() as u64;
-        } else {
-            debug!("deallocated a pointer twice: {}", ptr.alloc_id);
-            return Err(EvalError::DeallocateNonBasePtr);
-        }
+        let alloc = self.alloc_map.remove(&ptr.alloc_id).expect("already verified");
+        self.memory_usage -= alloc.bytes.len() as u64;
         debug!("deallocated : {}", ptr.alloc_id);
 
         Ok(())

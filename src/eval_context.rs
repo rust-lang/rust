@@ -410,7 +410,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         if let Some(Value::ByRef(ptr)) = local {
             trace!("deallocating local");
             self.memory.dump_alloc(ptr.alloc_id);
-            match self.memory.deallocate(ptr) {
+            match self.memory.deallocate(ptr, None) {
                 // We could alternatively check whether the alloc_id is static before calling
                 // deallocate, but this is much simpler and is probably the rare case.
                 Ok(()) | Err(EvalError::DeallocatedStaticMemory) => {},
@@ -1724,7 +1724,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
         while ecx.step()? {}
         if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory.deallocate(cleanup_ptr)?;
+            ecx.memory.deallocate(cleanup_ptr, None)?;
         }
         return Ok(());
     }
