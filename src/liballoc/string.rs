@@ -59,15 +59,14 @@
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
-use core::ops::{self, Add, AddAssign, Index, IndexMut};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ptr;
 use core::str::pattern::Pattern;
 use std_unicode::lossy;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
-use range::RangeArgument;
-use Bound::{Excluded, Included, Unbounded};
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
@@ -1270,7 +1269,7 @@ impl String {
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain
-        where R: RangeArgument<usize>
+        where R: Into<RangeBounds<usize>>
     {
         // Memory safety
         //
@@ -1279,14 +1278,14 @@ impl String {
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
         let len = self.len();
-        let start = match range.start() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
+        let start = match range.start {
+            Included(n) => n,
+            Excluded(n) => n + 1,
             Unbounded => 0,
         };
-        let end = match range.end() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
+        let end = match range.end {
+            Included(n) => n + 1,
+            Excluded(n) => n,
             Unbounded => len,
         };
 
@@ -1334,7 +1333,7 @@ impl String {
     /// ```
     #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
     pub fn splice<'a, 'b, R>(&'a mut self, range: R, replace_with: &'b str) -> Splice<'a, 'b>
-        where R: RangeArgument<usize>
+        where R: Into<RangeBounds<usize>>
     {
         // Memory safety
         //
@@ -1343,14 +1342,14 @@ impl String {
         // Because the range removal happens in Drop, if the Splice iterator is leaked,
         // the removal will not happen.
         let len = self.len();
-        let start = match range.start() {
-             Included(&n) => n,
-             Excluded(&n) => n + 1,
+        let start = match range.start {
+             Included(n) => n,
+             Excluded(n) => n + 1,
              Unbounded => 0,
         };
-        let end = match range.end() {
-             Included(&n) => n + 1,
-             Excluded(&n) => n,
+        let end = match range.end {
+             Included(n) => n + 1,
+             Excluded(n) => n,
              Unbounded => len,
         };
 

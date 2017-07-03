@@ -74,7 +74,8 @@ use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem;
 #[cfg(not(test))]
 use core::num::Float;
-use core::ops::{InPlace, Index, IndexMut, Place, Placer};
+use core::ops::{InPlace, Index, IndexMut, Place, Placer, RangeBounds};
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops;
 use core::ptr;
 use core::ptr::Shared;
@@ -84,8 +85,6 @@ use borrow::ToOwned;
 use borrow::Cow;
 use boxed::Box;
 use raw_vec::RawVec;
-use super::range::RangeArgument;
-use Bound::{Excluded, Included, Unbounded};
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///
@@ -1086,7 +1085,7 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain<T>
-        where R: RangeArgument<usize>
+        where R: Into<RangeBounds<usize>>
     {
         // Memory safety
         //
@@ -1099,14 +1098,14 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let start = match range.start() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
+        let start = match range.start {
+            Included(n) => n,
+            Excluded(n) => n + 1,
             Unbounded    => 0,
         };
-        let end = match range.end() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
+        let end = match range.end {
+            Included(n) => n + 1,
+            Excluded(n) => n,
             Unbounded    => len,
         };
         assert!(start <= end);
@@ -1949,7 +1948,7 @@ impl<T> Vec<T> {
     #[inline]
     #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
     pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<I::IntoIter>
-        where R: RangeArgument<usize>, I: IntoIterator<Item=T>
+        where R: Into<RangeBounds<usize>>, I: IntoIterator<Item=T>
     {
         Splice {
             drain: self.drain(range),

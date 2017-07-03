@@ -365,3 +365,129 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 
 // RangeToInclusive<Idx> cannot impl From<RangeTo<Idx>>
 // because underflow would be possible with (..0).into()
+
+/// An endpoint of a range of keys.
+///
+/// # Examples
+///
+/// `Bound`s are range endpoints:
+///
+/// ```
+/// #![feature(collections_range)]
+///
+/// use std::collections::range::RangeArgument;
+/// use std::collections::Bound::*;
+///
+/// assert_eq!((..100).start(), Unbounded);
+/// assert_eq!((1..12).start(), Included(&1));
+/// assert_eq!((1..12).end(), Excluded(&12));
+/// ```
+///
+/// Using a tuple of `Bound`s as an argument to [`BTreeMap::range`].
+/// Note that in most cases, it's better to use range syntax (`1..5`) instead.
+///
+/// ```
+/// use std::collections::BTreeMap;
+/// use std::collections::Bound::{Excluded, Included, Unbounded};
+///
+/// let mut map = BTreeMap::new();
+/// map.insert(3, "a");
+/// map.insert(5, "b");
+/// map.insert(8, "c");
+///
+/// for (key, value) in map.range((Excluded(3), Included(8))) {
+///     println!("{}: {}", key, value);
+/// }
+///
+/// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());
+/// ```
+///
+/// [`BTreeMap::range`]: btree_map/struct.BTreeMap.html#method.range
+#[stable(feature = "collections_bound", since = "1.17.0")]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub enum Bound<T> {
+    /// An inclusive bound.
+    #[stable(feature = "collections_bound", since = "1.17.0")]
+    Included(
+        #[stable(feature = "collections_bound", since = "1.17.0")]
+        T
+    ),
+    /// An exclusive bound.
+    #[stable(feature = "collections_bound", since = "1.17.0")]
+    Excluded(
+        #[stable(feature = "collections_bound", since = "1.17.0")]
+        T
+    ),
+    /// An infinite endpoint. Indicates that there is no bound in this direction.
+    #[stable(feature = "collections_bound", since = "1.17.0")]
+    Unbounded,
+}
+use self::Bound::{Included, Excluded, Unbounded};
+
+
+/// Rust's built-in range types can be converted to `RangeBounds`.
+#[unstable(feature = "range_argument", issue = "30877")]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct RangeBounds<T> {
+    /// The lower bound of the range.
+    pub start: Bound<T>,
+
+    /// The upper bound of the range.
+    pub end: Bound<T>,
+}
+impl<T> RangeBounds<T> {
+    /// Constructs a pair of range bounds.
+    #[unstable(feature = "range_argument", issue = "30877")]
+    pub fn new(start: Bound<T>, end: Bound<T>) -> RangeBounds<T> {
+        RangeBounds { start, end }
+    }
+}
+
+#[unstable(feature = "range_argument", issue = "30877")]
+impl<T> From<RangeFull> for RangeBounds<T> {
+    fn from(_: RangeFull) -> RangeBounds<T> {
+        RangeBounds::new(Unbounded, Unbounded)
+    }
+}
+
+#[unstable(feature = "range_argument", issue = "30877")]
+impl<T> From<RangeFrom<T>> for RangeBounds<T> {
+    fn from(range: RangeFrom<T>) -> RangeBounds<T> {
+        RangeBounds::new(Included(range.start), Unbounded)
+    }
+}
+
+#[unstable(feature = "range_argument", issue = "30877")]
+impl<T> From<RangeTo<T>> for RangeBounds<T> {
+    fn from(range: RangeTo<T>) -> RangeBounds<T> {
+        RangeBounds::new(Unbounded, Excluded(range.end))
+    }
+}
+
+#[unstable(feature = "range_argument", issue = "30877")]
+impl<T> From<Range<T>> for RangeBounds<T> {
+    fn from(range: Range<T>) -> RangeBounds<T> {
+        RangeBounds::new(Included(range.start), Excluded(range.end))
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> From<RangeInclusive<T>> for RangeBounds<T> {
+    fn from(range: RangeInclusive<T>) -> RangeBounds<T> {
+        RangeBounds::new(Included(range.start), Included(range.end))
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> From<RangeToInclusive<T>> for RangeBounds<T> {
+    fn from(range: RangeToInclusive<T>) -> RangeBounds<T> {
+        RangeBounds::new(Unbounded, Included(range.end))
+    }
+}
+
+#[unstable(feature = "range_argument", issue = "30877")]
+impl<T> From<(Bound<T>, Bound<T>)> for RangeBounds<T> {
+    fn from((start, end): (Bound<T>, Bound<T>)) -> RangeBounds<T> {
+        RangeBounds::new(start, end)
+    }
+}

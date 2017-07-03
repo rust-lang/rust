@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::range::RangeArgument;
 use std::fmt::Debug;
 use std::iter::{self, FromIterator};
 use std::slice;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut, Range};
+use std::ops::{Index, IndexMut, Range, RangeBounds};
 use std::fmt;
 use std::vec;
 use std::u32;
@@ -147,7 +146,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<'a, R: RangeArgument<usize>>(
+    pub fn drain<'a, R: Into<RangeBounds<usize>>> (
         &'a mut self, range: R) -> impl Iterator<Item=T> + 'a {
         self.raw.drain(range)
     }
