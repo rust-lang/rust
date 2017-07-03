@@ -496,7 +496,8 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: &T) -> T
     where T: TypeFoldable<'tcx>
 {
-    use rustc::ty::AdtDef;
+    use rustc::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
+    use rustc::ty::ExistentialPredicate::*;
     use rustc::ty::TypeVariants::*;
 
     old.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
@@ -506,9 +507,51 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let new_adt = tcx.adt_def(new_did);
                 tcx.mk_adt(new_adt, substs)
             },
-            /* TyDynamic(preds, region) => {
-                TODO
-            }, */
+            TyDynamic(preds, region) => {
+                let new_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
+                    match *p.skip_binder() {
+                        Trait(ExistentialTraitRef { def_id: did, substs }) => {
+                            let new_did = if id_mapping.contains_id(did) {
+                                id_mapping.get_new_id(did)
+                            } else {
+                                did
+                            };
+
+                            Trait(ExistentialTraitRef {
+                                def_id: new_did,
+                                substs: substs
+                            })
+                        },
+                        Projection(ExistentialProjection { trait_ref, item_name, ty }) => {
+                            let ExistentialTraitRef { def_id: did, substs } = trait_ref;
+                            let new_did = if id_mapping.contains_id(did) {
+                                id_mapping.get_new_id(did)
+                            } else {
+                                did
+                            };
+
+                            Projection(ExistentialProjection {
+                                trait_ref: ExistentialTraitRef {
+                                    def_id: new_did,
+                                    substs: substs,
+                                },
+                                item_name: item_name,
+                                ty: ty,
+                            })
+
+                        },
+                        AutoTrait(did) => {
+                            if id_mapping.contains_id(did) {
+                                AutoTrait(id_mapping.get_new_id(did))
+                            } else {
+                                AutoTrait(did)
+                            }
+                        },
+                    }
+                }));
+
+                tcx.mk_dynamic(Binder(new_preds), region)
+            },
             _ => ty,
         }
     }})
