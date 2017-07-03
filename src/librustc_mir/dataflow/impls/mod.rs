@@ -30,6 +30,9 @@ use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
 use super::on_lookup_result_bits;
 
+#[allow(dead_code)]
+pub(super) mod borrows;
+
 /// `MaybeInitializedLvals` tracks all l-values that might be
 /// initialized upon reaching a particular point in the control flow
 /// for a function.

@@ -63,6 +63,9 @@ pub(crate) mod indexes {
 
     /// Index into MoveData.moves.
     new_index!(MoveOutIndex, "mo");
+
+    /// Index into Borrows.locations
+    new_index!(BorrowIndex, "bw");
 }
 
 pub use self::indexes::MovePathIndex;
