@@ -4100,7 +4100,7 @@ mod c {
         // need, so include a few more that aren't typically needed by
         // LLVM/Rust.
         if env::var_os("CARGO_FEATURE_RUSTBUILD").is_some() {
-            sources.exend(&[
+            sources.extend(&[
                 "ffsdi2.c",
             ]);
         }
