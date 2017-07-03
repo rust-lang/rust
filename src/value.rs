@@ -33,7 +33,7 @@ pub(super) fn f64_to_bytes(f: f64) -> u128 {
 /// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug)]
 pub enum Value {
-    ByRef(Pointer),
+    ByRef(PrimVal),
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
 }
@@ -72,7 +72,7 @@ impl<'a, 'tcx: 'a> Value {
     pub(super) fn read_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, PrimVal> {
         use self::Value::*;
         match *self {
-            ByRef(ptr) => mem.read_ptr(ptr),
+            ByRef(ptr) => mem.read_ptr(ptr.to_ptr()?),
             ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr),
         }
     }
@@ -84,8 +84,8 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
-                let ptr = mem.read_ptr(ref_ptr)?;
-                let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?)?;
+                let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
+                let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
                 Ok((ptr, vtable.to_ptr()?))
             }
 
@@ -99,8 +99,8 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
-                let ptr = mem.read_ptr(ref_ptr)?;
-                let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?)?;
+                let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
+                let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
                 Ok((ptr, len))
             },
             ByValPair(ptr, val) => {

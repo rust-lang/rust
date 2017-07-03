@@ -189,7 +189,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         let ptr = self.allocate(bytes.len() as u64, 1)?;
-        self.write_bytes(ptr, bytes)?;
+        self.write_bytes(PrimVal::Ptr(ptr), bytes)?;
         self.mark_static_initalized(ptr.alloc_id, false)?;
         self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
         Ok(ptr)
@@ -288,39 +288,52 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx> {
-        let alloc = self.get(ptr.alloc_id)?;
-        // check whether the memory was marked as packed
-        // we select all elements that have the correct alloc_id and are within
-        // the range given by the offset into the allocation and the length
-        let start = Entry {
-            alloc_id: ptr.alloc_id,
-            packed_start: 0,
-            packed_end: ptr.offset + len,
+    pub fn check_align(&self, ptr: PrimVal, align: u64, len: u64) -> EvalResult<'tcx> {
+        let offset = match ptr {
+            PrimVal::Ptr(ptr) => {
+                let alloc = self.get(ptr.alloc_id)?;
+                // check whether the memory was marked as packed
+                // we select all elements that have the correct alloc_id and are within
+                // the range given by the offset into the allocation and the length
+                let start = Entry {
+                    alloc_id: ptr.alloc_id,
+                    packed_start: 0,
+                    packed_end: ptr.offset + len,
+                };
+                let end = Entry {
+                    alloc_id: ptr.alloc_id,
+                    packed_start: ptr.offset + len,
+                    packed_end: 0,
+                };
+                for &Entry { packed_start, packed_end, .. } in self.packed.range(start..end) {
+                    // if the region we are checking is covered by a region in `packed`
+                    // ignore the actual alignment
+                    if packed_start <= ptr.offset && (ptr.offset + len) <= packed_end {
+                        return Ok(());
+                    }
+                }
+                if alloc.align < align {
+                    return Err(EvalError::AlignmentCheckFailed {
+                        has: alloc.align,
+                        required: align,
+                    });
+                }
+                ptr.offset
+            },
+            PrimVal::Bytes(bytes) => {
+                let v = ((bytes as u128) % (1 << self.pointer_size())) as u64;
+                if v == 0 {
+                    return Err(EvalError::InvalidNullPointerUsage);
+                }
+                v
+            },
+            PrimVal::Undef => return Err(EvalError::ReadUndefBytes),
         };
-        let end = Entry {
-            alloc_id: ptr.alloc_id,
-            packed_start: ptr.offset + len,
-            packed_end: 0,
-        };
-        for &Entry { packed_start, packed_end, .. } in self.packed.range(start..end) {
-            // if the region we are checking is covered by a region in `packed`
-            // ignore the actual alignment
-            if packed_start <= ptr.offset && (ptr.offset + len) <= packed_end {
-                return Ok(());
-            }
-        }
-        if alloc.align < align {
-            return Err(EvalError::AlignmentCheckFailed {
-                has: alloc.align,
-                required: align,
-            });
-        }
-        if ptr.offset % align == 0 {
+        if offset % align == 0 {
             Ok(())
         } else {
             Err(EvalError::AlignmentCheckFailed {
-                has: ptr.offset % align,
+                has: offset % align,
                 required: align,
             })
         }
@@ -572,7 +585,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
-        self.check_align(ptr, align, size)?;
+        self.check_align(PrimVal::Ptr(ptr), align, size)?;
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -585,7 +598,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&mut []);
         }
-        self.check_align(ptr, align, size)?;
+        self.check_align(PrimVal::Ptr(ptr), align, size)?;
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -710,20 +723,20 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.get_bytes(ptr.to_ptr()?, size, 1)
     }
 
-    pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
+    pub fn write_bytes(&mut self, ptr: PrimVal, src: &[u8]) -> EvalResult<'tcx> {
         if src.is_empty() {
             return Ok(());
         }
-        let bytes = self.get_bytes_mut(ptr, src.len() as u64, 1)?;
+        let bytes = self.get_bytes_mut(ptr.to_ptr()?, src.len() as u64, 1)?;
         bytes.clone_from_slice(src);
         Ok(())
     }
 
-    pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
+    pub fn write_repeat(&mut self, ptr: PrimVal, val: u8, count: u64) -> EvalResult<'tcx> {
         if count == 0 {
             return Ok(());
         }
-        let bytes = self.get_bytes_mut(ptr, count, 1)?;
+        let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, 1)?;
         for b in bytes { *b = val; }
         Ok(())
     }
