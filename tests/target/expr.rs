@@ -315,6 +315,10 @@ fn ranges() {
         bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let z = ...x;
 
+    // #1766
+    let x = [0. ..10.0];
+    let x = [0. ...10.0];
+
     a...b
 
     // the expr below won't compile for some reason...

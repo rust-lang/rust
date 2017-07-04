@@ -268,10 +268,26 @@ pub fn format_expr(
                 ast::RangeLimits::Closed => "...",
             };
 
+            fn needs_space_before_range(context: &RewriteContext, lhs: &ast::Expr) -> bool {
+                match lhs.node {
+                    ast::ExprKind::Lit(ref lit) => {
+                        match lit.node {
+                            ast::LitKind::FloatUnsuffixed(..) => {
+                                context.snippet(lit.span).ends_with('.')
+                            }
+                            _ => false,
+                        }
+                    }
+                    _ => false,
+                }
+            }
+
             match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
                 (Some(ref lhs), Some(ref rhs)) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
                         format!(" {} ", delim)
+                    } else if needs_space_before_range(context, lhs) {
+                        format!(" {}", delim)
                     } else {
                         delim.into()
                     };
