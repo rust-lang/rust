@@ -293,6 +293,28 @@ pub struct DataflowState<O: BitDenotation>
     pub(crate) operator: O,
 }
 
+impl<O: BitDenotation> DataflowState<O> {
+    pub fn each_bit<F>(&self, words: &IdxSet<O::Idx>, f: F) where F: FnMut(O::Idx)
+    {
+        let bits_per_block = self.operator.bits_per_block();
+        words.each_bit(bits_per_block, f)
+    }
+
+    pub fn interpret_set<'c, P>(&self,
+                                o: &'c O,
+                                words: &IdxSet<O::Idx>,
+                                render_idx: &P)
+                                -> Vec<&'c Debug>
+        where P: Fn(&O, O::Idx) -> &Debug
+    {
+        let mut v = Vec::new();
+        self.each_bit(words, |i| {
+            v.push(render_idx(o, i));
+        });
+        v
+    }
+}
+
 #[derive(Debug)]
 pub struct AllSets<E: Idx> {
     /// Analysis bitwidth for each block.
