@@ -14,7 +14,6 @@
 //! not a lot of interesting happenings here unfortunately.
 
 use std::env;
-use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -32,16 +31,9 @@ pub fn staticlib(name: &str, target: &str) -> String {
     }
 }
 
-/// Copies a file from `src` to `dst`, attempting to use hard links and then
-/// falling back to an actually filesystem copy if necessary.
+/// Copies a file from `src` to `dst`
 pub fn copy(src: &Path, dst: &Path) {
-    // A call to `hard_link` will fail if `dst` exists, so remove it if it
-    // already exists so we can try to help `hard_link` succeed.
     let _ = fs::remove_file(&dst);
-
-    // Attempt to "easy copy" by creating a hard link (symlinks don't work on
-    // windows), but if that fails just fall back to a slow `copy` operation.
-    // let res = fs::hard_link(src, dst);
     let res = fs::copy(src, dst);
     if let Err(e) = res {
         panic!("failed to copy `{}` to `{}`: {}", src.display(),
@@ -149,8 +141,7 @@ pub fn dylib_path_var() -> &'static str {
 /// Parses the `dylib_path_var()` environment variable, returning a list of
 /// paths that are members of this lookup path.
 pub fn dylib_path() -> Vec<PathBuf> {
-    env::split_paths(&env::var_os(dylib_path_var()).unwrap_or(OsString::new()))
-        .collect()
+    env::split_paths(&env::var_os(dylib_path_var()).unwrap_or_default()).collect()
 }
 
 /// `push` all components to `buf`. On windows, append `.exe` to the last component.
