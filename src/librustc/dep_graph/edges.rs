@@ -19,21 +19,24 @@ use super::debug::EdgeFilter;
 
 pub struct DepGraphEdges {
     nodes: Vec<DepNode>,
-    indices: FxHashMap<DepNode, IdIndex>,
-    edges: FxHashSet<(IdIndex, IdIndex)>,
+    indices: FxHashMap<DepNode, DepNodeIndex>,
+    edges: FxHashSet<(DepNodeIndex, DepNodeIndex)>,
     task_stack: Vec<OpenTask>,
     forbidden_edge: Option<EdgeFilter>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-struct IdIndex {
+pub struct DepNodeIndex {
     index: u32
 }
 
-impl IdIndex {
-    fn new(v: usize) -> IdIndex {
+impl DepNodeIndex {
+
+    pub const INVALID: DepNodeIndex = DepNodeIndex { index: ::std::u32::MAX };
+
+    fn new(v: usize) -> DepNodeIndex {
         assert!((v & 0xFFFF_FFFF) == v);
-        IdIndex { index: v as u32 }
+        DepNodeIndex { index: v as u32 }
     }
 
     fn index(self) -> usize {
@@ -80,7 +83,7 @@ impl DepGraphEdges {
         }
     }
 
-    fn id(&self, index: IdIndex) -> DepNode {
+    fn id(&self, index: DepNodeIndex) -> DepNode {
         self.nodes[index.index()]
     }
 
@@ -101,7 +104,7 @@ impl DepGraphEdges {
         });
     }
 
-    pub fn pop_task(&mut self, key: DepNode) {
+    pub fn pop_task(&mut self, key: DepNode) -> DepNodeIndex {
         let popped_node = self.task_stack.pop().unwrap();
 
         if let OpenTask::Regular {
@@ -117,6 +120,8 @@ impl DepGraphEdges {
                 let source_id = self.get_or_create_node(read);
                 self.edges.insert((source_id, target_id));
             }
+
+            target_id
         } else {
             bug!("pop_task() - Expected regular task to be popped")
         }
@@ -129,7 +134,7 @@ impl DepGraphEdges {
         });
     }
 
-    pub fn pop_anon_task(&mut self, kind: DepKind) -> DepNode {
+    pub fn pop_anon_task(&mut self, kind: DepKind) -> DepNodeIndex {
         let popped_node = self.task_stack.pop().unwrap();
 
         if let OpenTask::Anon {
@@ -155,8 +160,8 @@ impl DepGraphEdges {
                 hash: fingerprint,
             };
 
-            if self.indices.contains_key(&target_dep_node) {
-                return target_dep_node;
+            if let Some(&index) = self.indices.get(&target_dep_node) {
+                return index;
             }
 
             let target_id = self.get_or_create_node(target_dep_node);
@@ -166,7 +171,7 @@ impl DepGraphEdges {
                 self.edges.insert((source_id, target_id));
             }
 
-            target_dep_node
+            target_id
         } else {
             bug!("pop_anon_task() - Expected anonymous task to be popped")
         }
@@ -210,6 +215,11 @@ impl DepGraphEdges {
         }
     }
 
+    pub fn read_index(&mut self, source: DepNodeIndex) {
+        let dep_node = self.nodes[source.index()];
+        self.read(dep_node);
+    }
+
     pub fn query(&self) -> DepGraphQuery {
         let edges: Vec<_> = self.edges.iter()
                                       .map(|&(i, j)| (self.id(i), self.id(j)))
@@ -229,7 +239,7 @@ impl DepGraphEdges {
     }
 
     #[inline]
-    fn get_or_create_node(&mut self, dep_node: DepNode) -> IdIndex {
+    fn get_or_create_node(&mut self, dep_node: DepNode) -> DepNodeIndex {
         let DepGraphEdges {
             ref mut indices,
             ref mut nodes,
@@ -239,7 +249,7 @@ impl DepGraphEdges {
         *indices.entry(dep_node).or_insert_with(|| {
             let next_id = nodes.len();
             nodes.push(dep_node);
-            IdIndex::new(next_id)
+            DepNodeIndex::new(next_id)
         })
      }
 }

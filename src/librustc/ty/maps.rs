@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::{DepConstructor, DepNode};
+use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
@@ -186,7 +186,7 @@ impl<'tcx> Value<'tcx> for ty::SymbolName {
 
 struct QueryMap<D: QueryDescription> {
     phantom: PhantomData<D>,
-    map: FxHashMap<D::Key, D::Value>,
+    map: FxHashMap<D::Key, (D::Value, DepNodeIndex)>,
 }
 
 impl<M: QueryDescription> QueryMap<M> {
@@ -580,7 +580,8 @@ macro_rules! define_maps {
                        key,
                        span);
 
-                if let Some(result) = tcx.maps.$name.borrow().map.get(&key) {
+                if let Some(&(ref result, dep_node_index)) = tcx.maps.$name.borrow().map.get(&key) {
+                    tcx.dep_graph.read_index(dep_node_index);
                     return Ok(f(result));
                 }
 
@@ -591,26 +592,46 @@ macro_rules! define_maps {
                     span = key.default_span(tcx)
                 }
 
-                let _task = tcx.dep_graph.in_task(Self::to_dep_node(tcx, &key));
+                let (result, dep_node_index) = tcx.cycle_check(span, Query::$name(key), || {
+                    let dep_node = Self::to_dep_node(tcx, &key);
 
-                let result = tcx.cycle_check(span, Query::$name(key), || {
-                    let provider = tcx.maps.providers[key.map_crate()].$name;
-                    provider(tcx.global_tcx(), key)
+                    if dep_node.kind.is_anon() {
+                        tcx.dep_graph.with_anon_task(dep_node.kind, || {
+                            let provider = tcx.maps.providers[key.map_crate()].$name;
+                            provider(tcx.global_tcx(), key)
+                        })
+                    } else {
+                        fn run_provider<'a, 'tcx, 'lcx>(tcx: TyCtxt<'a, 'tcx, 'lcx>,
+                                                        key: $K)
+                                                        -> $V {
+                            let provider = tcx.maps.providers[key.map_crate()].$name;
+                            provider(tcx.global_tcx(), key)
+                        }
+
+                        tcx.dep_graph.with_task(dep_node, tcx, key, run_provider)
+                    }
                 })?;
 
-                Ok(f(tcx.maps.$name.borrow_mut().map.entry(key).or_insert(result)))
+                tcx.dep_graph.read_index(dep_node_index);
+
+                Ok(f(&tcx.maps
+                         .$name
+                         .borrow_mut()
+                         .map
+                         .entry(key)
+                         .or_insert((result, dep_node_index))
+                         .0))
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
                            -> Result<$V, CycleError<'a, $tcx>> {
-                // We register the `read` here, but not in `force`, since
-                // `force` does not give access to the value produced (and thus
-                // we actually don't read it).
-                tcx.dep_graph.read(Self::to_dep_node(tcx, &key));
                 Self::try_get_with(tcx, span, key, Clone::clone)
             }
 
             pub fn force(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) {
+                // Ignore dependencies, since we not reading the computed value
+                let _task = tcx.dep_graph.in_ignore();
+
                 match Self::try_get_with(tcx, span, key, |_| ()) {
                     Ok(()) => {}
                     Err(e) => tcx.report_cycle(e)

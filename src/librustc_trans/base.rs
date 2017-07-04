@@ -1120,7 +1120,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .into_iter()
         .map(|cgu| {
             let dep_node = cgu.work_product_dep_node();
-            let (stats, module) =
+            let ((stats, module), _) =
                 tcx.dep_graph.with_task(dep_node,
                                         AssertDepGraphSafe(&shared_ccx),
                                         AssertDepGraphSafe(cgu),

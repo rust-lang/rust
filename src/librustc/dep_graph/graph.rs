@@ -17,7 +17,7 @@ use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
 use super::raii;
 use super::safe::DepGraphSafe;
-use super::edges::DepGraphEdges;
+use super::edges::{DepGraphEdges, DepNodeIndex};
 
 #[derive(Clone)]
 pub struct DepGraph {
@@ -108,16 +108,27 @@ impl DepGraph {
     ///   `arg` parameter.
     ///
     /// [README]: README.md
-    pub fn with_task<C, A, R>(&self, key: DepNode, cx: C, arg: A, task: fn(C, A) -> R) -> R
-        where C: DepGraphSafe, A: DepGraphSafe
+    pub fn with_task<C, A, R>(&self,
+                              key: DepNode,
+                              cx: C,
+                              arg: A,
+                              task: fn(C, A) -> R)
+                              -> (R, DepNodeIndex)
+        where C: DepGraphSafe
     {
-        let _task = self.in_task(key);
-        task(cx, arg)
+        if let Some(ref data) = self.data {
+            data.edges.borrow_mut().push_task(key);
+            let result = task(cx, arg);
+            let dep_node_index = data.edges.borrow_mut().pop_task(key);
+            (result, dep_node_index)
+        } else {
+            (task(cx, arg), DepNodeIndex::INVALID)
+        }
     }
 
     /// Execute something within an "anonymous" task, that is, a task the
     /// DepNode of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<OP,R>(&self, dep_kind: DepKind, op: OP) -> (R, DepNode)
+    pub fn with_anon_task<OP,R>(&self, dep_kind: DepKind, op: OP) -> (R, DepNodeIndex)
         where OP: FnOnce() -> R
     {
         if let Some(ref data) = self.data {
@@ -126,7 +137,7 @@ impl DepGraph {
             let dep_node = data.edges.borrow_mut().pop_anon_task(dep_kind);
             (result, dep_node)
         } else {
-            (op(), DepNode::new_no_params(DepKind::Krate))
+            (op(), DepNodeIndex::INVALID)
         }
     }
 
@@ -134,6 +145,13 @@ impl DepGraph {
     pub fn read(&self, v: DepNode) {
         if let Some(ref data) = self.data {
             data.edges.borrow_mut().read(v);
+        }
+    }
+
+    #[inline]
+    pub fn read_index(&self, v: DepNodeIndex) {
+        if let Some(ref data) = self.data {
+            data.edges.borrow_mut().read_index(v);
         }
     }
 

@@ -22,6 +22,7 @@ pub use self::dep_node::DepNode;
 pub use self::dep_node::WorkProductId;
 pub use self::graph::DepGraph;
 pub use self::graph::WorkProduct;
+pub use self::edges::DepNodeIndex;
 pub use self::query::DepGraphQuery;
 pub use self::safe::AssertDepGraphSafe;
 pub use self::safe::DepGraphSafe;
