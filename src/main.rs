@@ -158,6 +158,8 @@ fn show_version() {
     println!("{}", env!("CARGO_PKG_VERSION"));
 }
 
+// FIXME: false positive for needless_lifetimes
+#[allow(needless_lifetimes)]
 fn has_prefix<'a, T: PartialEq, I: Iterator<Item = &'a T>>(v: &'a [T], itr: I) -> bool {
     v.iter().zip(itr).all(|(a, b)| a == b)
 }
