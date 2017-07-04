@@ -58,15 +58,36 @@ impl<'tcx> Pointer {
     }
 
     pub(crate) fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        self.primval.signed_offset(i, layout).map(Pointer::from)
+        match self.primval {
+            PrimVal::Bytes(b) => {
+                assert_eq!(b as u64 as u128, b);
+                Ok(Pointer::from(PrimVal::Bytes(signed_offset(b as u64, i, layout)? as u128)))
+            },
+            PrimVal::Ptr(ptr) => ptr.signed_offset(i, layout).map(Pointer::from),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
     }
 
     pub(crate) fn offset(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        self.primval.offset(i, layout).map(Pointer::from)
+        match self.primval {
+            PrimVal::Bytes(b) => {
+                assert_eq!(b as u64 as u128, b);
+                Ok(Pointer::from(PrimVal::Bytes(offset(b as u64, i, layout)? as u128)))
+            },
+            PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(Pointer::from),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
     }
 
     pub(crate) fn wrapping_signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        self.primval.wrapping_signed_offset(i, layout).map(Pointer::from)
+        match self.primval {
+            PrimVal::Bytes(b) => {
+                assert_eq!(b as u64 as u128, b);
+                Ok(Pointer::from(PrimVal::Bytes(wrapping_signed_offset(b as u64, i, layout) as u128)))
+            },
+            PrimVal::Ptr(ptr) => Ok(Pointer::from(ptr.wrapping_signed_offset(i, layout))),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
     }
 
     pub fn is_null(self) -> EvalResult<'tcx, bool> {
@@ -276,39 +297,6 @@ impl<'tcx> PrimVal {
             0 => Ok(false),
             1 => Ok(true),
             _ => Err(EvalError::InvalidBool),
-        }
-    }
-
-    pub(crate) fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        match self {
-            PrimVal::Bytes(b) => {
-                assert_eq!(b as u64 as u128, b);
-                Ok(PrimVal::Bytes(signed_offset(b as u64, i, layout)? as u128))
-            },
-            PrimVal::Ptr(ptr) => ptr.signed_offset(i, layout).map(PrimVal::Ptr),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
-        }
-    }
-
-    pub(crate) fn offset(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        match self {
-            PrimVal::Bytes(b) => {
-                assert_eq!(b as u64 as u128, b);
-                Ok(PrimVal::Bytes(offset(b as u64, i, layout)? as u128))
-            },
-            PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(PrimVal::Ptr),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
-        }
-    }
-
-    pub(crate) fn wrapping_signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        match self {
-            PrimVal::Bytes(b) => {
-                assert_eq!(b as u64 as u128, b);
-                Ok(PrimVal::Bytes(wrapping_signed_offset(b as u64, i, layout) as u128))
-            },
-            PrimVal::Ptr(ptr) => Ok(PrimVal::Ptr(ptr.wrapping_signed_offset(i, layout))),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
         }
     }
 }
