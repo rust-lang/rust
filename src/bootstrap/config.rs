@@ -81,8 +81,6 @@ pub struct Config {
     pub build: String,
     pub host: Vec<String>,
     pub target: Vec<String>,
-    pub rustc: Option<PathBuf>,
-    pub cargo: Option<PathBuf>,
     pub local_rebuild: bool,
 
     // dist misc
@@ -114,11 +112,18 @@ pub struct Config {
     pub python: Option<PathBuf>,
     pub configure_args: Vec<String>,
     pub openssl_static: bool,
+
+
+    // These are either the stage0 downloaded binaries or the locally installed ones.
+    pub initial_cargo: PathBuf,
+    pub initial_rustc: PathBuf,
+
 }
 
 /// Per-target configuration stored in the global configuration structure.
 #[derive(Default)]
 pub struct Target {
+    /// Some(path to llvm-config) if using an external LLVM.
     pub llvm_config: Option<PathBuf>,
     pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
@@ -307,8 +312,6 @@ impl Config {
                 config.target.push(target.clone());
             }
         }
-        config.rustc = build.rustc.map(PathBuf::from);
-        config.cargo = build.cargo.map(PathBuf::from);
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
@@ -410,13 +413,25 @@ impl Config {
             set(&mut config.rust_dist_src, t.src_tarball);
         }
 
+        let cwd = t!(env::current_dir());
+        let out = cwd.join("build");
+
+        let stage0_root = out.join(&config.build).join("stage0/bin");
+        config.initial_rustc = match build.rustc {
+            Some(s) => PathBuf::from(s),
+            None => stage0_root.join(exe("rustc", &config.build)),
+        };
+        config.initial_cargo = match build.cargo {
+            Some(s) => PathBuf::from(s),
+            None => stage0_root.join(exe("cargo", &config.build)),
+        };
 
         // compat with `./configure` while we're still using that
         if fs::metadata("config.mk").is_ok() {
             config.update_with_config_mk();
         }
 
-        return config
+        config
     }
 
     /// "Temporary" routine to parse `config.mk` into this configuration.
@@ -609,8 +624,8 @@ impl Config {
                 }
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
                     let path = parse_configure_path(value);
-                    self.rustc = Some(push_exe_path(path.clone(), &["bin", "rustc"]));
-                    self.cargo = Some(push_exe_path(path, &["bin", "cargo"]));
+                    self.initial_rustc = push_exe_path(path.clone(), &["bin", "rustc"]);
+                    self.initial_cargo = push_exe_path(path, &["bin", "cargo"]);
                 }
                 "CFG_PYTHON" if value.len() > 0 => {
                     let path = parse_configure_path(value);
