@@ -226,6 +226,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         // These ops can have an RHS with a different numeric type.
         if right_kind.is_int() && (bin_op == Shl || bin_op == Shr) {
+            // FIXME: The "as u32" here could hide an overflow
             return match bin_op {
                 Shl => int_shift!(left_kind, overflowing_shl, l, r as u32),
                 Shr => int_shift!(left_kind, overflowing_shr, l, r as u32),

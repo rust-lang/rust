@@ -407,6 +407,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
+            "unchecked_shl" => {
+                // FIXME Check for too-wide shifts
+                self.intrinsic_overflowing(mir::BinOp::Shl, &args[0], &args[1], dest, dest_ty)?;
+            }
+
+            "unchecked_shr" => {
+                // FIXME Check for too-wide shifts
+                self.intrinsic_overflowing(mir::BinOp::Shr, &args[0], &args[1], dest, dest_ty)?;
+            }
+
+            "unchecked_div" => {
+                let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
+                if rhs == 0 {
+                    return Err(EvalError::Intrinsic(format!("Division by 0 in unchecked_div")));
+                }
+                self.intrinsic_overflowing(mir::BinOp::Div, &args[0], &args[1], dest, dest_ty)?;
+            }
+
+            "unchecked_rem" => {
+                let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
+                if rhs == 0 {
+                    return Err(EvalError::Intrinsic(format!("Division by 0 in unchecked_rem")));
+                }
+                self.intrinsic_overflowing(mir::BinOp::Rem, &args[0], &args[1], dest, dest_ty)?;
+            }
+
             "uninit" => {
                 let size = dest_layout.size(&self.tcx.data_layout).bytes();
                 let uninit = |this: &mut Self, val: Value| {

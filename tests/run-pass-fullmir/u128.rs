@@ -72,6 +72,6 @@ fn main() {
     assert_eq!(l.checked_add(b(11)), None);
     assert_eq!(l.checked_sub(l), Some(0));
     assert_eq!(o.checked_sub(b(18)), None);
-    //assert_eq!(b(1u128).checked_shl(b(127)), Some(1 << 127));
-    //assert_eq!(o.checked_shl(b(128)), None);
+    assert_eq!(b(1u128).checked_shl(b(127)), Some(1 << 127));
+    assert_eq!(o.checked_shl(b(128)), None);
 }
