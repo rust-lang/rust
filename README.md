@@ -40,8 +40,9 @@ Read ["Installation"] from [The Book].
 
     > ***Note:*** Install locations can be adjusted by copying the config file
     > from `./src/bootstrap/config.toml.example` to `./config.toml`, and
-    > adjusting the `prefix` option under `[install]`. Various other options are
-    > also supported, and are documented in the config file.
+    > adjusting the `prefix` option under `[install]`. Various other options, such
+    > as enabling debug information, are also supported, and are documented in
+    > the config file.
 
     When complete, `sudo ./x.py install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
