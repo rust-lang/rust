@@ -1079,6 +1079,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
+    pub(super) fn write_null(
+        &mut self,
+        dest: Lvalue<'tcx>,
+        dest_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx> {
+        self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
+    }
+
     pub(super) fn write_primval(
         &mut self,
         dest: Lvalue<'tcx>,
@@ -1696,12 +1704,12 @@ pub fn eval_main<'a, 'tcx: 'a>(
             // Second argument (argc): 0
             let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.types.isize;
-            ecx.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, ty)?;
+            ecx.write_null(dest, ty)?;
 
             // Third argument (argv): 0
             let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-            ecx.write_value(Value::ByVal(PrimVal::Bytes(0)), dest, ty)?;
+            ecx.write_null(dest, ty)?;
         } else {
             ecx.push_stack_frame(
                 main_instance,
