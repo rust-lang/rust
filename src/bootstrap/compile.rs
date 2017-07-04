@@ -26,7 +26,7 @@ use std::str;
 
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
-use rustc_serialize::json;
+use serde_json;
 
 use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
@@ -934,18 +934,18 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
     let stdout = BufReader::new(child.stdout.take().unwrap());
     for line in stdout.lines() {
         let line = t!(line);
-        let json = if line.starts_with("{") {
-            t!(line.parse::<json::Json>())
+        let json: serde_json::Value = if line.starts_with("{") {
+            t!(serde_json::from_str(&line))
         } else {
             // If this was informational, just print it out and continue
             println!("{}", line);
             continue
         };
-        if json.find("reason").and_then(|j| j.as_string()) != Some("compiler-artifact") {
+        if json["reason"].as_str() != Some("compiler-artifact") {
             continue
         }
         for filename in json["filenames"].as_array().unwrap() {
-            let filename = filename.as_string().unwrap();
+            let filename = filename.as_str().unwrap();
             // Skip files like executables
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
