@@ -224,26 +224,24 @@ fn arrays() {
         1,
     ];
 
-    let a = WeightedChoice::new(
-        &mut [
-            Weighted {
-                weightweight: x,
-                item: 0,
-            },
-            Weighted {
-                weightweight: 1,
-                item: 1,
-            },
-            Weighted {
-                weightweight: x,
-                item: 2,
-            },
-            Weighted {
-                weightweight: 1,
-                item: 3,
-            },
-        ],
-    );
+    let a = WeightedChoice::new(&mut [
+        Weighted {
+            weightweight: x,
+            item: 0,
+        },
+        Weighted {
+            weightweight: 1,
+            item: 1,
+        },
+        Weighted {
+            weightweight: x,
+            item: 2,
+        },
+        Weighted {
+            weightweight: 1,
+            item: 3,
+        },
+    ]);
 
     let z = [
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
