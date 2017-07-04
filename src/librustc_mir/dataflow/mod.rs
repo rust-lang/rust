@@ -30,7 +30,6 @@ pub use self::impls::borrows::{Borrows, BorrowData, BorrowIndex};
 pub(crate) use self::drop_flag_effects::*;
 
 use self::move_paths::MoveData;
-use self::indexes::MovePathIndex;
 
 mod drop_flag_effects;
 mod graphviz;
@@ -90,7 +89,7 @@ pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 bd: BD,
                                 p: P)
                                 -> DataflowResults<BD>
-    where BD: BitDenotation<Idx=MovePathIndex> + DataflowOperator,
+    where BD: BitDenotation + DataflowOperator,
           P: Fn(&BD, BD::Idx) -> &fmt::Debug
 {
     let name_found = |sess: &Session, attrs: &[ast::Attribute], name| -> Option<String> {
