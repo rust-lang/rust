@@ -93,19 +93,20 @@ macro_rules! int_shift {
     ($kind:expr, $int_op:ident, $l:expr, $r:expr) => ({
         let l = $l;
         let r = $r;
+        let r_wrapped = r as u32;
         match $kind {
-            I8  => overflow!($int_op, l as i8,  r),
-            I16 => overflow!($int_op, l as i16, r),
-            I32 => overflow!($int_op, l as i32, r),
-            I64 => overflow!($int_op, l as i64, r),
-            I128 => overflow!($int_op, l as i128, r),
-            U8  => overflow!($int_op, l as u8,  r),
-            U16 => overflow!($int_op, l as u16, r),
-            U32 => overflow!($int_op, l as u32, r),
-            U64 => overflow!($int_op, l as u64, r),
-            U128 => overflow!($int_op, l as u128, r),
+            I8  => overflow!($int_op, l as i8,  r_wrapped),
+            I16 => overflow!($int_op, l as i16, r_wrapped),
+            I32 => overflow!($int_op, l as i32, r_wrapped),
+            I64 => overflow!($int_op, l as i64, r_wrapped),
+            I128 => overflow!($int_op, l as i128, r_wrapped),
+            U8  => overflow!($int_op, l as u8,  r_wrapped),
+            U16 => overflow!($int_op, l as u16, r_wrapped),
+            U32 => overflow!($int_op, l as u32, r_wrapped),
+            U64 => overflow!($int_op, l as u64, r_wrapped),
+            U128 => overflow!($int_op, l as u128, r_wrapped),
             _ => bug!("int_shift should only be called on int primvals"),
-        }
+        }.map(|(val, over)| (val, over || r != r_wrapped as u128))
     })
 }
 
@@ -227,8 +228,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // These ops can have an RHS with a different numeric type.
         if right_kind.is_int() && (bin_op == Shl || bin_op == Shr) {
             return match bin_op {
-                Shl => int_shift!(left_kind, overflowing_shl, l, r as u32),
-                Shr => int_shift!(left_kind, overflowing_shr, l, r as u32),
+                Shl => int_shift!(left_kind, overflowing_shl, l, r),
+                Shr => int_shift!(left_kind, overflowing_shr, l, r),
                 _ => bug!("it has already been checked that this is a shift op"),
             };
         }

@@ -1022,7 +1022,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn copy(&mut self, src: PrimVal, dest: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx> {
         let size = self.type_size(ty)?.expect("cannot copy from an unsized type");
         let align = self.type_align(ty)?;
-        self.memory.copy(src, dest, size, align)?;
+        self.memory.copy(src, dest, size, align, false)?;
         Ok(())
     }
 
