@@ -27,6 +27,24 @@ use {Build, Compiler, Mode};
 use util::{cp_r, symlink_dir};
 use build_helper::up_to_date;
 
+// rules.doc("doc-nomicon", "src/doc/nomicon")
+//      .dep(move |s| {
+//          s.name("tool-rustbook")
+//           .host(&build.build)
+//           .target(&build.build)
+//           .stage(0)
+//      })
+//      .default(build.config.docs)
+//      .run(move |s| doc::rustbook(build, s.target, "nomicon"));
+// rules.doc("doc-reference", "src/doc/reference")
+//      .dep(move |s| {
+//          s.name("tool-rustbook")
+//           .host(&build.build)
+//           .target(&build.build)
+//           .stage(0)
+//      })
+//      .default(build.config.docs)
+//      .run(move |s| doc::rustbook(build, s.target, "reference"));
 /// Invoke `rustbook` for `target` for the doc book `name`.
 ///
 /// This will not actually generate any documentation if the documentation has
@@ -35,6 +53,21 @@ pub fn rustbook(build: &Build, target: &str, name: &str) {
     let src = build.src.join("src/doc");
     rustbook_src(build, target, name, &src);
 }
+
+//rules.doc("doc-unstable-book", "src/doc/unstable-book")
+//     .dep(move |s| {
+//         s.name("tool-rustbook")
+//          .host(&build.build)
+//          .target(&build.build)
+//          .stage(0)
+//     })
+//     .dep(move |s| s.name("doc-unstable-book-gen"))
+//     .default(build.config.docs)
+//     .run(move |s| doc::rustbook_src(build,
+//                                     s.target,
+//                                     "unstable-book",
+//                                     &build.md_doc_out(s.target)));
+
 
 /// Invoke `rustbook` for `target` for the doc book `name` from the `src` path.
 ///
@@ -61,6 +94,15 @@ pub fn rustbook_src(build: &Build, target: &str, name: &str, src: &Path) {
                    .arg(out));
 }
 
+// rules.doc("doc-book", "src/doc/book")
+//      .dep(move |s| {
+//          s.name("tool-rustbook")
+//           .host(&build.build)
+//           .target(&build.build)
+//           .stage(0)
+//      })
+//      .default(build.config.docs)
+//      .run(move |s| doc::book(build, s.target, "book"));
 /// Build the book and associated stuff.
 ///
 /// We need to build:
@@ -137,6 +179,15 @@ fn invoke_rustdoc(build: &Build, target: &str, markdown: &str) {
     build.run(&mut cmd);
 }
 
+// rules.doc("doc-standalone", "src/doc")
+//      .dep(move |s| {
+//          s.name("rustc")
+//           .host(&build.build)
+//           .target(&build.build)
+//           .stage(0)
+//      })
+//      .default(build.config.docs)
+//      .run(move |s| doc::standalone(build, s.target));
 /// Generates all standalone documentation as compiled by the rustdoc in `stage`
 /// for the `target` into `out`.
 ///
@@ -209,6 +260,12 @@ pub fn standalone(build: &Build, target: &str) {
     }
 }
 
+// for (krate, path, default) in krates("std") {
+//     rules.doc(&krate.doc_step, path)
+//          .dep(|s| s.name("libstd-link"))
+//          .default(default && build.config.docs)
+//          .run(move |s| doc::std(build, s.stage, s.target));
+// }
 /// Compile all standard library documentation.
 ///
 /// This will generate all documentation for the standard library and its
@@ -268,6 +325,14 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     cp_r(&my_out, &out);
 }
 
+// for (krate, path, default) in krates("test") {
+//     rules.doc(&krate.doc_step, path)
+//          .dep(|s| s.name("libtest-link"))
+//          // Needed so rustdoc generates relative links to std.
+//          .dep(|s| s.name("doc-crate-std"))
+//          .default(default && build.config.compiler_docs)
+//          .run(move |s| doc::test(build, s.stage, s.target));
+// }
 /// Compile all libtest documentation.
 ///
 /// This will generate all documentation for libtest and its dependencies. This
@@ -298,6 +363,17 @@ pub fn test(build: &Build, stage: u32, target: &str) {
     cp_r(&my_out, &out);
 }
 
+
+// for (krate, path, default) in krates("rustc-main") {
+//     rules.doc(&krate.doc_step, path)
+//          .dep(|s| s.name("librustc-link"))
+//          // Needed so rustdoc generates relative links to std.
+//          .dep(|s| s.name("doc-crate-std"))
+//          .host(true)
+//          .default(default && build.config.docs)
+//          .run(move |s| doc::rustc(build, s.stage, s.target));
+// }
+//
 /// Generate all compiler documentation.
 ///
 /// This will generate all documentation for the compiler libraries and their
@@ -345,6 +421,13 @@ pub fn rustc(build: &Build, stage: u32, target: &str) {
     cp_r(&my_out, &out);
 }
 
+// rules.doc("doc-error-index", "src/tools/error_index_generator")
+//      .dep(move |s| s.name("tool-error-index").target(&build.build).stage(0))
+//      .dep(move |s| s.name("librustc-link"))
+//      .default(build.config.docs)
+//      .host(true)
+//      .run(move |s| doc::error_index(build, s.target));
+
 /// Generates the HTML rendered error-index by running the
 /// `error_index_generator` tool.
 pub fn error_index(build: &Build, target: &str) {
@@ -361,6 +444,18 @@ pub fn error_index(build: &Build, target: &str) {
 
     build.run(&mut index);
 }
+
+// rules.doc("doc-unstable-book-gen", "src/tools/unstable-book-gen")
+//      .dep(move |s| {
+//          s.name("tool-unstable-book-gen")
+//           .host(&build.build)
+//           .target(&build.build)
+//           .stage(0)
+//      })
+//      .dep(move |s| s.name("libstd-link"))
+//      .default(build.config.docs)
+//      .host(true)
+//      .run(move |s| doc::unstable_book_gen(build, s.target));
 
 pub fn unstable_book_gen(build: &Build, target: &str) {
     println!("Generating unstable book md files ({})", target);

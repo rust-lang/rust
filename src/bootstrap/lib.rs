@@ -106,7 +106,6 @@ mod flags;
 mod install;
 mod native;
 mod sanity;
-mod step;
 pub mod util;
 
 #[cfg(windows)]

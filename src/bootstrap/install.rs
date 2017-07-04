@@ -148,3 +148,45 @@ fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
     }
     ret
 }
+/*
+rules.install("install-docs", "src/doc")
+     .default(build.config.docs)
+     .only_host_build(true)
+     .dep(|s| s.name("dist-docs"))
+     .run(move |s| install::Installer::new(build).install_docs(s.stage, s.target));
+rules.install("install-std", "src/libstd")
+     .default(true)
+     .only_host_build(true)
+     .dep(|s| s.name("dist-std"))
+     .run(move |s| install::Installer::new(build).install_std(s.stage));
+rules.install("install-cargo", "cargo")
+     .default(build.config.extended)
+     .host(true)
+     .only_host_build(true)
+     .dep(|s| s.name("dist-cargo"))
+     .run(move |s| install::Installer::new(build).install_cargo(s.stage, s.target));
+rules.install("install-rls", "rls")
+     .default(build.config.extended)
+     .host(true)
+     .only_host_build(true)
+     .dep(|s| s.name("dist-rls"))
+     .run(move |s| install::Installer::new(build).install_rls(s.stage, s.target));
+rules.install("install-analysis", "analysis")
+     .default(build.config.extended)
+     .only_host_build(true)
+     .dep(|s| s.name("dist-analysis"))
+     .run(move |s| install::Installer::new(build).install_analysis(s.stage, s.target));
+rules.install("install-src", "src")
+     .default(build.config.extended)
+     .host(true)
+     .only_build(true)
+     .only_host_build(true)
+     .dep(|s| s.name("dist-src"))
+     .run(move |s| install::Installer::new(build).install_src(s.stage));
+rules.install("install-rustc", "src/librustc")
+     .default(true)
+     .host(true)
+     .only_host_build(true)
+     .dep(|s| s.name("dist-rustc"))
+     .run(move |s| install::Installer::new(build).install_rustc(s.stage, s.target));
+*/

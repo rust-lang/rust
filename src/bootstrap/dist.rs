@@ -18,6 +18,14 @@
 //! out to `rust-installer` still. This may one day be replaced with bits and
 //! pieces of `rustup.rs`!
 
+// /// Helper to depend on a stage0 build-only rust-installer tool.
+// fn tool_rust_installer<'a>(build: &'a Build, step: &Step<'a>) -> Step<'a> {
+//     step.name("tool-rust-installer")
+//         .host(&build.build)
+//         .target(&build.build)
+//         .stage(0)
+// }
+
 use std::env;
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -53,6 +61,12 @@ fn rust_installer(build: &Build) -> Command {
     build.tool_cmd(&Compiler::new(0, &build.build), "rust-installer")
 }
 
+// rules.dist("dist-docs", "src/doc")
+//      .default(true)
+//      .only_host_build(true)
+//      .dep(|s| s.name("default:doc"))
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| dist::docs(build, s.stage, s.target));
 /// Builds the `rust-docs` installer component.
 ///
 /// Slurps up documentation from the `stage`'s `host`.
@@ -222,6 +236,16 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
     }
 }
 
+// rules.dist("dist-mingw", "path/to/nowhere")
+//      .default(true)
+//      .only_host_build(true)
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| {
+//          if s.target.contains("pc-windows-gnu") {
+//              dist::mingw(build, s.target)
+//          }
+//      });
+//
 /// Build the `rust-mingw` installer component.
 ///
 /// This contains all the bits and pieces to run the MinGW Windows targets
@@ -254,6 +278,13 @@ pub fn mingw(build: &Build, host: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
+// rules.dist("dist-rustc", "src/librustc")
+//      .dep(move |s| s.name("rustc").host(&build.build))
+//      .host(true)
+//      .only_host_build(true)
+//      .default(true)
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| dist::rustc(build, s.stage, s.target));
 /// Creates the `rustc` installer component.
 pub fn rustc(build: &Build, stage: u32, host: &str) {
     println!("Dist rustc stage{} ({})", stage, host);
@@ -352,6 +383,9 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     }
 }
 
+//rules.test("debugger-scripts", "src/etc/lldb_batchmode.py")
+//     .run(move |s| dist::debugger_scripts(build, &build.sysroot(&s.compiler()),
+//                                     s.target));
 /// Copies debugger scripts for `host` into the `sysroot` specified.
 pub fn debugger_scripts(build: &Build,
                         sysroot: &Path,
@@ -386,6 +420,21 @@ pub fn debugger_scripts(build: &Build,
     }
 }
 
+// rules.dist("dist-std", "src/libstd")
+//      .dep(move |s| {
+//          // We want to package up as many target libraries as possible
+//          // for the `rust-std` package, so if this is a host target we
+//          // depend on librustc and otherwise we just depend on libtest.
+//          if build.config.host.iter().any(|t| t == s.target) {
+//              s.name("librustc-link")
+//          } else {
+//              s.name("libtest-link")
+//          }
+//      })
+//      .default(true)
+//      .only_host_build(true)
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| dist::std(build, &s.compiler(), s.target));
 /// Creates the `rust-std` installer component as compiled by `compiler` for the
 /// target `target`.
 pub fn std(build: &Build, compiler: &Compiler, target: &str) {
@@ -436,6 +485,12 @@ pub fn rust_src_installer(build: &Build) -> PathBuf {
     distdir(build).join(&format!("{}.tar.gz", name))
 }
 
+// rules.dist("dist-analysis", "analysis")
+//      .default(build.config.extended)
+//      .dep(|s| s.name("dist-std"))
+//      .only_host_build(true)
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| dist::analysis(build, &s.compiler(), s.target));
 /// Creates a tarball of save-analysis metadata, if available.
 pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     assert!(build.config.extended);
@@ -520,6 +575,13 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
     }
 }
 
+// rules.dist("dist-src", "src")
+//      .default(true)
+//      .host(true)
+//      .only_build(true)
+//      .only_host_build(true)
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |_| dist::rust_src(build));
 /// Creates the `rust-src` installer component
 pub fn rust_src(build: &Build) {
     println!("Dist src");
@@ -587,6 +649,13 @@ pub fn rust_src(build: &Build) {
 
 const CARGO_VENDOR_VERSION: &str = "0.1.4";
 
+// rules.dist("dist-plain-source-tarball", "src")
+//      .default(build.config.rust_dist_src)
+//      .host(true)
+//      .only_build(true)
+//      .only_host_build(true)
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |_| dist::plain_source_tarball(build));
 /// Creates the plain source tarball
 pub fn plain_source_tarball(build: &Build) {
     println!("Create plain source tarball");
@@ -704,6 +773,12 @@ fn write_file(path: &Path, data: &[u8]) {
     t!(vf.write_all(data));
 }
 
+// rules.dist("dist-cargo", "cargo")
+//      .host(true)
+//      .only_host_build(true)
+//      .dep(|s| s.name("tool-cargo"))
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| dist::cargo(build, s.stage, s.target));
 pub fn cargo(build: &Build, stage: u32, target: &str) {
     println!("Dist cargo stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.build);
@@ -764,6 +839,12 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     build.run(&mut cmd);
 }
 
+// rules.dist("dist-rls", "rls")
+//      .host(true)
+//      .only_host_build(true)
+//      .dep(|s| s.name("tool-rls"))
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| dist::rls(build, s.stage, s.target));
 pub fn rls(build: &Build, stage: u32, target: &str) {
     assert!(build.config.extended);
     println!("Dist RLS stage{} ({})", stage, target);
@@ -812,6 +893,20 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
        .arg("--legacy-manifest-dirs=rustlib,cargo");
     build.run(&mut cmd);
 }
+
+// rules.dist("dist-extended", "extended")
+//      .default(build.config.extended)
+//      .host(true)
+//      .only_host_build(true)
+//      .dep(|d| d.name("dist-std"))
+//      .dep(|d| d.name("dist-rustc"))
+//      .dep(|d| d.name("dist-mingw"))
+//      .dep(|d| d.name("dist-docs"))
+//      .dep(|d| d.name("dist-cargo"))
+//      .dep(|d| d.name("dist-rls"))
+//      .dep(|d| d.name("dist-analysis"))
+//      .dep(move |s| tool_rust_installer(build, s))
+//      .run(move |s| dist::extended(build, s.stage, s.target));
 
 /// Creates a combined installer for the specified target in the provided stage.
 pub fn extended(build: &Build, stage: u32, target: &str) {
@@ -1198,6 +1293,13 @@ fn add_env(build: &Build, cmd: &mut Command, target: &str) {
     }
 }
 
+// rules.dist("dist-sign", "hash-and-sign")
+//      .host(true)
+//      .only_build(true)
+//      .only_host_build(true)
+//      .dep(move |s| s.name("tool-build-manifest").target(&build.build).stage(0))
+//      .run(move |_| dist::hash_and_sign(build));
+//
 pub fn hash_and_sign(build: &Build) {
     let compiler = Compiler::new(0, &build.build);
     let mut cmd = build.tool_cmd(&compiler, "build-manifest");

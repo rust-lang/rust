@@ -32,6 +32,121 @@ use channel::GitInfo;
 use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 
+//    for (krate, path, _default) in krates("std") {
+//        rules.build(&krate.build_step, path)
+//             .dep(|s| s.name("startup-objects"))
+//             .dep(move |s| s.name("rustc").host(&build.build).target(s.host))
+//             .run(move |s| compile::std(build, s.target, &s.compiler()));
+//    }
+//    for (krate, path, _default) in krates("test") {
+//        rules.build(&krate.build_step, path)
+//             .dep(|s| s.name("libstd-link"))
+//             .run(move |s| compile::test(build, s.target, &s.compiler()));
+//    }
+//    for (krate, path, _default) in krates("rustc-main") {
+//        rules.build(&krate.build_step, path)
+//             .dep(|s| s.name("libtest-link"))
+//             .dep(move |s| s.name("llvm").host(&build.build).stage(0))
+//             .dep(|s| s.name("may-run-build-script"))
+//             .run(move |s| compile::rustc(build, s.target, &s.compiler()));
+//    }
+//
+//    // Crates which have build scripts need to rely on this rule to ensure that
+//    // the necessary prerequisites for a build script are linked and located in
+//    // place.
+//    rules.build("may-run-build-script", "path/to/nowhere")
+//         .dep(move |s| {
+//             s.name("libstd-link")
+//              .host(&build.build)
+//              .target(&build.build)
+//         });
+
+//    // ========================================================================
+//    // Crate compilations
+//    //
+//    // Tools used during the build system but not shipped
+//    // These rules are "pseudo rules" that don't actually do any work
+//    // themselves, but represent a complete sysroot with the relevant compiler
+//    // linked into place.
+//    //
+//    // That is, depending on "libstd" means that when the rule is completed then
+//    // the `stage` sysroot for the compiler `host` will be available with a
+//    // standard library built for `target` linked in place. Not all rules need
+//    // the compiler itself to be available, just the standard library, so
+//    // there's a distinction between the two.
+//    rules.build("libstd", "src/libstd")
+//         .dep(|s| s.name("rustc").target(s.host))
+//         .dep(|s| s.name("libstd-link"));
+//    rules.build("libtest", "src/libtest")
+//         .dep(|s| s.name("libstd"))
+//         .dep(|s| s.name("libtest-link"))
+//         .default(true);
+//    rules.build("librustc", "src/librustc")
+//         .dep(|s| s.name("libtest"))
+//         .dep(|s| s.name("librustc-link"))
+//         .host(true)
+//         .default(true);
+
+// Helper method to define the rules to link a crate into its place in the
+// sysroot.
+//
+// The logic here is a little subtle as there's a few cases to consider.
+// Not all combinations of (stage, host, target) actually require something
+// to be compiled, but rather libraries could get propagated from a
+// different location. For example:
+//
+// * Any crate with a `host` that's not the build triple will not actually
+//   compile something. A different `host` means that the build triple will
+//   actually compile the libraries, and then we'll copy them over from the
+//   build triple to the `host` directory.
+//
+// * Some crates aren't even compiled by the build triple, but may be copied
+//   from previous stages. For example if we're not doing a full bootstrap
+//   then we may just depend on the stage1 versions of libraries to be
+//   available to get linked forward.
+//
+// * Finally, there are some cases, however, which do indeed comiple crates
+//   and link them into place afterwards.
+//
+// The rule definition below mirrors these three cases. The `dep` method
+// calculates the correct dependency which either comes from stage1, a
+// different compiler, or from actually building the crate itself (the `dep`
+// rule). The `run` rule then mirrors these three cases and links the cases
+// forward into the compiler sysroot specified from the correct location.
+fn crate_rule<'a, 'b>(build: &'a Build,
+                        rules: &'b mut Rules<'a>,
+                        krate: &'a str,
+                        dep: &'a str,
+                        link: fn(&Build, &Compiler, &Compiler, &str))
+                        -> RuleBuilder<'a, 'b> {
+    let mut rule = rules.build(&krate, "path/to/nowhere");
+    rule.dep(move |s| {
+            if build.force_use_stage1(&s.compiler(), s.target) {
+                s.host(&build.build).stage(1)
+            } else if s.host == build.build {
+                s.name(dep)
+            } else {
+                s.host(&build.build)
+            }
+        })
+        .run(move |s| {
+            if build.force_use_stage1(&s.compiler(), s.target) {
+                link(build,
+                        &s.stage(1).host(&build.build).compiler(),
+                        &s.compiler(),
+                        s.target)
+            } else if s.host == build.build {
+                link(build, &s.compiler(), &s.compiler(), s.target)
+            } else {
+                link(build,
+                        &s.host(&build.build).compiler(),
+                        &s.compiler(),
+                        s.target)
+            }
+        });
+        rule
+}
+
 /// Build the standard library.
 ///
 /// This will build the standard library for a particular stage of the build
@@ -93,6 +208,14 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
               &libstd_stamp(build, &compiler, target));
 }
 
+
+// crate_rule(build,
+//            &mut rules,
+//            "libstd-link",
+//            "build-crate-std",
+//            compile::std_link)
+//     .dep(|s| s.name("startup-objects"))
+//     .dep(|s| s.name("create-sysroot").target(s.host));
 /// Link all libstd rlibs/dylibs into the sysroot location.
 ///
 /// Links those artifacts generated by `compiler` to a the `stage` compiler's
@@ -146,6 +269,10 @@ fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
         copy(&src_path, &into.join(filename));
     }
 }
+
+// rules.build("startup-objects", "src/rtstartup")
+//      .dep(|s| s.name("create-sysroot").target(s.host))
+//      .run(move |s| compile::build_startup_objects(build, &s.compiler(), s.target));
 
 /// Build and prepare startup objects like rsbegin.o and rsend.o
 ///
@@ -208,6 +335,14 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
               &mut cargo,
               &libtest_stamp(build, compiler, target));
 }
+
+
+// crate_rule(build,
+//            &mut rules,
+//            "libtest-link",
+//            "build-crate-test",
+//            compile::test_link)
+//     .dep(|s| s.name("libstd-link"));
 
 /// Same as `std_link`, only for libtest
 pub fn test_link(build: &Build,
@@ -303,6 +438,12 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
               &librustc_stamp(build, compiler, target));
 }
 
+// crate_rule(build,
+//            &mut rules,
+//            "librustc-link",
+//            "build-crate-rustc-main",
+//            compile::rustc_link)
+//     .dep(|s| s.name("libtest-link"));
 /// Same as `std_link`, only for librustc
 pub fn rustc_link(build: &Build,
                   compiler: &Compiler,
@@ -342,12 +483,27 @@ fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
     PathBuf::from(out.trim())
 }
 
+// rules.build("create-sysroot", "path/to/nowhere")
+//      .run(move |s| compile::create_sysroot(build, &s.compiler()));
 pub fn create_sysroot(build: &Build, compiler: &Compiler) {
     let sysroot = build.sysroot(compiler);
     let _ = fs::remove_dir_all(&sysroot);
     t!(fs::create_dir_all(&sysroot));
 }
 
+// the compiler with no target libraries ready to go
+// rules.build("rustc", "src/rustc")
+//      .dep(|s| s.name("create-sysroot").target(s.host))
+//      .dep(move |s| {
+//          if s.stage == 0 {
+//              Step::noop()
+//          } else {
+//              s.name("librustc")
+//               .host(&build.build)
+//               .stage(s.stage - 1)
+//          }
+//      })
+//      .run(move |s| compile::assemble_rustc(build, s.stage, s.target));
 /// Prepare a new compiler from the artifacts in `stage`
 ///
 /// This will assemble a compiler in `build/$host/stage$stage`. The compiler
@@ -418,6 +574,29 @@ fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
     }
 }
 
+//// ========================================================================
+//// Build tools
+////
+//// Tools used during the build system but not shipped
+//// "pseudo rule" which represents completely cleaning out the tools dir in
+//// one stage. This needs to happen whenever a dependency changes (e.g.
+//// libstd, libtest, librustc) and all of the tool compilations above will
+//// be sequenced after this rule.
+//rules.build("maybe-clean-tools", "path/to/nowhere")
+//     .after("librustc-tool")
+//     .after("libtest-tool")
+//     .after("libstd-tool");
+//
+//rules.build("librustc-tool", "path/to/nowhere")
+//     .dep(|s| s.name("librustc"))
+//     .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Librustc));
+//rules.build("libtest-tool", "path/to/nowhere")
+//     .dep(|s| s.name("libtest"))
+//     .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libtest));
+//rules.build("libstd-tool", "path/to/nowhere")
+//     .dep(|s| s.name("libstd"))
+//     .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libstd));
+//
 /// Build a tool in `src/tools`
 ///
 /// This will build the specified tool with the specified `host` compiler in
@@ -434,6 +613,79 @@ pub fn maybe_clean_tools(build: &Build, stage: u32, target: &str, mode: Mode) {
     let out_dir = build.cargo_out(&compiler, Mode::Tool, target);
     build.clear_if_dirty(&out_dir, &stamp);
 }
+
+
+// rules.build("tool-rustbook", "src/tools/rustbook")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("librustc-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "rustbook"));
+// rules.build("tool-error-index", "src/tools/error_index_generator")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("librustc-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
+// rules.build("tool-unstable-book-gen", "src/tools/unstable-book-gen")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
+// rules.build("tool-tidy", "src/tools/tidy")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "tidy"));
+// rules.build("tool-linkchecker", "src/tools/linkchecker")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "linkchecker"));
+// rules.build("tool-cargotest", "src/tools/cargotest")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "cargotest"));
+// rules.build("tool-compiletest", "src/tools/compiletest")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libtest-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
+// rules.build("tool-build-manifest", "src/tools/build-manifest")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
+// rules.build("tool-remote-test-server", "src/tools/remote-test-server")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-server"));
+// rules.build("tool-remote-test-client", "src/tools/remote-test-client")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
+// rules.build("tool-rust-installer", "src/tools/rust-installer")
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .run(move |s| compile::tool(build, s.stage, s.target, "rust-installer"));
+// rules.build("tool-cargo", "src/tools/cargo")
+//      .host(true)
+//      .default(build.config.extended)
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
+//      .dep(move |s| {
+//          // Cargo depends on procedural macros, which requires a full host
+//          // compiler to be available, so we need to depend on that.
+//          s.name("librustc-link")
+//           .target(&build.build)
+//           .host(&build.build)
+//      })
+//      .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
+// rules.build("tool-rls", "src/tools/rls")
+//      .host(true)
+//      .default(build.config.extended)
+//      .dep(|s| s.name("librustc-tool"))
+//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
+//      .dep(move |s| {
+//          // rls, like cargo, uses procedural macros
+//          s.name("librustc-link")
+//           .target(&build.build)
+//           .host(&build.build)
+//      })
+//      .run(move |s| compile::tool(build, s.stage, s.target, "rls"));
+//
 
 /// Build a tool in `src/tools`
 ///

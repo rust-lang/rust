@@ -81,6 +81,12 @@ fn try_run_quiet(build: &Build, cmd: &mut Command) {
     }
 }
 
+// rules.test("check-linkchecker", "src/tools/linkchecker")
+//      .dep(|s| s.name("tool-linkchecker").stage(0))
+//      .dep(|s| s.name("default:doc"))
+//      .default(build.config.docs)
+//      .host(true)
+//      .run(move |s| check::linkcheck(build, s.target));
 /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
 ///
 /// This tool in `src/tools` will verify the validity of all our links in the
@@ -94,6 +100,11 @@ pub fn linkcheck(build: &Build, host: &str) {
                         .arg(build.out.join(host).join("doc")));
 }
 
+// rules.test("check-cargotest", "src/tools/cargotest")
+//      .dep(|s| s.name("tool-cargotest").stage(0))
+//      .dep(|s| s.name("librustc"))
+//      .host(true)
+//      .run(move |s| check::cargotest(build, s.stage, s.target));
 /// Runs the `cargotest` tool as compiled in `stage` by the `host` compiler.
 ///
 /// This tool in `src/tools` will check out a few Rust projects and run `cargo
@@ -116,6 +127,10 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
                       .env("RUSTDOC", build.rustdoc(&compiler)));
 }
 
+//rules.test("check-cargo", "cargo")
+//     .dep(|s| s.name("tool-cargo"))
+//     .host(true)
+//     .run(move |s| check::cargo(build, s.stage, s.target));
 /// Runs `cargo test` for `cargo` packaged with Rust.
 pub fn cargo(build: &Build, stage: u32, host: &str) {
     let compiler = &Compiler::new(stage, host);
@@ -160,6 +175,12 @@ fn path_for_cargo(build: &Build, compiler: &Compiler) -> OsString {
     env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
 }
 
+//rules.test("check-tidy", "src/tools/tidy")
+//     .dep(|s| s.name("tool-tidy").stage(0))
+//     .default(true)
+//     .host(true)
+//     .only_build(true)
+//     .run(move |s| check::tidy(build, s.target));
 /// Runs the `tidy` tool as compiled in `stage` by the `host` compiler.
 ///
 /// This tool in `src/tools` checks up on various bits and pieces of style and
@@ -183,6 +204,104 @@ pub fn tidy(build: &Build, host: &str) {
 fn testdir(build: &Build, host: &str) -> PathBuf {
     build.out.join(host).join("test")
 }
+
+//    // ========================================================================
+//    // Test targets
+//    //
+//    // Various unit tests and tests suites we can run
+//    {
+//        let mut suite = |name, path, mode, dir| {
+//            rules.test(name, path)
+//                 .dep(|s| s.name("libtest"))
+//                 .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
+//                 .dep(|s| s.name("test-helpers"))
+//                 .dep(|s| s.name("remote-copy-libs"))
+//                 .default(mode != "pretty") // pretty tests don't run everywhere
+//                 .run(move |s| {
+//                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
+//                 });
+//        };
+//
+//        suite("check-ui", "src/test/ui", "ui", "ui");
+//        suite("check-rpass", "src/test/run-pass", "run-pass", "run-pass");
+//        suite("check-cfail", "src/test/compile-fail", "compile-fail", "compile-fail");
+//        suite("check-pfail", "src/test/parse-fail", "parse-fail", "parse-fail");
+//        suite("check-rfail", "src/test/run-fail", "run-fail", "run-fail");
+//        suite("check-rpass-valgrind", "src/test/run-pass-valgrind",
+//              "run-pass-valgrind", "run-pass-valgrind");
+//        suite("check-mir-opt", "src/test/mir-opt", "mir-opt", "mir-opt");
+//        if build.config.codegen_tests {
+//            suite("check-codegen", "src/test/codegen", "codegen", "codegen");
+//        }
+//        suite("check-codegen-units", "src/test/codegen-units", "codegen-units",
+//              "codegen-units");
+//        suite("check-incremental", "src/test/incremental", "incremental",
+//              "incremental");
+//    }
+//
+//    if build.build.contains("msvc") {
+//        // nothing to do for debuginfo tests
+//    } else {
+//        rules.test("check-debuginfo-lldb", "src/test/debuginfo-lldb")
+//             .dep(|s| s.name("libtest"))
+//             .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
+//             .dep(|s| s.name("test-helpers"))
+//             .dep(|s| s.name("debugger-scripts"))
+//             .run(move |s| check::compiletest(build, &s.compiler(), s.target,
+//                                         "debuginfo-lldb", "debuginfo"));
+//        rules.test("check-debuginfo-gdb", "src/test/debuginfo-gdb")
+//             .dep(|s| s.name("libtest"))
+//             .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
+//             .dep(|s| s.name("test-helpers"))
+//             .dep(|s| s.name("debugger-scripts"))
+//             .dep(|s| s.name("remote-copy-libs"))
+//             .run(move |s| check::compiletest(build, &s.compiler(), s.target,
+//                                         "debuginfo-gdb", "debuginfo"));
+//        let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
+//        rule.default(true);
+//        if build.build.contains("apple") {
+//            rule.dep(|s| s.name("check-debuginfo-lldb"));
+//        } else {
+//            rule.dep(|s| s.name("check-debuginfo-gdb"));
+//        }
+//    }
+//
+//
+//
+//    {
+//        let mut suite = |name, path, mode, dir| {
+//            rules.test(name, path)
+//                 .dep(|s| s.name("librustc"))
+//                 .dep(|s| s.name("test-helpers"))
+//                 .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
+//                 .default(mode != "pretty")
+//                 .host(true)
+//                 .run(move |s| {
+//                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
+//                 });
+//        };
+//
+//        suite("check-ui-full", "src/test/ui-fulldeps", "ui", "ui-fulldeps");
+//        suite("check-rpass-full", "src/test/run-pass-fulldeps",
+//              "run-pass", "run-pass-fulldeps");
+//        suite("check-rfail-full", "src/test/run-fail-fulldeps",
+//              "run-fail", "run-fail-fulldeps");
+//        suite("check-cfail-full", "src/test/compile-fail-fulldeps",
+//              "compile-fail", "compile-fail-fulldeps");
+//        suite("check-rmake", "src/test/run-make", "run-make", "run-make");
+//        suite("check-rustdoc", "src/test/rustdoc", "rustdoc", "rustdoc");
+//        suite("check-pretty", "src/test/pretty", "pretty", "pretty");
+//        suite("check-pretty-rpass", "src/test/run-pass/pretty", "pretty",
+//              "run-pass");
+//        suite("check-pretty-rfail", "src/test/run-fail/pretty", "pretty",
+//              "run-fail");
+//        suite("check-pretty-valgrind", "src/test/run-pass-valgrind/pretty", "pretty",
+//              "run-pass-valgrind");
+//        suite("check-pretty-rpass-full", "src/test/run-pass-fulldeps/pretty",
+//              "pretty", "run-pass-fulldeps");
+//        suite("check-pretty-rfail-full", "src/test/run-fail-fulldeps/pretty",
+//              "pretty", "run-fail-fulldeps");
+//    }
 
 /// Executes the `compiletest` tool to run a suite of tests.
 ///
@@ -338,6 +457,11 @@ pub fn compiletest(build: &Build,
     try_run(build, &mut cmd);
 }
 
+// rules.test("check-docs", "src/doc")
+//     .dep(|s| s.name("libtest"))
+//     .default(true)
+//     .host(true)
+//     .run(move |s| check::docs(build, &s.compiler()));
 /// Run `rustdoc --test` for all documentation in `src/doc`.
 ///
 /// This will run all tests in our markdown documentation (e.g. the book)
@@ -370,6 +494,12 @@ pub fn docs(build: &Build, compiler: &Compiler) {
     }
 }
 
+//rules.test("check-error-index", "src/tools/error_index_generator")
+//     .dep(|s| s.name("libstd"))
+//     .dep(|s| s.name("tool-error-index").host(s.host).stage(0))
+//     .default(true)
+//     .host(true)
+//     .run(move |s| check::error_index(build, &s.compiler()));
 /// Run the error index generator tool to execute the tests located in the error
 /// index.
 ///
@@ -419,6 +549,68 @@ fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
         try_run(build, &mut cmd);
     }
 }
+
+//    for (krate, path, _default) in krates("std") {
+//        rules.test(&krate.test_step, path)
+//             .dep(|s| s.name("libtest"))
+//             .dep(|s| s.name("remote-copy-libs"))
+//             .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                        Mode::Libstd, TestKind::Test,
+//                                        Some(&krate.name)));
+//    }
+//    rules.test("check-std-all", "path/to/nowhere")
+//         .dep(|s| s.name("libtest"))
+//         .dep(|s| s.name("remote-copy-libs"))
+//         .default(true)
+//         .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                    Mode::Libstd, TestKind::Test, None));
+//
+//    // std benchmarks
+//    for (krate, path, _default) in krates("std") {
+//        rules.bench(&krate.bench_step, path)
+//             .dep(|s| s.name("libtest"))
+//             .dep(|s| s.name("remote-copy-libs"))
+//             .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                        Mode::Libstd, TestKind::Bench,
+//                                        Some(&krate.name)));
+//    }
+//    rules.bench("bench-std-all", "path/to/nowhere")
+//         .dep(|s| s.name("libtest"))
+//         .dep(|s| s.name("remote-copy-libs"))
+//         .default(true)
+//         .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                    Mode::Libstd, TestKind::Bench, None));
+//
+//    for (krate, path, _default) in krates("test") {
+//        rules.test(&krate.test_step, path)
+//             .dep(|s| s.name("libtest"))
+//             .dep(|s| s.name("remote-copy-libs"))
+//             .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                        Mode::Libtest, TestKind::Test,
+//                                        Some(&krate.name)));
+//    }
+//    rules.test("check-test-all", "path/to/nowhere")
+//         .dep(|s| s.name("libtest"))
+//         .dep(|s| s.name("remote-copy-libs"))
+//         .default(true)
+//         .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                    Mode::Libtest, TestKind::Test, None));
+//    for (krate, path, _default) in krates("rustc-main") {
+//        rules.test(&krate.test_step, path)
+//             .dep(|s| s.name("librustc"))
+//             .dep(|s| s.name("remote-copy-libs"))
+//             .host(true)
+//             .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                        Mode::Librustc, TestKind::Test,
+//                                        Some(&krate.name)));
+//    }
+//    rules.test("check-rustc-all", "path/to/nowhere")
+//         .dep(|s| s.name("librustc"))
+//         .dep(|s| s.name("remote-copy-libs"))
+//         .default(true)
+//         .host(true)
+//         .run(move |s| check::krate(build, &s.compiler(), s.target,
+//                                    Mode::Librustc, TestKind::Test, None));
 
 /// Run all unit tests plus documentation tests for an entire crate DAG defined
 /// by a `Cargo.toml`
@@ -596,6 +788,34 @@ fn find_tests(dir: &Path, target: &str) -> Vec<PathBuf> {
     dst
 }
 
+//    // Some test suites are run inside emulators or on remote devices, and most
+//    // of our test binaries are linked dynamically which means we need to ship
+//    // the standard library and such to the emulator ahead of time. This step
+//    // represents this and is a dependency of all test suites.
+//    //
+//    // Most of the time this step is a noop (the `check::emulator_copy_libs`
+//    // only does work if necessary). For some steps such as shipping data to
+//    // QEMU we have to build our own tools so we've got conditional dependencies
+//    // on those programs as well. Note that the remote test client is built for
+//    // the build target (us) and the server is built for the target.
+//    rules.test("remote-copy-libs", "path/to/nowhere")
+//         .dep(|s| s.name("libtest"))
+//         .dep(move |s| {
+//             if build.remote_tested(s.target) {
+//                s.name("tool-remote-test-client").target(s.host).stage(0)
+//             } else {
+//                 Step::noop()
+//             }
+//         })
+//         .dep(move |s| {
+//             if build.remote_tested(s.target) {
+//                s.name("tool-remote-test-server")
+//             } else {
+//                 Step::noop()
+//             }
+//         })
+//         .run(move |s| check::remote_copy_libs(build, &s.compiler(), s.target));
+//
 pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
     if !build.remote_tested(target) {
         return
@@ -631,6 +851,11 @@ pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
         }
     }
 }
+
+//rules.test("check-distcheck", "distcheck")
+//     .dep(|s| s.name("dist-plain-source-tarball"))
+//     .dep(|s| s.name("dist-src"))
+//     .run(move |_| check::distcheck(build));
 
 /// Run "distcheck", a 'make check' from a tarball
 pub fn distcheck(build: &Build) {
@@ -684,6 +909,12 @@ pub fn distcheck(build: &Build) {
                      .current_dir(&dir));
 }
 
+//rules.test("check-bootstrap", "src/bootstrap")
+//     .default(true)
+//     .host(true)
+//     .only_build(true)
+//     .run(move |_| check::bootstrap(build));
+//
 /// Test the build system itself
 pub fn bootstrap(build: &Build) {
     let mut cmd = Command::new(&build.initial_cargo);
