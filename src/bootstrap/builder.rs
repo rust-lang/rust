@@ -25,6 +25,7 @@ use cache::{Cache, Key};
 use check;
 use flags::Subcommand;
 use doc;
+use tool;
 
 pub use Compiler;
 
@@ -144,7 +145,10 @@ impl<'a> Builder<'a> {
         let builder = &builder;
         match builder.kind {
             Kind::Build => check!(builder, paths, compile::Std, compile::Test, compile::Rustc,
-                compile::StartupObjects),
+                compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
+                tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
+                tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
+                tool::RustInstaller, tool::Cargo, tool::Rls),
             Kind::Test => check!(builder, paths, check::Tidy, check::Bootstrap, check::Compiletest,
                 check::Krate, check::KrateLibrustc, check::Linkcheck, check::Cargotest,
                 check::Cargo, check::Docs, check::ErrorIndex, check::Distcheck),

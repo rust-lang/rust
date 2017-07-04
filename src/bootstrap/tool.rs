@@ -238,7 +238,7 @@ tool!(
     //      .dep(|s| s.name("maybe-clean-tools"))
     //      .dep(|s| s.name("libstd-tool"))
     //      .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
-    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Libstd;
+    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Librustc;
     // rules.build("tool-remote-test-server", "src/tools/remote-test-server")
     //      .dep(|s| s.name("maybe-clean-tools"))
     //      .dep(|s| s.name("libstd-tool"))

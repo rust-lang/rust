@@ -128,7 +128,6 @@ extern crate filetime;
 extern crate gcc;
 extern crate getopts;
 extern crate num_cpus;
-extern crate rustc_serialize;
 extern crate toml;
 
 #[cfg(unix)]

@@ -21,8 +21,7 @@ use std::path::PathBuf;
 use std::process;
 
 use num_cpus;
-use rustc_serialize::Decodable;
-use toml::{Parser, Decoder, Value};
+use toml;
 use util::{exe, push_exe_path};
 
 /// Global configuration for the entire build and/or bootstrap.
@@ -138,7 +137,9 @@ pub struct Target {
 /// This structure uses `Decodable` to automatically decode a TOML configuration
 /// file into this format, and then this is traversed and written into the above
 /// `Config` structure.
-#[derive(RustcDecodable, Default)]
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 struct TomlConfig {
     build: Option<Build>,
     install: Option<Install>,
@@ -149,10 +150,14 @@ struct TomlConfig {
 }
 
 /// TOML representation of various global build decisions.
-#[derive(RustcDecodable, Default, Clone)]
+#[derive(Deserialize, Default, Clone)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 struct Build {
     build: Option<String>,
+    #[serde(default)]
     host: Vec<String>,
+    #[serde(default)]
     target: Vec<String>,
     cargo: Option<String>,
     rustc: Option<String>,
@@ -174,7 +179,9 @@ struct Build {
 }
 
 /// TOML representation of various global install decisions.
-#[derive(RustcDecodable, Default, Clone)]
+#[derive(Deserialize, Default, Clone)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 struct Install {
     prefix: Option<String>,
     sysconfdir: Option<String>,
@@ -185,7 +192,9 @@ struct Install {
 }
 
 /// TOML representation of how the LLVM build is configured.
-#[derive(RustcDecodable, Default)]
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 struct Llvm {
     ccache: Option<StringOrBool>,
     ninja: Option<bool>,
@@ -200,7 +209,9 @@ struct Llvm {
     clean_rebuild: Option<bool>,
 }
 
-#[derive(RustcDecodable, Default, Clone)]
+#[derive(Deserialize, Default, Clone)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 struct Dist {
     sign_folder: Option<String>,
     gpg_password_file: Option<String>,
@@ -208,7 +219,8 @@ struct Dist {
     src_tarball: Option<bool>,
 }
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
+#[serde(untagged)]
 enum StringOrBool {
     String(String),
     Bool(bool),
@@ -221,7 +233,9 @@ impl Default for StringOrBool {
 }
 
 /// TOML representation of how the Rust build is configured.
-#[derive(RustcDecodable, Default)]
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 struct Rust {
     optimize: Option<bool>,
     codegen_units: Option<u32>,
@@ -243,7 +257,9 @@ struct Rust {
 }
 
 /// TOML representation of how each build target is configured.
-#[derive(RustcDecodable, Default)]
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
 struct TomlTarget {
     llvm_config: Option<String>,
     jemalloc: Option<String>,
@@ -273,27 +289,13 @@ impl Config {
 
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));
-            let mut toml = String::new();
-            t!(f.read_to_string(&mut toml));
-            let mut p = Parser::new(&toml);
-            let table = match p.parse() {
-                Some(table) => table,
-                None => {
-                    println!("failed to parse TOML configuration '{}':", file.to_str().unwrap());
-                    for err in p.errors.iter() {
-                        let (loline, locol) = p.to_linecol(err.lo);
-                        let (hiline, hicol) = p.to_linecol(err.hi);
-                        println!("{}:{}-{}:{}: {}", loline, locol, hiline,
-                                 hicol, err.desc);
-                    }
-                    process::exit(2);
-                }
-            };
-            let mut d = Decoder::new(Value::Table(table));
-            match Decodable::decode(&mut d) {
-                Ok(cfg) => cfg,
-                Err(e) => {
-                    println!("failed to decode TOML: {}", e);
+            let mut contents = String::new();
+            t!(f.read_to_string(&mut contents));
+            match toml::from_str(&contents) {
+                Ok(table) => table,
+                Err(err) => {
+                    println!("failed to parse TOML configuration '{}': {}",
+                        file.display(), err);
                     process::exit(2);
                 }
             }
