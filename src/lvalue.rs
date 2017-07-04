@@ -5,7 +5,7 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext};
-use memory::Pointer;
+use memory::MemoryPointer;
 use value::{PrimVal, Value};
 
 #[derive(Copy, Clone, Debug)]
@@ -34,7 +34,7 @@ pub enum Lvalue<'tcx> {
 pub enum LvalueExtra {
     None,
     Length(u64),
-    Vtable(Pointer),
+    Vtable(MemoryPointer),
     DowncastVariant(usize),
 }
 
@@ -71,7 +71,7 @@ impl<'tcx> Lvalue<'tcx> {
         Lvalue::Ptr { ptr, extra: LvalueExtra::None }
     }
 
-    pub(crate) fn from_ptr(ptr: Pointer) -> Self {
+    pub(crate) fn from_ptr(ptr: MemoryPointer) -> Self {
         Self::from_primval_ptr(PrimVal::Ptr(ptr))
     }
 
@@ -83,7 +83,7 @@ impl<'tcx> Lvalue<'tcx> {
         }
     }
 
-    pub(super) fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
+    pub(super) fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
         let (ptr, extra) = self.to_ptr_and_extra();
         assert_eq!(extra, LvalueExtra::None);
         ptr.to_ptr()

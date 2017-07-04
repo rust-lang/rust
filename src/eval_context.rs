@@ -17,7 +17,7 @@ use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
-use memory::{Memory, Pointer, TlsKey};
+use memory::{Memory, MemoryPointer, TlsKey};
 use operator;
 use value::{PrimVal, PrimValKind, Value};
 
@@ -44,7 +44,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
 
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
-    pub(crate) env_vars: HashMap<Vec<u8>, Pointer>,
+    pub(crate) env_vars: HashMap<Vec<u8>, MemoryPointer>,
 }
 
 /// A stack frame.
@@ -142,7 +142,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn alloc_ptr(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
+    pub fn alloc_ptr(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, MemoryPointer> {
         let substs = self.substs();
         self.alloc_ptr_with_substs(ty, substs)
     }
@@ -151,7 +151,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         substs: &'tcx Substs<'tcx>
-    ) -> EvalResult<'tcx, Pointer> {
+    ) -> EvalResult<'tcx, MemoryPointer> {
         let size = self.type_size_with_substs(ty, substs)?.expect("cannot alloc memory for unsized type");
         let align = self.type_align_with_substs(ty, substs)?;
         self.memory.allocate(size, align)
@@ -313,7 +313,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             set
         }
 
-        // Subtract 1 because `local_decls` includes the ReturnPointer, but we don't store a local
+        // Subtract 1 because `local_decls` includes the ReturnMemoryPointer, but we don't store a local
         // `Value` for that.
         let annotated_locals = collect_storage_annotations(mir);
         let num_locals = mir.local_decls.len() - 1;
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         a: PrimVal,
         b: PrimVal,
-        ptr: Pointer,
+        ptr: MemoryPointer,
         mut ty: Ty<'tcx>
     ) -> EvalResult<'tcx> {
         while self.get_field_count(ty)? == 1 {
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn read_ptr(&self, ptr: Pointer, pointee_ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(crate) fn read_ptr(&self, ptr: MemoryPointer, pointee_ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         let p = self.memory.read_ptr(ptr)?;
         if self.type_is_sized(pointee_ty) {
             Ok(Value::ByVal(p))

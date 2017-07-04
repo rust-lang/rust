@@ -5,7 +5,7 @@ use std::mem::transmute;
 use rustc::ty::layout::TargetDataLayout;
 
 use error::{EvalError, EvalResult};
-use memory::{Memory, Pointer};
+use memory::{Memory, MemoryPointer};
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     unsafe { transmute::<u32, f32>(bytes as u32) }
@@ -49,8 +49,8 @@ pub enum PrimVal {
 
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `PrimVal` is only large enough to contain one, so we just represent the
-    /// relocation and its associated offset together as a `Pointer` here.
-    Ptr(Pointer),
+    /// relocation and its associated offset together as a `MemoryPointer` here.
+    Ptr(MemoryPointer),
 
     /// An undefined `PrimVal`, for representing values that aren't safe to examine, but are safe
     /// to copy around, just like undefined bytes in an `Allocation`.
@@ -80,7 +80,7 @@ impl<'a, 'tcx: 'a> Value {
     pub(super) fn expect_ptr_vtable_pair(
         &self,
         mem: &Memory<'a, 'tcx>
-    ) -> EvalResult<'tcx, (PrimVal, Pointer)> {
+    ) -> EvalResult<'tcx, (PrimVal, MemoryPointer)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
@@ -146,7 +146,7 @@ impl<'tcx> PrimVal {
         }
     }
 
-    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
         match self {
             PrimVal::Bytes(_) => Err(EvalError::ReadBytesAsPointer),
             PrimVal::Ptr(p) => Ok(p),

@@ -9,7 +9,7 @@ use syntax::abi::Abi;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
 use lvalue::Lvalue;
-use memory::{Pointer, TlsKey};
+use memory::{MemoryPointer, TlsKey};
 use value::PrimVal;
 use value::Value;
 use rustc_data_structures::indexed_vec::Idx;
@@ -461,7 +461,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(false)
     }
 
-    pub fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+    pub fn read_discriminant_value(&self, adt_ptr: MemoryPointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
         trace!("read_discriminant_value {:#?}", adt_layout);
@@ -500,7 +500,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
+    fn read_nonnull_discriminant_value(&self, ptr: MemoryPointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
         trace!("read_nonnull_discriminant_value: {:?}, {}, {}", ptr, nndiscr, discr_size);
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
