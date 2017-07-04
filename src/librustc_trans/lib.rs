@@ -77,6 +77,7 @@ pub mod back {
     pub(crate) mod symbol_export;
     pub(crate) mod symbol_names;
     pub mod write;
+    mod demangle;
     pub mod rpath;
 }
 
