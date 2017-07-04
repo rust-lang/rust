@@ -1,6 +1,4 @@
-use core::{intrinsics, ptr};
-
-use mem;
+use core::intrinsics;
 
 // NOTE This function and the ones below are implemented using assembly because they using a custom
 // calling convention which can't be implemented using a normal Rust function
@@ -65,13 +63,15 @@ pub unsafe fn __aeabi_ldivmod() {
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg_attr(thumb, linkage = "weak")]
 pub unsafe extern "aapcs" fn __aeabi_memcpy(dest: *mut u8, src: *const u8, n: usize) {
-    mem::memcpy(dest, src, n);
+    ::mem::memcpy(dest, src, n);
 }
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg_attr(thumb, linkage = "weak")]
 pub unsafe extern "aapcs" fn __aeabi_memcpy4(dest: *mut u8, src: *const u8, mut n: usize) {
+    use core::ptr;
+
     let mut dest = dest as *mut u32;
     let mut src = src as *mut u32;
 
@@ -96,7 +96,7 @@ pub unsafe extern "aapcs" fn __aeabi_memcpy8(dest: *mut u8, src: *const u8, n: u
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg_attr(thumb, linkage = "weak")]
 pub unsafe extern "aapcs" fn __aeabi_memmove(dest: *mut u8, src: *const u8, n: usize) {
-    mem::memmove(dest, src, n);
+    ::mem::memmove(dest, src, n);
 }
 
 #[cfg(not(target_os = "ios"))]
@@ -118,13 +118,15 @@ pub unsafe extern "aapcs" fn __aeabi_memmove8(dest: *mut u8, src: *const u8, n: 
 #[cfg_attr(thumb, linkage = "weak")]
 pub unsafe extern "aapcs" fn __aeabi_memset(dest: *mut u8, n: usize, c: i32) {
     // Note the different argument order
-    mem::memset(dest, c, n);
+    ::mem::memset(dest, c, n);
 }
 
 #[cfg(not(target_os = "ios"))]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg_attr(thumb, linkage = "weak")]
 pub unsafe extern "aapcs" fn __aeabi_memset4(dest: *mut u8, mut n: usize, c: i32) {
+    use core::ptr;
+
     let mut dest = dest as *mut u32;
 
     let byte = (c as u32) & 0xff;
