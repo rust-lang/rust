@@ -1,4 +1,4 @@
-- Feature Name: is_aligned_intrinsic
+- Feature Name: alignto_intrinsic
 - Start Date: 2017-06-20
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -6,10 +6,12 @@
 # Summary
 [summary]: #summary
 
-Add an intrinsic (`fn is_aligned<T>(*const T) -> bool`) which returns `true` if
-a read through the pointer would not fail or suffer from slowdown due to the
-alignment of the pointer. There are no further guarantees given about the pointer
-it is perfectly valid for `is_aligned(0 as *const T)` to return `true`.
+Add an intrinsic (`fn alignto<T>(&[u8]) -> (&[u8], &[T], &[u8])`) which returns
+a slice to correctly aligned objects of type `T` and the unalignable parts
+before and after as `[u8]`. Also add an `unsafe` library function of the same
+name and signature under `core::mem` and `std::mem`. The function is unsafe,
+because it essentially contains a `transmute<[u8; N], T>` if one reads from
+the aligned slice.
 
 # Motivation
 [motivation]: #motivation
@@ -33,50 +35,59 @@ be able to convert a `[u8]` into a `str`.
 # Detailed design
 [design]: #detailed-design
 
-Add a new intrinsic `is_aligned` with the following signature:
+Add two new intrinsics `alignto` and `alignto_mut` with the following signature:
 
 ```rust
-fn is_aligned<T>(*const T) -> bool
+fn alignto<T>(&[u8]) -> (&[u8], &[T], &[u8]) { /**/ }
+fn alignto_mut<T>(&mut [u8]) -> (&mut [u8], &mut [T], &mut [u8]) { /**/ }
 ```
 
-Calls to `is_aligned` are expanded to
+Calls to `alignto` are expanded to
 
 ```rust
-(ptr as usize) % core::mem::align_of::<T>() == 0
+fn alignto<T>(slice: &[u8]) -> (&[u8], &[T], &[u8]) {
+    let align = core::mem::align_of::<T>();
+    let start = slice.as_ptr() as usize;
+    let offset = start % align;
+    let (head, tail) = if offset == 0 {
+        (&[], slice)
+    } else {
+        slice.split_at(core::cmp::max(slice.len(), align - offset))
+    };
+    let count = tail.len() / core::mem::size_of::<T>();
+    let mid = core::slice::from_raw_parts::<T>(tail.as_ptr() as *const _, count);
+    let tail = &tail[count * core::mem::size_of::<T>()..];
+    (head, mid, tail)
+}
 ```
 
-on all current platforms.
+on all current platforms. `alignto_mut` is expanded accordingly.
 
-An Rust backend may decide to expand it differently, but it needs to hold up the
-guarantee from `core::mem::align_of`:
+A Rust backend may decide to expand it as
 
-> Every valid address of a value of the type `T` must be a multiple of this number.
+```rust
+fn alignto<T>(slice: &[u8]) -> (&[u8], &[T], &[u8]) {
+    (slice, &[], &[])
+}
+```
 
-The intrinsic may be stricter than this and conservatively return `false` for
-arbitrary platform specific reasons.
+Users of the intrinsics and functions must process all the returned slices and
+cannot rely on any behaviour except that the `&[T]`'s elements are correctly
+aligned.
 
-The intrinsic *must* return `true` for pointers to stack or heap allocations
-of the type. This means `is_aligned::<T>(Box::<T>::new(t).to_ptr())` is always
-true. The same goes for `is_aligned::<T>(&t)`.
-
-The intrinsic is exported in `core::ptr` and `std::ptr` as a safe `is_aligned`
-function with the same signature. It is safe to call, since the pointer is
-not dereferenced and no operation is applied to it which could overflow.
+The intrinsics have `unsafe` functions wrappers in `core::mem` and `std::mem`
+which simply forward to the intrinsics and which can be stabilized in the future.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
 On most platforms alignment is a well known concept independent of Rust. The
-important thing that has to be taught about this intrinsic is that it may not
-ever return "true" no matter which operations are applied to the pointer. The
-only guaranteed way to make the intrinsic return to is to give it a non dangling
-pointer to an object of the type given to the intrinsic.
-
-This means that `while !is_aligned(ptr) { ... }` should be considered a
-potential infinite loop.
+important thing that has to be taught about these intrinsics is that they may not
+ever actually yield an aligned slice. The functions and intrinsics may only be
+used for optimizations.
 
 A lint could be implemented which detects hand-written alignment checks and
-suggests to use the `is_aligned` function instead. 
+suggests to use the `alignto` function instead. 
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -93,7 +104,4 @@ to errors due to code duplication.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should the guarantees be even lower? Calling the intrinsic on the same pointer
-twice could suddenly yield `false` even if it yielded `true` before. Since it
-should only be used for optimizations this would not be an issue, but be even
-more suprising behaviour for no benefit known to the auther.
+None
