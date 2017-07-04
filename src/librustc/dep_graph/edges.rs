@@ -9,13 +9,16 @@
 // except according to those terms.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use std::env;
 use super::{DepGraphQuery, DepNode};
+use super::debug::EdgeFilter;
 
 pub struct DepGraphEdges {
     nodes: Vec<DepNode>,
     indices: FxHashMap<DepNode, IdIndex>,
     edges: FxHashSet<(IdIndex, IdIndex)>,
-    open_nodes: Vec<OpenNode>,
+    task_stack: Vec<OpenTask>,
+    forbidden_edge: Option<EdgeFilter>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -35,67 +38,80 @@ impl IdIndex {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum OpenNode {
-    Node(IdIndex),
+enum OpenTask {
+    Regular {
+        node: DepNode,
+        reads: Vec<DepNode>,
+        read_set: FxHashSet<DepNode>,
+    },
     Ignore,
 }
 
 impl DepGraphEdges {
     pub fn new() -> DepGraphEdges {
+        let forbidden_edge = if cfg!(debug_assertions) {
+            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+                Ok(s) => {
+                    match EdgeFilter::new(&s) {
+                        Ok(f) => Some(f),
+                        Err(err) => bug!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+                    }
+                }
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+
         DepGraphEdges {
             nodes: vec![],
             indices: FxHashMap(),
             edges: FxHashSet(),
-            open_nodes: Vec::new()
+            task_stack: Vec::new(),
+            forbidden_edge,
         }
     }
 
     fn id(&self, index: IdIndex) -> DepNode {
-        self.nodes[index.index()].clone()
-    }
-
-    /// Creates a node for `id` in the graph.
-    fn make_node(&mut self, id: DepNode) -> IdIndex {
-        if let Some(&i) = self.indices.get(&id) {
-            return i;
-        }
-
-        let index = IdIndex::new(self.nodes.len());
-        self.nodes.push(id.clone());
-        self.indices.insert(id, index);
-        index
-    }
-
-    /// Top of the stack of open nodes.
-    fn current_node(&self) -> Option<OpenNode> {
-        self.open_nodes.last().cloned()
+        self.nodes[index.index()]
     }
 
     pub fn push_ignore(&mut self) {
-        self.open_nodes.push(OpenNode::Ignore);
+        self.task_stack.push(OpenTask::Ignore);
     }
 
     pub fn pop_ignore(&mut self) {
-        let popped_node = self.open_nodes.pop().unwrap();
-        assert_eq!(popped_node, OpenNode::Ignore);
+        let popped_node = self.task_stack.pop().unwrap();
+        debug_assert_eq!(popped_node, OpenTask::Ignore);
     }
 
     pub fn push_task(&mut self, key: DepNode) {
-        let top_node = self.current_node();
-
-        let new_node = self.make_node(key);
-        self.open_nodes.push(OpenNode::Node(new_node));
-
-        // if we are in the midst of doing task T, then this new task
-        // N is a subtask of T, so add an edge N -> T.
-        if let Some(top_node) = top_node {
-            self.add_edge_from_open_node(top_node, |t| (new_node, t));
-        }
+        self.task_stack.push(OpenTask::Regular {
+            node: key,
+            reads: Vec::new(),
+            read_set: FxHashSet(),
+        });
     }
 
     pub fn pop_task(&mut self, key: DepNode) {
-        let popped_node = self.open_nodes.pop().unwrap();
-        assert_eq!(OpenNode::Node(self.indices[&key]), popped_node);
+        let popped_node = self.task_stack.pop().unwrap();
+
+        if let OpenTask::Regular {
+            node,
+            read_set: _,
+            reads
+        } = popped_node {
+            debug_assert_eq!(node, key);
+
+            let target_id = self.get_or_create_node(node);
+
+            for read in reads.into_iter() {
+                let source_id = self.get_or_create_node(read);
+                self.edges.insert((source_id, target_id));
+            }
+        } else {
+            bug!("pop_task() - Expected regular task to be popped")
+        }
     }
 
     /// Indicates that the current task `C` reads `v` by adding an
@@ -103,57 +119,28 @@ impl DepGraphEdges {
     /// effect. Note that *reading* from tracked state is harmless if
     /// you are not in a task; what is bad is *writing* to tracked
     /// state (and leaking data that you read into a tracked task).
-    pub fn read(&mut self, v: DepNode) {
-        if self.current_node().is_some() {
-            let source = self.make_node(v);
-            self.add_edge_from_current_node(|current| (source, current))
-        }
-    }
+    pub fn read(&mut self, source: DepNode) {
+        match self.task_stack.last_mut() {
+            Some(&mut OpenTask::Regular {
+                node: target,
+                ref mut reads,
+                ref mut read_set,
+            }) => {
+                if read_set.insert(source) {
+                    reads.push(source);
 
-    /// Indicates that the current task `C` writes `v` by adding an
-    /// edge from `C` to `v`. If there is no current task, panics. If
-    /// you want to suppress this edge, use `ignore`.
-    pub fn write(&mut self, v: DepNode) {
-        let target = self.make_node(v);
-        self.add_edge_from_current_node(|current| (current, target))
-    }
-
-    /// Invoke `add_edge_from_open_node` with the top of the stack, or
-    /// panic if stack is empty.
-    fn add_edge_from_current_node<OP>(&mut self,
-                                      op: OP)
-        where OP: FnOnce(IdIndex) -> (IdIndex, IdIndex)
-    {
-        match self.current_node() {
-            Some(open_node) => self.add_edge_from_open_node(open_node, op),
-            None => bug!("no current node, cannot add edge into dependency graph")
-        }
-    }
-
-    /// Adds an edge to or from the `open_node`, assuming `open_node`
-    /// is not `Ignore`. The direction of the edge is determined by
-    /// the closure `op` --- we pass as argument the open node `n`,
-    /// and the closure returns a (source, target) tuple, which should
-    /// include `n` in one spot or another.
-    fn add_edge_from_open_node<OP>(&mut self,
-                                   open_node: OpenNode,
-                                   op: OP)
-        where OP: FnOnce(IdIndex) -> (IdIndex, IdIndex)
-    {
-        let (source, target) = match open_node {
-            OpenNode::Node(n) => op(n),
-            OpenNode::Ignore => { return; }
-        };
-
-        // ignore trivial self edges, which are not very interesting
-        if source == target {
-            return;
-        }
-
-        if self.edges.insert((source, target)) {
-            debug!("adding edge from {:?} to {:?}",
-                   self.id(source),
-                   self.id(target));
+                    if cfg!(debug_assertions) {
+                        if let Some(ref forbidden_edge) = self.forbidden_edge {
+                            if forbidden_edge.test(&source, &target) {
+                                bug!("forbidden edge {:?} -> {:?} created", source, target)
+                            }
+                        }
+                    }
+                }
+            }
+            Some(&mut OpenTask::Ignore) | None => {
+                // ignore
+            }
         }
     }
 
@@ -163,4 +150,30 @@ impl DepGraphEdges {
                                       .collect();
         DepGraphQuery::new(&self.nodes, &edges)
     }
+
+    #[inline]
+    pub fn add_edge(&mut self, source: DepNode, target: DepNode) {
+        let source = self.get_or_create_node(source);
+        let target = self.get_or_create_node(target);
+        self.edges.insert((source, target));
+    }
+
+    pub fn add_node(&mut self, node: DepNode) {
+        self.get_or_create_node(node);
+    }
+
+    #[inline]
+    fn get_or_create_node(&mut self, dep_node: DepNode) -> IdIndex {
+        let DepGraphEdges {
+            ref mut indices,
+            ref mut nodes,
+            ..
+        } = *self;
+
+        *indices.entry(dep_node).or_insert_with(|| {
+            let next_id = nodes.len();
+            nodes.push(dep_node);
+            IdIndex::new(next_id)
+        })
+     }
 }

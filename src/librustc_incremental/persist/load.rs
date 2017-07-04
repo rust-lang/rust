@@ -202,11 +202,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             clean_work_products.insert(wp_id);
         }
 
-        tcx.dep_graph.with_task(*bootstrap_output, (), (), create_node);
-
-        fn create_node((): (), (): ()) {
-            // just create the node with no inputs
-        }
+        tcx.dep_graph.add_node_directly(*bootstrap_output);
     }
 
     // Add in work-products that are still clean, and delete those that are
@@ -453,8 +449,7 @@ fn process_edge<'a, 'tcx, 'edges>(
     if !dirty_raw_nodes.contains_key(&target) {
         let target = nodes[target];
         let source = nodes[source];
-        let _task = tcx.dep_graph.in_task(target);
-        tcx.dep_graph.read(source);
+        tcx.dep_graph.add_edge_directly(source, target);
 
         if let DepKind::WorkProduct = target.kind {
             let wp_id = WorkProductId::from_fingerprint(target.hash);
@@ -462,4 +457,3 @@ fn process_edge<'a, 'tcx, 'edges>(
         }
     }
 }
-

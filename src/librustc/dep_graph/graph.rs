@@ -17,17 +17,16 @@ use super::dep_node::{DepNode, WorkProductId};
 use super::query::DepGraphQuery;
 use super::raii;
 use super::safe::DepGraphSafe;
-use super::thread::{DepGraphThreadData, DepMessage};
+use super::edges::DepGraphEdges;
 
 #[derive(Clone)]
 pub struct DepGraph {
-    data: Rc<DepGraphData>
+    data: Option<Rc<DepGraphData>>
 }
 
 struct DepGraphData {
-    /// We send messages to the thread to let it build up the dep-graph
-    /// from the current run.
-    thread: DepGraphThreadData,
+    /// The actual graph data.
+    edges: RefCell<DepGraphEdges>,
 
     /// When we load, there may be `.o` files, cached mir, or other such
     /// things available to us. If we find that they are not dirty, we
@@ -44,31 +43,35 @@ struct DepGraphData {
 impl DepGraph {
     pub fn new(enabled: bool) -> DepGraph {
         DepGraph {
-            data: Rc::new(DepGraphData {
-                thread: DepGraphThreadData::new(enabled),
-                previous_work_products: RefCell::new(FxHashMap()),
-                work_products: RefCell::new(FxHashMap()),
-                dep_node_debug: RefCell::new(FxHashMap()),
-            })
+            data: if enabled {
+                Some(Rc::new(DepGraphData {
+                    previous_work_products: RefCell::new(FxHashMap()),
+                    work_products: RefCell::new(FxHashMap()),
+                    edges: RefCell::new(DepGraphEdges::new()),
+                    dep_node_debug: RefCell::new(FxHashMap()),
+                }))
+            } else {
+                None
+            }
         }
     }
 
     /// True if we are actually building the full dep-graph.
     #[inline]
     pub fn is_fully_enabled(&self) -> bool {
-        self.data.thread.is_fully_enabled()
+        self.data.is_some()
     }
 
     pub fn query(&self) -> DepGraphQuery {
-        self.data.thread.query()
+        self.data.as_ref().unwrap().edges.borrow().query()
     }
 
     pub fn in_ignore<'graph>(&'graph self) -> Option<raii::IgnoreTask<'graph>> {
-        raii::IgnoreTask::new(&self.data.thread)
+        self.data.as_ref().map(|data| raii::IgnoreTask::new(&data.edges))
     }
 
     pub fn in_task<'graph>(&'graph self, key: DepNode) -> Option<raii::DepTask<'graph>> {
-        raii::DepTask::new(&self.data.thread, key)
+        self.data.as_ref().map(|data| raii::DepTask::new(&data.edges, key))
     }
 
     pub fn with_ignore<OP,R>(&self, op: OP) -> R
@@ -112,10 +115,22 @@ impl DepGraph {
         task(cx, arg)
     }
 
+    #[inline]
     pub fn read(&self, v: DepNode) {
-        if self.data.thread.is_enqueue_enabled() {
-            self.data.thread.enqueue(DepMessage::Read(v));
+        if let Some(ref data) = self.data {
+            data.edges.borrow_mut().read(v);
         }
+    }
+
+    /// Only to be used during graph loading
+    #[inline]
+    pub fn add_edge_directly(&self, source: DepNode, target: DepNode) {
+        self.data.as_ref().unwrap().edges.borrow_mut().add_edge(source, target);
+    }
+
+    /// Only to be used during graph loading
+    pub fn add_node_directly(&self, node: DepNode) {
+        self.data.as_ref().unwrap().edges.borrow_mut().add_node(node);
     }
 
     /// Indicates that a previous work product exists for `v`. This is
@@ -123,8 +138,12 @@ impl DepGraph {
     /// (and what files exist in the incr. directory).
     pub fn insert_previous_work_product(&self, v: &WorkProductId, data: WorkProduct) {
         debug!("insert_previous_work_product({:?}, {:?})", v, data);
-        self.data.previous_work_products.borrow_mut()
-                                        .insert(v.clone(), data);
+        self.data
+            .as_ref()
+            .unwrap()
+            .previous_work_products
+            .borrow_mut()
+            .insert(v.clone(), data);
     }
 
     /// Indicates that we created the given work-product in this run
@@ -132,28 +151,34 @@ impl DepGraph {
     /// run.
     pub fn insert_work_product(&self, v: &WorkProductId, data: WorkProduct) {
         debug!("insert_work_product({:?}, {:?})", v, data);
-        self.data.work_products.borrow_mut()
-                               .insert(v.clone(), data);
+        self.data
+            .as_ref()
+            .unwrap()
+            .work_products
+            .borrow_mut()
+            .insert(v.clone(), data);
     }
 
     /// Check whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
     pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
-        self.data.previous_work_products.borrow()
-                                        .get(v)
-                                        .cloned()
+        self.data
+            .as_ref()
+            .and_then(|data| {
+                data.previous_work_products.borrow().get(v).cloned()
+            })
     }
 
     /// Access the map of work-products created during this run. Only
     /// used during saving of the dep-graph.
     pub fn work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
-        self.data.work_products.borrow()
+        self.data.as_ref().unwrap().work_products.borrow()
     }
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
     pub fn previous_work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
-        self.data.previous_work_products.borrow()
+        self.data.as_ref().unwrap().previous_work_products.borrow()
     }
 
     #[inline(always)]
@@ -162,14 +187,14 @@ impl DepGraph {
                                           debug_str_gen: F)
         where F: FnOnce() -> String
     {
-        let mut dep_node_debug = self.data.dep_node_debug.borrow_mut();
+        let mut dep_node_debug = self.data.as_ref().unwrap().dep_node_debug.borrow_mut();
 
         dep_node_debug.entry(dep_node)
                       .or_insert_with(debug_str_gen);
     }
 
     pub(super) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
-        self.data.dep_node_debug.borrow().get(&dep_node).cloned()
+        self.data.as_ref().unwrap().dep_node_debug.borrow().get(&dep_node).cloned()
     }
 }
 
