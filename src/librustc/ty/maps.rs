@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::{DepConstructor, DepNode, DepTrackingMapConfig};
+use dep_graph::{DepConstructor, DepNode};
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
@@ -261,11 +261,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-trait QueryDescription: DepTrackingMapConfig {
+pub trait QueryConfig {
+    type Key: Eq + Hash + Clone;
+    type Value;
+}
+
+trait QueryDescription: QueryConfig {
     fn describe(tcx: TyCtxt, key: Self::Key) -> String;
 }
 
-impl<M: DepTrackingMapConfig<Key=DefId>> QueryDescription for M {
+impl<M: QueryConfig<Key=DefId>> QueryDescription for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("processing `{}`", tcx.item_path_str(def_id))
     }
@@ -550,9 +555,12 @@ macro_rules! define_maps {
             })*
         }
 
-        $(impl<$tcx> DepTrackingMapConfig for queries::$name<$tcx> {
+        $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
+        }
+
+        impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
 
             #[allow(unused)]
             fn to_dep_node(tcx: TyCtxt, key: &$K) -> DepNode {
@@ -560,8 +568,7 @@ macro_rules! define_maps {
 
                 DepNode::new(tcx, $node(*key))
             }
-        }
-        impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
+
             fn try_get_with<F, R>(tcx: TyCtxt<'a, $tcx, 'lcx>,
                                   mut span: Span,
                                   key: $K,
