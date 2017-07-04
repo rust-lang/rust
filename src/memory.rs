@@ -6,7 +6,7 @@ use rustc::ty;
 use rustc::ty::layout::{self, TargetDataLayout};
 
 use error::{EvalError, EvalResult};
-use value::{PrimVal, self};
+use value::{PrimVal, self, Pointer};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -87,7 +87,7 @@ pub type TlsKey = usize;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    data: PrimVal, // Will eventually become a map from thread IDs to `PrimVal`s, if we ever support more than one thread.
+    data: Pointer, // Will eventually become a map from thread IDs to `Pointer`s, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -223,7 +223,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
-    pub fn reallocate(&mut self, ptr: MemoryPointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64) -> EvalResult<'tcx, Pointer> {
+    pub fn reallocate(&mut self, ptr: MemoryPointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64) -> EvalResult<'tcx, MemoryPointer> {
         use std::cmp::min;
 
         // TODO(solson): Report error about non-__rust_allocate'd pointer.
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc"
         let new_ptr = self.allocate(new_size, new_align)?;
-        self.copy(PrimVal::Ptr(ptr), PrimVal::Ptr(new_ptr), min(old_size, new_size), min(old_align, new_align), /*nonoverlapping*/true)?;
+        self.copy(ptr.into(), new_ptr.into(), min(old_size, new_size), min(old_align, new_align), /*nonoverlapping*/true)?;
         self.deallocate(ptr, Some((old_size, old_align)))?;
 
         Ok(new_ptr)
@@ -278,8 +278,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    pub fn check_align(&self, ptr: PrimVal, align: u64, len: u64) -> EvalResult<'tcx> {
-        let offset = match ptr {
+    pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx> {
+        let offset = match ptr.into_inner_primval() {
             PrimVal::Ptr(ptr) => {
                 let alloc = self.get(ptr.alloc_id)?;
                 // check whether the memory was marked as packed
@@ -353,7 +353,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.next_thread_local;
         self.next_thread_local += 1;
-        self.thread_local.insert(new_key, TlsEntry { data: PrimVal::Bytes(0), dtor });
+        self.thread_local.insert(new_key, TlsEntry { data: Pointer::null(), dtor });
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
         return new_key;
     }
@@ -368,7 +368,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, PrimVal> {
+    pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
         return match self.thread_local.get(&key) {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
@@ -378,7 +378,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn store_tls(&mut self, key: TlsKey, new_data: PrimVal) -> EvalResult<'tcx> {
+    pub(crate) fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx> {
         return match self.thread_local.get_mut(&key) {
             Some(&mut TlsEntry { ref mut data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
@@ -407,7 +407,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// with associated destructors, implementations may stop calling destructors,
     /// or they may continue calling destructors until no non-NULL values with
     /// associated destructors exist, even though this might result in an infinite loop.
-    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, PrimVal, TlsKey)>> {
+    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>> {
         use std::collections::Bound::*;
         let start = match key {
             Some(key) => Excluded(key),
@@ -417,7 +417,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             if !data.is_null()? {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
-                    *data = PrimVal::Bytes(0);
+                    *data = Pointer::null();
                     return Ok(ret);
                 }
             }
@@ -575,7 +575,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
-        self.check_align(PrimVal::Ptr(ptr), align, size)?;
+        // FIXME: check alignment for zst memory accesses?
+        self.check_align(ptr.into(), align, size)?;
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -588,7 +589,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&mut []);
         }
-        self.check_align(PrimVal::Ptr(ptr), align, size)?;
+        // FIXME: check alignment for zst memory accesses?
+        self.check_align(ptr.into(), align, size)?;
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -609,7 +611,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn get_bytes_mut(&mut self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size, 0);
         self.clear_relocations(ptr, size)?;
-        self.mark_definedness(PrimVal::Ptr(ptr), size, true)?;
+        self.mark_definedness(ptr.into(), size, true)?;
         self.get_bytes_unchecked_mut(ptr, size, align)
     }
 }
@@ -661,7 +663,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn copy(&mut self, src: PrimVal, dest: PrimVal, size: u64, align: u64, nonoverlapping: bool) -> EvalResult<'tcx> {
+    pub fn copy(&mut self, src: Pointer, dest: Pointer, size: u64, align: u64, nonoverlapping: bool) -> EvalResult<'tcx> {
         if size == 0 {
             // TODO: Should we check for alignment here? (Also see write_bytes intrinsic)
             return Ok(());
@@ -713,7 +715,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn read_bytes(&self, ptr: PrimVal, size: u64) -> EvalResult<'tcx, &[u8]> {
+    pub fn read_bytes(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
         if size == 0 {
             return Ok(&[]);
         }
@@ -729,7 +731,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn write_repeat(&mut self, ptr: PrimVal, val: u8, count: u64) -> EvalResult<'tcx> {
+    pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
         if count == 0 {
             return Ok(());
         }
@@ -738,10 +740,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn read_ptr(&self, ptr: MemoryPointer) -> EvalResult<'tcx, PrimVal> {
+    pub fn read_ptr(&self, ptr: MemoryPointer) -> EvalResult<'tcx, Pointer> {
         let size = self.pointer_size();
         if self.check_defined(ptr, size).is_err() {
-            return Ok(PrimVal::Undef);
+            return Ok(PrimVal::Undef.into());
         }
         let endianess = self.endianess();
         let bytes = self.get_bytes_unchecked(ptr, size, size)?;
@@ -750,8 +752,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let offset = offset as u64;
         let alloc = self.get(ptr.alloc_id)?;
         match alloc.relocations.get(&ptr.offset) {
-            Some(&alloc_id) => Ok(PrimVal::Ptr(MemoryPointer::new(alloc_id, offset))),
-            None => Ok(PrimVal::Bytes(offset as u128)),
+            Some(&alloc_id) => Ok(PrimVal::Ptr(MemoryPointer::new(alloc_id, offset)).into()),
+            None => Ok(PrimVal::Bytes(offset as u128).into()),
         }
     }
 
@@ -763,7 +765,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn write_primval(
         &mut self,
-        dest: PrimVal,
+        dest: Pointer,
         val: PrimVal,
         size: u64,
     ) -> EvalResult<'tcx> {
@@ -970,7 +972,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn mark_definedness(
         &mut self,
-        ptr: PrimVal,
+        ptr: Pointer,
         size: u64,
         new_state: bool
     ) -> EvalResult<'tcx> {

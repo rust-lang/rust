@@ -6,7 +6,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext};
 use memory::MemoryPointer;
-use value::{PrimVal, Value};
+use value::{PrimVal, Value, Pointer};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Lvalue<'tcx> {
@@ -15,7 +15,7 @@ pub enum Lvalue<'tcx> {
         /// An lvalue may have an invalid (integral or undef) pointer,
         /// since it might be turned back into a reference
         /// before ever being dereferenced.
-        ptr: PrimVal,
+        ptr: Pointer,
         extra: LvalueExtra,
     },
 
@@ -64,18 +64,18 @@ pub struct Global<'tcx> {
 impl<'tcx> Lvalue<'tcx> {
     /// Produces an Lvalue that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_primval_ptr(PrimVal::Undef)
+        Self::from_primval_ptr(PrimVal::Undef.into())
     }
 
-    pub(crate) fn from_primval_ptr(ptr: PrimVal) -> Self {
+    pub(crate) fn from_primval_ptr(ptr: Pointer) -> Self {
         Lvalue::Ptr { ptr, extra: LvalueExtra::None }
     }
 
     pub(crate) fn from_ptr(ptr: MemoryPointer) -> Self {
-        Self::from_primval_ptr(PrimVal::Ptr(ptr))
+        Self::from_primval_ptr(ptr.into())
     }
 
-    pub(super) fn to_ptr_and_extra(self) -> (PrimVal, LvalueExtra) {
+    pub(super) fn to_ptr_and_extra(self) -> (Pointer, LvalueExtra) {
         match self {
             Lvalue::Ptr { ptr, extra } => (ptr, extra),
             _ => bug!("to_ptr_and_extra: expected Lvalue::Ptr, got {:?}", self),
@@ -315,7 +315,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {
-                let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(base_ptr, PrimVal::Ptr(tab)))?;
+                let (_, align) = self.size_and_align_of_dst(base_ty, base_ptr.with_extra(PrimVal::Ptr(tab)))?;
                 offset.abi_align(Align::from_bytes(align, align).unwrap()).bytes()
             }
             _ => offset.bytes(),

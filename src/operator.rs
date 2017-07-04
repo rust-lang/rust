@@ -158,8 +158,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             match bin_op {
                 Offset if left_kind == Ptr && right_kind == usize => {
                     let pointee_ty = left_ty.builtin_deref(true, ty::LvaluePreference::NoPreference).expect("Offset called on non-ptr type").ty;
-                    let ptr = self.pointer_offset(left, pointee_ty, right.to_bytes()? as i64)?;
-                    return Ok((ptr, false));
+                    let ptr = self.pointer_offset(left.into(), pointee_ty, right.to_bytes()? as i64)?;
+                    return Ok((ptr.into_inner_primval(), false));
                 },
                 // These work on anything
                 Eq if left_kind == right_kind => {

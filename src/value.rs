@@ -33,9 +33,68 @@ pub(super) fn f64_to_bytes(f: f64) -> u128 {
 /// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug)]
 pub enum Value {
-    ByRef(PrimVal),
+    ByRef(Pointer),
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
+}
+
+/// A wrapper type around `PrimVal` that cannot be turned back into a `PrimVal` accidentally.
+/// This type clears up a few APIs where having a `PrimVal` argument for something that is
+/// potentially an integer pointer or a pointer to an allocation was unclear.
+#[derive(Clone, Copy, Debug)]
+pub struct Pointer {
+    primval: PrimVal,
+}
+
+impl<'tcx> Pointer {
+    pub fn null() -> Self {
+        PrimVal::Bytes(0).into()
+    }
+    pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
+        self.primval.to_ptr()
+    }
+    pub fn into_inner_primval(self) -> PrimVal {
+        self.primval
+    }
+
+    pub(crate) fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+        self.primval.signed_offset(i, layout).map(Pointer::from)
+    }
+
+    pub(crate) fn offset(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+        self.primval.offset(i, layout).map(Pointer::from)
+    }
+
+    pub(crate) fn wrapping_signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+        self.primval.wrapping_signed_offset(i, layout).map(Pointer::from)
+    }
+
+    pub fn is_null(self) -> EvalResult<'tcx, bool> {
+        match self.primval {
+            PrimVal::Bytes(b) => Ok(b == 0),
+            PrimVal::Ptr(_) => Ok(false),
+            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+        }
+    }
+
+    pub fn with_extra(self, extra: PrimVal) -> Value {
+        Value::ByValPair(self.primval, extra)
+    }
+    pub fn to_value(self) -> Value {
+        Value::ByVal(self.primval)
+    }
+}
+
+impl ::std::convert::From<PrimVal> for Pointer {
+    fn from(primval: PrimVal) -> Self {
+        Pointer { primval }
+    }
+}
+
+impl ::std::convert::From<MemoryPointer> for Pointer {
+    fn from(ptr: MemoryPointer) -> Self {
+        PrimVal::Ptr(ptr).into()
+    }
 }
 
 /// A `PrimVal` represents an immediate, primitive value existing outside of a
@@ -69,18 +128,18 @@ pub enum PrimValKind {
 }
 
 impl<'a, 'tcx: 'a> Value {
-    pub(super) fn read_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, PrimVal> {
+    pub(super) fn read_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr.to_ptr()?),
-            ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr),
+            ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr.into()),
         }
     }
 
     pub(super) fn expect_ptr_vtable_pair(
         &self,
         mem: &Memory<'a, 'tcx>
-    ) -> EvalResult<'tcx, (PrimVal, MemoryPointer)> {
+    ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
@@ -89,13 +148,13 @@ impl<'a, 'tcx: 'a> Value {
                 Ok((ptr, vtable.to_ptr()?))
             }
 
-            ByValPair(ptr, vtable) => Ok((ptr, vtable.to_ptr()?)),
+            ByValPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
 
             _ => bug!("expected ptr and vtable, got {:?}", self),
         }
     }
 
-    pub(super) fn expect_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (PrimVal, u64)> {
+    pub(super) fn expect_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
@@ -106,7 +165,7 @@ impl<'a, 'tcx: 'a> Value {
             ByValPair(ptr, val) => {
                 let len = val.to_u128()?;
                 assert_eq!(len as u64 as u128, len);
-                Ok((ptr, len as u64))
+                Ok((ptr.into(), len as u64))
             },
             ByVal(_) => unimplemented!(),
         }
@@ -220,15 +279,7 @@ impl<'tcx> PrimVal {
         }
     }
 
-    pub fn is_null(self) -> EvalResult<'tcx, bool> {
-        match self {
-            PrimVal::Bytes(b) => Ok(b == 0),
-            PrimVal::Ptr(_) => Ok(false),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
-        }
-    }
-
-    pub fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+    pub(crate) fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         match self {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
@@ -239,7 +290,7 @@ impl<'tcx> PrimVal {
         }
     }
 
-    pub fn offset(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+    pub(crate) fn offset(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         match self {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
@@ -250,7 +301,7 @@ impl<'tcx> PrimVal {
         }
     }
 
-    pub fn wrapping_signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+    pub(crate) fn wrapping_signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
         match self {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);

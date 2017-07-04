@@ -7,7 +7,7 @@ use rustc::ty::{self, Ty};
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
 use lvalue::{Lvalue, LvalueExtra};
-use value::{PrimVal, PrimValKind, Value};
+use value::{PrimVal, PrimValKind, Value, Pointer};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
@@ -46,7 +46,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
-                self.write_primval(dest, result_ptr, dest_ty)?;
+                self.write_ptr(dest, result_ptr, dest_ty)?;
             }
 
             "assume" => {
@@ -257,8 +257,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
                             Err(_) => {
                                 let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
-                                this.memory.write_repeat(PrimVal::Ptr(ptr), 0, size)?;
-                                Value::ByRef(PrimVal::Ptr(ptr))
+                                let ptr = Pointer::from(PrimVal::Ptr(ptr));
+                                this.memory.write_repeat(ptr, 0, size)?;
+                                Value::ByRef(ptr)
                             }
                         },
                         Value::ByVal(_) => Value::ByVal(PrimVal::Bytes(0)),
@@ -307,7 +308,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
-                self.write_primval(dest, result_ptr, dest_ty)?;
+                self.write_ptr(dest, result_ptr, dest_ty)?;
             }
 
             "overflowing_sub" => {
@@ -397,7 +398,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.type_size(dest_ty)?.expect("transmute() type must be sized");
                 let ptr = self.force_allocation(dest)?.to_ptr()?;
                 self.memory.mark_packed(ptr, size);
-                self.write_value_to_ptr(arg_vals[0], PrimVal::Ptr(ptr), src_ty)?;
+                self.write_value_to_ptr(arg_vals[0], ptr.into(), src_ty)?;
             }
 
             "unchecked_shl" => {
