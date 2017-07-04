@@ -750,7 +750,7 @@ fn rewrite_closure_block(
 
     // The body of the closure is big enough to be block indented, that
     // means we must re-format.
-    let block_shape = shape.block().with_max_width(context.config);
+    let block_shape = shape.block();
     let block_str = try_opt!(block.rewrite(&context, block_shape));
     Some(format!("{} {}", prefix, block_str))
 }
