@@ -23,38 +23,87 @@
 //!
 //! ## Architecture
 //!
-//! Although this build system defers most of the complicated logic to Cargo
-//! itself, it still needs to maintain a list of targets and dependencies which
-//! it can itself perform. Rustbuild is made up of a list of rules with
-//! dependencies amongst them (created in the `step` module) and then knows how
-//! to execute each in sequence. Each time rustbuild is invoked, it will simply
-//! iterate through this list of steps and execute each serially in turn.  For
-//! each step rustbuild relies on the step internally being incremental and
+//! The build system defers most of the complicated logic managing invocations
+//! of rustc and rustdoc to Cargo itself. However, moving through various stages
+//! and copying artifacts is still necessary for it to do. Each time rustbuild
+//! is invoked, it will iterate through the list of predefined steps and execute
+//! each serially in turn if it matches the paths passed or is a default rule.
+//! For each step rustbuild relies on the step internally being incremental and
 //! parallel. Note, though, that the `-j` parameter to rustbuild gets forwarded
 //! to appropriate test harnesses and such.
 //!
 //! Most of the "meaty" steps that matter are backed by Cargo, which does indeed
 //! have its own parallelism and incremental management. Later steps, like
 //! tests, aren't incremental and simply run the entire suite currently.
+//! However, compiletest itself tries to avoid running tests when the artifacts
+//! that are involved (mainly the compiler) haven't changed.
 //!
 //! When you execute `x.py build`, the steps which are executed are:
 //!
 //! * First, the python script is run. This will automatically download the
-//!   stage0 rustc and cargo according to `src/stage0.txt`, or using the cached
+//!   stage0 rustc and cargo according to `src/stage0.txt`, or use the cached
 //!   versions if they're available. These are then used to compile rustbuild
 //!   itself (using Cargo). Finally, control is then transferred to rustbuild.
 //!
 //! * Rustbuild takes over, performs sanity checks, probes the environment,
-//!   reads configuration, builds up a list of steps, and then starts executing
-//!   them.
+//!   reads configuration, and starts executing steps as it reads the command
+//!   line arguments (paths) or going through the default rules.
 //!
-//! * The stage0 libstd is compiled
-//! * The stage0 libtest is compiled
-//! * The stage0 librustc is compiled
-//! * The stage1 compiler is assembled
-//! * The stage1 libstd, libtest, librustc are compiled
-//! * The stage2 compiler is assembled
-//! * The stage2 libstd, libtest, librustc are compiled
+//!   The build output will be something like the following:
+//!
+//!   Building stage0 std artifacts
+//!   Copying stage0 std
+//!   Building stage0 test artifacts
+//!   Copying stage0 test
+//!   Building stage0 compiler artifacts
+//!   Copying stage0 rustc
+//!   Assembling stage1 compiler
+//!   Building stage1 std artifacts
+//!   Copying stage1 std
+//!   Building stage1 test artifacts
+//!   Copying stage1 test
+//!   Building stage1 compiler artifacts
+//!   Copying stage1 rustc
+//!   Assembling stage2 compiler
+//!   Uplifting stage1 std
+//!   Uplifting stage1 test
+//!   Uplifting stage1 rustc
+//!
+//! Let's disect that a little:
+//!
+//! ## Building stage0 {std,test,compiler} artifacts
+//!
+//! These steps use the provided (downloaded, usually) compiler to compile the
+//! local Rust source into libraries we can use.
+//!
+//! ## Copying stage0 {std,test,rustc}
+//!
+//! This copies the build output from Cargo into
+//! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: This step's
+//! documentation should be expanded -- the information already here may be
+//! incorrect.
+//!
+//! ## Assembling stage1 compiler
+//!
+//! This copies the libraries we built in "building stage0 ... artifacts" into
+//! the stage1 compiler's lib directory. These are the host libraries that the
+//! compiler itself uses to run. These aren't actually used by artifacts the new
+//! compiler generates. This step also copies the rustc and rustdoc binaries we
+//! generated into build/$HOST/stage/bin.
+//!
+//! The stage1/bin/rustc is a fully functional compiler, but it doesn't yet have
+//! any libraries to link built binaries or libraries to. The next 3 steps will
+//! provide those libraries for it; they are mostly equivalent to constructing
+//! the stage1/bin compiler so we don't go through them individually.
+//!
+//! ## Uplifiting stage1 {std,test,rustc}
+//!
+//! This step copies the libraries from the stage1 compiler sysroot into the
+//! stage2 compiler. This is done to avoid rebuilding the compiler; libraries
+//! we'd build in this step should be identical (in function, if not necessarily
+//! identical on disk) so there's no need to recompile the compiler again. Note
+//! that if you want to, you can enable the full-bootstrap option to change this
+//! behavior.
 //!
 //! Each step is driven by a separate Cargo project and rustbuild orchestrates
 //! copying files between steps and otherwise preparing for Cargo to run.
