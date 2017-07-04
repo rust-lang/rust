@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
+use syntax::ast::{self, MetaItem};
 
 use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
 
-use rustc::ty::{TyCtxt};
-use rustc::mir::{self, Mir, Location};
+use rustc::ty::{self, TyCtxt};
+use rustc::mir::{self, Mir, BasicBlock, Location};
+use rustc::session::Session;
 
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::io;
 use std::mem;
 use std::path::PathBuf;
@@ -27,6 +28,9 @@ pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
 pub use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
 pub use self::impls::borrows::{Borrows, BorrowData, BorrowIndex};
 pub(crate) use self::drop_flag_effects::*;
+
+use self::move_paths::MoveData;
+use self::indexes::MovePathIndex;
 
 mod drop_flag_effects;
 mod graphviz;
@@ -56,6 +60,67 @@ impl<'a, 'tcx: 'a, BD> Dataflow<BD> for DataflowBuilder<'a, 'tcx, BD>
         self.flow_state.propagate();
         self.post_dataflow_instrumentation(|c,i| p(c,i)).unwrap();
     }
+}
+
+pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> {
+    for attr in attrs {
+        if attr.check_name("rustc_mir") {
+            let items = attr.meta_item_list();
+            for item in items.iter().flat_map(|l| l.iter()) {
+                match item.meta_item() {
+                    Some(mi) if mi.check_name(name) => return Some(mi.clone()),
+                    _ => continue
+                }
+            }
+        }
+    }
+    return None;
+}
+
+pub struct MoveDataParamEnv<'tcx> {
+    pub(crate) move_data: MoveData<'tcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
+}
+
+pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                mir: &Mir<'tcx>,
+                                node_id: ast::NodeId,
+                                attributes: &[ast::Attribute],
+                                dead_unwinds: &IdxSet<BasicBlock>,
+                                bd: BD,
+                                p: P)
+                                -> DataflowResults<BD>
+    where BD: BitDenotation<Idx=MovePathIndex> + DataflowOperator,
+          P: Fn(&BD, BD::Idx) -> &fmt::Debug
+{
+    let name_found = |sess: &Session, attrs: &[ast::Attribute], name| -> Option<String> {
+        if let Some(item) = has_rustc_mir_with(attrs, name) {
+            if let Some(s) = item.value_str() {
+                return Some(s.to_string())
+            } else {
+                sess.span_err(
+                    item.span,
+                    &format!("{} attribute requires a path", item.name()));
+                return None;
+            }
+        }
+        return None;
+    };
+
+    let print_preflow_to =
+        name_found(tcx.sess, attributes, "borrowck_graphviz_preflow");
+    let print_postflow_to =
+        name_found(tcx.sess, attributes, "borrowck_graphviz_postflow");
+
+    let mut mbcx = DataflowBuilder {
+        node_id,
+        print_preflow_to,
+        print_postflow_to,
+        flow_state: DataflowAnalysis::new(tcx, mir, dead_unwinds, bd),
+    };
+
+    mbcx.dataflow(p);
+    mbcx.flow_state.results()
 }
 
 struct PropagationContext<'b, 'a: 'b, 'tcx: 'a, O>
