@@ -67,11 +67,11 @@ impl<'tcx> Lvalue<'tcx> {
         Self::from_primval_ptr(PrimVal::Undef)
     }
 
-    fn from_primval_ptr(ptr: PrimVal) -> Self {
+    pub(crate) fn from_primval_ptr(ptr: PrimVal) -> Self {
         Lvalue::Ptr { ptr, extra: LvalueExtra::None }
     }
 
-    pub fn from_ptr(ptr: Pointer) -> Self {
+    pub(crate) fn from_ptr(ptr: Pointer) -> Self {
         Self::from_primval_ptr(PrimVal::Ptr(ptr))
     }
 
@@ -192,7 +192,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match lvalue {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                Ok(Value::ByRef(ptr.to_ptr()?))
+                Ok(Value::ByRef(ptr))
             }
             Lvalue::Local { frame, local } => {
                 self.stack[frame].get_local(local)

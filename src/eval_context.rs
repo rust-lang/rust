@@ -351,7 +351,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let global_value = self.globals.get_mut(&id)
                     .expect("global should have been cached (static)");
                 match global_value.value {
-                    Value::ByRef(ptr) => self.memory.mark_static_initalized(ptr.alloc_id, mutable)?,
+                    // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
+                    Value::ByRef(ptr) => self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
                         self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
                     },
@@ -409,6 +410,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn deallocate_local(&mut self, local: Option<Value>) -> EvalResult<'tcx> {
         if let Some(Value::ByRef(ptr)) = local {
             trace!("deallocating local");
+            let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
             match self.memory.deallocate(ptr) {
                 // We could alternatively check whether the alloc_id is static before calling
@@ -693,26 +695,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 // Check alignment and non-NULLness.
                 let (_, align) = self.size_and_align_of_dst(ty, val)?;
-                match ptr {
-                    PrimVal::Ptr(ptr) => {
-                        self.memory.check_align(ptr, align, 0)?;
-                    }
-                    PrimVal::Bytes(bytes) => {
-                        let v = ((bytes as u128) % (1 << self.memory.pointer_size())) as u64;
-                        if v == 0 {
-                            return Err(EvalError::InvalidNullPointerUsage);
-                        }
-                        if v % align != 0 {
-                            return Err(EvalError::AlignmentCheckFailed {
-                                has: v % align,
-                                required: align,
-                            });
-                        }
-                    }
-                    PrimVal::Undef => {
-                        return Err(EvalError::ReadUndefBytes);
-                    }
-                }
+                self.memory.check_align(ptr, align, 0)?;
 
                 self.write_value(val, dest, dest_ty)?;
             }
@@ -1036,14 +1019,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match self.stack[frame].locals[local.index() - 1] {
                     None => return Err(EvalError::DeadLocal),
                     Some(Value::ByRef(ptr)) => {
-                        Lvalue::from_ptr(ptr)
+                        Lvalue::from_primval_ptr(ptr)
                     },
                     Some(val) => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
                         let substs = self.stack[frame].instance.substs;
                         let ptr = self.alloc_ptr_with_substs(ty, substs)?;
-                        self.stack[frame].locals[local.index() - 1] = Some(Value::ByRef(ptr)); // it stays live
+                        self.stack[frame].locals[local.index() - 1] = Some(Value::ByRef(PrimVal::Ptr(ptr))); // it stays live
                         self.write_value_to_ptr(val, PrimVal::Ptr(ptr), ty)?;
                         Lvalue::from_ptr(ptr)
                     }
@@ -1053,7 +1036,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Global(cid) => {
                 let global_val = *self.globals.get(&cid).expect("global not cached");
                 match global_val.value {
-                    Value::ByRef(ptr) => Lvalue::from_ptr(ptr),
+                    Value::ByRef(ptr) => Lvalue::from_primval_ptr(ptr),
                     _ => {
                         let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.instance.substs)?;
                         self.memory.mark_static(ptr.alloc_id);
@@ -1064,7 +1047,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                         let lval = self.globals.get_mut(&cid).expect("already checked");
                         *lval = Global {
-                            value: Value::ByRef(ptr),
+                            value: Value::ByRef(PrimVal::Ptr(ptr)),
                             .. global_val
                         };
                         Lvalue::from_ptr(ptr)
@@ -1164,7 +1147,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
             // knew for certain that there were no outstanding pointers to this allocation.
-            self.write_value_to_ptr(src_val, PrimVal::Ptr(dest_ptr), dest_ty)?;
+            self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
 
         } else if let Value::ByRef(src_ptr) = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
@@ -1182,8 +1165,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 write_dest(self, src_val)?;
             } else {
                 let dest_ptr = self.alloc_ptr(dest_ty)?;
-                self.copy(PrimVal::Ptr(src_ptr), PrimVal::Ptr(dest_ptr), dest_ty)?;
-                write_dest(self, Value::ByRef(dest_ptr))?;
+                self.copy(src_ptr, PrimVal::Ptr(dest_ptr), dest_ty)?;
+                write_dest(self, Value::ByRef(PrimVal::Ptr(dest_ptr)))?;
             }
 
         } else {
@@ -1201,7 +1184,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         match value {
-            Value::ByRef(ptr) => self.copy(PrimVal::Ptr(ptr), dest, dest_ty),
+            Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
                 self.memory.write_primval(dest, primval, size)
@@ -1331,7 +1314,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn read_value(&mut self, ptr: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if let Some(val) = self.try_read_value(ptr, ty)? {
             Ok(val)
         } else {
@@ -1356,13 +1339,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn try_read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+    fn try_read_value(&mut self, ptr: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
 
         let val = match ty.sty {
-            ty::TyBool => PrimVal::from_bool(self.memory.read_bool(ptr)?),
+            ty::TyBool => PrimVal::from_bool(self.memory.read_bool(ptr.to_ptr()?)?),
             ty::TyChar => {
-                let c = self.memory.read_uint(ptr, 4)? as u32;
+                let c = self.memory.read_uint(ptr.to_ptr()?, 4)? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::from_char(ch),
                     None => return Err(EvalError::InvalidChar(c as u128)),
@@ -1381,8 +1364,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 // if we transmute a ptr to an isize, reading it back into a primval shouldn't panic
                 // Due to read_ptr ignoring the sign, we need to jump around some hoops
-                match self.memory.read_int(ptr, size) {
-                    Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr)?,
+                match self.memory.read_int(ptr.to_ptr()?, size) {
+                    Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr.to_ptr()?)?,
                     other => PrimVal::from_i128(other?),
                 }
             }
@@ -1399,30 +1382,30 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 if size == self.memory.pointer_size() {
                     // if we transmute a ptr to an usize, reading it back into a primval shouldn't panic
-                    self.memory.read_ptr(ptr)?
+                    self.memory.read_ptr(ptr.to_ptr()?)?
                 } else {
-                    PrimVal::from_u128(self.memory.read_uint(ptr, size)?)
+                    PrimVal::from_u128(self.memory.read_uint(ptr.to_ptr()?, size)?)
                 }
             }
 
-            ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
-            ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
+            ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr.to_ptr()?)?),
+            ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr.to_ptr()?)?),
 
-            ty::TyFnPtr(_) => self.memory.read_ptr(ptr)?,
+            ty::TyFnPtr(_) => self.memory.read_ptr(ptr.to_ptr()?)?,
             ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, tam.ty).map(Some),
+            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr.to_ptr()?, tam.ty).map(Some),
 
             ty::TyAdt(def, _) => {
                 if def.is_box() {
-                    return self.read_ptr(ptr, ty.boxed_ty()).map(Some);
+                    return self.read_ptr(ptr.to_ptr()?, ty.boxed_ty()).map(Some);
                 }
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes();
                     if signed {
-                        PrimVal::from_i128(self.memory.read_int(ptr, size)?)
+                        PrimVal::from_i128(self.memory.read_int(ptr.to_ptr()?, size)?)
                     } else {
-                        PrimVal::from_u128(self.memory.read_uint(ptr, size)?)
+                        PrimVal::from_u128(self.memory.read_uint(ptr.to_ptr()?, size)?)
                     }
                 } else {
                     return Ok(None);
@@ -1541,7 +1524,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let src_f_ptr = src_ptr.offset(src_field_offset, self.memory.layout)?;
                     let dst_f_ptr = dest.offset(dst_field_offset, self.memory.layout)?;
                     if src_fty == dst_fty {
-                        self.copy(PrimVal::Ptr(src_f_ptr), PrimVal::Ptr(dst_f_ptr), src_fty)?;
+                        self.copy(src_f_ptr, PrimVal::Ptr(dst_f_ptr), src_fty)?;
                     } else {
                         self.unsize_into(Value::ByRef(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
                     }
@@ -1570,9 +1553,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Err(err) => {
                     panic!("Failed to access local: {:?}", err);
                 }
-                Ok(Value::ByRef(ptr)) => {
+                Ok(Value::ByRef(PrimVal::Ptr(ptr))) => {
                     write!(msg, " by ref:").unwrap();
                     allocs.push(ptr.alloc_id);
+                }
+                Ok(Value::ByRef(ptr)) => {
+                    write!(msg, " integral by ref: {:?}", ptr).unwrap();
                 }
                 Ok(Value::ByVal(val)) => {
                     write!(msg, " {:?}", val).unwrap();

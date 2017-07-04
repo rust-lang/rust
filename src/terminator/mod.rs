@@ -632,7 +632,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = self.memory.allocate(size, align)?;
-                self.memory.write_repeat(ptr, 0, size)?;
+                self.memory.write_repeat(PrimVal::Ptr(ptr), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
 
@@ -792,8 +792,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if let Some((name, value)) = new {
                     // +1 for the null terminator
                     let value_copy = self.memory.allocate((value.len() + 1) as u64, 1)?;
-                    self.memory.write_bytes(value_copy, &value)?;
-                    self.memory.write_bytes(value_copy.offset(value.len() as u64, self.memory.layout)?, &[0])?;
+                    self.memory.write_bytes(PrimVal::Ptr(value_copy), &value)?;
+                    self.memory.write_bytes(PrimVal::Ptr(value_copy.offset(value.len() as u64, self.memory.layout)?), &[0])?;
                     if let Some(var) = self.env_vars.insert(name.to_owned(), value_copy) {
                         self.memory.deallocate(var)?;
                     }

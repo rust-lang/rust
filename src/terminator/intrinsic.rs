@@ -60,7 +60,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_load_acq" |
             "volatile_load" => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].read_ptr(&self.memory)?.to_ptr()?;
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 self.write_value(Value::ByRef(ptr), dest, ty)?;
             }
 
@@ -79,7 +79,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].read_ptr(&self.memory)?.to_ptr()?;
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
@@ -88,12 +88,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByValPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
                 };
                 self.write_primval(dest, old, ty)?;
-                self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
+                self.write_primval(Lvalue::from_primval_ptr(ptr), change, ty)?;
             }
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].read_ptr(&self.memory)?.to_ptr()?;
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let expect_old = self.value_to_primval(arg_vals[1], ty)?;
                 let change = self.value_to_primval(arg_vals[2], ty)?;
                 let old = self.read_value(ptr, ty)?;
@@ -105,7 +105,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (val, _) = self.binary_op(mir::BinOp::Eq, old, ty, expect_old, ty)?;
                 let dest = self.force_allocation(dest)?.to_ptr()?;
                 self.write_pair_to_ptr(old, val, dest, dest_ty)?;
-                self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
+                self.write_primval(Lvalue::from_primval_ptr(ptr), change, ty)?;
             }
 
             "atomic_or" | "atomic_or_acq" | "atomic_or_rel" | "atomic_or_acqrel" | "atomic_or_relaxed" |
@@ -114,7 +114,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_xadd" | "atomic_xadd_acq" | "atomic_xadd_rel" | "atomic_xadd_acqrel" | "atomic_xadd_relaxed" |
             "atomic_xsub" | "atomic_xsub_acq" | "atomic_xsub_rel" | "atomic_xsub_acqrel" | "atomic_xsub_relaxed" => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].read_ptr(&self.memory)?.to_ptr()?;
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
@@ -133,7 +133,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 // FIXME: what do atomics do on overflow?
                 let (val, _) = self.binary_op(op, old, ty, change, ty)?;
-                self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
+                self.write_primval(Lvalue::from_primval_ptr(ptr), val, ty)?;
             },
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -257,8 +257,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
                             Err(_) => {
                                 let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
-                                this.memory.write_repeat(ptr, 0, size)?;
-                                Value::ByRef(ptr)
+                                this.memory.write_repeat(PrimVal::Ptr(ptr), 0, size)?;
+                                Value::ByRef(PrimVal::Ptr(ptr))
                             }
                         },
                         Value::ByVal(_) => Value::ByVal(PrimVal::Bytes(0)),
@@ -269,7 +269,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
-                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.write_repeat(ptr.to_ptr()?, 0, size)?,
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.write_repeat(ptr, 0, size)?,
                     Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat ptr target"),
                     Lvalue::Global(cid) => self.modify_global(cid, init)?,
                 }
@@ -439,7 +439,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let uninit = |this: &mut Self, val: Value| {
                     match val {
                         Value::ByRef(ptr) => {
-                            this.memory.mark_definedness(PrimVal::Ptr(ptr), size, false)?;
+                            this.memory.mark_definedness(ptr, size, false)?;
                             Ok(Value::ByRef(ptr))
                         },
                         _ => Ok(Value::ByVal(PrimVal::Undef)),
@@ -463,7 +463,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
                 if count > 0 {
-                    let ptr = ptr.to_ptr()?;
                     self.memory.check_align(ptr, ty_align, size * count)?;
                     self.memory.write_repeat(ptr, val_byte, size * count)?;
                 }
