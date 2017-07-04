@@ -658,7 +658,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn copy(&mut self, src: PrimVal, dest: PrimVal, size: u64, align: u64) -> EvalResult<'tcx> {
+    pub fn copy(&mut self, src: PrimVal, dest: PrimVal, size: u64, align: u64, nonoverlapping: bool) -> EvalResult<'tcx> {
         if size == 0 {
             return Ok(());
         }
@@ -675,6 +675,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         unsafe {
             assert_eq!(size as usize as u64, size);
             if src.alloc_id == dest.alloc_id {
+                if nonoverlapping {
+                    if (src.offset <= dest.offset && src.offset + size > dest.offset) ||
+                       (dest.offset <= src.offset && dest.offset + size > src.offset) {
+                        return Err(EvalError::Intrinsic(format!("copy_nonoverlapping called on overlapping ranges")));
+                    }
+                }
                 ptr::copy(src_bytes, dest_bytes, size as usize);
             } else {
                 ptr::copy_nonoverlapping(src_bytes, dest_bytes, size as usize);

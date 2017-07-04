@@ -140,7 +140,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "copy" |
             "copy_nonoverlapping" => {
-                // FIXME: check whether overlapping occurs
                 let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty)?.expect("cannot copy unsized value");
                 if elem_size != 0 {
@@ -148,7 +147,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let src = arg_vals[0].read_ptr(&self.memory)?;
                     let dest = arg_vals[1].read_ptr(&self.memory)?;
                     let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
-                    self.memory.copy(src, dest, count * elem_size, elem_align)?;
+                    self.memory.copy(src, dest, count * elem_size, elem_align, intrinsic_name.ends_with("_nonoverlapping"))?;
                 }
             }
 
@@ -408,12 +407,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "unchecked_shl" => {
-                // FIXME Check for too-wide shifts
+                let bits = self.type_size(dest_ty)?.expect("intrinsic can't be called on unsized type") as u128 * 8;
+                let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
+                if rhs >= bits {
+                    return Err(EvalError::Intrinsic(format!("Overflowing shift by {} in unchecked_shl", rhs)));
+                }
                 self.intrinsic_overflowing(mir::BinOp::Shl, &args[0], &args[1], dest, dest_ty)?;
             }
 
             "unchecked_shr" => {
-                // FIXME Check for too-wide shifts
+                let bits = self.type_size(dest_ty)?.expect("intrinsic can't be called on unsized type") as u128 * 8;
+                let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
+                if rhs >= bits {
+                    return Err(EvalError::Intrinsic(format!("Overflowing shift by {} in unchecked_shr", rhs)));
+                }
                 self.intrinsic_overflowing(mir::BinOp::Shr, &args[0], &args[1], dest, dest_ty)?;
             }
 
