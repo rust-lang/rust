@@ -510,8 +510,7 @@ fn test_from_iter() {
     let u: Vec<_> = deq.iter().cloned().collect();
     assert_eq!(u, v);
 
-    // FIXME #27741: Remove `.skip(0)` when Range::step_by is fully removed
-    let seq = (0..).skip(0).step_by(2).take(256);
+    let seq = (0..).step_by(2).take(256);
     let deq: VecDeque<_> = seq.collect();
     for (i, &x) in deq.iter().enumerate() {
         assert_eq!(2 * i, x);

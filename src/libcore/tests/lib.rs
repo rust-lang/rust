@@ -35,7 +35,6 @@
 #![feature(slice_rotate)]
 #![feature(sort_internals)]
 #![feature(specialization)]
-#![feature(step_by)]
 #![feature(step_trait)]
 #![feature(test)]
 #![feature(trusted_len)]
