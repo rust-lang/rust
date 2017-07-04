@@ -158,7 +158,12 @@ macro_rules! define_dep_nodes {
 
         impl DepNode {
             #[allow(unreachable_code, non_snake_case)]
-            pub fn new<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(tcx: TyCtxt<'a, 'gcx, 'tcx>, dep: DepConstructor<'gcx>) -> DepNode {
+            pub fn new<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       dep: DepConstructor<'gcx>)
+                                       -> DepNode
+                where 'gcx: 'a + 'tcx,
+                      'tcx: 'a
+            {
                 match dep {
                     $(
                         DepConstructor :: $variant $(( $($tuple_arg),* ))*
