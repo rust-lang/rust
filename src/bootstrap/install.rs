@@ -146,5 +146,5 @@ fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
             _ => {}
         }
     }
-    return ret
+    ret
 }

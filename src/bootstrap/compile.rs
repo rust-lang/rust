@@ -50,7 +50,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
     let mut features = build.std_features();
 
-    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
@@ -158,7 +158,7 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
         return
     }
 
-    let compiler = Compiler::new(0, &build.config.build);
+    let compiler = Compiler::new(0, &build.build);
     let compiler_path = build.compiler_path(&compiler);
     let src_dir = &build.src.join("src/rtstartup");
     let dst_dir = &build.native_dir(target).join("rtstartup");
@@ -199,7 +199,7 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
-    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
     cargo.arg("--manifest-path")
@@ -247,7 +247,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
     cargo.env("CFG_RELEASE", build.rust_release())
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", build.rust_version())
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()));
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default());
 
     if compiler.stage == 0 {
         cargo.env("CFG_LIBDIR_RELATIVE", "lib");
@@ -351,7 +351,7 @@ pub fn create_sysroot(build: &Build, compiler: &Compiler) {
 /// Prepare a new compiler from the artifacts in `stage`
 ///
 /// This will assemble a compiler in `build/$host/stage$stage`. The compiler
-/// must have been previously produced by the `stage - 1` build.config.build
+/// must have been previously produced by the `stage - 1` build.build
 /// compiler.
 pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     // nothing to do in stage0
@@ -365,7 +365,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     let target_compiler = Compiler::new(stage, host);
 
     // The compiler that compiled the compiler we're assembling
-    let build_compiler = Compiler::new(stage - 1, &build.config.build);
+    let build_compiler = Compiler::new(stage - 1, &build.build);
 
     // Link in all dylibs to the libdir
     let sysroot = build.sysroot(&target_compiler);
@@ -385,7 +385,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     let rustc = out_dir.join(exe("rustc", host));
     let bindir = sysroot.join("bin");
     t!(fs::create_dir_all(&bindir));
-    let compiler = build.compiler_path(&Compiler::new(stage, host));
+    let compiler = build.compiler_path(&target_compiler);
     let _ = fs::remove_file(&compiler);
     copy(&rustc, &compiler);
 
@@ -407,6 +407,8 @@ fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
     t!(fs::create_dir_all(&sysroot_dst));
     let mut contents = Vec::new();
     t!(t!(File::open(stamp)).read_to_end(&mut contents));
+    // This is the method we use for extracting paths from the stamp file passed to us. See
+    // run_cargo for more information (in this file).
     for part in contents.split(|b| *b == 0) {
         if part.is_empty() {
             continue
@@ -421,7 +423,7 @@ fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
 pub fn maybe_clean_tools(build: &Build, stage: u32, target: &str, mode: Mode) {
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
 
     let stamp = match mode {
         Mode::Libstd => libstd_stamp(build, &compiler, target),
@@ -441,7 +443,7 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
     println!("Building stage{} tool {} ({})", stage, tool, target);
 
-    let compiler = Compiler::new(stage, &build.config.build);
+    let compiler = Compiler::new(stage, &build.build);
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
     let dir = build.src.join("src/tools").join(tool);
@@ -557,23 +559,24 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
             // If this was an output file in the "host dir" we don't actually
             // worry about it, it's not relevant for us.
             if filename.starts_with(&host_root_dir) {
-                continue
+                continue;
+            }
 
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
-            } else if filename.starts_with(&target_deps_dir) {
+            if filename.starts_with(&target_deps_dir) {
                 deps.push(filename.to_path_buf());
+                continue;
+            }
 
             // Otherwise this was a "top level artifact" which right now doesn't
             // have a hash in the name, but there's a version of this file in
             // the `deps` folder which *does* have a hash in the name. That's
             // the one we'll want to we'll probe for it later.
-            } else {
-                toplevel.push((filename.file_stem().unwrap()
-                                       .to_str().unwrap().to_string(),
-                               filename.extension().unwrap().to_owned()
-                                       .to_str().unwrap().to_string()));
-            }
+            toplevel.push((filename.file_stem().unwrap()
+                                    .to_str().unwrap().to_string(),
+                            filename.extension().unwrap().to_owned()
+                                    .to_str().unwrap().to_string()));
         }
     }
 

@@ -13,23 +13,22 @@
 //! This file implements the various regression test suites that we execute on
 //! our CI.
 
-extern crate build_helper;
-
 use std::collections::HashSet;
 use std::env;
+use std::iter;
 use std::fmt;
 use std::fs::{self, File};
 use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::io::Read;
 
-use build_helper::output;
+use build_helper::{self, output};
 
 use {Build, Compiler, Mode};
 use dist;
 use util::{self, dylib_path, dylib_path_var, exe};
 
-const ADB_TEST_DIR: &'static str = "/data/tmp/work";
+const ADB_TEST_DIR: &str = "/data/tmp/work";
 
 /// The two modes of the test runner; tests or benchmarks.
 #[derive(Copy, Clone)]
@@ -60,7 +59,7 @@ impl fmt::Display for TestKind {
 }
 
 fn try_run(build: &Build, cmd: &mut Command) {
-    if build.flags.cmd.no_fail_fast() {
+    if !build.fail_fast {
         if !build.try_run(cmd) {
             let failures = build.delayed_failures.get();
             build.delayed_failures.set(failures + 1);
@@ -71,7 +70,7 @@ fn try_run(build: &Build, cmd: &mut Command) {
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
-    if build.flags.cmd.no_fail_fast() {
+    if !build.fail_fast {
         if !build.try_run_quiet(cmd) {
             let failures = build.delayed_failures.get();
             build.delayed_failures.set(failures + 1);
@@ -99,7 +98,7 @@ pub fn linkcheck(build: &Build, host: &str) {
 /// This tool in `src/tools` will check out a few Rust projects and run `cargo
 /// test` to ensure that we don't regress the test suites there.
 pub fn cargotest(build: &Build, stage: u32, host: &str) {
-    let ref compiler = Compiler::new(stage, host);
+    let compiler = Compiler::new(stage, host);
 
     // Note that this is a short, cryptic, and not scoped directory name. This
     // is currently to minimize the length of path on Windows where we otherwise
@@ -109,11 +108,11 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
 
     let _time = util::timeit();
     let mut cmd = Command::new(build.tool(&Compiler::new(0, host), "cargotest"));
-    build.prepare_tool_cmd(compiler, &mut cmd);
-    try_run(build, cmd.arg(&build.cargo)
+    build.prepare_tool_cmd(&compiler, &mut cmd);
+    try_run(build, cmd.arg(&build.initial_cargo)
                       .arg(&out_dir)
-                      .env("RUSTC", build.compiler_path(compiler))
-                      .env("RUSTDOC", build.rustdoc(compiler)));
+                      .env("RUSTC", build.compiler_path(&compiler))
+                      .env("RUSTDOC", build.rustdoc(&compiler)));
 }
 
 /// Runs `cargo test` for `cargo` packaged with Rust.
@@ -124,13 +123,12 @@ pub fn cargo(build: &Build, stage: u32, host: &str) {
     // and not RUSTC because the Cargo test suite has tests that will
     // fail if rustc is not spelled `rustc`.
     let path = build.sysroot(compiler).join("bin");
-    let old_path = ::std::env::var("PATH").expect("");
-    let sep = if cfg!(windows) { ";" } else {":" };
-    let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
+    let old_path = env::var_os("PATH").unwrap_or_default();
+    let newpath = env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("");
 
     let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
     cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
-    if build.flags.cmd.no_fail_fast() {
+    if !build.fail_fast {
         cargo.arg("--no-fail-fast");
     }
 
@@ -198,9 +196,9 @@ pub fn compiletest(build: &Build,
     cmd.arg("--mode").arg(mode);
     cmd.arg("--target").arg(target);
     cmd.arg("--host").arg(compiler.host);
-    cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.config.build));
+    cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.build));
 
-    if let Some(nodejs) = build.config.nodejs.as_ref() {
+    if let Some(ref nodejs) = build.config.nodejs {
         cmd.arg("--nodejs").arg(nodejs);
     }
 
@@ -224,7 +222,7 @@ pub fn compiletest(build: &Build,
 
     cmd.arg("--docck-python").arg(build.python());
 
-    if build.config.build.ends_with("apple-darwin") {
+    if build.build.ends_with("apple-darwin") {
         // Force /usr/bin/python on macOS for LLDB tests because we're loading the
         // LLDB plugin's compiled module which only works with the system python
         // (namely not Homebrew-installed python)
@@ -251,7 +249,7 @@ pub fn compiletest(build: &Build,
 
     cmd.args(&build.flags.cmd.test_args());
 
-    if build.config.verbose() || build.flags.verbose() {
+    if build.is_verbose() {
         cmd.arg("--verbose");
     }
 
@@ -279,7 +277,7 @@ pub fn compiletest(build: &Build,
 
     if build.remote_tested(target) {
         cmd.arg("--remote-test-client")
-           .arg(build.tool(&Compiler::new(0, &build.config.build),
+           .arg(build.tool(&Compiler::new(0, &build.build),
                            "remote-test-client"));
     }
 
@@ -368,7 +366,7 @@ pub fn error_index(build: &Build, compiler: &Compiler) {
                              "error_index_generator")
                    .arg("markdown")
                    .arg(&output)
-                   .env("CFG_BUILD", &build.config.build));
+                   .env("CFG_BUILD", &build.build));
 
     markdown_test(build, compiler, &output);
 }
@@ -450,7 +448,7 @@ pub fn krate(build: &Build,
     cargo.arg("--manifest-path")
          .arg(build.src.join(path).join("Cargo.toml"))
          .arg("--features").arg(features);
-    if test_kind.subcommand() == "test" && build.flags.cmd.no_fail_fast() {
+    if test_kind.subcommand() == "test" && !build.fail_fast {
         cargo.arg("--no-fail-fast");
     }
 
@@ -520,16 +518,14 @@ fn krate_emscripten(build: &Build,
                     compiler: &Compiler,
                     target: &str,
                     mode: Mode) {
-    let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
-    find_tests(&out_dir.join("deps"), target, &mut tests);
+    let tests = find_tests(&out_dir.join("deps"), target);
 
+    let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
     for test in tests {
-        let test_file_name = test.to_string_lossy().into_owned();
-        println!("running {}", test_file_name);
-        let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
+        println!("running {}", test.display());
         let mut cmd = Command::new(nodejs);
-        cmd.arg(&test_file_name);
+        cmd.arg(&test);
         if build.config.quiet_tests {
             cmd.arg("--quiet");
         }
@@ -541,11 +537,10 @@ fn krate_remote(build: &Build,
                 compiler: &Compiler,
                 target: &str,
                 mode: Mode) {
-    let mut tests = Vec::new();
     let out_dir = build.cargo_out(compiler, mode, target);
-    find_tests(&out_dir.join("deps"), target, &mut tests);
+    let tests = find_tests(&out_dir.join("deps"), target);
 
-    let tool = build.tool(&Compiler::new(0, &build.config.build),
+    let tool = build.tool(&Compiler::new(0, &build.build),
                           "remote-test-client");
     for test in tests {
         let mut cmd = Command::new(&tool);
@@ -559,9 +554,8 @@ fn krate_remote(build: &Build,
     }
 }
 
-fn find_tests(dir: &Path,
-              target: &str,
-              dst: &mut Vec<PathBuf>) {
+fn find_tests(dir: &Path, target: &str) -> Vec<PathBuf> {
+    let mut dst = Vec::new();
     for e in t!(dir.read_dir()).map(|e| t!(e)) {
         let file_type = t!(e.file_type());
         if !file_type.is_file() {
@@ -576,6 +570,7 @@ fn find_tests(dir: &Path,
             dst.push(e.path());
         }
     }
+    dst
 }
 
 pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
@@ -590,7 +585,7 @@ pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
                       .join(exe("remote-test-server", target));
 
     // Spawn the emulator and wait for it to come online
-    let tool = build.tool(&Compiler::new(0, &build.config.build),
+    let tool = build.tool(&Compiler::new(0, &build.build),
                           "remote-test-client");
     let mut cmd = Command::new(&tool);
     cmd.arg("spawn-emulator")
@@ -616,7 +611,7 @@ pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
 
 /// Run "distcheck", a 'make check' from a tarball
 pub fn distcheck(build: &Build) {
-    if build.config.build != "x86_64-unknown-linux-gnu" {
+    if build.build != "x86_64-unknown-linux-gnu" {
         return
     }
     if !build.config.host.iter().any(|s| s == "x86_64-unknown-linux-gnu") {
@@ -641,7 +636,7 @@ pub fn distcheck(build: &Build) {
                      .args(&build.config.configure_args)
                      .arg("--enable-vendor")
                      .current_dir(&dir));
-    build.run(Command::new(build_helper::make(&build.config.build))
+    build.run(Command::new(build_helper::make(&build.build))
                      .arg("check")
                      .current_dir(&dir));
 
@@ -659,7 +654,7 @@ pub fn distcheck(build: &Build) {
     build.run(&mut cmd);
 
     let toml = dir.join("rust-src/lib/rustlib/src/rust/src/libstd/Cargo.toml");
-    build.run(Command::new(&build.cargo)
+    build.run(Command::new(&build.initial_cargo)
                      .arg("generate-lockfile")
                      .arg("--manifest-path")
                      .arg(&toml)
@@ -668,13 +663,13 @@ pub fn distcheck(build: &Build) {
 
 /// Test the build system itself
 pub fn bootstrap(build: &Build) {
-    let mut cmd = Command::new(&build.cargo);
+    let mut cmd = Command::new(&build.initial_cargo);
     cmd.arg("test")
        .current_dir(build.src.join("src/bootstrap"))
        .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
        .env("RUSTC_BOOTSTRAP", "1")
-       .env("RUSTC", &build.rustc);
-    if build.flags.cmd.no_fail_fast() {
+       .env("RUSTC", &build.initial_rustc);
+    if !build.fail_fast {
         cmd.arg("--no-fail-fast");
     }
     cmd.arg("--").args(&build.flags.cmd.test_args());
