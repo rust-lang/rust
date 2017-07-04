@@ -158,6 +158,12 @@ fn show_version() {
     println!("{}", env!("CARGO_PKG_VERSION"));
 }
 
+// FIXME: false positive for needless_lifetimes
+#[allow(needless_lifetimes)]
+fn has_prefix<'a, T: PartialEq, I: Iterator<Item = &'a T>>(v: &'a [T], itr: I) -> bool {
+    v.iter().zip(itr).all(|(a, b)| a == b)
+}
+
 pub fn main() {
     use std::env;
 
@@ -192,26 +198,48 @@ pub fn main() {
 
         let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
 
-        let current_dir = std::env::current_dir();
+        let package_index = {
+                let mut iterator = metadata.packages.iter();
 
-        let package_index = metadata
-            .packages
-            .iter()
-            .position(|package| {
-                let package_manifest_path = Path::new(&package.manifest_path);
                 if let Some(ref manifest_path) = manifest_path {
-                    package_manifest_path == manifest_path
+                    iterator.position(|package| {
+                        let package_manifest_path = Path::new(&package.manifest_path);
+                        package_manifest_path == manifest_path
+                    })
                 } else {
-                    let current_dir = current_dir
-                        .as_ref()
-                        .expect("could not read current directory");
-                    let package_manifest_directory = package_manifest_path
-                        .parent()
-                        .expect("could not find parent directory of package manifest");
-                    package_manifest_directory == current_dir
+                    let current_dir = std::env::current_dir()
+                        .expect("could not read current directory")
+                        .canonicalize()
+                        .expect("current directory cannot be canonicalized");
+                    let current_dir_components = current_dir.components().collect::<Vec<_>>();
+
+                    // This gets the most-recent parent (the one that takes the fewest `cd ..`s to
+                    // reach).
+                    iterator
+                        .enumerate()
+                        .filter_map(|(i, package)| {
+                            let package_manifest_path = Path::new(&package.manifest_path);
+                            let canonical_path = package_manifest_path
+                                .parent()
+                                .expect("could not find parent directory of package manifest")
+                                .canonicalize()
+                                .expect("package directory cannot be canonicalized");
+
+                            // TODO: We can do this in `O(1)` by combining the `len` and the
+                            //       iteration.
+                            let components = canonical_path.components().collect::<Vec<_>>();
+                            if has_prefix(&current_dir_components, components.iter()) {
+                                Some((i, components.len()))
+                            } else {
+                                None
+                            }
+                        })
+                        .max_by_key(|&(_, length)| length)
+                        .map(|(i, _)| i)
                 }
-            })
+            }
             .expect("could not find matching package");
+
         let package = metadata.packages.remove(package_index);
         for target in package.targets {
             let args = std::env::args().skip(2);
