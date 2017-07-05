@@ -1233,21 +1233,24 @@
         onEach(e.getElementsByClassName('associatedconstant'), func);
     });
 
-    var span = document.createElement('span');
-    span.className = 'toggle-label';
-    span.style.display = 'none';
-    span.innerHTML = '&nbsp;Expand&nbsp;description';
+    function createToggle() {
+        var span = document.createElement('span');
+        span.className = 'toggle-label';
+        span.style.display = 'none';
+        span.innerHTML = '&nbsp;Expand&nbsp;description';
 
-    var mainToggle = toggle.cloneNode(true);
-    mainToggle.appendChild(span);
+        var mainToggle = toggle.cloneNode(true);
+        mainToggle.appendChild(span);
 
-    var wrapper = document.createElement('div');
-    wrapper.className = 'toggle-wrapper';
-    wrapper.appendChild(mainToggle);
+        var wrapper = document.createElement('div');
+        wrapper.className = 'toggle-wrapper';
+        wrapper.appendChild(mainToggle);
+        return wrapper;
+    }
 
     onEach(document.getElementById('main').getElementsByClassName('docblock'), function(e) {
         if (e.parentNode.id === "main") {
-            e.parentNode.insertBefore(wrapper, e);
+            e.parentNode.insertBefore(createToggle(), e);
         }
     });
 
@@ -1273,18 +1276,22 @@
         }
     })
 
-    var span = document.createElement('span');
-    span.className = 'toggle-label';
-    span.style.display = 'none';
-    span.innerHTML = '&nbsp;Expand&nbsp;attributes';
-    toggle.appendChild(span);
+    function createToggleWrapper() {
+        var span = document.createElement('span');
+        span.className = 'toggle-label';
+        span.style.display = 'none';
+        span.innerHTML = '&nbsp;Expand&nbsp;attributes';
+        toggle.appendChild(span);
 
-    var wrapper = document.createElement('div');
-    wrapper.className = 'toggle-wrapper toggle-attributes';
-    wrapper.appendChild(toggle);
+        var wrapper = document.createElement('div');
+        wrapper.className = 'toggle-wrapper toggle-attributes';
+        wrapper.appendChild(toggle);
+        return wrapper;
+    }
+
     onEach(document.getElementById('main').getElementsByTagName('pre'), function(e) {
         onEach(e.getElementsByClassName('attributes'), function(i_e) {
-            i_e.parentNode.insertBefore(wrapper, i_e);
+            i_e.parentNode.insertBefore(createToggleWrapper(), i_e);
             collapseDocs(i_e.previousSibling.childNodes[0]);
         });
     });
