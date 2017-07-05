@@ -478,7 +478,7 @@ impl<'a> FmtVisitor<'a> {
             config: self.config,
         };
 
-        let list = try_opt!(write_list(items, &fmt));
+        let list = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
         result.push_str(&list);
         result.push('\n');
         Some(result)
@@ -2539,7 +2539,7 @@ fn rewrite_where_clause_rfc_style(
         ends_with_newline: true,
         config: context.config,
     };
-    let preds_str = try_opt!(write_list(items, &fmt));
+    let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
     Some(format!(
         "{}where\n{}{}",

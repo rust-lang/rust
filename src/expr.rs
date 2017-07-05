@@ -1707,7 +1707,7 @@ impl Rewrite for ast::Arm {
             ends_with_newline: false,
             config: context.config,
         };
-        let pats_str = try_opt!(write_list(items, &fmt));
+        let pats_str = try_opt!(write_list(&items, &fmt));
 
         let guard_shape = if pats_str.contains('\n') {
             shape.with_max_width(context.config)

@@ -157,7 +157,7 @@ where
 // TODO: add unit tests
 pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
 where
-    I: IntoIterator<Item = T>,
+    I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
 {
     let tactic = formatting.tactic;
