@@ -276,7 +276,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         {
-            // Some code somewhere seems to rely on us *not* removing the allocation when we yield this kind of error.
+            // deallocate_local in eval_context.rs relies on nothing actually having changed when this error occurs.
             // So we do this test in advance.
             let alloc = self.get(ptr.alloc_id)?;
             if alloc.static_kind != StaticKind::NotStatic {
