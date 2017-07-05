@@ -317,15 +317,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  target: Ty<'tcx>)
                                  -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
-        while let (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) = (&a.sty, &b.sty) {
-            if a_def != b_def || !a_def.is_struct() {
-                break;
-            }
-            match a_def.struct_variant().fields.last() {
-                Some(f) => {
-                    a = f.ty(self, a_substs);
-                    b = f.ty(self, b_substs);
-                }
+        loop {
+            match (&a.sty, &b.sty) {
+                (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs))
+                        if a_def == b_def && a_def.is_struct() => {
+                    if let Some(f) = a_def.struct_variant().fields.last() {
+                        a = f.ty(self, a_substs);
+                        b = f.ty(self, b_substs);
+                    } else {
+                        break;
+                    }
+                },
+                (&TyTuple(a_tys, _), &TyTuple(b_tys, _))
+                        if a_tys.len() == b_tys.len() => {
+                    if let Some(a_last) = a_tys.last() {
+                        a = a_last;
+                        b = b_tys.last().unwrap();
+                    } else {
+                        break;
+                    }
+                },
                 _ => break,
             }
         }
@@ -679,7 +690,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
             TyAnon(def_id, _) |
-            TyFnDef(def_id, ..) => self.def_id(def_id),
+            TyFnDef(def_id, _) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
                 self.hash(f.unsafety());

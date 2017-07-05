@@ -26,6 +26,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(rustc_diagnostic_macros)]
 #![feature(placement_in_syntax)]
 #![feature(collection_placement)]
+#![feature(nonzero)]
 
 #[macro_use] extern crate log;
 extern crate graphviz as dot;
@@ -40,10 +41,12 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+extern crate core; // for NonZero
 
 pub mod diagnostics;
 
 mod build;
+pub mod dataflow;
 mod hair;
 mod shim;
 pub mod transform;

@@ -13,5 +13,5 @@ note: candidate #1 is defined in the trait `issue_41652_b::Tr`
    | |__________________________^
    = help: to disambiguate the method call, write `issue_41652_b::Tr::f(3)` instead
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

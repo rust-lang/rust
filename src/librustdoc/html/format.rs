@@ -1019,7 +1019,11 @@ impl fmt::Display for clean::Import {
                 }
             }
             clean::Import::Glob(ref src) => {
-                write!(f, "use {}::*;", *src)
+                if src.path.segments.is_empty() {
+                    write!(f, "use *;")
+                } else {
+                    write!(f, "use {}::*;", *src)
+                }
             }
         }
     }

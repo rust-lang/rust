@@ -4,5 +4,5 @@ error[E0423]: expected function, found macro `assert`
 12 |     assert(true);
    |     ^^^^^^ did you mean `assert!(...)`?
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

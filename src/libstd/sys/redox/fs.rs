@@ -420,12 +420,19 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    canonicalize(p)
+    let fd = cvt(syscall::open(p.to_str().unwrap(), syscall::O_SYMLINK | syscall::O_RDONLY))?;
+    let mut buf: [u8; 4096] = [0; 4096];
+    let count = cvt(syscall::read(fd, &mut buf))?;
+    cvt(syscall::close(fd))?;
+    Ok(PathBuf::from(unsafe { String::from_utf8_unchecked(Vec::from(&buf[..count])) }))
 }
 
-pub fn symlink(_src: &Path, _dst: &Path) -> io::Result<()> {
-    ::sys_common::util::dumb_print(format_args!("Symlink\n"));
-    unimplemented!();
+pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
+    let fd = cvt(syscall::open(dst.to_str().unwrap(),
+                               syscall::O_SYMLINK | syscall::O_CREAT | syscall::O_WRONLY | 0o777))?;
+    cvt(syscall::write(fd, src.to_str().unwrap().as_bytes()))?;
+    cvt(syscall::close(fd))?;
+    Ok(())
 }
 
 pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {

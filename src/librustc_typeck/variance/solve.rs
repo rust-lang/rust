@@ -36,15 +36,18 @@ struct SolveContext<'a, 'tcx: 'a> {
 pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariancesMap {
     let ConstraintContext { terms_cx, dependencies, constraints, .. } = constraints_cx;
 
-    let solutions = terms_cx.inferred_infos
-        .iter()
-        .map(|ii| ii.initial_variance)
-        .collect();
+    let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
+    for &(id, ref variances) in &terms_cx.lang_items {
+        let InferredIndex(start) = terms_cx.inferred_starts[&id];
+        for (i, &variance) in variances.iter().enumerate() {
+            solutions[start + i] = variance;
+        }
+    }
 
     let mut solutions_cx = SolveContext {
-        terms_cx: terms_cx,
-        constraints: constraints,
-        solutions: solutions,
+        terms_cx,
+        constraints,
+        solutions,
     };
     solutions_cx.solve();
     let variances = solutions_cx.create_map();
@@ -71,12 +74,9 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 let old_value = self.solutions[inferred];
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
-                    debug!("Updating inferred {} (node {}) \
+                    debug!("Updating inferred {} \
                             from {:?} to {:?} due to {:?}",
                            inferred,
-                           self.terms_cx
-                                   .inferred_infos[inferred]
-                               .param_id,
                            old_value,
                            new_value,
                            term);
@@ -89,49 +89,28 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
     }
 
     fn create_map(&self) -> FxHashMap<DefId, Rc<Vec<ty::Variance>>> {
-        // Collect all the variances for a particular item and stick
-        // them into the variance map. We rely on the fact that we
-        // generate all the inferreds for a particular item
-        // consecutively (that is, we collect solutions for an item
-        // until we see a new item id, and we assume (1) the solutions
-        // are in the same order as the type parameters were declared
-        // and (2) all solutions or a given item appear before a new
-        // item id).
-
         let tcx = self.terms_cx.tcx;
 
-        let mut map = FxHashMap();
-
         let solutions = &self.solutions;
-        let inferred_infos = &self.terms_cx.inferred_infos;
-        let mut index = 0;
-        let num_inferred = self.terms_cx.num_inferred();
-        while index < num_inferred {
-            let item_id = inferred_infos[index].item_id;
+        self.terms_cx.inferred_starts.iter().map(|(&id, &InferredIndex(start))| {
+            let def_id = tcx.hir.local_def_id(id);
+            let generics = tcx.generics_of(def_id);
 
-            let mut item_variances = vec![];
+            let mut variances = solutions[start..start+generics.count()].to_vec();
 
-            while index < num_inferred && inferred_infos[index].item_id == item_id {
-                let info = &inferred_infos[index];
-                let variance = solutions[index];
-                debug!("Index {} Info {} Variance {:?}",
-                       index,
-                       info.index,
-                       variance);
+            debug!("id={} variances={:?}", id, variances);
 
-                assert_eq!(item_variances.len(), info.index);
-                item_variances.push(variance);
-                index += 1;
+            // Functions can have unused type parameters: make those invariant.
+            if let ty::TyFnDef(..) = tcx.type_of(def_id).sty {
+                for variance in &mut variances {
+                    if *variance == ty::Bivariant {
+                        *variance = ty::Invariant;
+                    }
+                }
             }
 
-            debug!("item_id={} item_variances={:?}", item_id, item_variances);
-
-            let item_def_id = tcx.hir.local_def_id(item_id);
-
-            map.insert(item_def_id, Rc::new(item_variances));
-        }
-
-        map
+            (def_id, Rc::new(variances))
+        }).collect()
     }
 
     fn evaluate(&self, term: VarianceTermPtr<'a>) -> ty::Variance {

@@ -24,7 +24,7 @@ pub fn let_<'var, VAR, F: for<'v: 'var> Fn(Expr<'v, VAR>) -> Expr<'v, VAR>>
 }
 
 fn main() {
-    let ex = |x| {
-        let_(add(x,x), |y| { //~ ERROR type annotations needed
+    let ex = |x| { //~ ERROR type annotations needed
+        let_(add(x,x), |y| {
             let_(add(x, x), |x|x)})};
 }

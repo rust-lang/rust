@@ -73,15 +73,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+        if let Some(mut err) = self.demand_coerce_diag(expr, checked_ty, expected) {
+            err.emit();
+        }
+    }
+
     // Checks that the type of `expr` can be coerced to `expected`.
     //
     // NB: This code relies on `self.diverges` to be accurate.  In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
-    pub fn demand_coerce(&self,
-                         expr: &hir::Expr,
-                         checked_ty: Ty<'tcx>,
-                         expected: Ty<'tcx>) {
+    pub fn demand_coerce_diag(&self,
+                              expr: &hir::Expr,
+                              checked_ty: Ty<'tcx>,
+                              expected: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
         let expected = self.resolve_type_vars_with_obligations(expected);
 
         if let Err(e) = self.try_coerce(expr, checked_ty, self.diverges.get(), expected) {
@@ -105,8 +111,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       self.get_best_match(&suggestions).join("\n")));
                 }
             }
-            err.emit();
+            return Some(err);
         }
+        None
     }
 
     fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
@@ -143,12 +150,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn has_no_input_arg(&self, method: &AssociatedItem) -> bool {
         match method.def() {
             Def::Method(def_id) => {
-                match self.tcx.type_of(def_id).sty {
-                    ty::TypeVariants::TyFnDef(_, _, sig) => {
-                        sig.inputs().skip_binder().len() == 1
-                    }
-                    _ => false,
-                }
+                self.tcx.fn_sig(def_id).inputs().skip_binder().len() == 1
             }
             _ => false,
         }

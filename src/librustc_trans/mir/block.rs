@@ -28,6 +28,7 @@ use type_of;
 use type_::Type;
 
 use syntax::symbol::Symbol;
+use syntax_pos::Pos;
 
 use std::cmp;
 
@@ -333,6 +334,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let filename = Symbol::intern(&loc.file.name).as_str();
                 let filename = C_str_slice(bcx.ccx, filename);
                 let line = C_u32(bcx.ccx, loc.line as u32);
+                let col = C_u32(bcx.ccx, loc.col.to_usize() as u32 + 1);
 
                 // Put together the arguments to the panic entry point.
                 let (lang_item, args, const_err) = match *msg {
@@ -347,29 +349,29 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     index: index as u64
                                 }));
 
-                        let file_line = C_struct(bcx.ccx, &[filename, line], false);
-                        let align = llalign_of_min(bcx.ccx, common::val_ty(file_line));
-                        let file_line = consts::addr_of(bcx.ccx,
-                                                        file_line,
-                                                        align,
-                                                        "panic_bounds_check_loc");
+                        let file_line_col = C_struct(bcx.ccx, &[filename, line, col], false);
+                        let align = llalign_of_min(bcx.ccx, common::val_ty(file_line_col));
+                        let file_line_col = consts::addr_of(bcx.ccx,
+                                                            file_line_col,
+                                                            align,
+                                                            "panic_bounds_check_loc");
                         (lang_items::PanicBoundsCheckFnLangItem,
-                         vec![file_line, index, len],
+                         vec![file_line_col, index, len],
                          const_err)
                     }
                     mir::AssertMessage::Math(ref err) => {
                         let msg_str = Symbol::intern(err.description()).as_str();
                         let msg_str = C_str_slice(bcx.ccx, msg_str);
-                        let msg_file_line = C_struct(bcx.ccx,
-                                                     &[msg_str, filename, line],
+                        let msg_file_line_col = C_struct(bcx.ccx,
+                                                     &[msg_str, filename, line, col],
                                                      false);
-                        let align = llalign_of_min(bcx.ccx, common::val_ty(msg_file_line));
-                        let msg_file_line = consts::addr_of(bcx.ccx,
-                                                            msg_file_line,
-                                                            align,
-                                                            "panic_loc");
+                        let align = llalign_of_min(bcx.ccx, common::val_ty(msg_file_line_col));
+                        let msg_file_line_col = consts::addr_of(bcx.ccx,
+                                                                msg_file_line_col,
+                                                                align,
+                                                                "panic_loc");
                         (lang_items::PanicFnLangItem,
-                         vec![msg_file_line],
+                         vec![msg_file_line_col],
                          Some(ErrKind::Math(err.clone())))
                     }
                 };
@@ -404,20 +406,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
 
-                let (instance, mut llfn, sig) = match callee.ty.sty {
-                    ty::TyFnDef(def_id, substs, sig) => {
+                let (instance, mut llfn) = match callee.ty.sty {
+                    ty::TyFnDef(def_id, substs) => {
                         (Some(monomorphize::resolve(bcx.ccx.shared(), def_id, substs)),
-                         None,
-                         sig)
+                         None)
                     }
-                    ty::TyFnPtr(sig) => {
-                        (None,
-                         Some(callee.immediate()),
-                         sig)
+                    ty::TyFnPtr(_) => {
+                        (None, Some(callee.immediate()))
                     }
                     _ => bug!("{} is not callable", callee.ty)
                 };
                 let def = instance.map(|i| i.def);
+                let sig = callee.ty.fn_sig(bcx.tcx());
                 let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
                 let abi = sig.abi;
 

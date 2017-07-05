@@ -180,7 +180,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let val = match *kind {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.ty.sty {
-                            ty::TyFnDef(def_id, substs, _) => {
+                            ty::TyFnDef(def_id, substs) => {
                                 OperandValue::Immediate(
                                     callee::resolve_and_get_fn(bcx.ccx, def_id, substs))
                             }

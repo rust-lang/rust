@@ -45,7 +45,8 @@ use syntax_pos::{DUMMY_SP, Span};
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self,
-                                     errors: &Vec<FulfillmentError<'tcx>>) {
+                                     errors: &Vec<FulfillmentError<'tcx>>,
+                                     body_id: Option<hir::BodyId>) {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -105,7 +106,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         for (error, suppressed) in errors.iter().zip(is_suppressed) {
             if !suppressed {
-                self.report_fulfillment_error(error);
+                self.report_fulfillment_error(error, body_id);
             }
         }
     }
@@ -148,7 +149,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         false
     }
 
-    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) {
+    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>,
+                                body_id: Option<hir::BodyId>) {
         debug!("report_fulfillment_errors({:?})", error);
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref e) => {
@@ -158,7 +160,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.report_projection_error(&error.obligation, e);
             }
             FulfillmentErrorCode::CodeAmbiguity => {
-                self.maybe_report_ambiguity(&error.obligation);
+                self.maybe_report_ambiguity(&error.obligation, body_id);
             }
             FulfillmentErrorCode::CodeSubtypeError(ref expected_found, ref err) => {
                 self.report_mismatched_types(&error.obligation.cause,
@@ -869,14 +871,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>) {
+    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>,
+                              body_id: Option<hir::BodyId>) {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
         // ambiguous impls. The latter *ought* to be a
         // coherence violation, so we don't report it here.
 
         let predicate = self.resolve_type_vars_if_possible(&obligation.predicate);
-        let body_id = hir::BodyId { node_id: obligation.cause.body_id };
         let span = obligation.cause.span;
 
         debug!("maybe_report_ambiguity(predicate={:?}, obligation={:?})",
@@ -953,7 +955,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
                     // both must be type variables, or the other would've been instantiated
                     assert!(a.is_ty_var() && b.is_ty_var());
-                    self.need_type_info(hir::BodyId { node_id: obligation.cause.body_id },
+                    self.need_type_info(body_id,
                                         obligation.cause.span,
                                         a);
                 }
@@ -1058,7 +1060,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note("slice and array elements must have `Sized` type");
             }
             ObligationCauseCode::TupleElem => {
-                err.note("tuple elements must have `Sized` type");
+                err.note("only the last element of a tuple may have a dynamically sized type");
             }
             ObligationCauseCode::ProjectionWf(data) => {
                 err.note(&format!("required so that the projection `{}` is well-formed",
@@ -1088,12 +1090,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");
             }
-            ObligationCauseCode::ReturnType => {
+            ObligationCauseCode::SizedReturnType => {
                 err.note("the return type of a function must have a \
                           statically known size");
             }
             ObligationCauseCode::AssignmentLhsSized => {
                 err.note("the left-hand-side of an assignment must have a statically known size");
+            }
+            ObligationCauseCode::TupleInitializerSized => {
+                err.note("tuples must have a statically known size to be initialized");
             }
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
@@ -1133,6 +1138,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               but not on the corresponding trait method",
                              predicate));
             }
+            ObligationCauseCode::ReturnType(_) |
+            ObligationCauseCode::BlockTailExpression(_) => (),
         }
     }
 

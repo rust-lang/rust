@@ -12,8 +12,9 @@
 // recursively.
 
 use rustc::hir::map as hir_map;
-use rustc::session::{CompileResult, Session};
+use rustc::session::Session;
 use rustc::hir::def::{Def, CtorKind};
+use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
@@ -86,7 +87,9 @@ impl<'a, 'hir: 'a> Visitor<'hir> for CheckCrateVisitor<'a, 'hir> {
     }
 }
 
-pub fn check_crate<'hir>(sess: &Session, hir_map: &hir_map::Map<'hir>) -> CompileResult {
+pub fn check_crate<'hir>(sess: &Session, hir_map: &hir_map::Map<'hir>)
+                         -> Result<(), ErrorReported>
+{
     let mut visitor = CheckCrateVisitor {
         sess: sess,
         hir_map: hir_map,

@@ -8,5 +8,5 @@ error[E0599]: no method named `foo` found for type `Bar` in the current scope
    = note: the following trait defines an item `foo`, perhaps you need to implement it:
            candidate #1: `Foo`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

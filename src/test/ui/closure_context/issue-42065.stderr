@@ -12,5 +12,5 @@ note: closure cannot be invoked more than once because it moves the variable `di
 16 |         for (key, value) in dict {
    |                             ^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

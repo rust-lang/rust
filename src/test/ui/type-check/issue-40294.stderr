@@ -12,5 +12,5 @@ error[E0283]: type annotations required: cannot resolve `&'a T: Foo`
    |
    = note: required by `Foo`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

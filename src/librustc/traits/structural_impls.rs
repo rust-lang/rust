@@ -189,9 +189,11 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 tcx.lift(&ty).map(super::ObjectCastObligation)
             }
             super::AssignmentLhsSized => Some(super::AssignmentLhsSized),
+            super::TupleInitializerSized => Some(super::TupleInitializerSized),
             super::StructInitializerSized => Some(super::StructInitializerSized),
             super::VariableType(id) => Some(super::VariableType(id)),
-            super::ReturnType => Some(super::ReturnType),
+            super::ReturnType(id) => Some(super::ReturnType(id)),
+            super::SizedReturnType => Some(super::SizedReturnType),
             super::RepeatVec => Some(super::RepeatVec),
             super::FieldSized => Some(super::FieldSized),
             super::ConstSized => Some(super::ConstSized),
@@ -213,34 +215,19 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                     lint_id: lint_id,
                 })
             }
-            super::ExprAssignable => {
-                Some(super::ExprAssignable)
-            }
+            super::ExprAssignable => Some(super::ExprAssignable),
             super::MatchExpressionArm { arm_span, source } => {
                 Some(super::MatchExpressionArm { arm_span: arm_span,
                                                  source: source })
             }
-            super::IfExpression => {
-                Some(super::IfExpression)
-            }
-            super::IfExpressionWithNoElse => {
-                Some(super::IfExpressionWithNoElse)
-            }
-            super::EquatePredicate => {
-                Some(super::EquatePredicate)
-            }
-            super::MainFunctionType => {
-                Some(super::MainFunctionType)
-            }
-            super::StartFunctionType => {
-                Some(super::StartFunctionType)
-            }
-            super::IntrinsicType => {
-                Some(super::IntrinsicType)
-            }
-            super::MethodReceiver => {
-                Some(super::MethodReceiver)
-            }
+            super::IfExpression => Some(super::IfExpression),
+            super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
+            super::EquatePredicate => Some(super::EquatePredicate),
+            super::MainFunctionType => Some(super::MainFunctionType),
+            super::StartFunctionType => Some(super::StartFunctionType),
+            super::IntrinsicType => Some(super::IntrinsicType),
+            super::MethodReceiver => Some(super::MethodReceiver),
+            super::BlockTailExpression(id) => Some(super::BlockTailExpression(id)),
         }
     }
 }
@@ -490,14 +477,17 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::TupleElem |
             super::ItemObligation(_) |
             super::AssignmentLhsSized |
+            super::TupleInitializerSized |
             super::StructInitializerSized |
             super::VariableType(_) |
-            super::ReturnType |
+            super::ReturnType(_) |
+            super::SizedReturnType |
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized |
             super::ConstSized |
             super::SharedStatic |
+            super::BlockTailExpression(_) |
             super::CompareImplMethodObligation { .. } => self.clone(),
 
             super::ProjectionWf(proj) => super::ProjectionWf(proj.fold_with(folder)),
@@ -535,14 +525,17 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::TupleElem |
             super::ItemObligation(_) |
             super::AssignmentLhsSized |
+            super::TupleInitializerSized |
             super::StructInitializerSized |
             super::VariableType(_) |
-            super::ReturnType |
+            super::ReturnType(_) |
+            super::SizedReturnType |
             super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized |
             super::ConstSized |
             super::SharedStatic |
+            super::BlockTailExpression(_) |
             super::CompareImplMethodObligation { .. } => false,
 
             super::ProjectionWf(proj) => proj.visit_with(visitor),

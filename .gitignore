@@ -51,6 +51,7 @@
 .hg/
 .hgignore
 .idea
+*.iml
 __pycache__/
 *.py[cod]
 *$py.class

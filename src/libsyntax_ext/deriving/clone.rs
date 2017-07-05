@@ -167,7 +167,7 @@ fn cs_clone(name: &str,
             all_fields = af;
             vdata = vdata_;
         }
-        EnumMatching(_, variant, ref af) => {
+        EnumMatching(.., variant, ref af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.name]);
             all_fields = af;
             vdata = &variant.node.data;

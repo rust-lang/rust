@@ -1404,19 +1404,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // provide an impl, but only for suitable `fn` pointers
-            ty::TyFnDef(.., ty::Binder(ty::FnSig {
-                unsafety: hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                variadic: false,
-                ..
-            })) |
-            ty::TyFnPtr(ty::Binder(ty::FnSig {
-                unsafety: hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                variadic: false,
-                ..
-            })) => {
-                candidates.vec.push(FnPointerCandidate);
+            ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                if let ty::Binder(ty::FnSig {
+                    unsafety: hir::Unsafety::Normal,
+                    abi: Abi::Rust,
+                    variadic: false,
+                    ..
+                }) = self_ty.fn_sig(self.tcx()) {
+                    candidates.vec.push(FnPointerCandidate);
+                }
             }
 
             _ => { }
@@ -1653,6 +1649,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // Struct<T> -> Struct<U>.
             (&ty::TyAdt(def_id_a, _), &ty::TyAdt(def_id_b, _)) if def_id_a.is_struct() => {
                 def_id_a == def_id_b
+            }
+
+            // (.., T) -> (.., U).
+            (&ty::TyTuple(tys_a, _), &ty::TyTuple(tys_b, _)) => {
+                tys_a.len() == tys_b.len()
             }
 
             _ => false
@@ -2348,7 +2349,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // ok to skip binder; it is reintroduced below
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let sig = self_ty.fn_sig();
+        let sig = self_ty.fn_sig(self.tcx());
         let trait_ref =
             self.tcx().closure_trait_ref_and_return_type(obligation.predicate.def_id(),
                                                          self_ty,
@@ -2356,11 +2357,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                          util::TupleArgumentsFlag::Yes)
             .map_bound(|(trait_ref, _)| trait_ref);
 
+        let Normalized { value: trait_ref, obligations } =
+            project::normalize_with_depth(self,
+                                          obligation.param_env,
+                                          obligation.cause.clone(),
+                                          obligation.recursion_depth + 1,
+                                          &trait_ref);
+
         self.confirm_poly_trait_refs(obligation.cause.clone(),
                                      obligation.param_env,
                                      obligation.predicate.to_poly_trait_ref(),
                                      trait_ref)?;
-        Ok(VtableFnPointerData { fn_ty: self_ty, nested: vec![] })
+        Ok(VtableFnPointerData { fn_ty: self_ty, nested: obligations })
     }
 
     fn confirm_closure_candidate(&mut self,
@@ -2588,8 +2596,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let inner_source = field.subst(tcx, substs_a);
                 let inner_target = field.subst(tcx, substs_b);
 
-                // Check that the source structure with the target's
-                // type parameters is a subtype of the target.
+                // Check that the source struct with the target's
+                // unsized parameters is equal to the target.
                 let params = substs_a.iter().enumerate().map(|(i, &k)| {
                     if ty_params.contains(i) {
                         Kind::from(substs_b.type_at(i))
@@ -2612,6 +2620,37 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     obligation.recursion_depth + 1,
                     inner_source,
                     &[inner_target]));
+            }
+
+            // (.., T) -> (.., U).
+            (&ty::TyTuple(tys_a, _), &ty::TyTuple(tys_b, _)) => {
+                assert_eq!(tys_a.len(), tys_b.len());
+
+                // The last field of the tuple has to exist.
+                let (a_last, a_mid) = if let Some(x) = tys_a.split_last() {
+                    x
+                } else {
+                    return Err(Unimplemented);
+                };
+                let b_last = tys_b.last().unwrap();
+
+                // Check that the source tuple with the target's
+                // last element is equal to the target.
+                let new_tuple = tcx.mk_tup(a_mid.iter().chain(Some(b_last)), false);
+                let InferOk { obligations, .. } =
+                    self.infcx.at(&obligation.cause, obligation.param_env)
+                              .eq(target, new_tuple)
+                              .map_err(|_| Unimplemented)?;
+                self.inferred_obligations.extend(obligations);
+
+                // Construct the nested T: Unsize<U> predicate.
+                nested.push(tcx.predicate_for_trait_def(
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.predicate.def_id(),
+                    obligation.recursion_depth + 1,
+                    a_last,
+                    &[b_last]));
             }
 
             _ => bug!()
@@ -2799,7 +2838,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                       substs: ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let closure_type = self.infcx.closure_type(closure_def_id)
+        let closure_type = self.infcx.fn_sig(closure_def_id)
             .subst(self.tcx(), substs.substs);
         let ty::Binder((trait_ref, _)) =
             self.tcx().closure_trait_ref_and_return_type(obligation.predicate.def_id(),

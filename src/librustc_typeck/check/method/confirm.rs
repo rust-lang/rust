@@ -375,7 +375,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
-        let sig = self.tcx.type_of(def_id).fn_sig();
+        let sig = self.tcx.fn_sig(def_id);
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.

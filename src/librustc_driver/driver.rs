@@ -13,7 +13,8 @@ use rustc::hir::lowering::lower_crate;
 use rustc::ich::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
-use rustc::session::{Session, CompileResult, compile_result_from_err_count};
+use rustc::session::{Session, CompileResult};
+use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType,
                              OutputTypes};
 use rustc::session::search_paths::PathKind;
@@ -23,7 +24,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::traits;
-use rustc::util::common::time;
+use rustc::util::common::{ErrorReported, time};
 use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
 use rustc_borrowck as borrowck;
@@ -78,7 +79,9 @@ pub fn compile_input(sess: &Session,
             }
 
             if control.$point.stop == Compilation::Stop {
-                return compile_result_from_err_count($tsess.err_count());
+                // FIXME: shouldn't this return Err(CompileIncomplete::Stopped)
+                // if there are no errors?
+                return $tsess.compile_status();
             }
         }}
     }
@@ -91,7 +94,7 @@ pub fn compile_input(sess: &Session,
             Ok(krate) => krate,
             Err(mut parse_error) => {
                 parse_error.emit();
-                return Err(1);
+                return Err(CompileIncomplete::Errored(ErrorReported));
             }
         };
 
@@ -194,7 +197,7 @@ pub fn compile_input(sess: &Session,
                 (control.after_analysis.callback)(&mut state);
 
                 if control.after_analysis.stop == Compilation::Stop {
-                    return result.and_then(|_| Err(0usize));
+                    return result.and_then(|_| Err(CompileIncomplete::Stopped));
                 }
             }
 
@@ -564,7 +567,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                        addl_plugins: Option<Vec<String>>,
                                        make_glob_map: MakeGlobMap,
                                        after_expand: F)
-                                       -> Result<ExpansionResult, usize>
+                                       -> Result<ExpansionResult, CompileIncomplete>
     where F: FnOnce(&ast::Crate) -> CompileResult,
 {
     let time_passes = sess.time_passes();
@@ -636,7 +639,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
         super::describe_lints(&sess.lint_store.borrow(), true);
-        return Err(0);
+        return Err(CompileIncomplete::Stopped);
     }
     sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
@@ -839,7 +842,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                arenas: &'tcx GlobalArenas<'tcx>,
                                                name: &str,
                                                f: F)
-                                               -> Result<R, usize>
+                                               -> Result<R, CompileIncomplete>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
                             ty::CrateAnalysis,
                             IncrementalHashesMap,
@@ -920,6 +923,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // What we need to do constant evaluation.
     passes.push_pass(MIR_CONST, mir::transform::simplify::SimplifyCfg::new("initial"));
     passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);
+    passes.push_pass(MIR_CONST, mir::transform::rustc_peek::SanityCheck);
 
     // What we need to run borrowck etc.
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
@@ -934,7 +938,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // From here on out, regions are gone.
     passes.push_pass(MIR_OPTIMIZED, mir::transform::erase_regions::EraseRegions);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AddCallGuards);
-    passes.push_pass(MIR_OPTIMIZED, borrowck::ElaborateDrops);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::elaborate_drops::ElaborateDrops);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
 
@@ -1018,7 +1022,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // lint warnings and so on -- kindck used to do this abort, but
         // kindck is gone now). -nmatsakis
         if sess.err_count() > 0 {
-            return Ok(f(tcx, analysis, incremental_hashes_map, Err(sess.err_count())));
+            return Ok(f(tcx, analysis, incremental_hashes_map, sess.compile_status()));
         }
 
         analysis.reachable =
@@ -1034,12 +1038,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes, "lint checking", || lint::check_crate(tcx));
 
-        // The above three passes generate errors w/o aborting
-        if sess.err_count() > 0 {
-            return Ok(f(tcx, analysis, incremental_hashes_map, Err(sess.err_count())));
-        }
-
-        Ok(f(tcx, analysis, incremental_hashes_map, Ok(())))
+        return Ok(f(tcx, analysis, incremental_hashes_map, tcx.sess.compile_status()));
     })
 }
 
@@ -1115,11 +1114,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
          "serialize work products",
          move || rustc_incremental::save_work_products(sess));
 
-    if sess.err_count() > 0 {
-        Err(sess.err_count())
-    } else {
-        Ok(())
-    }
+    sess.compile_status()
 }
 
 /// Run the linker on any artifacts that resulted from the LLVM run.

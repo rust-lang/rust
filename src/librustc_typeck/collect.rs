@@ -97,6 +97,7 @@ pub fn provide(providers: &mut Providers) {
         type_param_predicates,
         trait_def,
         adt_def,
+        fn_sig,
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
@@ -447,6 +448,9 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 tcx.generics_of(def_id);
                 tcx.type_of(def_id);
                 tcx.predicates_of(def_id);
+                if let hir::ForeignItemFn(..) = item.node {
+                    tcx.fn_sig(def_id);
+                }
             }
         }
         hir::ItemEnum(ref enum_definition, _) => {
@@ -497,6 +501,9 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
             tcx.predicates_of(def_id);
+            if let hir::ItemFn(..) = it.node {
+                tcx.fn_sig(def_id);
+            }
         }
     }
 }
@@ -511,6 +518,9 @@ fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item_id: ast:
         hir::TraitItemKind::Type(_, Some(_)) |
         hir::TraitItemKind::Method(..) => {
             tcx.type_of(def_id);
+            if let hir::TraitItemKind::Method(..) = trait_item.node {
+                tcx.fn_sig(def_id);
+            }
         }
 
         hir::TraitItemKind::Type(_, None) => {}
@@ -524,6 +534,9 @@ fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: ast::N
     tcx.generics_of(def_id);
     tcx.type_of(def_id);
     tcx.predicates_of(def_id);
+    if let hir::ImplItemKind::Method(..) = tcx.hir.expect_impl_item(impl_item_id).node {
+        tcx.fn_sig(def_id);
+    }
 }
 
 fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -963,10 +976,9 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match tcx.hir.get(node_id) {
         NodeTraitItem(item) => {
             match item.node {
-                TraitItemKind::Method(ref sig, _) => {
-                    let fty = AstConv::ty_of_fn(&icx, sig.unsafety, sig.abi, &sig.decl);
+                TraitItemKind::Method(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
-                    tcx.mk_fn_def(def_id, substs, fty)
+                    tcx.mk_fn_def(def_id, substs)
                 }
                 TraitItemKind::Const(ref ty, _) |
                 TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
@@ -978,10 +990,9 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeImplItem(item) => {
             match item.node {
-                ImplItemKind::Method(ref sig, _) => {
-                    let fty = AstConv::ty_of_fn(&icx, sig.unsafety, sig.abi, &sig.decl);
+                ImplItemKind::Method(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
-                    tcx.mk_fn_def(def_id, substs, fty)
+                    tcx.mk_fn_def(def_id, substs)
                 }
                 ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
                 ImplItemKind::Type(ref ty) => {
@@ -1001,10 +1012,9 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemTy(ref t, _) | ItemImpl(.., ref t, _) => {
                     icx.to_ty(t)
                 }
-                ItemFn(ref decl, unsafety, _, abi, _, _) => {
-                    let tofd = AstConv::ty_of_fn(&icx, unsafety, abi, &decl);
+                ItemFn(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
-                    tcx.mk_fn_def(def_id, substs, tofd)
+                    tcx.mk_fn_def(def_id, substs)
                 }
                 ItemEnum(..) |
                 ItemStruct(..) |
@@ -1029,11 +1039,10 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeForeignItem(foreign_item) => {
-            let abi = tcx.hir.get_foreign_abi(node_id);
-
             match foreign_item.node {
-                ForeignItemFn(ref fn_decl, _, _) => {
-                    compute_type_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
+                ForeignItemFn(..) => {
+                    let substs = Substs::identity_for_item(tcx, def_id);
+                    tcx.mk_fn_def(def_id, substs)
                 }
                 ForeignItemStatic(ref t, _) => icx.to_ty(t)
             }
@@ -1041,21 +1050,13 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeStructCtor(&ref def) |
         NodeVariant(&Spanned { node: hir::Variant_ { data: ref def, .. }, .. }) => {
-            let ty = tcx.type_of(tcx.hir.get_parent_did(node_id));
             match *def {
-                VariantData::Unit(..) | VariantData::Struct(..) => ty,
-                VariantData::Tuple(ref fields, _) => {
-                    let inputs = fields.iter().map(|f| {
-                        tcx.type_of(tcx.hir.local_def_id(f.id))
-                    });
+                VariantData::Unit(..) | VariantData::Struct(..) => {
+                    tcx.type_of(tcx.hir.get_parent_did(node_id))
+                }
+                VariantData::Tuple(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
-                    tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(
-                        inputs,
-                        ty,
-                        false,
-                        hir::Unsafety::Normal,
-                        abi::Abi::Rust
-                    )))
+                    tcx.mk_fn_def(def_id, substs)
                 }
             }
         }
@@ -1101,6 +1102,58 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         x => {
             bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
+        }
+    }
+}
+
+fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    def_id: DefId)
+                    -> ty::PolyFnSig<'tcx> {
+    use rustc::hir::map::*;
+    use rustc::hir::*;
+
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+
+    let icx = ItemCtxt::new(tcx, def_id);
+
+    match tcx.hir.get(node_id) {
+        NodeTraitItem(&hir::TraitItem { node: TraitItemKind::Method(ref sig, _), .. }) |
+        NodeImplItem(&hir::ImplItem { node: ImplItemKind::Method(ref sig, _), .. }) => {
+            AstConv::ty_of_fn(&icx, sig.unsafety, sig.abi, &sig.decl)
+        }
+
+        NodeItem(&hir::Item { node: ItemFn(ref decl, unsafety, _, abi, _, _), .. }) => {
+            AstConv::ty_of_fn(&icx, unsafety, abi, decl)
+        }
+
+        NodeForeignItem(&hir::ForeignItem { node: ForeignItemFn(ref fn_decl, _, _), .. }) => {
+            let abi = tcx.hir.get_foreign_abi(node_id);
+            compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
+        }
+
+        NodeStructCtor(&VariantData::Tuple(ref fields, _)) |
+        NodeVariant(&Spanned { node: hir::Variant_ {
+            data: VariantData::Tuple(ref fields, _), ..
+        }, .. }) => {
+            let ty = tcx.type_of(tcx.hir.get_parent_did(node_id));
+            let inputs = fields.iter().map(|f| {
+                tcx.type_of(tcx.hir.local_def_id(f.id))
+            });
+            ty::Binder(tcx.mk_fn_sig(
+                inputs,
+                ty,
+                false,
+                hir::Unsafety::Normal,
+                abi::Abi::Rust
+            ))
+        }
+
+        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+            tcx.typeck_tables_of(def_id).closure_tys[&node_id]
+        }
+
+        x => {
+            bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
     }
 }
@@ -1502,12 +1555,12 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
     }
 }
 
-fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
+fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
     decl: &hir::FnDecl,
     abi: abi::Abi)
-    -> Ty<'tcx>
+    -> ty::PolyFnSig<'tcx>
 {
     let fty = AstConv::ty_of_fn(&ItemCtxt::new(tcx, def_id), hir::Unsafety::Unsafe, abi, decl);
 
@@ -1533,8 +1586,7 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
         }
     }
 
-    let substs = Substs::identity_for_item(tcx, def_id);
-    tcx.mk_fn_def(def_id, substs, fty)
+    fty
 }
 
 fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

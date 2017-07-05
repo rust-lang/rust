@@ -168,7 +168,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
-        mode: matches.opt_str("mode").unwrap().parse().ok().expect("invalid mode"),
+        mode: matches.opt_str("mode").unwrap().parse().expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
@@ -208,7 +208,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
 
 pub fn log_config(config: &Config) {
     let c = config;
-    logv(c, format!("configuration:"));
+    logv(c, "configuration:".to_string());
     logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
@@ -238,10 +238,10 @@ pub fn log_config(config: &Config) {
                     config.adb_device_status));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("quiet: {}", config.quiet));
-    logv(c, format!("\n"));
+    logv(c, "\n".to_string());
 }
 
-pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
+pub fn opt_str(maybestr: &Option<String>) -> &str {
     match *maybestr {
         None => "(none)",
         Some(ref s) => s,
@@ -465,17 +465,16 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     };
 
     // Debugging emscripten code doesn't make sense today
-    let mut ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props);
-    if (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb) &&
-        config.target.contains("emscripten") {
-        ignore = true;
-    }
+    let ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props) ||
+                 (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb) &&
+                  config.target.contains("emscripten");
 
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
             ignore: ignore,
             should_panic: should_panic,
+            allow_fail: false,
         },
         testfn: make_test_closure(config, testpaths),
     }
@@ -487,7 +486,7 @@ fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
                                            .to_str().unwrap(),
                              config.stage_id);
     config.build_base.canonicalize()
-          .unwrap_or(config.build_base.clone())
+          .unwrap_or_else(|_| config.build_base.clone())
           .join(stamp_name)
 }
 
@@ -512,7 +511,7 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
 fn mtime(path: &Path) -> FileTime {
     fs::metadata(path).map(|f| {
         FileTime::from_last_modification_time(&f)
-    }).unwrap_or(FileTime::zero())
+    }).unwrap_or_else(|_| FileTime::zero())
 }
 
 pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
@@ -560,7 +559,7 @@ fn analyze_gdb(gdb: Option<String>) -> (Option<String>, Option<u32>, bool) {
 
     let gdb_native_rust = version.map_or(false, |v| v >= MIN_GDB_WITH_RUST);
 
-    return (Some(gdb.to_owned()), version, gdb_native_rust);
+    (Some(gdb.to_owned()), version, gdb_native_rust)
 }
 
 fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
@@ -600,7 +599,8 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
             Some(idx) => if line.as_bytes()[idx] == b'.' {
                 let patch = &line[idx + 1..];
 
-                let patch_len = patch.find(|c: char| !c.is_digit(10)).unwrap_or(patch.len());
+                let patch_len = patch.find(|c: char| !c.is_digit(10))
+                                                       .unwrap_or_else(|| patch.len());
                 let patch = &patch[..patch_len];
                 let patch = if patch_len > 3 || patch_len == 0 { None } else { Some(patch) };
 

@@ -10,5 +10,5 @@ note: lint level defined here
 13 | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

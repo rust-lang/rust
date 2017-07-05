@@ -81,7 +81,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     let mut stmts = Vec::new();
 
     let fields = match *substr.fields {
-        Struct(_, ref fs) => fs,
+        Struct(_, ref fs) | EnumMatching(_, 1, .., ref fs) => fs,
         EnumMatching(.., ref fs) => {
             let variant_value = deriving::call_intrinsic(cx,
                                                          trait_span,

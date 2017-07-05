@@ -67,6 +67,7 @@ use rustc_trans::back::link;
 use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
+use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
@@ -74,7 +75,7 @@ use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
-use rustc::util::common::time;
+use rustc::util::common::{time, ErrorReported};
 
 use serialize::json::ToJson;
 
@@ -83,10 +84,11 @@ use std::cmp::max;
 use std::cmp::Ordering::Equal;
 use std::default::Default;
 use std::env;
+use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
-use std::process;
+use std::process::{self, Command, Stdio};
 use std::rc::Rc;
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -109,18 +111,14 @@ mod derive_registrar;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
-#[inline]
-fn abort_msg(err_count: usize) -> String {
-    match err_count {
-        0 => "aborting with no errors (maybe a bug?)".to_owned(),
-        _ => "aborting due to previous error(s)".to_owned(),
-    }
-}
-
-pub fn abort_on_err<T>(result: Result<T, usize>, sess: &Session) -> T {
+pub fn abort_on_err<T>(result: Result<T, CompileIncomplete>, sess: &Session) -> T {
     match result {
-        Err(err_count) => {
-            sess.fatal(&abort_msg(err_count));
+        Err(CompileIncomplete::Errored(ErrorReported)) => {
+            sess.abort_if_errors();
+            panic!("error reported but abort_if_errors didn't abort???");
+        }
+        Err(CompileIncomplete::Stopped) => {
+            sess.fatal("compilation terminated");
         }
         Ok(x) => x,
     }
@@ -131,19 +129,20 @@ pub fn run<F>(run_compiler: F) -> isize
 {
     monitor(move || {
         let (result, session) = run_compiler();
-        if let Err(err_count) = result {
-            if err_count > 0 {
-                match session {
-                    Some(sess) => sess.fatal(&abort_msg(err_count)),
-                    None => {
-                        let emitter =
-                            errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None);
-                        let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
-                        handler.emit(&MultiSpan::new(),
-                                     &abort_msg(err_count),
-                                     errors::Level::Fatal);
-                        exit_on_err();
-                    }
+        if let Err(CompileIncomplete::Errored(_)) = result {
+            match session {
+                Some(sess) => {
+                    sess.abort_if_errors();
+                    panic!("error reported but abort_if_errors didn't abort???");
+                }
+                None => {
+                    let emitter =
+                        errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None);
+                    let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
+                    handler.emit(&MultiSpan::new(),
+                                 "aborting due to previous error(s)",
+                                 errors::Level::Fatal);
+                    exit_on_err();
                 }
             }
         }
@@ -345,6 +344,31 @@ pub trait CompilerCalls<'a> {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
+// FIXME remove these and use winapi 0.3 instead
+// Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
+#[cfg(unix)]
+fn stdout_isatty() -> bool {
+    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+}
+
+#[cfg(windows)]
+fn stdout_isatty() -> bool {
+    type DWORD = u32;
+    type BOOL = i32;
+    type HANDLE = *mut u8;
+    type LPDWORD = *mut u32;
+    const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
+    extern "system" {
+        fn GetStdHandle(which: DWORD) -> HANDLE;
+        fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
+    }
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        let mut out = 0;
+        GetConsoleMode(handle, &mut out) != 0
+    }
+}
+
 fn handle_explain(code: &str,
                   descriptions: &errors::registry::Registry,
                   output: ErrorOutputType) {
@@ -356,6 +380,8 @@ fn handle_explain(code: &str,
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
             let mut is_in_code_block = false;
+            let mut text = String::new();
+
             // Slice off the leading newline and print.
             for line in description[1..].lines() {
                 let indent_level = line.find(|c: char| !c.is_whitespace())
@@ -363,17 +389,57 @@ fn handle_explain(code: &str,
                 let dedented_line = &line[indent_level..];
                 if dedented_line.starts_with("```") {
                     is_in_code_block = !is_in_code_block;
-                    println!("{}", &line[..(indent_level+3)]);
+                    text.push_str(&line[..(indent_level+3)]);
                 } else if is_in_code_block && dedented_line.starts_with("# ") {
                     continue;
                 } else {
-                    println!("{}", line);
+                    text.push_str(line);
                 }
+                text.push('\n');
+            }
+
+            if stdout_isatty() {
+                show_content_with_pager(&text);
+            } else {
+                print!("{}", text);
             }
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));
         }
+    }
+}
+
+fn show_content_with_pager(content: &String) {
+    let pager_name = env::var_os("PAGER").unwrap_or_else(|| if cfg!(windows) {
+        OsString::from("more.com")
+    } else {
+        OsString::from("less")
+    });
+
+    let mut fallback_to_println = false;
+
+    match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
+        Ok(mut pager) => {
+            if let Some(mut pipe) = pager.stdin.as_mut() {
+                if pipe.write_all(content.as_bytes()).is_err() {
+                    fallback_to_println = true;
+                }
+            }
+
+            if pager.wait().is_err() {
+                fallback_to_println = true;
+            }
+        }
+        Err(_) => {
+            fallback_to_println = true;
+        }
+    }
+
+    // If pager fails for whatever reason, we should still print the content
+    // to standard output
+    if fallback_to_println {
+        print!("{}", content);
     }
 }
 

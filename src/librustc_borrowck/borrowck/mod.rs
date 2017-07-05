@@ -18,8 +18,6 @@ pub use self::bckerr_code::*;
 pub use self::AliasableViolationKind::*;
 pub use self::MovedValueUseKind::*;
 
-pub use self::mir::elaborate_drops::ElaborateDrops;
-
 use self::InteriorKind::*;
 
 use rustc::hir::map as hir_map;
@@ -54,8 +52,6 @@ pub mod check_loans;
 pub mod gather_loans;
 
 pub mod move_data;
-
-mod mir;
 
 #[derive(Clone, Copy)]
 pub struct LoanDataFlowOperator;
@@ -100,26 +96,21 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     }
 
     let body_id = tcx.hir.body_owned_by(owner_id);
-    let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_maps = tcx.region_maps(owner_def_id);
     let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let body = bccx.tcx.hir.body(body_id);
 
-    if bccx.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
-        mir::borrowck_mir(bccx, owner_id, &attributes);
-    } else {
-        // Eventually, borrowck will always read the MIR, but at the
-        // moment we do not. So, for now, we always force MIR to be
-        // constructed for a given fn, since this may result in errors
-        // being reported and we want that to happen.
-        //
-        // Note that `mir_validated` is a "stealable" result; the
-        // thief, `optimized_mir()`, forces borrowck, so we know that
-        // is not yet stolen.
-        tcx.mir_validated(owner_def_id).borrow();
-    }
+    // Eventually, borrowck will always read the MIR, but at the
+    // moment we do not. So, for now, we always force MIR to be
+    // constructed for a given fn, since this may result in errors
+    // being reported and we want that to happen.
+    //
+    // Note that `mir_validated` is a "stealable" result; the
+    // thief, `optimized_mir()`, forces borrowck, so we know that
+    // is not yet stolen.
+    tcx.mir_validated(owner_def_id).borrow();
 
     let cfg = cfg::CFG::new(bccx.tcx, &body);
     let AnalysisData { all_loans,

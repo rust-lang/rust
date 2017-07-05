@@ -76,6 +76,7 @@ use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::Subst;
 use errors::DiagnosticBuilder;
 use syntax::abi;
+use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax_pos;
 
@@ -210,13 +211,13 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         }
 
         match a.sty {
-            ty::TyFnDef(.., a_f) => {
+            ty::TyFnDef(..) => {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
                 // require double indirection).
                 // Additionally, we permit coercion of function
                 // items to drop the unsafe qualifier.
-                self.coerce_from_fn_item(a, a_f, b)
+                self.coerce_from_fn_item(a, b)
             }
             ty::TyFnPtr(a_f) => {
                 // We permit coercion of fn pointers to drop the
@@ -520,6 +521,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                                                          coerce_source,
                                                          &[coerce_target]));
 
+        let mut has_unsized_tuple_coercion = false;
+
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
         // inference might unify those two inner type variables later.
@@ -527,7 +530,15 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         while let Some(obligation) = queue.pop_front() {
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => tr.clone(),
+                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
+                    if unsize_did == tr.def_id() {
+                        if let ty::TyTuple(..) = tr.0.input_types().nth(1).unwrap().sty {
+                            debug!("coerce_unsized: found unsized tuple coercion");
+                            has_unsized_tuple_coercion = true;
+                        }
+                    }
+                    tr.clone()
+                }
                 _ => {
                     coercion.obligations.push(obligation);
                     continue;
@@ -555,6 +566,14 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                     }
                 }
             }
+        }
+
+        if has_unsized_tuple_coercion && !self.tcx.sess.features.borrow().unsized_tuple_coercion {
+            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
+                                           "unsized_tuple_coercion",
+                                           self.cause.span,
+                                           feature_gate::GateIssue::Language,
+                                           feature_gate::EXPLAIN_UNSIZED_TUPLE_COERCION);
         }
 
         Ok(coercion)
@@ -600,7 +619,6 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
     fn coerce_from_fn_item(&self,
                            a: Ty<'tcx>,
-                           fn_ty_a: ty::PolyFnSig<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
@@ -612,9 +630,17 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         match b.sty {
             ty::TyFnPtr(_) => {
-                let a_fn_pointer = self.tcx.mk_fn_ptr(fn_ty_a);
-                self.coerce_from_safe_fn(a_fn_pointer, fn_ty_a, b,
-                    simple(Adjust::ReifyFnPointer), simple(Adjust::ReifyFnPointer))
+                let a_sig = a.fn_sig(self.tcx);
+                let InferOk { value: a_sig, mut obligations } =
+                    self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
+
+                let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
+                let InferOk { value, obligations: o2 } =
+                    self.coerce_from_safe_fn(a_fn_pointer, a_sig, b,
+                        simple(Adjust::ReifyFnPointer), simple(Adjust::ReifyFnPointer))?;
+
+                obligations.extend(o2);
+                Ok(InferOk { value, obligations })
             }
             _ => self.unify_and(a, b, identity),
         }
@@ -639,7 +665,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
-                let sig = self.closure_type(def_id_a).subst(self.tcx, substs_a.substs);
+                let sig = self.fn_sig(def_id_a).subst(self.tcx, substs_a.substs);
                 let converted_sig = sig.map_bound(|s| {
                     let params_iter = match s.inputs()[0].sty {
                         ty::TyTuple(params, _) => {
@@ -775,42 +801,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Special-case that coercion alone cannot handle:
         // Two function item types of differing IDs or Substs.
-        match (&prev_ty.sty, &new_ty.sty) {
-            (&ty::TyFnDef(a_def_id, a_substs, a_fty), &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
-                // The signature must always match.
-                let fty = self.at(cause, self.param_env)
-                              .trace(prev_ty, new_ty)
-                              .lub(&a_fty, &b_fty)
-                              .map(|ok| self.register_infer_ok_obligations(ok))?;
+        if let (&ty::TyFnDef(..), &ty::TyFnDef(..)) = (&prev_ty.sty, &new_ty.sty) {
+            // Don't reify if the function types have a LUB, i.e. they
+            // are the same function and their parameters have a LUB.
+            let lub_ty = self.commit_if_ok(|_| {
+                self.at(cause, self.param_env)
+                    .lub(prev_ty, new_ty)
+                    .map(|ok| self.register_infer_ok_obligations(ok))
+            });
 
-                if a_def_id == b_def_id {
-                    // Same function, maybe the parameters match.
-                    let substs = self.commit_if_ok(|_| {
-                        self.at(cause, self.param_env)
-                            .trace(prev_ty, new_ty)
-                            .lub(&a_substs, &b_substs)
-                            .map(|ok| self.register_infer_ok_obligations(ok))
-                    });
-
-                    if let Ok(substs) = substs {
-                        // We have a LUB of prev_ty and new_ty, just return it.
-                        return Ok(self.tcx.mk_fn_def(a_def_id, substs, fty));
-                    }
-                }
-
-                // Reify both sides and return the reified fn pointer type.
-                let fn_ptr = self.tcx.mk_fn_ptr(fty);
-                for expr in exprs.iter().map(|e| e.as_coercion_site()).chain(Some(new)) {
-                    // The only adjustment that can produce an fn item is
-                    // `NeverToAny`, so this should always be valid.
-                    self.apply_adjustments(expr, vec![Adjustment {
-                        kind: Adjust::ReifyFnPointer,
-                        target: fn_ptr
-                    }]);
-                }
-                return Ok(fn_ptr);
+            if lub_ty.is_ok() {
+                // We have a LUB of prev_ty and new_ty, just return it.
+                return lub_ty;
             }
-            _ => {}
+
+            // The signature must match.
+            let a_sig = prev_ty.fn_sig(self.tcx);
+            let a_sig = self.normalize_associated_types_in(new.span, &a_sig);
+            let b_sig = new_ty.fn_sig(self.tcx);
+            let b_sig = self.normalize_associated_types_in(new.span, &b_sig);
+            let sig = self.at(cause, self.param_env)
+                          .trace(prev_ty, new_ty)
+                          .lub(&a_sig, &b_sig)
+                          .map(|ok| self.register_infer_ok_obligations(ok))?;
+
+            // Reify both sides and return the reified fn pointer type.
+            let fn_ptr = self.tcx.mk_fn_ptr(sig);
+            for expr in exprs.iter().map(|e| e.as_coercion_site()).chain(Some(new)) {
+                // The only adjustment that can produce an fn item is
+                // `NeverToAny`, so this should always be valid.
+                self.apply_adjustments(expr, vec![Adjustment {
+                    kind: Adjust::ReifyFnPointer,
+                    target: fn_ptr
+                }]);
+            }
+            return Ok(fn_ptr);
         }
 
         let mut coerce = Coerce::new(self, cause.clone());
@@ -1161,6 +1186,18 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                             fcx.tcx.sess, cause.span, E0069,
                             "`return;` in a function whose return type is not `()`");
                         db.span_label(cause.span, "return type is not ()");
+                    }
+                    ObligationCauseCode::BlockTailExpression(blk_id) => {
+                        db = fcx.report_mismatched_types(cause, expected, found, err);
+
+                        let expr = expression.unwrap_or_else(|| {
+                            span_bug!(cause.span,
+                                      "supposed to be part of a block tail expression, but the \
+                                       expression is empty");
+                        });
+                        fcx.suggest_mismatched_types_on_tail(&mut db, expr,
+                                                             expected, found,
+                                                             cause.span, blk_id);
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);

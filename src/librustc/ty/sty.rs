@@ -14,7 +14,7 @@ use hir::def_id::DefId;
 use hir::map::DefPathHash;
 
 use middle::region;
-use ty::subst::Substs;
+use ty::subst::{Substs, Subst};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
 use ty::subst::Kind;
@@ -138,7 +138,7 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type.
-    TyFnDef(DefId, &'tcx Substs<'tcx>, PolyFnSig<'tcx>),
+    TyFnDef(DefId, &'tcx Substs<'tcx>),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     TyFnPtr(PolyFnSig<'tcx>),
@@ -990,6 +990,20 @@ impl RegionKind {
 
         flags
     }
+
+    // This method returns whether the given Region is Named
+    pub fn is_named_region(&self) -> bool {
+
+        match *self {
+            ty::ReFree(ref free_region) => {
+                match free_region.bound_region {
+                    ty::BrNamed(..) => true,
+                    _ => false,
+                }
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Type utilities
@@ -1329,9 +1343,12 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn fn_sig(&self) -> PolyFnSig<'tcx> {
+    pub fn fn_sig(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PolyFnSig<'tcx> {
         match self.sty {
-            TyFnDef(.., f) | TyFnPtr(f) => f,
+            TyFnDef(def_id, substs) => {
+                tcx.fn_sig(def_id).subst(tcx, substs)
+            }
+            TyFnPtr(f) => f,
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }

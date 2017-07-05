@@ -20,7 +20,6 @@
 
 #![feature(rand)]
 #![feature(conservative_impl_trait)]
-#![feature(sort_unstable)]
 
 extern crate graphviz;
 #[macro_use] extern crate rustc;

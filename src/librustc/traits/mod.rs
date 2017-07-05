@@ -118,27 +118,34 @@ pub enum ObligationCauseCode<'tcx> {
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
 
-    /// Various cases where expressions must be sized/copy/etc:
-    AssignmentLhsSized,        // L = X implies that L is Sized
-    StructInitializerSized,    // S { ... } must be Sized
-    VariableType(ast::NodeId), // Type of each variable must be Sized
-    ReturnType,                // Return type must be Sized
-    RepeatVec,                 // [T,..n] --> T must be Copy
+    // Various cases where expressions must be sized/copy/etc:
+    /// L = X implies that L is Sized
+    AssignmentLhsSized,
+    /// (x1, .., xn) must be Sized
+    TupleInitializerSized,
+    /// S { ... } must be Sized
+    StructInitializerSized,
+    /// Type of each variable must be Sized
+    VariableType(ast::NodeId),
+    /// Return type must be Sized
+    SizedReturnType,
+    /// [T,..n] --> T must be Copy
+    RepeatVec,
 
-    // Types of fields (other than the last) in a struct must be sized.
+    /// Types of fields (other than the last) in a struct must be sized.
     FieldSized,
 
-    // Constant expressions must be sized.
+    /// Constant expressions must be sized.
     ConstSized,
 
-    // static items must have `Sync` type
+    /// static items must have `Sync` type
     SharedStatic,
 
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 
-    // error derived when matching traits/impls; see ObligationCause for more details
+    /// error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
         item_name: ast::Name,
         impl_item_def_id: DefId,
@@ -146,37 +153,43 @@ pub enum ObligationCauseCode<'tcx> {
         lint_id: Option<ast::NodeId>,
     },
 
-    // Checking that this expression can be assigned where it needs to be
+    /// Checking that this expression can be assigned where it needs to be
     // FIXME(eddyb) #11161 is the original Expr required?
     ExprAssignable,
 
-    // Computing common supertype in the arms of a match expression
+    /// Computing common supertype in the arms of a match expression
     MatchExpressionArm { arm_span: Span,
                          source: hir::MatchSource },
 
-    // Computing common supertype in an if expression
+    /// Computing common supertype in an if expression
     IfExpression,
 
-    // Computing common supertype of an if expression with no else counter-part
+    /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
 
-    // `where a == b`
+    /// `where a == b`
     EquatePredicate,
 
-    // `main` has wrong type
+    /// `main` has wrong type
     MainFunctionType,
 
-    // `start` has wrong type
+    /// `start` has wrong type
     StartFunctionType,
 
-    // intrinsic has wrong type
+    /// intrinsic has wrong type
     IntrinsicType,
 
-    // method receiver
+    /// method receiver
     MethodReceiver,
 
-    // `return` with no expression
+    /// `return` with no expression
     ReturnNoExpression,
+
+    /// `return` with an expression
+    ReturnType(ast::NodeId),
+
+    /// Block implicit return
+    BlockTailExpression(ast::NodeId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -498,7 +511,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ) {
             Ok(predicates) => predicates,
             Err(errors) => {
-                infcx.report_fulfillment_errors(&errors);
+                infcx.report_fulfillment_errors(&errors, None);
                 // An unnormalized env is better than nothing.
                 return elaborated_env;
             }
@@ -597,7 +610,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    tcx.infer_ctxt().enter(|infcx| {
+    let result = tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::empty(Reveal::All);
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
@@ -613,7 +626,10 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         fulfill_cx.select_all_or_error(&infcx).is_ok()
-    })
+    });
+    debug!("normalize_and_test_predicates(predicates={:?}) = {:?}",
+           predicates, result);
+    result
 }
 
 /// Given a trait `trait_ref`, iterates the vtable entries

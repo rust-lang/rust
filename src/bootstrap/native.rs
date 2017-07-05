@@ -94,7 +94,7 @@ pub fn llvm(build: &Build, target: &str) {
     let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
     cfg.target(target)
-       .host(&build.config.build)
+       .host(&build.build)
        .out_dir(&out_dir)
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
@@ -129,11 +129,11 @@ pub fn llvm(build: &Build, target: &str) {
     }
 
     // http://llvm.org/docs/HowToCrossCompileLLVM.html
-    if target != build.config.build {
+    if target != build.build {
         // FIXME: if the llvm root for the build triple is overridden then we
         //        should use llvm-tblgen from there, also should verify that it
         //        actually exists most of the time in normal installs of LLVM.
-        let host = build.llvm_out(&build.config.build).join("bin/llvm-tblgen");
+        let host = build.llvm_out(&build.build).join("bin/llvm-tblgen");
         cfg.define("CMAKE_CROSSCOMPILING", "True")
            .define("LLVM_TABLEGEN", &host);
     }
@@ -243,7 +243,7 @@ pub fn test_helpers(build: &Build, target: &str) {
     cfg.cargo_metadata(false)
        .out_dir(&dst)
        .target(target)
-       .host(&build.config.build)
+       .host(&build.build)
        .opt_level(0)
        .debug(false)
        .file(build.src.join("src/rt/rust_test_helpers.c"))

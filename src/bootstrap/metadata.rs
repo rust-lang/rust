@@ -56,7 +56,7 @@ fn build_krate(build: &mut Build, krate: &str) {
     // of packages we're going to have to know what `-p` arguments to pass it
     // to know what crates to test. Here we run `cargo metadata` to learn about
     // the dependency graph and what `-p` arguments there are.
-    let mut cargo = Command::new(&build.cargo);
+    let mut cargo = Command::new(&build.initial_cargo);
     cargo.arg("metadata")
          .arg("--format-version").arg("1")
          .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));

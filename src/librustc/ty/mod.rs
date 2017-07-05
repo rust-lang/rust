@@ -206,7 +206,7 @@ impl AssociatedItem {
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
-                format!("{}", tcx.type_of(self.def_id).fn_sig().skip_binder())
+                format!("{}", tcx.fn_sig(self.def_id).skip_binder())
             }
             ty::AssociatedKind::Type => format!("type {};", self.name.to_string()),
             ty::AssociatedKind::Const => {
@@ -479,6 +479,18 @@ impl<'tcx> TyS<'tcx> {
                 TypeVariants::TyInfer(InferTy::FreshFloatTy(_)) => true,
             TypeVariants::TyRef(_, x) => x.ty.is_primitive_ty(),
             _ => false,
+        }
+    }
+
+    pub fn is_suggestable(&self) -> bool {
+        match self.sty {
+            TypeVariants::TyAnon(..) |
+            TypeVariants::TyFnDef(..) |
+            TypeVariants::TyFnPtr(..) |
+            TypeVariants::TyDynamic(..) |
+            TypeVariants::TyClosure(..) |
+            TypeVariants::TyProjection(..) => false,
+            _ => true,
         }
     }
 }

@@ -16,5 +16,5 @@ note: closure is `FnOnce` because it moves the variable `vec` out of its environ
 15 |         vec
    |         ^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

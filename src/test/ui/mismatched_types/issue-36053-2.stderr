@@ -17,5 +17,5 @@ error[E0281]: type mismatch: `[closure@$DIR/issue-36053-2.rs:17:39: 17:53]` impl
    |                                requires `for<'r> std::ops::FnMut<(&'r &str,)>`
    |                                expected &str, found str
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

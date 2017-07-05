@@ -222,7 +222,7 @@ use Bound::{Excluded, Included, Unbounded};
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
 /// the `Vec` may not report a [`capacity`] of 0*. `Vec` will allocate if and only
-/// if [`mem::size_of::<T>`]` * capacity() > 0`. In general, `Vec`'s allocation
+/// if [`mem::size_of::<T>`]`() * capacity() > 0`. In general, `Vec`'s allocation
 /// details are subtle enough that it is strongly recommended that you only
 /// free memory allocated by a `Vec` by creating a new `Vec` and dropping it.
 ///
@@ -823,7 +823,8 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Removes consecutive elements in the vector that resolve to the same key.
+    /// Removes all but the first of consecutive elements in the vector that resolve to the same
+    /// key.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
@@ -842,11 +843,13 @@ impl<T> Vec<T> {
         self.dedup_by(|a, b| key(a) == key(b))
     }
 
-    /// Removes consecutive elements in the vector according to a predicate.
+    /// Removes all but the first of consecutive elements in the vector satisfying a given equality
+    /// relation.
     ///
     /// The `same_bucket` function is passed references to two elements from the vector, and
-    /// returns `true` if the elements compare equal, or `false` if they do not. Only the first
-    /// of adjacent equal items is kept.
+    /// returns `true` if the elements compare equal, or `false` if they do not. The elements are
+    /// passed in opposite order from their order in the vector, so if `same_bucket(a, b)` returns
+    /// `true`, `a` is removed.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///

@@ -29,7 +29,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// * On Windows, strings are often arbitrary sequences of non-zero 16-bit
 ///   values, interpreted as UTF-16 when it is valid to do so.
 ///
-/// * In Rust, strings are always valid UTF-8, but may contain zeros.
+/// * In Rust, strings are always valid UTF-8, which may contain zeros.
 ///
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
@@ -230,8 +230,6 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_shrink_to_fit)]
-    ///
     /// use std::ffi::OsString;
     ///
     /// let mut s = OsString::from("foo");
@@ -242,7 +240,7 @@ impl OsString {
     /// s.shrink_to_fit();
     /// assert_eq!(3, s.capacity());
     /// ```
-    #[unstable(feature = "osstring_shrink_to_fit", issue = "40421")]
+    #[stable(feature = "osstring_shrink_to_fit", since = "1.19.0")]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
     }
@@ -542,10 +540,10 @@ impl From<Box<OsStr>> for OsString {
     }
 }
 
-#[stable(feature = "box_from_os_string", since = "1.18.0")]
-impl Into<Box<OsStr>> for OsString {
-    fn into(self) -> Box<OsStr> {
-        self.into_boxed_os_str()
+#[stable(feature = "box_from_os_string", since = "1.20.0")]
+impl From<OsString> for Box<OsStr> {
+    fn from(s: OsString) -> Box<OsStr> {
+        s.into_boxed_os_str()
     }
 }
 

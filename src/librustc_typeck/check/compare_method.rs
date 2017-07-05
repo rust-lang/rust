@@ -256,17 +256,10 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Compute skolemized form of impl and trait method tys.
         let tcx = infcx.tcx;
 
-        let m_sig = |method: &ty::AssociatedItem| {
-            match tcx.type_of(method.def_id).sty {
-                ty::TyFnDef(_, _, f) => f,
-                _ => bug!()
-            }
-        };
-
         let (impl_sig, _) =
             infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
                                                             infer::HigherRankedType,
-                                                            &m_sig(impl_m));
+                                                            &tcx.fn_sig(impl_m.def_id));
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
                                               impl_m_node_id,
@@ -277,7 +270,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let trait_sig = inh.liberate_late_bound_regions(
             impl_m.def_id,
-            &m_sig(trait_m));
+            &tcx.fn_sig(trait_m.def_id));
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
@@ -335,7 +328,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check that all obligations are satisfied by the implementation's
         // version.
         if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(errors);
+            infcx.report_fulfillment_errors(errors, None);
             return Err(ErrorReported);
         }
 
@@ -507,8 +500,7 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ty::ImplContainer(_) => impl_trait_ref.self_ty(),
             ty::TraitContainer(_) => tcx.mk_self_type()
         };
-        let method_ty = tcx.type_of(method.def_id);
-        let self_arg_ty = *method_ty.fn_sig().input(0).skip_binder();
+        let self_arg_ty = *tcx.fn_sig(method.def_id).input(0).skip_binder();
         match ExplicitSelf::determine(untransformed_self_ty, self_arg_ty) {
             ExplicitSelf::ByValue => "self".to_string(),
             ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_string(),
@@ -637,14 +629,8 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_m: &ty::AssociatedItem,
                                                 trait_item_span: Option<Span>)
                                                 -> Result<(), ErrorReported> {
-    let m_fty = |method: &ty::AssociatedItem| {
-        match tcx.type_of(method.def_id).sty {
-            ty::TyFnDef(_, _, f) => f,
-            _ => bug!()
-        }
-    };
-    let impl_m_fty = m_fty(impl_m);
-    let trait_m_fty = m_fty(trait_m);
+    let impl_m_fty = tcx.fn_sig(impl_m.def_id);
+    let trait_m_fty = tcx.fn_sig(trait_m.def_id);
     let trait_number_args = trait_m_fty.inputs().skip_binder().len();
     let impl_number_args = impl_m_fty.inputs().skip_binder().len();
     if trait_number_args != impl_number_args {
@@ -807,7 +793,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Check that all obligations are satisfied by the implementation's
         // version.
         if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(errors);
+            infcx.report_fulfillment_errors(errors, None);
             return;
         }
 

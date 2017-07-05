@@ -348,7 +348,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
                                       .filter_map(|ty| characteristic_def_id_of_type(ty))
                                       .next(),
 
-        ty::TyFnDef(def_id, ..) |
+        ty::TyFnDef(def_id, _) |
         ty::TyClosure(def_id, _) => Some(def_id),
 
         ty::TyBool |

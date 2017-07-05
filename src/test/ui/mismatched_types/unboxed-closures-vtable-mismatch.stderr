@@ -12,5 +12,5 @@ error[E0281]: type mismatch: `[closure@$DIR/unboxed-closures-vtable-mismatch.rs:
    |
    = note: required by `call_it`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

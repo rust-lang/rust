@@ -17,7 +17,6 @@ use sys::fs::{File, OpenOptions};
 use sys::syscall::TimeSpec;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
-use vec::Vec;
 
 use super::{path_to_peer_addr, path_to_local_addr};
 

@@ -875,13 +875,12 @@ define_maps! { <'tcx>
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
     [] optimized_mir: Mir(DefId) -> &'tcx mir::Mir<'tcx>,
 
-    /// Records the type of each closure. The def ID is the ID of the
+    /// Type of each closure. The def ID is the ID of the
     /// expression defining the closure.
     [] closure_kind: ItemSignature(DefId) -> ty::ClosureKind,
 
-    /// Records the type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    [] closure_type: ItemSignature(DefId) -> ty::PolyFnSig<'tcx>,
+    /// The signature of functions and closures.
+    [] fn_sig: ItemSignature(DefId) -> ty::PolyFnSig<'tcx>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
     [] coerce_unsized_info: ItemSignature(DefId)

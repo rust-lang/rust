@@ -25,8 +25,9 @@ use llvm;
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Subst, Substs};
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use syntax_pos::Span;
@@ -250,6 +251,44 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
+    /// Returns whether this instance is instantiable - whether it has no unsatisfied
+    /// predicates.
+    ///
+    /// In order to translate an item, all of its predicates must hold, because
+    /// otherwise the item does not make sense. Type-checking ensures that
+    /// the predicates of every item that is *used by* a valid item *do*
+    /// hold, so we can rely on that.
+    ///
+    /// However, we translate collector roots (reachable items) and functions
+    /// in vtables when they are seen, even if they are not used, and so they
+    /// might not be instantiable. For example, a programmer can define this
+    /// public function:
+    ///
+    ///     pub fn foo<'a>(s: &'a mut ()) where &'a mut (): Clone {
+    ///         <&mut () as Clone>::clone(&s);
+    ///     }
+    ///
+    /// That function can't be translated, because the method `<&mut () as Clone>::clone`
+    /// does not exist. Luckily for us, that function can't ever be used,
+    /// because that would require for `&'a mut (): Clone` to hold, so we
+    /// can just not emit any code, or even a linker reference for it.
+    ///
+    /// Similarly, if a vtable method has such a signature, and therefore can't
+    /// be used, we can just not emit it and have a placeholder (a null pointer,
+    /// which will never be accessed) in its place.
+    pub fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        debug!("is_instantiable({:?})", self);
+        let (def_id, substs) = match *self {
+            TransItem::Fn(ref instance) => (instance.def_id(), instance.substs),
+            TransItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
+            // global asm never has predicates
+            TransItem::GlobalAsm(..) => return true
+        };
+
+        let predicates = tcx.predicates_of(def_id).predicates.subst(tcx, substs);
+        traits::normalize_and_test_predicates(tcx, predicates)
+    }
+
     pub fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         let hir_map = &tcx.hir;
 
@@ -401,8 +440,9 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                         output);
                 }
             },
-            ty::TyFnDef(.., sig) |
-            ty::TyFnPtr(sig) => {
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(_) => {
+                let sig = t.fn_sig(self.tcx);
                 if sig.unsafety() == hir::Unsafety::Unsafe {
                     output.push_str("unsafe ");
                 }

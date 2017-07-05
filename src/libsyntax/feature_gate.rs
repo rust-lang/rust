@@ -360,6 +360,12 @@ declare_features! (
 
     // rustc internal
     (active, abi_thiscall, "1.19.0", None),
+
+    // Allows a test to fail without failing the whole suite
+    (active, allow_fail, "1.19.0", Some(42219)),
+
+    // Allows unsized tuple coercion.
+    (active, unsized_tuple_coercion, "1.20.0", Some(42877)),
 );
 
 declare_features! (
@@ -818,6 +824,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                              "used internally by rustc",
                                              cfg_fn!(rustc_attrs))),
 
+    ("allow_fail", Normal, Gated(Stability::Unstable,
+                                 "allow_fail",
+                                 "allow_fail attribute is currently unstable",
+                                 cfg_fn!(allow_fail))),
+
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
     ("crate_type", CrateLevel, Ungated),
@@ -1038,6 +1049,9 @@ pub const EXPLAIN_VIS_MATCHER: &'static str =
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
+
+pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
+    "Unsized tuple coercion is not stable enough for use and is subject to change";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,

@@ -28,6 +28,7 @@ use syntax::attr;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
+use util::common::ErrorReported;
 use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
 use rustc_back::slice;
 
@@ -255,7 +256,7 @@ const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
 pub fn krate(sess: &Session,
              hir_map: &Map)
-             -> Result<NamedRegionMap, usize> {
+             -> Result<NamedRegionMap, ErrorReported> {
     let krate = hir_map.krate();
     let mut map = NamedRegionMap {
         defs: NodeMap(),

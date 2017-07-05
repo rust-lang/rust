@@ -10,5 +10,5 @@ error[E0277]: the trait bound `std::cell::UnsafeCell<i32>: std::panic::RefUnwind
    = note: required because it appears within the type `[closure@$DIR/interior-mutability.rs:15:18: 15:35 x:&std::cell::Cell<i32>]`
    = note: required by `std::panic::catch_unwind`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

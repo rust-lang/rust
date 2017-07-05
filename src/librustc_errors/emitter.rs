@@ -47,7 +47,12 @@ impl Emitter for EmitterWriter {
                // don't display multiline suggestions as labels
                sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
                 let substitution = &sugg.substitution_parts[0].substitutions[0];
-                let msg = format!("help: {} `{}`", sugg.msg, substitution);
+                let msg = if substitution.len() == 0 {
+                    // This substitution is only removal, don't show it
+                    format!("help: {}", sugg.msg)
+                } else {
+                    format!("help: {} `{}`", sugg.msg, substitution)
+                };
                 primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
             } else {
                 // if there are multiple suggestions, print them all in full

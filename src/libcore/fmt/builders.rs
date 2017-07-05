@@ -49,9 +49,37 @@ impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
     }
 }
 
-/// A struct to help with `fmt::Debug` implementations.
+/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
 ///
-/// Constructed by the `Formatter::debug_struct` method.
+/// This is useful when you wish to output a formatted struct as a part of your
+/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+///
+/// This can be constructed by the
+/// [`Formatter::debug_struct`](struct.Formatter.html#method.debug_struct)
+/// method.
+///
+/// # Example
+///
+/// ```
+/// use std::fmt;
+///
+/// struct Foo {
+///     bar: i32,
+///     baz: String,
+/// }
+///
+/// impl fmt::Debug for Foo {
+///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+///         fmt.debug_struct("Foo")
+///            .field("bar", &self.bar)
+///            .field("baz", &self.baz)
+///            .finish()
+///     }
+/// }
+///
+/// // prints "Foo { bar: 10, baz: "Hello World" }"
+/// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
+/// ```
 #[must_use]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -116,9 +144,34 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     }
 }
 
-/// A struct to help with `fmt::Debug` implementations.
+/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
 ///
-/// Constructed by the `Formatter::debug_tuple` method.
+/// This is useful when you wish to output a formatted tuple as a part of your
+/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+///
+/// This can be constructed by the
+/// [`Formatter::debug_tuple`](struct.Formatter.html#method.debug_tuple)
+/// method.
+///
+/// # Example
+///
+/// ```
+/// use std::fmt;
+///
+/// struct Foo(i32, String);
+///
+/// impl fmt::Debug for Foo {
+///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+///         fmt.debug_tuple("Foo")
+///            .field(&self.0)
+///            .field(&self.1)
+///            .finish()
+///     }
+/// }
+///
+/// // prints "Foo(10, "Hello World")"
+/// println!("{:?}", Foo(10, "Hello World".to_string()));
+/// ```
 #[must_use]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -228,9 +281,31 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     }
 }
 
-/// A struct to help with `fmt::Debug` implementations.
+/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
 ///
-/// Constructed by the `Formatter::debug_set` method.
+/// This is useful when you wish to output a formatted set of items as a part
+/// of your [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+///
+/// This can be constructed by the
+/// [`Formatter::debug_set`](struct.Formatter.html#method.debug_set)
+/// method.
+///
+/// # Example
+///
+/// ```
+/// use std::fmt;
+///
+/// struct Foo(Vec<i32>);
+///
+/// impl fmt::Debug for Foo {
+///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+///         fmt.debug_set().entries(self.0.iter()).finish()
+///     }
+/// }
+///
+/// // prints "{10, 11}"
+/// println!("{:?}", Foo(vec![10, 11]));
+/// ```
 #[must_use]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -277,9 +352,31 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     }
 }
 
-/// A struct to help with `fmt::Debug` implementations.
+/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
 ///
-/// Constructed by the `Formatter::debug_list` method.
+/// This is useful when you wish to output a formatted list of items as a part
+/// of your [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+///
+/// This can be constructed by the
+/// [`Formatter::debug_list`](struct.Formatter.html#method.debug_list)
+/// method.
+///
+/// # Example
+///
+/// ```
+/// use std::fmt;
+///
+/// struct Foo(Vec<i32>);
+///
+/// impl fmt::Debug for Foo {
+///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+///         fmt.debug_list().entries(self.0.iter()).finish()
+///     }
+/// }
+///
+/// // prints "[10, 11]"
+/// println!("{:?}", Foo(vec![10, 11]));
+/// ```
 #[must_use]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -326,9 +423,31 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     }
 }
 
-/// A struct to help with `fmt::Debug` implementations.
+/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
 ///
-/// Constructed by the `Formatter::debug_map` method.
+/// This is useful when you wish to output a formatted map as a part of your
+/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+///
+/// This can be constructed by the
+/// [`Formatter::debug_map`](struct.Formatter.html#method.debug_map)
+/// method.
+///
+/// # Example
+///
+/// ```
+/// use std::fmt;
+///
+/// struct Foo(Vec<(String, i32)>);
+///
+/// impl fmt::Debug for Foo {
+///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+///         fmt.debug_map().entries(self.0.iter().map(|&(ref k, ref v)| (k, v))).finish()
+///     }
+/// }
+///
+/// // prints "{"A": 10, "B": 11}"
+/// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
+/// ```
 #[must_use]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]

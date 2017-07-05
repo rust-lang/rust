@@ -4208,6 +4208,104 @@ println!("{}", v[2]);
 ```
 "##,
 
+E0604: r##"
+A cast to `char` was attempted on a type other than `u8`.
+
+Erroneous code example:
+
+```compile_fail,E0604
+0u32 as char; // error: only `u8` can be cast as `char`, not `u32`
+```
+
+As the error message indicates, only `u8` can be cast into `char`. Example:
+
+```
+let c = 86u8 as char; // ok!
+assert_eq!(c, 'V');
+```
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+"##,
+
+E0605: r##"
+An invalid cast was attempted.
+
+Erroneous code examples:
+
+```compile_fail,E0605
+let x = 0u8;
+x as Vec<u8>; // error: non-primitive cast: `u8` as `std::vec::Vec<u8>`
+
+// Another example
+
+let v = 0 as *const u8; // So here, `v` is a `*const u8`.
+v as &u8; // error: non-primitive cast: `*const u8` as `&u8`
+```
+
+Only primitive types can be cast into each other. Examples:
+
+```
+let x = 0u8;
+x as u32; // ok!
+
+let v = 0 as *const u8;
+v as *const i8; // ok!
+```
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+"##,
+
+E0606: r##"
+An incompatible cast was attempted.
+
+Erroneous code example:
+
+```compile_fail,E0606
+let x = &0u8; // Here, `x` is a `&u8`.
+let y: u32 = x as u32; // error: casting `&u8` as `u32` is invalid
+```
+
+When casting, keep in mind that only primitive types can be cast into each
+other. Example:
+
+```
+let x = &0u8;
+let y: u32 = *x as u32; // We dereference it first and then cast it.
+```
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+"##,
+
+E0607: r##"
+A cast between a thin and a fat pointer was attempted.
+
+Erroneous code example:
+
+```compile_fail,E0607
+let v = 0 as *const u8;
+v as *const [u8];
+```
+
+First: what are thin and fat pointers?
+
+Thin pointers are "simple" pointers: they are purely a reference to a memory
+address.
+
+Fat pointers are pointers referencing Dynamically Sized Types (also called DST).
+DST don't have a statically known size, therefore they can only exist behind
+some kind of pointers that contain additional information. Slices and trait
+objects are DSTs. In the case of slices, the additional information the fat
+pointer holds is their size.
+
+To fix this error, don't try to cast directly between thin and fat pointers.
+
+For more information about casts, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/casting-between-types.html
+"##,
+
 E0609: r##"
 Attempted to access a non-existent field in a struct.
 
@@ -4565,6 +4663,87 @@ fn i_am_a_function() {}
 // And we call it:
 i_am_a_function();
 ```
+"##,
+
+E0619: r##"
+The type-checker needed to know the type of an expression, but that type had not
+yet been inferred.
+
+Erroneous code example:
+
+```compile_fail,E0619
+let mut x = vec![];
+match x.pop() {
+    Some(v) => {
+        // Here, the type of `v` is not (yet) known, so we
+        // cannot resolve this method call:
+        v.to_uppercase(); // error: the type of this value must be known in
+                          //        this context
+    }
+    None => {}
+}
+```
+
+Type inference typically proceeds from the top of the function to the bottom,
+figuring out types as it goes. In some cases -- notably method calls and
+overloadable operators like `*` -- the type checker may not have enough
+information *yet* to make progress. This can be true even if the rest of the
+function provides enough context (because the type-checker hasn't looked that
+far ahead yet). In this case, type annotations can be used to help it along.
+
+To fix this error, just specify the type of the variable. Example:
+
+```
+let mut x: Vec<String> = vec![]; // We precise the type of the vec elements.
+match x.pop() {
+    Some(v) => {
+        v.to_uppercase(); // Since rustc now knows the type of the vec elements,
+                          // we can use `v`'s methods.
+    }
+    None => {}
+}
+```
+"##,
+
+E0620: r##"
+A cast to an unsized type was attempted.
+
+Erroneous code example:
+
+```compile_fail,E0620
+let x = &[1_usize, 2] as [usize]; // error: cast to unsized type: `&[usize; 2]`
+                                  //        as `[usize]`
+```
+
+In Rust, some types don't have a known size at compile-time. For example, in a
+slice type like `[u32]`, the number of elements is not known at compile-time and
+hence the overall size cannot be computed. As a result, such types can only be
+manipulated through a reference (e.g., `&T` or `&mut T`) or other pointer-type
+(e.g., `Box` or `Rc`). Try casting to a reference instead:
+
+```
+let x = &[1_usize, 2] as &[usize]; // ok!
+```
+"##,
+
+E0622: r##"
+An intrinsic was declared without being a function.
+
+Erroneous code example:
+
+```compile_fail,E0622
+#![feature(intrinsics)]
+extern "rust-intrinsic" {
+    pub static breakpoint : unsafe extern "rust-intrinsic" fn();
+    // error: intrinsic must be a function
+}
+
+fn main() { unsafe { breakpoint(); } }
+```
+
+An intrinsic is a function available for use in a given programming language
+whose implementation is handled specially by the compiler. In order to fix this
+error, just declare a function.
 "##,
 
 }

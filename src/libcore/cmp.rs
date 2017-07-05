@@ -335,7 +335,6 @@ impl Ordering {
 /// Example usage:
 ///
 /// ```
-/// #![feature(reverse_cmp_key)]
 /// use std::cmp::Reverse;
 ///
 /// let mut v = vec![1, 2, 3, 4, 5, 6];
@@ -343,10 +342,10 @@ impl Ordering {
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
 #[derive(PartialEq, Eq, Debug)]
-#[unstable(feature = "reverse_cmp_key", issue = "40893")]
-pub struct Reverse<T>(pub T);
+#[stable(feature = "reverse_cmp_key", since = "1.19.0")]
+pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
-#[unstable(feature = "reverse_cmp_key", issue = "40893")]
+#[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
@@ -363,7 +362,7 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     fn gt(&self, other: &Self) -> bool { other.0 > self.0 }
 }
 
-#[unstable(feature = "reverse_cmp_key", issue = "40893")]
+#[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 impl<T: Ord> Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
@@ -380,8 +379,9 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
-/// ordering based on the top-to-bottom declaration order of the struct's members.
+/// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
+/// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
 ///
 /// ## How can I implement `Ord`?
 ///
@@ -513,8 +513,9 @@ impl PartialOrd for Ordering {
 ///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]`. When `derive`d, it will produce a lexicographic
-/// ordering based on the top-to-bottom declaration order of the struct's members.
+/// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
+/// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
+/// When `derive`d on enums, variants are ordered by their top-to-bottom declaration order.
 ///
 /// ## How can I implement `PartialOrd`?
 ///

@@ -65,7 +65,7 @@ pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Er
 fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
     // The compiler sometimes intermingles non-JSON stuff into the
     // output.  This hack just skips over such lines. Yuck.
-    if line.chars().next() == Some('{') {
+    if line.starts_with('{') {
         match json::decode::<Diagnostic>(line) {
             Ok(diagnostic) => {
                 let mut expected_errors = vec![];

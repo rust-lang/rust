@@ -2665,7 +2665,8 @@ impl<'a> Resolver<'a> {
         };
 
         if path.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
-           path[0].name != keywords::CrateRoot.name() && path[0].name != "$crate" {
+           path[0].name != keywords::CrateRoot.name() &&
+           path[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
@@ -2718,7 +2719,7 @@ impl<'a> Resolver<'a> {
             if i == 0 && ns == TypeNS && ident.name == keywords::CrateRoot.name() {
                 module = Some(self.resolve_crate_root(ident.ctxt.modern()));
                 continue
-            } else if i == 0 && ns == TypeNS && ident.name == "$crate" {
+            } else if i == 0 && ns == TypeNS && ident.name == keywords::DollarCrate.name() {
                 module = Some(self.resolve_crate_root(ident.ctxt));
                 continue
             }

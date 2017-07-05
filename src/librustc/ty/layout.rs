@@ -1220,12 +1220,16 @@ impl<'a, 'tcx> Layout {
             }
 
             ty::TyTuple(tys, _) => {
-                // FIXME(camlorn): if we ever allow unsized tuples, this needs to be checked.
-                // See the univariant case below to learn how.
+                let kind = if tys.len() == 0 {
+                    StructKind::AlwaysSizedUnivariant
+                } else {
+                    StructKind::MaybeUnsizedUnivariant
+                };
+
                 let st = Struct::new(dl,
                     &tys.iter().map(|ty| ty.layout(tcx, param_env))
                       .collect::<Result<Vec<_>, _>>()?,
-                    &ReprOptions::default(), StructKind::AlwaysSizedUnivariant, ty)?;
+                    &ReprOptions::default(), kind, ty)?;
                 Univariant { variant: st, non_zero: false }
             }
 

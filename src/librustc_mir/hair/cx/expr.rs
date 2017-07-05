@@ -19,7 +19,6 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::cast::CastKind as TyCastKind;
-use rustc::ty::subst::Subst;
 use rustc::hir;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
@@ -586,7 +585,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     });
     Expr {
         temp_lifetime: temp_lifetime,
-        ty: cx.tcx.type_of(def_id).subst(cx.tcx, substs),
+        ty: cx.tcx().mk_fn_def(def_id, substs),
         span: expr.span,
         kind: ExprKind::Literal {
             literal: Literal::Value {

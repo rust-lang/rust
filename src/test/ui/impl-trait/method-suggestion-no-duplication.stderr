@@ -10,5 +10,5 @@ error[E0599]: no method named `is_empty` found for type `Foo` in the current sco
            candidate #2: `core::slice::SliceExt`
            candidate #3: `core::str::StrExt`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -363,39 +363,29 @@ impl f32 {
     #[inline]
     pub fn signum(self) -> f32 { num::Float::signum(self) }
 
-    /// Returns `true` if `self`'s sign bit is positive, including
-    /// `+0.0` and `INFINITY`.
+    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// positive sign bit and positive infinity.
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let nan = f32::NAN;
     /// let f = 7.0_f32;
     /// let g = -7.0_f32;
     ///
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
-    /// // Requires both tests to determine if is `NaN`
-    /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_sign_positive(self) -> bool { num::Float::is_sign_positive(self) }
 
-    /// Returns `true` if `self`'s sign is negative, including `-0.0`
-    /// and `NEG_INFINITY`.
+    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// negative sign bit and negative infinity.
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let nan = f32::NAN;
     /// let f = 7.0f32;
     /// let g = -7.0f32;
     ///
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
-    /// // Requires both tests to determine if is `NaN`.
-    /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1141,13 +1131,16 @@ impl f32 {
     #[inline]
     pub fn from_bits(mut v: u32) -> Self {
         const EXP_MASK: u32   = 0x7F800000;
-        const QNAN_MASK: u32  = 0x00400000;
         const FRACT_MASK: u32 = 0x007FFFFF;
         if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
-            // If we have a NaN value, we
-            // convert signaling NaN values to quiet NaN
-            // by setting the the highest bit of the fraction
-            v |= QNAN_MASK;
+            // While IEEE 754-2008 specifies encodings for quiet NaNs
+            // and signaling ones, certain MIPS and PA-RISC
+            // CPUs treat signaling NaNs differently.
+            // Therefore to be safe, we pass a known quiet NaN
+            // if v is any kind of NaN.
+            // The check above only assumes IEEE 754-1985 to be
+            // valid.
+            v = unsafe { ::mem::transmute(NAN) };
         }
         unsafe { ::mem::transmute(v) }
     }
@@ -1184,7 +1177,7 @@ mod tests {
         assert!(!nan.is_infinite());
         assert!(!nan.is_finite());
         assert!(!nan.is_normal());
-        assert!(!nan.is_sign_positive());
+        assert!(nan.is_sign_positive());
         assert!(!nan.is_sign_negative());
         assert_eq!(Fp::Nan, nan.classify());
     }
@@ -1428,7 +1421,8 @@ mod tests {
         assert!(!(-1f32).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
         assert!(!(1f32/NEG_INFINITY).is_sign_positive());
-        assert!(!NAN.is_sign_positive());
+        assert!(NAN.is_sign_positive());
+        assert!(!(-NAN).is_sign_positive());
     }
 
     #[test]
@@ -1441,6 +1435,7 @@ mod tests {
         assert!(NEG_INFINITY.is_sign_negative());
         assert!((1f32/NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
+        assert!((-NAN).is_sign_negative());
     }
 
     #[test]
@@ -1740,8 +1735,15 @@ mod tests {
     }
     #[test]
     fn test_snan_masking() {
+        // NOTE: this test assumes that our current platform
+        // implements IEEE 754-2008 that specifies the difference
+        // in encoding of quiet and signaling NaNs.
+        // If you are porting Rust to a platform that does not
+        // implement IEEE 754-2008 (but e.g. IEEE 754-1985, which
+        // only says that "Signaling NaNs shall be reserved operands"
+        // but doesn't specify the actual setup), feel free to
+        // cfg out this test.
         let snan: u32 = 0x7F801337;
-        const PAYLOAD_MASK: u32 = 0x003FFFFF;
         const QNAN_MASK: u32  = 0x00400000;
         let nan_masked_fl = f32::from_bits(snan);
         let nan_masked = nan_masked_fl.to_bits();
@@ -1750,7 +1752,5 @@ mod tests {
         // Ensure that we have a quiet NaN
         assert_ne!(nan_masked & QNAN_MASK, 0);
         assert!(nan_masked_fl.is_nan());
-        // Ensure the payload wasn't touched during conversion
-        assert_eq!(nan_masked & PAYLOAD_MASK, snan & PAYLOAD_MASK);
     }
 }

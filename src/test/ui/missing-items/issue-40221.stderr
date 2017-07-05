@@ -4,5 +4,5 @@ error[E0004]: non-exhaustive patterns: `C(QA)` not covered
 21 |     match proto {
    |           ^^^^^ pattern `C(QA)` not covered
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

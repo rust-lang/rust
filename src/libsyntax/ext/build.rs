@@ -11,7 +11,7 @@
 use abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Pos, Span, DUMMY_SP};
 use codemap::{dummy_spanned, respan, Spanned};
 use ext::base::ExtCtxt;
 use ptr::P;
@@ -768,14 +768,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let loc = self.codemap().lookup_char_pos(span.lo);
         let expr_file = self.expr_str(span, Symbol::intern(&loc.file.name));
         let expr_line = self.expr_u32(span, loc.line as u32);
-        let expr_file_line_tuple = self.expr_tuple(span, vec![expr_file, expr_line]);
-        let expr_file_line_ptr = self.expr_addr_of(span, expr_file_line_tuple);
+        let expr_col = self.expr_u32(span, loc.col.to_usize() as u32 + 1);
+        let expr_loc_tuple = self.expr_tuple(span, vec![expr_file, expr_line, expr_col]);
+        let expr_loc_ptr = self.expr_addr_of(span, expr_loc_tuple);
         self.expr_call_global(
             span,
-            self.std_path(&["rt", "begin_panic"]),
+            self.std_path(&["rt", "begin_panic_new"]),
             vec![
                 self.expr_str(span, msg),
-                expr_file_line_ptr])
+                expr_loc_ptr])
     }
 
     fn expr_unreachable(&self, span: Span) -> P<ast::Expr> {

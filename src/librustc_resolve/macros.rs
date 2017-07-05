@@ -128,7 +128,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
             fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
                 let ident = path.segments[0].identifier;
-                if ident.name == "$crate" {
+                if ident.name == keywords::DollarCrate.name() {
                     path.segments[0].identifier.name = keywords::CrateRoot.name();
                     let module = self.0.resolve_crate_root(ident.ctxt);
                     if !module.is_local() {

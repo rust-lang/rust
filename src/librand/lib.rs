@@ -31,7 +31,7 @@
             issue = "27703")]
 #![feature(core_intrinsics)]
 #![feature(staged_api)]
-#![feature(step_by)]
+#![feature(iterator_step_by)]
 #![feature(custom_attribute)]
 #![feature(specialization)]
 #![allow(unused_attributes)]

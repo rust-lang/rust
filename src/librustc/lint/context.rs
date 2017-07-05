@@ -291,16 +291,13 @@ impl LintStore {
         self.by_name.insert(name.into(), Removed(reason.into()));
     }
 
-    #[allow(unused_variables)]
-    fn find_lint(&self, lint_name: &str, sess: &Session, span: Option<Span>)
-                 -> Result<LintId, FindLintError>
-    {
+    fn find_lint(&self, lint_name: &str) -> Result<LintId, FindLintError> {
         match self.by_name.get(lint_name) {
             Some(&Id(lint_id)) => Ok(lint_id),
             Some(&Renamed(_, lint_id)) => {
                 Ok(lint_id)
             },
-            Some(&Removed(ref reason)) => {
+            Some(&Removed(_)) => {
                 Err(FindLintError::Removed)
             },
             None => Err(FindLintError::NotFound)
@@ -313,7 +310,7 @@ impl LintStore {
                                     &lint_name[..], level);
 
             let lint_flag_val = Symbol::intern(&lint_name);
-            match self.find_lint(&lint_name[..], sess, None) {
+            match self.find_lint(&lint_name[..]) {
                 Ok(lint_id) => self.levels.set(lint_id, (level, CommandLine(lint_flag_val))),
                 Err(FindLintError::Removed) => { }
                 Err(_) => {
@@ -513,7 +510,6 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
     }
 
     let name = lint.name_lower();
-    let mut def = None;
 
     // Except for possible note details, forbid behaves like deny.
     let effective_level = if level == Forbid { Deny } else { level };
@@ -528,7 +524,8 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
 
     match source {
         Default => {
-            err.note(&format!("#[{}({})] on by default", level.as_str(), name));
+            sess.diag_note_once(&mut err, lint,
+                                &format!("#[{}({})] on by default", level.as_str(), name));
         },
         CommandLine(lint_flag_val) => {
             let flag = match level {
@@ -537,20 +534,24 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
             };
             let hyphen_case_lint_name = name.replace("_", "-");
             if lint_flag_val.as_str() == name {
-                err.note(&format!("requested on the command line with `{} {}`",
-                                  flag, hyphen_case_lint_name));
+                sess.diag_note_once(&mut err, lint,
+                                    &format!("requested on the command line with `{} {}`",
+                                             flag, hyphen_case_lint_name));
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
-                err.note(&format!("`{} {}` implied by `{} {}`",
-                                  flag, hyphen_case_lint_name, flag, hyphen_case_flag_val));
+                sess.diag_note_once(&mut err, lint,
+                                    &format!("`{} {}` implied by `{} {}`",
+                                             flag, hyphen_case_lint_name, flag,
+                                             hyphen_case_flag_val));
             }
         },
         Node(lint_attr_name, src) => {
-            def = Some(src);
+            sess.diag_span_note_once(&mut err, lint, src, "lint level defined here");
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
-                err.note(&format!("#[{}({})] implied by #[{}({})]",
-                                  level_str, name, level_str, lint_attr_name));
+                sess.diag_note_once(&mut err, lint,
+                                    &format!("#[{}({})] implied by #[{}({})]",
+                                             level_str, name, level_str, lint_attr_name));
             }
         }
     }
@@ -564,10 +565,6 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
                                future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
-    }
-
-    if let Some(span) = def {
-        sess.diag_span_note_once(&mut err, lint, span, "lint level defined here");
     }
 
     err
@@ -724,21 +721,22 @@ pub trait LintContext<'tcx>: Sized {
         let mut pushed = 0;
 
         for result in gather_attrs(attrs) {
-            let v = match result {
+            let (is_group, lint_level_spans) = match result {
                 Err(span) => {
                     span_err!(self.sess(), span, E0452,
                               "malformed lint attribute");
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
-                    match self.lints().find_lint(&lint_name.as_str(), &self.sess(), Some(span)) {
-                        Ok(lint_id) => vec![(lint_id, level, span)],
+                    match self.lints().find_lint(&lint_name.as_str()) {
+                        Ok(lint_id) => (false, vec![(lint_id, level, span)]),
                         Err(FindLintError::NotFound) => {
                             match self.lints().lint_groups.get(&*lint_name.as_str()) {
-                                Some(&(ref v, _)) => v.iter()
+                                Some(&(ref v, _)) => (true,
+                                                      v.iter()
                                                       .map(|lint_id: &LintId|
                                                            (*lint_id, level, span))
-                                                      .collect(),
+                                                      .collect()),
                                 None => {
                                     // The lint or lint group doesn't exist.
                                     // This is an error, but it was handled
@@ -754,14 +752,18 @@ pub trait LintContext<'tcx>: Sized {
 
             let lint_attr_name = result.expect("lint attribute should be well-formed").0;
 
-            for (lint_id, level, span) in v {
+            for (lint_id, level, span) in lint_level_spans {
                 let (now, now_source) = self.lint_sess().get_source(lint_id);
                 if now == Forbid && level != Forbid {
-                    let lint_name = lint_id.to_string();
+                    let forbidden_lint_name = match now_source {
+                        LintSource::Default => lint_id.to_string(),
+                        LintSource::Node(name, _) => name.to_string(),
+                        LintSource::CommandLine(name) => name.to_string(),
+                    };
                     let mut diag_builder = struct_span_err!(self.sess(), span, E0453,
                                                             "{}({}) overruled by outer forbid({})",
-                                                            level.as_str(), lint_name,
-                                                            lint_name);
+                                                            level.as_str(), lint_attr_name,
+                                                            forbidden_lint_name);
                     diag_builder.span_label(span, "overruled by previous forbid");
                     match now_source {
                         LintSource::Default => &mut diag_builder,
@@ -772,7 +774,10 @@ pub trait LintContext<'tcx>: Sized {
                         LintSource::CommandLine(_) => {
                             diag_builder.note("`forbid` lint level was set on command line")
                         }
-                    }.emit()
+                    }.emit();
+                    if is_group { // don't set a separate error for every lint in the group
+                        break;
+                    }
                 } else if now != level {
                     let cx = self.lint_sess_mut();
                     cx.stack.push((lint_id, (now, now_source)));
@@ -1420,7 +1425,7 @@ impl Decodable for LintId {
     fn decode<D: Decoder>(d: &mut D) -> Result<LintId, D::Error> {
         let s = d.read_str()?;
         ty::tls::with(|tcx| {
-            match tcx.sess.lint_store.borrow().find_lint(&s, tcx.sess, None) {
+            match tcx.sess.lint_store.borrow().find_lint(&s) {
                 Ok(id) => Ok(id),
                 Err(_) => panic!("invalid lint-id `{}`", s),
             }

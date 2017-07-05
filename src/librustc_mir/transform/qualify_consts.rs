@@ -750,8 +750,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
             let fn_ty = func.ty(self.mir, self.tcx);
             let (is_shuffle, is_const_fn) = match fn_ty.sty {
-                ty::TyFnDef(def_id, _, f) => {
-                    (f.abi() == Abi::PlatformIntrinsic &&
+                ty::TyFnDef(def_id, _) => {
+                    (self.tcx.fn_sig(def_id).abi() == Abi::PlatformIntrinsic &&
                      self.tcx.item_name(def_id).as_str().starts_with("simd_shuffle"),
                      self.tcx.is_const_fn(def_id))
                 }
@@ -996,7 +996,7 @@ impl MirPass for QualifyAndPromoteConstants {
                                               tcx.require_lang_item(lang_items::SyncTraitLangItem),
                                               cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                    infcx.report_fulfillment_errors(&err);
+                    infcx.report_fulfillment_errors(&err, None);
                 }
             });
         }

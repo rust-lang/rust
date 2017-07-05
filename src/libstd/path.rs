@@ -276,7 +276,7 @@ impl<'a> Prefix<'a> {
 /// ```
 /// use std::path;
 ///
-/// assert!(path::is_separator('/'));
+/// assert!(path::is_separator('/')); // '/' works for both Unix and Windows
 /// assert!(!path::is_separator('❤'));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1348,10 +1348,10 @@ impl From<Box<Path>> for PathBuf {
     }
 }
 
-#[stable(feature = "box_from_path_buf", since = "1.18.0")]
-impl Into<Box<Path>> for PathBuf {
-    fn into(self) -> Box<Path> {
-        self.into_boxed_path()
+#[stable(feature = "box_from_path_buf", since = "1.20.0")]
+impl From<PathBuf> for Box<Path> {
+    fn from(p: PathBuf) -> Box<Path> {
+        p.into_boxed_path()
     }
 }
 
@@ -1499,9 +1499,9 @@ impl AsRef<OsStr> for PathBuf {
 /// A slice of a path (akin to [`str`]).
 ///
 /// This type supports a number of operations for inspecting a path, including
-/// breaking the path into its components (separated by `/` or `\`, depending on
-/// the platform), extracting the file name, determining whether the path is
-/// absolute, and so on.
+/// breaking the path into its components (separated by `/` on Unix and by either
+/// `/` or `\` on Windows), extracting the file name, determining whether the path
+/// is absolute, and so on.
 ///
 /// This is an *unsized* type, meaning that it must always be used behind a
 /// pointer like `&` or [`Box`]. For an owned version of this type,
@@ -1520,10 +1520,11 @@ impl AsRef<OsStr> for PathBuf {
 /// use std::path::Path;
 /// use std::ffi::OsStr;
 ///
-/// let path = Path::new("/tmp/foo/bar.txt");
+/// // Note: this example does work on Windows
+/// let path = Path::new("./foo/bar.txt");
 ///
 /// let parent = path.parent();
-/// assert_eq!(parent, Some(Path::new("/tmp/foo")));
+/// assert_eq!(parent, Some(Path::new("./foo")));
 ///
 /// let file_stem = path.file_stem();
 /// assert_eq!(file_stem, Some(OsStr::new("bar")));

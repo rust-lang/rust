@@ -7,5 +7,5 @@ error[E0046]: not all trait items implemented, missing: `foo`
 18 | impl Foo for Bar {}
    | ^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -34,7 +34,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
-#![feature(command_envs)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
@@ -53,6 +52,7 @@ extern crate rustc_const_math;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
+extern crate rustc_demangle;
 extern crate jobserver;
 
 #[macro_use] extern crate log;

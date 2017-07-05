@@ -11,5 +11,5 @@ error[E0277]: the trait bound `Bar: Foo<usize>` is not satisfied
              <Bar as Foo<u8>>
            and 2 others
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -447,8 +447,6 @@ impl Command {
     /// Basic usage:
     ///
     /// ```no_run
-    /// #![feature(command_envs)]
-    ///
     /// use std::process::{Command, Stdio};
     /// use std::env;
     /// use std::collections::HashMap;
@@ -466,7 +464,7 @@ impl Command {
     ///         .spawn()
     ///         .expect("printenv failed to start");
     /// ```
-    #[unstable(feature = "command_envs", issue = "38526")]
+    #[stable(feature = "command_envs", since = "1.19.0")]
     pub fn envs<I, K, V>(&mut self, vars: I) -> &mut Command
         where I: IntoIterator<Item=(K, V)>, K: AsRef<OsStr>, V: AsRef<OsStr>
     {
