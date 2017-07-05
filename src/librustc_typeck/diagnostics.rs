@@ -242,7 +242,7 @@ trait_obj.method_two();
 You can read more about trait objects in the Trait Object section of the
 Reference:
 
-https://doc.rust-lang.org/reference.html#trait-objects
+https://doc.rust-lang.org/reference/types.html#trait-objects
 "##,
 
 E0034: r##"
@@ -875,7 +875,7 @@ optional namespacing), a dereference, an indexing expression or a field
 reference.
 
 More details can be found here:
-https://doc.rust-lang.org/reference.html#lvalues-rvalues-and-temporaries
+https://doc.rust-lang.org/reference/expressions.html#lvalues-rvalues-and-temporaries
 
 Now, we can go further. Here are some erroneous code examples:
 
