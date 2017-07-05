@@ -170,8 +170,8 @@ impl<'a> Step<'a> for Cargotest<'a> {
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
         try_run(build, cmd.arg(&build.initial_cargo)
                           .arg(&out_dir)
-                          .env("RUSTC", build.compiler_path(compiler))
-                          .env("RUSTDOC", build.rustdoc(compiler)));
+                          .env("RUSTC", builder.rustc(compiler))
+                          .env("RUSTDOC", builder.rustdoc(compiler)));
     }
 }
 
@@ -215,7 +215,7 @@ impl<'a> Step<'a> for Cargo<'a> {
             iter::once(path).chain(env::split_paths(&old_path))
         ).expect("");
 
-        let mut cargo = build.cargo(compiler, Mode::Tool, self.host, "test");
+        let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
         if !build.fail_fast {
             cargo.arg("--no-fail-fast");
@@ -584,10 +584,10 @@ impl<'a> Step<'a> for Compiletest<'a> {
         // compiletest currently has... a lot of arguments, so let's just pass all
         // of them!
 
-        cmd.arg("--compile-lib-path").arg(build.rustc_libdir(compiler));
+        cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
-        cmd.arg("--rustc-path").arg(build.compiler_path(compiler));
-        cmd.arg("--rustdoc-path").arg(build.rustdoc(compiler));
+        cmd.arg("--rustc-path").arg(builder.rustc(compiler));
+        cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(build, compiler.host).join(suite));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
@@ -806,11 +806,12 @@ impl<'a> Step<'a> for ErrorIndex<'a> {
                     .arg(&output)
                     .env("CFG_BUILD", &build.build));
 
-        markdown_test(build, compiler, &output);
+        markdown_test(builder, compiler, &output);
     }
 }
 
-fn markdown_test(build: &Build, compiler: Compiler, markdown: &Path) {
+fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
+    let build = builder.build;
     let mut file = t!(File::open(markdown));
     let mut contents = String::new();
     t!(file.read_to_string(&mut contents));
@@ -819,8 +820,8 @@ fn markdown_test(build: &Build, compiler: Compiler, markdown: &Path) {
     }
 
     println!("doc tests for: {}", markdown.display());
-    let mut cmd = Command::new(build.rustdoc(compiler));
-    build.add_rustc_lib_path(compiler, &mut cmd);
+    let mut cmd = Command::new(builder.rustdoc(compiler));
+    builder.add_rustc_lib_path(compiler, &mut cmd);
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
@@ -1071,7 +1072,7 @@ impl<'a> Step<'a> for Krate<'a> {
         // Pass in some standard flags then iterate over the graph we've discovered
         // in `cargo metadata` with the maps above and figure out what `-p`
         // arguments need to get passed.
-        let mut cargo = build.cargo(compiler, mode, target, test_kind.subcommand());
+        let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         cargo.arg("--manifest-path")
             .arg(build.src.join(path).join("Cargo.toml"))
             .arg("--features").arg(features);

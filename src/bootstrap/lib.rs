@@ -96,7 +96,7 @@ use std::process::Command;
 
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 
-use util::{exe, libdir, add_lib_path, OutputFolder, CiEnv};
+use util::{exe, libdir, OutputFolder, CiEnv};
 
 mod cc;
 mod channel;
@@ -352,23 +352,6 @@ impl Build {
         t!(File::create(stamp));
     }
 
-    /// Get a path to the compiler specified.
-    fn compiler_path(&self, compiler: Compiler) -> PathBuf {
-        if compiler.is_snapshot(self) {
-            self.initial_rustc.clone()
-        } else {
-            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
-        }
-    }
-
-    /// Get the `rustdoc` executable next to the specified compiler
-    fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        let mut rustdoc = self.compiler_path(compiler);
-        rustdoc.pop();
-        rustdoc.push(exe("rustdoc", compiler.host));
-        rustdoc
-    }
-
     /// Get the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self) -> String {
@@ -529,19 +512,6 @@ impl Build {
     fn add_rust_test_threads(&self, cmd: &mut Command) {
         if env::var_os("RUST_TEST_THREADS").is_none() {
             cmd.env("RUST_TEST_THREADS", self.jobs().to_string());
-        }
-    }
-
-    /// Returns the compiler's libdir where it stores the dynamic libraries that
-    /// it itself links against.
-    ///
-    /// For example this returns `<sysroot>/lib` on Unix and `<sysroot>/bin` on
-    /// Windows.
-    fn rustc_libdir(&self, compiler: Compiler) -> PathBuf {
-        if compiler.is_snapshot(self) {
-            self.rustc_snapshot_libdir()
-        } else {
-            self.sysroot(compiler).join(libdir(compiler.host))
         }
     }
 

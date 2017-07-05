@@ -271,7 +271,7 @@ fn invoke_rustdoc(builder: &Builder, target: &str, markdown: &str) {
 
     let path = build.src.join("src/doc").join(markdown);
 
-    let rustdoc = build.rustdoc(compiler);
+    let rustdoc = builder.rustdoc(compiler);
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
@@ -290,7 +290,7 @@ fn invoke_rustdoc(builder: &Builder, target: &str, markdown: &str) {
 
     let mut cmd = Command::new(&rustdoc);
 
-    build.add_rustc_lib_path(compiler, &mut cmd);
+    builder.add_rustc_lib_path(compiler, &mut cmd);
 
     let out = out.join("book");
 
@@ -386,7 +386,7 @@ impl<'a> Step<'a> for Standalone<'a> {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = build.rustdoc(compiler);
+            let rustdoc = builder.rustdoc(compiler);
             if up_to_date(&path, &html) &&
                up_to_date(&footer, &html) &&
                up_to_date(&favicon, &html) &&
@@ -397,7 +397,7 @@ impl<'a> Step<'a> for Standalone<'a> {
             }
 
             let mut cmd = Command::new(&rustdoc);
-            build.add_rustc_lib_path(compiler, &mut cmd);
+            builder.add_rustc_lib_path(compiler, &mut cmd);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
@@ -483,7 +483,7 @@ impl<'a> Step<'a> for Std<'a> {
         builder.ensure(compile::Std { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Libstd)
                            .join(target).join("doc");
-        let rustdoc = build.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler);
 
         // Here what we're doing is creating a *symlink* (directory junction on
         // Windows) to the final output location. This is not done as an
@@ -502,7 +502,7 @@ impl<'a> Step<'a> for Std<'a> {
         build.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&my_out, &out_dir));
 
-        let mut cargo = build.cargo(compiler, Mode::Libstd, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "doc");
         cargo.arg("--manifest-path")
              .arg(build.src.join("src/libstd/Cargo.toml"))
              .arg("--features").arg(build.std_features());
@@ -597,14 +597,14 @@ impl<'a> Step<'a> for Test<'a> {
         builder.ensure(compile::Test { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Libtest)
                            .join(target).join("doc");
-        let rustdoc = build.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler);
 
         // See docs in std above for why we symlink
         let my_out = build.crate_doc_out(target);
         build.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&my_out, &out_dir));
 
-        let mut cargo = build.cargo(compiler, Mode::Libtest, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "doc");
         cargo.arg("--manifest-path")
              .arg(build.src.join("src/libtest/Cargo.toml"));
         build.run(&mut cargo);
@@ -685,14 +685,14 @@ impl<'a> Step<'a> for Rustc<'a> {
         builder.ensure(compile::Rustc { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Librustc)
                            .join(target).join("doc");
-        let rustdoc = build.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler);
 
         // See docs in std above for why we symlink
         let my_out = build.crate_doc_out(target);
         build.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&my_out, &out_dir));
 
-        let mut cargo = build.cargo(compiler, Mode::Librustc, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
         cargo.arg("--manifest-path")
              .arg(build.src.join("src/rustc/Cargo.toml"))
              .arg("--features").arg(build.rustc_features());

@@ -196,7 +196,7 @@ impl<'a> Step<'a> for Std<'a> {
                 compiler.host, target);
 
         let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
-        build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
+        build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         let mut features = build.std_features();
 
@@ -365,7 +365,7 @@ impl<'a> Step<'a> for StartupObjects<'a> {
         }
 
         let compiler = builder.compiler(0, &build.build);
-        let compiler_path = build.compiler_path(compiler);
+        let compiler_path = builder.rustc(compiler);
         let src_dir = &build.src.join("src/rtstartup");
         let dst_dir = &build.native_dir(target).join("rtstartup");
         let sysroot_dir = &builder.sysroot_libdir(for_compiler, target);
@@ -454,7 +454,7 @@ impl<'a> Step<'a> for Test<'a> {
                 compiler.host, target);
         let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
-        let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
             cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
         }
@@ -465,7 +465,7 @@ impl<'a> Step<'a> for Test<'a> {
                 &libtest_stamp(build, compiler, target));
 
         builder.ensure(TestLink {
-            compiler: builder.compiler(1, &build.build),
+            compiler: builder.compiler(compiler.stage, &build.build),
             target_compiler: compiler,
             target: target,
         });
@@ -583,7 +583,7 @@ impl<'a> Step<'a> for Rustc<'a> {
         let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
         build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
 
-        let mut cargo = build.cargo(compiler, Mode::Librustc, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         cargo.arg("--features").arg(build.rustc_features())
              .arg("--manifest-path")
              .arg(build.src.join("src/rustc/Cargo.toml"));
@@ -838,7 +838,7 @@ impl<'a> Step<'a> for Assemble<'a> {
         let rustc = out_dir.join(exe("rustc", host));
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(&bindir));
-        let compiler = build.compiler_path(target_compiler);
+        let compiler = builder.rustc(target_compiler);
         let _ = fs::remove_file(&compiler);
         copy(&rustc, &compiler);
 

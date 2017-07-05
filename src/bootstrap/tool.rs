@@ -110,7 +110,7 @@ impl<'a> Step<'a> for ToolBuild<'a> {
         let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
         println!("Building stage{} tool {} ({})", stage, tool, target);
 
-        let mut cargo = build.cargo(compiler, Mode::Tool, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
         let dir = build.src.join("src/tools").join(tool);
         cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 

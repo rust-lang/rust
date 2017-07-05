@@ -998,7 +998,7 @@ impl<'a> Step<'a> for Cargo<'a> {
         let etc = src.join("src/etc");
         let release_num = build.release_num("cargo");
         let name = pkgname(build, "cargo");
-        let version = build.cargo_info.version(build, &release_num);
+        let version = builder.cargo_info.version(build, &release_num);
 
         let tmp = tmpdir(build);
         let image = tmp.join("cargo-image");

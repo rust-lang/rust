@@ -187,22 +187,6 @@ impl<'a> Builder<'a> {
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
 
-    pub fn rustc(&self, compiler: Compiler) -> PathBuf {
-        if compiler.is_snapshot(self) {
-            self.build.initial_rustc.clone()
-        } else {
-            self.compiler(compiler.stage, compiler.host);
-            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
-        }
-    }
-
-    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        let mut rustdoc = self.rustc(compiler);
-        rustdoc.pop();
-        rustdoc.push(exe("rustdoc", compiler.host));
-        rustdoc
-    }
-
     pub fn sysroot(&self, compiler: Compiler<'a>) -> PathBuf {
         self.ensure(compile::Sysroot { compiler })
     }
@@ -254,6 +238,23 @@ impl<'a> Builder<'a> {
         add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
     }
 
+    /// Get a path to the compiler specified.
+    pub fn rustc(&self, compiler: Compiler) -> PathBuf {
+        if compiler.is_snapshot(self) {
+            self.initial_rustc.clone()
+        } else {
+            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
+        }
+    }
+
+    /// Get the `rustdoc` executable next to the specified compiler
+    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
+        let mut rustdoc = self.rustc(compiler);
+        rustdoc.pop();
+        rustdoc.push(exe("rustdoc", compiler.host));
+        rustdoc
+    }
+
     /// Prepares an invocation of `cargo` to be run.
     ///
     /// This will create a `Command` that represents a pending execution of
@@ -261,7 +262,7 @@ impl<'a> Builder<'a> {
     /// rustc compiler, its output will be scoped by `mode`'s output directory,
     /// it will pass the `--target` flag for the specified `target`, and will be
     /// executing the Cargo command `cmd`.
-    fn cargo(&self,
+    pub fn cargo(&self,
              compiler: Compiler,
              mode: Mode,
              target: &str,
@@ -293,7 +294,7 @@ impl<'a> Builder<'a> {
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
         cargo.env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
              .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
-             .env("RUSTC_REAL", self.compiler_path(compiler))
+             .env("RUSTC_REAL", self.rustc(compiler))
              .env("RUSTC_STAGE", stage.to_string())
              .env("RUSTC_CODEGEN_UNITS",
                   self.config.rust_codegen_units.to_string())
@@ -353,7 +354,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
-            cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
+            cargo.env("RUSTC_SNAPSHOT", self.rustc(compiler))
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
 
