@@ -42,6 +42,31 @@ pub trait Step: PartialOrd + Sized {
     fn sub_one(&self) -> Self;
 }
 
+// These are still macro-generated because the integer literals resolve to different types.
+macro_rules! step_identical_methods {
+    () => {
+        #[inline]
+        fn replace_one(&mut self) -> Self {
+            mem::replace(self, 1)
+        }
+
+        #[inline]
+        fn replace_zero(&mut self) -> Self {
+            mem::replace(self, 0)
+        }
+
+        #[inline]
+        fn add_one(&self) -> Self {
+            Add::add(*self, 1)
+        }
+
+        #[inline]
+        fn sub_one(&self) -> Self {
+            Sub::sub(*self, 1)
+        }
+    }
+}
+
 macro_rules! step_impl_unsigned {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
@@ -59,25 +84,7 @@ macro_rules! step_impl_unsigned {
                 }
             }
 
-            #[inline]
-            fn replace_one(&mut self) -> Self {
-                mem::replace(self, 1)
-            }
-
-            #[inline]
-            fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 0)
-            }
-
-            #[inline]
-            fn add_one(&self) -> Self {
-                Add::add(*self, 1)
-            }
-
-            #[inline]
-            fn sub_one(&self) -> Self {
-                Sub::sub(*self, 1)
-            }
+            step_identical_methods!();
         }
     )*)
 }
@@ -100,25 +107,7 @@ macro_rules! step_impl_signed {
                 }
             }
 
-            #[inline]
-            fn replace_one(&mut self) -> Self {
-                mem::replace(self, 1)
-            }
-
-            #[inline]
-            fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 0)
-            }
-
-            #[inline]
-            fn add_one(&self) -> Self {
-                Add::add(*self, 1)
-            }
-
-            #[inline]
-            fn sub_one(&self) -> Self {
-                Sub::sub(*self, 1)
-            }
+            step_identical_methods!();
         }
     )*)
 }
@@ -134,25 +123,7 @@ macro_rules! step_impl_no_between {
                 None
             }
 
-            #[inline]
-            fn replace_one(&mut self) -> Self {
-                mem::replace(self, 1)
-            }
-
-            #[inline]
-            fn replace_zero(&mut self) -> Self {
-                mem::replace(self, 0)
-            }
-
-            #[inline]
-            fn add_one(&self) -> Self {
-                Add::add(*self, 1)
-            }
-
-            #[inline]
-            fn sub_one(&self) -> Self {
-                Sub::sub(*self, 1)
-            }
+            step_identical_methods!();
         }
     )*)
 }
