@@ -9,10 +9,12 @@
 // except according to those terms.
 
 use ast::Ident;
-use errors::Handler;
+use ext::base::ExtCtxt;
+use ext::expand::Marker;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
-use parse::token::{self, SubstNt, Token, NtTT};
+use fold::noop_fold_tt;
+use parse::token::{self, Token, NtTT};
 use syntax_pos::{Span, DUMMY_SP};
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::small_vector::SmallVector;
@@ -61,9 +63,9 @@ impl Iterator for Frame {
 }
 
 /// This can do Macro-By-Example transcription. On the other hand, if
-/// `src` contains no `TokenTree::{Sequence, Match}`s, or `SubstNt`s, `interp` can
+/// `src` contains no `TokenTree::{Sequence, MetaVar, MetaVarDecl}`s, `interp` can
 /// (and should) be None.
-pub fn transcribe(sp_diag: &Handler,
+pub fn transcribe(cx: &ExtCtxt,
                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                   src: Vec<quoted::TokenTree>)
                   -> TokenStream {
@@ -120,22 +122,20 @@ pub fn transcribe(sp_diag: &Handler,
                                          &interpolations,
                                          &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        panic!(sp_diag.span_fatal(
-                            sp, /* blame macro writer */
+                        cx.span_fatal(sp, /* blame macro writer */
                             "attempted to repeat an expression \
                              containing no syntax \
-                             variables matched as repeating at this depth"));
+                             variables matched as repeating at this depth");
                     }
                     LockstepIterSize::Contradiction(ref msg) => {
                         // FIXME #2887 blame macro invoker instead
-                        panic!(sp_diag.span_fatal(sp, &msg[..]));
+                        cx.span_fatal(sp, &msg[..]);
                     }
                     LockstepIterSize::Constraint(len, _) => {
                         if len == 0 {
                             if seq.op == quoted::KleeneOp::OneOrMore {
                                 // FIXME #2887 blame invoker
-                                panic!(sp_diag.span_fatal(sp,
-                                                          "this must repeat at least once"));
+                                cx.span_fatal(sp, "this must repeat at least once");
                             }
                         } else {
                             repeats.push((0, len));
@@ -149,29 +149,37 @@ pub fn transcribe(sp_diag: &Handler,
                 }
             }
             // FIXME #2887: think about span stuff here
-            quoted::TokenTree::Token(sp, SubstNt(ident)) => {
-                match lookup_cur_matched(ident, &interpolations, &repeats) {
-                    None => result.push(TokenTree::Token(sp, SubstNt(ident)).into()),
-                    Some(cur_matched) => if let MatchedNonterminal(ref nt) = *cur_matched {
-                        match **nt {
-                            NtTT(ref tt) => result.push(tt.clone().into()),
-                            _ => {
-                                let token = TokenTree::Token(sp, token::Interpolated(nt.clone()));
-                                result.push(token.into());
-                            }
+            quoted::TokenTree::MetaVar(mut sp, ident) => {
+                if let Some(cur_matched) = lookup_cur_matched(ident, &interpolations, &repeats) {
+                    if let MatchedNonterminal(ref nt) = *cur_matched {
+                        if let NtTT(ref tt) = **nt {
+                            result.push(tt.clone().into());
+                        } else {
+                            sp.ctxt = sp.ctxt.apply_mark(cx.current_expansion.mark);
+                            let token = TokenTree::Token(sp, Token::interpolated((**nt).clone()));
+                            result.push(token.into());
                         }
                     } else {
-                        panic!(sp_diag.span_fatal(
-                            sp, /* blame the macro writer */
-                            &format!("variable '{}' is still repeating at this depth", ident)));
+                        cx.span_fatal(sp, /* blame the macro writer */
+                            &format!("variable '{}' is still repeating at this depth", ident));
                     }
+                } else {
+                    let ident =
+                        Ident { ctxt: ident.ctxt.apply_mark(cx.current_expansion.mark), ..ident };
+                    sp.ctxt = sp.ctxt.apply_mark(cx.current_expansion.mark);
+                    result.push(TokenTree::Token(sp, token::Dollar).into());
+                    result.push(TokenTree::Token(sp, token::Ident(ident)).into());
                 }
             }
-            quoted::TokenTree::Delimited(span, delimited) => {
+            quoted::TokenTree::Delimited(mut span, delimited) => {
+                span.ctxt = span.ctxt.apply_mark(cx.current_expansion.mark);
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
-            quoted::TokenTree::Token(span, tok) => result.push(TokenTree::Token(span, tok).into()),
+            quoted::TokenTree::Token(sp, tok) => {
+                let mut marker = Marker(cx.current_expansion.mark);
+                result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into())
+            }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
     }
@@ -240,7 +248,7 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 size + lockstep_iter_size(tt, interpolations, repeats)
             })
         },
-        TokenTree::Token(_, SubstNt(name)) | TokenTree::MetaVarDecl(_, name, _) =>
+        TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) =>
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match *matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,

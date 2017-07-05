@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that a macro can emit delimiters with nothing inside - `()`, `{}`
-
-// aux-build:hello_macro.rs
-// ignore-stage1
+// aux-build:count_compound_ops.rs
 
 #![feature(proc_macro)]
 
-extern crate hello_macro;
+extern crate count_compound_ops;
+use count_compound_ops::count_compound_ops;
 
 fn main() {
-    hello_macro::hello!();
+    assert_eq!(count_compound_ops!(foo<=>bar <<<! -baz ++), 4);
 }

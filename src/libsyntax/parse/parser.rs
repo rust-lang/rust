@@ -107,7 +107,7 @@ pub enum BlockMode {
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            match *nt {
+            match nt.0 {
                 token::NtExpr(ref e) => {
                     $p.bump();
                     return Ok((*e).clone());
@@ -134,7 +134,7 @@ macro_rules! maybe_whole_expr {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            if let token::$constructor($x) = (*nt).clone() {
+            if let token::$constructor($x) = nt.0.clone() {
                 $p.bump();
                 return Ok($e);
             }
@@ -1602,7 +1602,7 @@ impl<'a> Parser<'a> {
     /// Matches token_lit = LIT_INTEGER | ...
     pub fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
         let out = match self.token {
-            token::Interpolated(ref nt) => match **nt {
+            token::Interpolated(ref nt) => match nt.0 {
                 token::NtExpr(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => { lit.node.clone() }
                     _ => { return self.unexpected_last(&self.token); }
@@ -1761,7 +1761,7 @@ impl<'a> Parser<'a> {
         };
 
         if is_global {
-            segments.insert(0, PathSegment::crate_root());
+            segments.insert(0, PathSegment::crate_root(lo));
         }
 
         // Assemble the result.
@@ -1775,7 +1775,7 @@ impl<'a> Parser<'a> {
     /// This is used when parsing derive macro paths in `#[derive]` attributes.
     pub fn parse_path_allowing_meta(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
         let meta_ident = match self.token {
-            token::Interpolated(ref nt) => match **nt {
+            token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
                     ast::MetaItemKind::Word => Some(ast::Ident::with_empty_ctxt(meta.name)),
                     _ => None,
@@ -2610,13 +2610,16 @@ impl<'a> Parser<'a> {
 
     pub fn process_potential_macro_variable(&mut self) {
         let ident = match self.token {
-            token::SubstNt(name) => {
+            token::Dollar if self.span.ctxt != syntax_pos::hygiene::SyntaxContext::empty() &&
+                             self.look_ahead(1, |t| t.is_ident()) => {
+                self.bump();
+                let name = match self.token { token::Ident(ident) => ident, _ => unreachable!() };
                 self.fatal(&format!("unknown macro variable `{}`", name)).emit();
                 return
             }
             token::Interpolated(ref nt) => {
                 self.meta_var_span = Some(self.span);
-                match **nt {
+                match nt.0 {
                     token::NtIdent(ident) => ident,
                     _ => return,
                 }
@@ -6168,7 +6171,7 @@ impl<'a> Parser<'a> {
             // `{foo, bar}`, `::{foo, bar}`, `*`, or `::*`.
             self.eat(&token::ModSep);
             let prefix = ast::Path {
-                segments: vec![PathSegment::crate_root()],
+                segments: vec![PathSegment::crate_root(lo)],
                 span: lo.to(self.span),
             };
             let view_path_kind = if self.eat(&token::BinOp(token::Star)) {

@@ -270,13 +270,12 @@ pub fn token_to_string(tok: &Token) -> String {
 
         /* Other */
         token::DocComment(s)        => s.to_string(),
-        token::SubstNt(s)           => format!("${}", s),
         token::Eof                  => "<eof>".to_string(),
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
-        token::Interpolated(ref nt) => match **nt {
+        token::Interpolated(ref nt) => match nt.0 {
             token::NtExpr(ref e)        => expr_to_string(e),
             token::NtMeta(ref e)        => meta_item_to_string(e),
             token::NtTy(ref e)          => ty_to_string(e),

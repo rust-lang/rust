@@ -99,7 +99,7 @@ impl Path {
     pub fn default_to_global(mut self) -> Path {
         if !self.is_global() &&
            !::parse::token::Ident(self.segments[0].identifier).is_path_segment_keyword() {
-            self.segments.insert(0, PathSegment::crate_root());
+            self.segments.insert(0, PathSegment::crate_root(self.span));
         }
         self
     }
@@ -133,10 +133,10 @@ impl PathSegment {
     pub fn from_ident(ident: Ident, span: Span) -> Self {
         PathSegment { identifier: ident, span: span, parameters: None }
     }
-    pub fn crate_root() -> Self {
+    pub fn crate_root(span: Span) -> Self {
         PathSegment {
-            identifier: keywords::CrateRoot.ident(),
-            span: DUMMY_SP,
+            identifier: Ident { ctxt: span.ctxt, ..keywords::CrateRoot.ident() },
+            span: span,
             parameters: None,
         }
     }

@@ -19,7 +19,9 @@ impl<'a> StringReader<'a> {
     pub fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
-            tts.push(self.parse_token_tree()?.into());
+            let tree = self.parse_token_tree()?;
+            let is_joint = tree.span().hi == self.span.lo && token::is_op(&self.token);
+            tts.push(if is_joint { tree.joint() } else { tree.into() });
         }
         Ok(TokenStream::concat(tts))
     }
@@ -31,13 +33,15 @@ impl<'a> StringReader<'a> {
             if let token::CloseDelim(..) = self.token {
                 return TokenStream::concat(tts);
             }
-            match self.parse_token_tree() {
-                Ok(tt) => tts.push(tt.into()),
+            let tree = match self.parse_token_tree() {
+                Ok(tree) => tree,
                 Err(mut e) => {
                     e.emit();
                     return TokenStream::concat(tts);
                 }
-            }
+            };
+            let is_joint = tree.span().hi == self.span.lo && token::is_op(&self.token);
+            tts.push(if is_joint { tree.joint() } else { tree.into() });
         }
     }
 

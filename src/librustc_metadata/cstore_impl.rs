@@ -33,6 +33,7 @@ use std::rc::Rc;
 
 use syntax::ast;
 use syntax::attr;
+use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION};
@@ -365,6 +366,10 @@ impl CrateStore for cstore::CStore {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize() - 1].1.clone());
+        } else if data.name == "proc_macro" &&
+                  self.get_crate_data(id.krate).item_name(id.index) == "quote" {
+            let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter));
+            return LoadedMacro::ProcMacro(Rc::new(ext));
         }
 
         let (name, def) = data.get_macro(id.index);
@@ -372,7 +377,7 @@ impl CrateStore for cstore::CStore {
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
         let local_span = Span { lo: filemap.start_pos, hi: filemap.end_pos, ctxt: NO_EXPANSION };
-        let body = filemap_to_stream(&sess.parse_sess, filemap);
+        let body = filemap_to_stream(&sess.parse_sess, filemap, None);
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, &self.dep_graph);

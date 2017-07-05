@@ -320,7 +320,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
         if global {
-            segments.push(ast::PathSegment::crate_root());
+            segments.push(ast::PathSegment::crate_root(sp));
         }
 
         segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, sp)));

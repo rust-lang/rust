@@ -215,7 +215,7 @@ impl<F> TTMacroExpander for F
         impl Folder for AvoidInterpolatedIdents {
             fn fold_tt(&mut self, tt: tokenstream::TokenTree) -> tokenstream::TokenTree {
                 if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
-                    if let token::NtIdent(ident) = **nt {
+                    if let token::NtIdent(ident) = nt.0 {
                         return tokenstream::TokenTree::Token(ident.span, token::Ident(ident.node));
                     }
                 }
@@ -578,7 +578,10 @@ impl SyntaxExtension {
 
     pub fn is_modern(&self) -> bool {
         match *self {
-            SyntaxExtension::DeclMacro(..) => true,
+            SyntaxExtension::DeclMacro(..) |
+            SyntaxExtension::ProcMacro(..) |
+            SyntaxExtension::AttrProcMacro(..) |
+            SyntaxExtension::ProcMacroDerive(..) => true,
             _ => false,
         }
     }
@@ -902,18 +905,4 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
         }
     }
     Some(es)
-}
-
-pub struct ChangeSpan {
-    pub span: Span
-}
-
-impl Folder for ChangeSpan {
-    fn new_span(&mut self, _sp: Span) -> Span {
-        self.span
-    }
-
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        fold::noop_fold_mac(mac, self)
-    }
 }

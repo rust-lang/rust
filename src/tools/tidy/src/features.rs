@@ -245,7 +245,7 @@ fn get_and_check_lib_features(base_src_path: &Path,
                     let mut err = |msg: &str| {
                         tidy_error!(bad, "{}:{}: {}", file.display(), line, msg);
                     };
-                    if lang_features.contains_key(name) {
+                    if lang_features.contains_key(name) && name != "proc_macro" {
                         err("duplicating a lang feature");
                     }
                     if let Some(ref s) = lib_features.get(name) {

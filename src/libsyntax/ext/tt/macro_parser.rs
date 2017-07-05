@@ -158,15 +158,10 @@ pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
 pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match *elt {
-            TokenTree::Sequence(_, ref seq) => {
-                seq.num_captures
-            }
-            TokenTree::Delimited(_, ref delim) => {
-                count_names(&delim.tts)
-            }
-            TokenTree::MetaVarDecl(..) => {
-                1
-            }
+            TokenTree::Sequence(_, ref seq) => seq.num_captures,
+            TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
+            TokenTree::MetaVar(..) => 0,
+            TokenTree::MetaVarDecl(..) => 1,
             TokenTree::Token(..) => 0,
         }
     })
@@ -244,7 +239,7 @@ fn nameize<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, ms: &[TokenTree], mut
                     }
                 }
             }
-            TokenTree::Token(..) => (),
+            TokenTree::MetaVar(..) | TokenTree::Token(..) => (),
         }
 
         Ok(())
@@ -409,12 +404,11 @@ fn inner_parse_loop(sess: &ParseSess,
                     ei.idx = 0;
                     cur_eis.push(ei);
                 }
-                TokenTree::Token(_, ref t) => {
-                    if token_name_eq(t, token) {
-                        ei.idx += 1;
-                        next_eis.push(ei);
-                    }
+                TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
+                    ei.idx += 1;
+                    next_eis.push(ei);
                 }
+                TokenTree::Token(..) | TokenTree::MetaVar(..) => {}
             }
         }
     }

@@ -319,7 +319,7 @@ impl<'a> Classifier<'a> {
             token::Lifetime(..) => Class::Lifetime,
 
             token::Underscore | token::Eof | token::Interpolated(..) |
-            token::SubstNt(..) | token::Tilde | token::At => Class::None,
+            token::Tilde | token::At => Class::None,
         };
 
         // Anything that didn't return above is the simple case where we the

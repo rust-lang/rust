@@ -144,24 +144,18 @@ impl SyntaxContext {
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         HygieneData::with(|data| {
             let syntax_contexts = &mut data.syntax_contexts;
-            let ctxt_data = syntax_contexts[self.0 as usize];
-            if mark == ctxt_data.outer_mark {
-                return ctxt_data.prev_ctxt;
-            }
-
-            let modern = if data.marks[mark.0 as usize].modern {
-                *data.markings.entry((ctxt_data.modern, mark)).or_insert_with(|| {
-                    let modern = SyntaxContext(syntax_contexts.len() as u32);
+            let mut modern = syntax_contexts[self.0 as usize].modern;
+            if data.marks[mark.0 as usize].modern {
+                modern = *data.markings.entry((modern, mark)).or_insert_with(|| {
+                    let len = syntax_contexts.len() as u32;
                     syntax_contexts.push(SyntaxContextData {
                         outer_mark: mark,
-                        prev_ctxt: ctxt_data.modern,
-                        modern: modern,
+                        prev_ctxt: modern,
+                        modern: SyntaxContext(len),
                     });
-                    modern
-                })
-            } else {
-                ctxt_data.modern
-            };
+                    SyntaxContext(len)
+                });
+            }
 
             *data.markings.entry((self, mark)).or_insert_with(|| {
                 syntax_contexts.push(SyntaxContextData {
