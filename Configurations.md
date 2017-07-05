@@ -14,6 +14,39 @@ reorder_imported_names = true
 
 Below you find a detailed visual guide on all the supported configuration options of rustfmt:
 
+## `array_horizontal_layout_threshold`
+
+How many elements array must have before rustfmt uses horizontal layout.  
+Use this option to prevent a huge array from being vertically formatted.
+
+- **Default value**: `0`
+- **Possible values**: any positive integer
+
+**Note:** A value of `0` results in [`array_layout`](#array_layout) being applied regardless of a line's width.
+
+#### `0`:
+
+```rust
+// Each element will be placed on its own line.
+let a = vec![
+    0,
+    1,
+    2,
+    3,
+    4,
+    ...
+    999,
+    1000,
+];
+```
+
+#### `1000`:
+```rust
+// Each element will be placed on the same line as much as possible.
+let a = vec![0, 1, 2, 3, 4, ...
+             ..., 999, 1000];
+```
+
 ## `array_layout`
 
 Indent on arrays

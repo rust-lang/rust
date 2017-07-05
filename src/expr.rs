@@ -506,7 +506,7 @@ where
         .iter()
         .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
 
-    let tactic = match context.config.array_layout() {
+    let mut tactic = match context.config.array_layout() {
         IndentStyle::Block => {
             // FIXME wrong shape in one-line case
             match shape.width.checked_sub(2 * bracket_size) {
@@ -530,6 +530,18 @@ where
             }
         }
     };
+    if context.config.array_horizontal_layout_threshold() > 0 &&
+        items.len() > context.config.array_horizontal_layout_threshold()
+    {
+        tactic = DefinitiveListTactic::Mixed;
+        if context.config.array_layout() == IndentStyle::Block {
+            nested_shape = try_opt!(
+                shape
+                    .visual_indent(bracket_size)
+                    .sub_width(bracket_size * 2)
+            );
+        }
+    }
 
     let fmt = ListFormatting {
         tactic: tactic,

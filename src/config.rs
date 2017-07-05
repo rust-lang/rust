@@ -533,6 +533,8 @@ create_config! {
     array_layout: IndentStyle, IndentStyle::Block, "Indent on arrays";
     array_width: usize, 60,
         "Maximum width of an array literal before falling back to vertical formatting";
+    array_horizontal_layout_threshold: usize, 0,
+        "How many elements array must have before rustfmt uses horizontal layout.";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     where_style: Style, Style::Rfc, "Overall strategy for where clauses";
