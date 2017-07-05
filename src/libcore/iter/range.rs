@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use convert::TryFrom;
 use mem;
 use ops::{self, Add, Sub};
 use usize;
@@ -21,7 +22,7 @@ use super::{FusedIterator, TrustedLen};
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits",
            issue = "42168")]
-pub trait Step: PartialOrd + Sized {
+pub trait Step: Clone + PartialOrd + Sized {
     /// Returns the number of steps between two step objects. The count is
     /// inclusive of `start` and exclusive of `end`.
     ///
@@ -40,6 +41,9 @@ pub trait Step: PartialOrd + Sized {
 
     /// Subtracts one to this step, returning the result
     fn sub_one(&self) -> Self;
+
+    /// Add an usize, returning None on overflow
+    fn add_usize(&self, n: usize) -> Option<Self>;
 }
 
 // These are still macro-generated because the integer literals resolve to different types.
@@ -84,12 +88,20 @@ macro_rules! step_impl_unsigned {
                 }
             }
 
+            #[inline]
+            fn add_usize(&self, n: usize) -> Option<Self> {
+                match <$t>::try_from(n) {
+                    Ok(n_as_t) => self.checked_add(n_as_t),
+                    Err(_) => None,
+                }
+            }
+
             step_identical_methods!();
         }
     )*)
 }
 macro_rules! step_impl_signed {
-    ($($t:ty)*) => ($(
+    ($( [$t:ty : $unsigned:ty] )*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
                    issue = "42168")]
@@ -104,6 +116,24 @@ macro_rules! step_impl_signed {
                     Some((*end as isize).wrapping_sub(*start as isize) as usize)
                 } else {
                     Some(0)
+                }
+            }
+
+            #[inline]
+            fn add_usize(&self, n: usize) -> Option<Self> {
+                match <$unsigned>::try_from(n) {
+                    Ok(n_as_unsigned) => {
+                        // Wrapping in unsigned space handles cases like
+                        // `-120_i8.add_usize(200) == Some(80_i8)`,
+                        // even though 200_usize is out of range for i8.
+                        let wrapped = (*self as $unsigned).wrapping_add(n_as_unsigned) as $t;
+                        if wrapped >= *self {
+                            Some(wrapped)
+                        } else {
+                            None  // Addition overflowed
+                        }
+                    }
+                    Err(_) => None,
                 }
             }
 
@@ -123,17 +153,22 @@ macro_rules! step_impl_no_between {
                 None
             }
 
+            #[inline]
+            fn add_usize(&self, n: usize) -> Option<Self> {
+                self.checked_add(n as $t)
+            }
+
             step_identical_methods!();
         }
     )*)
 }
 
 step_impl_unsigned!(usize u8 u16 u32);
-step_impl_signed!(isize i8 i16 i32);
+step_impl_signed!([isize: usize] [i8: u8] [i16: u16] [i32: u32]);
 #[cfg(target_pointer_width = "64")]
 step_impl_unsigned!(u64);
 #[cfg(target_pointer_width = "64")]
-step_impl_signed!(i64);
+step_impl_signed!([i64: u64]);
 // If the target pointer width is not 64-bits, we
 // assume here that it is less than 64-bits.
 #[cfg(not(target_pointer_width = "64"))]
@@ -194,6 +229,19 @@ impl<A: Step> Iterator for ops::Range<A> {
             None => (0, None)
         }
     }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<A> {
+        if let Some(plus_n) = self.start.add_usize(n) {
+            if plus_n < self.end {
+                self.start = plus_n.add_one();
+                return Some(plus_n)
+            }
+        }
+
+        self.start = self.end.clone();
+        None
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
@@ -211,7 +259,7 @@ range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
 range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> {
+impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
@@ -240,6 +288,13 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (usize::MAX, None)
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<A> {
+        let plus_n = self.start.add_usize(n).expect("overflow in RangeFrom::nth");
+        self.start = plus_n.add_one();
+        Some(plus_n)
     }
 }
 
@@ -278,6 +333,30 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
             None => (0, None),
         }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<A> {
+        if let Some(plus_n) = self.start.add_usize(n) {
+            use cmp::Ordering::*;
+
+            match plus_n.partial_cmp(&self.end) {
+                Some(Less) => {
+                    self.start = plus_n.add_one();
+                    return Some(plus_n)
+                }
+                Some(Equal) => {
+                    self.start.replace_one();
+                    self.end.replace_zero();
+                    return Some(plus_n)
+                }
+                _ => {}
+            }
+        }
+
+        self.start.replace_one();
+        self.end.replace_zero();
+        None
     }
 }
 
