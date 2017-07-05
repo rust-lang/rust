@@ -261,68 +261,61 @@ impl<'a> Builder<'a> {
     /// rustc compiler, its output will be scoped by `mode`'s output directory,
     /// it will pass the `--target` flag for the specified `target`, and will be
     /// executing the Cargo command `cmd`.
-    pub fn cargo(&self, compiler: Compiler, mode: Mode, target: &str, cmd: &str) -> Command {
-        let build = self.build;
-
-        // Clear out the output we're about to generate if our compiler changed
-        {
-            let out_dir = build.cargo_out(compiler, mode, target);
-            build.clear_if_dirty(&out_dir, &self.rustc(compiler));
-        }
-
-        let mut cargo = Command::new(&build.initial_cargo);
-        let out_dir = build.stage_out(compiler, mode);
-
+    fn cargo(&self,
+             compiler: Compiler,
+             mode: Mode,
+             target: &str,
+             cmd: &str) -> Command {
+        let mut cargo = Command::new(&self.initial_cargo);
+        let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
              .arg(cmd)
-             .arg("-j").arg(build.jobs().to_string())
+             .arg("-j").arg(self.jobs().to_string())
              .arg("--target").arg(target);
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
-        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.build.config.channel);
+        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.channel);
 
         let stage;
-        if compiler.stage == 0 && build.local_rebuild {
+        if compiler.stage == 0 && self.local_rebuild {
             // Assume the local-rebuild rustc already has stage1 features.
             stage = 1;
         } else {
             stage = compiler.stage;
         }
 
-        self.build.verbose(&format!("cargo using: {:?}", self.rustc(compiler)));
-
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
-        // how the actual compiler itbuild is called.
+        // how the actual compiler itself is called.
         //
         // These variables are primarily all read by
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
-        cargo.env("RUSTBUILD_NATIVE_DIR", build.native_dir(target))
-             .env("RUSTC", build.out.join("bootstrap/debug/rustc"))
-             .env("RUSTC_REAL", self.rustc(compiler))
+        cargo.env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
+             .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
+             .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
              .env("RUSTC_CODEGEN_UNITS",
-                  build.config.rust_codegen_units.to_string())
+                  self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
-                  build.config.rust_debug_assertions.to_string())
+                  self.config.rust_debug_assertions.to_string())
              .env("RUSTC_SYSROOT", self.sysroot(compiler))
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
-             .env("RUSTC_RPATH", build.config.rust_rpath.to_string())
-             .env("RUSTDOC", build.out.join("bootstrap/debug/rustdoc"))
+             .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
+             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
-             .env("RUSTC_FLAGS", build.rustc_flags(target).join(" "));
+             .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
         if mode != Mode::Tool {
             // Tools don't get debuginfo right now, e.g. cargo and rls don't
             // get compiled with debuginfo.
-            cargo.env("RUSTC_DEBUGINFO", build.config.rust_debuginfo.to_string())
-                 .env("RUSTC_DEBUGINFO_LINES", build.config.rust_debuginfo_lines.to_string())
+            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+                 .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
                  .env("RUSTC_FORCE_UNSTABLE", "1");
 
             // Currently the compiler depends on crates from crates.io, and
             // then other crates can depend on the compiler (e.g. proc-macro
-            // crates). Let's say, for example that rustc itbuild depends on the
+            // crates). Let's say, for example that rustc itself depends on the
             // bitflags crate. If an external crate then depends on the
             // bitflags crate as well, we need to make sure they don't
             // conflict, even if they pick the same verison of bitflags. We'll
@@ -341,58 +334,58 @@ impl<'a> Builder<'a> {
 
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
-        build.add_rust_test_threads(&mut cargo);
+        self.add_rust_test_threads(&mut cargo);
 
         // Almost all of the crates that we compile as part of the bootstrap may
         // have a build script, including the standard library. To compile a
-        // build script, however, it itbuild needs a standard library! This
+        // build script, however, it itself needs a standard library! This
         // introduces a bit of a pickle when we're compiling the standard
-        // library itbuild.
+        // library itself.
         //
         // To work around this we actually end up using the snapshot compiler
-        // (stage0) for compiling build scripts of the standard library itbuild.
+        // (stage0) for compiling build scripts of the standard library itself.
         // The stage0 compiler is guaranteed to have a libstd available for use.
         //
         // For other crates, however, we know that we've already got a standard
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
         if mode == Mode::Libstd {
-            cargo.env("RUSTC_SNAPSHOT", &build.initial_rustc)
-                 .env("RUSTC_SNAPSHOT_LIBDIR", build.rustc_snapshot_libdir());
+            cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
+                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
-            cargo.env("RUSTC_SNAPSHOT", self.rustc(compiler))
+            cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
 
         // Ignore incremental modes except for stage0, since we're
         // not guaranteeing correctness across builds if the compiler
         // is changing under your feet.`
-        if build.flags.incremental && compiler.stage == 0 {
-            let incr_dir = build.incremental_dir(compiler);
+        if self.flags.incremental && compiler.stage == 0 {
+            let incr_dir = self.incremental_dir(compiler);
             cargo.env("RUSTC_INCREMENTAL", incr_dir);
         }
 
-        if let Some(ref on_fail) = build.flags.on_fail {
+        if let Some(ref on_fail) = self.flags.on_fail {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
-        cargo.env("RUSTC_VERBOSE", format!("{}", build.verbosity));
+        cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
         // Specify some various options for build scripts used throughout
         // the build.
         //
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
-            cargo.env(format!("CC_{}", target), build.cc(target))
-                 .env(format!("AR_{}", target), build.ar(target).unwrap()) // only msvc is None
-                 .env(format!("CFLAGS_{}", target), build.cflags(target).join(" "));
+            cargo.env(format!("CC_{}", target), self.cc(target))
+                 .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
+                 .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
 
-            if let Ok(cxx) = build.cxx(target) {
+            if let Ok(cxx) = self.cxx(target) {
                  cargo.env(format!("CXX_{}", target), cxx);
             }
         }
 
-        if build.config.extended && compiler.is_final_stage(self) {
+        if mode == Mode::Libstd && self.config.extended && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
@@ -414,21 +407,21 @@ impl<'a> Builder<'a> {
         // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
-        if build.is_verbose() {
+        if self.is_verbose() {
             cargo.arg("-v");
         }
         // FIXME: cargo bench does not accept `--release`
-        if build.config.rust_optimize && cmd != "bench" {
+        if self.config.rust_optimize && cmd != "bench" {
             cargo.arg("--release");
         }
-        if build.config.locked_deps {
+        if self.config.locked_deps {
             cargo.arg("--locked");
         }
-        if build.config.vendor || build.is_sudo {
+        if self.config.vendor || self.is_sudo {
             cargo.arg("--frozen");
         }
 
-        build.ci_env.force_coloring_in_ci(&mut cargo);
+        self.ci_env.force_coloring_in_ci(&mut cargo);
 
         cargo
     }
