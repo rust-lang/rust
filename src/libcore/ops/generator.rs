@@ -10,8 +10,7 @@
 
 /// The result of a generator resumption.
 #[derive(Debug)]
-#[cfg(not(stage0))]
-#[lang = "generator_state"]
+#[cfg_attr(not(stage0), lang = "generator_state")]
 #[unstable(feature = "generator_trait", issue = "0")]
 pub enum State<Y, R> {
     /// The generator suspended with a value.
@@ -22,8 +21,7 @@ pub enum State<Y, R> {
 }
 
 /// The trait implemented by builtin generator types.
-#[cfg(not(stage0))]
-#[lang = "generator"]
+#[cfg_attr(not(stage0), lang = "generator")]
 #[unstable(feature = "generator_trait", issue = "0")]
 #[fundamental]
 pub trait Generator<Arg = ()> {
@@ -35,4 +33,15 @@ pub trait Generator<Arg = ()> {
 
     /// This resumes the execution of the generator.
     fn resume(&mut self, arg: Arg) -> State<Self::Yield, Self::Return>;
+}
+
+#[unstable(feature = "generator_trait", issue = "0")]
+impl<'a, T, U> Generator<U> for &'a mut T
+    where T: Generator<U> + ?Sized
+{
+    type Yield = T::Yield;
+    type Return = T::Return;
+    fn resume(&mut self, arg: U) -> State<Self::Yield, Self::Return> {
+        (**self).resume(arg)
+    }
 }

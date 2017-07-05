@@ -97,6 +97,7 @@
 #![feature(fundamental)]
 #![feature(fused)]
 #![feature(generic_param_attrs)]
+#![feature(generator_trait)]
 #![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(lang_items)]
