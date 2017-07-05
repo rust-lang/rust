@@ -464,8 +464,16 @@ where
         1 // "["
     };
 
-    let nested_shape = match context.config.array_layout() {
-        IndentStyle::Block => shape.block().block_indent(context.config.tab_spaces()),
+    let mut nested_shape = match context.config.array_layout() {
+        IndentStyle::Block => {
+            try_opt!(
+                shape
+                    .block()
+                    .block_indent(context.config.tab_spaces())
+                    .with_max_width(context.config)
+                    .sub_width(1)
+            )
+        }
         IndentStyle::Visual => {
             try_opt!(
                 shape
