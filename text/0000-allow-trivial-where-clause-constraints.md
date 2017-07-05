@@ -41,7 +41,7 @@ when we're generating code.
 # Detailed design
 [design]: #detailed-design
 
-Concretely implementing this means the removal of `E0193`. Interestingly, as of
+Concretely implementing this means the removal of [`E0193`]. Interestingly, as of
 Rust 1.7, that error never actually appears. Instead the current behavior is
 that something like `impl Foo for Bar where i32: Copy` (e.g. anywhere that the
 constraint always holds) compiles fine, and `impl Foo for Bar where i32:
@@ -55,6 +55,8 @@ well. For example, when `i32: IntoIterator` appears in a where clause, we would
 also need to allow `i32::Item: SomeTrait` to appear in the same clause, and even
 allow `for _ in 1` to appear in item bodies, and have it all successfully
 compile.
+
+[`E0193`]: https://doc.rust-lang.org/error-index.html#E0193
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
