@@ -456,7 +456,7 @@ macro_rules! writeln {
 ///
 /// # Panics
 ///
-/// This will always [panic!](macro.panic.html).
+/// This will always [panic!](macro.panic.html)
 ///
 /// # Examples
 ///
