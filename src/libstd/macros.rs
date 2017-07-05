@@ -26,7 +26,7 @@
 ///
 /// # Current implementation
 ///
-/// If the main thread panics it will return with code `101`.
+/// If the main thread panics it will terminate all your threads and end your program with code `101`.
 ///
 /// # Examples
 ///
