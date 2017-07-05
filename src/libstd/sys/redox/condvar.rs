@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cell::UnsafeCell;
-use intrinsics::{atomic_cxchg, atomic_xadd, atomic_xchg};
+use intrinsics::{atomic_cxchg, atomic_xadd};
 use ptr;
 use time::Duration;
 
@@ -79,10 +79,6 @@ impl Condvar {
             mutex_unlock(*lock);
 
             let _ = futex(seq, FUTEX_WAIT, *seq, 0, ptr::null_mut());
-
-            while atomic_xchg(*lock, 2) != 0 {
-                let _ = futex(*lock, FUTEX_WAIT, 2, 0, ptr::null_mut());
-            }
 
             mutex_lock(*lock);
         }
