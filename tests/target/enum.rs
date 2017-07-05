@@ -32,7 +32,7 @@ enum Bar {
 enum LongVariants {
     First(
         LOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONG, // comment
-        VARIANT
+        VARIANT,
     ),
     // This is the second variant
     Second,
@@ -53,7 +53,7 @@ enum X {
     CreateWebGLPaintTask(
         Size2D<i32>,
         GLContextAttributes,
-        IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>
+        IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>,
     ), // This is a post comment
 }
 
@@ -120,7 +120,7 @@ fn nested_enum_test() {
                 usize,
                 usize,
                 usize,
-                usize
+                usize,
             ), /* AAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAA
                 * AAAAAAAAAAAAAAAAAAAAAA */
             Two, /* AAAAAAAAAAAAAAAAAA  AAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -155,6 +155,6 @@ pub enum CoreResourceMsg {
         #[serde(deserialize_with = "::hyper_serde::deserialize",
                 serialize_with = "::hyper_serde::serialize")]
         Cookie,
-        CookieSource
+        CookieSource,
     ),
 }

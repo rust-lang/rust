@@ -393,6 +393,15 @@ pub fn colon_spaces(before: bool, after: bool) -> &'static str {
     }
 }
 
+#[inline]
+pub fn paren_overhead(context: &RewriteContext) -> usize {
+    if context.config.spaces_within_parens() {
+        4
+    } else {
+        2
+    }
+}
+
 #[test]
 fn bin_search_test() {
     let closure = |i| match i {

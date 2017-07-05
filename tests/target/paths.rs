@@ -14,7 +14,10 @@ fn main() {
             supports_clipboard,
         );
 
-    Quux::<ParamOne /* Comment 1 */, ParamTwo /* Comment 2 */>::some_func();
+    Quux::<
+        ParamOne, // Comment 1
+        ParamTwo, // Comment 2
+    >::some_func();
 
     <*mut JSObject>::relocate(entry);
 

@@ -48,7 +48,7 @@ struct Pair<
 
 struct TupPair<
     S, T,
->(S, T)
+>(S, T,)
 where
     T: P,
     S: P + Q;

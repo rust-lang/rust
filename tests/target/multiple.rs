@@ -40,7 +40,7 @@ where
 
 fn baz<
     'a: 'b, // comment on 'a
-    T: SomsssssssssssssssssssssssssssssssssssssssssssssssssssssseType, /* comment on T */
+    T: SomsssssssssssssssssssssssssssssssssssssssssssssssssssssseType, // comment on T
 >(
     a: A,
     b: B, // comment on b
