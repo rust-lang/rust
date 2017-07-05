@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use Mode;
+use Compiler;
 use builder::{Step, Builder};
 use util::{exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp, Rustc};
@@ -373,8 +374,9 @@ impl<'a> Step<'a> for Rls<'a> {
 impl<'a> Builder<'a> {
     /// Get a `Command` which is ready to run `tool` in `stage` built for
     /// `host`.
-    fn tool_cmd(&self, compiler: Compiler, tool: &str) -> Command {
-        let mut cmd = Command::new(self.tool(compiler, tool));
+    pub fn tool_cmd(&self, tool: Tool) -> Command {
+        let mut cmd = Command::new(self.tool_exe(tool));
+        let compiler = self.compiler(0, &self.build.build);
         self.prepare_tool_cmd(compiler, &mut cmd);
         cmd
     }
@@ -394,7 +396,7 @@ impl<'a> Builder<'a> {
         // mode) and that C compiler may need some extra PATH modification. Do
         // so here.
         if compiler.host.contains("msvc") {
-            let curpaths = env::var_os("PATH").unwrap_or(OsString::new());
+            let curpaths = env::var_os("PATH").unwrap_or_default();
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
             for &(ref k, ref v) in self.cc[compiler.host].0.env() {
                 if k != "PATH" {

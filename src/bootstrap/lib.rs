@@ -535,12 +535,6 @@ impl Build {
         }
     }
 
-    /// Get the specified tool built by the specified compiler
-    fn tool(&self, compiler: Compiler, tool: &str) -> PathBuf {
-        self.cargo_out(compiler, Mode::Tool, compiler.host)
-            .join(exe(tool, compiler.host))
-    }
-
     /// Get the `rustdoc` executable next to the specified compiler
     fn rustdoc(&self, compiler: Compiler) -> PathBuf {
         let mut rustdoc = self.compiler_path(compiler);
