@@ -277,9 +277,7 @@ macro_rules! range_incl_trusted_len_impl {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> Iterator for ops::Range<A> where
-    for<'a> &'a A: Add<&'a A, Output = A>
-{
+impl<A: Step> Iterator for ops::Range<A> {
     type Item = A;
 
     #[inline]
@@ -317,10 +315,7 @@ range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
 range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where
-    for<'a> &'a A: Add<&'a A, Output = A>,
-    for<'a> &'a A: Sub<&'a A, Output = A>
-{
+impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
@@ -333,13 +328,10 @@ impl<A: Step + Clone> DoubleEndedIterator for ops::Range<A> where
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<A> FusedIterator for ops::Range<A>
-    where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}
+impl<A: Step> FusedIterator for ops::Range<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> Iterator for ops::RangeFrom<A> where
-    for<'a> &'a A: Add<&'a A, Output = A>
-{
+impl<A: Step> Iterator for ops::RangeFrom<A> {
     type Item = A;
 
     #[inline]
@@ -356,13 +348,10 @@ impl<A: Step> Iterator for ops::RangeFrom<A> where
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<A> FusedIterator for ops::RangeFrom<A>
-    where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}
+impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<A: Step> Iterator for ops::RangeInclusive<A> where
-    for<'a> &'a A: Add<&'a A, Output = A>
-{
+impl<A: Step> Iterator for ops::RangeInclusive<A> {
     type Item = A;
 
     #[inline]
@@ -397,10 +386,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> where
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
-impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> where
-    for<'a> &'a A: Add<&'a A, Output = A>,
-    for<'a> &'a A: Sub<&'a A, Output = A>
-{
+impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         use cmp::Ordering::*;
@@ -421,5 +407,4 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> where
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<A> FusedIterator for ops::RangeInclusive<A>
-    where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}
+impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}
