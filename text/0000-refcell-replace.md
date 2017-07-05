@@ -24,7 +24,7 @@ One of the most important parts of the ergonomics initiative has been reducing
 "type tetris" exactly like that `&mut *`.
 
 It also seems weird that this use-case is so much cleaner with a plain `Cell`,
-even though plain `Cell` is strictly a less popular abstraction.
+even though plain `Cell` is strictly a less powerful abstraction.
 Usually, people explain `RefCell` as being a superset of `Cell`,
 but `RefCell` doesn't actually offer all of the functionality as seamlessly as `Cell`.
 
