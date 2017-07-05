@@ -17,7 +17,7 @@ use {Indent, Shape};
 use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
-use utils::mk_sp;
+use utils::{first_line_width, last_line_width, mk_sp};
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 /// Formatting tactic for lists. This will be cast down to a
@@ -86,8 +86,12 @@ pub struct ListItem {
 }
 
 impl ListItem {
+    pub fn inner_as_ref(&self) -> &str {
+        self.item.as_ref().map_or("", |s| &*s)
+    }
+
     pub fn is_multiline(&self) -> bool {
-        self.item.as_ref().map_or(false, |s| s.contains('\n')) || self.pre_comment.is_some() ||
+        self.inner_as_ref().contains('\n') || self.pre_comment.is_some() ||
             self.post_comment
                 .as_ref()
                 .map_or(false, |s| s.contains('\n'))
@@ -167,7 +171,9 @@ where
     // will be a trailing separator.
     let trailing_separator = needs_trailing_separator(formatting.trailing_separator, tactic);
     let mut result = String::new();
+    let cloned_items = items.clone();
     let mut iter = items.into_iter().enumerate().peekable();
+    let mut item_max_width: Option<usize> = None;
 
     let mut line_len = 0;
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
@@ -238,6 +244,7 @@ where
             } else {
                 result.push(' ');
             }
+            item_max_width = None;
         }
 
         result.push_str(&inner_item[..]);
@@ -261,41 +268,130 @@ where
         }
 
         if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
-            // 1 = space between item and comment.
-            let width = formatting
-                .shape
-                .width
-                .checked_sub(item_last_line_width + 1)
-                .unwrap_or(1);
-            let mut offset = formatting.shape.indent;
-            offset.alignment += item_last_line_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
-
-            debug!("Width = {}, offset = {:?}", width, offset);
-            // Use block-style only for the last item or multiline comments.
-            let block_style = !formatting.ends_with_newline && last ||
-                comment.trim().contains('\n') ||
-                comment.trim().len() > width;
-
-            let formatted_comment = try_opt!(rewrite_comment(
-                comment,
-                block_style,
-                Shape::legacy(width, offset),
+            let block_style = !formatting.ends_with_newline && last;
+            let mut formatted_comment = try_opt!(rewrite_post_comment(
                 formatting.config,
+                formatting.shape,
+                comment,
+                &cloned_items,
+                inner_item,
+                i,
+                &mut item_max_width,
+                item_last_line_width,
+                last,
+                block_style,
             ));
 
             if !formatted_comment.starts_with('\n') {
-                result.push(' ');
+                let mut comment_alignment =
+                    post_comment_alignment(item_max_width, inner_item.len());
+                if first_line_width(&formatted_comment) + last_line_width(&result) +
+                    comment_alignment + 1 > formatting.config.max_width()
+                {
+                    item_max_width = None;
+                    formatted_comment = try_opt!(rewrite_post_comment(
+                        formatting.config,
+                        formatting.shape,
+                        comment,
+                        &cloned_items,
+                        inner_item,
+                        i,
+                        &mut item_max_width,
+                        item_last_line_width,
+                        last,
+                        block_style,
+                    ));
+                    comment_alignment = post_comment_alignment(item_max_width, inner_item.len());
+                }
+                for _ in 0..(comment_alignment + 1) {
+                    result.push(' ');
+                }
+                // An additional space for the missing trailing comma
+                if last && item_max_width.is_some() && !separate {
+                    result.push(' ');
+                }
+            }
+            if formatted_comment.contains('\n') {
+                item_max_width = None;
             }
             result.push_str(&formatted_comment);
+        } else {
+            item_max_width = None;
         }
 
         if !last && tactic == DefinitiveListTactic::Vertical && item.new_lines {
+            item_max_width = None;
             result.push('\n');
         }
     }
 
     Some(result)
+}
+
+fn rewrite_post_comment<I, T>(
+    config: &Config,
+    shape: Shape,
+    comment: &str,
+    cloned_items: &I,
+    inner_item: &str,
+    i: usize,
+    mut item_max_width: &mut Option<usize>,
+    item_last_line_width: usize,
+    last: bool,
+    block_style: bool,
+) -> Option<String>
+where
+    I: IntoIterator<Item = T> + Clone,
+    T: AsRef<ListItem>,
+{
+    if item_max_width.is_none() && !last && !inner_item.contains('\n') {
+        *item_max_width = Some(max_width_of_item_with_post_comment(cloned_items, i));
+    }
+    let overhead = if let &mut Some(max_width) = item_max_width {
+        max_width + 2
+    } else {
+        // 1 = space between item and comment.
+        item_last_line_width + 1
+    };
+    let width = shape.width.checked_sub(overhead).unwrap_or(1);
+    let offset = shape.indent + overhead;
+
+    debug!("Width = {}, offset = {:?}", width, offset);
+    // Use block-style only for the last item or multiline comments.
+    let block_style = block_style || comment.trim().contains('\n') || comment.trim().len() > width;
+
+    rewrite_comment(comment, block_style, Shape::legacy(width, offset), config)
+}
+
+fn max_width_of_item_with_post_comment<I, T>(items: &I, i: usize) -> usize
+where
+    I: IntoIterator<Item = T> + Clone,
+    T: AsRef<ListItem>,
+{
+    let mut max_width = 0;
+    let mut first = true;
+    for item in items.clone().into_iter().skip(i) {
+        let item = item.as_ref();
+        if !first && (item.is_multiline() || !item.post_comment.is_some()) {
+            return max_width;
+        }
+        let inner_item_width = item.inner_as_ref().len();
+        if max_width < inner_item_width {
+            max_width = inner_item_width;
+        }
+        if item.new_lines {
+            return max_width;
+        }
+        first = false;
+    }
+    max_width
+}
+
+fn post_comment_alignment(item_max_width: Option<usize>, inner_item_len: usize) -> usize {
+    item_max_width
+        .and_then(|max_line_width| max_line_width.checked_sub(inner_item_len))
+        .unwrap_or(0)
 }
 
 pub struct ListItems<'a, I, F1, F2, F3>
