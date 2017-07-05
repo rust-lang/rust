@@ -26,9 +26,9 @@ more dots means more elements.
 `std::ops` defines
 
 ```rust
-pub enum RangeInclusive<T> {
-  pub start: T,
-  pub end: T,
+pub struct RangeInclusive<T> {
+    pub start: T,
+    pub end: T,
 }
 
 pub struct RangeToInclusive<T> {
@@ -80,7 +80,7 @@ of this will have the range become `1...0` after yielding the final value,
 as that can be done using the `replace_one` and `replace_zero` methods on
 the existing (but unstable) [`Step` trait][step_trait].  It's expected,
 however, that the trait will change to allow more type-appropriate `impl`s.
-For example, a `num::BitInt` may rather become empty by incrementing `start`,
+For example, a `num::BigInt` may rather become empty by incrementing `start`,
 as `Range` does, since it doesn't to need to worry about overflow.  Even for
 primitives, it could be advantageous to choose a different implementation,
 perhaps using `.overflowing_add(1)` and swapping on overflow, or `a...a`
