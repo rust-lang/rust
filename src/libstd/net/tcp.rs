@@ -134,6 +134,24 @@ impl TcpStream {
         super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
     }
 
+    /// Opens a TCP connection to a remote host with a timeout.
+    ///
+    /// Unlike `connect`, `connect_timeout` takes a single [`SocketAddr`] since
+    /// timeout must be applied to individual addresses.
+    ///
+    /// It is an error to pass a zero `Duration` to this function.
+    ///
+    /// Unlike other methods on `TcpStream`, this does not correspond to a
+    /// single system call. It instead calls `connect` in nonblocking mode and
+    /// then uses an OS-specific mechanism to await the completion of the
+    /// connection request.
+    ///
+    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+    #[unstable(feature = "tcpstream_connect_timeout", issue = "43709")]
+    pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+        net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
+    }
+
     /// Returns the socket address of the remote peer of this TCP connection.
     ///
     /// # Examples
@@ -1508,5 +1526,20 @@ mod tests {
             }
             t!(txdone.send(()));
         })
+    }
+
+    #[test]
+    fn connect_timeout_unroutable() {
+        // this IP is unroutable, so connections should always time out.
+        let addr = "10.255.255.1:80".parse().unwrap();
+        let e = TcpStream::connect_timeout(&addr, Duration::from_millis(250)).unwrap_err();
+        assert_eq!(e.kind(), io::ErrorKind::TimedOut);
+    }
+
+    #[test]
+    fn connect_timeout_valid() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        TcpStream::connect_timeout(&addr, Duration::from_secs(2)).unwrap();
     }
 }
