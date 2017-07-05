@@ -466,6 +466,7 @@ fn contains_continue_decl(decl: &Decl, dest: &NodeId) -> bool {
 
 fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
     match expr.node {
+        ExprRet(Some(ref e)) |
         ExprBox(ref e) |
         ExprUnary(_, ref e) |
         ExprCast(ref e, _) |
