@@ -12,17 +12,37 @@ help: if you want to compare the casted value then write:
    |                    ^^^^^^^^^^^^
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:17:33
+  --> $DIR/issue-22644.rs:21:20
    |
-17 |     println!("{}", a as usize < 4);
-   |                               - ^ interpreted as generic argument
-   |                               |
-   |                               not interpreted as comparison
+20 |                    <
+   |                    - not interpreted as comparison
+21 |                    4);
+   |                    ^ interpreted as generic argument
    |
 help: if you want to compare the casted value then write:
    |
-17 |     println!("{}", (a as usize) < 4);
-   |                    ^^^^^^^^^^^^
+17 |     println!("{}", (a
+18 |                    as
+19 |                    usize)
+   |
 
-error: aborting due to 2 previous errors
+error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
+  --> $DIR/issue-22644.rs:30:20
+   |
+29 |                    <
+   |                    - not interpreted as comparison
+30 |                    5);
+   |                    ^ interpreted as generic argument
+   |
+help: if you want to compare the casted value then write:
+   |
+22 |     println!("{}", (a
+23 | 
+24 | 
+25 |                    as
+26 | 
+27 | 
+ ...
+
+error: aborting due to 3 previous errors
 

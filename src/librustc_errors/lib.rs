@@ -114,8 +114,8 @@ impl CodeSuggestion {
         self.substitution_parts.iter().map(|sub| sub.span)
     }
 
-    /// Returns the assembled code suggestions.
-    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<String> {
+    /// Returns the assembled code suggestions and wether they should be shown with an underline.
+    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<(String, bool)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -138,7 +138,7 @@ impl CodeSuggestion {
         }
 
         if self.substitution_parts.is_empty() {
-            return vec![String::new()];
+            return vec![(String::new(), false)];
         }
 
         let mut primary_spans: Vec<_> = self.substitution_parts
@@ -175,14 +175,25 @@ impl CodeSuggestion {
         prev_hi.col = CharPos::from_usize(0);
 
         let mut prev_line = fm.get_line(lines.lines[0].line_index);
-        let mut bufs = vec![String::new(); self.substitutions()];
+        let mut bufs = vec![(String::new(), false); self.substitutions()];
 
         for (sp, substitutes) in primary_spans {
             let cur_lo = cm.lookup_char_pos(sp.lo);
-            for (buf, substitute) in bufs.iter_mut().zip(substitutes) {
+            for (&mut (ref mut buf, ref mut underline), substitute) in bufs.iter_mut()
+                                                                           .zip(substitutes) {
                 if prev_hi.line == cur_lo.line {
                     push_trailing(buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
+
+                    // Only show an underline in the suggestions if the suggestion is not the
+                    // entirety of the code being shown and the displayed code is not multiline.
+                    if prev_line.as_ref().unwrap().trim().len() > 0
+                        && !substitute.ends_with('\n')
+                        && substitute.lines().count() == 1
+                    {
+                        *underline = true;
+                    }
                 } else {
+                    *underline = false;
                     push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
                     // push lines between the previous and current span (if any)
                     for idx in prev_hi.line..(cur_lo.line - 1) {
@@ -200,7 +211,7 @@ impl CodeSuggestion {
             prev_hi = cm.lookup_char_pos(sp.hi);
             prev_line = fm.get_line(prev_hi.line - 1);
         }
-        for buf in &mut bufs {
+        for &mut (ref mut buf, _) in &mut bufs {
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
                 push_trailing(buf, prev_line.as_ref(), &prev_hi, None);

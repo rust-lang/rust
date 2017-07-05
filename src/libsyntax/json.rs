@@ -359,7 +359,7 @@ impl DiagnosticCode {
 
 impl JsonEmitter {
     fn render(&self, suggestion: &CodeSuggestion) -> Vec<String> {
-        suggestion.splice_lines(&*self.cm)
+        suggestion.splice_lines(&*self.cm).iter().map(|line| line.0.to_owned()).collect()
     }
 }
 

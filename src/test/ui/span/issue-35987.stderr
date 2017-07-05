@@ -7,7 +7,7 @@ error[E0404]: expected trait, found type parameter `Add`
 help: possible better candidate is found in another module, you can import it into scope
    |
 11 | use std::ops::Add;
-   | ^^^^^^^^^^^^^^^^^^
+   |
 
 error[E0601]: main function not found
 

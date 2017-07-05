@@ -7,9 +7,13 @@ error[E0308]: mismatched types
    = note: expected type `()`
               found type `usize`
 help: did you mean to add a semicolon here?
-   |     foo();
+   |
+19 |     foo();
+   |          ^
 help: possibly return type missing here?
-   | fn bar() -> usize {
+   |
+18 | fn bar() -> usize {
+   |          ^^^^^^^^
 
 error: aborting due to previous error
 
