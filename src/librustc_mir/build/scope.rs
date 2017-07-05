@@ -502,7 +502,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               block,
                                               self.arg_count,
                                               true));
-            
+
             // End all regions for scopes out of which we are breaking.
             self.cfg.push_end_region(block, src_info, scope.extent);
 
@@ -513,7 +513,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block = next;
             }
         }
-        
+
         self.cfg.terminate(block, src_info, TerminatorKind::GeneratorDrop);
 
         Some(result)
@@ -778,7 +778,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut() {
-            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, span, scope, target, generator_drop);
+            target = build_diverge_scope(hir.tcx(),
+                                         cfg,
+                                         &unit_temp,
+                                         span,
+                                         scope,
+                                         target,
+                                         generator_drop);
         }
         Some(target)
     }
@@ -858,7 +864,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            arg_count: usize,
                            generator_drop: bool)
                            -> BlockAnd<()> {
-    
+
     let mut iter = scope.drops(generator_drop).iter().rev().peekable();
     while let Some(drop_data) = iter.next() {
         let source_info = scope.source_info(drop_data.span);

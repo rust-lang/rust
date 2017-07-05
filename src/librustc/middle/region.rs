@@ -1075,7 +1075,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         if let Some(ref impl_arg) = body.impl_arg {
             record_var_lifetime(self, impl_arg.id, impl_arg.span);
         }
-        
+
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
         self.visit_expr(&body.value);
@@ -1161,12 +1161,13 @@ impl<'tcx> Visitor<'tcx> for YieldFinder {
         if let hir::ExprSuspend(..) = expr.node {
             self.0 = true;
         }
-        
+
         intravisit::walk_expr(self, expr);
     }
 }
 
-pub fn extent_has_yield<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(tcx: TyCtxt<'a, 'gcx, 'tcx>, extent: CodeExtent) -> bool {
+pub fn extent_has_yield<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                     extent: CodeExtent) -> bool {
     let mut finder = YieldFinder(false);
 
     match extent {
@@ -1181,7 +1182,7 @@ pub fn extent_has_yield<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(tcx: TyCtxt<'a, 'gcx, 'tcx>
                 }
                 Node::NodeExpr(expr) => intravisit::walk_expr(&mut finder, expr),
                 Node::NodeStmt(stmt) => intravisit::walk_stmt(&mut finder, stmt),
-                Node::NodeBlock(block) => intravisit::walk_block(&mut finder, block), 
+                Node::NodeBlock(block) => intravisit::walk_block(&mut finder, block),
                 _ => bug!(),
             }
         }

@@ -304,13 +304,14 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::GenSig<'a> {
     type Lifted = ty::GenSig<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&(self.impl_arg_ty, self.suspend_ty, self.return_ty)).map(|(impl_arg_ty, suspend_ty, return_ty)| {
-            ty::GenSig {
-                impl_arg_ty,
-                suspend_ty,
-                return_ty,
-            }
-        })
+        tcx.lift(&(self.impl_arg_ty, self.suspend_ty, self.return_ty))
+            .map(|(impl_arg_ty, suspend_ty, return_ty)| {
+                ty::GenSig {
+                    impl_arg_ty,
+                    suspend_ty,
+                    return_ty,
+                }
+            })
     }
 }
 
@@ -572,7 +573,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyRef(ref r, tm) => {
                 ty::TyRef(r.fold_with(folder), tm.fold_with(folder))
             }
-            ty::TyGenerator(did, substs, interior) => ty::TyGenerator(did, substs.fold_with(folder), interior.fold_with(folder)),
+            ty::TyGenerator(did, substs, interior) => {
+                ty::TyGenerator(did, substs.fold_with(folder), interior.fold_with(folder))
+            }
             ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
             ty::TyProjection(ref data) => ty::TyProjection(data.fold_with(folder)),
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
@@ -604,7 +607,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyFnDef(_, substs) => substs.visit_with(visitor),
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
             ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
-            ty::TyGenerator(_did, ref substs, ref interior) => substs.visit_with(visitor) || interior.visit_with(visitor),
+            ty::TyGenerator(_did, ref substs, ref interior) => {
+                substs.visit_with(visitor) || interior.visit_with(visitor)
+            }
             ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),
             ty::TyProjection(ref data) => data.visit_with(visitor),
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),

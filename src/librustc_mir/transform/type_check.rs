@@ -34,7 +34,10 @@ fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         mirbug($context.tcx(), $context.last_span,
-               &format!("broken MIR in {:?} ({:?}): {}", $context.body_id, $elem, format!($($message)*)))
+               &format!("broken MIR in {:?} ({:?}): {}",
+                        $context.body_id,
+                        $elem,
+                        format_args!($($message)*)))
     })
 }
 

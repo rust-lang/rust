@@ -399,7 +399,7 @@ macro_rules! make_mir_visitor {
                     }
 
                     TerminatorKind::Resume |
-                    TerminatorKind::Return | 
+                    TerminatorKind::Return |
                     TerminatorKind::GeneratorDrop |
                     TerminatorKind::Unreachable => {
                     }

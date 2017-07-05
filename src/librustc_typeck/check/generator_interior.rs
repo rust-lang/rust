@@ -31,10 +31,13 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
             if self.fcx.tcx.sess.verbose() {
                 if let Some(s) = scope {
                     self.fcx.tcx.sess.span_warn(s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP),
-                        &format!("type in generator with scope = {:?}, type = {:?}", scope, self.fcx.resolve_type_vars_if_possible(&ty)));
+                        &format!("type in generator with scope = {:?}, type = {:?}",
+                                 scope,
+                                 self.fcx.resolve_type_vars_if_possible(&ty)));
                 } else {
                     self.fcx.tcx.sess.span_warn(DUMMY_SP,
-                        &format!("type in generator WITHOUT scope, type = {:?}", self.fcx.resolve_type_vars_if_possible(&ty)));
+                        &format!("type in generator WITHOUT scope, type = {:?}",
+                                 self.fcx.resolve_type_vars_if_possible(&ty)));
                 }
                 if let Some(e) = expr {
                     self.fcx.tcx.sess.span_warn(e.span,
@@ -51,7 +54,10 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn find_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>, def_id: DefId, body_id: hir::BodyId, witness: Ty<'tcx>) {
+pub fn find_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+                                     def_id: DefId,
+                                     body_id: hir::BodyId,
+                                     witness: Ty<'tcx>) {
     let body = fcx.tcx.hir.body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
@@ -64,7 +70,9 @@ pub fn find_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>, def_id: De
     visitor.types.insert(fcx.tcx.types.bool);
 
     // Deduplicate types
-    let set: FxHashSet<_> = visitor.types.into_iter().map(|t| fcx.resolve_type_vars_if_possible(&t)).collect();
+    let set: FxHashSet<_> = visitor.types.into_iter()
+        .map(|t| fcx.resolve_type_vars_if_possible(&t))
+        .collect();
     let types: Vec<_> = set.into_iter().collect();
 
     let tuple = fcx.tcx.intern_tup(&types, false);

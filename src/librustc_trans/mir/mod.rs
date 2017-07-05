@@ -528,7 +528,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (mt.ty, true),
                 _ => (arg_ty, false)
             };
-            
+
             let upvar_tys = match closure_ty.sty {
                 ty::TyClosure(def_id, substs) |
                 ty::TyGenerator(def_id, substs, _) => substs.upvar_tys(def_id, tcx),

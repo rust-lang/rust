@@ -144,7 +144,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
              },
              _ => false,
          };
- 
+
          if borrows_impl_arg {
              span_err!(self.bccx.tcx.sess,
                 borrow_span,

@@ -323,7 +323,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 ErrKind::Math(err.clone())
                             }
                             mir::AssertMessage::GeneratorResumedAfterReturn |
-                            mir::AssertMessage::GeneratorResumedAfterPanic => 
+                            mir::AssertMessage::GeneratorResumedAfterPanic =>
                                 span_bug!(span, "{:?} should not appear in constants?", msg),
                         };
 

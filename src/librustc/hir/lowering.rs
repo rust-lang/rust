@@ -2109,7 +2109,7 @@ impl<'a> LoweringContext<'a> {
             ExprKind::ImplArg => {
                 hir::ExprImplArg(self.impl_arg_id())
             }
-            
+
             // Desugar ExprIfLet
             // From: `if let <pat> = <sub_expr> <body> [<else_opt>]`
             ExprKind::IfLet(ref pat, ref sub_expr, ref body, ref else_opt) => {

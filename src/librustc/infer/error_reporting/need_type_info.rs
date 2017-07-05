@@ -146,7 +146,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         if local_visitor.found_impl_arg {
-            labels.push((DUMMY_SP, format!("consider giving a type to the implicit generator argument")));
+            labels.push((DUMMY_SP, format!("consider giving a type to the \
+                                            implicit generator argument")));
         }
 
         let mut err = struct_span_err!(self.tcx.sess,

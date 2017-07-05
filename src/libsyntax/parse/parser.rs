@@ -3714,7 +3714,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(keywords::Gen) &&
         self.look_ahead(1, |t| t.is_keyword(keywords::Arg))
     }
-    
+
     fn is_defaultness(&self) -> bool {
         // `pub` is included for better error messages
         self.token.is_keyword(keywords::Default) &&

@@ -1317,7 +1317,7 @@ impl<'a> State<'a> {
                     self.head("gen")?;
                     space(&mut self.s)?;
                 }
-                
+
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_closure_args(&decl, body)?;

@@ -525,7 +525,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         ty::Binder((trait_ref, sig.skip_binder().suspend_ty, sig.skip_binder().return_ty))
     }
-    
+
     pub fn impl_is_default(self, node_item_def_id: DefId) -> bool {
         match self.hir.as_local_node_id(node_item_def_id) {
             Some(node_id) => {

@@ -11,15 +11,15 @@
 #![feature(generators)]
 
 fn main() {
-	let mut a = Vec::<bool>::new();
+    let mut a = Vec::<bool>::new();
 
-	let mut test = || {
-		let _: () = gen arg;
-		yield 3;
-		a.push(true);
-		2
-	};
+    let mut test = || {
+        let _: () = gen arg;
+        yield 3;
+        a.push(true);
+        2
+    };
 
-	let a1 = test();
-	let a2 = test(); //~ ERROR use of moved value
+    let a1 = test();
+    let a2 = test(); //~ ERROR use of moved value
 }

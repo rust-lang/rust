@@ -33,6 +33,6 @@ pub trait Generator<Arg = ()> {
     /// The type of value this generator returns.
     type Return;
 
-    /// This resumes the execution of the generator. 
+    /// This resumes the execution of the generator.
     fn resume(&mut self, arg: Arg) -> State<Self::Yield, Self::Return>;
 }

@@ -327,7 +327,8 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    // The implicit argument is defined after each suspend point so it can never be live in a suspend point.
+    // The implicit argument is defined after each suspend point so it can never
+    // be live in a suspend point.
     set.remove(&Local::new(2));
 
     // The generator argument is ignored
@@ -340,7 +341,9 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             def_id: DefId,
                             source: MirSource,
                             interior: GeneratorInterior<'tcx>,
-                            mir: &mut Mir<'tcx>) -> (HashMap<Local, (Ty<'tcx>, usize)>, GeneratorLayout<'tcx>) {
+                            mir: &mut Mir<'tcx>)
+    -> (HashMap<Local, (Ty<'tcx>, usize)>, GeneratorLayout<'tcx>)
+{
     let source_info = SourceInfo {
         span: mir.span,
         scope: ARGUMENT_VISIBILITY_SCOPE,
@@ -349,7 +352,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut live_locals = locals_live_across_suspend_points(tcx, mir, source);
 
     let allowed = tcx.erase_regions(&interior.as_slice());
-    
+
     for (local, decl) in mir.local_decls.iter_enumerated() {
         if !live_locals.contains(&local) {
             continue;
@@ -363,7 +366,10 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let upvar_len = mir.upvar_decls.len();
-    let live_decls : Vec<_> = mir.local_decls.iter_enumerated_mut().filter(|&(local, _)| live_locals.contains(&local)).collect();
+    let live_decls : Vec<_> = mir.local_decls
+        .iter_enumerated_mut()
+        .filter(|&(local, _)| live_locals.contains(&local))
+        .collect();
 
     let mut remap = HashMap::new();
     let unit = tcx.mk_nil();
@@ -383,7 +389,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let layout = GeneratorLayout {
         fields: vars
     };
-    
+
     (remap, layout)
 }
 
@@ -421,7 +427,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             _ => continue,
         };
         let unwind = if let Some(unwind) = unwind {
-            Unwind::To(unwind) 
+            Unwind::To(unwind)
         } else {
             Unwind::InCleanup
         };
@@ -503,7 +509,7 @@ fn generate_drop<'a, 'tcx>(
     // Remove the implicit argument
     mir.arg_count = 1;
     mir.local_decls.raw.pop();
-    
+
     // Replace the return variable
     let source_info = SourceInfo {
         span: mir.span,
@@ -524,7 +530,7 @@ fn generate_drop<'a, 'tcx>(
         mutability: Mutability::Mut,
         ty: tcx.mk_ptr(ty::TypeAndMut {
             ty: gen_ty,
-            mutbl: hir::Mutability::MutMutable, 
+            mutbl: hir::Mutability::MutMutable,
         }),
         name: None,
         source_info,
@@ -650,7 +656,10 @@ fn generate_resume<'a, 'tcx>(
         values: Cow::from(transform.bb_targets.values().map(|&i| {
                 ConstInt::U32(i)
             }).collect::<Vec<_>>()),
-        targets: transform.bb_targets.keys().map(|&(k, _)| k).chain(once(transform.return_block)).collect(),
+        targets: transform.bb_targets.keys()
+            .map(|&(k, _)| k)
+            .chain(once(transform.return_block))
+            .collect(),
     };
 
     insert_entry_point(mir, BasicBlockData {
@@ -661,7 +670,7 @@ fn generate_resume<'a, 'tcx>(
         }),
         is_cleanup: false,
     });
-    
+
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
     simplify::remove_dead_blocks(mir);

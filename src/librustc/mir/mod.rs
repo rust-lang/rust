@@ -1355,7 +1355,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                 }
                                 struct_fmt.field("$state", &lvs[freevars.len()]);
                                 for i in (freevars.len() + 1)..lvs.len() {
-                                    struct_fmt.field(&format!("${}", i - freevars.len() - 1), &lvs[i]);
+                                    struct_fmt.field(&format!("${}", i - freevars.len() - 1),
+                                                     &lvs[i]);
                                 }
                             });
 

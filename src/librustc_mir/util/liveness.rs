@@ -10,7 +10,8 @@
 
 //! Liveness analysis.
 
-// FIXME: Make sure this analysis uses proper MIR semantics. Also find out what the MIR semantics are.
+// FIXME: Make sure this analysis uses proper MIR semantics. Also find out what
+//        the MIR semantics are.
 
 use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, Visitor};
@@ -188,7 +189,10 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
         let print = |w: &mut Write, prefix, result: &IndexVec<BasicBlock, LocalSet>| {
-            let live: Vec<String> = mir.local_decls.indices().filter(|i| result[block].contains(i)).map(|i| format!("{:?}", i)).collect();
+            let live: Vec<String> = mir.local_decls.indices()
+                .filter(|i| result[block].contains(i))
+                .map(|i| format!("{:?}", i))
+                .collect();
             writeln!(w, "{} {{{}}}", prefix, live.join(", "))
         };
         print(w, "   ", &result.ins)?;

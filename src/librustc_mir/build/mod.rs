@@ -118,14 +118,14 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     });
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
-            
+
             let (suspend_ty, impl_arg_ty, return_ty) = if body.is_generator() {
                 let gen_sig = cx.tables().generator_sigs[&id].clone().unwrap();
                 (Some(gen_sig.suspend_ty), Some(gen_sig.impl_arg_ty), gen_sig.return_ty)
             } else {
                 (None, None, fn_sig.output())
             };
-            
+
             build::construct_fn(cx, id, arguments, abi, return_ty, suspend_ty, impl_arg_ty, body)
         } else {
             build::construct_const(cx, body_id)

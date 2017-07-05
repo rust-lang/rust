@@ -1401,7 +1401,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyClosure(closure_id, closure_substs))
     }
 
-    pub fn mk_generator(self, 
+    pub fn mk_generator(self,
                         id: DefId,
                         closure_substs: ClosureSubsts<'tcx>,
                         interior: GeneratorInterior<'tcx>)

@@ -2583,7 +2583,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             value: trait_ref,
             obligations
         } = self.generator_trait_ref(obligation, closure_def_id, substs);
-        
+
         debug!("confirm_generator_candidate(closure_def_id={:?}, trait_ref={:?}, obligations={:?})",
                closure_def_id,
                trait_ref,
