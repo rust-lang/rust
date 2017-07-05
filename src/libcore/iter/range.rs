@@ -22,9 +22,6 @@ use super::{FusedIterator, TrustedLen};
            reason = "likely to be replaced by finer-grained traits",
            issue = "42168")]
 pub trait Step: PartialOrd + Sized {
-    /// Steps `self` if possible.
-    fn step(&self, by: &Self) -> Option<Self>;
-
     /// Returns the number of steps between two step objects. The count is
     /// inclusive of `start` and exclusive of `end`.
     ///
@@ -34,9 +31,6 @@ pub trait Step: PartialOrd + Sized {
 
     /// Same as `steps_between`, but with a `by` of 1
     fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize>;
-
-    /// Tests whether this step is negative or not (going backwards)
-    fn is_negative(&self) -> bool;
 
     /// Replaces this step with `1`, returning itself
     fn replace_one(&mut self) -> Self;
@@ -58,10 +52,6 @@ macro_rules! step_impl_unsigned {
                    issue = "42168")]
         impl Step for $t {
             #[inline]
-            fn step(&self, by: &$t) -> Option<$t> {
-                (*self).checked_add(*by)
-            }
-            #[inline]
             #[allow(trivial_numeric_casts)]
             fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
                 if *by == 0 { return None; }
@@ -77,11 +67,6 @@ macro_rules! step_impl_unsigned {
                 } else {
                     Some(0)
                 }
-            }
-
-            #[inline]
-            fn is_negative(&self) -> bool {
-                false
             }
 
             #[inline]
@@ -118,10 +103,6 @@ macro_rules! step_impl_signed {
                    issue = "42168")]
         impl Step for $t {
             #[inline]
-            fn step(&self, by: &$t) -> Option<$t> {
-                (*self).checked_add(*by)
-            }
-            #[inline]
             #[allow(trivial_numeric_casts)]
             fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
                 if *by == 0 { return None; }
@@ -148,11 +129,6 @@ macro_rules! step_impl_signed {
                 } else {
                     Some(diff / by_u)
                 }
-            }
-
-            #[inline]
-            fn is_negative(&self) -> bool {
-                *self < 0
             }
 
             #[inline]
@@ -190,18 +166,8 @@ macro_rules! step_impl_no_between {
                    issue = "42168")]
         impl Step for $t {
             #[inline]
-            fn step(&self, by: &$t) -> Option<$t> {
-                (*self).checked_add(*by)
-            }
-            #[inline]
             fn steps_between(_a: &$t, _b: &$t, _by: &$t) -> Option<usize> {
                 None
-            }
-
-            #[inline]
-            #[allow(unused_comparisons)]
-            fn is_negative(&self) -> bool {
-                *self < 0
             }
 
             #[inline]
