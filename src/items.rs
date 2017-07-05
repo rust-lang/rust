@@ -1531,22 +1531,23 @@ pub fn rewrite_static(
     span: Span,
     context: &RewriteContext,
 ) -> Option<String> {
-    let type_annotation_spacing = type_annotation_spacing(context.config);
+    let colon = colon_spaces(
+        context.config.space_before_type_annotation(),
+        context.config.space_after_type_annotation_colon(),
+    );
     let prefix = format!(
-        "{}{} {}{}{}:{}",
+        "{}{} {}{}{}",
         format_visibility(vis),
         prefix,
         format_mutability(mutability),
         ident,
-        type_annotation_spacing.0,
-        type_annotation_spacing.1
+        colon,
     );
     // 2 = " =".len()
     let ty_str = try_opt!(ty.rewrite(
         context,
-        Shape::legacy(
-            context.config.max_width() - offset.block_indent - prefix.len() - 2,
-            offset.block_only(),
+        try_opt!(
+            Shape::indented(offset.block_only(), context.config).offset_left(prefix.len() + 2)
         ),
     ));
 
@@ -1560,21 +1561,11 @@ pub fn rewrite_static(
             expr,
             Shape::legacy(remaining_width, offset.block_only()),
         ).and_then(|res| {
-            recover_comment_removed(
-                res,
-                span,
-                context,
-                Shape {
-                    width: context.config.max_width(),
-                    indent: offset,
-                    offset: offset.alignment,
-                },
-            )
+            recover_comment_removed(res, span, context, Shape::indented(offset, context.config))
         })
             .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
-        let lhs = format!("{}{};", prefix, ty_str);
-        Some(lhs)
+        Some(format!("{}{};", prefix, ty_str))
     }
 }
 
