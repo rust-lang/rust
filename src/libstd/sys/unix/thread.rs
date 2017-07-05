@@ -264,23 +264,37 @@ pub mod guard {
                 as *mut libc::c_void;
         }
 
-        // Rellocate the last page of the stack.
-        // This ensures SIGBUS will be raised on
-        // stack overflow.
-        let result = mmap(stackaddr, psize, PROT_NONE,
-                          MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
-
-        if result != stackaddr || result == MAP_FAILED {
-            panic!("failed to allocate a guard page");
-        }
-
-        let offset = if cfg!(any(target_os = "linux", target_os = "freebsd")) {
-            2
+        if cfg!(target_os = "linux") {
+            // Linux doesn't allocate the whole stack right away, and
+            // the kernel has its own stack-guard mechanism to fault
+            // when growing too close to an existing mapping.  If we map
+            // our own guard, then the kernel starts enforcing a rather
+            // large gap above that, rendering much of the possible
+            // stack space useless.  See #43052.
+            //
+            // Instead, we'll just note where we expect rlimit to start
+            // faulting, so our handler can report "stack overflow", and
+            // trust that the kernel's own stack guard will work.
+            Some(stackaddr as usize)
         } else {
-            1
-        };
+            // Reallocate the last page of the stack.
+            // This ensures SIGBUS will be raised on
+            // stack overflow.
+            let result = mmap(stackaddr, psize, PROT_NONE,
+                              MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
 
-        Some(stackaddr as usize + offset * psize)
+            if result != stackaddr || result == MAP_FAILED {
+                panic!("failed to allocate a guard page");
+            }
+
+            let offset = if cfg!(target_os = "freebsd") {
+                2
+            } else {
+                1
+            };
+
+            Some(stackaddr as usize + offset * psize)
+        }
     }
 
     #[cfg(target_os = "solaris")]
