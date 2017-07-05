@@ -193,7 +193,6 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
                                     (rhs, span), location, flow_state);
             }
             StatementKind::SetDiscriminant { ref lvalue, variant_index: _ } => {
-                // FIXME: should this count as a mutate from borrowck POV?
                 self.mutate_lvalue(ContextKind::SetDiscrim.new(location),
                                    (lvalue, span), JustWrite, flow_state);
             }
