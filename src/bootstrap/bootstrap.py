@@ -700,7 +700,8 @@ def main():
             exit_code = e.code
         else:
             exit_code = 1
-            print(e)
+        import traceback
+        traceback.print_exc()
         if not help_triggered:
             print("Build completed unsuccessfully in %s" %
                   format_build_time(time() - start_time))
