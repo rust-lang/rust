@@ -710,6 +710,37 @@ impl<'a> Iterator for Bytes<'a> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.0.nth(n)
     }
+
+    #[inline]
+    fn all<F>(&mut self, f: F) -> bool where F: FnMut(Self::Item) -> bool {
+        self.0.all(f)
+    }
+
+    #[inline]
+    fn any<F>(&mut self, f: F) -> bool where F: FnMut(Self::Item) -> bool {
+        self.0.any(f)
+    }
+
+    #[inline]
+    fn find<P>(&mut self, predicate: P) -> Option<Self::Item> where
+        P: FnMut(&Self::Item) -> bool
+    {
+        self.0.find(predicate)
+    }
+
+    #[inline]
+    fn position<P>(&mut self, predicate: P) -> Option<usize> where
+        P: FnMut(Self::Item) -> bool
+    {
+        self.0.position(predicate)
+    }
+
+    #[inline]
+    fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
+        P: FnMut(Self::Item) -> bool
+    {
+        self.0.rposition(predicate)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -717,6 +748,13 @@ impl<'a> DoubleEndedIterator for Bytes<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<u8> {
         self.0.next_back()
+    }
+
+    #[inline]
+    fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item> where
+        P: FnMut(&Self::Item) -> bool
+    {
+        self.0.rfind(predicate)
     }
 }
 
