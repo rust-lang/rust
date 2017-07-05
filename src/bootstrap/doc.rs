@@ -23,9 +23,13 @@ use std::io;
 use std::path::Path;
 use std::process::Command;
 
-use {Build, Compiler, Mode};
+use Mode;
 use util::{cp_r, symlink_dir};
 use build_helper::up_to_date;
+
+use builder::{Builder, Step};
+use tool::Tool;
+use compile;
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr;)+) => {
@@ -37,7 +41,6 @@ macro_rules! book {
 
         impl<'a> Step<'a> for $name<'a> {
             type Output = ();
-            const NAME: &'static str = concat!(stringify!($book_name), " - book");
             const DEFAULT: bool = true;
 
             fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -90,7 +93,7 @@ book!(
 );
 
 #[derive(Serialize)]
-struct Rustbook<'a> {
+pub struct Rustbook<'a> {
     target: &'a str,
     name: &'a str,
 }
@@ -132,7 +135,6 @@ pub struct UnstableBook<'a> {
 
 impl<'a> Step<'a> for UnstableBook<'a> {
     type Output = ();
-    const NAME: &'static str = "unstable book documentation";
     const DEFAULT: bool = true;
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -247,7 +249,7 @@ impl<'a> Step<'a> for TheBook<'a> {
         // build the index page
         let index = format!("{}/index.md", name);
         println!("Documenting book index ({})", target);
-        invoke_rustdoc(build, target, &index);
+        invoke_rustdoc(builder, target, &index);
 
         // build the redirect pages
         println!("Documenting book redirect pages ({})", target);
@@ -256,19 +258,20 @@ impl<'a> Step<'a> for TheBook<'a> {
             let path = file.path();
             let path = path.to_str().unwrap();
 
-            invoke_rustdoc(build, target, path);
+            invoke_rustdoc(builder, target, path);
         }
     }
 }
 
-fn invoke_rustdoc(build: &Build, target: &str, markdown: &str) {
+fn invoke_rustdoc(builder: &Builder, target: &str, markdown: &str) {
+    let build = builder.build;
     let out = build.doc_out(target);
 
-    let compiler = Compiler::new(0, &build.build);
+    let compiler = builder.compiler(0, &build.build);
 
     let path = build.src.join("src/doc").join(markdown);
 
-    let rustdoc = build.rustdoc(&compiler);
+    let rustdoc = build.rustdoc(compiler);
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
@@ -287,7 +290,7 @@ fn invoke_rustdoc(build: &Build, target: &str, markdown: &str) {
 
     let mut cmd = Command::new(&rustdoc);
 
-    build.add_rustc_lib_path(&compiler, &mut cmd);
+    build.add_rustc_lib_path(compiler, &mut cmd);
 
     let out = out.join("book");
 
@@ -383,7 +386,7 @@ impl<'a> Step<'a> for Standalone<'a> {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = build.rustdoc(&compiler);
+            let rustdoc = build.rustdoc(compiler);
             if up_to_date(&path, &html) &&
                up_to_date(&footer, &html) &&
                up_to_date(&favicon, &html) &&
@@ -394,7 +397,7 @@ impl<'a> Step<'a> for Standalone<'a> {
             }
 
             let mut cmd = Command::new(&rustdoc);
-            build.add_rustc_lib_path(&compiler, &mut cmd);
+            build.add_rustc_lib_path(compiler, &mut cmd);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
@@ -478,9 +481,9 @@ impl<'a> Step<'a> for Std<'a> {
         };
 
         builder.ensure(compile::Std { compiler, target });
-        let out_dir = build.stage_out(&compiler, Mode::Libstd)
+        let out_dir = build.stage_out(compiler, Mode::Libstd)
                            .join(target).join("doc");
-        let rustdoc = build.rustdoc(&compiler);
+        let rustdoc = build.rustdoc(compiler);
 
         // Here what we're doing is creating a *symlink* (directory junction on
         // Windows) to the final output location. This is not done as an
@@ -499,7 +502,7 @@ impl<'a> Step<'a> for Std<'a> {
         build.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&my_out, &out_dir));
 
-        let mut cargo = build.cargo(&compiler, Mode::Libstd, target, "doc");
+        let mut cargo = build.cargo(compiler, Mode::Libstd, target, "doc");
         cargo.arg("--manifest-path")
              .arg(build.src.join("src/libstd/Cargo.toml"))
              .arg("--features").arg(build.std_features());
@@ -536,7 +539,7 @@ impl<'a> Step<'a> for Std<'a> {
 #[derive(Serialize)]
 pub struct Test<'a> {
     stage: u32,
-    test: &'a str,
+    target: &'a str,
 }
 
 impl<'a> Step<'a> for Test<'a> {
@@ -592,16 +595,16 @@ impl<'a> Step<'a> for Test<'a> {
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Test { compiler, target });
-        let out_dir = build.stage_out(&compiler, Mode::Libtest)
+        let out_dir = build.stage_out(compiler, Mode::Libtest)
                            .join(target).join("doc");
-        let rustdoc = build.rustdoc(&compiler);
+        let rustdoc = build.rustdoc(compiler);
 
         // See docs in std above for why we symlink
         let my_out = build.crate_doc_out(target);
         build.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&my_out, &out_dir));
 
-        let mut cargo = build.cargo(&compiler, Mode::Libtest, target, "doc");
+        let mut cargo = build.cargo(compiler, Mode::Libtest, target, "doc");
         cargo.arg("--manifest-path")
              .arg(build.src.join("src/libtest/Cargo.toml"));
         build.run(&mut cargo);
@@ -680,16 +683,16 @@ impl<'a> Step<'a> for Rustc<'a> {
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Rustc { compiler, target });
-        let out_dir = build.stage_out(&compiler, Mode::Librustc)
+        let out_dir = build.stage_out(compiler, Mode::Librustc)
                            .join(target).join("doc");
-        let rustdoc = build.rustdoc(&compiler);
+        let rustdoc = build.rustdoc(compiler);
 
         // See docs in std above for why we symlink
         let my_out = build.crate_doc_out(target);
         build.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&my_out, &out_dir));
 
-        let mut cargo = build.cargo(&compiler, Mode::Librustc, target, "doc");
+        let mut cargo = build.cargo(compiler, Mode::Librustc, target, "doc");
         cargo.arg("--manifest-path")
              .arg(build.src.join("src/rustc/Cargo.toml"))
              .arg("--features").arg(build.rustc_features());
@@ -749,7 +752,7 @@ impl<'a> Step<'a> for ErrorIndex<'a> {
     /// Generates the HTML rendered error-index by running the
     /// `error_index_generator` tool.
     fn run(self, builder: &Builder) {
-        let builder = builder.build;
+        let build = builder.build;
         let target = self.target;
 
         builder.ensure(compile::Rustc {
@@ -760,7 +763,6 @@ impl<'a> Step<'a> for ErrorIndex<'a> {
         println!("Documenting error index ({})", target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = Compiler::new(0, &build.build);
         let mut index = builder.tool_cmd(Tool::ErrorIndex);
         index.arg("html");
         index.arg(out.join("error-index.html"));
@@ -822,8 +824,7 @@ impl<'a> Step<'a> for UnstableBookGen<'a> {
         let out = build.md_doc_out(target).join("unstable-book");
         t!(fs::create_dir_all(&out));
         t!(fs::remove_dir_all(&out));
-        let compiler = Compiler::new(0, &build.build);
-        let mut cmd = build.tool_cmd(&compiler, "unstable-book-gen");
+        let mut cmd = builder.tool_cmd(Tool::UnstableBookGen);
         cmd.arg(build.src.join("src"));
         cmd.arg(out);
 

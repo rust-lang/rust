@@ -18,8 +18,10 @@ use std::fs;
 use std::path::{Path, PathBuf, Component};
 use std::process::Command;
 
+use dist::{self, pkgname, sanitize_sh, tmpdir};
+
 use Build;
-use dist::{pkgname, sanitize_sh, tmpdir};
+use builder::{Builder, Step};
 
 pub struct Installer<'a> {
     build: &'a Build,
@@ -165,7 +167,6 @@ macro_rules! install {
 
         impl<'a> Step<'a> for $name<'a> {
             type Output = ();
-            const NAME: &'static str = concat!("install ", stringify!($name));
             const DEFAULT: bool = true;
             const ONLY_BUILD_TARGETS: bool = true;
             const ONLY_HOSTS: bool = $only_hosts;

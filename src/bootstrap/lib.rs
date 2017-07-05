@@ -65,9 +65,15 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(warnings)]
+#![feature(associated_consts)]
+#![feature(core_intrinsics)]
 
 #[macro_use]
 extern crate build_helper;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 extern crate cmake;
 extern crate filetime;
 extern crate gcc;
@@ -81,9 +87,8 @@ extern crate libc;
 
 use std::cell::Cell;
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::env;
-use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{PathBuf, Path};
@@ -92,8 +97,6 @@ use std::process::Command;
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 
 use util::{exe, libdir, add_lib_path, OutputFolder, CiEnv};
-
-use builder::Builder;
 
 mod cc;
 mod channel;
@@ -110,6 +113,8 @@ mod native;
 mod sanity;
 pub mod util;
 mod builder;
+mod cache;
+mod tool;
 
 #[cfg(windows)]
 mod job;
@@ -139,7 +144,7 @@ pub use flags::{Flags, Subcommand};
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct Compiler<'a> {
     stage: u32,
     host: &'a str,
@@ -212,7 +217,7 @@ struct Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Libstd,
@@ -301,12 +306,6 @@ impl Build {
         }
     }
 
-    fn build_slice(&self) -> &[String] {
-        unsafe {
-            std::slice::from_raw_parts(&self.build, 1)
-        }
-    }
-
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
@@ -335,7 +334,7 @@ impl Build {
         self.verbose("learning about cargo");
         metadata::build(self);
 
-        step::run(self);
+        builder::Builder::run(&self);
     }
 
     /// Clear out `dir` if `input` is newer.
@@ -361,7 +360,7 @@ impl Build {
     /// it will pass the `--target` flag for the specified `target`, and will be
     /// executing the Cargo command `cmd`.
     fn cargo(&self,
-             compiler: &Compiler,
+             compiler: Compiler,
              mode: Mode,
              target: &str,
              cmd: &str) -> Command {
@@ -528,7 +527,7 @@ impl Build {
     }
 
     /// Get a path to the compiler specified.
-    fn compiler_path(&self, compiler: &Compiler) -> PathBuf {
+    fn compiler_path(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
             self.initial_rustc.clone()
         } else {
@@ -537,13 +536,13 @@ impl Build {
     }
 
     /// Get the specified tool built by the specified compiler
-    fn tool(&self, compiler: &Compiler, tool: &str) -> PathBuf {
+    fn tool(&self, compiler: Compiler, tool: &str) -> PathBuf {
         self.cargo_out(compiler, Mode::Tool, compiler.host)
             .join(exe(tool, compiler.host))
     }
 
     /// Get the `rustdoc` executable next to the specified compiler
-    fn rustdoc(&self, compiler: &Compiler) -> PathBuf {
+    fn rustdoc(&self, compiler: Compiler) -> PathBuf {
         let mut rustdoc = self.compiler_path(compiler);
         rustdoc.pop();
         rustdoc.push(exe("rustdoc", compiler.host));
@@ -552,8 +551,8 @@ impl Build {
 
     /// Get a `Command` which is ready to run `tool` in `stage` built for
     /// `host`.
-    fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
-        let mut cmd = Command::new(self.tool(&compiler, tool));
+    fn tool_cmd(&self, compiler: Compiler, tool: &str) -> Command {
+        let mut cmd = Command::new(self.tool(compiler, tool));
         self.prepare_tool_cmd(compiler, &mut cmd);
         cmd
     }
@@ -562,7 +561,7 @@ impl Build {
     ///
     /// Notably this munges the dynamic library lookup path to point to the
     /// right location to run `compiler`.
-    fn prepare_tool_cmd(&self, compiler: &Compiler, cmd: &mut Command) {
+    fn prepare_tool_cmd(&self, compiler: Compiler, cmd: &mut Command) {
         let host = compiler.host;
         let mut paths = vec![
             self.sysroot_libdir(compiler, compiler.host),
@@ -624,23 +623,9 @@ impl Build {
         if self.config.rust_optimize {"release"} else {"debug"}
     }
 
-    /// Returns the sysroot for the `compiler` specified that *this build system
-    /// generates*.
-    ///
-    /// That is, the sysroot for the stage0 compiler is not what the compiler
-    /// thinks it is by default, but it's the same as the default for stages
-    /// 1-3.
-    fn sysroot(&self, compiler: &Compiler) -> PathBuf {
-        if compiler.stage == 0 {
-            self.out.join(compiler.host).join("stage0-sysroot")
-        } else {
-            self.out.join(compiler.host).join(format!("stage{}", compiler.stage))
-        }
-    }
-
     /// Get the directory for incremental by-products when using the
     /// given compiler.
-    fn incremental_dir(&self, compiler: &Compiler) -> PathBuf {
+    fn incremental_dir(&self, compiler: Compiler) -> PathBuf {
         self.out.join(compiler.host).join(format!("stage{}-incremental", compiler.stage))
     }
 
@@ -661,7 +646,7 @@ impl Build {
     /// stage when running with a particular host compiler.
     ///
     /// The mode indicates what the root directory is for.
-    fn stage_out(&self, compiler: &Compiler, mode: Mode) -> PathBuf {
+    fn stage_out(&self, compiler: Compiler, mode: Mode) -> PathBuf {
         let suffix = match mode {
             Mode::Libstd => "-std",
             Mode::Libtest => "-test",
@@ -676,7 +661,7 @@ impl Build {
     /// running a particular compiler, wehther or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self,
-                 compiler: &Compiler,
+                 compiler: Compiler,
                  mode: Mode,
                  target: &str) -> PathBuf {
         self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
@@ -759,19 +744,6 @@ impl Build {
         self.native_dir(target).join("rust-test-helpers")
     }
 
-    /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
-    /// library lookup path.
-    fn add_rustc_lib_path(&self, compiler: &Compiler, cmd: &mut Command) {
-        // Windows doesn't need dylib path munging because the dlls for the
-        // compiler live next to the compiler and the system will find them
-        // automatically.
-        if cfg!(windows) {
-            return
-        }
-
-        add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
-    }
-
     /// Adds the `RUST_TEST_THREADS` env var if necessary
     fn add_rust_test_threads(&self, cmd: &mut Command) {
         if env::var_os("RUST_TEST_THREADS").is_none() {
@@ -784,7 +756,7 @@ impl Build {
     ///
     /// For example this returns `<sysroot>/lib` on Unix and `<sysroot>/bin` on
     /// Windows.
-    fn rustc_libdir(&self, compiler: &Compiler) -> PathBuf {
+    fn rustc_libdir(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
             self.rustc_snapshot_libdir()
         } else {
@@ -960,7 +932,7 @@ impl Build {
     ///
     /// When all of these conditions are met the build will lift artifacts from
     /// the previous stage forward.
-    fn force_use_stage1(&self, compiler: &Compiler, target: &str) -> bool {
+    fn force_use_stage1(&self, compiler: Compiler, target: &str) -> bool {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
             self.config.host.iter().any(|h| h == target)
@@ -1110,7 +1082,7 @@ impl<'a> Compiler<'a> {
     }
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
-    pub fn is_snapshot(&self, builder: &Build) -> bool {
+    pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
     }
 

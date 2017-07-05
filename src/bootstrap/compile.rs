@@ -28,9 +28,11 @@ use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 use rustc_serialize::json;
 
-use channel::GitInfo;
 use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
+use native;
+
+use builder::{Step, Builder};
 
 //
 //    // Crates which have build scripts need to rely on this rule to ensure that
@@ -95,39 +97,39 @@ use {Build, Compiler, Mode};
 // different compiler, or from actually building the crate itself (the `dep`
 // rule). The `run` rule then mirrors these three cases and links the cases
 // forward into the compiler sysroot specified from the correct location.
-fn crate_rule<'a, 'b>(build: &'a Build,
-                        rules: &'b mut Rules<'a>,
-                        krate: &'a str,
-                        dep: &'a str,
-                        link: fn(&Build, &Compiler, &Compiler, &str))
-                        -> RuleBuilder<'a, 'b> {
-    let mut rule = rules.build(&krate, "path/to/nowhere");
-    rule.dep(move |s| {
-            if build.force_use_stage1(&s.compiler(), s.target) {
-                s.host(&build.build).stage(1)
-            } else if s.host == build.build {
-                s.name(dep)
-            } else {
-                s.host(&build.build)
-            }
-        })
-        .run(move |s| {
-            if build.force_use_stage1(&s.compiler(), s.target) {
-                link(build,
-                        &s.stage(1).host(&build.build).compiler(),
-                        &s.compiler(),
-                        s.target)
-            } else if s.host == build.build {
-                link(build, &s.compiler(), &s.compiler(), s.target)
-            } else {
-                link(build,
-                        &s.host(&build.build).compiler(),
-                        &s.compiler(),
-                        s.target)
-            }
-        });
-        rule
-}
+// fn crate_rule<'a, 'b>(build: &'a Build,
+//                         rules: &'b mut Rules<'a>,
+//                         krate: &'a str,
+//                         dep: &'a str,
+//                         link: fn(&Build, compiler, compiler, &str))
+//                         -> RuleBuilder<'a, 'b> {
+//     let mut rule = rules.build(&krate, "path/to/nowhere");
+//     rule.dep(move |s| {
+//             if build.force_use_stage1(&s.compiler(), s.target) {
+//                 s.host(&build.build).stage(1)
+//             } else if s.host == build.build {
+//                 s.name(dep)
+//             } else {
+//                 s.host(&build.build)
+//             }
+//         })
+//         .run(move |s| {
+//             if build.force_use_stage1(&s.compiler(), s.target) {
+//                 link(build,
+//                         &s.stage(1).host(&build.build).compiler(),
+//                         &s.compiler(),
+//                         s.target)
+//             } else if s.host == build.build {
+//                 link(build, &s.compiler(), &s.compiler(), s.target)
+//             } else {
+//                 link(build,
+//                         &s.host(&build.build).compiler(),
+//                         &s.compiler(),
+//                         s.target)
+//             }
+//         });
+//         rule
+// }
 
 //        rules.build("libstd", "src/libstd")
 //             .dep(|s| s.name("rustc").target(s.host))
@@ -141,7 +143,7 @@ fn crate_rule<'a, 'b>(build: &'a Build,
 #[derive(Serialize)]
 pub struct Std<'a> {
     pub target: &'a str,
-    pub compiler: &'a Compiler<'a>,
+    pub compiler: Compiler<'a>,
 }
 
 impl<'a> Step<'a> for Std<'a> {
@@ -239,7 +241,7 @@ impl<'a> Step<'a> for Std<'a> {
 
         run_cargo(build,
                 &mut cargo,
-                &libstd_stamp(build, &compiler, target));
+                &libstd_stamp(build, compiler, target));
 
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, &build.build),
@@ -287,7 +289,7 @@ impl<'a> Step<'a> for StdLink<'a> {
                 compiler.host,
                 target_compiler.host,
                 target);
-        let libdir = build.sysroot_libdir(target_compiler, target);
+        let libdir = builder.sysroot_libdir(target_compiler, target);
         add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
 
         if target.contains("musl") && !target.contains("mips") {
@@ -330,7 +332,7 @@ fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
 
 #[derive(Serialize)]
 pub struct StartupObjects<'a> {
-    pub for_compiler: Compiler<'a>,
+    pub compiler: Compiler<'a>,
     pub target: &'a str,
 }
 
@@ -356,17 +358,17 @@ impl<'a> Step<'a> for StartupObjects<'a> {
     /// no other compilers are guaranteed to be available).
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let for_compiler = self.for_compiler;
+        let for_compiler = self.compiler;
         let target = self.target;
         if !target.contains("pc-windows-gnu") {
             return
         }
 
-        let compiler = Compiler::new(0, &build.build);
-        let compiler_path = build.compiler_path(&compiler);
+        let compiler = builder.compiler(0, &build.build);
+        let compiler_path = build.compiler_path(compiler);
         let src_dir = &build.src.join("src/rtstartup");
         let dst_dir = &build.native_dir(target).join("rtstartup");
-        let sysroot_dir = &build.sysroot_libdir(for_compiler, target);
+        let sysroot_dir = &builder.sysroot_libdir(for_compiler, target);
         t!(fs::create_dir_all(dst_dir));
         t!(fs::create_dir_all(sysroot_dir));
 
@@ -485,7 +487,7 @@ pub struct TestLink<'a> {
     pub target: &'a str,
 }
 
-impl<'a> Step<'a> for Step<'a> {
+impl<'a> Step<'a> for TestLink<'a> {
     type Output = ();
 
     /// Same as `std_link`, only for libtest
@@ -500,7 +502,7 @@ impl<'a> Step<'a> for Step<'a> {
                 compiler.host,
                 target_compiler.host,
                 target);
-        add_to_sysroot(&build.sysroot_libdir(target_compiler, target),
+        add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
                     &libtest_stamp(build, compiler, target));
     }
 }
@@ -682,26 +684,26 @@ impl<'a> Step<'a> for RustcLink<'a> {
                  compiler.host,
                  target_compiler.host,
                  target);
-        add_to_sysroot(&build.sysroot_libdir(target_compiler, target),
+        add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
                        &librustc_stamp(build, compiler, target));
     }
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-pub fn libstd_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+pub fn libstd_stamp(build: &Build, compiler: Compiler, target: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Libstd, target).join(".libstd.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
-pub fn libtest_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+pub fn libtest_stamp(build: &Build, compiler: Compiler, target: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
-pub fn librustc_stamp(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+pub fn librustc_stamp(build: &Build, compiler: Compiler, target: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
 }
 
@@ -766,14 +768,14 @@ pub struct Assemble<'a> {
 }
 
 impl<'a> Step<'a> for Assemble<'a> {
-    type Output = ();
+    type Output = Compiler<'a>;
 
     /// Prepare a new compiler from the artifacts in `stage`
     ///
     /// This will assemble a compiler in `build/$host/stage$stage`. The compiler
     /// must have been previously produced by the `stage - 1` build.build
     /// compiler.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> Compiler<'a> {
         let build = builder.build;
         let target_compiler = self.target_compiler;
 
@@ -819,10 +821,10 @@ impl<'a> Step<'a> for Assemble<'a> {
         println!("Assembling stage{} compiler ({})", stage, host);
 
         // Link in all dylibs to the libdir
-        let sysroot = build.sysroot(&target_compiler);
+        let sysroot = builder.sysroot(target_compiler);
         let sysroot_libdir = sysroot.join(libdir(host));
         t!(fs::create_dir_all(&sysroot_libdir));
-        let src_libdir = build.sysroot_libdir(&build_compiler, host);
+        let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in t!(fs::read_dir(&src_libdir)).map(|f| t!(f)) {
             let filename = f.file_name().into_string().unwrap();
             if is_dylib(&filename) {
@@ -830,13 +832,13 @@ impl<'a> Step<'a> for Assemble<'a> {
             }
         }
 
-        let out_dir = build.cargo_out(&build_compiler, Mode::Librustc, host);
+        let out_dir = build.cargo_out(build_compiler, Mode::Librustc, host);
 
         // Link the compiler binary itself into place
         let rustc = out_dir.join(exe("rustc", host));
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(&bindir));
-        let compiler = build.compiler_path(&target_compiler);
+        let compiler = build.compiler_path(target_compiler);
         let _ = fs::remove_file(&compiler);
         copy(&rustc, &compiler);
 
@@ -848,6 +850,8 @@ impl<'a> Step<'a> for Assemble<'a> {
             let _ = fs::remove_file(&rustdoc_dst);
             copy(&rustdoc_src, &rustdoc_dst);
         }
+
+        target_compiler
     }
 }
 

@@ -37,6 +37,9 @@ use build_helper::output;
 use {Build, Compiler, Mode};
 use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
+use builder::{Builder, Step};
+use compile;
+use tool::{self, Tool};
 
 pub fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
@@ -57,8 +60,8 @@ pub fn tmpdir(build: &Build) -> PathBuf {
     build.out.join("tmp/dist")
 }
 
-fn rust_installer(build: &Build) -> Command {
-    build.tool_cmd(&Compiler::new(0, &build.build), "rust-installer")
+fn rust_installer(builder: &Builder) -> Command {
+    builder.tool_cmd(Tool::RustInstaller)
 }
 
 // rules.dist("dist-docs", "src/doc")
@@ -70,8 +73,8 @@ fn rust_installer(build: &Build) -> Command {
 
 #[derive(Serialize)]
 pub struct Docs<'a> {
-    stage: u32,
-    host: &'a str,
+    pub stage: u32,
+    pub host: &'a str,
 }
 
 impl<'a> Step<'a> for Docs<'a> {
@@ -115,7 +118,7 @@ impl<'a> Step<'a> for Docs<'a> {
         let src = build.out.join(host).join("doc");
         cp_r(&src, &dst);
 
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("generate")
            .arg("--product-name=Rust-Documentation")
            .arg("--rel-manifest-dir=rustlib")
@@ -320,7 +323,7 @@ impl<'a> Step<'a> for Mingw<'a> {
         // (which is what we want).
         make_win_dist(&tmpdir(build), &image, host, &build);
 
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("generate")
            .arg("--product-name=Rust-MinGW")
            .arg("--rel-manifest-dir=rustlib")
@@ -346,8 +349,8 @@ impl<'a> Step<'a> for Mingw<'a> {
 
 #[derive(Serialize)]
 pub struct Rustc<'a> {
-    stage: u32,
-    host: &'a str,
+    pub stage: u32,
+    pub host: &'a str,
 }
 
 impl<'a> Step<'a> for Rustc<'a> {
@@ -368,7 +371,7 @@ impl<'a> Step<'a> for Rustc<'a> {
     }
 
     /// Creates the `rustc` installer component.
-    fn run(self, builder: &builder) {
+    fn run(self, builder: &Builder) {
         let build = builder.build;
         let stage = self.stage;
         let host = self.host;
@@ -414,7 +417,7 @@ impl<'a> Step<'a> for Rustc<'a> {
         }
 
         // Finally, wrap everything up in a nice tarball!
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("generate")
            .arg("--product-name=Rust")
            .arg("--rel-manifest-dir=rustlib")
@@ -432,7 +435,7 @@ impl<'a> Step<'a> for Rustc<'a> {
 
         fn prepare_image(builder: &Builder, stage: u32, host: &str, image: &Path) {
             let build = builder.build;
-            let src = build.sysroot(builder.compiler(stage, host));
+            let src = builder.sysroot(builder.compiler(stage, host));
             let libdir = libdir(host);
 
             // Copy rustc/rustdoc binaries
@@ -474,13 +477,13 @@ impl<'a> Step<'a> for Rustc<'a> {
 }
 
 //rules.test("debugger-scripts", "src/etc/lldb_batchmode.py")
-//     .run(move |s| dist::debugger_scripts(build, &build.sysroot(&s.compiler()),
+//     .run(move |s| dist::debugger_scripts(build, &builder.sysroot(&s.compiler()),
 //                                     s.target));
 
 #[derive(Serialize)]
 pub struct DebuggerScripts<'a> {
-    sysroot: &'a Path,
-    host: &'a str,
+    pub sysroot: &'a Path,
+    pub host: &'a str,
 }
 
 impl<'a> Step<'a> for DebuggerScripts<'a> {
@@ -596,8 +599,8 @@ pub fn rust_src_installer(build: &Build) -> PathBuf {
 
 #[derive(Serialize)]
 pub struct Analysis<'a> {
-    compiler: Compiler<'a>,
-    target: &'a str,
+    pub compiler: Compiler<'a>,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for Analysis<'a> {
@@ -652,7 +655,7 @@ impl<'a> Step<'a> for Analysis<'a> {
         println!("image_src: {:?}, dst: {:?}", image_src, dst);
         cp_r(&image_src, &dst);
 
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("generate")
            .arg("--product-name=Rust")
            .arg("--rel-manifest-dir=rustlib")
@@ -784,7 +787,7 @@ impl<'a> Step<'a> for Src {
         copy_src_dirs(build, &std_src_dirs[..], &std_src_dirs_exclude[..], &dst_src);
 
         // Create source tarball in rust-installer format
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("generate")
            .arg("--product-name=Rust")
            .arg("--rel-manifest-dir=rustlib")
@@ -903,7 +906,7 @@ impl<'a> Step<'a> for PlainSourceTarball {
         if let Some(dir) = tarball.parent() {
             t!(fs::create_dir_all(dir));
         }
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("tarball")
            .arg("--input").arg(&plain_name)
            .arg("--output").arg(&tarball)
@@ -961,8 +964,8 @@ fn write_file(path: &Path, data: &[u8]) {
 
 #[derive(Serialize)]
 pub struct Cargo<'a> {
-    stage: u32,
-    target: &'a str,
+    pub stage: u32,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for Cargo<'a> {
@@ -1005,7 +1008,7 @@ impl<'a> Step<'a> for Cargo<'a> {
         // Prepare the image directory
         t!(fs::create_dir_all(image.join("share/zsh/site-functions")));
         t!(fs::create_dir_all(image.join("etc/bash_completion.d")));
-        let cargo = build.cargo_out(&compiler, Mode::Tool, target)
+        let cargo = build.cargo_out(compiler, Mode::Tool, target)
                          .join(exe("cargo", target));
         install(&cargo, &image.join("bin"), 0o755);
         for man in t!(etc.join("man").read_dir()) {
@@ -1032,7 +1035,7 @@ impl<'a> Step<'a> for Cargo<'a> {
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
 
         // Generate the installer tarball
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("generate")
            .arg("--product-name=Rust")
            .arg("--rel-manifest-dir=rustlib")
@@ -1056,8 +1059,8 @@ impl<'a> Step<'a> for Cargo<'a> {
 //      .run(move |s| dist::rls(build, s.stage, s.target));
 #[derive(Serialize)]
 pub struct Rls<'a> {
-    stage: u32,
-    target: &'a str,
+    pub stage: u32,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for Rls<'a> {
@@ -1098,7 +1101,7 @@ impl<'a> Step<'a> for Rls<'a> {
         t!(fs::create_dir_all(&image));
 
         // Prepare the image directory
-        let rls = build.cargo_out(&compiler, Mode::Tool, target)
+        let rls = build.cargo_out(compiler, Mode::Tool, target)
                          .join(exe("rls", target));
         install(&rls, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rls");
@@ -1116,7 +1119,7 @@ impl<'a> Step<'a> for Rls<'a> {
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
 
         // Generate the installer tarball
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("generate")
            .arg("--product-name=Rust")
            .arg("--rel-manifest-dir=rustlib")
@@ -1162,12 +1165,12 @@ impl<'a> Step<'a> for Extended<'a> {
         path.ends_with("cargo")
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
         if path.is_none() && !builder.build.config.extended {
             return;
         }
         builder.ensure(Extended {
-            compiler: builder.compiler(builder.top_stage, host),
+            stage: builder.top_stage,
             target: target,
         });
     }
@@ -1180,9 +1183,9 @@ impl<'a> Step<'a> for Extended<'a> {
         let compiler = builder.compiler(stage, &build.build);
 
         builder.ensure(Std { compiler, target });
-        builder.ensure(Rustc { stage, host });
-        builder.ensure(Mingw { host });
-        builder.ensure(Docs { stage, host });
+        builder.ensure(Rustc { stage, host: target });
+        builder.ensure(Mingw { host: target });
+        builder.ensure(Docs { stage, host: target });
         builder.ensure(Cargo { stage, target });
         builder.ensure(Rls { stage, target });
         builder.ensure(Analysis { compiler, target });
@@ -1240,7 +1243,7 @@ impl<'a> Step<'a> for Extended<'a> {
             input_tarballs.push(tarball);
         }
 
-        let mut cmd = rust_installer(build);
+        let mut cmd = rust_installer(builder);
         cmd.arg("combine")
             .arg("--product-name=Rust")
             .arg("--rel-manifest-dir=rustlib")

@@ -66,12 +66,12 @@ impl<'a> Step<'a> for CleanTools<'a> {
         let compiler = builder.compiler(stage, &build.build);
 
         let stamp = match mode {
-            Mode::Libstd => libstd_stamp(build, &compiler, target),
-            Mode::Libtest => libtest_stamp(build, &compiler, target),
-            Mode::Librustc => librustc_stamp(build, &compiler, target),
+            Mode::Libstd => libstd_stamp(build, compiler, target),
+            Mode::Libtest => libtest_stamp(build, compiler, target),
+            Mode::Librustc => librustc_stamp(build, compiler, target),
             _ => panic!(),
         };
-        let out_dir = build.cargo_out(&compiler, Mode::Tool, target);
+        let out_dir = build.cargo_out(compiler, Mode::Tool, target);
         build.clear_if_dirty(&out_dir, &stamp);
     }
 }
@@ -109,7 +109,7 @@ impl<'a> Step<'a> for ToolBuild<'a> {
         let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
         println!("Building stage{} tool {} ({})", stage, tool, target);
 
-        let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
+        let mut cargo = build.cargo(compiler, Mode::Tool, target, "build");
         let dir = build.src.join("src/tools").join(tool);
         cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
@@ -172,7 +172,6 @@ macro_rules! tool {
 
         impl<'a> Step<'a> for $name<'a> {
             type Output = PathBuf;
-            const NAME: &'static str = concat!(stringify!($name), " tool");
 
             fn should_run(_builder: &Builder, path: &Path) -> bool {
                 path.ends_with($path)
@@ -213,7 +212,7 @@ tool!(
     //      .dep(|s| s.name("maybe-clean-tools"))
     //      .dep(|s| s.name("libstd-tool"))
     //      .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
-    UnstableBook, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::Libstd;
+    UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::Libstd;
     // rules.build("tool-tidy", "src/tools/tidy")
     //      .dep(|s| s.name("maybe-clean-tools"))
     //      .dep(|s| s.name("libstd-tool"))
@@ -278,7 +277,6 @@ pub struct Cargo<'a> {
 
 impl<'a> Step<'a> for Cargo<'a> {
     type Output = PathBuf;
-    const NAME: &'static str = "cargo tool";
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -336,7 +334,6 @@ pub struct Rls<'a> {
 
 impl<'a> Step<'a> for Rls<'a> {
     type Output = PathBuf;
-    const NAME: &'static str = "RLS tool";
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 

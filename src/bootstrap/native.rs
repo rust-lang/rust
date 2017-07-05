@@ -32,6 +32,7 @@ use gcc;
 use Build;
 use util;
 use build_helper::up_to_date;
+use builder::{Builder, Step};
 
 // rules.build("llvm", "src/llvm")
 //      .host(true)
@@ -245,7 +246,7 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
 
 #[derive(Serialize)]
 pub struct TestHelpers<'a> {
-    target: &'a str,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for TestHelpers<'a> {
@@ -316,7 +317,7 @@ impl<'a> Step<'a> for Openssl<'a> {
     }
 
     fn run(self, builder: &Builder) {
-        let build = bulder.build;
+        let build = builder.build;
         let target = self.target;
         let out = match build.openssl_dir(target) {
             Some(dir) => dir,

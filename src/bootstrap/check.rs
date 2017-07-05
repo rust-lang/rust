@@ -37,7 +37,7 @@ use tool::Tool;
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
 /// The two modes of the test runner; tests or benchmarks.
-#[derive(Copy, Clone)]
+#[derive(Serialize, Copy, Clone)]
 pub enum TestKind {
     /// Run `cargo test`
     Test,
@@ -157,7 +157,7 @@ impl<'a> Step<'a> for Cargotest<'a> {
     /// test` to ensure that we don't regress the test suites there.
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let compiler = builder.compiler(self.stage, host);
+        let compiler = builder.compiler(self.stage, self.host);
         builder.ensure(compile::Rustc { compiler, target: compiler.host });
 
         // Note that this is a short, cryptic, and not scoped directory name. This
@@ -170,8 +170,8 @@ impl<'a> Step<'a> for Cargotest<'a> {
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
         try_run(build, cmd.arg(&build.initial_cargo)
                           .arg(&out_dir)
-                          .env("RUSTC", build.compiler_path(&compiler))
-                          .env("RUSTDOC", build.rustdoc(&compiler)));
+                          .env("RUSTC", build.compiler_path(compiler))
+                          .env("RUSTDOC", build.rustdoc(compiler)));
     }
 }
 
@@ -194,10 +194,10 @@ impl<'a> Step<'a> for Cargo<'a> {
         path.ends_with("cargo") // FIXME: Why is this not src/tools/cargo?
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, target: &str) {
-        builder.ensure(TestCargo {
-            compiler: builder.compiler(builder.top_stage, host),
-            target,
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+        builder.ensure(Cargotest {
+            stage: builder.top_stage,
+            host: target,
         });
     }
 
@@ -209,7 +209,7 @@ impl<'a> Step<'a> for Cargo<'a> {
         // Configure PATH to find the right rustc. NB. we have to use PATH
         // and not RUSTC because the Cargo test suite has tests that will
         // fail if rustc is not spelled `rustc`.
-        let path = build.sysroot(compiler).join("bin");
+        let path = builder.sysroot(compiler).join("bin");
         let old_path = env::var_os("PATH").unwrap_or_default();
         let newpath = env::join_paths(
             iter::once(path).chain(env::split_paths(&old_path))
@@ -312,7 +312,7 @@ impl<'a> Step<'a> for Tidy<'a> {
 
         let _folder = build.fold_output(|| "tidy");
         println!("tidy check ({})", host);
-        let mut cmd = build.tool_cmd(Tool::Tidy);
+        let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(build.src.join("src"));
         if !build.config.vendor {
             cmd.arg("--no-vendor");
@@ -585,7 +585,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
         // of them!
 
         cmd.arg("--compile-lib-path").arg(build.rustc_libdir(compiler));
-        cmd.arg("--run-lib-path").arg(build.sysroot_libdir(compiler, target));
+        cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(build.compiler_path(compiler));
         cmd.arg("--rustdoc-path").arg(build.rustdoc(compiler));
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
@@ -608,7 +608,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
             flags.push("-g".to_string());
         }
 
-        let mut hostflags = build.rustc_flags(&compiler.host);
+        let mut hostflags = build.rustc_flags(compiler.host);
         hostflags.extend(flags.clone());
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
@@ -801,7 +801,7 @@ impl<'a> Step<'a> for ErrorIndex<'a> {
         let output = dir.join("error-index.md");
 
         let _time = util::timeit();
-        build.run(build.tool_cmd(Tool::ErrorIndex)
+        build.run(builder.tool_cmd(Tool::ErrorIndex)
                     .arg("markdown")
                     .arg(&output)
                     .env("CFG_BUILD", &build.build));
@@ -810,7 +810,7 @@ impl<'a> Step<'a> for ErrorIndex<'a> {
     }
 }
 
-fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
+fn markdown_test(build: &Build, compiler: Compiler, markdown: &Path) {
     let mut file = t!(File::open(markdown));
     let mut contents = String::new();
     t!(file.read_to_string(&mut contents));
@@ -862,7 +862,6 @@ pub struct KrateLibrustc<'a> {
 
 impl<'a> Step<'a> for KrateLibrustc<'a> {
     type Output = ();
-    const NAME: &'static str = "check librustc";
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1072,7 +1071,7 @@ impl<'a> Step<'a> for Krate<'a> {
         // Pass in some standard flags then iterate over the graph we've discovered
         // in `cargo metadata` with the maps above and figure out what `-p`
         // arguments need to get passed.
-        let mut cargo = build.cargo(&compiler, mode, target, test_kind.subcommand());
+        let mut cargo = build.cargo(compiler, mode, target, test_kind.subcommand());
         cargo.arg("--manifest-path")
             .arg(build.src.join(path).join("Cargo.toml"))
             .arg("--features").arg(features);
@@ -1115,7 +1114,7 @@ impl<'a> Step<'a> for Krate<'a> {
         // Note that to run the compiler we need to run with the *host* libraries,
         // but our wrapper scripts arrange for that to be the case anyway.
         let mut dylib_path = dylib_path();
-        dylib_path.insert(0, build.sysroot_libdir(&compiler, target));
+        dylib_path.insert(0, builder.sysroot_libdir(compiler, target));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
         if target.contains("emscripten") || build.remote_tested(target) {
@@ -1132,10 +1131,10 @@ impl<'a> Step<'a> for Krate<'a> {
 
         if target.contains("emscripten") {
             build.run(&mut cargo);
-            krate_emscripten(build, &compiler, target, mode);
+            krate_emscripten(build, compiler, target, mode);
         } else if build.remote_tested(target) {
             build.run(&mut cargo);
-            krate_remote(builder, &compiler, target, mode);
+            krate_remote(builder, compiler, target, mode);
         } else {
             cargo.args(&build.flags.cmd.test_args());
             try_run(build, &mut cargo);
@@ -1144,7 +1143,7 @@ impl<'a> Step<'a> for Krate<'a> {
 }
 
 fn krate_emscripten(build: &Build,
-                    compiler: &Compiler,
+                    compiler: Compiler,
                     target: &str,
                     mode: Mode) {
     let out_dir = build.cargo_out(compiler, mode, target);
@@ -1162,10 +1161,11 @@ fn krate_emscripten(build: &Build,
     }
 }
 
-fn krate_remote(build: &Builder,
-                compiler: &Compiler,
+fn krate_remote(builder: &Builder,
+                compiler: Compiler,
                 target: &str,
                 mode: Mode) {
+    let build = builder.build;
     let out_dir = build.cargo_out(compiler, mode, target);
     let tests = find_tests(&out_dir.join("deps"), target);
 
@@ -1269,7 +1269,7 @@ impl<'a> Step<'a> for RemoteCopyLibs<'a> {
         build.run(&mut cmd);
 
         // Push all our dylibs to the emulator
-        for f in t!(build.sysroot_libdir(compiler, target).read_dir()) {
+        for f in t!(builder.sysroot_libdir(compiler, target).read_dir()) {
             let f = t!(f);
             let name = f.file_name().into_string().unwrap();
             if util::is_dylib(&name) {
@@ -1359,7 +1359,7 @@ impl<'a> Step<'a> for Distcheck {
 #[derive(Serialize)]
 pub struct Bootstrap;
 
-impl<'a> for Step<'a> Bootstrap {
+impl<'a> Step<'a> for Bootstrap {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;

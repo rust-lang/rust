@@ -11,10 +11,10 @@
 use serde::{Serialize, Deserialize};
 
 use std::cell::RefCell;
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs;
+use std::ops::Deref;
 
 use compile;
 use install;
@@ -25,6 +25,8 @@ use cache::{Cache, Key};
 use check;
 use flags::Subcommand;
 use doc;
+
+pub use Compiler;
 
 pub struct Builder<'a> {
     pub build: &'a Build,
@@ -44,7 +46,6 @@ impl<'a> Deref for Builder<'a> {
 
 pub trait Step<'a>: Sized {
     type Output: Serialize + Deserialize<'a>;
-    const NAME: &'static str;
 
     const DEFAULT: bool = false;
 
@@ -164,7 +165,7 @@ impl<'a> Builder<'a> {
                 compile::StartupObjects),
             Kind::Test => check!(builder, paths, check::Tidy, check::Bootstrap, check::Compiletest,
                 check::Krate, check::KrateLibrustc, check::Linkcheck, check::Cargotest,
-                check::TestCargo, check::Docs, check::ErrorIndex, check::Distcheck),
+                check::Cargo, check::Docs, check::ErrorIndex, check::Distcheck),
             Kind::Bench => check!(builder, paths, check::Krate, check::KrateLibrustc),
             Kind::Doc => builder.default_doc(Some(paths)),
             Kind::Dist => check!(builder, paths, dist::Docs, dist::Mingw, dist::Rustc,
@@ -177,7 +178,7 @@ impl<'a> Builder<'a> {
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
         let paths = paths.unwrap_or(&[]);
-        check!(self, paths, doc::UnstableBook, doc::UnstableBookGen, doc::Rustbook, doc::Book,
+        check!(self, paths, doc::UnstableBook, doc::UnstableBookGen, doc::Rustbook, doc::TheBook,
             doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex,
             doc::Nomicon, doc::Reference);
     }
@@ -216,7 +217,6 @@ impl<'a> Builder<'a> {
         }
         impl<'a> Step<'a> for Libdir<'a> {
             type Output = PathBuf;
-            const NAME: &'static str = "sysroot libdir";
             fn run(self, builder: &Builder) -> PathBuf {
                 let sysroot = builder.sysroot(self.compiler)
                     .join("lib").join("rustlib").join(self.target).join("lib");
