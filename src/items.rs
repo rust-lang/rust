@@ -1952,8 +1952,8 @@ fn rewrite_fn_base(
         generics_str.contains('\n'),
     ));
 
-    let multi_line_arg_str = arg_str.contains('\n') ||
-        arg_str.chars().last().map_or(false, |c| c == ',');
+    let multi_line_arg_str =
+        arg_str.contains('\n') || arg_str.chars().last().map_or(false, |c| c == ',');
 
     let put_args_in_block = match context.config.fn_args_layout() {
         IndentStyle::Block => multi_line_arg_str || generics_str.contains('\n'),
@@ -2339,8 +2339,8 @@ fn compute_budgets_for_args(
 
         if one_line_budget > 0 {
             // 4 = "() {".len()
-            let multi_line_overhead = indent.width() + result.len() +
-                if newline_brace { 2 } else { 4 };
+            let multi_line_overhead =
+                indent.width() + result.len() + if newline_brace { 2 } else { 4 };
             let multi_line_budget =
                 try_opt!(context.config.max_width().checked_sub(multi_line_overhead));
 

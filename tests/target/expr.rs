@@ -7,11 +7,11 @@ fn foo() -> bool {
     let referenced = &5;
 
     let very_long_variable_name = (a + first + simple + test);
-    let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA +
-                                       BBBBBBBBBBBBBBBBB + b + c);
+    let very_long_variable_name =
+        (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB + b + c);
 
-    let is_internalxxxx = self.codemap.span_to_filename(s) ==
-        self.codemap.span_to_filename(m.inner);
+    let is_internalxxxx =
+        self.codemap.span_to_filename(s) == self.codemap.span_to_filename(m.inner);
 
     let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb /
         (bbbbbb - function_call(x, *very_long_pointer, y)) + 1000;
@@ -84,8 +84,8 @@ fn foo() -> bool {
 }
 
 fn bar() {
-    let range = (111111111 + 333333333333333333 + 1111 + 400000000000000000)..
-        (2222 + 2333333333333333);
+    let range =
+        (111111111 + 333333333333333333 + 1111 + 400000000000000000)..(2222 + 2333333333333333);
 
     let another_range = 5..some_func(a, b /* comment */);
 
@@ -274,8 +274,8 @@ fn casts() {
     }
 
     let some_trait_xxx = xxxxxxxxxxx + xxxxxxxxxxxxx as SomeTraitXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX;
-    let slightly_longer_trait = yyyyyyyyy +
-        yyyyyyyyyyy as SomeTraitYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY;
+    let slightly_longer_trait =
+        yyyyyyyyy + yyyyyyyyyyy as SomeTraitYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY;
 }
 
 fn indices() {
@@ -311,8 +311,8 @@ fn issue767() {
 
 fn ranges() {
     let x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
-    let y = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...
-        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+    let y =
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
     let z = ...x;
 
     // #1766

@@ -47,8 +47,8 @@ fn list_submodules<'a>(
     for item in &module.items {
         if let ast::ItemKind::Mod(ref sub_mod) = item.node {
             if !utils::contains_skip(&item.attrs) {
-                let is_internal = codemap.span_to_filename(item.span) ==
-                    codemap.span_to_filename(sub_mod.inner);
+                let is_internal =
+                    codemap.span_to_filename(item.span) == codemap.span_to_filename(sub_mod.inner);
                 let dir_path = if is_internal {
                     search_dir.join(&item.ident.to_string())
                 } else {

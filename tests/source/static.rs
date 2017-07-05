@@ -16,3 +16,6 @@ pub const test: &Type = &val;
 impl Color {
     pub const WHITE: u32 = 10;
 }
+
+// #1391
+pub const XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: NTSTATUS = 0 as usize;

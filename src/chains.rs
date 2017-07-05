@@ -186,8 +186,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let almost_total = rewrites[..last_non_try_index]
         .iter()
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
-    let one_line_len = rewrites.iter().fold(0, |a, r| a + first_line_width(r)) +
-        parent_rewrite.len();
+    let one_line_len =
+        rewrites.iter().fold(0, |a, r| a + first_line_width(r)) + parent_rewrite.len();
 
     let one_line_budget = min(shape.width, context.config.chain_one_line_max());
     let veto_single_line = if one_line_len > one_line_budget {

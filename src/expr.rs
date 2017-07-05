@@ -954,8 +954,8 @@ fn rewrite_cond(context: &RewriteContext, expr: &ast::Expr, shape: Shape) -> Opt
         }
         _ => {
             to_control_flow(expr, ExprType::SubExpression).and_then(|control_flow| {
-                let alt_block_sep = String::from("\n") +
-                    &shape.indent.block_only().to_string(context.config);
+                let alt_block_sep =
+                    String::from("\n") + &shape.indent.block_only().to_string(context.config);
                 control_flow
                     .rewrite_cond(context, shape, &alt_block_sep)
                     .and_then(|rw| Some(rw.0))
@@ -1299,8 +1299,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
 
-        let alt_block_sep = String::from("\n") +
-            &shape.indent.block_only().to_string(context.config);
+        let alt_block_sep =
+            String::from("\n") + &shape.indent.block_only().to_string(context.config);
         let (cond_str, used_width) = try_opt!(self.rewrite_cond(context, shape, &alt_block_sep));
         // If `used_width` is 0, it indicates that whole control flow is written in a single line.
         if used_width == 0 {
@@ -1723,8 +1723,8 @@ impl Rewrite for ast::Arm {
         extend &= context.use_block_indent();
 
         let comma = arm_comma(&context.config, body);
-        let alt_block_sep = String::from("\n") +
-            &shape.indent.block_only().to_string(context.config);
+        let alt_block_sep =
+            String::from("\n") + &shape.indent.block_only().to_string(context.config);
 
         let pat_width = extra_offset(&pats_str, shape);
         // Let's try and get the arm body on the same line as the condition.
