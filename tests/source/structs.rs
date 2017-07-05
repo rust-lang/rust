@@ -209,3 +209,26 @@ fn foo() {
     convex_shape.set_point(2, &Vector2f { x: 450.0, y: 100.0 });
     convex_shape.set_point(3, &Vector2f { x: 580.0, y: 150.0 });
 }
+
+struct Foo {
+    aaaaa: u32, // a
+
+    b: u32, // b
+    cc: u32, // cc
+
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 1
+    yy: u32, // comment2
+    zzz: u32, // comment3
+
+    aaaaaa: u32, // comment4
+    bb: u32, // comment5
+    // separate
+    dd: u32, // comment7
+    c: u32, // comment6
+
+    aaaaaaa: u32, /* multi
+     * line
+     * comment
+     */
+    b: u32, // hi
+}

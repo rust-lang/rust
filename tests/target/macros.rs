@@ -29,7 +29,7 @@ fn main() {
     kaas!(
         // comments
         a, // post macro
-        b // another
+        b  // another
     );
 
     trailingcomma!(a, b, c,);

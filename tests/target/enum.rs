@@ -88,7 +88,7 @@ where
     I: Iterator<Item = T>,
 {
     // Pre Comment
-    Left { list: I, root: T }, // Post-comment
+    Left { list: I, root: T },  // Post-comment
     Right { list: I, root: T }, // Post Comment
 }
 

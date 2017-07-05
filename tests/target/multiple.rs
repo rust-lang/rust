@@ -39,7 +39,7 @@ where
 }
 
 fn baz<
-    'a: 'b, // comment on 'a
+    'a: 'b,                                                            // comment on 'a
     T: SomsssssssssssssssssssssssssssssssssssssssssssssssssssssseType, // comment on T
 >(
     a: A,
@@ -71,7 +71,7 @@ impl Bar {
     fn foo(
         &mut self,
         a: sdfsdfcccccccccccccccccccccccccccccccccccccccccccccccccc, // comment on a
-        b: sdfasdfsdfasfs, // closing comment
+        b: sdfasdfsdfasfs,                                           // closing comment
     ) -> isize {
     }
 
