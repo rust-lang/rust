@@ -27,10 +27,7 @@ pub trait Step: PartialOrd + Sized {
     ///
     /// Returns `None` if it is not possible to calculate `steps_between`
     /// without overflow.
-    fn steps_between(start: &Self, end: &Self, by: &Self) -> Option<usize>;
-
-    /// Same as `steps_between`, but with a `by` of 1
-    fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize>;
+    fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
     /// Replaces this step with `1`, returning itself
     fn replace_one(&mut self) -> Self;
@@ -53,17 +50,10 @@ macro_rules! step_impl_unsigned {
         impl Step for $t {
             #[inline]
             #[allow(trivial_numeric_casts)]
-            fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
-                if *by == 0 { return None; }
+            fn steps_between(start: &$t, end: &$t) -> Option<usize> {
                 if *start < *end {
                     // Note: We assume $t <= usize here
-                    let diff = (*end - *start) as usize;
-                    let by = *by as usize;
-                    if diff % by > 0 {
-                        Some(diff / by + 1)
-                    } else {
-                        Some(diff / by)
-                    }
+                    Some((*end - *start) as usize)
                 } else {
                     Some(0)
                 }
@@ -88,11 +78,6 @@ macro_rules! step_impl_unsigned {
             fn sub_one(&self) -> Self {
                 Sub::sub(*self, 1)
             }
-
-            #[inline]
-            fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
-                Self::steps_between(start, end, &1)
-            }
         }
     )*)
 }
@@ -104,30 +89,14 @@ macro_rules! step_impl_signed {
         impl Step for $t {
             #[inline]
             #[allow(trivial_numeric_casts)]
-            fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
-                if *by == 0 { return None; }
-                let diff: usize;
-                let by_u: usize;
-                if *by > 0 {
-                    if *start >= *end {
-                        return Some(0);
-                    }
+            fn steps_between(start: &$t, end: &$t) -> Option<usize> {
+                if *start < *end {
                     // Note: We assume $t <= isize here
                     // Use .wrapping_sub and cast to usize to compute the
                     // difference that may not fit inside the range of isize.
-                    diff = (*end as isize).wrapping_sub(*start as isize) as usize;
-                    by_u = *by as usize;
+                    Some((*end as isize).wrapping_sub(*start as isize) as usize)
                 } else {
-                    if *start <= *end {
-                        return Some(0);
-                    }
-                    diff = (*start as isize).wrapping_sub(*end as isize) as usize;
-                    by_u = (*by as isize).wrapping_mul(-1) as usize;
-                }
-                if diff % by_u > 0 {
-                    Some(diff / by_u + 1)
-                } else {
-                    Some(diff / by_u)
+                    Some(0)
                 }
             }
 
@@ -150,11 +119,6 @@ macro_rules! step_impl_signed {
             fn sub_one(&self) -> Self {
                 Sub::sub(*self, 1)
             }
-
-            #[inline]
-            fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
-                Self::steps_between(start, end, &1)
-            }
         }
     )*)
 }
@@ -166,7 +130,7 @@ macro_rules! step_impl_no_between {
                    issue = "42168")]
         impl Step for $t {
             #[inline]
-            fn steps_between(_a: &$t, _b: &$t, _by: &$t) -> Option<usize> {
+            fn steps_between(_start: &Self, _end: &Self) -> Option<usize> {
                 None
             }
 
@@ -188,11 +152,6 @@ macro_rules! step_impl_no_between {
             #[inline]
             fn sub_one(&self) -> Self {
                 Sub::sub(*self, 1)
-            }
-
-            #[inline]
-            fn steps_between_by_one(start: &Self, end: &Self) -> Option<usize> {
-                Self::steps_between(start, end, &1)
             }
         }
     )*)
@@ -259,7 +218,7 @@ impl<A: Step> Iterator for ops::Range<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match Step::steps_between_by_one(&self.start, &self.end) {
+        match Step::steps_between(&self.start, &self.end) {
             Some(hint) => (hint, Some(hint)),
             None => (0, None)
         }
@@ -344,7 +303,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             return (0, Some(0));
         }
 
-        match Step::steps_between_by_one(&self.start, &self.end) {
+        match Step::steps_between(&self.start, &self.end) {
             Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
             None => (0, None),
         }
