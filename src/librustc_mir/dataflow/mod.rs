@@ -446,9 +446,28 @@ pub struct AllSets<E: Idx> {
     on_entry_sets: Bits<E>,
 }
 
+/// Triple of sets associated with a given block.
+///
+/// Generally, one sets up `on_entry`, `gen_set`, and `kill_set` for
+/// each block individually, and then runs the dataflow analysis which
+/// iteratively modifies the various `on_entry` sets (but leaves the
+/// other two sets unchanged, since they represent the effect of the
+/// block, which should be invariant over the course of the analysis).
+///
+/// It is best to ensure that the intersection of `gen_set` and
+/// `kill_set` is empty; otherwise the results of the dataflow will
+/// have a hidden dependency on what order the bits are generated and
+/// killed during the iteration. (This is such a good idea that the
+/// `fn gen` and `fn kill` methods that set their state enforce this
+/// for you.)
 pub struct BlockSets<'a, E: Idx> {
+    /// Dataflow state immediately before control flow enters the given block.
     pub(crate) on_entry: &'a mut IdxSet<E>,
+
+    /// Bits that are set to 1 by the time we exit the given block.
     pub(crate) gen_set: &'a mut IdxSet<E>,
+
+    /// Bits that are set to 0 by the time we exit the given block.
     pub(crate) kill_set: &'a mut IdxSet<E>,
 }
 
