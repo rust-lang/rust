@@ -33,7 +33,7 @@ use Build;
 use util;
 use build_helper::up_to_date;
 
-/j/ rules.build("llvm", "src/llvm")
+// rules.build("llvm", "src/llvm")
 //      .host(true)
 //      .dep(move |s| {
 //          if s.target == build.build {
@@ -51,6 +51,7 @@ pub struct Llvm<'a> {
 
 impl<'a> Step<'a> for Llvm<'a> {
     type Output = ();
+    const ONLY_HOSTS: bool = true;
 
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) {
@@ -151,6 +152,7 @@ impl<'a> Step<'a> for Llvm<'a> {
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != build.build {
+            builder.ensure(Llvm { target: &build.build });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
@@ -249,6 +251,14 @@ pub struct TestHelpers<'a> {
 impl<'a> Step<'a> for TestHelpers<'a> {
     type Output = ();
 
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/rt/rust_test_helpers.c")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+        builder.ensure(TestHelpers { target })
+    }
+
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` test suites for ABI testing.
     fn run(self, builder: &Builder) {
@@ -295,11 +305,15 @@ const OPENSSL_SHA256: &'static str =
 
 #[derive(Serialize)]
 pub struct Openssl<'a> {
-    target: &'a str,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for Openssl<'a> {
     type Output = ();
+
+    fn should_run(_builder: &Builder, _path: &Path) -> bool {
+        false
+    }
 
     fn run(self, builder: &Builder) {
         let build = bulder.build;

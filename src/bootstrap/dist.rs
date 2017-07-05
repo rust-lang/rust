@@ -76,6 +76,19 @@ pub struct Docs<'a> {
 
 impl<'a> Step<'a> for Docs<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/doc")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+        builder.ensure(Docs {
+            stage: builder.top_stage,
+            host: target,
+        });
+    }
 
     /// Builds the `rust-docs` installer component.
     ///
@@ -84,6 +97,8 @@ impl<'a> Step<'a> for Docs<'a> {
         let build = builder.build;
         let stage = self.stage;
         let host = self.host;
+
+        builder.default_doc(None);
 
         println!("Dist docs stage{} ({})", stage, host);
         if !build.config.docs {
@@ -268,6 +283,18 @@ pub struct Mingw<'a> {
 
 impl<'a> Step<'a> for Mingw<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
+
+    fn should_run(_builder: &Builder, _path: &Path) -> bool {
+        false
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+        builder.ensure(Mingw {
+            host: host,
+        });
+    }
 
     /// Build the `rust-mingw` installer component.
     ///
@@ -276,6 +303,11 @@ impl<'a> Step<'a> for Mingw<'a> {
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let host = self.host;
+
+        if !host.contains("pc-windows-gnu") {
+            return;
+        }
+
         println!("Dist mingw ({})", host);
         let name = pkgname(build, "rust-mingw");
         let image = tmpdir(build).join(format!("{}-{}-image", name, host));
@@ -320,6 +352,20 @@ pub struct Rustc<'a> {
 
 impl<'a> Step<'a> for Rustc<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/librustc")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+        builder.ensure(Rustc {
+            stage: builder.top_stage,
+            host: host,
+        });
+    }
 
     /// Creates the `rustc` installer component.
     fn run(self, builder: &builder) {
@@ -334,7 +380,7 @@ impl<'a> Step<'a> for Rustc<'a> {
         let _ = fs::remove_dir_all(&overlay);
 
         // Prepare the rustc "image", what will actually end up getting installed
-        prepare_image(build, stage, host, &image);
+        prepare_image(builder, stage, host, &image);
 
         // Prepare the overlay which is part of the tarball but won't actually be
         // installed
@@ -384,8 +430,9 @@ impl<'a> Step<'a> for Rustc<'a> {
         t!(fs::remove_dir_all(&image));
         t!(fs::remove_dir_all(&overlay));
 
-        fn prepare_image(build: &Build, stage: u32, host: &str, image: &Path) {
-            let src = build.sysroot(&Compiler::new(stage, host));
+        fn prepare_image(builder: &Builder, stage: u32, host: &str, image: &Path) {
+            let build = builder.build;
+            let src = build.sysroot(builder.compiler(stage, host));
             let libdir = libdir(host);
 
             // Copy rustc/rustdoc binaries
@@ -409,7 +456,10 @@ impl<'a> Step<'a> for Rustc<'a> {
             cp_r(&build.src.join("man"), &image.join("share/man/man1"));
 
             // Debugger scripts
-            debugger_scripts(build, &image, host);
+            builder.ensure(DebuggerScripts {
+                sysroot: &image,
+                host: host,
+            });
 
             // Misc license info
             let cp = |file: &str| {
@@ -423,8 +473,6 @@ impl<'a> Step<'a> for Rustc<'a> {
     }
 }
 
-
-
 //rules.test("debugger-scripts", "src/etc/lldb_batchmode.py")
 //     .run(move |s| dist::debugger_scripts(build, &build.sysroot(&s.compiler()),
 //                                     s.target));
@@ -437,6 +485,18 @@ pub struct DebuggerScripts<'a> {
 
 impl<'a> Step<'a> for DebuggerScripts<'a> {
     type Output = ();
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/etc/lldb_batchmode.py")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+        builder.ensure(DebuggerScripts {
+            // FIXME: builder.top_stage is likely wrong in some cases.
+            sysroot: &builder.sysroot(builder.compiler(builder.top_stage, host)),
+            host: host,
+        });
+    }
 
     /// Copies debugger scripts for `host` into the `sysroot` specified.
     fn run(self, builder: &Builder) {
@@ -542,6 +602,22 @@ pub struct Analysis<'a> {
 
 impl<'a> Step<'a> for Analysis<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("analysis")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.extended {
+            return;
+        }
+        builder.ensure(Analysis {
+            compiler: builder.compiler(builder.top_stage, host),
+            target: target,
+        });
+    }
 
     /// Creates a tarball of save-analysis metadata, if available.
     fn run(self, builder: &Builder) {
@@ -559,7 +635,7 @@ impl<'a> Step<'a> for Analysis<'a> {
         // Package save-analysis from stage1 if not doing a full bootstrap, as the
         // stage2 artifacts is simply copied from stage1 in that case.
         let compiler = if build.force_use_stage1(compiler, target) {
-            Compiler::new(1, compiler.host)
+            builder.compiler(1, compiler.host)
         } else {
             compiler.clone()
         };
@@ -567,7 +643,8 @@ impl<'a> Step<'a> for Analysis<'a> {
         let name = pkgname(build, "rust-analysis");
         let image = tmpdir(build).join(format!("{}-{}-image", name, target));
 
-        let src = build.stage_out(&compiler, Mode::Libstd).join(target).join("release").join("deps");
+        let src = build.stage_out(compiler, Mode::Libstd)
+            .join(target).join("release").join("deps");
 
         let image_src = src.join("save-analysis");
         let dst = image.join("lib/rustlib").join(target).join("analysis");
@@ -644,6 +721,18 @@ pub struct Src;
 
 impl<'a> Step<'a> for Src {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_BUILD: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, _target: &str) {
+        builder.ensure(Src);
+    }
 
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder) {
@@ -727,6 +816,22 @@ pub struct PlainSourceTarball;
 
 impl<'a> Step<'a> for PlainSourceTarball {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_BUILD: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, _target: &str) {
+        if path.is_none() && !builder.build.config.rust_dist_src {
+            return;
+        }
+
+        builder.ensure(PlainSourceTarball);
+    }
 
     /// Creates the plain source tarball
     fn run(self, builder: &Builder) {
@@ -862,13 +967,29 @@ pub struct Cargo<'a> {
 
 impl<'a> Step<'a> for Cargo<'a> {
     type Output = ();
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("cargo")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+        builder.ensure(Cargo {
+            stage: builder.top_stage,
+            target: target,
+        });
+    }
 
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
+
+        builder.ensure(tool::Cargo { stage, target });
+
         println!("Dist cargo stage{} ({})", stage, target);
-        let compiler = Compiler::new(stage, &build.build);
+        let compiler = builder.compiler(stage, &build.build);
 
         let src = build.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
@@ -941,14 +1062,30 @@ pub struct Rls<'a> {
 
 impl<'a> Step<'a> for Rls<'a> {
     type Output = ();
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("rls")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+        builder.ensure(Rls {
+            stage: builder.top_stage,
+            target: target,
+        });
+    }
 
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
         assert!(build.config.extended);
+
+        builder.ensure(tool::Rls { stage, target });
+
         println!("Dist RLS stage{} ({})", stage, target);
-        let compiler = Compiler::new(stage, &build.build);
+        let compiler = builder.compiler(stage, &build.build);
 
         let src = build.src.join("src/tools/rls");
         let release_num = build.release_num("rls");
@@ -1017,12 +1154,38 @@ pub struct Extended<'a> {
 
 impl<'a> Step<'a> for Extended<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("cargo")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.extended {
+            return;
+        }
+        builder.ensure(Extended {
+            compiler: builder.compiler(builder.top_stage, host),
+            target: target,
+        });
+    }
 
     /// Creates a combined installer for the specified target in the provided stage.
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
+        let compiler = builder.compiler(stage, &build.build);
+
+        builder.ensure(Std { compiler, target });
+        builder.ensure(Rustc { stage, host });
+        builder.ensure(Mingw { host });
+        builder.ensure(Docs { stage, host });
+        builder.ensure(Cargo { stage, target });
+        builder.ensure(Rls { stage, target });
+        builder.ensure(Analysis { compiler, target });
 
         println!("Dist extended stage{} ({})", stage, target);
 
@@ -1420,11 +1583,21 @@ pub struct HashSign;
 
 impl<'a> Step<'a> for HashSign {
     type Output = ();
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_HOSTS: bool = true;
+    const ONLY_BUILD: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("hash-and-sign")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, _target: &str) {
+        builder.ensure(HashSign);
+    }
 
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let compiler = Compiler::new(0, &build.build);
-        let mut cmd = build.tool_cmd(&compiler, "build-manifest");
+        let mut cmd = builder.tool_cmd(Tool::BuildManifest);
         let sign = build.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
         });

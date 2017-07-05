@@ -15,7 +15,7 @@ use std::process::Command;
 use Mode;
 use builder::{Step, Builder};
 use util::{exe, add_lib_path};
-use compile::{self, stamp, Rustc};
+use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp, Rustc};
 use native;
 use channel::GitInfo;
 
@@ -63,7 +63,7 @@ impl<'a> Step<'a> for CleanTools<'a> {
         let target = self.target;
         let mode = self.mode;
 
-        let compiler = Compiler::new(stage, &build.build);
+        let compiler = builder.compiler(stage, &build.build);
 
         let stamp = match mode {
             Mode::Libstd => libstd_stamp(build, &compiler, target),
@@ -76,102 +76,38 @@ impl<'a> Step<'a> for CleanTools<'a> {
     }
 }
 
-// rules.build("tool-rustbook", "src/tools/rustbook")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("librustc-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "rustbook"));
-// rules.build("tool-error-index", "src/tools/error_index_generator")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("librustc-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
-// rules.build("tool-unstable-book-gen", "src/tools/unstable-book-gen")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
-// rules.build("tool-tidy", "src/tools/tidy")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "tidy"));
-// rules.build("tool-linkchecker", "src/tools/linkchecker")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "linkchecker"));
-// rules.build("tool-cargotest", "src/tools/cargotest")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "cargotest"));
-// rules.build("tool-compiletest", "src/tools/compiletest")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libtest-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
-// rules.build("tool-build-manifest", "src/tools/build-manifest")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
-// rules.build("tool-remote-test-server", "src/tools/remote-test-server")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-server"));
-// rules.build("tool-remote-test-client", "src/tools/remote-test-client")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
-// rules.build("tool-rust-installer", "src/tools/rust-installer")
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .run(move |s| compile::tool(build, s.stage, s.target, "rust-installer"));
-// rules.build("tool-cargo", "src/tools/cargo")
-//      .host(true)
-//      .default(build.config.extended)
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
-//      .dep(move |s| {
-//          // Cargo depends on procedural macros, which requires a full host
-//          // compiler to be available, so we need to depend on that.
-//          s.name("librustc-link")
-//           .target(&build.build)
-//           .host(&build.build)
-//      })
-//      .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
-// rules.build("tool-rls", "src/tools/rls")
-//      .host(true)
-//      .default(build.config.extended)
-//      .dep(|s| s.name("librustc-tool"))
-//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
-//      .dep(move |s| {
-//          // rls, like cargo, uses procedural macros
-//          s.name("librustc-link")
-//           .target(&build.build)
-//           .host(&build.build)
-//      })
-//      .run(move |s| compile::tool(build, s.stage, s.target, "rls"));
-//
-
 #[derive(Serialize)]
-pub struct Tool<'a> {
+pub struct ToolBuild<'a> {
     pub stage: u32,
     pub target: &'a str,
     pub tool: &'a str,
+    pub mode: Mode,
 }
 
-impl<'a> Step<'a> for Tool<'a> {
-    type Output = ();
+impl<'a> Step<'a> for ToolBuild<'a> {
+    type Output = PathBuf;
 
     /// Build a tool in `src/tools`
     ///
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
         let tool = self.tool;
 
+        let compiler = builder.compiler(stage, &build.build);
+        builder.ensure(CleanTools { stage, target, mode: self.mode });
+        match self.mode {
+            Mode::Libstd => builder.ensure(compile::Std { compiler, target }),
+            Mode::Libtest => builder.ensure(compile::Test { compiler, target }),
+            Mode::Librustc => builder.ensure(compile::Rustc { compiler, target }),
+            Mode::Tool => panic!("unexpected Mode::Tool for tool build")
+        }
+
         let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
         println!("Building stage{} tool {} ({})", stage, tool, target);
-
-        let compiler = Compiler::new(stage, &build.build);
 
         let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
         let dir = build.src.join("src/tools").join(tool);
@@ -201,5 +137,238 @@ impl<'a> Step<'a> for Tool<'a> {
         }
 
         build.run(&mut cargo);
+        build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, compiler.host))
+    }
+}
+
+macro_rules! tool {
+    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr;)+) => {
+        #[derive(Copy, Clone)]
+        pub enum Tool {
+            $(
+                $name,
+            )+
+        }
+
+        impl<'a> Builder<'a> {
+            pub fn tool_exe(&self, tool: Tool) -> PathBuf {
+                match tool {
+                    $(Tool::$name =>
+                        self.ensure($name {
+                            stage: 0,
+                            target: &self.build.build,
+                        }),
+                    )+
+                }
+            }
+        }
+
+        $(
+        #[derive(Serialize)]
+        pub struct $name<'a> {
+            pub stage: u32,
+            pub target: &'a str,
+        }
+
+        impl<'a> Step<'a> for $name<'a> {
+            type Output = PathBuf;
+            const NAME: &'static str = concat!(stringify!($name), " tool");
+
+            fn should_run(_builder: &Builder, path: &Path) -> bool {
+                path.ends_with($path)
+            }
+
+            fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+                builder.ensure($name {
+                    stage: builder.top_stage,
+                    target,
+                });
+            }
+
+            fn run(self, builder: &Builder) -> PathBuf {
+                builder.ensure(ToolBuild {
+                    stage: self.stage,
+                    target: self.target,
+                    tool: $tool_name,
+                    mode: $mode,
+                })
+            }
+        }
+        )+
+    }
+}
+
+tool!(
+    // rules.build("tool-rustbook", "src/tools/rustbook")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("librustc-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "rustbook"));
+    Rustbook, "src/tools/rustbook", "rustbook", Mode::Librustc;
+    // rules.build("tool-error-index", "src/tools/error_index_generator")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("librustc-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
+    ErrorIndex, "src/tools/error_index_generator", "error_index_generator", Mode::Librustc;
+    // rules.build("tool-unstable-book-gen", "src/tools/unstable-book-gen")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
+    UnstableBook, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::Libstd;
+    // rules.build("tool-tidy", "src/tools/tidy")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "tidy"));
+    Tidy, "src/tools/tidy", "tidy", Mode::Libstd;
+    // rules.build("tool-linkchecker", "src/tools/linkchecker")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "linkchecker"));
+    Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::Libstd;
+    // rules.build("tool-cargotest", "src/tools/cargotest")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "cargotest"));
+    CargoTest, "src/tools/cargotest", "cargotest", Mode::Libstd;
+    // rules.build("tool-compiletest", "src/tools/compiletest")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libtest-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
+    Compiletest, "src/tools/compiletest", "compiletest", Mode::Libtest;
+    // rules.build("tool-build-manifest", "src/tools/build-manifest")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
+    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Libstd;
+    // rules.build("tool-remote-test-server", "src/tools/remote-test-server")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-server"));
+    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server", Mode::Libstd;
+    // rules.build("tool-remote-test-client", "src/tools/remote-test-client")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
+    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::Libstd;
+    // rules.build("tool-rust-installer", "src/tools/rust-installer")
+    //      .dep(|s| s.name("maybe-clean-tools"))
+    //      .dep(|s| s.name("libstd-tool"))
+    //      .run(move |s| compile::tool(build, s.stage, s.target, "rust-installer"));
+    RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::Libstd;
+);
+
+// rules.build("tool-cargo", "src/tools/cargo")
+//      .host(true)
+//      .default(build.config.extended)
+//      .dep(|s| s.name("maybe-clean-tools"))
+//      .dep(|s| s.name("libstd-tool"))
+//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
+//      .dep(move |s| {
+//          // Cargo depends on procedural macros, which requires a full host
+//          // compiler to be available, so we need to depend on that.
+//          s.name("librustc-link")
+//           .target(&build.build)
+//           .host(&build.build)
+//      })
+//      .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
+#[derive(Serialize)]
+pub struct Cargo<'a> {
+    pub stage: u32,
+    pub target: &'a str,
+}
+
+impl<'a> Step<'a> for Cargo<'a> {
+    type Output = PathBuf;
+    const NAME: &'static str = "cargo tool";
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/tools/cargo")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.extended {
+            return;
+        }
+        builder.ensure(Cargo {
+            stage: builder.top_stage,
+            target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> PathBuf {
+        builder.ensure(native::Openssl {
+            target: self.target,
+        });
+        // Cargo depends on procedural macros, which requires a full host
+        // compiler to be available, so we need to depend on that.
+        builder.ensure(Rustc {
+            compiler: builder.compiler(builder.top_stage, &builder.build.build),
+            target: &builder.build.build,
+        });
+        builder.ensure(ToolBuild {
+            stage: self.stage,
+            target: self.target,
+            tool: "cargo",
+            mode: Mode::Libstd,
+        })
+    }
+}
+
+// rules.build("tool-rls", "src/tools/rls")
+//      .host(true)
+//      .default(build.config.extended)
+//      .dep(|s| s.name("librustc-tool"))
+//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
+//      .dep(move |s| {
+//          // rls, like cargo, uses procedural macros
+//          s.name("librustc-link")
+//           .target(&build.build)
+//           .host(&build.build)
+//      })
+//      .run(move |s| compile::tool(build, s.stage, s.target, "rls"));
+//
+#[derive(Serialize)]
+pub struct Rls<'a> {
+    pub stage: u32,
+    pub target: &'a str,
+}
+
+impl<'a> Step<'a> for Rls<'a> {
+    type Output = PathBuf;
+    const NAME: &'static str = "RLS tool";
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/tools/rls")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.extended {
+            return;
+        }
+        builder.ensure(Cargo {
+            stage: builder.top_stage,
+            target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> PathBuf {
+        builder.ensure(native::Openssl {
+            target: self.target,
+        });
+        // RLS depends on procedural macros, which requires a full host
+        // compiler to be available, so we need to depend on that.
+        builder.ensure(Rustc {
+            compiler: builder.compiler(builder.top_stage, &builder.build.build),
+            target: &builder.build.build,
+        });
+        builder.ensure(ToolBuild {
+            stage: self.stage,
+            target: self.target,
+            tool: "rls",
+            mode: Mode::Librustc,
+        })
     }
 }

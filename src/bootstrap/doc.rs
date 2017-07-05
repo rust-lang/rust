@@ -27,27 +27,70 @@ use {Build, Compiler, Mode};
 use util::{cp_r, symlink_dir};
 use build_helper::up_to_date;
 
-// rules.doc("doc-nomicon", "src/doc/nomicon")
-//      .dep(move |s| {
-//          s.name("tool-rustbook")
-//           .host(&build.build)
-//           .target(&build.build)
-//           .stage(0)
-//      })
-//      .default(build.config.docs)
-//      .run(move |s| doc::rustbook(build, s.target, "nomicon"));
-// rules.doc("doc-reference", "src/doc/reference")
-//      .dep(move |s| {
-//          s.name("tool-rustbook")
-//           .host(&build.build)
-//           .target(&build.build)
-//           .stage(0)
-//      })
-//      .default(build.config.docs)
-//      .run(move |s| doc::rustbook(build, s.target, "reference"));
+macro_rules! book {
+    ($($name:ident, $path:expr, $book_name:expr;)+) => {
+        $(
+        #[derive(Serialize)]
+        pub struct $name<'a> {
+            target: &'a str,
+        }
+
+        impl<'a> Step<'a> for $name<'a> {
+            type Output = ();
+            const NAME: &'static str = concat!(stringify!($book_name), " - book");
+            const DEFAULT: bool = true;
+
+            fn should_run(_builder: &Builder, path: &Path) -> bool {
+                path.ends_with($path)
+            }
+
+            fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+                if path.is_none() && !builder.build.config.docs {
+                    // Not a default rule if docs are disabled.
+                    return;
+                }
+
+                builder.ensure($name {
+                    target,
+                });
+            }
+
+            fn run(self, builder: &Builder) {
+                builder.ensure(Rustbook {
+                    target: self.target,
+                    name: $book_name,
+                })
+            }
+        }
+        )+
+    }
+}
+
+book!(
+    // rules.doc("doc-nomicon", "src/doc/nomicon")
+    //      .dep(move |s| {
+    //          s.name("tool-rustbook")
+    //           .host(&build.build)
+    //           .target(&build.build)
+    //           .stage(0)
+    //      })
+    //      .default(build.config.docs)
+    //      .run(move |s| doc::rustbook(build, s.target, "nomicon"));
+    Nomicon, "src/doc/book", "nomicon";
+    // rules.doc("doc-reference", "src/doc/reference")
+    //      .dep(move |s| {
+    //          s.name("tool-rustbook")
+    //           .host(&build.build)
+    //           .target(&build.build)
+    //           .stage(0)
+    //      })
+    //      .default(build.config.docs)
+    //      .run(move |s| doc::rustbook(build, s.target, "reference"));
+    Reference, "src/doc/reference", "reference";
+);
 
 #[derive(Serialize)]
-pub struct Rustbook<'a> {
+struct Rustbook<'a> {
     target: &'a str,
     name: &'a str,
 }
@@ -60,11 +103,12 @@ impl<'a> Step<'a> for Rustbook<'a> {
     /// This will not actually generate any documentation if the documentation has
     /// already been generated.
     fn run(self, builder: &Builder) {
-        let build = builder.build;
-        let target = self.target;
-        let name = self.name;
-        let src = build.src.join("src/doc");
-        rustbook_src(build, target, name, &src);
+        let src = builder.build.src.join("src/doc");
+        builder.ensure(RustbookSrc {
+            target: self.target,
+            name: self.name,
+            src: &src,
+        });
     }
 }
 
@@ -81,6 +125,42 @@ impl<'a> Step<'a> for Rustbook<'a> {
 //                                     s.target,
 //                                     "unstable-book",
 //                                     &build.md_doc_out(s.target)));
+#[derive(Serialize)]
+pub struct UnstableBook<'a> {
+    target: &'a str,
+}
+
+impl<'a> Step<'a> for UnstableBook<'a> {
+    type Output = ();
+    const NAME: &'static str = "unstable book documentation";
+    const DEFAULT: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/doc/unstable-book")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.docs {
+            // Not a default rule if docs are disabled.
+            return;
+        }
+
+        builder.ensure(UnstableBook {
+            target,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        builder.ensure(UnstableBookGen {
+            target: self.target,
+        });
+        builder.ensure(RustbookSrc {
+            target: self.target,
+            name: "unstable-book",
+            src: &builder.build.md_doc_out(self.target),
+        })
+    }
+}
 
 #[derive(Serialize)]
 pub struct RustbookSrc<'a> {
@@ -105,16 +185,15 @@ impl<'a> Step<'a> for RustbookSrc<'a> {
         t!(fs::create_dir_all(&out));
 
         let out = out.join(name);
-        let compiler = Compiler::new(0, &build.build);
         let src = src.join(name);
         let index = out.join("index.html");
-        let rustbook = build.tool(&compiler, "rustbook");
+        let rustbook = builder.tool_exe(Tool::Rustbook);
         if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return
         }
         println!("Rustbook ({}) - {}", target, name);
         let _ = fs::remove_dir_all(&out);
-        build.run(build.tool_cmd(&compiler, "rustbook")
+        build.run(builder.tool_cmd(Tool::Rustbook)
                        .arg("build")
                        .arg(&src)
                        .arg("-d")
@@ -154,10 +233,16 @@ impl<'a> Step<'a> for TheBook<'a> {
         let target = self.target;
         let name = self.name;
         // build book first edition
-        rustbook(build, target, &format!("{}/first-edition", name));
+        builder.ensure(Rustbook {
+            target: target,
+            name: &format!("{}/first-edition", name),
+        });
 
         // build book second edition
-        rustbook(build, target, &format!("{}/second-edition", name));
+        builder.ensure(Rustbook {
+            target: target,
+            name: &format!("{}/second-edition", name),
+        });
 
         // build the index page
         let index = format!("{}/index.md", name);
@@ -238,6 +323,22 @@ pub struct Standalone<'a> {
 
 impl<'a> Step<'a> for Standalone<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/doc")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.docs {
+            // Not a default rule if docs are disabled.
+            return;
+        }
+
+        builder.ensure(Standalone {
+            target,
+        });
+    }
 
     /// Generates all standalone documentation as compiled by the rustdoc in `stage`
     /// for the `target` into `out`.
@@ -254,7 +355,7 @@ impl<'a> Step<'a> for Standalone<'a> {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        let compiler = Compiler::new(0, &build.build);
+        let compiler = builder.compiler(0, &build.build);
 
         let favicon = build.src.join("src/doc/favicon.inc");
         let footer = build.src.join("src/doc/footer.inc");
@@ -329,6 +430,34 @@ pub struct Std<'a> {
 
 impl<'a> Step<'a> for Std<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(builder: &Builder, path: &Path) -> bool {
+        builder.crates("std").into_iter().any(|(_, krate_path)| {
+            path.ends_with(krate_path)
+        })
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        let run = || {
+            builder.ensure(Std {
+                stage: builder.top_stage,
+                target
+            });
+        };
+
+        if let Some(path) = path {
+            for (_, krate_path) in builder.crates("std") {
+                if path.ends_with(krate_path) {
+                    run();
+                }
+            }
+        } else {
+            if builder.build.config.docs {
+                run();
+            }
+        }
+    }
 
     /// Compile all standard library documentation.
     ///
@@ -341,12 +470,14 @@ impl<'a> Step<'a> for Std<'a> {
         println!("Documenting stage{} std ({})", stage, target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = Compiler::new(stage, &build.build);
-        let compiler = if build.force_use_stage1(&compiler, target) {
-            Compiler::new(1, compiler.host)
+        let compiler = builder.compiler(stage, &build.build);
+        let compiler = if build.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
         } else {
             compiler
         };
+
+        builder.ensure(compile::Std { compiler, target });
         let out_dir = build.stage_out(&compiler, Mode::Libstd)
                            .join(target).join("doc");
         let rustdoc = build.rustdoc(&compiler);
@@ -410,6 +541,34 @@ pub struct Test<'a> {
 
 impl<'a> Step<'a> for Test<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(builder: &Builder, path: &Path) -> bool {
+        builder.crates("test").into_iter().any(|(_, krate_path)| {
+            path.ends_with(krate_path)
+        })
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        let run = || {
+            builder.ensure(Test {
+                stage: builder.top_stage,
+                target
+            });
+        };
+
+        if let Some(path) = path {
+            for (_, krate_path) in builder.crates("test") {
+                if path.ends_with(krate_path) {
+                    run();
+                }
+            }
+        } else {
+            if builder.build.config.docs {
+                run();
+            }
+        }
+    }
 
     /// Compile all libtest documentation.
     ///
@@ -422,12 +581,17 @@ impl<'a> Step<'a> for Test<'a> {
         println!("Documenting stage{} test ({})", stage, target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = Compiler::new(stage, &build.build);
-        let compiler = if build.force_use_stage1(&compiler, target) {
-            Compiler::new(1, compiler.host)
+        let compiler = builder.compiler(stage, &build.build);
+        let compiler = if build.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
         } else {
             compiler
         };
+
+        // Build libstd docs so that we generate relative links
+        builder.ensure(Std { stage, target });
+
+        builder.ensure(compile::Test { compiler, target });
         let out_dir = build.stage_out(&compiler, Mode::Libtest)
                            .join(target).join("doc");
         let rustdoc = build.rustdoc(&compiler);
@@ -464,6 +628,35 @@ pub struct Rustc<'a> {
 
 impl<'a> Step<'a> for Rustc<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(builder: &Builder, path: &Path) -> bool {
+        builder.crates("rustc-main").into_iter().any(|(_, krate_path)| {
+            path.ends_with(krate_path)
+        })
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        let run = || {
+            builder.ensure(Rustc {
+                stage: builder.top_stage,
+                target
+            });
+        };
+
+        if let Some(path) = path {
+            for (_, krate_path) in builder.crates("rustc-main") {
+                if path.ends_with(krate_path) {
+                    run();
+                }
+            }
+        } else {
+            if builder.build.config.compiler_docs {
+                run();
+            }
+        }
+    }
 
     /// Generate all compiler documentation.
     ///
@@ -476,12 +669,17 @@ impl<'a> Step<'a> for Rustc<'a> {
         println!("Documenting stage{} compiler ({})", stage, target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = Compiler::new(stage, &build.build);
-        let compiler = if build.force_use_stage1(&compiler, target) {
-            Compiler::new(1, compiler.host)
+        let compiler = builder.compiler(stage, &build.build);
+        let compiler = if build.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
         } else {
             compiler
         };
+
+        // Build libstd docs so that we generate relative links
+        builder.ensure(Std { stage, target });
+
+        builder.ensure(compile::Rustc { compiler, target });
         let out_dir = build.stage_out(&compiler, Mode::Librustc)
                            .join(target).join("doc");
         let rustdoc = build.rustdoc(&compiler);
@@ -530,17 +728,40 @@ pub struct ErrorIndex<'a> {
 
 impl<'a> Step<'a> for ErrorIndex<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/tools/error_index_generator")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.docs {
+            // Not a default rule if docs are disabled.
+            return;
+        }
+
+        builder.ensure(ErrorIndex {
+            target,
+        });
+    }
 
     /// Generates the HTML rendered error-index by running the
     /// `error_index_generator` tool.
     fn run(self, builder: &Builder) {
         let builder = builder.build;
         let target = self.target;
+
+        builder.ensure(compile::Rustc {
+            compiler: builder.compiler(0, &build.build),
+            target,
+        });
+
         println!("Documenting error index ({})", target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = Compiler::new(0, &build.build);
-        let mut index = build.tool_cmd(&compiler, "error_index_generator");
+        let mut index = builder.tool_cmd(Tool::ErrorIndex);
         index.arg("html");
         index.arg(out.join("error-index.html"));
 
@@ -570,10 +791,33 @@ pub struct UnstableBookGen<'a> {
 
 impl<'a> Step<'a> for UnstableBookGen<'a> {
     type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/doc/unstable-book")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.docs {
+            // Not a default rule if docs are disabled.
+            return;
+        }
+
+        builder.ensure(UnstableBookGen {
+            target,
+        });
+    }
 
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let target = self.target;
+
+        builder.ensure(compile::Std {
+            compiler: builder.compiler(builder.top_stage, &build.build),
+            target,
+        });
+
         println!("Generating unstable book md files ({})", target);
         let out = build.md_doc_out(target).join("unstable-book");
         t!(fs::create_dir_all(&out));
