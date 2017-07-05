@@ -222,7 +222,7 @@ use Bound::{Excluded, Included, Unbounded};
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
 /// the `Vec` may not report a [`capacity`] of 0*. `Vec` will allocate if and only
-/// if [`mem::size_of::<T>`]` * capacity() > 0`. In general, `Vec`'s allocation
+/// if [`mem::size_of::<T>`]`() * capacity() > 0`. In general, `Vec`'s allocation
 /// details are subtle enough that it is strongly recommended that you only
 /// free memory allocated by a `Vec` by creating a new `Vec` and dropping it.
 ///
