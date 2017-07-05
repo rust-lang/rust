@@ -369,3 +369,44 @@ impl<'a> Step<'a> for Rls<'a> {
         })
     }
 }
+
+impl<'a> Builder<'a> {
+    /// Get a `Command` which is ready to run `tool` in `stage` built for
+    /// `host`.
+    fn tool_cmd(&self, compiler: Compiler, tool: &str) -> Command {
+        let mut cmd = Command::new(self.tool(compiler, tool));
+        self.prepare_tool_cmd(compiler, &mut cmd);
+        cmd
+    }
+
+    /// Prepares the `cmd` provided to be able to run the `compiler` provided.
+    ///
+    /// Notably this munges the dynamic library lookup path to point to the
+    /// right location to run `compiler`.
+    fn prepare_tool_cmd(&self, compiler: Compiler, cmd: &mut Command) {
+        let host = compiler.host;
+        let mut paths = vec![
+            self.sysroot_libdir(compiler, compiler.host),
+            self.cargo_out(compiler, Mode::Tool, host).join("deps"),
+        ];
+
+        // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make
+        // mode) and that C compiler may need some extra PATH modification. Do
+        // so here.
+        if compiler.host.contains("msvc") {
+            let curpaths = env::var_os("PATH").unwrap_or(OsString::new());
+            let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
+            for &(ref k, ref v) in self.cc[compiler.host].0.env() {
+                if k != "PATH" {
+                    continue
+                }
+                for path in env::split_paths(v) {
+                    if !curpaths.contains(&path) {
+                        paths.push(path);
+                    }
+                }
+            }
+        }
+        add_lib_path(paths, cmd);
+    }
+}
