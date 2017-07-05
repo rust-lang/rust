@@ -10,12 +10,12 @@
 
 use Shape;
 use codemap::SpanUtils;
-use config::{IndentStyle, MultilineStyle};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability, mk_sp};
 use lists::{DefinitiveListTactic, SeparatorTactic, itemize_list, struct_lit_shape,
             struct_lit_tactic, shape_for_tactic, struct_lit_formatting, write_list};
-use expr::{rewrite_call_inner, rewrite_unary_prefix, rewrite_pair, can_be_overflowed_expr};
+use expr::{rewrite_call_inner, rewrite_unary_prefix, rewrite_pair, can_be_overflowed_expr,
+           wrap_struct_field};
 use types::{rewrite_path, PathContext};
 use super::Spanned;
 use comment::FindUncommented;
@@ -181,9 +181,10 @@ fn rewrite_struct_pat(
     let fmt = struct_lit_formatting(nested_shape, tactic, context, false);
 
     let mut fields_str = try_opt!(write_list(&item_vec, &fmt));
+    let one_line_width = h_shape.map_or(0, |shape| shape.width);
 
     if elipses {
-        if fields_str.contains('\n') {
+        if fields_str.contains('\n') || fields_str.len() > one_line_width {
             // Add a missing trailing comma.
             if fmt.trailing_separator == SeparatorTactic::Never {
                 fields_str.push_str(",");
@@ -205,23 +206,7 @@ fn rewrite_struct_pat(
         }
     }
 
-
-    let fields_str = if context.config.struct_lit_style() == IndentStyle::Block &&
-        (fields_str.contains('\n') ||
-             context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti ||
-             fields_str.len() > h_shape.map(|s| s.width).unwrap_or(0))
-    {
-        format!(
-            "\n{}{}\n{}",
-            v_shape.indent.to_string(context.config),
-            fields_str,
-            shape.indent.to_string(context.config)
-        )
-    } else {
-        // One liner or visual indent.
-        format!(" {} ", fields_str)
-    };
-
+    let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
     Some(format!("{} {{{}}}", path_str, fields_str))
 }
 

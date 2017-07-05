@@ -30,6 +30,7 @@ use items::{span_lo_for_arg, span_hi_for_arg};
 use chains::rewrite_chain;
 use macros::{rewrite_macro, MacroPosition};
 use patterns::{TuplePatField, can_be_overflowed_pat};
+use vertical::rewrite_with_alignment;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{CodeMap, Span, BytePos};
@@ -2551,6 +2552,14 @@ fn rewrite_index(
     }
 }
 
+fn struct_lit_can_be_aligned(fields: &[ast::Field], base: &Option<&ast::Expr>) -> bool {
+    if base.is_some() {
+        return false;
+    }
+
+    fields.iter().all(|field| !field.is_shorthand)
+}
+
 fn rewrite_struct_lit<'a>(
     context: &RewriteContext,
     path: &ast::Path,
@@ -2580,76 +2589,100 @@ fn rewrite_struct_lit<'a>(
         return Some(format!("{} {{}}", path_str));
     }
 
-    let field_iter = fields
-        .into_iter()
-        .map(StructLitField::Regular)
-        .chain(base.into_iter().map(StructLitField::Base));
-
     // Foo { a: Foo } - indent is +3, width is -5.
     let (h_shape, v_shape) = try_opt!(struct_lit_shape(shape, context, path_str.len() + 3, 2));
 
-    let span_lo = |item: &StructLitField| match *item {
-        StructLitField::Regular(field) => field.span.lo,
-        StructLitField::Base(expr) => {
-            let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
-            let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
-            let pos = snippet.find_uncommented("..").unwrap();
-            last_field_hi + BytePos(pos as u32)
-        }
-    };
-    let span_hi = |item: &StructLitField| match *item {
-        StructLitField::Regular(field) => field.span.hi,
-        StructLitField::Base(expr) => expr.span.hi,
-    };
-    let rewrite = |item: &StructLitField| match *item {
-        StructLitField::Regular(field) => {
-            // The 1 taken from the v_budget is for the comma.
-            rewrite_field(context, field, try_opt!(v_shape.sub_width(1)))
-        }
-        StructLitField::Base(expr) => {
-            // 2 = ..
-            expr.rewrite(context, try_opt!(v_shape.shrink_left(2)))
-                .map(|s| format!("..{}", s))
-        }
+    let one_line_width = h_shape.map_or(0, |shape| shape.width);
+    let body_lo = context.codemap.span_after(span, "{");
+    let fields_str = if struct_lit_can_be_aligned(fields, &base) &&
+        context.config.struct_field_align_threshold() > 0
+    {
+        try_opt!(rewrite_with_alignment(
+            fields,
+            context,
+            shape,
+            mk_sp(body_lo, span.hi),
+            one_line_width,
+        ))
+    } else {
+        let field_iter = fields
+            .into_iter()
+            .map(StructLitField::Regular)
+            .chain(base.into_iter().map(StructLitField::Base));
+
+        let span_lo = |item: &StructLitField| match *item {
+            StructLitField::Regular(field) => field.span().lo,
+            StructLitField::Base(expr) => {
+                let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
+                let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
+                let pos = snippet.find_uncommented("..").unwrap();
+                last_field_hi + BytePos(pos as u32)
+            }
+        };
+        let span_hi = |item: &StructLitField| match *item {
+            StructLitField::Regular(field) => field.span().hi,
+            StructLitField::Base(expr) => expr.span.hi,
+        };
+        let rewrite = |item: &StructLitField| match *item {
+            StructLitField::Regular(field) => {
+                // The 1 taken from the v_budget is for the comma.
+                rewrite_field(context, field, try_opt!(v_shape.sub_width(1)), 0)
+            }
+            StructLitField::Base(expr) => {
+                // 2 = ..
+                expr.rewrite(context, try_opt!(v_shape.shrink_left(2)))
+                    .map(|s| format!("..{}", s))
+            }
+        };
+
+        let items = itemize_list(
+            context.codemap,
+            field_iter,
+            "}",
+            span_lo,
+            span_hi,
+            rewrite,
+            body_lo,
+            span.hi,
+        );
+        let item_vec = items.collect::<Vec<_>>();
+
+        let tactic = struct_lit_tactic(h_shape, context, &item_vec);
+        let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
+        let fmt = struct_lit_formatting(nested_shape, tactic, context, base.is_some());
+
+        try_opt!(write_list(&item_vec, &fmt))
     };
 
-    let items = itemize_list(
-        context.codemap,
-        field_iter,
-        "}",
-        span_lo,
-        span_hi,
-        rewrite,
-        context.codemap.span_after(span, "{"),
-        span.hi,
-    );
-    let item_vec = items.collect::<Vec<_>>();
+    let fields_str = wrap_struct_field(context, &fields_str, shape, v_shape, one_line_width);
+    Some(format!("{} {{{}}}", path_str, fields_str))
 
-    let tactic = struct_lit_tactic(h_shape, context, &item_vec);
-    let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
-    let fmt = struct_lit_formatting(nested_shape, tactic, context, base.is_some());
+    // FIXME if context.config.struct_lit_style() == Visual, but we run out
+    // of space, we should fall back to BlockIndent.
+}
 
-    let fields_str = try_opt!(write_list(&item_vec, &fmt));
-    let fields_str = if context.config.struct_lit_style() == IndentStyle::Block &&
+pub fn wrap_struct_field(
+    context: &RewriteContext,
+    fields_str: &str,
+    shape: Shape,
+    nested_shape: Shape,
+    one_line_width: usize,
+) -> String {
+    if context.config.struct_lit_style() == IndentStyle::Block &&
         (fields_str.contains('\n') ||
              context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti ||
-             fields_str.len() > h_shape.map(|s| s.width).unwrap_or(0))
+             fields_str.len() > one_line_width)
     {
         format!(
             "\n{}{}\n{}",
-            v_shape.indent.to_string(context.config),
+            nested_shape.indent.to_string(context.config),
             fields_str,
             shape.indent.to_string(context.config)
         )
     } else {
         // One liner or visual indent.
         format!(" {} ", fields_str)
-    };
-
-    Some(format!("{} {{{}}}", path_str, fields_str))
-
-    // FIXME if context.config.struct_lit_style() == Visual, but we run out
-    // of space, we should fall back to BlockIndent.
+    }
 }
 
 pub fn struct_lit_field_separator(config: &Config) -> &str {
@@ -2659,18 +2692,32 @@ pub fn struct_lit_field_separator(config: &Config) -> &str {
     )
 }
 
-fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> Option<String> {
+pub fn rewrite_field(
+    context: &RewriteContext,
+    field: &ast::Field,
+    shape: Shape,
+    prefix_max_width: usize,
+) -> Option<String> {
+    if contains_skip(&field.attrs) {
+        return wrap_str(
+            context.snippet(field.span()),
+            context.config.max_width(),
+            shape,
+        );
+    }
     let name = &field.ident.node.to_string();
     if field.is_shorthand {
         Some(name.to_string())
     } else {
-        let separator = struct_lit_field_separator(context.config);
+        let mut separator = String::from(struct_lit_field_separator(context.config));
+        for _ in 0..prefix_max_width.checked_sub(name.len()).unwrap_or(0) {
+            separator.push(' ');
+        }
         let overhead = name.len() + separator.len();
-        let mut expr_shape = try_opt!(shape.sub_width(overhead));
-        expr_shape.offset += overhead;
+        let expr_shape = try_opt!(shape.offset_left(overhead));
         let expr = field.expr.rewrite(context, expr_shape);
 
-        let mut attrs_str = try_opt!((*field.attrs).rewrite(context, shape));
+        let mut attrs_str = try_opt!(field.attrs.rewrite(context, shape));
         if !attrs_str.is_empty() {
             attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
         };

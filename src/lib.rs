@@ -48,6 +48,7 @@ use filemap::FileMap;
 use visitor::FmtVisitor;
 use config::Config;
 use checkstyle::{output_header, output_footer};
+use utils::mk_sp;
 
 pub use self::summary::Summary;
 
@@ -75,6 +76,7 @@ mod chains;
 mod macros;
 mod patterns;
 mod summary;
+mod vertical;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -109,6 +111,28 @@ impl Spanned for ast::Arg {
         } else {
             self.ty.span
         }
+    }
+}
+
+impl Spanned for ast::StructField {
+    fn span(&self) -> Span {
+        if self.attrs.is_empty() {
+            mk_sp(self.span.lo, self.ty.span.hi)
+        } else {
+            // Include attributes and doc comments, if present
+            mk_sp(self.attrs[0].span.lo, self.ty.span.hi)
+        }
+    }
+}
+
+impl Spanned for ast::Field {
+    fn span(&self) -> Span {
+        let lo = if self.attrs.is_empty() {
+            self.span.lo
+        } else {
+            self.attrs[0].span.lo
+        };
+        mk_sp(lo, self.span.hi)
     }
 }
 
@@ -398,7 +422,9 @@ pub struct FormatReport {
 
 impl FormatReport {
     fn new() -> FormatReport {
-        FormatReport { file_error_map: HashMap::new() }
+        FormatReport {
+            file_error_map: HashMap::new(),
+        }
     }
 
     pub fn warning_count(&self) -> usize {
