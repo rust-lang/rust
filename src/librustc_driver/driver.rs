@@ -970,6 +970,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // We compute "constant qualifications" between MIR_CONST and MIR_VALIDATED.
 
     // What we need to run borrowck etc.
+    passes.push_pass(MIR_CONST, mir::transform::borrow_check::BorrowckMir);
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
     passes.push_pass(MIR_VALIDATED,
                      mir::transform::simplify_branches::SimplifyBranches::new("initial"));

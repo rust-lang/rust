@@ -108,6 +108,12 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Display for MovePath<'tcx> {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        write!(w, "{:?}", self.lvalue)
+    }
+}
+
 #[derive(Debug)]
 pub struct MoveData<'tcx> {
     pub move_paths: IndexVec<MovePathIndex, MovePath<'tcx>>,

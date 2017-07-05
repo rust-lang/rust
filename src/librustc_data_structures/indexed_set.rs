@@ -159,6 +159,36 @@ impl<T: Idx> IdxSet<T> {
     pub fn each_bit<F>(&self, max_bits: usize, f: F) where F: FnMut(T) {
         each_bit(self, max_bits, f)
     }
+
+    /// Removes all elements from this set.
+    pub fn reset_to_empty(&mut self) {
+        for word in self.words_mut() { *word = 0; }
+    }
+
+    pub fn elems(&self, universe_size: usize) -> Elems<T> {
+        Elems { i: 0, set: self, universe_size: universe_size }
+    }
+}
+
+pub struct Elems<'a, T: Idx> { i: usize, set: &'a IdxSet<T>, universe_size: usize }
+
+impl<'a, T: Idx> Iterator for Elems<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        if self.i >= self.universe_size { return None; }
+        let mut i = self.i;
+        loop {
+            if i >= self.universe_size {
+                self.i = i; // (mark iteration as complete.)
+                return None;
+            }
+            if self.set.contains(&T::new(i)) {
+                self.i = i + 1; // (next element to start at.)
+                return Some(T::new(i));
+            }
+            i = i + 1;
+        }
+    }
 }
 
 fn each_bit<T: Idx, F>(words: &IdxSet<T>, max_bits: usize, mut f: F) where F: FnMut(T) {
