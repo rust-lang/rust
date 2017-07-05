@@ -103,6 +103,15 @@ fn test10() {
     }
 }
 
+fn test11<F: FnMut() -> i32>(mut f: F) {
+    loop {
+        return match f() {
+            1 => continue,
+            _ => (),
+        }
+    }
+}
+
 fn main() {
     test1();
     test2();
@@ -114,5 +123,6 @@ fn main() {
     test8();
     test9();
     test10();
+    test11(|| 0);
 }
 
