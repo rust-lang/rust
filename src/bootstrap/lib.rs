@@ -93,6 +93,8 @@ use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppresse
 
 use util::{exe, libdir, add_lib_path, OutputFolder, CiEnv};
 
+use builder::Builder;
+
 mod cc;
 mod channel;
 mod check;
@@ -107,6 +109,7 @@ mod install;
 mod native;
 mod sanity;
 pub mod util;
+mod builder;
 
 #[cfg(windows)]
 mod job;
@@ -1077,16 +1080,37 @@ impl Build {
             None
         }
     }
+
+    /// Get a list of crates from a root crate.
+    ///
+    /// Returns Vec<(crate, path to crate, is_root_crate)>
+    fn crates(&self, root: &str) -> Vec<(&str, &Path)> {
+        let mut ret = Vec::new();
+        let mut list = vec![root];
+        let mut visited = HashSet::new();
+        while let Some(krate) = list.pop() {
+            let krate = &self.crates[krate];
+            // If we can't strip prefix, then out-of-tree path
+            let path = krate.path.strip_prefix(&self.src).unwrap_or(&krate.path);
+            ret.push((&*krate.name, path));
+            for dep in &krate.deps {
+                if visited.insert(dep) && dep != "build_helper" {
+                    list.push(dep);
+                }
+            }
+        }
+        ret
+    }
 }
 
 impl<'a> Compiler<'a> {
-    /// Creates a new complier for the specified stage/host
-    fn new(stage: u32, host: &'a str) -> Compiler<'a> {
-        Compiler { stage: stage, host: host }
+    pub fn with_stage(mut self, stage: u32) -> Compiler<'a> {
+        self.stage = stage;
+        self
     }
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
-    fn is_snapshot(&self, build: &Build) -> bool {
+    pub fn is_snapshot(&self, builder: &Build) -> bool {
         self.stage == 0 && self.host == build.build
     }
 
@@ -1094,7 +1118,7 @@ impl<'a> Compiler<'a> {
     /// current build session.
     /// This takes into account whether we're performing a full bootstrap or
     /// not; don't directly compare the stage with `2`!
-    fn is_final_stage(&self, build: &Build) -> bool {
+    pub fn is_final_stage(&self, build: &Build) -> bool {
         let final_stage = if build.config.full_bootstrap { 2 } else { 1 };
         self.stage >= final_stage
     }
