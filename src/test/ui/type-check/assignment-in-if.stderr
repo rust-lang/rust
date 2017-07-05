@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 25 |     if x = x {
    |        ^^^^^
    |        |
-   |        help: did you mean to compare equality?: `x == x`
    |        expected bool, found ()
+   |        help: did you mean to compare equality?: `x == x`
    |
    = note: expected type `bool`
               found type `()`
@@ -16,8 +16,8 @@ error[E0308]: mismatched types
 31 |     if (x = x) {
    |        ^^^^^^^
    |        |
-   |        help: did you mean to compare equality?: `x == x`
    |        expected bool, found ()
+   |        help: did you mean to compare equality?: `x == x`
    |
    = note: expected type `bool`
               found type `()`
@@ -28,8 +28,8 @@ error[E0308]: mismatched types
 37 |     if y = (Foo { foo: x }) {
    |        ^^^^^^^^^^^^^^^^^^^^
    |        |
-   |        help: did you mean to compare equality?: `y == (Foo { foo: x })`
    |        expected bool, found ()
+   |        help: did you mean to compare equality?: `y == (Foo { foo: x })`
    |
    = note: expected type `bool`
               found type `()`
@@ -40,8 +40,8 @@ error[E0308]: mismatched types
 43 |     if 3 = x {
    |        ^^^^^
    |        |
-   |        help: did you mean to compare equality?: `3 == x`
    |        expected bool, found ()
+   |        help: did you mean to compare equality?: `3 == x`
    |
    = note: expected type `bool`
               found type `()`

@@ -4,8 +4,8 @@ error[E0596]: cannot borrow immutable argument `self` as mutable
 17 |         (&mut self).bar();
    |               ^^^^
    |               |
-   |               try removing `&mut` here
    |               cannot reborrow mutably
+   |               try removing `&mut` here
 
 error[E0596]: cannot borrow immutable argument `self` as mutable
   --> $DIR/issue-31424.rs:23:15

@@ -4,8 +4,8 @@ error[E0425]: cannot find value `cx` in this scope
 19 |         f(cx);
    |           ^^
    |           |
-   |           help: try: `self.cx`
    |           `self` value is only available in methods with `self` parameter
+   |           help: try: `self.cx`
 
 error: aborting due to previous error
 

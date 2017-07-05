@@ -4,9 +4,9 @@ error[E0423]: expected value, found struct `Z`
 26 |         Z;
    |         ^
    |         |
-   |         did you mean `Z { /* fields */ }`?
    |         did you mean `S`?
    |         constructor is not visible here due to private fields
+   |         did you mean `Z { /* fields */ }`?
    |
 help: possible better candidate is found in another module, you can import it into scope
    |
@@ -19,8 +19,8 @@ error[E0423]: expected value, found struct `S`
 36 |     S;
    |     ^
    |     |
-   |     did you mean `S { /* fields */ }`?
    |     constructor is not visible here due to private fields
+   |     did you mean `S { /* fields */ }`?
    |
 help: possible better candidate is found in another module, you can import it into scope
    |
@@ -33,8 +33,8 @@ error[E0423]: expected value, found struct `xcrate::S`
 42 |     xcrate::S;
    |     ^^^^^^^^^
    |     |
-   |     did you mean `xcrate::S { /* fields */ }`?
    |     constructor is not visible here due to private fields
+   |     did you mean `xcrate::S { /* fields */ }`?
    |
 help: possible better candidate is found in another module, you can import it into scope
    |

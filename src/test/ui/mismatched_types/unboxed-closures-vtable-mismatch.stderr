@@ -7,8 +7,8 @@ error[E0281]: type mismatch: `[closure@$DIR/unboxed-closures-vtable-mismatch.rs:
 25 |     let z = call_it(3, f);
    |             ^^^^^^^
    |             |
-   |             requires `std::ops::FnMut<(isize, isize)>`
    |             expected isize, found usize
+   |             requires `std::ops::FnMut<(isize, isize)>`
    |
    = note: required by `call_it`
 
