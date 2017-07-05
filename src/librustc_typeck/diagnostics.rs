@@ -4632,9 +4632,10 @@ unsafe {
 }
 ```
 
-To fix this error, you need to pass variables corresponding to C types as much
-as possible. For better explanations, see The Rust Book:
-https://doc.rust-lang.org/book/
+Certain Rust types must be cast before passing them to a variadic function,
+because of arcane ABI rules dictated by the C standard. To fix the error,
+cast the value to the type specified by the error message (which you may need
+to import from `std::os::raw`).
 "##,
 
 E0618: r##"
