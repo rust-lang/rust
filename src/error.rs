@@ -58,6 +58,9 @@ pub enum EvalError<'tcx> {
     TypeNotPrimitive(Ty<'tcx>),
     ReallocatedStaticMemory,
     DeallocatedStaticMemory,
+    ReallocateNonBasePtr,
+    DeallocateNonBasePtr,
+    IncorrectAllocationInformation,
     Layout(layout::LayoutError<'tcx>),
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
@@ -72,98 +75,105 @@ pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
 impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
+        use EvalError::*;
         match *self {
-            EvalError::FunctionPointerTyMismatch(..) =>
+            FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
-            EvalError::InvalidMemoryAccess =>
+            InvalidMemoryAccess =>
                 "tried to access memory through an invalid pointer",
-            EvalError::DanglingPointerDeref =>
+            DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
-            EvalError::InvalidFunctionPointer =>
+            InvalidFunctionPointer =>
                 "tried to use an integer pointer or a dangling pointer as a function pointer",
-            EvalError::InvalidBool =>
+            InvalidBool =>
                 "invalid boolean value read",
-            EvalError::InvalidDiscriminant =>
+            InvalidDiscriminant =>
                 "invalid enum discriminant value read",
-            EvalError::PointerOutOfBounds { .. } =>
+            PointerOutOfBounds { .. } =>
                 "pointer offset outside bounds of allocation",
-            EvalError::InvalidNullPointerUsage =>
+            InvalidNullPointerUsage =>
                 "invalid use of NULL pointer",
-            EvalError::ReadPointerAsBytes =>
+            ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
-            EvalError::ReadBytesAsPointer =>
+            ReadBytesAsPointer =>
                 "a memory access tried to interpret some bytes as a pointer",
-            EvalError::InvalidPointerMath =>
+            InvalidPointerMath =>
                 "attempted to do invalid arithmetic on pointers that would leak base addresses, e.g. comparing pointers into different allocations",
-            EvalError::ReadUndefBytes =>
+            ReadUndefBytes =>
                 "attempted to read undefined bytes",
-            EvalError::DeadLocal =>
+            DeadLocal =>
                 "tried to access a dead local variable",
-            EvalError::InvalidBoolOp(_) =>
+            InvalidBoolOp(_) =>
                 "invalid boolean operation",
-            EvalError::Unimplemented(ref msg) => msg,
-            EvalError::DerefFunctionPointer =>
+            Unimplemented(ref msg) => msg,
+            DerefFunctionPointer =>
                 "tried to dereference a function pointer",
-            EvalError::ExecuteMemory =>
+            ExecuteMemory =>
                 "tried to treat a memory pointer as a function pointer",
-            EvalError::ArrayIndexOutOfBounds(..) =>
+            ArrayIndexOutOfBounds(..) =>
                 "array index out of bounds",
-            EvalError::Math(..) =>
+            Math(..) =>
                 "mathematical operation failed",
-            EvalError::Intrinsic(..) =>
+            Intrinsic(..) =>
                 "intrinsic failed",
-            EvalError::OverflowingMath =>
+            OverflowingMath =>
                 "attempted to do overflowing math",
-            EvalError::NoMirFor(..) =>
+            NoMirFor(..) =>
                 "mir not found",
-            EvalError::InvalidChar(..) =>
+            InvalidChar(..) =>
                 "tried to interpret an invalid 32-bit value as a char",
-            EvalError::OutOfMemory{..} =>
+            OutOfMemory{..} =>
                 "could not allocate more memory",
-            EvalError::ExecutionTimeLimitReached =>
+            ExecutionTimeLimitReached =>
                 "reached the configured maximum execution time",
-            EvalError::StackFrameLimitReached =>
+            StackFrameLimitReached =>
                 "reached the configured maximum number of stack frames",
-            EvalError::OutOfTls =>
+            OutOfTls =>
                 "reached the maximum number of representable TLS keys",
-            EvalError::TlsOutOfBounds =>
+            TlsOutOfBounds =>
                 "accessed an invalid (unallocated) TLS key",
-            EvalError::AbiViolation(ref msg) => msg,
-            EvalError::AlignmentCheckFailed{..} =>
+            AbiViolation(ref msg) => msg,
+            AlignmentCheckFailed{..} =>
                 "tried to execute a misaligned read or write",
-            EvalError::CalledClosureAsFunction =>
+            CalledClosureAsFunction =>
                 "tried to call a closure through a function pointer",
-            EvalError::VtableForArgumentlessMethod =>
+            VtableForArgumentlessMethod =>
                 "tried to call a vtable function without arguments",
-            EvalError::ModifiedConstantMemory =>
+            ModifiedConstantMemory =>
                 "tried to modify constant memory",
-            EvalError::AssumptionNotHeld =>
+            AssumptionNotHeld =>
                 "`assume` argument was false",
-            EvalError::InlineAsm =>
+            InlineAsm =>
                 "miri does not support inline assembly",
-            EvalError::TypeNotPrimitive(_) =>
+            TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
-            EvalError::ReallocatedStaticMemory =>
+            ReallocatedStaticMemory =>
                 "tried to reallocate static memory",
-            EvalError::DeallocatedStaticMemory =>
+            DeallocatedStaticMemory =>
                 "tried to deallocate static memory",
-            EvalError::Layout(_) =>
+            ReallocateNonBasePtr =>
+                "tried to reallocate with a pointer not to the beginning of an existing object",
+            DeallocateNonBasePtr =>
+                "tried to deallocate with a pointer not to the beginning of an existing object",
+            IncorrectAllocationInformation =>
+                "tried to deallocate or reallocate using incorrect alignment or size",
+            Layout(_) =>
                 "rustc layout computation failed",
-            EvalError::UnterminatedCString(_) =>
+            UnterminatedCString(_) =>
                 "attempted to get length of a null terminated string, but no null found before end of allocation",
-            EvalError::HeapAllocZeroBytes =>
+            HeapAllocZeroBytes =>
                 "tried to re-, de- or allocate zero bytes on the heap",
-            EvalError::HeapAllocNonPowerOfTwoAlignment(_) =>
+            HeapAllocNonPowerOfTwoAlignment(_) =>
                 "tried to re-, de-, or allocate heap memory with alignment that is not a power of two",
-            EvalError::Unreachable =>
+            Unreachable =>
                 "entered unreachable code",
-            EvalError::Panic =>
+            Panic =>
                 "the evaluated program panicked",
-            EvalError::NeedsRfc(_) =>
+            NeedsRfc(_) =>
                 "this feature needs an rfc before being allowed inside constants",
-            EvalError::NotConst(_) =>
+            NotConst(_) =>
                 "this feature is not compatible with constant evaluation",
-            EvalError::ReadFromReturnPointer =>
+            ReadFromReturnPointer =>
                 "tried to read from the return pointer",
         }
     }
@@ -173,36 +183,37 @@ impl<'tcx> Error for EvalError<'tcx> {
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use EvalError::*;
         match *self {
-            EvalError::PointerOutOfBounds { ptr, access, allocation_size } => {
+            PointerOutOfBounds { ptr, access, allocation_size } => {
                 write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
                        if access { "memory access" } else { "pointer computed" },
                        ptr.offset, ptr.alloc_id, allocation_size)
             },
-            EvalError::NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
-            EvalError::FunctionPointerTyMismatch(sig, got) =>
+            NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
+            FunctionPointerTyMismatch(sig, got) =>
                 write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),
-            EvalError::ArrayIndexOutOfBounds(span, len, index) =>
+            ArrayIndexOutOfBounds(span, len, index) =>
                 write!(f, "index out of bounds: the len is {} but the index is {} at {:?}", len, index, span),
-            EvalError::Math(span, ref err) =>
+            Math(span, ref err) =>
                 write!(f, "{:?} at {:?}", err, span),
-            EvalError::Intrinsic(ref err) =>
+            Intrinsic(ref err) =>
                 write!(f, "{}", err),
-            EvalError::InvalidChar(c) =>
+            InvalidChar(c) =>
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
-            EvalError::OutOfMemory { allocation_size, memory_size, memory_usage } =>
+            OutOfMemory { allocation_size, memory_size, memory_usage } =>
                 write!(f, "tried to allocate {} more bytes, but only {} bytes are free of the {} byte memory",
                        allocation_size, memory_size - memory_usage, memory_size),
-            EvalError::AlignmentCheckFailed { required, has } =>
+            AlignmentCheckFailed { required, has } =>
                write!(f, "tried to access memory with alignment {}, but alignment {} is required",
                       has, required),
-            EvalError::TypeNotPrimitive(ty) =>
+            TypeNotPrimitive(ty) =>
                 write!(f, "expected primitive type, got {}", ty),
-            EvalError::Layout(ref err) =>
+            Layout(ref err) =>
                 write!(f, "rustc layout computation failed: {:?}", err),
-            EvalError::NeedsRfc(ref msg) =>
+            NeedsRfc(ref msg) =>
                 write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg),
-            EvalError::NotConst(ref msg) =>
+            NotConst(ref msg) =>
                 write!(f, "Cannot evaluate within constants: \"{}\"", msg),
             _ => write!(f, "{}", self.description()),
         }
