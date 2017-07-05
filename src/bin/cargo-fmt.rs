@@ -142,14 +142,14 @@ fn get_fmt_args() -> Vec<String> {
 
 #[derive(Debug)]
 enum TargetKind {
-    Lib, // dylib, staticlib, lib
-    Bin, // bin
-    Example, // example file
-    Test, // test file
-    Bench, // bench file
+    Lib,         // dylib, staticlib, lib
+    Bin,         // bin
+    Example,     // example file
+    Test,        // test file
+    Bench,       // bench file
     CustomBuild, // build script
-    ProcMacro, // a proc macro implementation
-    Other, // plugin,...
+    ProcMacro,   // a proc macro implementation
+    Other,       // plugin,...
 }
 
 impl TargetKind {

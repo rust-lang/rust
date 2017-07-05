@@ -1298,9 +1298,7 @@ impl<'a> ControlFlow<'a> {
                 label_string,
                 self.keyword,
                 between_kwd_cond_comment.as_ref().map_or(
-                    if pat_expr_string.is_empty() ||
-                        pat_expr_string.starts_with('\n')
-                    {
+                    if pat_expr_string.is_empty() || pat_expr_string.starts_with('\n') {
                         ""
                     } else {
                         " "
