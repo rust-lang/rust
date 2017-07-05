@@ -292,130 +292,122 @@ error: this range is empty so this for loop will never run
 186 | |     }
     | |_____^
 
-error: use of deprecated item: replaced by `Iterator::step_by`
-   --> for_loop.rs:192:22
-    |
-192 |     for i in (10..8).step_by(-1) {
-    |                      ^^^^^^^
-    |
-    = note: `-D deprecated` implied by `-D warnings`
-
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:207:15
+   --> for_loop.rs:203:15
     |
-207 |     for _v in vec.iter() { }
+203 |     for _v in vec.iter() { }
     |               ^^^^^^^^^^ help: to write this more concisely, try `&vec`
     |
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:209:15
+   --> for_loop.rs:205:15
     |
-209 |     for _v in vec.iter_mut() { }
+205 |     for _v in vec.iter_mut() { }
     |               ^^^^^^^^^^^^^^ help: to write this more concisely, try `&mut vec`
 
 error: it is more idiomatic to loop over containers instead of using explicit iteration methods`
-   --> for_loop.rs:212:15
+   --> for_loop.rs:208:15
     |
-212 |     for _v in out_vec.into_iter() { }
+208 |     for _v in out_vec.into_iter() { }
     |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try `out_vec`
     |
     = note: `-D explicit-into-iter-loop` implied by `-D warnings`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:215:15
+   --> for_loop.rs:211:15
     |
-215 |     for _v in array.into_iter() {}
+211 |     for _v in array.into_iter() {}
     |               ^^^^^^^^^^^^^^^^^ help: to write this more concisely, try `&array`
+
+error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
+   --> for_loop.rs:216:15
+    |
+216 |     for _v in [1, 2, 3].iter() { }
+    |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try `&[1, 2, 3]`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:220:15
     |
-220 |     for _v in [1, 2, 3].iter() { }
-    |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try `&[1, 2, 3]`
-
-error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:224:15
-    |
-224 |     for _v in [0; 32].iter() {}
+220 |     for _v in [0; 32].iter() {}
     |               ^^^^^^^^^^^^^^ help: to write this more concisely, try `&[0; 32]`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:229:15
+   --> for_loop.rs:225:15
     |
-229 |     for _v in ll.iter() { }
+225 |     for _v in ll.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&ll`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:232:15
+   --> for_loop.rs:228:15
     |
-232 |     for _v in vd.iter() { }
+228 |     for _v in vd.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&vd`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:235:15
+   --> for_loop.rs:231:15
     |
-235 |     for _v in bh.iter() { }
+231 |     for _v in bh.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&bh`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:238:15
+   --> for_loop.rs:234:15
     |
-238 |     for _v in hm.iter() { }
+234 |     for _v in hm.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&hm`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:241:15
+   --> for_loop.rs:237:15
     |
-241 |     for _v in bt.iter() { }
+237 |     for _v in bt.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&bt`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:244:15
+   --> for_loop.rs:240:15
     |
-244 |     for _v in hs.iter() { }
+240 |     for _v in hs.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&hs`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
-   --> for_loop.rs:247:15
+   --> for_loop.rs:243:15
     |
-247 |     for _v in bs.iter() { }
+243 |     for _v in bs.iter() { }
     |               ^^^^^^^^^ help: to write this more concisely, try `&bs`
 
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
-   --> for_loop.rs:249:5
+   --> for_loop.rs:245:5
     |
-249 |     for _v in vec.iter().next() { }
+245 |     for _v in vec.iter().next() { }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
-   --> for_loop.rs:256:5
+   --> for_loop.rs:252:5
     |
-256 |     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>();
+252 |     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D unused-collect` implied by `-D warnings`
+
+error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
+   --> for_loop.rs:257:5
+    |
+257 |     for _v in &vec { _index += 1 }
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D explicit-counter-loop` implied by `-D warnings`
 
 error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
    --> for_loop.rs:261:5
     |
 261 |     for _v in &vec { _index += 1 }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `-D explicit-counter-loop` implied by `-D warnings`
-
-error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
-   --> for_loop.rs:265:5
-    |
-265 |     for _v in &vec { _index += 1 }
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you seem to want to iterate on a map's values
-   --> for_loop.rs:325:5
+   --> for_loop.rs:321:5
     |
-325 | /     for (_, v) in &m {
-326 | |         let _v = v;
-327 | |     }
+321 | /     for (_, v) in &m {
+322 | |         let _v = v;
+323 | |     }
     | |_____^
     |
     = note: `-D for-kv-map` implied by `-D warnings`
@@ -423,52 +415,52 @@ help: use the corresponding method
     |     for v in m.values() {
 
 error: you seem to want to iterate on a map's values
-   --> for_loop.rs:330:5
+   --> for_loop.rs:326:5
     |
-330 | /     for (_, v) in &*m {
-331 | |         let _v = v;
-332 | |         // Here the `*` is not actually necesarry, but the test tests that we don't suggest
-333 | |         // `in *m.values()` as we used to
-334 | |     }
+326 | /     for (_, v) in &*m {
+327 | |         let _v = v;
+328 | |         // Here the `*` is not actually necesarry, but the test tests that we don't suggest
+329 | |         // `in *m.values()` as we used to
+330 | |     }
     | |_____^
     |
 help: use the corresponding method
     |     for v in (*m).values() {
 
 error: you seem to want to iterate on a map's values
-   --> for_loop.rs:337:5
+   --> for_loop.rs:333:5
     |
-337 | /     for (_, v) in &mut m {
-338 | |         let _v = v;
-339 | |     }
+333 | /     for (_, v) in &mut m {
+334 | |         let _v = v;
+335 | |     }
     | |_____^
     |
 help: use the corresponding method
     |     for v in m.values_mut() {
 
 error: you seem to want to iterate on a map's values
-   --> for_loop.rs:342:5
+   --> for_loop.rs:338:5
     |
-342 | /     for (_, v) in &mut *m {
-343 | |         let _v = v;
-344 | |     }
+338 | /     for (_, v) in &mut *m {
+339 | |         let _v = v;
+340 | |     }
     | |_____^
     |
 help: use the corresponding method
     |     for v in (*m).values_mut() {
 
 error: you seem to want to iterate on a map's keys
-   --> for_loop.rs:348:5
+   --> for_loop.rs:344:5
     |
-348 | /     for (k, _value) in rm {
-349 | |         let _k = k;
-350 | |     }
+344 | /     for (k, _value) in rm {
+345 | |         let _k = k;
+346 | |     }
     | |_____^
     |
 help: use the corresponding method
     |     for k in rm.keys() {
 
-error: aborting due to 52 previous errors
+error: aborting due to 51 previous errors
 
 
 To learn more, run the command again with --verbose.
