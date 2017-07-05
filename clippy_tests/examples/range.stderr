@@ -1,52 +1,44 @@
-error: use of deprecated item: replaced by `Iterator::step_by`
-  --> range.rs:14:12
+error: Iterator::step_by(0) will panic at runtime
+  --> range.rs:13:13
    |
-14 |     (0..1).step_by(0);
-   |            ^^^^^^^
+13 |     let _ = (0..1).step_by(0);
+   |             ^^^^^^^^^^^^^^^^^
    |
-   = note: `-D deprecated` implied by `-D warnings`
+   = note: `-D iterator-step-by-zero` implied by `-D warnings`
 
-error: use of deprecated item: replaced by `Iterator::step_by`
-  --> range.rs:16:12
+error: Iterator::step_by(0) will panic at runtime
+  --> range.rs:17:13
    |
-16 |     (0..1).step_by(1);
-   |            ^^^^^^^
+17 |     let _ = (1..).step_by(0);
+   |             ^^^^^^^^^^^^^^^^
 
-error: use of deprecated item: replaced by `Iterator::step_by`
-  --> range.rs:18:11
+error: Iterator::step_by(0) will panic at runtime
+  --> range.rs:18:13
    |
-18 |     (1..).step_by(0);
-   |           ^^^^^^^
+18 |     let _ = (1...2).step_by(0);
+   |             ^^^^^^^^^^^^^^^^^^
 
-error: use of deprecated item: replaced by `Iterator::step_by`
-  --> range.rs:19:13
+error: Iterator::step_by(0) will panic at runtime
+  --> range.rs:21:13
    |
-19 |     (1...2).step_by(0);
-   |             ^^^^^^^
-
-error: use of deprecated item: replaced by `Iterator::step_by`
-  --> range.rs:22:7
-   |
-22 |     x.step_by(0);
-   |       ^^^^^^^
+21 |     let _ = x.step_by(0);
+   |             ^^^^^^^^^^^^
 
 error: It is more idiomatic to use v1.iter().enumerate()
-  --> range.rs:30:14
+  --> range.rs:29:14
    |
-30 |     let _x = v1.iter().zip(0..v1.len());
+29 |     let _x = v1.iter().zip(0..v1.len());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D range-zip-with-len` implied by `-D warnings`
 
 error: Iterator::step_by(0) will panic at runtime
-  --> range.rs:34:13
+  --> range.rs:33:13
    |
-34 |     let _ = v1.iter().step_by(2/3);
+33 |     let _ = v1.iter().step_by(2/3);
    |             ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D iterator-step-by-zero` implied by `-D warnings`
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 
 To learn more, run the command again with --verbose.
