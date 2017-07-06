@@ -69,30 +69,30 @@ warning: Breaking changes in `Efg`
    | |_____^
    |
 warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
-  --> $REPO_PATH/tests/examples/enum.rs:20:9
+  --> $REPO_PATH/tests/examples/enum.rs:49:9
    |
-20 |         Abc,
-   |         ^^^
-warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
-  --> $REPO_PATH/tests/examples/enum.rs:21:9
-   |
-21 |         Bcd(u8),
+49 |         Abc(u8),
    |         ^^^^^^^
-warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
-  --> $REPO_PATH/tests/examples/enum.rs:22:9
-   |
-22 |         Cde,
-   |         ^^^
 warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
-  --> $REPO_PATH/tests/examples/enum.rs:23:9
+  --> $REPO_PATH/tests/examples/enum.rs:50:9
    |
-23 |         Def { f: u8 },
+50 |         Bcd,
+   |         ^^^
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:51:9
+   |
+51 |         Cde { f: u8 },
    |         ^^^^^^^^^^^^^
-warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
-  --> $REPO_PATH/tests/examples/enum.rs:24:9
+warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:52:9
    |
-24 |         Efg(u8),
-   |         ^^^^^^^
+52 |         Def,
+   |         ^^^
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:53:9
+   |
+53 |         Efg { f: u8 },
+   |         ^^^^^^^^^^^^^
 warning: Breaking (VariantFieldRemoved { public: false, total_public: false })
   --> $REPO_PATH/tests/examples/enum.rs:26:15
    |

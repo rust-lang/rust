@@ -9,10 +9,10 @@ warning: TechnicallyBreaking changes in `Def`
    |
    = note: NonBreaking (TypeParameterAdded { defaulted: true })
 note: TechnicallyBreaking (ItemMadePublic)
-  --> $REPO_PATH/tests/examples/struct.rs:8:9
+  --> $REPO_PATH/tests/examples/struct.rs:37:9
    |
-8  |         field: u8,
-   |         ^^^^^^^^^
+37 |         pub field: A,
+   |         ^^^^^^^^^^^^
 
 warning: Breaking changes in `Def2`
   --> $REPO_PATH/tests/examples/struct.rs:40:5
@@ -44,10 +44,10 @@ warning: TechnicallyBreaking changes in `Fgh`
    | |_____^
    |
 note: TechnicallyBreaking (ItemMadePublic)
-  --> $REPO_PATH/tests/examples/struct.rs:20:9
+  --> $REPO_PATH/tests/examples/struct.rs:49:9
    |
-20 |         field: u8,
-   |         ^^^^^^^^^
+49 |         pub field: u8,
+   |         ^^^^^^^^^^^^^
 
 warning: Breaking changes in `Ghi`
   --> $REPO_PATH/tests/examples/struct.rs:52:5
@@ -58,10 +58,10 @@ warning: Breaking changes in `Ghi`
    | |_____^
    |
 warning: Breaking (ItemMadePrivate)
-  --> $REPO_PATH/tests/examples/struct.rs:24:9
+  --> $REPO_PATH/tests/examples/struct.rs:53:9
    |
-24 |         pub field: u8,
-   |         ^^^^^^^^^^^^^
+53 |         field: u8,
+   |         ^^^^^^^^^
 
 warning: Breaking changes in `Hij`
   --> $REPO_PATH/tests/examples/struct.rs:56:5
@@ -72,8 +72,10 @@ warning: Breaking changes in `Hij`
    | |_____^
    |
 warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
-  --> $REPO_PATH/tests/examples/struct.rs:27:5
+  --> $REPO_PATH/tests/examples/struct.rs:56:5
    |
-27 |     pub struct Hij(u8);
-   |     ^^^^^^^^^^^^^^^^^^^
+56 | /     pub struct Hij {
+57 | |         field: u8,
+58 | |     }
+   | |_____^
 

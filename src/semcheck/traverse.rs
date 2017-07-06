@@ -288,7 +288,7 @@ fn diff_adts(changes: &mut ChangeSet,
                         now_struct: new.ctor_kind == CtorKind::Fictive,
                         total_private: total_private,
                     };
-                    changes.add_binary(c, old_def_id, Some(tcx.def_span(old.did)));
+                    changes.add_binary(c, old_def_id, Some(tcx.def_span(new.did)));
 
                     continue;
                 }
@@ -301,11 +301,11 @@ fn diff_adts(changes: &mut ChangeSet,
                             if o.vis != Public && n.vis == Public {
                                 changes.add_binary(ItemMadePublic,
                                                    old_def_id,
-                                                   Some(tcx.def_span(o.did)));
+                                                   Some(tcx.def_span(n.did)));
                             } else if o.vis == Public && n.vis != Public {
                                 changes.add_binary(ItemMadePrivate,
                                                    old_def_id,
-                                                   Some(tcx.def_span(o.did)));
+                                                   Some(tcx.def_span(n.did)));
                             }
                         },
                         (Some(o), None) => {
