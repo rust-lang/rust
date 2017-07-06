@@ -1169,6 +1169,18 @@ fn test_range_step() {
 }
 
 #[test]
+#[should_panic]
+fn test_range_from_next_overflow() {
+    (255u8..).next();
+}
+
+#[test]
+#[should_panic]
+fn test_range_from_nth_overflow() {
+    (200u8..).nth(55);
+}
+
+#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));

@@ -10,7 +10,7 @@
 
 use convert::TryFrom;
 use mem;
-use ops::{self, Add, Sub};
+use ops;
 use usize;
 
 use super::{FusedIterator, TrustedLen};
@@ -36,14 +36,11 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// Replaces this step with `0`, returning itself
     fn replace_zero(&mut self) -> Self;
 
-    /// Adds one to this step, returning the result
-    fn add_one(&self) -> Self;
-
-    /// Subtracts one to this step, returning the result
-    fn sub_one(&self) -> Self;
-
     /// Add an usize, returning None on overflow
     fn add_usize(&self, n: usize) -> Option<Self>;
+
+    /// Subtracts an usize, returning None on overflow
+    fn sub_usize(&self, n: usize) -> Option<Self>;
 }
 
 // These are still macro-generated because the integer literals resolve to different types.
@@ -57,16 +54,6 @@ macro_rules! step_identical_methods {
         #[inline]
         fn replace_zero(&mut self) -> Self {
             mem::replace(self, 0)
-        }
-
-        #[inline]
-        fn add_one(&self) -> Self {
-            Add::add(*self, 1)
-        }
-
-        #[inline]
-        fn sub_one(&self) -> Self {
-            Sub::sub(*self, 1)
         }
     }
 }
@@ -92,6 +79,14 @@ macro_rules! step_impl_unsigned {
             fn add_usize(&self, n: usize) -> Option<Self> {
                 match <$t>::try_from(n) {
                     Ok(n_as_t) => self.checked_add(n_as_t),
+                    Err(_) => None,
+                }
+            }
+
+            #[inline]
+            fn sub_usize(&self, n: usize) -> Option<Self> {
+                match <$t>::try_from(n) {
+                    Ok(n_as_t) => self.checked_sub(n_as_t),
                     Err(_) => None,
                 }
             }
@@ -136,6 +131,23 @@ macro_rules! step_impl_signed {
                     Err(_) => None,
                 }
             }
+            #[inline]
+            fn sub_usize(&self, n: usize) -> Option<Self> {
+                match <$unsigned>::try_from(n) {
+                    Ok(n_as_unsigned) => {
+                        // Wrapping in unsigned space handles cases like
+                        // `-120_i8.add_usize(200) == Some(80_i8)`,
+                        // even though 200_usize is out of range for i8.
+                        let wrapped = (*self as $unsigned).wrapping_sub(n_as_unsigned) as $t;
+                        if wrapped <= *self {
+                            Some(wrapped)
+                        } else {
+                            None  // Subtraction underflowed
+                        }
+                    }
+                    Err(_) => None,
+                }
+            }
 
             step_identical_methods!();
         }
@@ -156,6 +168,11 @@ macro_rules! step_impl_no_between {
             #[inline]
             fn add_usize(&self, n: usize) -> Option<Self> {
                 self.checked_add(n as $t)
+            }
+
+            #[inline]
+            fn sub_usize(&self, n: usize) -> Option<Self> {
+                self.checked_sub(n as $t)
             }
 
             step_identical_methods!();
@@ -214,7 +231,8 @@ impl<A: Step> Iterator for ops::Range<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
-            let mut n = self.start.add_one();
+            // `start + 1` should not overflow since `end` exists such that `start < end`
+            let mut n = self.start.add_usize(1).expect("overflow in Range::next");
             mem::swap(&mut n, &mut self.start);
             Some(n)
         } else {
@@ -234,7 +252,8 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn nth(&mut self, n: usize) -> Option<A> {
         if let Some(plus_n) = self.start.add_usize(n) {
             if plus_n < self.end {
-                self.start = plus_n.add_one();
+                // `plus_n + 1` should not overflow since `end` exists such that `plus_n < end`
+                self.start = plus_n.add_usize(1).expect("overflow in Range::nth");
                 return Some(plus_n)
             }
         }
@@ -263,7 +282,8 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
-            self.end = self.end.sub_one();
+            // `end - 1` should not overflow since `start` exists such that `start < end`
+            self.end = self.end.sub_usize(1).expect("overflow in Range::nth_back");
             Some(self.end.clone())
         } else {
             None
@@ -280,7 +300,8 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let mut n = self.start.add_one();
+        // Overflow can happen here. Panic when it does.
+        let mut n = self.start.add_usize(1).expect("overflow in RangeFrom::next");
         mem::swap(&mut n, &mut self.start);
         Some(n)
     }
@@ -292,8 +313,9 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
+        // Overflow can happen here. Panic when it does.
         let plus_n = self.start.add_usize(n).expect("overflow in RangeFrom::nth");
-        self.start = plus_n.add_one();
+        self.start = plus_n.add_usize(1).expect("overflow in RangeFrom::nth");
         Some(plus_n)
     }
 }
@@ -311,7 +333,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
         match self.start.partial_cmp(&self.end) {
             Some(Less) => {
-                let n = self.start.add_one();
+                // `start + 1` should not overflow since `end` exists such that `start < end`
+                let n = self.start.add_usize(1).expect("overflow in RangeInclusive::next");
                 Some(mem::replace(&mut self.start, n))
             },
             Some(Equal) => {
@@ -342,7 +365,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
             match plus_n.partial_cmp(&self.end) {
                 Some(Less) => {
-                    self.start = plus_n.add_one();
+                    // `plus_n + 1` should not overflow since `end` exists such that `plus_n < end`
+                    self.start = plus_n.add_usize(1).expect("overflow in RangeInclusive::nth");
                     return Some(plus_n)
                 }
                 Some(Equal) => {
@@ -368,7 +392,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
 
         match self.start.partial_cmp(&self.end) {
             Some(Less) => {
-                let n = self.end.sub_one();
+                // `end - 1` should not overflow since `start` exists such that `start < end`
+                let n = self.end.sub_usize(1).expect("overflow in RangeInclusive::next_back");
                 Some(mem::replace(&mut self.end, n))
             },
             Some(Equal) => {
