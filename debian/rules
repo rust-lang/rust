@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 BUILD_DIR=build/dist
-RUST_VER=1.19.0-dev
+RUST_VER=1.20.0-dev
 
 %:
 	dh $@
