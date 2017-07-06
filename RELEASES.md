@@ -29,7 +29,7 @@ Compiler
   `aborting due to N previous errors`][42150] This was previously inaccurate and
   would only count certain kinds of errors.
 - [The compiler now supports Visual Studio 2017][42225]
-- [The compiler can now be built against LLVM 4.0][40123]
+- [The compiler is now be built against LLVM 4.0 by default][40123]
 - [Added a lot][42264] of [new error codes][42302]
 - [Added `target-feature=+crt-static` option][37406] [RFC 1721] Which allows
   libraries with C Run-time Libraries(CRT) to be statically linked.
