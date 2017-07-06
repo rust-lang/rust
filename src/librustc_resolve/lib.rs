@@ -2467,9 +2467,9 @@ impl<'a> Resolver<'a> {
                                                                  path_str, ident.node));
                             return err;
                         }
-                        ExprKind::MethodCall(ident, ..) => {
+                        ExprKind::MethodCall(ref segment, ..) => {
                             err.span_label(parent.span, format!("did you mean `{}::{}(...)`?",
-                                                                 path_str, ident.node));
+                                                                 path_str, segment.identifier));
                             return err;
                         }
                         _ => {}
@@ -3145,15 +3145,13 @@ impl<'a> Resolver<'a> {
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprKind::MethodCall(_, ref types, ref arguments) => {
+            ExprKind::MethodCall(ref segment, ref arguments) => {
                 let mut arguments = arguments.iter();
                 self.resolve_expr(arguments.next().unwrap(), Some(expr));
                 for argument in arguments {
                     self.resolve_expr(argument, None);
                 }
-                for ty in types.iter() {
-                    self.visit_ty(ty);
-                }
+                self.visit_path_segment(expr.span, segment);
             }
 
             ExprKind::Repeat(ref element, ref count) => {
@@ -3185,10 +3183,10 @@ impl<'a> Resolver<'a> {
                 let traits = self.get_traits_containing_item(name.node, ValueNS);
                 self.trait_map.insert(expr.id, traits);
             }
-            ExprKind::MethodCall(name, ..) => {
+            ExprKind::MethodCall(ref segment, ..) => {
                 debug!("(recording candidate traits for expr) recording traits for {}",
                        expr.id);
-                let traits = self.get_traits_containing_item(name.node, ValueNS);
+                let traits = self.get_traits_containing_item(segment.identifier, ValueNS);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
