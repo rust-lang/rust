@@ -17,6 +17,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.eliminate_frame_pointer = false;
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
+    base.stack_probes = true;
 
     Ok(Target {
         llvm_target: "x86_64-apple-darwin".to_string(),

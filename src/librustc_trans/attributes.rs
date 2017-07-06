@@ -11,12 +11,13 @@
 
 use std::ffi::{CStr, CString};
 
+use rustc::session::config::Sanitizer;
+
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
 pub use syntax::attr::{self, InlineAttr};
 use syntax::ast;
 use context::CrateContext;
-
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
@@ -69,6 +70,28 @@ pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
     }
 }
 
+pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
+    // Only use stack probes if the target specification indicates that we
+    // should be using stack probes
+    if !ccx.sess().target.target.options.stack_probes {
+        return
+    }
+
+    // Currently stack probes seem somewhat incompatible with the address
+    // sanitizer. With asan we're already protected from stack overflow anyway
+    // so we don't really need stack probes regardless.
+    match ccx.sess().opts.debugging_opts.sanitizer {
+        Some(Sanitizer::Address) => return,
+        _ => {}
+    }
+
+    // Flag our internal `__rust_probestack` function as the stack probe symbol.
+    // This is defined in the `compiler-builtins` crate for each architecture.
+    llvm::AddFunctionAttrStringValue(
+        llfn, llvm::AttributePlace::Function,
+        cstr("probe-stack\0"), cstr("__rust_probestack\0"));
+}
+
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
@@ -76,6 +99,7 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
 
     set_frame_pointer_elimination(ccx, llfn);
+    set_probestack(ccx, llfn);
     let mut target_features = vec![];
     for attr in attrs {
         if attr.check_name("target_feature") {
