@@ -13,12 +13,7 @@
 // should look like.
 
 // ignore-windows
-
-// Ignore 32 bit targets:
-// ignore-x86
-// ignore-arm
-
-// ignore-emscripten
+// ignore-32bit
 
 #![feature(i128_type)]
 

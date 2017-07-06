@@ -40,15 +40,8 @@ impl EarlyProps {
                     None,
                     &mut |ln| {
             props.ignore =
-                props.ignore || config.parse_name_directive(ln, "ignore-test") ||
-                config.parse_name_directive(ln, &ignore_target(config)) ||
-                config.parse_name_directive(ln, &ignore_architecture(config)) ||
-                config.parse_name_directive(ln, &ignore_stage(config)) ||
-                config.parse_name_directive(ln, &ignore_env(config)) ||
-                (config.mode == common::Pretty &&
-                 config.parse_name_directive(ln, "ignore-pretty")) ||
-                (config.target != config.host &&
-                 config.parse_name_directive(ln, "ignore-cross-compile")) ||
+                props.ignore ||
+                config.parse_cfg_name_directive(ln, "ignore") ||
                 ignore_gdb(config, ln) ||
                 ignore_lldb(config, ln) ||
                 ignore_llvm(config, ln);
@@ -62,26 +55,9 @@ impl EarlyProps {
 
         return props;
 
-        fn ignore_target(config: &Config) -> String {
-            format!("ignore-{}", util::get_os(&config.target))
-        }
-        fn ignore_architecture(config: &Config) -> String {
-            format!("ignore-{}", util::get_arch(&config.target))
-        }
-        fn ignore_stage(config: &Config) -> String {
-            format!("ignore-{}", config.stage_id.split('-').next().unwrap())
-        }
-        fn ignore_env(config: &Config) -> String {
-            format!("ignore-{}",
-                    util::get_env(&config.target).unwrap_or("<unknown>"))
-        }
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if config.mode != common::DebugInfoGdb {
                 return false;
-            }
-
-            if config.parse_name_directive(line, "ignore-gdb") {
-                return true;
             }
 
             if let Some(actual_version) = config.gdb_version {
@@ -142,10 +118,6 @@ impl EarlyProps {
         fn ignore_lldb(config: &Config, line: &str) -> bool {
             if config.mode != common::DebugInfoLldb {
                 return false;
-            }
-
-            if config.parse_name_directive(line, "ignore-lldb") {
-                return true;
             }
 
             if let Some(ref actual_version) = config.lldb_version {
@@ -522,6 +494,30 @@ impl Config {
             testfile.file_name().map(PathBuf::from)
         } else {
             None
+        }
+    }
+
+    /// Parses a name-value directive which contains config-specific information, e.g. `ignore-x86`
+    /// or `normalize-stderr-32bit`. Returns `true` if the line matches it.
+    fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> bool {
+        if line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-') {
+            let name = line[prefix.len()+1 ..].split(&[':', ' '][..]).next().unwrap();
+
+            name == "test" ||
+                name == util::get_os(&self.target) ||               // target
+                name == util::get_arch(&self.target) ||             // architecture
+                name == util::get_pointer_width(&self.target) ||    // pointer width
+                name == self.stage_id.split('-').next().unwrap() || // stage
+                Some(name) == util::get_env(&self.target) ||        // env
+                match self.mode {
+                    common::DebugInfoGdb => name == "gdb",
+                    common::DebugInfoLldb => name == "lldb",
+                    common::Pretty => name == "pretty",
+                    _ => false,
+                } ||
+                (self.target != self.host && name == "cross-compile")
+        } else {
+            false
         }
     }
 
