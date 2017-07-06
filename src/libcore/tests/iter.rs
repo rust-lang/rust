@@ -1077,6 +1077,26 @@ fn test_range() {
 }
 
 #[test]
+fn test_range_inclusive_exhaustion() {
+    let mut r = 10...10;
+    assert_eq!(r.next(), Some(10));
+    assert_eq!(r, 1...0);
+
+    let mut r = 10...10;
+    assert_eq!(r.next_back(), Some(10));
+    assert_eq!(r, 1...0);
+
+    let mut r = 10...12;
+    assert_eq!(r.nth(2), Some(12));
+    assert_eq!(r, 1...0);
+
+    let mut r = 10...12;
+    assert_eq!(r.nth(5), None);
+    assert_eq!(r, 1...0);
+
+}
+
+#[test]
 fn test_range_nth() {
     assert_eq!((10..15).nth(0), Some(10));
     assert_eq!((10..15).nth(1), Some(11));
