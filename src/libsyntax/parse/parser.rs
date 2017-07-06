@@ -2798,7 +2798,22 @@ impl<'a> Parser<'a> {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue
             } else if op == AssocOp::Colon {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
+                lhs = match self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type) {
+                    Ok(lhs) => lhs,
+                    Err(mut err) => {
+                        err.span_label(self.span,
+                                       "expecting a type here because of type ascription");
+                        let cm = self.sess.codemap();
+                        let cur_pos = cm.lookup_char_pos(self.span.lo);
+                        let op_pos = cm.lookup_char_pos(cur_op_span.hi);
+                        if cur_pos.line != op_pos.line {
+                            err.span_suggestion(cur_op_span,
+                                                "did you mean to end the statement here instead?",
+                                                ";".to_string());
+                        }
+                        return Err(err);
+                    }
+                };
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotDot {
                 // If we didn’t have to handle `x..`/`x...`, it would be pretty easy to
