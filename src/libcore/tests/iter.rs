@@ -1080,20 +1080,41 @@ fn test_range() {
 fn test_range_inclusive_exhaustion() {
     let mut r = 10...10;
     assert_eq!(r.next(), Some(10));
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 11...10);
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 11...10);
 
     let mut r = 10...10;
     assert_eq!(r.next_back(), Some(10));
+    assert_eq!(r, 10...9);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 10...9);
+
+    let mut r = 0_u32...0;
+    assert_eq!(r.next_back(), Some(0));
+    assert_eq!(r, 1...0);
+    assert_eq!(r.next_back(), None);
     assert_eq!(r, 1...0);
 
     let mut r = 10...12;
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 13...12);
 
     let mut r = 10...12;
     assert_eq!(r.nth(5), None);
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 13...12);
 
+    let mut r = 127_i8...127;
+    assert_eq!(r.next(), Some(127));
+    assert_eq!(r, 127...126);
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 127...126);
+
+    let mut r = 255_u8...255;
+    assert_eq!(r.next(), Some(255));
+    assert_eq!(r, 255...254);
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 255...254);
 }
 
 #[test]
@@ -1142,7 +1163,7 @@ fn test_range_inclusive_nth() {
     assert_eq!(r.is_empty(), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, 1...0);  // We may not want to document/promise this detail
+    assert_eq!(r, 21...20);
 }
 
 #[test]
@@ -1263,40 +1284,6 @@ fn test_chain_fold() {
 }
 
 #[test]
-fn test_step_replace_unsigned() {
-    let mut x = 4u32;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
-
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
-}
-
-#[test]
-fn test_step_replace_signed() {
-    let mut x = 4i32;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
-
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
-}
-
-#[test]
-fn test_step_replace_no_between() {
-    let mut x = 4u128;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
-
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
+fn test_step_add_usize() {
+    assert_eq!((-120_i8).add_usize(200), Some(80));
 }

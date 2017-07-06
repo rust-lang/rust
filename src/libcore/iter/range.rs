@@ -30,32 +30,11 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// without overflow.
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
-    /// Replaces this step with `1`, returning itself
-    fn replace_one(&mut self) -> Self;
-
-    /// Replaces this step with `0`, returning itself
-    fn replace_zero(&mut self) -> Self;
-
     /// Add an usize, returning None on overflow
     fn add_usize(&self, n: usize) -> Option<Self>;
 
     /// Subtracts an usize, returning None on overflow
     fn sub_usize(&self, n: usize) -> Option<Self>;
-}
-
-// These are still macro-generated because the integer literals resolve to different types.
-macro_rules! step_identical_methods {
-    () => {
-        #[inline]
-        fn replace_one(&mut self) -> Self {
-            mem::replace(self, 1)
-        }
-
-        #[inline]
-        fn replace_zero(&mut self) -> Self {
-            mem::replace(self, 0)
-        }
-    }
 }
 
 macro_rules! step_impl_unsigned {
@@ -90,8 +69,6 @@ macro_rules! step_impl_unsigned {
                     Err(_) => None,
                 }
             }
-
-            step_identical_methods!();
         }
     )*)
 }
@@ -148,8 +125,6 @@ macro_rules! step_impl_signed {
                     Err(_) => None,
                 }
             }
-
-            step_identical_methods!();
         }
     )*)
 }
@@ -174,8 +149,6 @@ macro_rules! step_impl_no_between {
             fn sub_usize(&self, n: usize) -> Option<Self> {
                 self.checked_sub(n as $t)
             }
-
-            step_identical_methods!();
         }
     )*)
 }
@@ -338,8 +311,15 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
                 Some(mem::replace(&mut self.start, n))
             },
             Some(Equal) => {
-                let last = self.start.replace_one();
-                self.end.replace_zero();
+                let last;
+                if let Some(end_plus_one) = self.end.add_usize(1) {
+                    last = mem::replace(&mut self.start, end_plus_one);
+                } else {
+                    last = self.start.clone();
+                    // `start == end`, and `end + 1` underflowed.
+                    // `start - 1` overflowing would imply a type with only one valid value?
+                    self.end = self.start.sub_usize(1).expect("overflow in RangeInclusive::next");
+                }
                 Some(last)
             },
             _ => None,
@@ -370,16 +350,26 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
                     return Some(plus_n)
                 }
                 Some(Equal) => {
-                    self.start.replace_one();
-                    self.end.replace_zero();
+                    if let Some(end_plus_one) = self.end.add_usize(1) {
+                        self.start = end_plus_one
+                    } else {
+                        // `start == end`, and `end + 1` underflowed.
+                        // `start - 1` overflowing would imply a type with only one valid value?
+                        self.end = self.start.sub_usize(1).expect("overflow in RangeInclusive::nth")
+                    }
                     return Some(plus_n)
                 }
                 _ => {}
             }
         }
 
-        self.start.replace_one();
-        self.end.replace_zero();
+        if let Some(end_plus_one) = self.end.add_usize(1) {
+            self.start = end_plus_one
+        } else {
+            // `start == end`, and `end + 1` underflowed.
+            // `start - 1` overflowing would imply a type with only one valid value?
+            self.end = self.start.sub_usize(1).expect("overflow in RangeInclusive::nth")
+        }
         None
     }
 }
@@ -397,8 +387,15 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
                 Some(mem::replace(&mut self.end, n))
             },
             Some(Equal) => {
-                let last = self.end.replace_zero();
-                self.start.replace_one();
+                let last;
+                if let Some(start_minus_one) = self.start.sub_usize(1) {
+                    last = mem::replace(&mut self.end, start_minus_one);
+                } else {
+                    last = self.end.clone();
+                    // `start == end`, and `start - 1` underflowed.
+                    // `end + 1` overflowing would imply a type with only one valid value?
+                    self.start = self.start.add_usize(1).expect("overflow in RangeInclusive::next_back");
+                }
                 Some(last)
             },
             _ => None,
