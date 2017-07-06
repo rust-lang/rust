@@ -14,5 +14,18 @@ fn main() {
 
     println!("{}", a as usize > b);
     println!("{}", a as usize < b);
-    println!("{}", a as usize < 4);
+    println!("{}", a
+                   as
+                   usize
+                   <
+                   4);
+    println!("{}", a
+
+
+                   as
+
+
+                   usize
+                   <
+                   5);
 }

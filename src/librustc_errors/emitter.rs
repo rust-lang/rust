@@ -1060,44 +1060,72 @@ impl EmitterWriter {
                                -> io::Result<()> {
         use std::borrow::Borrow;
 
-        let primary_span = suggestion.substitution_spans().next().unwrap();
+        let primary_sub = &suggestion.substitution_parts[0];
         if let Some(ref cm) = self.cm {
             let mut buffer = StyledBuffer::new();
 
-            let lines = cm.span_to_lines(primary_span).unwrap();
+            let lines = cm.span_to_lines(primary_sub.span).unwrap();
 
             assert!(!lines.lines.is_empty());
 
             buffer.append(0, &level.to_string(), Style::Level(level.clone()));
             buffer.append(0, ": ", Style::HeaderMsg);
             self.msg_to_buffer(&mut buffer,
-                            &[(suggestion.msg.to_owned(), Style::NoStyle)],
-                            max_line_num_len,
-                            "suggestion",
-                            Some(Style::HeaderMsg));
+                               &[(suggestion.msg.to_owned(), Style::NoStyle)],
+                               max_line_num_len,
+                               "suggestion",
+                               Some(Style::HeaderMsg));
 
             let suggestions = suggestion.splice_lines(cm.borrow());
-            let mut row_num = 1;
-            for complete in suggestions.iter().take(MAX_SUGGESTIONS) {
-
-                // print the suggestion without any line numbers, but leave
-                // space for them. This helps with lining up with previous
-                // snippets from the actual error being reported.
+            let span_start_pos = cm.lookup_char_pos(primary_sub.span.lo);
+            let line_start = span_start_pos.line;
+            draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
+            let mut row_num = 2;
+            for (&(ref complete, show_underline), ref sub) in suggestions
+                    .iter().zip(primary_sub.substitutions.iter()).take(MAX_SUGGESTIONS)
+            {
+                let mut line_pos = 0;
+                // Only show underline if there's a single suggestion and it is a single line
                 let mut lines = complete.lines();
                 for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
+                    // Print the span column to avoid confusion
+                    buffer.puts(row_num,
+                                0,
+                                &((line_start + line_pos).to_string()),
+                                Style::LineNumber);
+                    // print the suggestion
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                     buffer.append(row_num, line, Style::NoStyle);
+                    line_pos += 1;
                     row_num += 1;
+                    // Only show an underline in the suggestions if the suggestion is not the
+                    // entirety of the code being shown and the displayed code is not multiline.
+                    if show_underline {
+                        draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
+                        let sub_len = sub.trim_right().len();
+                        let underline_start = span_start_pos.col.0;
+                        let underline_end = span_start_pos.col.0 + sub_len;
+                        for p in underline_start..underline_end {
+                            buffer.putc(row_num,
+                                        max_line_num_len + 3 + p,
+                                        '^',
+                                        Style::UnderlinePrimary);
+                        }
+                        row_num += 1;
+                    }
                 }
 
                 // if we elided some lines, add an ellipsis
                 if let Some(_) = lines.next() {
-                    buffer.append(row_num, "...", Style::NoStyle);
+                    buffer.puts(row_num, max_line_num_len - 1, "...", Style::LineNumber);
+                } else if !show_underline {
+                    draw_col_separator_no_space(&mut buffer, row_num, max_line_num_len + 1);
+                    row_num += 1;
                 }
             }
             if suggestions.len() > MAX_SUGGESTIONS {
                 let msg = format!("and {} other candidates", suggestions.len() - MAX_SUGGESTIONS);
-                buffer.append(row_num, &msg, Style::NoStyle);
+                buffer.puts(row_num, 0, &msg, Style::NoStyle);
             }
             emit_to_destination(&buffer.render(), level, &mut self.dst)?;
         }
