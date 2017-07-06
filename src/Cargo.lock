@@ -276,7 +276,6 @@ dependencies = [
 name = "compiler_builtins"
 version = "0.0.0"
 dependencies = [
- "build_helper 0.1.0",
  "core 0.0.0",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

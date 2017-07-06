@@ -553,10 +553,10 @@ pub fn rust_src(build: &Build) {
         "src/libstd",
         "src/libstd_unicode",
         "src/libunwind",
+        "src/rustc/compiler_builtins_shim",
         "src/rustc/libc_shim",
         "src/libtest",
         "src/libterm",
-        "src/compiler-rt",
         "src/jemalloc",
         "src/libprofiler_builtins",
     ];

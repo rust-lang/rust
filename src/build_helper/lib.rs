@@ -239,7 +239,10 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str) -> Result<NativeLibBoiler
         ),
         _ => return Err(()),
     };
-    native_lib_boilerplate("compiler-rt", sanitizer_name, &link_name, search_path)
+    native_lib_boilerplate("libcompiler_builtins/compiler-rt",
+                           sanitizer_name,
+                           &link_name,
+                           search_path)
 }
 
 fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {

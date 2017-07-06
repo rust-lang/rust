@@ -162,6 +162,18 @@ impl<'a, 'tcx> TransItem<'tcx> {
             llvm::SetUniqueComdat(ccx.llmod(), lldecl);
         }
 
+        // If we're compiling the compiler-builtins crate, e.g. the equivalent of
+        // compiler-rt, then we want to implicitly compile everything with hidden
+        // visibility as we're going to link this object all over the place but
+        // don't want the symbols to get exported.
+        if linkage != llvm::Linkage::InternalLinkage &&
+           linkage != llvm::Linkage::PrivateLinkage &&
+           attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
+            unsafe {
+                llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
+            }
+        }
+
         debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
         if common::is_inline_instance(ccx.tcx(), &instance) {
             attributes::inline(lldecl, attributes::InlineAttr::Hint);

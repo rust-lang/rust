@@ -30,7 +30,6 @@ use context::CrateContext;
 use common;
 use type_::Type;
 use value::Value;
-use syntax::attr;
 
 use std::ffi::CString;
 
@@ -85,16 +84,6 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
                 llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
             },
             _ => {}
-        }
-    }
-
-    // If we're compiling the compiler-builtins crate, e.g. the equivalent of
-    // compiler-rt, then we want to implicitly compile everything with hidden
-    // visibility as we're going to link this object all over the place but
-    // don't want the symbols to get exported.
-    if attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
-        unsafe {
-            llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
     }
 

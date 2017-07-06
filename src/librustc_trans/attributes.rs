@@ -13,7 +13,7 @@ use std::ffi::{CStr, CString};
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
-pub use syntax::attr::InlineAttr;
+pub use syntax::attr::{self, InlineAttr};
 use syntax::ast;
 use context::CrateContext;
 

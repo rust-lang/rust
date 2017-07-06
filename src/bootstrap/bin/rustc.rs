@@ -137,6 +137,11 @@ fn main() {
             }
         }
 
+        let crate_name = args.windows(2)
+            .find(|a| &*a[0] == "--crate-name")
+            .unwrap();
+        let crate_name = &*crate_name[1];
+
         // If we're compiling specifically the `panic_abort` crate then we pass
         // the `-C panic=abort` option. Note that we do not do this for any
         // other crate intentionally as this is the only crate for now that we
@@ -145,9 +150,7 @@ fn main() {
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.
-        let is_panic_abort = args.windows(2)
-            .any(|a| &*a[0] == "--crate-name" && &*a[1] == "panic_abort");
-        if is_panic_abort {
+        if crate_name == "panic_abort" {
             cmd.arg("-C").arg("panic=abort");
         }
 
@@ -162,7 +165,15 @@ fn main() {
             Ok(s) => if s == "true" { "y" } else { "n" },
             Err(..) => "n",
         };
-        cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
+
+        // The compiler builtins are pretty sensitive to symbols referenced in
+        // libcore and such, so we never compile them with debug assertions.
+        if crate_name == "compiler_builtins" {
+            cmd.arg("-C").arg("debug-assertions=no");
+        } else {
+            cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
+        }
+
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
