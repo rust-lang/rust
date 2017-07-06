@@ -1305,9 +1305,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                    &mut candidates)?;
          } else if self.tcx().lang_items.unsize_trait() == Some(def_id) {
              self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-         } else if self.tcx().lang_items.gen_trait() == Some(def_id) {
-             self.assemble_generator_candidates(obligation, &mut candidates)?;
          } else {
+             self.assemble_generator_candidates(obligation, &mut candidates)?;
              self.assemble_closure_candidates(obligation, &mut candidates)?;
              self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
              self.assemble_candidates_from_impls(obligation, &mut candidates)?;
@@ -1497,6 +1496,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                    candidates: &mut SelectionCandidateSet<'tcx>)
                                    -> Result<(),SelectionError<'tcx>>
     {
+        if self.tcx().lang_items.gen_trait() != Some(obligation.predicate.def_id()) {
+            return Ok(());
+        }
+
         let self_ty = *obligation.self_ty().skip_binder();
         let (closure_def_id, substs) = match self_ty.sty {
             ty::TyGenerator(id, substs, _) => (id, substs),
