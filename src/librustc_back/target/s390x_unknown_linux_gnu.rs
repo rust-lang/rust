@@ -21,7 +21,7 @@ pub fn target() -> TargetResult {
     base.features = "-vector".to_string();
     base.max_atomic_width = Some(64);
     // see #36994
-    base.exe_allocation_crate = "alloc_system".to_string();
+    base.exe_allocation_crate = None;
 
     Ok(Target {
         llvm_target: "s390x-unknown-linux-gnu".to_string(),

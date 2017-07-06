@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(alloc_jemalloc)]
+// no-prefer-dynamic
 
-#[cfg(any(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")),
-          target_os = "macos"))]
-extern crate alloc_jemalloc;
+#![feature(global_allocator, allocator_api)]
+#![crate_type = "rlib"]
 
-fn main() {
-    println!("{:?}", Box::new(3));
-}
+use std::heap::System;
+
+#[global_allocator]
+static A: System = System;

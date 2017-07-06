@@ -47,6 +47,7 @@ use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
 use rustc_incremental::IncrementalHashesMap;
 use abi;
+use allocator;
 use mir::lvalue::LvalueRef;
 use attributes;
 use builder::Builder;
@@ -1086,7 +1087,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             llmod: metadata_llmod,
         }),
     };
+
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
@@ -1097,6 +1100,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             crate_name: tcx.crate_name(LOCAL_CRATE),
             modules: vec![],
             metadata_module: metadata_module,
+            allocator_module: None,
             link: link_meta,
             metadata: metadata,
             exported_symbols: empty_exported_symbols,
@@ -1296,6 +1300,41 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         create_imps(sess, &llvm_modules);
     }
 
+    // Translate an allocator shim, if any
+    //
+    // If LTO is enabled and we've got some previous LLVM module we translated
+    // above, then we can just translate directly into that LLVM module. If not,
+    // however, we need to create a separate module and trans into that. Note
+    // that the separate translation is critical for the standard library where
+    // the rlib's object file doesn't have allocator functions but the dylib
+    // links in an object file that has allocator functions. When we're
+    // compiling a final LTO artifact, though, there's no need to worry about
+    // this as we're not working with this dual "rlib/dylib" functionality.
+    let allocator_module = tcx.sess.allocator_kind.get().and_then(|kind| unsafe {
+        if sess.lto() && llvm_modules.len() > 0 {
+            time(tcx.sess.time_passes(), "write allocator module", || {
+                allocator::trans(tcx, &llvm_modules[0], kind)
+            });
+            None
+        } else {
+            let (llcx, llmod) =
+                context::create_context_and_module(tcx.sess, "allocator");
+            let modules = ModuleLlvm {
+                llmod: llmod,
+                llcx: llcx,
+            };
+            time(tcx.sess.time_passes(), "write allocator module", || {
+                allocator::trans(tcx, &modules, kind)
+            });
+
+            Some(ModuleTranslation {
+                name: link::ALLOCATOR_MODULE_NAME.to_string(),
+                symbol_name_hash: 0, // we always rebuild allocator shims
+                source: ModuleSource::Translated(modules),
+            })
+        }
+    });
+
     let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
 
     let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
@@ -1313,6 +1352,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         crate_name: tcx.crate_name(LOCAL_CRATE),
         modules: modules,
         metadata_module: metadata_module,
+        allocator_module: allocator_module,
         link: link_meta,
         metadata: metadata,
         exported_symbols: exported_symbols,

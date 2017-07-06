@@ -43,6 +43,8 @@ dependencies = [
 name = "alloc_jemalloc"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
+ "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "core 0.0.0",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -53,6 +55,7 @@ dependencies = [
 name = "alloc_system"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
 ]
@@ -1120,9 +1123,20 @@ version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "rustc_allocator"
+version = "0.0.0"
+dependencies = [
+ "rustc 0.0.0",
+ "rustc_errors 0.0.0",
+ "syntax 0.0.0",
+ "syntax_pos 0.0.0",
+]
+
+[[package]]
 name = "rustc_asan"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1196,6 +1210,7 @@ dependencies = [
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
+ "rustc_allocator 0.0.0",
  "rustc_back 0.0.0",
  "rustc_borrowck 0.0.0",
  "rustc_const_eval 0.0.0",
@@ -1264,6 +1279,7 @@ dependencies = [
 name = "rustc_lsan"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1308,6 +1324,7 @@ dependencies = [
 name = "rustc_msan"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1390,6 +1407,7 @@ dependencies = [
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-demangle 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_allocator 0.0.0",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",

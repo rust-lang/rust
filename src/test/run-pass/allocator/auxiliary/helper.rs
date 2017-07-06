@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,10 @@
 
 // no-prefer-dynamic
 
-#![feature(allocator)]
-#![no_std]
-#![allocator]
 #![crate_type = "rlib"]
 
-extern crate needs_allocator;
+use std::fmt;
 
+pub fn work_with(p: &fmt::Debug) {
+    drop(p);
+}

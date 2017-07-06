@@ -698,6 +698,7 @@ extern "C" {
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
     pub fn LLVMRustGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
     // Operations on functions
     pub fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;

@@ -224,7 +224,7 @@ impl Error for ! {
 
 #[unstable(feature = "allocator_api",
            reason = "the precise API and guarantees it provides may be tweaked.",
-           issue = "27700")]
+           issue = "32838")]
 impl Error for allocator::AllocErr {
     fn description(&self) -> &str {
         allocator::AllocErr::description(self)
@@ -233,7 +233,7 @@ impl Error for allocator::AllocErr {
 
 #[unstable(feature = "allocator_api",
            reason = "the precise API and guarantees it provides may be tweaked.",
-           issue = "27700")]
+           issue = "32838")]
 impl Error for allocator::CannotReallocInPlace {
     fn description(&self) -> &str {
         allocator::CannotReallocInPlace::description(self)

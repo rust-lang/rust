@@ -230,11 +230,6 @@
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
 
-// Always use alloc_system during stage0 since we don't know if the alloc_*
-// crate the stage0 compiler will pick by default is available (most
-// obviously, if the user has disabled jemalloc in `./configure`).
-#![cfg_attr(any(stage0, feature = "force_alloc_system"), feature(alloc_system))]
-
 // Turn warnings into errors, but only after stage0, where it can be useful for
 // code to emit warnings during language transitions
 #![deny(warnings)]
@@ -246,6 +241,8 @@
 // compiler details that will never be stable
 #![feature(alloc)]
 #![feature(allocator_api)]
+#![feature(alloc_system)]
+#![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_consts)]
@@ -322,6 +319,8 @@
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(test, feature(float_bits_conv))]
 
+#![cfg_attr(not(stage0), default_lib_allocator)]
+
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
 #[prelude_import]
@@ -342,14 +341,12 @@ extern crate core as __core;
 #[macro_use]
 #[macro_reexport(vec, format)]
 extern crate alloc;
+extern crate alloc_system;
 extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
 extern crate unwind;
-
-#[cfg(any(stage0, feature = "force_alloc_system"))]
-extern crate alloc_system;
 
 // compiler-rt intrinsics
 extern crate compiler_builtins;
@@ -465,6 +462,7 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
+pub mod heap;
 
 // Platform-abstraction modules
 #[macro_use]

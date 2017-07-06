@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+#![feature(global_allocator)]
 
-#![feature(alloc_system)]
+#[global_allocator]
+fn foo() {} //~ ERROR: allocators must be statics
 
-extern crate alloc_system;
-
-fn main() {
-    println!("{:?}", Box::new(3));
-}
+fn main() {}

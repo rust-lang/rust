@@ -63,7 +63,6 @@ pub fn opts() -> TargetOptions {
         is_like_windows: true,
         is_like_msvc: true,
         pre_link_args: args,
-        exe_allocation_crate: "alloc_system".to_string(),
 
         .. Default::default()
     }

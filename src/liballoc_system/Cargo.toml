@@ -12,3 +12,6 @@ doc = false
 [dependencies]
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
+
+[target.'cfg(not(stage0))'.dependencies]
+alloc = { path = "../liballoc" }

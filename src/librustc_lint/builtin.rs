@@ -1071,7 +1071,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemFn(.., ref generics, _) => {
-                if attr::contains_name(&it.attrs, "no_mangle") {
+                if attr::contains_name(&it.attrs, "no_mangle") &&
+                   !attr::contains_name(&it.attrs, "linkage") {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = format!("function {} is marked #[no_mangle], but not exported",
                                           it.name);

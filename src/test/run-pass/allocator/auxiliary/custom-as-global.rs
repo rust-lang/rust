@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,18 @@
 
 // no-prefer-dynamic
 
-#![feature(needs_allocator)]
-#![no_std]
-#![needs_allocator]
+#![feature(global_allocator)]
 #![crate_type = "rlib"]
+
+extern crate custom;
+
+use std::sync::atomic::{ATOMIC_USIZE_INIT, Ordering};
+
+use custom::A;
+
+#[global_allocator]
+static ALLOCATOR: A = A(ATOMIC_USIZE_INIT);
+
+pub fn get() -> usize {
+    ALLOCATOR.0.load(Ordering::SeqCst)
+}

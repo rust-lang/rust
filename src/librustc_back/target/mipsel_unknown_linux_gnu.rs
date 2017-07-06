@@ -29,7 +29,7 @@ pub fn target() -> TargetResult {
             max_atomic_width: Some(32),
 
             // see #36994
-            exe_allocation_crate: "alloc_system".to_string(),
+            exe_allocation_crate: None,
 
             ..super::linux_base::opts()
         },

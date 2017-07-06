@@ -34,6 +34,7 @@ extern crate graphviz;
 extern crate env_logger;
 extern crate libc;
 extern crate rustc;
+extern crate rustc_allocator;
 extern crate rustc_back;
 extern crate rustc_borrowck;
 extern crate rustc_const_eval;

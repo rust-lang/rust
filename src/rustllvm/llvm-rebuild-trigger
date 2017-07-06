@@ -1,4 +1,8 @@
 # If this file is modified, then llvm will be (optionally) cleaned and then rebuilt.
 # The actual contents of this file do not matter, but to trigger a change on the
 # build bots then the contents should be changed so git updates the mtime.
+<<<<<<< 37849a002ed91ac2b80aeb2172364b4e19250e05
 2017-06-27
+=======
+2017-06-26
+>>>>>>> rustc: Implement the #[global_allocator] attribute

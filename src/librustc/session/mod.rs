@@ -16,6 +16,7 @@ use hir::def_id::{CrateNum, DefIndex};
 
 use lint;
 use middle::cstore::CrateStore;
+use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::DebugInfoLevel;
@@ -106,6 +107,7 @@ pub struct Session {
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
     pub injected_allocator: Cell<Option<CrateNum>>,
+    pub allocator_kind: Cell<Option<AllocatorKind>>,
     pub injected_panic_runtime: Cell<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
@@ -140,6 +142,9 @@ pub struct Session {
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
     pub jobserver_from_env: Option<Client>,
+
+    /// Metadata about the allocators for the current crate being compiled
+    pub has_global_allocator: Cell<bool>,
 }
 
 pub struct PerfStats {
@@ -715,6 +720,7 @@ pub fn build_session_(sopts: config::Options,
         type_length_limit: Cell::new(1048576),
         next_node_id: Cell::new(NodeId::new(1)),
         injected_allocator: Cell::new(None),
+        allocator_kind: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
         imported_macro_spans: RefCell::new(HashMap::new()),
         incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
@@ -732,7 +738,6 @@ pub fn build_session_(sopts: config::Options,
         print_fuel_crate: print_fuel_crate,
         print_fuel: print_fuel,
         out_of_fuel: Cell::new(false),
-
         // Note that this is unsafe because it may misinterpret file descriptors
         // on Unix as jobserver file descriptors. We hopefully execute this near
         // the beginning of the process though to ensure we don't get false
@@ -750,6 +755,7 @@ pub fn build_session_(sopts: config::Options,
             });
             (*GLOBAL_JOBSERVER).clone()
         },
+        has_global_allocator: Cell::new(false),
     };
 
     sess

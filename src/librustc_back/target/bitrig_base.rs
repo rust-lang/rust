@@ -19,7 +19,6 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         has_rpath: true,
         position_independent_executables: true,
-        exe_allocation_crate: "alloc_system".to_string(),
 
         .. Default::default()
     }

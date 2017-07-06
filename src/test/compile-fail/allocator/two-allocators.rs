@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allocator] //~ ERROR: experimental feature
+#![feature(global_allocator, allocator_api)]
+
+use std::heap::System;
+
+#[global_allocator]
+static A: System = System;
+#[global_allocator]
+static B: System = System;
+//~^ ERROR: cannot define more than one #[global_allocator]
 
 fn main() {}
+

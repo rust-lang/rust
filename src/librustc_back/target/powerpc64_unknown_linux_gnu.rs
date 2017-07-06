@@ -18,7 +18,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(64);
 
     // see #36994
-    base.exe_allocation_crate = "alloc_system".to_string();
+    base.exe_allocation_crate = None;
 
     Ok(Target {
         llvm_target: "powerpc64-unknown-linux-gnu".to_string(),

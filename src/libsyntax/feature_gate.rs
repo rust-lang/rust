@@ -143,7 +143,6 @@ declare_features! (
     (active, placement_in_syntax, "1.0.0", Some(27779)),
     (active, unboxed_closures, "1.0.0", Some(29625)),
 
-    (active, allocator, "1.0.0", Some(27389)),
     (active, fundamental, "1.0.0", Some(29635)),
     (active, main, "1.0.0", Some(29634)),
     (active, needs_allocator, "1.4.0", Some(27389)),
@@ -366,6 +365,10 @@ declare_features! (
 
     // Allows unsized tuple coercion.
     (active, unsized_tuple_coercion, "1.20.0", Some(42877)),
+
+    // global allocators and their internals
+    (active, global_allocator, "1.20.0", None),
+    (active, allocator_internals, "1.20.0", None),
 );
 
 declare_features! (
@@ -385,6 +388,7 @@ declare_features! (
     // rustc internal
     (removed, unmarked_api, "1.0.0", None),
     (removed, pushpop_unsafe, "1.2.0", None),
+    (removed, allocator, "1.0.0", None),
 );
 
 declare_features! (
@@ -591,16 +595,22 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                              "the `#[rustc_on_unimplemented]` attribute \
                                               is an experimental feature",
                                              cfg_fn!(on_unimplemented))),
-    ("allocator", Whitelisted, Gated(Stability::Unstable,
-                                     "allocator",
-                                     "the `#[allocator]` attribute is an experimental feature",
-                                     cfg_fn!(allocator))),
+    ("global_allocator", Normal, Gated(Stability::Unstable,
+                                       "global_allocator",
+                                       "the `#[global_allocator]` attribute is \
+                                        an experimental feature",
+                                       cfg_fn!(global_allocator))),
+    ("default_lib_allocator", Whitelisted, Gated(Stability::Unstable,
+                                            "allocator_internals",
+                                            "the `#[default_lib_allocator]` \
+                                             attribute is an experimental feature",
+                                            cfg_fn!(allocator_internals))),
     ("needs_allocator", Normal, Gated(Stability::Unstable,
-                                      "needs_allocator",
+                                      "allocator_internals",
                                       "the `#[needs_allocator]` \
                                        attribute is an experimental \
                                        feature",
-                                      cfg_fn!(needs_allocator))),
+                                      cfg_fn!(allocator_internals))),
     ("panic_runtime", Whitelisted, Gated(Stability::Unstable,
                                          "panic_runtime",
                                          "the `#[panic_runtime]` attribute is \
