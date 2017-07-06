@@ -285,11 +285,11 @@ impl Size {
 }
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
-/// Since alignments are always powers of 2, we can pack both in one byte,
-/// giving each a nibble (4 bits) for a maximum alignment of 2<sup>15</sup> = 32768.
+/// Each field is a power of two.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Align {
-    raw: u8
+    abi: u8,
+    pref: u8,
 }
 
 impl Align {
@@ -312,39 +312,36 @@ impl Align {
             }
             if bytes != 1 {
                 Err(format!("`{}` is not a power of 2", align))
-            } else if pow > 0x0f {
-                Err(format!("`{}` is too large", align))
             } else {
                 Ok(pow)
             }
         };
 
         Ok(Align {
-            raw: pack(abi)? | (pack(pref)? << 4)
+            abi: pack(abi)?,
+            pref: pack(pref)?,
         })
     }
 
     pub fn abi(self) -> u64 {
-        1 << (self.raw & 0xf)
+        1 << self.abi
     }
 
     pub fn pref(self) -> u64 {
-        1 << (self.raw >> 4)
+        1 << self.pref
     }
 
     pub fn min(self, other: Align) -> Align {
-        let abi = cmp::min(self.raw & 0x0f, other.raw & 0x0f);
-        let pref = cmp::min(self.raw & 0xf0, other.raw & 0xf0);
         Align {
-            raw: abi | pref
+            abi: cmp::min(self.abi, other.abi),
+            pref: cmp::min(self.pref, other.pref),
         }
     }
 
     pub fn max(self, other: Align) -> Align {
-        let abi = cmp::max(self.raw & 0x0f, other.raw & 0x0f);
-        let pref = cmp::max(self.raw & 0xf0, other.raw & 0xf0);
         Align {
-            raw: abi | pref
+            abi: cmp::max(self.abi, other.abi),
+            pref: cmp::max(self.pref, other.pref),
         }
     }
 }

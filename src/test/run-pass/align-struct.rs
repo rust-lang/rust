@@ -60,6 +60,13 @@ struct AlignContainsPacked {
     b: Packed,
 }
 
+// The align limit was originally smaller (2^15).
+// Check that it works with big numbers.
+#[repr(align(0x10000))]
+struct AlignLarge {
+    stuff: [u8; 0x10000],
+}
+
 impl Align16 {
     // return aligned type
     pub fn new(i: i32) -> Align16 {
@@ -193,4 +200,14 @@ pub fn main() {
     assert_eq!(mem::align_of_val(&a.b), 1);
     assert_eq!(mem::size_of_val(&a), 16);
     assert!(is_aligned_to(&a, 16));
+
+    let mut arr = [0; 0x10000];
+    arr[0] = 132;
+    let large = AlignLarge {
+        stuff: arr,
+    };
+    assert_eq!(large.stuff[0], 132);
+    assert_eq!(mem::align_of::<AlignLarge>(), 0x10000);
+    assert_eq!(mem::align_of_val(&large), 0x10000);
+    assert!(is_aligned_to(&large, 0x10000));
 }
