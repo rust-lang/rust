@@ -211,6 +211,9 @@ pub struct TestProps {
     // The test must be compiled and run successfully. Only used in UI tests for
     // now.
     pub run_pass: bool,
+    // customized normalization rules
+    pub normalize_stdout: Vec<(String, String)>,
+    pub normalize_stderr: Vec<(String, String)>,
 }
 
 impl TestProps {
@@ -237,6 +240,8 @@ impl TestProps {
             must_compile_successfully: false,
             check_test_line_numbers_match: false,
             run_pass: false,
+            normalize_stdout: vec![],
+            normalize_stderr: vec![],
         }
     }
 
@@ -351,6 +356,13 @@ impl TestProps {
             if !self.run_pass {
                 self.run_pass = config.parse_run_pass(ln);
             }
+
+            if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
+                self.normalize_stdout.push(rule);
+            }
+            if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
+                self.normalize_stderr.push(rule);
+            }
         });
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
@@ -399,7 +411,6 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
 }
 
 impl Config {
-
     fn parse_error_pattern(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "error-pattern")
     }
@@ -497,6 +508,22 @@ impl Config {
         }
     }
 
+    fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
+        if self.parse_cfg_name_directive(line, prefix) {
+            let from = match parse_normalization_string(&mut line) {
+                Some(s) => s,
+                None => return None,
+            };
+            let to = match parse_normalization_string(&mut line) {
+                Some(s) => s,
+                None => return None,
+            };
+            Some((from, to))
+        } else {
+            None
+        }
+    }
+
     /// Parses a name-value directive which contains config-specific information, e.g. `ignore-x86`
     /// or `normalize-stderr-32bit`. Returns `true` if the line matches it.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> bool {
@@ -567,4 +594,30 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     value
+}
+
+/// Finds the next quoted string `"..."` in `line`, and extract the content from it. Move the `line`
+/// variable after the end of the quoted string.
+///
+/// # Examples
+///
+/// ```
+/// let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits)\".";
+/// let first = parse_normalization_string(&mut s);
+/// assert_eq!(first, Some("something (32 bits)".to_owned()));
+/// assert_eq!(s, " -> \"something ($WORD bits)\".");
+/// ```
+fn parse_normalization_string(line: &mut &str) -> Option<String> {
+    // FIXME support escapes in strings.
+    let begin = match line.find('"') {
+        Some(i) => i + 1,
+        None => return None,
+    };
+    let end = match line[begin..].find('"') {
+        Some(i) => i + begin,
+        None => return None,
+    };
+    let result = line[begin..end].to_owned();
+    *line = &line[end+1..];
+    Some(result)
 }

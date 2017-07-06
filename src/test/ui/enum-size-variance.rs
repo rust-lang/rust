@@ -9,10 +9,6 @@
 // except according to those terms.
 
 // run-pass
-// ignore-x86
-// ignore-arm
-// ignore-emscripten
-// ^ ignore 32-bit targets, as the error message is target-dependent. see PR #41968.
 
 #![warn(variant_size_differences)]
 #![allow(dead_code)]
@@ -24,26 +20,26 @@ enum Enum1 { }
 
 enum Enum2 { A, B, C }
 
-enum Enum3 { D(isize), E, F }
+enum Enum3 { D(i64), E, F }
 
-enum Enum4 { H(isize), I(isize), J }
+enum Enum4 { H(i64), I(i64), J }
 
 enum Enum5 {
-    L(isize, isize, isize, isize), //~ WARNING three times larger
-    M(isize),
+    L(i64, i64, i64, i64), //~ WARNING three times larger
+    M(i64),
     N
 }
 
 enum Enum6<T, U> {
     O(T),
     P(U),
-    Q(isize)
+    Q(i64)
 }
 
 #[allow(variant_size_differences)]
 enum Enum7 {
-    R(isize, isize, isize, isize),
-    S(isize),
+    R(i64, i64, i64, i64),
+    S(i64),
     T
 }
 pub fn main() { }
