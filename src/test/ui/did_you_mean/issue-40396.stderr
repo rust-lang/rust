@@ -30,5 +30,5 @@ error: chained comparison operators require parentheses
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 

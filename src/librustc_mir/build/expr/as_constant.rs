@@ -26,7 +26,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_constant(&mut self, expr: Expr<'tcx>) -> Constant<'tcx> {
         let this = self;
-        let Expr { ty, temp_lifetime: _, temp_lifetime_was_shrunk: _, span, kind }
+        let Expr { ty, temp_lifetime: _, span, kind }
             = expr;
         match kind {
             ExprKind::Scope { extent: _, value } =>

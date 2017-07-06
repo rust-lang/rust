@@ -211,10 +211,7 @@ impl<T: Encodable> Encodable for P<[T]> {
 
 impl<T: Decodable> Decodable for P<[T]> {
     fn decode<D: Decoder>(d: &mut D) -> Result<P<[T]>, D::Error> {
-        Ok(P::from_vec(match Decodable::decode(d) {
-            Ok(t) => t,
-            Err(e) => return Err(e)
-        }))
+        Ok(P::from_vec(Decodable::decode(d)?))
     }
 }
 

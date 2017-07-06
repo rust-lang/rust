@@ -41,10 +41,10 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_panic($msg, {
+        $crate::rt::begin_panic_new($msg, {
             // static requires less code at runtime, more constant data
-            static _FILE_LINE: (&'static str, u32) = (file!(), line!());
-            &_FILE_LINE
+            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
+            &_FILE_LINE_COL
         })
     });
     ($fmt:expr, $($arg:tt)+) => ({
@@ -53,8 +53,8 @@ macro_rules! panic {
             // used inside a dead function. Just `#[allow(dead_code)]` is
             // insufficient, since the user may have
             // `#[forbid(dead_code)]` and which cannot be overridden.
-            static _FILE_LINE: (&'static str, u32) = (file!(), line!());
-            &_FILE_LINE
+            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
+            &_FILE_LINE_COL
         })
     });
 }
@@ -238,6 +238,16 @@ macro_rules! assert_approx_eq {
 /// into libsyntax itself.
 #[cfg(dox)]
 pub mod builtin {
+
+    /// Unconditionally causes compilation to fail with the given error message when encountered.
+    ///
+    /// For more information, see the [RFC].
+    ///
+    /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
+    #[unstable(feature = "compile_error_macro", issue = "40872")]
+    #[macro_export]
+    macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
+
     /// The core macro for formatted string creation & output.
     ///
     /// This macro produces a value of type [`fmt::Arguments`]. This value can be
@@ -434,7 +444,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore (cannot-doctest-external-file-dependency)
     /// let secret_key = include_str!("secret-key.ascii");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -451,7 +461,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust,ignore
+    /// ```ignore (cannot-doctest-external-file-dependency)
     /// let secret_key = include_bytes!("secret-key.bin");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -486,7 +496,7 @@ pub mod builtin {
     /// leads to less duplicated code.
     ///
     /// The syntax given to this macro is the same syntax as [the `cfg`
-    /// attribute](../book/conditional-compilation.html).
+    /// attribute](../book/first-edition/conditional-compilation.html).
     ///
     /// # Examples
     ///
@@ -520,13 +530,13 @@ pub mod builtin {
     ///
     /// File 'my_str.in':
     ///
-    /// ```ignore
+    /// ```ignore (only-for-syntax-highlight)
     /// "Hello World!"
     /// ```
     ///
     /// File 'main.rs':
     ///
-    /// ```ignore
+    /// ```ignore (cannot-doctest-external-file-dependency)
     /// fn main() {
     ///     let my_str = include!("my_str.in");
     ///     println!("{}", my_str);

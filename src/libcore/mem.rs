@@ -109,7 +109,7 @@ pub use intrinsics::transmute;
 /// [`Clone`][clone]. You need the value's destructor to run only once,
 /// because a double `free` is undefined behavior.
 ///
-/// An example is the definition of [`mem::swap`][swap] in this module:
+/// An example is a possible implementation of [`mem::swap`][swap]:
 ///
 /// ```
 /// use std::mem;
@@ -220,7 +220,7 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 
 /// Returns the [ABI]-required minimum alignment of a type.
 ///
-/// Every valid address of a value of the type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
 ///
@@ -243,7 +243,7 @@ pub fn min_align_of<T>() -> usize {
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
 ///
-/// Every valid address of a value of the type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
@@ -264,7 +264,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 
 /// Returns the [ABI]-required minimum alignment of a type.
 ///
-/// Every valid address of a value of the type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
 ///
@@ -285,7 +285,7 @@ pub fn align_of<T>() -> usize {
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
 ///
-/// Every valid address of a value of the type `T` must be a multiple of this number.
+/// Every reference to a value of the type `T` must be a multiple of this number.
 ///
 /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
 ///
@@ -328,11 +328,18 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// Here's an example of how a collection might make use of needs_drop:
 ///
-/// ```ignore
+/// ```
 /// #![feature(needs_drop)]
 /// use std::{mem, ptr};
 ///
-/// pub struct MyCollection<T> { /* ... */ }
+/// pub struct MyCollection<T> {
+/// #   data: [T; 1],
+///     /* ... */
+/// }
+/// # impl<T> MyCollection<T> {
+/// #   fn iter_mut(&mut self) -> &mut [T] { &mut self.data }
+/// #   fn free_buffer(&mut self) {}
+/// # }
 ///
 /// impl<T> Drop for MyCollection<T> {
 ///     fn drop(&mut self) {
@@ -499,18 +506,7 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        // Give ourselves some scratch space to work with
-        let mut t: T = uninitialized();
-
-        // Perform the swap, `&mut` pointers never alias
-        ptr::copy_nonoverlapping(&*x, &mut t, 1);
-        ptr::copy_nonoverlapping(&*y, x, 1);
-        ptr::copy_nonoverlapping(&t, y, 1);
-
-        // y and t now point to the same thing, but we need to completely
-        // forget `t` because we do not want to run the destructor for `T`
-        // on its value, which is still owned somewhere outside this function.
-        forget(t);
+        ptr::swap_nonoverlapping(x, y, 1);
     }
 }
 
@@ -534,7 +530,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `replace` allows consumption of a struct field by replacing it with another value.
 /// Without `replace` you can run into issues like these:
 ///
-/// ```ignore
+/// ```compile_fail,E0507
 /// struct Buffer<T> { buf: Vec<T> }
 ///
 /// impl<T> Buffer<T> {
@@ -604,7 +600,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 ///
 /// Borrows are based on lexical scope, so this produces an error:
 ///
-/// ```ignore
+/// ```compile_fail,E0502
 /// let mut v = vec![1, 2, 3];
 /// let x = &v[0];
 ///

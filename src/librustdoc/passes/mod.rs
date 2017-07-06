@@ -83,7 +83,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
-            clean::ConstantItem(..) | clean::UnionItem(..) => {
+            clean::ConstantItem(..) | clean::UnionItem(..) |
+            clean::AssociatedConstItem(..) => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -117,8 +118,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
 
-            // Associated consts and types are never stripped
-            clean::AssociatedConstItem(..) |
+            // Associated types are never stripped
             clean::AssociatedTypeItem(..) => {}
         }
 
@@ -145,20 +145,12 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             self.fold_item_recur(i)
         };
 
-        i.and_then(|i| {
-            match i.inner {
-                // emptied modules have no need to exist
-                clean::ModuleItem(ref m)
-                    if m.items.is_empty() &&
-                       i.doc_value().is_none() => None,
-                _ => {
-                    if self.update_retained {
-                        self.retained.insert(i.def_id);
-                    }
-                    Some(i)
-                }
+        if let Some(ref i) = i {
+            if self.update_retained {
+                self.retained.insert(i.def_id);
             }
-        })
+        }
+        i
     }
 }
 

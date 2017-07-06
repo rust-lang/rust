@@ -4,5 +4,5 @@ error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, 
 17 |     unsafe impl Send for &'static Foo { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

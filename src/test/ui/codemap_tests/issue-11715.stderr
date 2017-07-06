@@ -8,5 +8,5 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
 101 | }
     | - first borrow ends here
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

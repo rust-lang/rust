@@ -540,7 +540,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
             let mut selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: xform_self_ty, obligations } =
-                traits::normalize(selcx, cause, &xform_self_ty);
+                traits::normalize(selcx, self.param_env, cause, &xform_self_ty);
             debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
                    xform_self_ty);
 
@@ -673,13 +673,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                expected: ty::Ty<'tcx>) -> bool {
         match method.def() {
             Def::Method(def_id) => {
-                let fty = self.tcx.type_of(def_id).fn_sig();
+                let fty = self.tcx.fn_sig(def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let output = fty.output().subst(self.tcx, substs);
                     let (output, _) = self.replace_late_bound_regions_with_fresh_var(
                         self.span, infer::FnCall, &output);
-                    self.can_sub_types(output, expected).is_ok()
+                    self.can_sub(self.param_env, output, expected).is_ok()
                 })
             }
             _ => false,
@@ -751,7 +751,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
             let mut selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: xform_self_ty, obligations } =
-                traits::normalize(selcx, cause, &xform_self_ty);
+                traits::normalize(selcx, self.param_env, cause, &xform_self_ty);
 
             debug!("xform_self_ty={:?}", xform_self_ty);
 
@@ -814,7 +814,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             let closure_kinds = &self.tables.borrow().closure_kinds;
             let closure_kind = match closure_kinds.get(&closure_id) {
-                Some(&k) => k,
+                Some(&(k, _)) => k,
                 None => {
                     return Err(MethodError::ClosureAmbiguity(trait_def_id));
                 }
@@ -885,7 +885,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                        substs,
                        bound);
 
-                if self.can_equate(&step.self_ty, &bound.self_ty()).is_ok() {
+                if self.can_eq(self.param_env, step.self_ty, bound.self_ty()).is_ok() {
                     let xform_self_ty = self.xform_self_ty(&item, bound.self_ty(), bound.substs);
 
                     debug!("assemble_projection_candidates: bound={:?} xform_self_ty={:?}",
@@ -1143,10 +1143,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         self.probe(|_| {
             // First check that the self type can be related.
-            let sub_obligations = match self.sub_types(false,
-                                                       &ObligationCause::dummy(),
-                                                       self_ty,
-                                                       probe.xform_self_ty) {
+            let sub_obligations = match self.at(&ObligationCause::dummy(), self.param_env)
+                                            .sup(probe.xform_self_ty, self_ty) {
                 Ok(InferOk { obligations, value: () }) => obligations,
                 Err(_) => {
                     debug!("--> cannot relate self-types");
@@ -1182,10 +1180,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let impl_bounds = self.tcx.predicates_of(impl_def_id);
             let impl_bounds = impl_bounds.instantiate(self.tcx, substs);
             let traits::Normalized { value: impl_bounds, obligations: norm_obligations } =
-                traits::normalize(selcx, cause.clone(), &impl_bounds);
+                traits::normalize(selcx, self.param_env, cause.clone(), &impl_bounds);
 
             // Convert the bounds into obligations.
-            let obligations = traits::predicates_for_generics(cause.clone(), &impl_bounds);
+            let obligations = traits::predicates_for_generics(cause.clone(),
+                                                              self.param_env,
+                                                              &impl_bounds);
             debug!("impl_obligations={:?}", obligations);
 
             // Evaluate those obligations to see if they might possibly hold.
@@ -1288,7 +1288,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             impl_ty: Ty<'tcx>,
                             substs: &Substs<'tcx>)
                             -> Ty<'tcx> {
-        let self_ty = self.tcx.type_of(method).fn_sig().input(0);
+        let self_ty = self.tcx.fn_sig(method).input(0);
         debug!("xform_self_ty(impl_ty={:?}, self_ty={:?}, substs={:?})",
                impl_ty,
                self_ty,

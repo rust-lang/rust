@@ -10,7 +10,7 @@
 
 fn parse_type(iter: Box<Iterator<Item=&str>+'static>) -> &str { iter.next() }
 //~^ ERROR missing lifetime specifier [E0106]
-//~^^ HELP 2 elided lifetimes
+//~^^ HELP 2 lifetimes
 
 fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
 //~^ ERROR missing lifetime specifier [E0106]

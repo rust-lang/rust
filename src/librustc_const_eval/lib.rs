@@ -29,10 +29,6 @@
 #![feature(const_fn)]
 #![feature(i128_type)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-
 extern crate arena;
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;

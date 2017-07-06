@@ -10,10 +10,14 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
-flate = { path = "../libflate" }
+crossbeam = "0.2"
+flate2 = "0.2"
+jobserver = "0.1.5"
 log = "0.3"
 owning_ref = "0.3.3"
+rustc-demangle = "0.1.4"
 rustc = { path = "../librustc" }
+rustc_allocator = { path = "../librustc_allocator" }
 rustc_back = { path = "../librustc_back" }
 rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_const_math = { path = "../librustc_const_math" }
@@ -25,3 +29,6 @@ rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+
+[target."cfg(windows)".dependencies]
+gcc = "0.3.50"

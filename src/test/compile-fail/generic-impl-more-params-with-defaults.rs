@@ -15,7 +15,7 @@ struct Heap;
 struct Vec<T, A = Heap>(
     marker::PhantomData<(T,A)>);
 
-impl<T, A = Heap> Vec<T, A> {
+impl<T, A> Vec<T, A> {
     fn new() -> Vec<T, A> {Vec(marker::PhantomData)}
 }
 

@@ -338,8 +338,20 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let a = base::from_immediate(bcx, a);
                 let b = base::from_immediate(bcx, b);
-                bcx.store(a, bcx.struct_gep(lldest, ix0), f_align);
-                bcx.store(b, bcx.struct_gep(lldest, ix1), f_align);
+
+                // See comment above about zero-sized values.
+                let (a_zst, b_zst) = common::type_pair_fields(bcx.ccx, operand.ty)
+                    .map_or((false, false), |[a_ty, b_ty]| {
+                        (common::type_is_zero_size(bcx.ccx, a_ty),
+                         common::type_is_zero_size(bcx.ccx, b_ty))
+                    });
+
+                if !a_zst {
+                    bcx.store(a, bcx.struct_gep(lldest, ix0), f_align);
+                }
+                if !b_zst {
+                    bcx.store(b, bcx.struct_gep(lldest, ix1), f_align);
+                }
             }
         }
     }

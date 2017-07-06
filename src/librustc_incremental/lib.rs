@@ -20,11 +20,6 @@
 
 #![feature(rand)]
 #![feature(conservative_impl_trait)]
-#![feature(sort_unstable)]
-
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
 
 extern crate graphviz;
 #[macro_use] extern crate rustc;

@@ -18,7 +18,6 @@ use ops::Deref;
 use ptr;
 use sys::c;
 use sys::cvt;
-use sys_common::io::read_to_end_uninitialized;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
@@ -215,9 +214,5 @@ impl RawHandle {
 impl<'a> Read for &'a RawHandle {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
-    }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }

@@ -37,7 +37,8 @@ struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
     code: ObligationCauseCode<'gcx>,
     id: ast::NodeId,
-    span: Span
+    span: Span,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
@@ -48,8 +49,9 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         let code = self.code.clone();
         let id = self.id;
         let span = self.span;
+        let param_env = self.param_env;
         self.inherited.enter(|inh| {
-            let fcx = FnCtxt::new(&inh, id);
+            let fcx = FnCtxt::new(&inh, param_env, id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 tcx: fcx.tcx.global_tcx(),
                 code: code
@@ -175,12 +177,11 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 }
                 ty::AssociatedKind::Method => {
                     reject_shadowing_type_parameters(fcx.tcx, item.def_id);
-                    let method_ty = fcx.tcx.type_of(item.def_id);
-                    let method_ty = fcx.normalize_associated_types_in(span, &method_ty);
+                    let sig = fcx.tcx.fn_sig(item.def_id);
+                    let sig = fcx.normalize_associated_types_in(span, &sig);
                     let predicates = fcx.tcx.predicates_of(item.def_id)
                         .instantiate_identity(fcx.tcx);
                     let predicates = fcx.normalize_associated_types_in(span, &predicates);
-                    let sig = method_ty.fn_sig();
                     this.check_fn_or_method(fcx, span, sig, &predicates,
                                             item.def_id, &mut implied_bounds);
                     let sig_if_method = sig_if_method.expect("bad signature for method");
@@ -206,11 +207,13 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
     fn for_id<'tcx>(&self, id: ast::NodeId, span: Span)
                     -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
+        let def_id = self.tcx.hir.local_def_id(id);
         CheckWfFcxBuilder {
-            inherited: Inherited::build(self.tcx, self.tcx.hir.local_def_id(id)),
+            inherited: Inherited::build(self.tcx, def_id),
             code: self.code.clone(),
             id: id,
-            span: span
+            span: span,
+            param_env: self.tcx.param_env(def_id),
         }
     }
 
@@ -327,9 +330,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     fn check_item_fn(&mut self, item: &hir::Item) {
         self.for_item(item).with_fcx(|fcx, this| {
             let def_id = fcx.tcx.hir.local_def_id(item.id);
-            let ty = fcx.tcx.type_of(def_id);
-            let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
-            let sig = item_ty.fn_sig();
+            let sig = fcx.tcx.fn_sig(def_id);
+            let sig = fcx.normalize_associated_types_in(item.span, &sig);
 
             let predicates = fcx.tcx.predicates_of(def_id).instantiate_identity(fcx.tcx);
             let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
@@ -374,6 +376,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                             ast_trait_ref.path.span, &trait_ref);
                     let obligations =
                         ty::wf::trait_obligations(fcx,
+                                                  fcx.param_env,
                                                   fcx.body_id,
                                                   &trait_ref,
                                                   ast_trait_ref.path.span);
@@ -405,6 +408,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             predicates.predicates
                       .iter()
                       .flat_map(|p| ty::wf::predicate_obligations(fcx,
+                                                                  fcx.param_env,
                                                                   fcx.body_id,
                                                                   p,
                                                                   span));
@@ -455,9 +459,9 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         let span = method_sig.decl.inputs[0].span;
 
-        let method_ty = fcx.tcx.type_of(method.def_id);
-        let fty = fcx.normalize_associated_types_in(span, &method_ty);
-        let sig = fcx.liberate_late_bound_regions(method.def_id, &fty.fn_sig());
+        let sig = fcx.tcx.fn_sig(method.def_id);
+        let sig = fcx.normalize_associated_types_in(span, &sig);
+        let sig = fcx.liberate_late_bound_regions(method.def_id, &sig);
 
         debug!("check_method_receiver: sig={:?}", sig);
 

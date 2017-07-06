@@ -135,7 +135,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
         let (fingerprint, ecx) = entry_builder.finish();
         if let Some(hash) = fingerprint {
-            ecx.metadata_hashes.entry_hashes.push(EncodedMetadataHash {
+            ecx.metadata_hashes.hashes.push(EncodedMetadataHash {
                 def_index: id.index,
                 hash: hash,
             });

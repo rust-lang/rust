@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
-#![deny(future_incompatible)]
-
 use std::f32;
 
 #[derive(PartialEq)]
@@ -25,7 +22,6 @@ fn main() {
     match y {
         FOO => { }
         //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| WARNING will become a hard error
         _ => { }
     }
 
@@ -33,7 +29,6 @@ fn main() {
     match x {
         f32::INFINITY => { }
         //~^ ERROR floating point constants cannot be used in patterns
-        //~| WARNING will become a hard error
         _ => { }
     }
 }

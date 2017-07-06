@@ -203,7 +203,7 @@ impl<T> Tracked<T> {
         }
     }
 
-    pub fn get(&self, dep_graph: &DepGraph, dep_node: DepNode<DefId>) -> &T {
+    pub fn get(&self, dep_graph: &DepGraph, dep_node: DepNode) -> &T {
         dep_graph.read(dep_node);
         &self.state
     }
@@ -221,11 +221,11 @@ impl<T> Tracked<T> {
     }
 }
 
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for Tracked<T>
-    where T: HashStable<StableHashingContext<'a, 'tcx>>
+impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Tracked<T>
+    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let Tracked {
             ref state
@@ -243,6 +243,8 @@ pub struct CrateRoot {
     pub hash: hir::svh::Svh,
     pub disambiguator: Symbol,
     pub panic_strategy: Tracked<PanicStrategy>,
+    pub has_global_allocator: Tracked<bool>,
+    pub has_default_lib_allocator: Tracked<bool>,
     pub plugin_registrar_fn: Option<DefIndex>,
     pub macro_derive_registrar: Option<DefIndex>,
 
@@ -277,9 +279,9 @@ pub struct TraitImpls {
     pub impls: LazySeq<DefIndex>,
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for TraitImpls {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for TraitImpls {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let TraitImpls {
             trait_id: (krate, def_index),
@@ -343,25 +345,25 @@ pub enum EntryKind<'tcx> {
     Type,
     Enum(ReprOptions),
     Field,
-    Variant(Lazy<VariantData>),
-    Struct(Lazy<VariantData>, ReprOptions),
-    Union(Lazy<VariantData>, ReprOptions),
-    Fn(Lazy<FnData>),
-    ForeignFn(Lazy<FnData>),
+    Variant(Lazy<VariantData<'tcx>>),
+    Struct(Lazy<VariantData<'tcx>>, ReprOptions),
+    Union(Lazy<VariantData<'tcx>>, ReprOptions),
+    Fn(Lazy<FnData<'tcx>>),
+    ForeignFn(Lazy<FnData<'tcx>>),
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
     Closure(Lazy<ClosureData<'tcx>>),
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
     DefaultImpl(Lazy<ImplData<'tcx>>),
-    Method(Lazy<MethodData>),
+    Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer, u8),
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for EntryKind<'tcx> {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for EntryKind<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
@@ -439,27 +441,33 @@ pub struct MacroDef {
 impl_stable_hash_for!(struct MacroDef { body, legacy });
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct FnData {
+pub struct FnData<'tcx> {
     pub constness: hir::Constness,
     pub arg_names: LazySeq<ast::Name>,
+    pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
 
-impl_stable_hash_for!(struct FnData { constness, arg_names });
+impl_stable_hash_for!(struct FnData<'tcx> { constness, arg_names, sig });
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct VariantData {
+pub struct VariantData<'tcx> {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.
     pub struct_ctor: Option<DefIndex>,
+
+    /// If this is a tuple struct or variant
+    /// ctor, this is its "function" signature.
+    pub ctor_sig: Option<Lazy<ty::PolyFnSig<'tcx>>>,
 }
 
-impl_stable_hash_for!(struct VariantData {
+impl_stable_hash_for!(struct VariantData<'tcx> {
     ctor_kind,
     discr,
-    struct_ctor
+    struct_ctor,
+    ctor_sig
 });
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -543,16 +551,16 @@ impl AssociatedContainer {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct MethodData {
-    pub fn_data: FnData,
+pub struct MethodData<'tcx> {
+    pub fn_data: FnData<'tcx>,
     pub container: AssociatedContainer,
     pub has_self: bool,
 }
-impl_stable_hash_for!(struct MethodData { fn_data, container, has_self });
+impl_stable_hash_for!(struct MethodData<'tcx> { fn_data, container, has_self });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
     pub kind: ty::ClosureKind,
-    pub ty: Lazy<ty::PolyFnSig<'tcx>>,
+    pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
-impl_stable_hash_for!(struct ClosureData<'tcx> { kind, ty });
+impl_stable_hash_for!(struct ClosureData<'tcx> { kind, sig });

@@ -305,10 +305,10 @@ pub enum StaticFields {
 /// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
     Struct(&'a ast::VariantData, Vec<FieldInfo<'a>>),
-    /// Matching variants of the enum: variant index, ast::Variant,
+    /// Matching variants of the enum: variant index, variant count, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
+    EnumMatching(usize, usize, &'a ast::Variant, Vec<FieldInfo<'a>>),
 
     /// Non-matching variants of the enum, but with all state hidden from
     /// the consequent code.  The first component holds `Ident`s for all of
@@ -456,7 +456,7 @@ impl<'a> TraitDef<'a> {
 
     /// Given that we are deriving a trait `DerivedTrait` for a type like:
     ///
-    /// ```ignore
+    /// ```ignore (only-for-syntax-highlight)
     /// struct Struct<'a, ..., 'z, A, B: DeclaredTrait, C, ..., Z> where C: WhereTrait {
     ///     a: A,
     ///     b: B::Item,
@@ -469,7 +469,7 @@ impl<'a> TraitDef<'a> {
     ///
     /// create an impl like:
     ///
-    /// ```ignore
+    /// ```ignore (only-for-syntax-highlight)
     /// impl<'a, ..., 'z, A, B: DeclaredTrait, C, ...  Z> where
     ///     C:                       WhereTrait,
     ///     A: DerivedTrait + B1 + ... + BN,
@@ -933,8 +933,9 @@ impl<'a> MethodDef<'a> {
         }
     }
 
-    /// ```ignore
+    /// ```
     /// #[derive(PartialEq)]
+    /// # struct Dummy;
     /// struct A { x: i32, y: i32 }
     ///
     /// // equivalent to:
@@ -1040,8 +1041,9 @@ impl<'a> MethodDef<'a> {
                                       &StaticStruct(struct_def, summary))
     }
 
-    /// ```ignore
+    /// ```
     /// #[derive(PartialEq)]
+    /// # struct Dummy;
     /// enum A {
     ///     A1,
     ///     A2(i32)
@@ -1250,7 +1252,7 @@ impl<'a> MethodDef<'a> {
                 // expressions for referencing every field of every
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
-                let substructure = EnumMatching(index, variant, field_tuples);
+                let substructure = EnumMatching(index, variants.len(), variant, field_tuples);
                 let arm_expr = self.call_substructure_method(cx,
                                                              trait_,
                                                              type_ident,
@@ -1267,12 +1269,13 @@ impl<'a> MethodDef<'a> {
                 // We need a default case that handles the fieldless variants.
                 // The index and actual variant aren't meaningful in this case,
                 // so just use whatever
+                let substructure = EnumMatching(0, variants.len(), v, Vec::new());
                 Some(self.call_substructure_method(cx,
                                                    trait_,
                                                    type_ident,
                                                    &self_args[..],
                                                    nonself_args,
-                                                   &EnumMatching(0, v, Vec::new())))
+                                                   &substructure))
             }
             _ if variants.len() > 1 && self_args.len() > 1 => {
                 // Since we know that all the arguments will match if we reach
@@ -1624,7 +1627,7 @@ pub fn cs_fold<F>(use_foldl: bool,
 /// Call the method that is being derived on all the fields, and then
 /// process the collected results. i.e.
 ///
-/// ```ignore
+/// ```ignore (only-for-syntax-highlight)
 /// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
 ///                  self_2.method(__arg_1_2, __arg_2_2)])
 /// ```

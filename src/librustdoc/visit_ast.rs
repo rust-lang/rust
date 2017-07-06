@@ -329,22 +329,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         if !self.view_item_stack.insert(def_node_id) { return false }
 
         let ret = match tcx.hir.get(def_node_id) {
-            hir_map::NodeItem(it) => {
+            hir_map::NodeItem(&hir::Item { node: hir::ItemMod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                if glob {
-                    match it.node {
-                        hir::ItemMod(ref m) => {
-                            for i in &m.item_ids {
-                                let i = self.cx.tcx.hir.expect_item(i.id);
-                                self.visit_item(i, None, om);
-                            }
-                        }
-                        hir::ItemEnum(..) => {}
-                        _ => { panic!("glob not mapped to a module or enum"); }
-                    }
-                } else {
-                    self.visit_item(it, renamed, om);
+                for i in &m.item_ids {
+                    let i = self.cx.tcx.hir.expect_item(i.id);
+                    self.visit_item(i, None, om);
                 }
+                self.inlining = prev;
+                true
+            }
+            hir_map::NodeItem(it) if !glob => {
+                let prev = mem::replace(&mut self.inlining, true);
+                self.visit_item(it, renamed, om);
                 self.inlining = prev;
                 true
             }

@@ -86,5 +86,5 @@ error[E0599]: no method named `f3` found for type `FuncContainer` in the current
     |
     = help: use `((*self.container).f3)(...)` if you meant to call the function stored in the `f3` field
 
-error: aborting due to previous error(s)
+error: aborting due to 11 previous errors
 

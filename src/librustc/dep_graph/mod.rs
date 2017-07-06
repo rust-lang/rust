@@ -22,10 +22,11 @@ mod thread;
 pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
 pub use self::dep_node::DepNode;
 pub use self::dep_node::WorkProductId;
-pub use self::dep_node::GlobalMetaDataKind;
 pub use self::graph::DepGraph;
 pub use self::graph::WorkProduct;
 pub use self::query::DepGraphQuery;
 pub use self::safe::AssertDepGraphSafe;
 pub use self::safe::DepGraphSafe;
 pub use self::raii::DepTask;
+
+pub use self::dep_node::{DepKind, DepConstructor};

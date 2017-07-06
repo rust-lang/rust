@@ -22,7 +22,7 @@ fn main() {
     a as isize; //~ ERROR casting
     a as i16; //~ ERROR casting `&[i32]` as `i16` is invalid
     a as u32; //~ ERROR casting `&[i32]` as `u32` is invalid
-    b as usize; //~ ERROR non-scalar cast
+    b as usize; //~ ERROR non-primitive cast
     p as usize;
     //~^ ERROR casting
     //~^^ HELP cast through a thin pointer

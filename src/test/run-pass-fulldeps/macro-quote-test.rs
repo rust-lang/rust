@@ -13,10 +13,10 @@
 // aux-build:hello_macro.rs
 // ignore-stage1
 
-#![feature(plugin)]
-#![feature(rustc_private)]
-#![plugin(hello_macro)]
+#![feature(proc_macro)]
+
+extern crate hello_macro;
 
 fn main() {
-    hello!();
+    hello_macro::hello!();
 }

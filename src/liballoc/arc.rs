@@ -23,7 +23,6 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
-use core::mem::{align_of_val, size_of_val};
 use core::intrinsics::abort;
 use core::mem;
 use core::mem::uninitialized;
@@ -34,7 +33,8 @@ use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
-use heap::deallocate;
+
+use heap::{Heap, Alloc, Layout};
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
@@ -42,7 +42,8 @@ use heap::deallocate;
 /// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-/// A thread-safe reference-counting pointer.
+/// A thread-safe reference-counting pointer. 'Arc' stands for 'Atomically
+/// Reference Counted'.
 ///
 /// The type `Arc<T>` provides shared ownership of a value of type `T`,
 /// allocated in the heap. Invoking [`clone`][clone] on `Arc` produces
@@ -502,7 +503,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+            Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
         }
     }
 
@@ -1006,7 +1007,9 @@ impl<T: ?Sized> Drop for Weak<T> {
         // ref, which can only happen after the lock is released.
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            unsafe { deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr)) }
+            unsafe {
+                Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
+            }
         }
     }
 }
@@ -1221,10 +1224,11 @@ mod tests {
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::thread;
-    use std::vec::Vec;
-    use super::{Arc, Weak};
     use std::sync::Mutex;
     use std::convert::From;
+
+    use super::{Arc, Weak};
+    use vec::Vec;
 
     struct Canary(*mut atomic::AtomicUsize);
 

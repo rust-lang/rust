@@ -9,21 +9,16 @@
 // except according to those terms.
 
 #![allow(warnings)]
-#![feature(collections)]
 #![feature(drain, collections_bound, btree_range, vecmap)]
 
-extern crate collections;
-
-use collections::BinaryHeap;
-use collections::{BTreeMap, BTreeSet};
-use collections::LinkedList;
-use collections::String;
-use collections::Vec;
-use collections::VecDeque;
+use std::collections::BinaryHeap;
+use std::collections::{BTreeMap, BTreeSet};
+use std::collections::LinkedList;
+use std::collections::VecDeque;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use collections::Bound::Included;
+use std::collections::Bound::Included;
 use std::mem;
 
 fn is_sync<T>(_: T) where T: Sync {}

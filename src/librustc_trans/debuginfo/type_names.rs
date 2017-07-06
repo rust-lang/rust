@@ -96,8 +96,8 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 push_type_params(cx, principal.substs, output);
             }
         },
-        ty::TyFnDef(.., sig) |
-        ty::TyFnPtr(sig) => {
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+            let sig = t.fn_sig(cx.tcx());
             if sig.unsafety() == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }

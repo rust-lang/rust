@@ -673,7 +673,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
         let tcx = self.tcx();
         let iter_ty = if ptr_based {
-            tcx.mk_ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::MutMutable })
+            tcx.mk_mut_ptr(ety)
         } else {
             tcx.types.usize
         };
@@ -708,15 +708,20 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let mut drop_block_stmts = vec![];
         drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.lvalue.clone())));
         if ptr_based {
-            // cur = &LV[0];
-            // end = &LV[len];
-            drop_block_stmts.push(self.assign(&cur, Rvalue::Ref(
-                tcx.types.re_erased, BorrowKind::Mut,
-                self.lvalue.clone().index(zero.clone())
+            let tmp_ty = tcx.mk_mut_ptr(self.lvalue_ty(self.lvalue));
+            let tmp = Lvalue::Local(self.new_temp(tmp_ty));
+            // tmp = &LV;
+            // cur = tmp as *mut T;
+            // end = Offset(cur, len);
+            drop_block_stmts.push(self.assign(&tmp, Rvalue::Ref(
+                tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone()
             )));
-            drop_block_stmts.push(self.assign(&length_or_end, Rvalue::Ref(
-                tcx.types.re_erased, BorrowKind::Mut,
-                self.lvalue.clone().index(Operand::Consume(length.clone()))
+            drop_block_stmts.push(self.assign(&cur, Rvalue::Cast(
+                CastKind::Misc, Operand::Consume(tmp.clone()), iter_ty
+            )));
+            drop_block_stmts.push(self.assign(&length_or_end,
+                Rvalue::BinaryOp(BinOp::Offset,
+                     Operand::Consume(cur.clone()), Operand::Consume(length.clone())
             )));
         } else {
             // index = 0 (length already pushed)

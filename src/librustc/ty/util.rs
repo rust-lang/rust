@@ -12,7 +12,6 @@
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
-use infer::InferCtxt;
 use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -26,6 +25,7 @@ use middle::lang_items;
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
+use rustc_data_structures::fx::FxHashMap;
 use std::cmp;
 use std::hash::Hash;
 use std::intrinsics;
@@ -150,20 +150,33 @@ pub enum Representability {
 impl<'tcx> ty::ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
     /// there are no where clauses in scope.
-    pub fn empty() -> Self {
-        Self::new(ty::Slice::empty())
+    pub fn empty(reveal: Reveal) -> Self {
+        Self::new(ty::Slice::empty(), reveal)
     }
 
     /// Construct a trait environment with the given set of predicates.
-    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>) -> Self {
-        ty::ParamEnv { caller_bounds }
+    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
+               reveal: Reveal)
+               -> Self {
+        ty::ParamEnv { caller_bounds, reveal }
     }
 
-    pub fn can_type_implement_copy<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    /// Returns a new parameter environment with the same clauses, but
+    /// which "reveals" the true results of projections in all cases
+    /// (even for associated types that are specializable).  This is
+    /// the desired behavior during trans and certain other special
+    /// contexts; normally though we want to use `Reveal::UserFacing`,
+    /// which is the default.
+    pub fn reveal_all(self) -> Self {
+        ty::ParamEnv { reveal: Reveal::All, ..self }
+    }
+
+    pub fn can_type_implement_copy<'a>(self,
+                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>, span: Span)
-                                       -> Result<(), CopyImplementationError> {
+                                       -> Result<(), CopyImplementationError<'tcx>> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
+        tcx.infer_ctxt().enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt),
@@ -171,8 +184,8 @@ impl<'tcx> ty::ParamEnv<'tcx> {
 
             let field_implements_copy = |field: &ty::FieldDef| {
                 let cause = traits::ObligationCause::dummy();
-                match traits::fully_normalize(&infcx, cause, &field.ty(tcx, substs)) {
-                    Ok(ty) => !infcx.type_moves_by_default(ty, span),
+                match traits::fully_normalize(&infcx, cause, self, &field.ty(tcx, substs)) {
+                    Ok(ty) => !infcx.type_moves_by_default(self, ty, span),
                     Err(..) => false,
                 }
             };
@@ -304,15 +317,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                  target: Ty<'tcx>)
                                  -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
-        while let (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) = (&a.sty, &b.sty) {
-            if a_def != b_def || !a_def.is_struct() {
-                break;
-            }
-            match a_def.struct_variant().fields.last() {
-                Some(f) => {
-                    a = f.ty(self, a_substs);
-                    b = f.ty(self, b_substs);
-                }
+        loop {
+            match (&a.sty, &b.sty) {
+                (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs))
+                        if a_def == b_def && a_def.is_struct() => {
+                    if let Some(f) = a_def.struct_variant().fields.last() {
+                        a = f.ty(self, a_substs);
+                        b = f.ty(self, b_substs);
+                    } else {
+                        break;
+                    }
+                },
+                (&TyTuple(a_tys, _), &TyTuple(b_tys, _))
+                        if a_tys.len() == b_tys.len() => {
+                    if let Some(a_last) = a_tys.last() {
+                        a = a_last;
+                        b = b_tys.last().unwrap();
+                    } else {
+                        break;
+                    }
+                },
                 _ => break,
             }
         }
@@ -666,7 +690,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
             TyAnon(def_id, _) |
-            TyFnDef(def_id, ..) => self.def_id(def_id),
+            TyFnDef(def_id, _) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
                 self.hash(f.unsafety());
@@ -691,8 +715,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                 self.hash(p.name.as_str());
             }
             TyProjection(ref data) => {
-                self.def_id(data.trait_ref.def_id);
-                self.hash(data.item_name.as_str());
+                self.def_id(data.item_def_id);
             }
             TyNever |
             TyBool |
@@ -780,32 +803,27 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         tcx.needs_drop_raw(param_env.and(self))
     }
 
+    /// Computes the layout of a type. Note that this implicitly
+    /// executes in "reveal all" mode.
     #[inline]
-    pub fn layout<'lcx>(&'tcx self, infcx: &InferCtxt<'a, 'tcx, 'lcx>)
+    pub fn layout<'lcx>(&'tcx self,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        param_env: ty::ParamEnv<'tcx>)
                         -> Result<&'tcx Layout, LayoutError<'tcx>> {
-        let tcx = infcx.tcx.global_tcx();
-        let can_cache = !self.has_param_types() && !self.has_self_ty();
-        if can_cache {
-            if let Some(&cached) = tcx.layout_cache.borrow().get(&self) {
-                return Ok(cached);
-            }
+        let ty = tcx.erase_regions(&self);
+        let layout = tcx.layout_raw(param_env.reveal_all().and(ty));
+
+        // NB: This recording is normally disabled; when enabled, it
+        // can however trigger recursive invocations of `layout()`.
+        // Therefore, we execute it *after* the main query has
+        // completed, to avoid problems around recursive structures
+        // and the like. (Admitedly, I wasn't able to reproduce a problem
+        // here, but it seems like the right thing to do. -nmatsakis)
+        if let Ok(l) = layout {
+            Layout::record_layout_for_printing(tcx, ty, param_env, l);
         }
 
-        let rec_limit = tcx.sess.recursion_limit.get();
-        let depth = tcx.layout_depth.get();
-        if depth > rec_limit {
-            tcx.sess.fatal(
-                &format!("overflow representing the type `{}`", self));
-        }
-
-        tcx.layout_depth.set(depth+1);
-        let layout = Layout::compute_uncached(self, infcx);
-        tcx.layout_depth.set(depth);
-        let layout = layout?;
-        if can_cache {
-            tcx.layout_cache.borrow_mut().insert(self, layout);
-        }
-        Ok(layout)
+        layout
     }
 
 
@@ -829,27 +847,33 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             })
         }
 
-        fn are_inner_types_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span,
-                                               seen: &mut Vec<Ty<'tcx>>, ty: Ty<'tcx>)
-                                               -> Representability {
+        fn are_inner_types_recursive<'a, 'tcx>(
+            tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span,
+            seen: &mut Vec<Ty<'tcx>>,
+            representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
+            ty: Ty<'tcx>)
+            -> Representability
+        {
             match ty.sty {
                 TyTuple(ref ts, _) => {
                     // Find non representable
                     fold_repr(ts.iter().map(|ty| {
-                        is_type_structurally_recursive(tcx, sp, seen, ty)
+                        is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
                     }))
                 }
                 // Fixed-length vectors.
                 // FIXME(#11924) Behavior undecided for zero-length vectors.
                 TyArray(ty, _) => {
-                    is_type_structurally_recursive(tcx, sp, seen, ty)
+                    is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
                 }
                 TyAdt(def, substs) => {
                     // Find non representable fields with their spans
                     fold_repr(def.all_fields().map(|field| {
                         let ty = field.ty(tcx, substs);
                         let span = tcx.hir.span_if_local(field.did).unwrap_or(sp);
-                        match is_type_structurally_recursive(tcx, span, seen, ty) {
+                        match is_type_structurally_recursive(tcx, span, seen,
+                                                             representable_cache, ty)
+                        {
                             Representability::SelfRecursive(_) => {
                                 Representability::SelfRecursive(vec![span])
                             }
@@ -890,12 +914,34 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
         // Does the type `ty` directly (without indirection through a pointer)
         // contain any types on stack `seen`?
-        fn is_type_structurally_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                    sp: Span,
-                                                    seen: &mut Vec<Ty<'tcx>>,
-                                                    ty: Ty<'tcx>) -> Representability {
+        fn is_type_structurally_recursive<'a, 'tcx>(
+            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+            sp: Span,
+            seen: &mut Vec<Ty<'tcx>>,
+            representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
+            ty: Ty<'tcx>) -> Representability
+        {
             debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
+            if let Some(representability) = representable_cache.get(ty) {
+                debug!("is_type_structurally_recursive: {:?} {:?} - (cached) {:?}",
+                       ty, sp, representability);
+                return representability.clone();
+            }
 
+            let representability = is_type_structurally_recursive_inner(
+                tcx, sp, seen, representable_cache, ty);
+
+            representable_cache.insert(ty, representability.clone());
+            representability
+        }
+
+        fn is_type_structurally_recursive_inner<'a, 'tcx>(
+            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+            sp: Span,
+            seen: &mut Vec<Ty<'tcx>>,
+            representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
+            ty: Ty<'tcx>) -> Representability
+        {
             match ty.sty {
                 TyAdt(def, _) => {
                     {
@@ -942,13 +988,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     // For structs and enums, track all previously seen types by pushing them
                     // onto the 'seen' stack.
                     seen.push(ty);
-                    let out = are_inner_types_recursive(tcx, sp, seen, ty);
+                    let out = are_inner_types_recursive(tcx, sp, seen, representable_cache, ty);
                     seen.pop();
                     out
                 }
                 _ => {
                     // No need to push in other cases.
-                    are_inner_types_recursive(tcx, sp, seen, ty)
+                    are_inner_types_recursive(tcx, sp, seen, representable_cache, ty)
                 }
             }
         }
@@ -959,7 +1005,9 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         // contains a different, structurally recursive type, maintain a stack
         // of seen types and check recursion for each of them (issues #3008, #3779).
         let mut seen: Vec<Ty> = Vec::new();
-        let r = is_type_structurally_recursive(tcx, sp, &mut seen, self);
+        let mut representable_cache = FxHashMap();
+        let r = is_type_structurally_recursive(
+            tcx, sp, &mut seen, &mut representable_cache, self);
         debug!("is_type_representable: {:?} is {:?}", self, r);
         r
     }
@@ -971,8 +1019,12 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+    tcx.infer_ctxt()
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
 }
 
 fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -981,8 +1033,12 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+    tcx.infer_ctxt()
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
 }
 
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -991,8 +1047,12 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
-    tcx.infer_ctxt(param_env, Reveal::UserFacing)
-       .enter(|infcx| traits::type_known_to_meet_bound(&infcx, ty, trait_def_id, DUMMY_SP))
+    tcx.infer_ctxt()
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
 }
 
 fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1063,6 +1123,25 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+                        -> Result<&'tcx Layout, LayoutError<'tcx>>
+{
+    let (param_env, ty) = query.into_parts();
+
+    let rec_limit = tcx.sess.recursion_limit.get();
+    let depth = tcx.layout_depth.get();
+    if depth > rec_limit {
+        tcx.sess.fatal(
+            &format!("overflow representing the type `{}`", ty));
+    }
+
+    tcx.layout_depth.set(depth+1);
+    let layout = Layout::compute_uncached(tcx, param_env, ty);
+    tcx.layout_depth.set(depth);
+
+    layout
+}
 
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
@@ -1070,6 +1149,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_sized_raw,
         is_freeze_raw,
         needs_drop_raw,
+        layout_raw,
         ..*providers
     };
 }

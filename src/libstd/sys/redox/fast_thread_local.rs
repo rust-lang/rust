@@ -57,7 +57,7 @@ impl<T> Key<T> {
     }
 }
 
-unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     // The fallback implementation uses a vanilla OS-based TLS key to track
     // the list of destructors that need to be run for this thread. The key
     // then has its own destructor which runs all the other destructors.
@@ -114,4 +114,8 @@ pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
     } else {
         ptr::drop_in_place((*ptr).inner.get());
     }
+}
+
+pub fn requires_move_before_drop() -> bool {
+    false
 }

@@ -499,8 +499,6 @@ unsafe impl<T: Send> Send for Sender<T> { }
 impl<T> !Sync for Sender<T> { }
 
 /// The sending-half of Rust's synchronous [`sync_channel`] type.
-/// This half can only be owned by one thread, but it can be cloned
-/// to send to other threads.
 ///
 /// Messages can be sent through this channel with [`send`] or [`try_send`].
 ///
@@ -554,9 +552,6 @@ pub struct SyncSender<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for SyncSender<T> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> !Sync for SyncSender<T> {}
 
 /// An error returned from the [`Sender::send`] or [`SyncSender::send`]
 /// function on **channel**s.
@@ -1252,14 +1247,43 @@ impl<T> Receiver<T> {
     ///
     /// # Examples
     ///
+    /// Successfully receiving value before encountering timeout:
+    ///
     /// ```no_run
-    /// use std::sync::mpsc::{self, RecvTimeoutError};
+    /// use std::thread;
     /// use std::time::Duration;
+    /// use std::sync::mpsc;
     ///
-    /// let (send, recv) = mpsc::channel::<()>();
+    /// let (send, recv) = mpsc::channel();
     ///
-    /// let timeout = Duration::from_millis(100);
-    /// assert_eq!(Err(RecvTimeoutError::Timeout), recv.recv_timeout(timeout));
+    /// thread::spawn(move || {
+    ///     send.send('a').unwrap();
+    /// });
+    ///
+    /// assert_eq!(
+    ///     recv.recv_timeout(Duration::from_millis(400)),
+    ///     Ok('a')
+    /// );
+    /// ```
+    ///
+    /// Receiving an error upon reaching timeout:
+    ///
+    /// ```no_run
+    /// use std::thread;
+    /// use std::time::Duration;
+    /// use std::sync::mpsc;
+    ///
+    /// let (send, recv) = mpsc::channel();
+    ///
+    /// thread::spawn(move || {
+    ///     thread::sleep(Duration::from_millis(800));
+    ///     send.send('a').unwrap();
+    /// });
+    ///
+    /// assert_eq!(
+    ///     recv.recv_timeout(Duration::from_millis(400)),
+    ///     Err(mpsc::RecvTimeoutError::Timeout)
+    /// );
     /// ```
     #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
     pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
@@ -1341,14 +1365,16 @@ impl<T> Receiver<T> {
     /// let (send, recv) = channel();
     ///
     /// thread::spawn(move || {
-    ///     send.send(1u8).unwrap();
-    ///     send.send(2u8).unwrap();
-    ///     send.send(3u8).unwrap();
+    ///     send.send(1).unwrap();
+    ///     send.send(2).unwrap();
+    ///     send.send(3).unwrap();
     /// });
     ///
-    /// for x in recv.iter() {
-    ///     println!("Got: {}", x);
-    /// }
+    /// let mut iter = recv.iter();
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -1364,29 +1390,34 @@ impl<T> Receiver<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```no_run
     /// use std::sync::mpsc::channel;
     /// use std::thread;
     /// use std::time::Duration;
     ///
     /// let (sender, receiver) = channel();
     ///
-    /// // Nothing is in the buffer yet
+    /// // nothing is in the buffer yet
     /// assert!(receiver.try_iter().next().is_none());
-    /// println!("Nothing in the buffer...");
     ///
     /// thread::spawn(move || {
+    ///     thread::sleep(Duration::from_secs(1));
     ///     sender.send(1).unwrap();
     ///     sender.send(2).unwrap();
     ///     sender.send(3).unwrap();
     /// });
     ///
-    /// println!("Going to sleep...");
-    /// thread::sleep(Duration::from_secs(2)); // block for two seconds
+    /// // nothing is in the buffer yet
+    /// assert!(receiver.try_iter().next().is_none());
     ///
-    /// for x in receiver.try_iter() {
-    ///     println!("Got: {}", x);
-    /// }
+    /// // block for two seconds
+    /// thread::sleep(Duration::from_secs(2));
+    ///
+    /// let mut iter = receiver.try_iter();
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "receiver_try_iter", since = "1.15.0")]
     pub fn try_iter(&self) -> TryIter<T> {
@@ -1924,7 +1955,7 @@ mod tests {
     fn oneshot_single_thread_send_then_recv() {
         let (tx, rx) = channel::<Box<i32>>();
         tx.send(box 10).unwrap();
-        assert!(rx.recv().unwrap() == box 10);
+        assert!(*rx.recv().unwrap() == 10);
     }
 
     #[test]
@@ -1981,7 +2012,7 @@ mod tests {
     fn oneshot_multi_task_recv_then_send() {
         let (tx, rx) = channel::<Box<i32>>();
         let _t = thread::spawn(move|| {
-            assert!(rx.recv().unwrap() == box 10);
+            assert!(*rx.recv().unwrap() == 10);
         });
 
         tx.send(box 10).unwrap();
@@ -1994,7 +2025,7 @@ mod tests {
             drop(tx);
         });
         let res = thread::spawn(move|| {
-            assert!(rx.recv().unwrap() == box 10);
+            assert!(*rx.recv().unwrap() == 10);
         }).join();
         assert!(res.is_err());
     }
@@ -2048,7 +2079,7 @@ mod tests {
             let _t = thread::spawn(move|| {
                 tx.send(box 10).unwrap();
             });
-            assert!(rx.recv().unwrap() == box 10);
+            assert!(*rx.recv().unwrap() == 10);
         }
     }
 
@@ -2073,7 +2104,7 @@ mod tests {
                 if i == 10 { return }
 
                 thread::spawn(move|| {
-                    assert!(rx.recv().unwrap() == box i);
+                    assert!(*rx.recv().unwrap() == i);
                     recv(rx, i + 1);
                 });
             }
@@ -2610,7 +2641,7 @@ mod sync_tests {
     fn oneshot_single_thread_send_then_recv() {
         let (tx, rx) = sync_channel::<Box<i32>>(1);
         tx.send(box 10).unwrap();
-        assert!(rx.recv().unwrap() == box 10);
+        assert!(*rx.recv().unwrap() == 10);
     }
 
     #[test]
@@ -2682,7 +2713,7 @@ mod sync_tests {
     fn oneshot_multi_task_recv_then_send() {
         let (tx, rx) = sync_channel::<Box<i32>>(0);
         let _t = thread::spawn(move|| {
-            assert!(rx.recv().unwrap() == box 10);
+            assert!(*rx.recv().unwrap() == 10);
         });
 
         tx.send(box 10).unwrap();
@@ -2695,7 +2726,7 @@ mod sync_tests {
             drop(tx);
         });
         let res = thread::spawn(move|| {
-            assert!(rx.recv().unwrap() == box 10);
+            assert!(*rx.recv().unwrap() == 10);
         }).join();
         assert!(res.is_err());
     }
@@ -2749,7 +2780,7 @@ mod sync_tests {
             let _t = thread::spawn(move|| {
                 tx.send(box 10).unwrap();
             });
-            assert!(rx.recv().unwrap() == box 10);
+            assert!(*rx.recv().unwrap() == 10);
         }
     }
 
@@ -2774,7 +2805,7 @@ mod sync_tests {
                 if i == 10 { return }
 
                 thread::spawn(move|| {
-                    assert!(rx.recv().unwrap() == box i);
+                    assert!(*rx.recv().unwrap() == i);
                     recv(rx, i + 1);
                 });
             }

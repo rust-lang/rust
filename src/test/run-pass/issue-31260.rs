@@ -12,9 +12,12 @@ pub struct Struct<K: 'static> {
     pub field: K,
 }
 
-// Partial fix for #31260, doesn't work without {...}.
 static STRUCT: Struct<&'static [u8]> = Struct {
     field: {&[1]}
+};
+
+static STRUCT2: Struct<&'static [u8]> = Struct {
+    field: &[1]
 };
 
 fn main() {}

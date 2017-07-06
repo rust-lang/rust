@@ -191,10 +191,13 @@
 //! {
 //!     let result = match IntoIterator::into_iter(values) {
 //!         mut iter => loop {
+//!             let next;
 //!             match iter.next() {
-//!                 Some(x) => { println!("{}", x); },
+//!                 Some(val) => next = val,
 //!                 None => break,
-//!             }
+//!             };
+//!             let x = next;
+//!             let () = { println!("{}", x); };
 //!         },
 //!     };
 //!     result
@@ -208,7 +211,7 @@
 //! There's one more subtle bit here: the standard library contains an
 //! interesting implementation of [`IntoIterator`]:
 //!
-//! ```ignore
+//! ```ignore (only-for-syntax-highlight)
 //! impl<I: Iterator> IntoIterator for I
 //! ```
 //!
@@ -311,9 +314,6 @@ pub use self::iterator::Iterator;
            reason = "likely to be replaced by finer-grained traits",
            issue = "42168")]
 pub use self::range::Step;
-#[unstable(feature = "step_by", reason = "recent addition",
-           issue = "27741")]
-pub use self::range::StepBy as DeprecatedStepBy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{Repeat, repeat};

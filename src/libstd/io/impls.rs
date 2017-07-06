@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cmp;
-use io::{self, SeekFrom, Read, Write, Seek, BufRead, Error, ErrorKind};
+use io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind};
 use fmt;
 use mem;
 
@@ -21,6 +21,11 @@ impl<'a, R: Read + ?Sized> Read for &'a mut R {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
+    }
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        (**self).initializer()
     }
 
     #[inline]
@@ -85,6 +90,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
+    }
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        (**self).initializer()
     }
 
     #[inline]
@@ -169,6 +179,11 @@ impl<'a> Read for &'a [u8] {
 
         *self = b;
         Ok(amt)
+    }
+
+    #[inline]
+    unsafe fn initializer(&self) -> Initializer {
+        Initializer::nop()
     }
 
     #[inline]

@@ -36,7 +36,6 @@ mod y {
     use Foo;
 
     #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
-    #[rustc_then_this_would_need(TransCrateItem)] //~ ERROR OK
     pub fn use_char_assoc() {
         // Careful here: in the representation, <char as Foo>::T gets
         // normalized away, so at a certain point we had no edge to

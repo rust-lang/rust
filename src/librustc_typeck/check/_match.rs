@@ -413,7 +413,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // discriminant. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
             discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
-            self.check_expr_has_type(discrim, discrim_ty);
+            self.check_expr_has_type_or_error(discrim, discrim_ty);
         };
 
         // If the discriminant diverges, the match is pointless (e.g.,
@@ -480,7 +480,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
             if let Some(ref e) = arm.guard {
                 self.diverges.set(pats_diverge);
-                self.check_expr_has_type(e, tcx.types.bool);
+                self.check_expr_has_type_or_error(e, tcx.types.bool);
             }
 
             self.diverges.set(pats_diverge);
@@ -619,7 +619,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Type check the path.
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
         // Replace constructor type with constructed type for tuple struct patterns.
-        let pat_ty = tcx.no_late_bound_regions(&pat_ty.fn_ret()).expect("expected fn type");
+        let pat_ty = pat_ty.fn_sig(tcx).output();
+        let pat_ty = tcx.no_late_bound_regions(&pat_ty).expect("expected fn type");
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.

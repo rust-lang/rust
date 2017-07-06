@@ -18,8 +18,6 @@ pub use self::bckerr_code::*;
 pub use self::AliasableViolationKind::*;
 pub use self::MovedValueUseKind::*;
 
-pub use self::mir::elaborate_drops::ElaborateDrops;
-
 use self::InteriorKind::*;
 
 use rustc::hir::map as hir_map;
@@ -39,8 +37,6 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 
-use syntax_pos::DUMMY_SP;
-
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
@@ -56,8 +52,6 @@ pub mod check_loans;
 pub mod gather_loans;
 
 pub mod move_data;
-
-mod mir;
 
 #[derive(Clone, Copy)]
 pub struct LoanDataFlowOperator;
@@ -102,26 +96,21 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     }
 
     let body_id = tcx.hir.body_owned_by(owner_id);
-    let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_maps = tcx.region_maps(owner_def_id);
     let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let body = bccx.tcx.hir.body(body_id);
 
-    if bccx.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
-        mir::borrowck_mir(bccx, owner_id, &attributes);
-    } else {
-        // Eventually, borrowck will always read the MIR, but at the
-        // moment we do not. So, for now, we always force MIR to be
-        // constructed for a given fn, since this may result in errors
-        // being reported and we want that to happen.
-        //
-        // Note that `mir_validated` is a "stealable" result; the
-        // thief, `optimized_mir()`, forces borrowck, so we know that
-        // is not yet stolen.
-        tcx.mir_validated(owner_def_id).borrow();
-    }
+    // Eventually, borrowck will always read the MIR, but at the
+    // moment we do not. So, for now, we always force MIR to be
+    // constructed for a given fn, since this may result in errors
+    // being reported and we want that to happen.
+    //
+    // Note that `mir_validated` is a "stealable" result; the
+    // thief, `optimized_mir()`, forces borrowck, so we know that
+    // is not yet stolen.
+    tcx.mir_validated(owner_def_id).borrow();
 
     let cfg = cfg::CFG::new(bccx.tcx, &body);
     let AnalysisData { all_loans,
@@ -286,7 +275,7 @@ const DOWNCAST_PRINTED_OPERATOR: &'static str = " as ";
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(mc::FieldName),
-    InteriorElement(mc::ElementKind),
+    InteriorElement,
 }
 
 trait ToInteriorKind { fn cleaned(self) -> InteriorKind; }
@@ -294,7 +283,7 @@ impl ToInteriorKind for mc::InteriorKind {
     fn cleaned(self) -> InteriorKind {
         match self {
             mc::InteriorField(name) => InteriorField(name),
-            mc::InteriorElement(_, elem_kind) => InteriorElement(elem_kind),
+            mc::InteriorElement(_) => InteriorElement,
         }
     }
 }
@@ -428,7 +417,7 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
             Some(new_lp(LpUpvar(id)))
         }
 
-        Categorization::Deref(ref cmt_base, _, pk) => {
+        Categorization::Deref(ref cmt_base, pk) => {
             opt_loan_path(cmt_base).map(|lp| {
                 new_lp(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
             })
@@ -528,7 +517,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                      lp: &LoanPath<'tcx>,
                                      the_move: &move_data::Move,
                                      moved_lp: &LoanPath<'tcx>,
-                                     _param_env: &ty::ParamEnv<'tcx>) {
+                                     _param_env: ty::ParamEnv<'tcx>) {
         let (verb, verb_participle) = match use_kind {
             MovedInUse => ("use", "used"),
             MovedInCapture => ("capture", "captured"),
@@ -587,9 +576,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     verb, msg, nl);
                 let need_note = match lp.ty.sty {
                     ty::TypeVariants::TyClosure(id, _) => {
-                        if let Ok(ty::ClosureKind::FnOnce) =
-                           ty::queries::closure_kind::try_get(self.tcx, DUMMY_SP, id) {
-                            err.help("closure was moved because it only implements `FnOnce`");
+                        let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
+                        if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
+                            self.tables.closure_kinds.get(&node_id)
+                        {
+                            err.span_note(span, &format!(
+                                "closure cannot be invoked more than once because \
+                                it moves the variable `{}` out of its environment",
+                                name
+                            ));
                             false
                         } else {
                             true
@@ -1121,17 +1116,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 if let Some(_) = statement_scope_span(self.tcx, super_scope) {
                     db.note("consider using a `let` binding to increase its lifetime");
                 }
-
-
-
-                match err.cmt.cat {
-                    mc::Categorization::Rvalue(r, or) if r != or => {
-                        db.note("\
-before rustc 1.16, this temporary lived longer - see issue #39283 \
-(https://github.com/rust-lang/rust/issues/39283)");
-                    }
-                    _ => {}
-                }
             }
 
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
@@ -1228,7 +1212,7 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
                 }
             }
 
-            LpExtend(ref lp_base, _, LpInterior(_, InteriorElement(..))) => {
+            LpExtend(ref lp_base, _, LpInterior(_, InteriorElement)) => {
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);
                 out.push_str("[..]");
             }
@@ -1314,7 +1298,7 @@ impl<'tcx> fmt::Debug for InteriorKind {
         match *self {
             InteriorField(mc::NamedField(fld)) => write!(f, "{}", fld),
             InteriorField(mc::PositionalField(i)) => write!(f, "#{}", i),
-            InteriorElement(..) => write!(f, "[]"),
+            InteriorElement => write!(f, "[]"),
         }
     }
 }

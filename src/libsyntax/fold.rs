@@ -22,7 +22,7 @@ use ast::*;
 use ast;
 use syntax_pos::Span;
 use codemap::{Spanned, respan};
-use parse::token;
+use parse::token::{self, Token};
 use ptr::P;
 use symbol::keywords;
 use tokenstream::*;
@@ -573,7 +573,7 @@ pub fn noop_fold_tt<T: Folder>(tt: TokenTree, fld: &mut T) -> TokenTree {
 }
 
 pub fn noop_fold_tts<T: Folder>(tts: TokenStream, fld: &mut T) -> TokenStream {
-    tts.trees().map(|tt| fld.fold_tt(tt)).collect()
+    tts.map(|tt| fld.fold_tt(tt))
 }
 
 // apply ident folder if it's an ident, apply other folds to interpolated nodes
@@ -586,9 +586,8 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
                 Ok(nt) => nt,
                 Err(nt) => (*nt).clone(),
             };
-            token::Interpolated(Rc::new(fld.fold_interpolated(nt)))
+            Token::interpolated(fld.fold_interpolated(nt.0))
         }
-        token::SubstNt(ident) => token::SubstNt(fld.fold_ident(ident)),
         _ => t
     }
 }

@@ -51,12 +51,14 @@ fn main() {}
 
 The parenthesized `inline` attribute requires the parameter to be specified:
 
-```ignore
+```
 #[inline(always)]
 fn something() {}
+```
 
-// or:
+or:
 
+```
 #[inline(never)]
 fn something() {}
 ```

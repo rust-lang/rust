@@ -22,5 +22,5 @@ error[E0599]: no method named `c_fn_ptr` found for type `&D` in the current scop
    |
    = help: use `(s.c_fn_ptr)(...)` if you meant to call the function stored in the `c_fn_ptr` field
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

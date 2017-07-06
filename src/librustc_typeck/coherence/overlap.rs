@@ -15,7 +15,6 @@
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use syntax::ast;
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
@@ -37,9 +36,6 @@ pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
                impl_def_id, trait_ref);
         return
     }
-
-    let _task =
-        tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
 
     // Trigger building the specialization graph for the trait of this impl.
     // This will detect any overlap errors.

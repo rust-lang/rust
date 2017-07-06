@@ -25,5 +25,5 @@ error[E0592]: duplicate definitions with name `baz`
 43 |     fn baz(&self) {}
    |     ---------------- other definition for `baz`
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

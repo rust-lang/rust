@@ -13,6 +13,8 @@ use std::fmt;
 use std::str::FromStr;
 use std::path::PathBuf;
 
+use test::ColorConfig;
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
@@ -164,6 +166,9 @@ pub struct Config {
     // Version of LLVM
     pub llvm_version: Option<String>,
 
+    // Is LLVM a system LLVM
+    pub system_llvm: bool,
+
     // Path to the android tools
     pub android_cross_path: PathBuf,
 
@@ -184,6 +189,9 @@ pub struct Config {
 
     // Print one character per test instead of one line
     pub quiet: bool,
+
+    // Whether to use colors in test.
+    pub color: ColorConfig,
 
     // where to find the remote test client process, if we're using it
     pub remote_test_client: Option<PathBuf>,

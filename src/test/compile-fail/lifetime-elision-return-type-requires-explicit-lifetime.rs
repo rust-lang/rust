@@ -28,7 +28,7 @@ struct Foo<'a> {
 // Lifetime annotation needed because we have two lifetimes: one as a parameter
 // and one on the reference.
 fn h(_x: &Foo) -> &isize { //~ ERROR missing lifetime specifier
-//~^ HELP the signature does not say which one of `_x`'s 2 elided lifetimes it is borrowed from
+//~^ HELP the signature does not say which one of `_x`'s 2 lifetimes it is borrowed from
     panic!()
 }
 

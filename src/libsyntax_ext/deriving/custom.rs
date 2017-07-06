@@ -16,7 +16,6 @@ use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
-use syntax::fold::Folder;
 use syntax::visit::Visitor;
 
 struct MarkAttrs<'a>(&'a [ast::Name]);
@@ -75,7 +74,7 @@ impl MultiItemModifier for ProcMacroDerive {
         MarkAttrs(&self.attrs).visit_item(&item);
 
         let input = __internal::new_token_stream(ecx.resolver.eliminate_crate_var(item.clone()));
-        let res = __internal::set_parse_sess(&ecx.parse_sess, || {
+        let res = __internal::set_sess(ecx, || {
             let inner = self.inner;
             panic::catch_unwind(panic::AssertUnwindSafe(|| inner(input)))
         });
@@ -97,9 +96,9 @@ impl MultiItemModifier for ProcMacroDerive {
             }
         };
 
-        let new_items = __internal::set_parse_sess(&ecx.parse_sess, || {
+        __internal::set_sess(ecx, || {
             match __internal::token_stream_parse_items(stream) {
-                Ok(new_items) => new_items,
+                Ok(new_items) => new_items.into_iter().map(Annotatable::Item).collect(),
                 Err(_) => {
                     // FIXME: handle this better
                     let msg = "proc-macro derive produced unparseable tokens";
@@ -107,12 +106,6 @@ impl MultiItemModifier for ProcMacroDerive {
                     panic!(FatalError);
                 }
             }
-        });
-
-        // Reassign spans of all expanded items to the input `item`
-        // for better errors here.
-        new_items.into_iter().map(|item| {
-            Annotatable::Item(ChangeSpan { span: span }.fold_item(item).expect_one(""))
-        }).collect()
+        })
     }
 }

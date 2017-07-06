@@ -34,5 +34,5 @@ error[E0204]: the trait `Copy` may not be implemented for this type
 31 |     Bar(&'a mut bool),
    |         ------------- this field does not implement `Copy`
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 

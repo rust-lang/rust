@@ -126,7 +126,7 @@ while    { return WHILE; }
 {ident}  { return IDENT; }
 
 0x[0-9a-fA-F_]+                                    { BEGIN(suffix); return LIT_INTEGER; }
-0o[0-8_]+                                          { BEGIN(suffix); return LIT_INTEGER; }
+0o[0-7_]+                                          { BEGIN(suffix); return LIT_INTEGER; }
 0b[01_]+                                           { BEGIN(suffix); return LIT_INTEGER; }
 [0-9][0-9_]*                                       { BEGIN(suffix); return LIT_INTEGER; }
 [0-9][0-9_]*\.(\.|[a-zA-Z])    { yyless(yyleng - 2); BEGIN(suffix); return LIT_INTEGER; }

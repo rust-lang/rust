@@ -564,6 +564,39 @@ extern "rust-intrinsic" {
     pub fn atomic_umax_rel<T>(dst: *mut T, src: T) -> T;
     pub fn atomic_umax_acqrel<T>(dst: *mut T, src: T) -> T;
     pub fn atomic_umax_relaxed<T>(dst: *mut T, src: T) -> T;
+
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    pub fn prefetch_read_data<T>(data: *const T, locality: i32);
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    pub fn prefetch_write_data<T>(data: *const T, locality: i32);
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    pub fn prefetch_read_instruction<T>(data: *const T, locality: i32);
+    /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
+    /// if supported; otherwise, it is a noop.
+    /// Prefetches have no effect on the behavior of the program but can change its performance
+    /// characteristics.
+    ///
+    /// The `locality` argument must be a constant integer and is a temporal locality specifier
+    /// ranging from (0) - no locality, to (3) - extremely local keep in cache
+    pub fn prefetch_write_instruction<T>(data: *const T, locality: i32);
 }
 
 extern "rust-intrinsic" {
@@ -1182,6 +1215,23 @@ extern "rust-intrinsic" {
     /// ```
     pub fn ctlz<T>(x: T) -> T;
 
+    /// Like `ctlz`, but extra-unsafe as it returns `undef` when
+    /// given an `x` with value `0`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(core_intrinsics)]
+    ///
+    /// use std::intrinsics::ctlz_nonzero;
+    ///
+    /// let x = 0b0001_1100_u8;
+    /// let num_leading = unsafe { ctlz_nonzero(x) };
+    /// assert_eq!(num_leading, 3);
+    /// ```
+    #[cfg(not(stage0))]
+    pub fn ctlz_nonzero<T>(x: T) -> T;
+
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
     ///
     /// # Examples
@@ -1208,6 +1258,23 @@ extern "rust-intrinsic" {
     /// assert_eq!(num_trailing, 16);
     /// ```
     pub fn cttz<T>(x: T) -> T;
+
+    /// Like `cttz`, but extra-unsafe as it returns `undef` when
+    /// given an `x` with value `0`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(core_intrinsics)]
+    ///
+    /// use std::intrinsics::cttz_nonzero;
+    ///
+    /// let x = 0b0011_1000_u8;
+    /// let num_trailing = unsafe { cttz_nonzero(x) };
+    /// assert_eq!(num_trailing, 3);
+    /// ```
+    #[cfg(not(stage0))]
+    pub fn cttz_nonzero<T>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
     pub fn bswap<T>(x: T) -> T;

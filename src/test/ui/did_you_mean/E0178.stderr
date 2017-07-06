@@ -22,5 +22,5 @@ error[E0178]: expected a path on the left-hand side of `+`, not `fn() -> Foo`
 17 |     z: fn() -> Foo + 'a,
    |        ^^^^^^^^^^^^^^^^ perhaps you forgot parentheses?
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 

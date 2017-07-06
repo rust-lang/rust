@@ -10,8 +10,10 @@
 
 use self::Direction::{North, East, South, West};
 
+#[derive(PartialEq, Eq)]
 struct NewBool(bool);
 
+#[derive(PartialEq, Eq)]
 enum Direction {
     North,
     East,

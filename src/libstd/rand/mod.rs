@@ -56,7 +56,7 @@
 //!     between the two sources. (Also note that, on some systems e.g. FreeBSD, both `/dev/random`
 //!     and `/dev/urandom` may block once if the CSPRNG has not seeded yet.)
 
-#![unstable(feature = "rand", issue = "0")]
+#![unstable(feature = "rand", issue = "27703")]
 
 use cell::RefCell;
 use fmt;

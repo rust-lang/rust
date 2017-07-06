@@ -42,8 +42,10 @@
 //! Recursive structures must be boxed, because if the definition of `Cons`
 //! looked like this:
 //!
-//! ```rust,ignore
+//! ```compile_fail,E0072
+//! # enum List<T> {
 //! Cons(T, List<T>),
+//! # }
 //! ```
 //!
 //! It wouldn't work. This is because the size of a `List` depends on how many
@@ -53,7 +55,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use heap;
+use heap::{Heap, Layout, Alloc};
 use raw_vec::RawVec;
 
 use core::any::Any;
@@ -95,6 +97,7 @@ pub const HEAP: ExchangeHeapSingleton = ExchangeHeapSingleton { _force_singleton
 #[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design",
            issue = "27779")]
+#[allow(missing_debug_implementations)]
 #[derive(Copy, Clone)]
 pub struct ExchangeHeapSingleton {
     _force_singleton: (),
@@ -129,10 +132,10 @@ pub struct Box<T: ?Sized>(Unique<T>);
 #[unstable(feature = "placement_in",
            reason = "placement box design is still being worked out.",
            issue = "27779")]
+#[allow(missing_debug_implementations)]
 pub struct IntermediateBox<T: ?Sized> {
     ptr: *mut u8,
-    size: usize,
-    align: usize,
+    layout: Layout,
     marker: marker::PhantomData<*mut T>,
 }
 
@@ -152,23 +155,21 @@ unsafe fn finalize<T>(b: IntermediateBox<T>) -> Box<T> {
 }
 
 fn make_place<T>() -> IntermediateBox<T> {
-    let size = mem::size_of::<T>();
-    let align = mem::align_of::<T>();
+    let layout = Layout::new::<T>();
 
-    let p = if size == 0 {
+    let p = if layout.size() == 0 {
         mem::align_of::<T>() as *mut u8
     } else {
-        let p = unsafe { heap::allocate(size, align) };
-        if p.is_null() {
-            panic!("Box make_place allocation failure.");
+        unsafe {
+            Heap.alloc(layout.clone()).unwrap_or_else(|err| {
+                Heap.oom(err)
+            })
         }
-        p
     };
 
     IntermediateBox {
         ptr: p,
-        size: size,
-        align: align,
+        layout: layout,
         marker: marker::PhantomData,
     }
 }
@@ -217,8 +218,10 @@ impl<T> Placer<T> for ExchangeHeapSingleton {
            issue = "27779")]
 impl<T: ?Sized> Drop for IntermediateBox<T> {
     fn drop(&mut self) {
-        if self.size > 0 {
-            unsafe { heap::deallocate(self.ptr, self.size, self.align) }
+        if self.layout.size() > 0 {
+            unsafe {
+                Heap.dealloc(self.ptr, self.layout.clone())
+            }
         }
     }
 }

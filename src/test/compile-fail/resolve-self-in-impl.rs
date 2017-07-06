@@ -17,7 +17,6 @@ trait Tr<T = u8> {
 
 impl Tr<Self> for S {} // OK
 impl<T: Tr<Self>> Tr<T> for S {} // OK
-impl<T = Self> Tr<T> for S {} // OK
 impl Tr for S where Self: Copy {} // OK
 impl Tr for S where S<Self>: Copy {} // OK
 impl Tr for S where Self::A: Copy {} // OK

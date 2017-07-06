@@ -1407,7 +1407,7 @@ impl<'a, K, V> Clone for Keys<'a, K, V> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: Debug, V: Debug> fmt::Debug for Keys<'a, K, V> {
+impl<'a, K: Debug, V> fmt::Debug for Keys<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -1436,7 +1436,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
-impl<'a, K: Debug, V: Debug> fmt::Debug for Values<'a, K, V> {
+impl<'a, K, V: Debug> fmt::Debug for Values<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
             .entries(self.clone())
@@ -2384,7 +2384,7 @@ impl BuildHasher for RandomState {
 /// [`Hasher`]: ../../hash/trait.Hasher.html
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 #[allow(deprecated)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DefaultHasher(SipHasher13);
 
 impl DefaultHasher {

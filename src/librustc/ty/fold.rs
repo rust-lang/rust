@@ -39,8 +39,6 @@
 //! These methods return true to indicate that the visitor has found what it is looking for
 //! and does not need to visit anything else.
 
-use ty::subst::Substs;
-use ty::adjustment;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use std::fmt;
@@ -138,33 +136,8 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         t.super_fold_with(self)
     }
 
-    fn fold_mt(&mut self, t: &ty::TypeAndMut<'tcx>) -> ty::TypeAndMut<'tcx> {
-        t.super_fold_with(self)
-    }
-
-    fn fold_impl_header(&mut self, imp: &ty::ImplHeader<'tcx>) -> ty::ImplHeader<'tcx> {
-        imp.super_fold_with(self)
-    }
-
-    fn fold_substs(&mut self,
-                   substs: &'tcx Substs<'tcx>)
-                   -> &'tcx Substs<'tcx> {
-        substs.super_fold_with(self)
-    }
-
-    fn fold_fn_sig(&mut self,
-                   sig: &ty::FnSig<'tcx>)
-                   -> ty::FnSig<'tcx> {
-        sig.super_fold_with(self)
-    }
-
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         r.super_fold_with(self)
-    }
-
-    fn fold_autoref(&mut self, ar: &adjustment::AutoBorrow<'tcx>)
-                    -> adjustment::AutoBorrow<'tcx> {
-        ar.super_fold_with(self)
     }
 }
 

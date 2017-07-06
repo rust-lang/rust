@@ -60,6 +60,7 @@ fn main() {
         });
 
     println!("cargo:rerun-if-changed={}", llvm_config.display());
+    println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case
     // currently where we're producing an LLVM for a different platform than
@@ -88,7 +89,7 @@ fn main() {
 
     let mut optional_components =
         vec!["x86", "arm", "aarch64", "mips", "powerpc", "pnacl",
-             "systemz", "jsbackend", "msp430", "sparc", "nvptx"];
+             "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
 
     let mut version_cmd = Command::new(&llvm_config);
     version_cmd.arg("--version");

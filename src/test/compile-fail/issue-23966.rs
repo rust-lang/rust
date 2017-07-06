@@ -11,5 +11,4 @@
 fn main() {
     "".chars().fold(|_, _| (), ());
     //~^ ERROR E0277
-    //~| ERROR E0277
 }

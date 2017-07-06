@@ -79,6 +79,7 @@ extern crate toml;
 #[cfg(unix)]
 extern crate libc;
 
+use std::cell::Cell;
 use std::cmp;
 use std::collections::HashMap;
 use std::env;
@@ -88,9 +89,9 @@ use std::io::Read;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
-use build_helper::{run_silent, run_suppressed, output, mtime};
+use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 
-use util::{exe, libdir, add_lib_path};
+use util::{exe, libdir, add_lib_path, OutputFolder, CiEnv};
 
 mod cc;
 mod channel;
@@ -160,25 +161,37 @@ pub struct Build {
     flags: Flags,
 
     // Derived properties from the above two configurations
-    cargo: PathBuf,
-    rustc: PathBuf,
     src: PathBuf,
     out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
     local_rebuild: bool,
+    fail_fast: bool,
+    verbosity: usize,
+
+    // Targets for which to build.
+    build: String,
+    hosts: Vec<String>,
+    targets: Vec<String>,
+
+    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
+    initial_rustc: PathBuf,
+    initial_cargo: PathBuf,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
     lldb_python_dir: Option<String>,
 
     // Runtime state filled in later on
+    // target -> (cc, ar)
     cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
+    // host -> (cc, ar)
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
     is_sudo: bool,
-    src_is_git: bool,
+    ci_env: CiEnv,
+    delayed_failures: Cell<usize>,
 }
 
 #[derive(Debug)]
@@ -199,20 +212,16 @@ struct Crate {
 /// build system, with each mod generating output in a different directory.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
-    /// This cargo is going to build the standard library, placing output in the
-    /// "stageN-std" directory.
+    /// Build the standard library, placing output in the "stageN-std" directory.
     Libstd,
 
-    /// This cargo is going to build libtest, placing output in the
-    /// "stageN-test" directory.
+    /// Build libtest, placing output in the "stageN-test" directory.
     Libtest,
 
-    /// This cargo is going to build librustc and compiler libraries, placing
-    /// output in the "stageN-rustc" directory.
+    /// Build librustc and compiler libraries, placing output in the "stageN-rustc" directory.
     Librustc,
 
-    /// This cargo is going to build some tool, placing output in the
-    /// "stageN-tools" directory.
+    /// Build some tool, placing output in the "stageN-tools" directory.
     Tool,
 }
 
@@ -223,21 +232,8 @@ impl Build {
     /// By default all build output will be placed in the current directory.
     pub fn new(flags: Flags, config: Config) -> Build {
         let cwd = t!(env::current_dir());
-        let src = flags.src.clone().or_else(|| {
-            env::var_os("SRC").map(|x| x.into())
-        }).unwrap_or(cwd.clone());
+        let src = flags.src.clone();
         let out = cwd.join("build");
-
-        let stage0_root = out.join(&config.build).join("stage0/bin");
-        let rustc = match config.rustc {
-            Some(ref s) => PathBuf::from(s),
-            None => stage0_root.join(exe("rustc", &config.build)),
-        };
-        let cargo = match config.cargo {
-            Some(ref s) => PathBuf::from(s),
-            None => stage0_root.join(exe("cargo", &config.build)),
-        };
-        let local_rebuild = config.local_rebuild;
 
         let is_sudo = match env::var_os("SUDO_USER") {
             Some(sudo_user) => {
@@ -251,27 +247,61 @@ impl Build {
         let rust_info = channel::GitInfo::new(&src);
         let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
-        let src_is_git = src.join(".git").exists();
+
+        let hosts = if !flags.host.is_empty() {
+            for host in flags.host.iter() {
+                if !config.host.contains(host) {
+                    panic!("specified host `{}` is not in configuration", host);
+                }
+            }
+            flags.host.clone()
+        } else {
+            config.host.clone()
+        };
+        let targets = if !flags.target.is_empty() {
+            for target in flags.target.iter() {
+                if !config.target.contains(target) {
+                    panic!("specified target `{}` is not in configuration", target);
+                }
+            }
+            flags.target.clone()
+        } else {
+            config.target.clone()
+        };
 
         Build {
+            initial_rustc: config.initial_rustc.clone(),
+            initial_cargo: config.initial_cargo.clone(),
+            local_rebuild: config.local_rebuild,
+            fail_fast: flags.cmd.fail_fast(),
+            verbosity: cmp::max(flags.verbose, config.verbose),
+
+            build: config.host[0].clone(),
+            hosts: hosts,
+            targets: targets,
+
             flags: flags,
             config: config,
-            cargo: cargo,
-            rustc: rustc,
             src: src,
             out: out,
 
             rust_info: rust_info,
             cargo_info: cargo_info,
             rls_info: rls_info,
-            local_rebuild: local_rebuild,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
-            src_is_git: src_is_git,
+            ci_env: CiEnv::current(),
+            delayed_failures: Cell::new(0),
+        }
+    }
+
+    fn build_slice(&self) -> &[String] {
+        unsafe {
+            std::slice::from_raw_parts(&self.build, 1)
         }
     }
 
@@ -291,7 +321,7 @@ impl Build {
         sanity::check(self);
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
-            Command::new(&self.rustc).arg("--version").arg("--verbose"));
+            Command::new(&self.initial_rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
@@ -333,7 +363,7 @@ impl Build {
              mode: Mode,
              target: &str,
              cmd: &str) -> Command {
-        let mut cargo = Command::new(&self.cargo);
+        let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
              .arg(cmd)
@@ -342,7 +372,7 @@ impl Build {
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
-        cargo.env("__CARGO_DEFAULT_LIB_METADATA", "1");
+        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.channel);
 
         let stage;
         if compiler.stage == 0 && self.local_rebuild {
@@ -417,34 +447,11 @@ impl Build {
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
         if mode == Mode::Libstd {
-            cargo.env("RUSTC_SNAPSHOT", &self.rustc)
+            cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
             cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
-        }
-
-        // There are two invariants we must maintain:
-        // * stable crates cannot depend on unstable crates (general Rust rule),
-        // * crates that end up in the sysroot must be unstable (rustbuild rule).
-        //
-        // In order to do enforce the latter, we pass the env var
-        // `RUSTBUILD_UNSTABLE` down the line for any crates which will end up
-        // in the sysroot. We read this in bootstrap/bin/rustc.rs and if it is
-        // set, then we pass the `rustbuild` feature to rustc when building the
-        // the crate.
-        //
-        // In turn, crates that can be used here should recognise the `rustbuild`
-        // feature and opt-in to `rustc_private`.
-        //
-        // We can't always pass `rustbuild` because crates which are outside of
-        // the compiler, libs, and tests are stable and we don't want to make
-        // their deps unstable (since this would break the first invariant
-        // above).
-        //
-        // FIXME: remove this after next stage0
-        if mode != Mode::Tool && stage == 0 {
-            cargo.env("RUSTBUILD_UNSTABLE", "1");
         }
 
         // Ignore incremental modes except for stage0, since we're
@@ -459,8 +466,7 @@ impl Build {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
-        let verbose = cmp::max(self.config.verbose, self.flags.verbose);
-        cargo.env("RUSTC_VERBOSE", format!("{}", verbose));
+        cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
         // Specify some various options for build scripts used throughout
         // the build.
@@ -470,9 +476,15 @@ impl Build {
             cargo.env(format!("CC_{}", target), self.cc(target))
                  .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
+
+            if let Ok(cxx) = self.cxx(target) {
+                 cargo.env(format!("CXX_{}", target), cxx);
+            }
         }
 
-        if self.config.extended && compiler.is_final_stage(self) {
+        if mode == Mode::Libstd &&
+           self.config.extended &&
+           compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
@@ -494,7 +506,7 @@ impl Build {
         // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
-        if self.config.verbose() || self.flags.verbose() {
+        if self.is_verbose() {
             cargo.arg("-v");
         }
         // FIXME: cargo bench does not accept `--release`
@@ -507,13 +519,16 @@ impl Build {
         if self.config.vendor || self.is_sudo {
             cargo.arg("--frozen");
         }
-        return cargo
+
+        self.ci_env.force_coloring_in_ci(&mut cargo);
+
+        cargo
     }
 
     /// Get a path to the compiler specified.
     fn compiler_path(&self, compiler: &Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
-            self.rustc.clone()
+            self.initial_rustc.clone()
         } else {
             self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
         }
@@ -530,7 +545,7 @@ impl Build {
         let mut rustdoc = self.compiler_path(compiler);
         rustdoc.pop();
         rustdoc.push(exe("rustdoc", compiler.host));
-        return rustdoc
+        rustdoc
     }
 
     /// Get a `Command` which is ready to run `tool` in `stage` built for
@@ -538,7 +553,7 @@ impl Build {
     fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
         let mut cmd = Command::new(self.tool(&compiler, tool));
         self.prepare_tool_cmd(compiler, &mut cmd);
-        return cmd
+        cmd
     }
 
     /// Prepares the `cmd` provided to be able to run the `compiler` provided.
@@ -586,7 +601,10 @@ impl Build {
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
-        return features
+        if self.config.profiler {
+            features.push_str(" profiler");
+        }
+        features
     }
 
     /// Get the space-separated set of activated features for the compiler.
@@ -595,7 +613,7 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
-        return features
+        features
     }
 
     /// Component directory that Cargo will produce output into (e.g.
@@ -667,6 +685,11 @@ impl Build {
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: &str) -> PathBuf {
         self.out.join(target).join("doc")
+    }
+
+    /// Output directory for some generated md crate documentation for a target (temporary)
+    fn md_doc_out(&self, target: &str) -> PathBuf {
+        self.out.join(target).join("md-doc")
     }
 
     /// Output directory for all crate documentation for a target (temporary)
@@ -763,7 +786,7 @@ impl Build {
 
     /// Returns the libdir of the snapshot compiler.
     fn rustc_snapshot_libdir(&self) -> PathBuf {
-        self.rustc.parent().unwrap().parent().unwrap()
+        self.initial_rustc.parent().unwrap().parent().unwrap()
             .join(libdir(&self.config.build))
     }
 
@@ -779,9 +802,33 @@ impl Build {
         run_suppressed(cmd)
     }
 
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Exits if the command failed to execute at all, otherwise returns its
+    /// `status.success()`.
+    fn try_run(&self, cmd: &mut Command) -> bool {
+        self.verbose(&format!("running: {:?}", cmd));
+        try_run_silent(cmd)
+    }
+
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Exits if the command failed to execute at all, otherwise returns its
+    /// `status.success()`.
+    fn try_run_quiet(&self, cmd: &mut Command) -> bool {
+        self.verbose(&format!("running: {:?}", cmd));
+        try_run_suppressed(cmd)
+    }
+
+    pub fn is_verbose(&self) -> bool {
+        self.verbosity > 0
+    }
+
+    pub fn is_very_verbose(&self) -> bool {
+        self.verbosity > 1
+    }
+
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
-        if self.flags.verbose() || self.config.verbose() {
+        if self.is_verbose() {
             println!("{}", msg);
         }
     }
@@ -789,7 +836,7 @@ impl Build {
     /// Returns the number of parallel jobs that have been configured for this
     /// build.
     fn jobs(&self) -> u32 {
-        self.flags.jobs.unwrap_or(num_cpus::get() as u32)
+        self.flags.jobs.unwrap_or_else(|| num_cpus::get() as u32)
     }
 
     /// Returns the path to the C compiler for the target specified.
@@ -821,7 +868,7 @@ impl Build {
         if target == "i686-pc-windows-gnu" {
             base.push("-fno-omit-frame-pointer".into());
         }
-        return base
+        base
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
@@ -829,13 +876,13 @@ impl Build {
         self.cc[target].1.as_ref().map(|p| &**p)
     }
 
-    /// Returns the path to the C++ compiler for the target specified, may panic
-    /// if no C++ compiler was configured for the target.
-    fn cxx(&self, target: &str) -> &Path {
+    /// Returns the path to the C++ compiler for the target specified.
+    fn cxx(&self, target: &str) -> Result<&Path, String> {
         match self.cxx.get(target) {
-            Some(p) => p.path(),
-            None => panic!("\n\ntarget `{}` is not configured as a host,
-                            only as a target\n\n", target),
+            Some(p) => Ok(p.path()),
+            None => Err(format!(
+                    "target `{}` is not configured as a host, only as a target",
+                    target))
         }
     }
 
@@ -853,7 +900,7 @@ impl Build {
             !target.contains("emscripten") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
-        return base
+        base
     }
 
     /// Returns the "musl root" for this `target`, if defined
@@ -1011,6 +1058,19 @@ impl Build {
             "nightly" | _ => true,
         }
     }
+
+    /// Fold the output of the commands after this method into a group. The fold
+    /// ends when the returned object is dropped. Folding can only be used in
+    /// the Travis CI environment.
+    pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
+        where D: Into<String>, F: FnOnce() -> D
+    {
+        if self.ci_env == CiEnv::Travis {
+            Some(OutputFolder::new(name().into()))
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a> Compiler<'a> {
@@ -1021,7 +1081,7 @@ impl<'a> Compiler<'a> {
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
     fn is_snapshot(&self, build: &Build) -> bool {
-        self.stage == 0 && self.host == build.config.build
+        self.stage == 0 && self.host == build.build
     }
 
     /// Returns if this compiler should be treated as a final stage one in the

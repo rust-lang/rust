@@ -270,13 +270,12 @@ pub fn token_to_string(tok: &Token) -> String {
 
         /* Other */
         token::DocComment(s)        => s.to_string(),
-        token::SubstNt(s)           => format!("${}", s),
         token::Eof                  => "<eof>".to_string(),
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
-        token::Interpolated(ref nt) => match **nt {
+        token::Interpolated(ref nt) => match nt.0 {
             token::NtExpr(ref e)        => expr_to_string(e),
             token::NtMeta(ref e)        => meta_item_to_string(e),
             token::NtTy(ref e)          => ty_to_string(e),
@@ -368,6 +367,10 @@ pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
 
 pub fn path_to_string(p: &ast::Path) -> String {
     to_string(|s| s.print_path(p, false, 0, false))
+}
+
+pub fn path_segment_to_string(p: &ast::PathSegment) -> String {
+    to_string(|s| s.print_path_segment(p, false))
 }
 
 pub fn ident_to_string(id: ast::Ident) -> String {
@@ -757,7 +760,7 @@ pub trait PrintState<'a> {
                         word(self.writer(), "::")?
                     }
                     if segment.identifier.name != keywords::CrateRoot.name() &&
-                       segment.identifier.name != "$crate" {
+                       segment.identifier.name != keywords::DollarCrate.name() {
                         word(self.writer(), &segment.identifier.name.as_str())?;
                     }
                 }
@@ -2359,15 +2362,24 @@ impl<'a> State<'a> {
             if i > 0 {
                 word(&mut self.s, "::")?
             }
-            if segment.identifier.name != keywords::CrateRoot.name() &&
-               segment.identifier.name != "$crate" {
-                self.print_ident(segment.identifier)?;
-                if let Some(ref parameters) = segment.parameters {
-                    self.print_path_parameters(parameters, colons_before_params)?;
-                }
-            }
+            self.print_path_segment(segment, colons_before_params)?;
         }
 
+        Ok(())
+    }
+
+    fn print_path_segment(&mut self,
+                          segment: &ast::PathSegment,
+                          colons_before_params: bool)
+                          -> io::Result<()>
+    {
+        if segment.identifier.name != keywords::CrateRoot.name() &&
+           segment.identifier.name != keywords::DollarCrate.name() {
+            self.print_ident(segment.identifier)?;
+            if let Some(ref parameters) = segment.parameters {
+                self.print_path_parameters(parameters, colons_before_params)?;
+            }
+        }
         Ok(())
     }
 

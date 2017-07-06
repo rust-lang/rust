@@ -150,7 +150,7 @@
 //! the compiler. For example, if crate A wanted to use Bv1 and Bv2, then it
 //! would look something like:
 //!
-//! ```ignore
+//! ```compile_fail,E0463
 //! extern crate b1;
 //! extern crate b2;
 //!
@@ -242,7 +242,7 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use flate;
+use flate2::read::ZlibDecoder;
 use owning_ref::{ErasedBoxRef, OwningRef};
 
 pub struct CrateMismatch {
@@ -861,8 +861,9 @@ fn get_metadata_section_imp(target: &Target,
             // Header is okay -> inflate the actual metadata
             let compressed_bytes = &buf[header_len..];
             debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
-            match flate::inflate_bytes(compressed_bytes) {
-                Ok(inflated) => {
+            let mut inflated = Vec::new();
+            match ZlibDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
+                Ok(_) => {
                     let buf = unsafe { OwningRef::new_assert_stable_address(inflated) };
                     buf.map_owner_box().erase_owner()
                 }

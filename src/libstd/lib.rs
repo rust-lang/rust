@@ -230,11 +230,6 @@
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
 
-// Always use alloc_system during stage0 since we don't know if the alloc_*
-// crate the stage0 compiler will pick by default is available (most
-// obviously, if the user has disabled jemalloc in `./configure`).
-#![cfg_attr(any(stage0, feature = "force_alloc_system"), feature(alloc_system))]
-
 // Turn warnings into errors, but only after stage0, where it can be useful for
 // code to emit warnings during language transitions
 #![deny(warnings)]
@@ -245,6 +240,9 @@
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 #![feature(alloc)]
+#![feature(allocator_api)]
+#![feature(alloc_system)]
+#![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_consts)]
@@ -253,8 +251,8 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_target_vendor)]
 #![feature(char_escape_debug)]
+#![feature(char_error_internals)]
 #![feature(char_internals)]
-#![feature(collections)]
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
@@ -321,6 +319,8 @@
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(test, feature(float_bits_conv))]
 
+#![cfg_attr(not(stage0), default_lib_allocator)]
+
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
 #[prelude_import]
@@ -337,20 +337,16 @@ use prelude::v1::*;
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
 
+#[allow(deprecated)] extern crate rand as core_rand;
 #[macro_use]
 #[macro_reexport(vec, format)]
-extern crate collections as core_collections;
-
-#[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
+extern crate alloc_system;
 extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
 extern crate unwind;
-
-#[cfg(any(stage0, feature = "force_alloc_system"))]
-extern crate alloc_system;
 
 // compiler-rt intrinsics
 extern crate compiler_builtins;
@@ -430,17 +426,17 @@ pub use alloc::boxed;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::rc;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::borrow;
+pub use alloc::borrow;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::fmt;
+pub use alloc::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::slice;
+pub use alloc::slice;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::str;
+pub use alloc::str;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::string;
+pub use alloc::string;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core_collections::vec;
+pub use alloc::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
 #[unstable(feature = "i128", issue = "35118")]
@@ -466,6 +462,7 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
+pub mod heap;
 
 // Platform-abstraction modules
 #[macro_use]
@@ -487,7 +484,7 @@ pub mod rt;
 // but it may be stabilized long-term. As a result we're exposing a hidden,
 // unstable module so we can get our build working.
 #[doc(hidden)]
-#[unstable(feature = "rand", issue = "0")]
+#[unstable(feature = "rand", issue = "27703")]
 pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
 }

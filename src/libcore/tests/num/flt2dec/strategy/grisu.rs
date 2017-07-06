@@ -38,6 +38,7 @@ fn test_max_pow10_no_more_than() {
 }
 
 
+#[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
 #[test]
 fn shortest_sanity_test() {
     f64_shortest_sanity_test(format_shortest);

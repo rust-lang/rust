@@ -85,6 +85,6 @@ fn main() {
     let (result, _) = rustc_driver::run_compiler(
         &args, &mut JitCalls, Some(box JitLoader), None);
     if let Err(n) = result {
-        panic!("Error {}", n);
+        panic!("Error {:?}", n);
     }
 }

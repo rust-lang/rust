@@ -4,5 +4,5 @@ error: expected identifier, found `(`
 16 |     pub(crate) () foo: usize,
    |                ^
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

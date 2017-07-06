@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::stable_hasher;
 use std::mem;
 use std::slice;
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
 pub struct Fingerprint(u64, u64);
 
 impl Fingerprint {
@@ -32,26 +31,20 @@ impl Fingerprint {
         self.0
     }
 
+    #[inline]
+    pub fn combine(self, other: Fingerprint) -> Fingerprint {
+        // See https://stackoverflow.com/a/27952689 on why this function is
+        // implemented this way.
+        Fingerprint(
+            self.0.wrapping_mul(3).wrapping_add(other.0),
+            self.1.wrapping_mul(3).wrapping_add(other.1)
+        )
+    }
+
     pub fn to_hex(&self) -> String {
         format!("{:x}{:x}", self.0, self.1)
     }
-}
 
-impl Encodable for Fingerprint {
-    #[inline]
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u64(self.0.to_le())?;
-        s.emit_u64(self.1.to_le())
-    }
-}
-
-impl Decodable for Fingerprint {
-    #[inline]
-    fn decode<D: Decoder>(d: &mut D) -> Result<Fingerprint, D::Error> {
-        let _0 = u64::from_le(d.read_u64()?);
-        let _1 = u64::from_le(d.read_u64()?);
-        Ok(Fingerprint(_0, _1))
-    }
 }
 
 impl ::std::fmt::Display for Fingerprint {

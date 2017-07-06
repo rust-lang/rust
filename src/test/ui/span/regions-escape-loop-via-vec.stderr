@@ -37,5 +37,5 @@ error[E0506]: cannot assign to `x` because it is borrowed
 24 |         x += 1; //~ ERROR cannot assign
    |         ^^^^^^ assignment to borrowed `x` occurs here
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 

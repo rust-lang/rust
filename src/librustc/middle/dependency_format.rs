@@ -65,6 +65,7 @@ use hir::def_id::CrateNum;
 
 use session;
 use session::config;
+use ty::TyCtxt;
 use middle::cstore::DepKind;
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FxHashMap;
@@ -91,18 +92,22 @@ pub enum Linkage {
     Dynamic,
 }
 
-pub fn calculate(sess: &session::Session) {
+pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    let sess = &tcx.sess;
     let mut fmts = sess.dependency_formats.borrow_mut();
     for &ty in sess.crate_types.borrow().iter() {
-        let linkage = calculate_type(sess, ty);
-        verify_ok(sess, &linkage);
+        let linkage = calculate_type(tcx, ty);
+        verify_ok(tcx, &linkage);
         fmts.insert(ty, linkage);
     }
     sess.abort_if_errors();
 }
 
-fn calculate_type(sess: &session::Session,
-                  ty: config::CrateType) -> DependencyList {
+fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            ty: config::CrateType) -> DependencyList {
+
+    let sess = &tcx.sess;
+
     if !sess.opts.output_types.should_trans() {
         return Vec::new();
     }
@@ -111,7 +116,7 @@ fn calculate_type(sess: &session::Session,
         // If the global prefer_dynamic switch is turned off, first attempt
         // static linkage (this can fail).
         config::CrateTypeExecutable if !sess.opts.cg.prefer_dynamic => {
-            if let Some(v) = attempt_static(sess) {
+            if let Some(v) = attempt_static(tcx) {
                 return v;
             }
         }
@@ -124,7 +129,7 @@ fn calculate_type(sess: &session::Session,
         // to be found, we generate some nice pretty errors.
         config::CrateTypeStaticlib |
         config::CrateTypeCdylib => {
-            if let Some(v) = attempt_static(sess) {
+            if let Some(v) = attempt_static(tcx) {
                 return v;
             }
             for cnum in sess.cstore.crates() {
@@ -141,7 +146,7 @@ fn calculate_type(sess: &session::Session,
         // to try to eagerly statically link all dependencies. This is normally
         // done for end-product dylibs, not intermediate products.
         config::CrateTypeDylib if !sess.opts.cg.prefer_dynamic => {
-            if let Some(v) = attempt_static(sess) {
+            if let Some(v) = attempt_static(tcx) {
                 return v;
             }
         }
@@ -167,8 +172,8 @@ fn calculate_type(sess: &session::Session,
         if src.dylib.is_some() {
             info!("adding dylib: {}", name);
             add_library(sess, cnum, RequireDynamic, &mut formats);
-            let deps = sess.cstore.dylib_dependency_formats(cnum);
-            for &(depnum, style) in &deps {
+            let deps = tcx.dylib_dependency_formats(cnum.as_def_id());
+            for &(depnum, style) in deps.iter() {
                 info!("adding {:?}: {}", style,
                       sess.cstore.crate_name(depnum));
                 add_library(sess, depnum, style, &mut formats);
@@ -209,10 +214,9 @@ fn calculate_type(sess: &session::Session,
     //
     // Things like allocators and panic runtimes may not have been activated
     // quite yet, so do so here.
-    activate_injected_dep(sess.injected_allocator.get(), &mut ret,
-                          &|cnum| sess.cstore.is_allocator(cnum));
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
-                          &|cnum| sess.cstore.is_panic_runtime(cnum));
+                          &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
+    activate_injected_allocator(sess, &mut ret);
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -269,7 +273,8 @@ fn add_library(sess: &session::Session,
     }
 }
 
-fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
+fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyList> {
+    let sess = &tcx.sess;
     let crates = sess.cstore.used_crates(RequireStatic);
     if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
         return None
@@ -289,10 +294,9 @@ fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
     // Our allocator/panic runtime may not have been linked above if it wasn't
     // explicitly linked, which is the case for any injected dependency. Handle
     // that here and activate them.
-    activate_injected_dep(sess.injected_allocator.get(), &mut ret,
-                          &|cnum| sess.cstore.is_allocator(cnum));
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
-                          &|cnum| sess.cstore.is_panic_runtime(cnum));
+                          &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
+    activate_injected_allocator(sess, &mut ret);
 
     Some(ret)
 }
@@ -325,31 +329,33 @@ fn activate_injected_dep(injected: Option<CrateNum>,
     }
 }
 
+fn activate_injected_allocator(sess: &session::Session,
+                               list: &mut DependencyList) {
+    let cnum = match sess.injected_allocator.get() {
+        Some(cnum) => cnum,
+        None => return,
+    };
+    let idx = cnum.as_usize() - 1;
+    if list[idx] == Linkage::NotLinked {
+        list[idx] = Linkage::Static;
+    }
+}
+
 // After the linkage for a crate has been determined we need to verify that
 // there's only going to be one allocator in the output.
-fn verify_ok(sess: &session::Session, list: &[Linkage]) {
+fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
+    let sess = &tcx.sess;
     if list.len() == 0 {
         return
     }
-    let mut allocator = None;
     let mut panic_runtime = None;
     for (i, linkage) in list.iter().enumerate() {
         if let Linkage::NotLinked = *linkage {
             continue
         }
         let cnum = CrateNum::new(i + 1);
-        if sess.cstore.is_allocator(cnum) {
-            if let Some(prev) = allocator {
-                let prev_name = sess.cstore.crate_name(prev);
-                let cur_name = sess.cstore.crate_name(cnum);
-                sess.err(&format!("cannot link together two \
-                                   allocators: {} and {}",
-                                  prev_name, cur_name));
-            }
-            allocator = Some(cnum);
-        }
 
-        if sess.cstore.is_panic_runtime(cnum) {
+        if tcx.is_panic_runtime(cnum.as_def_id()) {
             if let Some((prev, _)) = panic_runtime {
                 let prev_name = sess.cstore.crate_name(prev);
                 let cur_name = sess.cstore.crate_name(cnum);

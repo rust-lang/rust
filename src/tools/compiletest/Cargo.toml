@@ -4,8 +4,9 @@ name = "compiletest"
 version = "0.0.0"
 
 [dependencies]
-log = "0.3"
-env_logger = { version = "0.4", default-features = false }
-rustc-serialize = "0.3"
-filetime = "0.1"
 diff = "0.1.10"
+env_logger = { version = "0.4", default-features = false }
+filetime = "0.1"
+getopts = "0.2"
+log = "0.3"
+rustc-serialize = "0.3"

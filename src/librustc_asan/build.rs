@@ -32,4 +32,5 @@ fn main() {
             .build_target("asan")
             .build();
     }
+    println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
 }

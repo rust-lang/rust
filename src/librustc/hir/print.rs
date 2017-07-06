@@ -1527,7 +1527,8 @@ impl<'a> State<'a> {
             if i > 0 {
                 word(&mut self.s, "::")?
             }
-            if segment.name != keywords::CrateRoot.name() && segment.name != "$crate" {
+            if segment.name != keywords::CrateRoot.name() &&
+               segment.name != keywords::DollarCrate.name() {
                 self.print_name(segment.name)?;
                 self.print_path_parameters(&segment.parameters, colons_before_params)?;
             }
@@ -1554,7 +1555,8 @@ impl<'a> State<'a> {
                     if i > 0 {
                         word(&mut self.s, "::")?
                     }
-                    if segment.name != keywords::CrateRoot.name() && segment.name != "$crate" {
+                    if segment.name != keywords::CrateRoot.name() &&
+                       segment.name != keywords::DollarCrate.name() {
                         self.print_name(segment.name)?;
                         self.print_path_parameters(&segment.parameters, colons_before_params)?;
                     }

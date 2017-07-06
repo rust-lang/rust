@@ -68,6 +68,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             // view of possibly unifying
             simplify_type(tcx, mt.ty, can_simplify_params)
         }
+        ty::TyFnDef(def_id, _) |
         ty::TyClosure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))
         }
@@ -75,7 +76,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyTuple(ref tys, _) => {
             Some(TupleSimplifiedType(tys.len()))
         }
-        ty::TyFnDef(.., ref f) | ty::TyFnPtr(ref f) => {
+        ty::TyFnPtr(ref f) => {
             Some(FunctionSimplifiedType(f.skip_binder().inputs().len()))
         }
         ty::TyProjection(_) | ty::TyParam(_) => {

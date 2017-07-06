@@ -77,6 +77,36 @@ fn angrydome() {
 
 fn evil_lincoln() { let _evil = println!("lincoln"); }
 
+fn dots() {
+    assert_eq!(String::from(".................................................."),
+               format!("{:?}", .. .. .. .. .. .. .. .. .. .. .. .. ..
+                               .. .. .. .. .. .. .. .. .. .. .. ..));
+}
+
+fn you_eight() {
+    assert_eq!(8, {
+        macro_rules! u8 {
+            (u8) => {
+                mod u8 {
+                    pub fn u8<'u8>(u8: &'u8 u8) -> &'u8 u8 {
+                        "u8";
+                        u8
+                    }
+                }
+            };
+        }
+
+        u8!(u8);
+        let &u8: &u8 = u8::u8(&8u8);
+        u8
+    });
+}
+
+fn fishy() {
+    assert_eq!(String::from("><>"),
+               String::<>::from::<>("><>").chars::<>().rev::<>().collect::<String>());
+}
+
 pub fn main() {
     strange();
     funny();
@@ -86,4 +116,7 @@ pub fn main() {
     canttouchthis();
     angrydome();
     evil_lincoln();
+    dots();
+    you_eight();
+    fishy();
 }

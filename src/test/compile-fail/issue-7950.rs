@@ -13,5 +13,6 @@
 struct Foo;
 
 fn main() {
-    Foo::bar(); //~ ERROR no associated item named `bar` found for type `Foo` in the current scope
+    Foo::bar();
+    //~^ ERROR no function or associated item named `bar` found for type `Foo`
 }

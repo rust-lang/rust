@@ -21,11 +21,6 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(associated_consts)]
-#![feature(nonzero)]
-
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -43,7 +38,7 @@ extern crate core; // for NonZero
 
 pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;
-pub use borrowck::{AnalysisData, BorrowckCtxt, ElaborateDrops};
+pub use borrowck::{AnalysisData, BorrowckCtxt};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.

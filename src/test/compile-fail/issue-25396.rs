@@ -9,16 +9,16 @@
 // except according to those terms.
 
 use foo::baz;
-use bar::baz; //~ ERROR a module named `baz` has already been imported
+use bar::baz; //~ ERROR the name `baz` is defined multiple times
 
 use foo::Quux;
-use bar::Quux; //~ ERROR a trait named `Quux` has already been imported
+use bar::Quux; //~ ERROR the name `Quux` is defined multiple times
 
 use foo::blah;
-use bar::blah; //~ ERROR a type named `blah` has already been imported
+use bar::blah; //~ ERROR the name `blah` is defined multiple times
 
 use foo::WOMP;
-use bar::WOMP; //~ ERROR a value named `WOMP` has already been imported
+use bar::WOMP; //~ ERROR the name `WOMP` is defined multiple times
 
 fn main() {}
 

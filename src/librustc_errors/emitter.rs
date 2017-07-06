@@ -17,6 +17,7 @@ use RenderSpan::*;
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
+use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -46,7 +47,12 @@ impl Emitter for EmitterWriter {
                // don't display multiline suggestions as labels
                sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
                 let substitution = &sugg.substitution_parts[0].substitutions[0];
-                let msg = format!("help: {} `{}`", sugg.msg, substitution);
+                let msg = if substitution.len() == 0 {
+                    // This substitution is only removal, don't show it
+                    format!("help: {}", sugg.msg)
+                } else {
+                    format!("help: {} `{}`", sugg.msg, substitution)
+                };
                 primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
             } else {
                 // if there are multiple suggestions, print them all in full
@@ -131,7 +137,7 @@ impl EmitterWriter {
         }
     }
 
-    fn preprocess_annotations(&self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
+    fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
                                   file: Rc<FileMap>,
                                   line_index: usize,
@@ -175,6 +181,7 @@ impl EmitterWriter {
                 if span_label.span == DUMMY_SP {
                     continue;
                 }
+
                 let lo = cm.lookup_char_pos(span_label.span.lo);
                 let mut hi = cm.lookup_char_pos(span_label.span.hi);
 
@@ -445,8 +452,11 @@ impl EmitterWriter {
                             && next.has_label())     // multiline start/end, move it to a new line
                         || (annotation.has_label()   // so as not to overlap the orizontal lines.
                             && next.takes_space())
-                        || (annotation.takes_space()
-                            && next.takes_space())
+                        || (annotation.takes_space() && next.takes_space())
+                        || (overlaps(next, annotation, l)
+                            && next.end_col <= annotation.end_col
+                            && next.has_label()
+                            && p == 0)  // Avoid #42595.
                     {
                         // This annotation needs a new line in the output.
                         p += 1;
@@ -705,11 +715,9 @@ impl EmitterWriter {
                 if *sp == DUMMY_SP {
                     continue;
                 }
-                if cm.span_to_filename(sp.clone()).contains("macros>") {
-                    let v = sp.macro_backtrace();
-                    if let Some(use_site) = v.last() {
-                        before_after.push((sp.clone(), use_site.call_site.clone()));
-                    }
+                let call_sp = cm.call_span_if_macro(*sp);
+                if call_sp != *sp {
+                    before_after.push((sp.clone(), call_sp));
                 }
                 for trace in sp.macro_backtrace().iter().rev() {
                     // Only show macro locations that are local
@@ -889,10 +897,10 @@ impl EmitterWriter {
         let mut annotated_files = self.preprocess_annotations(msp);
 
         // Make sure our primary file comes first
-        let primary_lo = if let (Some(ref cm), Some(ref primary_span)) =
+        let (primary_lo, cm) = if let (Some(cm), Some(ref primary_span)) =
             (self.cm.as_ref(), msp.primary_span().as_ref()) {
             if primary_span != &&DUMMY_SP {
-                cm.lookup_char_pos(primary_span.lo)
+                (cm.lookup_char_pos(primary_span.lo), cm)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst)?;
                 return Ok(());
@@ -910,7 +918,7 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if annotated_file.file.src.is_none() {
+            if !cm.ensure_filemap_source_present(annotated_file.file.clone()) {
                 continue;
             }
 
@@ -1011,7 +1019,7 @@ impl EmitterWriter {
                     } else if line_idx_delta == 2 {
                         let unannotated_line = annotated_file.file
                             .get_line(annotated_file.lines[line_idx].line_index)
-                            .unwrap_or("");
+                            .unwrap_or_else(|| Cow::from(""));
 
                         let last_buffer_line_num = buffer.num_lines();
 

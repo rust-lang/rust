@@ -6,5 +6,5 @@ error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-
    |
    = help: use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

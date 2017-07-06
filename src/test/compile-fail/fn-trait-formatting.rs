@@ -28,5 +28,4 @@ fn main() {
 
     needs_fn(1);
     //~^ ERROR : std::ops::Fn<(isize,)>`
-    //~| ERROR : std::ops::FnOnce<(isize,)>`
 }

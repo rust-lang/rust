@@ -20,21 +20,31 @@
 //! To define a plugin, build a dylib crate with a
 //! `#[plugin_registrar]` function:
 //!
-//! ```rust,ignore
+//! ```no_run
 //! #![crate_name = "myplugin"]
 //! #![crate_type = "dylib"]
 //! #![feature(plugin_registrar)]
+//! #![feature(rustc_private)]
 //!
-//! extern crate rustc;
+//! extern crate rustc_plugin;
+//! extern crate syntax;
+//! extern crate syntax_pos;
 //!
 //! use rustc_plugin::Registry;
+//! use syntax::ext::base::{ExtCtxt, MacResult};
+//! use syntax_pos::Span;
+//! use syntax::tokenstream::TokenTree;
 //!
 //! #[plugin_registrar]
 //! pub fn plugin_registrar(reg: &mut Registry) {
 //!     reg.register_macro("mymacro", expand_mymacro);
 //! }
 //!
-//! fn expand_mymacro(...) {  // details elided
+//! fn expand_mymacro(cx: &mut ExtCtxt, span: Span, tt: &[TokenTree]) -> Box<MacResult> {
+//!     unimplemented!()
+//! }
+//!
+//! # fn main() {}
 //! ```
 //!
 //! WARNING: We currently don't check that the registrar function
@@ -47,8 +57,8 @@
 //! #![plugin(myplugin)]
 //! ```
 //!
-//! See the [Plugins Chapter](../../book/compiler-plugins.html) of the book
-//! for more examples.
+//! See the [`plugin` feature](../../unstable-book/language-features/plugin.html) of
+//! the Unstable Book for more examples.
 
 #![crate_name = "rustc_plugin"]
 #![crate_type = "dylib"]
@@ -59,10 +69,6 @@
 #![deny(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
-
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
 
 #[macro_use] extern crate syntax;
 

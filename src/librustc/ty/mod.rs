@@ -15,11 +15,11 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::DepNode;
+use dep_graph::{DepNode, DepConstructor};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use ich::{self, StableHashingContext};
+use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
@@ -158,29 +158,6 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> ImplHeader<'tcx> {
-    pub fn with_fresh_ty_vars(selcx: &mut traits::SelectionContext<'a, 'gcx, 'tcx>,
-                              impl_def_id: DefId)
-                              -> ImplHeader<'tcx>
-    {
-        let tcx = selcx.tcx();
-        let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
-
-        let header = ImplHeader {
-            impl_def_id: impl_def_id,
-            self_ty: tcx.type_of(impl_def_id),
-            trait_ref: tcx.impl_trait_ref(impl_def_id),
-            predicates: tcx.predicates_of(impl_def_id).predicates
-        }.subst(tcx, impl_substs);
-
-        let traits::Normalized { value: mut header, obligations } =
-            traits::normalize(selcx, traits::ObligationCause::dummy(), &header);
-
-        header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
-        header
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct AssociatedItem {
     pub def_id: DefId,
@@ -219,6 +196,22 @@ impl AssociatedItem {
             AssociatedKind::Type => true,
             // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
             AssociatedKind::Method => !self.method_has_self_argument,
+        }
+    }
+
+    pub fn signature<'a, 'tcx>(&self, tcx: &TyCtxt<'a, 'tcx, 'tcx>) -> String {
+        match self.kind {
+            ty::AssociatedKind::Method => {
+                // We skip the binder here because the binder would deanonymize all
+                // late-bound regions, and we don't want method signatures to show up
+                // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
+                // regions just fine, showing `fn(&MyType)`.
+                format!("{}", tcx.fn_sig(self.def_id).skip_binder())
+            }
+            ty::AssociatedKind::Type => format!("type {};", self.name.to_string()),
+            ty::AssociatedKind::Const => {
+                format!("const {}: {:?};", self.name.to_string(), tcx.type_of(self.def_id))
+            }
         }
     }
 }
@@ -390,52 +383,6 @@ impl Variance {
     }
 }
 
-#[derive(Clone, Copy, Debug, RustcDecodable, RustcEncodable)]
-pub struct MethodCallee<'tcx> {
-    /// Impl method ID, for inherent methods, or trait method ID, otherwise.
-    pub def_id: DefId,
-    pub ty: Ty<'tcx>,
-    pub substs: &'tcx Substs<'tcx>
-}
-
-/// With method calls, we store some extra information in
-/// side tables (i.e method_map). We use
-/// MethodCall as a key to index into these tables instead of
-/// just directly using the expression's NodeId. The reason
-/// for this being that we may apply adjustments (coercions)
-/// with the resulting expression also needing to use the
-/// side tables. The problem with this is that we don't
-/// assign a separate NodeId to this new expression
-/// and so it would clash with the base expression if both
-/// needed to add to the side tables. Thus to disambiguate
-/// we also keep track of whether there's an adjustment in
-/// our key.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct MethodCall {
-    pub expr_id: NodeId,
-    pub autoderef: u32
-}
-
-impl MethodCall {
-    pub fn expr(id: NodeId) -> MethodCall {
-        MethodCall {
-            expr_id: id,
-            autoderef: 0
-        }
-    }
-
-    pub fn autoderef(expr_id: NodeId, autoderef: u32) -> MethodCall {
-        MethodCall {
-            expr_id: expr_id,
-            autoderef: 1 + autoderef
-        }
-    }
-}
-
-// maps from an expression id that corresponds to a method call to the details
-// of the method to be invoked
-pub type MethodMap<'tcx> = FxHashMap<MethodCall, MethodCallee<'tcx>>;
-
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -518,9 +465,39 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TyS<'tcx> {
+impl<'tcx> TyS<'tcx> {
+    pub fn is_primitive_ty(&self) -> bool {
+        match self.sty {
+            TypeVariants::TyBool |
+                TypeVariants::TyChar |
+                TypeVariants::TyInt(_) |
+                TypeVariants::TyUint(_) |
+                TypeVariants::TyFloat(_) |
+                TypeVariants::TyInfer(InferTy::IntVar(_)) |
+                TypeVariants::TyInfer(InferTy::FloatVar(_)) |
+                TypeVariants::TyInfer(InferTy::FreshIntTy(_)) |
+                TypeVariants::TyInfer(InferTy::FreshFloatTy(_)) => true,
+            TypeVariants::TyRef(_, x) => x.ty.is_primitive_ty(),
+            _ => false,
+        }
+    }
+
+    pub fn is_suggestable(&self) -> bool {
+        match self.sty {
+            TypeVariants::TyAnon(..) |
+            TypeVariants::TyFnDef(..) |
+            TypeVariants::TyFnPtr(..) |
+            TypeVariants::TyDynamic(..) |
+            TypeVariants::TyClosure(..) |
+            TypeVariants::TyProjection(..) => false,
+            _ => true,
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TyS {
             ref sty,
@@ -971,7 +948,7 @@ impl<'tcx> TraitPredicate<'tcx> {
     }
 
     /// Creates the dep-node for selecting/evaluating this trait reference.
-    fn dep_node(&self) -> DepNode<DefId> {
+    fn dep_node(&self, tcx: TyCtxt) -> DepNode {
         // Extact the trait-def and first def-id from inputs.  See the
         // docs for `DepNode::TraitSelect` for more information.
         let trait_def_id = self.def_id();
@@ -979,15 +956,17 @@ impl<'tcx> TraitPredicate<'tcx> {
             self.input_types()
                 .flat_map(|t| t.walk())
                 .filter_map(|t| match t.sty {
-                    ty::TyAdt(adt_def, _) => Some(adt_def.did),
+                    ty::TyAdt(adt_def, ..) => Some(adt_def.did),
+                    ty::TyClosure(def_id, ..) => Some(def_id),
+                    ty::TyFnDef(def_id, ..) => Some(def_id),
                     _ => None
                 })
                 .next()
                 .unwrap_or(trait_def_id);
-        DepNode::TraitSelect {
+        DepNode::new(tcx, DepConstructor::TraitSelect {
             trait_def_id: trait_def_id,
             input_def_id: input_def_id
-        }
+        })
     }
 
     pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
@@ -1005,9 +984,9 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
         self.0.def_id()
     }
 
-    pub fn dep_node(&self) -> DepNode<DefId> {
+    pub fn dep_node(&self, tcx: TyCtxt) -> DepNode {
         // ok to skip binder since depnode does not care about regions
-        self.0.dep_node()
+        self.0.dep_node(tcx)
     }
 }
 
@@ -1051,8 +1030,8 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
-    pub fn item_name(&self) -> Name {
-        self.0.projection_ty.item_name // safe to skip the binder to access a name
+    pub fn item_name(&self, tcx: TyCtxt) -> Name {
+        self.0.projection_ty.item_name(tcx) // safe to skip the binder to access a name
     }
 }
 
@@ -1237,6 +1216,11 @@ pub struct ParamEnv<'tcx> {
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations, and elaborated and normalized.
     pub caller_bounds: &'tcx Slice<ty::Predicate<'tcx>>,
+
+    /// Typically, this is `Reveal::UserFacing`, but during trans we
+    /// want `Reveal::All` -- note that this is always paired with an
+    /// empty environment. To get that, use `ParamEnv::reveal()`.
+    pub reveal: traits::Reveal,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1264,7 +1248,7 @@ impl<'tcx> ParamEnv<'tcx> {
             }
         } else {
             ParamEnvAnd {
-                param_env: ParamEnv::empty(),
+                param_env: ParamEnv::empty(self.reveal),
                 value: value,
             }
         }
@@ -1366,9 +1350,9 @@ impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for AdtDef {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for AdtDef {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::AdtDef {
             did,
@@ -1843,13 +1827,6 @@ impl<'a, 'gcx, 'tcx> FieldDef {
     }
 }
 
-/// Records the substitutions used to translate the polytype for an
-/// item into the monotype of an item reference.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct ItemSubsts<'tcx> {
-    pub substs: &'tcx Substs<'tcx>,
-}
-
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
@@ -1924,12 +1901,6 @@ impl<'tcx> TyS<'tcx> {
                 walker.skip_current_subtree();
             }
         }
-    }
-}
-
-impl<'tcx> ItemSubsts<'tcx> {
-    pub fn is_noop(&self) -> bool {
-        self.substs.is_noop()
     }
 }
 
@@ -2244,7 +2215,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn def_path_hash(self, def_id: DefId) -> ich::Fingerprint {
+    pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
         if def_id.is_local() {
             self.hir.definitions().def_path_hash(def_id.index)
         } else {
@@ -2526,8 +2497,8 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 
 /// See `ParamEnv` struct def'n for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   def_id: DefId)
-                                   -> ParamEnv<'tcx> {
+                       def_id: DefId)
+                       -> ParamEnv<'tcx> {
     // Compute the bounds on Self and the type parameters.
 
     let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
@@ -2545,7 +2516,8 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates));
+    let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
+                                             traits::Reveal::UserFacing);
 
     let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)

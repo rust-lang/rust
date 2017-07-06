@@ -6,5 +6,5 @@ error[E0282]: type annotations needed
    |         |
    |         consider giving `x` a type
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -471,7 +471,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// But there may also be candidates that the test just doesn't
     /// apply to. The classical example involves wildcards:
     ///
-    /// ```rust,ignore
+    /// ```
+    /// # let (x, y, z) = (true, true, true);
     /// match (x, y, z) {
     ///     (true, _, true) => true,    // (0)
     ///     (_, true, _) => true,       // (1)

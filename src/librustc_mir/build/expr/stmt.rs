@@ -24,7 +24,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match expr.kind {
             ExprKind::Scope { extent, value } => {
                 let value = this.hir.mirror(value);
-                this.in_scope(extent, block, |this| this.stmt_expr(block, value))
+                this.in_scope((extent, source_info), block, |this| this.stmt_expr(block, value))
             }
             ExprKind::Assign { lhs, rhs } => {
                 let lhs = this.hir.mirror(lhs);
@@ -81,7 +81,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     *this.find_breakable_scope(expr_span, label);
                 let continue_block = continue_block.expect(
                     "Attempted to continue in non-continuable breakable block");
-                this.exit_scope(expr_span, extent, block, continue_block);
+                this.exit_scope(expr_span, (extent, source_info), block, continue_block);
                 this.cfg.start_new_block().unit()
             }
             ExprKind::Break { label, value } => {
@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 } else {
                     this.cfg.push_assign_unit(block, source_info, &destination)
                 }
-                this.exit_scope(expr_span, extent, block, break_block);
+                this.exit_scope(expr_span, (extent, source_info), block, break_block);
                 this.cfg.start_new_block().unit()
             }
             ExprKind::Return { value } => {
@@ -116,7 +116,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
                 let extent = this.extent_of_return_scope();
                 let return_block = this.return_block();
-                this.exit_scope(expr_span, extent, block, return_block);
+                this.exit_scope(expr_span, (extent, source_info), block, return_block);
                 this.cfg.start_new_block().unit()
             }
             ExprKind::InlineAsm { asm, outputs, inputs } => {

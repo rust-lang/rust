@@ -17,7 +17,7 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::DepKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -79,7 +79,8 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 
     for &impl_def_id in &result[..] {
-        tcx.dep_graph.read(DepNode::Hir(impl_def_id));
+        let def_path_hash = tcx.def_path_hash(impl_def_id);
+        tcx.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
     }
 
     result

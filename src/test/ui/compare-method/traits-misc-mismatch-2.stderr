@@ -10,5 +10,5 @@ error[E0276]: impl has stricter requirements than trait
 26 | |     }
    | |_____^ impl has extra requirement `U: Iterator<B>`
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -55,6 +55,7 @@ pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
     pub infcx: &'infcx InferCtxt<'infcx, 'gcx, 'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
+    pub param_env: ty::ParamEnv<'tcx>,
     pub obligations: PredicateObligations<'tcx>,
 }
 
@@ -215,6 +216,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 
         if needs_wf {
             self.obligations.push(Obligation::new(self.trace.cause.clone(),
+                                                  self.param_env,
                                                   ty::Predicate::WellFormed(b_ty)));
         }
 

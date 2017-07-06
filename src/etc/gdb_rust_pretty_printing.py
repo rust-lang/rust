@@ -78,7 +78,8 @@ class GdbValue(rustpp.Value):
 
     def as_integer(self):
         if self.gdb_val.type.code == gdb.TYPE_CODE_PTR:
-            return int(str(self.gdb_val), 0)
+            as_str = rustpp.compat_str(self.gdb_val).split()[0]
+            return int(as_str, 0)
         return int(self.gdb_val)
 
     def get_wrapped_value(self):
@@ -99,8 +100,10 @@ def rust_pretty_printer_lookup_function(gdb_val):
     val = GdbValue(gdb_val)
     type_kind = val.type.get_type_kind()
 
-    if (type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT or
-        type_kind == rustpp.TYPE_KIND_EMPTY):
+    if type_kind == rustpp.TYPE_KIND_EMPTY:
+        return RustEmptyPrinter(val)
+
+    if type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT:
         return RustStructPrinter(val,
                                  omit_first_field = False,
                                  omit_type_name = False,
@@ -123,6 +126,9 @@ def rust_pretty_printer_lookup_function(gdb_val):
 
     if type_kind == rustpp.TYPE_KIND_STD_STRING:
         return RustStdStringPrinter(val)
+
+    if type_kind == rustpp.TYPE_KIND_OS_STRING:
+        return RustOsStringPrinter(val)
 
     if type_kind == rustpp.TYPE_KIND_TUPLE:
         return RustStructPrinter(val,
@@ -170,6 +176,14 @@ def rust_pretty_printer_lookup_function(gdb_val):
 #=------------------------------------------------------------------------------
 # Pretty Printer Classes
 #=------------------------------------------------------------------------------
+class RustEmptyPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    def to_string(self):
+        return self.__val.type.get_unqualified_type_name()
+
+
 class RustStructPrinter(object):
     def __init__(self, val, omit_first_field, omit_type_name, is_tuple_like):
         self.__val = val
@@ -186,10 +200,10 @@ class RustStructPrinter(object):
         cs = []
         wrapped_value = self.__val.get_wrapped_value()
 
-        for field in self.__val.type.get_fields():
+        for number, field in enumerate(self.__val.type.get_fields()):
             field_value = wrapped_value[field.name]
             if self.__is_tuple_like:
-                cs.append(("", field_value))
+                cs.append((str(number), field_value))
             else:
                 cs.append((field.name, field_value))
 
@@ -266,6 +280,21 @@ class RustStdStringPrinter(object):
         (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(vec)
         return '"%s"' % data_ptr.get_wrapped_value().string(encoding="utf-8",
                                                             length=length)
+
+
+class RustOsStringPrinter(object):
+    def __init__(self, val):
+        self.__val = val
+
+    def to_string(self):
+        buf = self.__val.get_child_at_index(0)
+        vec = buf.get_child_at_index(0)
+        if vec.type.get_unqualified_type_name() == "Wtf8Buf":
+            vec = vec.get_child_at_index(0)
+
+        (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(
+            vec)
+        return '"%s"' % data_ptr.get_wrapped_value().string(length=length)
 
 
 class RustCStyleVariantPrinter(object):

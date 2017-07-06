@@ -33,6 +33,7 @@ pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPatt
 pub struct Block<'tcx> {
     pub targeted_by_break: bool,
     pub extent: CodeExtent,
+    pub opt_destruction_extent: Option<CodeExtent>,
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
     pub expr: Option<ExprRef<'tcx>>,
@@ -47,6 +48,7 @@ pub enum StmtRef<'tcx> {
 pub struct Stmt<'tcx> {
     pub span: Span,
     pub kind: StmtKind<'tcx>,
+    pub opt_destruction_extent: Option<CodeExtent>,
 }
 
 #[derive(Clone, Debug)]
@@ -98,9 +100,6 @@ pub struct Expr<'tcx> {
     /// lifetime of this expression if it should be spilled into a
     /// temporary; should be None only if in a constant context
     pub temp_lifetime: Option<CodeExtent>,
-
-    /// whether this temp lifetime was shrunk by #36082.
-    pub temp_lifetime_was_shrunk: bool,
 
     /// span of the expression in the source
     pub span: Span,

@@ -58,6 +58,8 @@ impl CrateNum {
     pub fn as_u32(&self) -> u32 {
         self.0
     }
+
+    pub fn as_def_id(&self) -> DefId { DefId { krate: *self, index: CRATE_DEF_INDEX } }
 }
 
 impl fmt::Display for CrateNum {
@@ -187,6 +189,7 @@ impl fmt::Debug for DefId {
 
 
 impl DefId {
+    /// Make a local `DefId` with the given index.
     pub fn local(index: DefIndex) -> DefId {
         DefId { krate: LOCAL_CRATE, index: index }
     }

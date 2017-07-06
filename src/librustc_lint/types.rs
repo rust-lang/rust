@@ -14,7 +14,6 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{Layout, Primitive};
-use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
 use util::nodemap::FxHashSet;
@@ -660,7 +659,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_foreign_fn(&mut self, id: ast::NodeId, decl: &hir::FnDecl) {
         let def_id = self.cx.tcx.hir.local_def_id(id);
-        let sig = self.cx.tcx.type_of(def_id).fn_sig();
+        let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
@@ -724,12 +723,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
         if let hir::ItemEnum(ref enum_definition, ref gens) = it.node {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
-                let t = cx.tcx.type_of(cx.tcx.hir.local_def_id(it.id));
-                let layout = cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
-                    let ty = cx.tcx.erase_regions(&t);
-                    ty.layout(&infcx).unwrap_or_else(|e| {
-                        bug!("failed to get layout for `{}`: {}", t, e)
-                    })
+                let item_def_id = cx.tcx.hir.local_def_id(it.id);
+                let t = cx.tcx.type_of(item_def_id);
+                let param_env = cx.param_env.reveal_all();
+                let ty = cx.tcx.erase_regions(&t);
+                let layout = ty.layout(cx.tcx, param_env).unwrap_or_else(|e| {
+                    bug!("failed to get layout for `{}`: {}", t, e)
                 });
 
                 if let Layout::General { ref variants, ref size, discr, .. } = *layout {

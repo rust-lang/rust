@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 fn _test(ref _p: str) {}
+//~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied [E0277]
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+fn main() { }

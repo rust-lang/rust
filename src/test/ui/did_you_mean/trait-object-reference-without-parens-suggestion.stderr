@@ -18,5 +18,5 @@ error[E0038]: the trait `std::marker::Copy` cannot be made into an object
    |
    = note: the trait cannot require that `Self : Sized`
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

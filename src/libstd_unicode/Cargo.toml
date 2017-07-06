@@ -9,5 +9,9 @@ path = "lib.rs"
 test = false
 bench = false
 
+[[test]]
+name = "std_unicode_tests"
+path = "tests/lib.rs"
+
 [dependencies]
 core = { path = "../libcore" }

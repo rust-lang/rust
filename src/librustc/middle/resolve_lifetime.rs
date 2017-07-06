@@ -28,6 +28,7 @@ use syntax::attr;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
+use util::common::ErrorReported;
 use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
 use rustc_back::slice;
 
@@ -255,7 +256,7 @@ const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
 pub fn krate(sess: &Session,
              hir_map: &Map)
-             -> Result<NamedRegionMap, usize> {
+             -> Result<NamedRegionMap, ErrorReported> {
     let krate = hir_map.krate();
     let mut map = NamedRegionMap {
         defs: NodeMap(),
@@ -1363,7 +1364,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             m.push_str(&(if n == 1 {
                 help_name
             } else {
-                format!("one of {}'s {} elided {}lifetimes", help_name, n,
+                format!("one of {}'s {} {}lifetimes", help_name, n,
                         if have_bound_regions { "free " } else { "" } )
             })[..]);
 

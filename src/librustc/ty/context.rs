@@ -18,7 +18,7 @@ use hir::TraitMap;
 use hir::def::{Def, ExportMap};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
-use hir::map::DisambiguatedDefPathData;
+use hir::map::{DisambiguatedDefPathData, DefPathHash};
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime;
@@ -58,6 +58,7 @@ use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::symbol::{Symbol, keywords};
+use syntax_pos::Span;
 
 use hir;
 
@@ -205,8 +206,9 @@ pub struct CommonTypes<'tcx> {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TypeckTables<'tcx> {
-    /// Resolved definitions for `<T>::X` associated paths.
-    pub type_relative_path_defs: NodeMap<Def>,
+    /// Resolved definitions for `<T>::X` associated paths and
+    /// method calls, including those of overloaded operators.
+    pub type_dependent_defs: NodeMap<Def>,
 
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
@@ -217,11 +219,9 @@ pub struct TypeckTables<'tcx> {
     /// of this node.  This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    pub item_substs: NodeMap<ty::ItemSubsts<'tcx>>,
+    pub node_substs: NodeMap<&'tcx Substs<'tcx>>,
 
-    pub adjustments: NodeMap<ty::adjustment::Adjustment<'tcx>>,
-
-    pub method_map: ty::MethodMap<'tcx>,
+    pub adjustments: NodeMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
@@ -229,8 +229,9 @@ pub struct TypeckTables<'tcx> {
     /// Records the type of each closure.
     pub closure_tys: NodeMap<ty::PolyFnSig<'tcx>>,
 
-    /// Records the kind of each closure.
-    pub closure_kinds: NodeMap<ty::ClosureKind>,
+    /// Records the kind of each closure and the span and name of the variable
+    /// that caused the closure to be this kind.
+    pub closure_kinds: NodeMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -269,11 +270,10 @@ pub struct TypeckTables<'tcx> {
 impl<'tcx> TypeckTables<'tcx> {
     pub fn empty() -> TypeckTables<'tcx> {
         TypeckTables {
-            type_relative_path_defs: NodeMap(),
+            type_dependent_defs: NodeMap(),
             node_types: FxHashMap(),
-            item_substs: NodeMap(),
+            node_substs: NodeMap(),
             adjustments: NodeMap(),
-            method_map: FxHashMap(),
             upvar_capture_map: FxHashMap(),
             closure_tys: NodeMap(),
             closure_kinds: NodeMap(),
@@ -292,7 +292,7 @@ impl<'tcx> TypeckTables<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, ref path) => path.def,
             hir::QPath::TypeRelative(..) => {
-                self.type_relative_path_defs.get(&id).cloned().unwrap_or(Def::Err)
+                self.type_dependent_defs.get(&id).cloned().unwrap_or(Def::Err)
             }
         }
     }
@@ -311,8 +311,8 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_types.get(&id).cloned()
     }
 
-    pub fn node_id_item_substs(&self, id: NodeId) -> Option<&'tcx Substs<'tcx>> {
-        self.item_substs.get(&id).map(|ts| ts.substs)
+    pub fn node_substs(&self, id: NodeId) -> &'tcx Substs<'tcx> {
+        self.node_substs.get(&id).cloned().unwrap_or(Substs::empty())
     }
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
@@ -343,28 +343,41 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_id_to_type_opt(expr.id)
     }
 
+    pub fn expr_adjustments(&self, expr: &hir::Expr)
+                            -> &[ty::adjustment::Adjustment<'tcx>] {
+        self.adjustments.get(&expr.id).map_or(&[], |a| &a[..])
+    }
+
     /// Returns the type of `expr`, considering any `Adjustment`
     /// entry recorded for that expression.
     pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
-        self.adjustments.get(&expr.id)
+        self.expr_adjustments(expr)
+            .last()
             .map_or_else(|| self.expr_ty(expr), |adj| adj.target)
     }
 
     pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
-        self.adjustments.get(&expr.id)
-            .map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
+        self.expr_adjustments(expr)
+            .last()
+            .map(|adj| adj.target)
+            .or_else(|| self.expr_ty_opt(expr))
     }
 
-    pub fn is_method_call(&self, expr_id: NodeId) -> bool {
-        self.method_map.contains_key(&ty::MethodCall::expr(expr_id))
+    pub fn is_method_call(&self, expr: &hir::Expr) -> bool {
+        // Only paths and method calls/overloaded operators have
+        // entries in type_dependent_defs, ignore the former here.
+        if let hir::ExprPath(_) = expr.node {
+            return false;
+        }
+
+        match self.type_dependent_defs.get(&expr.id) {
+            Some(&Def::Method(_)) => true,
+            _ => false
+        }
     }
 
-    pub fn is_overloaded_autoderef(&self, expr_id: NodeId, autoderefs: u32) -> bool {
-        self.method_map.contains_key(&ty::MethodCall::autoderef(expr_id, autoderefs))
-    }
-
-    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture<'tcx>> {
-        Some(self.upvar_capture_map.get(&upvar_id).unwrap().clone())
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> ty::UpvarCapture<'tcx> {
+        self.upvar_capture_map[&upvar_id]
     }
 }
 
@@ -448,6 +461,10 @@ pub struct GlobalCtxt<'tcx> {
 
     pub hir: hir_map::Map<'tcx>,
 
+    /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
+    /// as well as all upstream crates. Only populated in incremental mode.
+    pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
+
     pub maps: maps::Maps<'tcx>,
 
     pub mir_passes: Rc<Passes>,
@@ -505,9 +522,6 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
-
-    /// Cache for layouts computed from types.
-    pub layout_cache: RefCell<FxHashMap<Ty<'tcx>, &'tcx Layout>>,
 
     /// Used to prevent layout from recursing too deeply.
     pub layout_depth: Cell<usize>,
@@ -676,6 +690,40 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let max_cnum = s.cstore.crates().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
+
+        let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
+            let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = s
+                .cstore
+                .crates()
+                .iter()
+                .map(|&cnum| (cnum, s.cstore.def_path_table(cnum)))
+                .collect();
+
+            let def_path_tables = || {
+                upstream_def_path_tables
+                    .iter()
+                    .map(|&(cnum, ref rc)| (cnum, &**rc))
+                    .chain(iter::once((LOCAL_CRATE, hir.definitions().def_path_table())))
+            };
+
+            // Precompute the capacity of the hashmap so we don't have to
+            // re-allocate when populating it.
+            let capacity = def_path_tables().map(|(_, t)| t.size()).sum::<usize>();
+
+            let mut map: FxHashMap<_, _> = FxHashMap::with_capacity_and_hasher(
+                capacity,
+                ::std::default::Default::default()
+            );
+
+            for (cnum, def_path_table) in def_path_tables() {
+                def_path_table.add_def_path_hashes_to(cnum, &mut map);
+            }
+
+            Some(map)
+        } else {
+            None
+        };
+
         tls::enter_global(GlobalCtxt {
             sess: s,
             trans_trait_caches: traits::trans::TransTraitCaches::new(dep_graph.clone()),
@@ -689,6 +737,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             export_map: resolutions.export_map,
             fulfilled_predicates: RefCell::new(fulfilled_predicates),
             hir: hir,
+            def_path_hash_to_def_id: def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
             mir_passes,
             freevars: RefCell::new(resolutions.freevars),
@@ -705,7 +754,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
             crate_name: Symbol::intern(crate_name),
             data_layout: data_layout,
-            layout_cache: RefCell::new(FxHashMap()),
             layout_interner: RefCell::new(FxHashSet()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
@@ -750,6 +798,18 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 pub trait Lift<'tcx> {
     type Lifted;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
+    type Lifted = ty::ParamEnv<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<ty::ParamEnv<'tcx>> {
+        self.caller_bounds.lift_to_tcx(tcx).and_then(|caller_bounds| {
+            Some(ty::ParamEnv {
+                reveal: self.reveal,
+                caller_bounds,
+            })
+        })
+    }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
@@ -823,6 +883,25 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
     type Lifted = &'tcx Slice<ExistentialPredicate<'tcx>>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
         -> Option<&'tcx Slice<ExistentialPredicate<'tcx>>> {
+        if self.is_empty() {
+            return Some(Slice::empty());
+        }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Predicate<'a>> {
+    type Lifted = &'tcx Slice<Predicate<'tcx>>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+        -> Option<&'tcx Slice<Predicate<'tcx>>> {
         if self.is_empty() {
             return Some(Slice::empty());
         }
@@ -1299,9 +1378,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_fn_def(self, def_id: DefId,
-                     substs: &'tcx Substs<'tcx>,
-                     fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyFnDef(def_id, substs, fty))
+                     substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnDef(def_id, substs))
     }
 
     pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
@@ -1321,7 +1399,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          item_name: Name)
         -> Ty<'tcx> {
             // take a copy of substs so that we own the vectors inside
-            let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
+            let inner = ProjectionTy::from_ref_and_name(self, trait_ref, item_name);
             self.mk_ty(TyProjection(inner))
         }
 

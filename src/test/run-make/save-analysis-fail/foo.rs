@@ -17,7 +17,6 @@ extern crate graphviz;
 
 extern crate krate2;
 extern crate krate2 as krate3;
-extern crate flate as myflate;
 
 use graphviz::RenderOption;
 use std::collections::{HashMap,HashSet};
@@ -51,7 +50,6 @@ fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
 
     krate2::hello();
     krate3::hello();
-    myflate::deflate_bytes(&[]);
 
     let x = (3isize, 4usize);
     let y = x.1;

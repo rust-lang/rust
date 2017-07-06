@@ -9,13 +9,11 @@
 // except according to those terms.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use std::fmt::Debug;
-use std::hash::Hash;
 use super::{DepGraphQuery, DepNode};
 
-pub struct DepGraphEdges<D: Clone + Debug + Eq + Hash> {
-    nodes: Vec<DepNode<D>>,
-    indices: FxHashMap<DepNode<D>, IdIndex>,
+pub struct DepGraphEdges {
+    nodes: Vec<DepNode>,
+    indices: FxHashMap<DepNode, IdIndex>,
     edges: FxHashSet<(IdIndex, IdIndex)>,
     open_nodes: Vec<OpenNode>,
 }
@@ -42,8 +40,8 @@ enum OpenNode {
     Ignore,
 }
 
-impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
-    pub fn new() -> DepGraphEdges<D> {
+impl DepGraphEdges {
+    pub fn new() -> DepGraphEdges {
         DepGraphEdges {
             nodes: vec![],
             indices: FxHashMap(),
@@ -52,12 +50,12 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
         }
     }
 
-    fn id(&self, index: IdIndex) -> DepNode<D> {
+    fn id(&self, index: IdIndex) -> DepNode {
         self.nodes[index.index()].clone()
     }
 
     /// Creates a node for `id` in the graph.
-    fn make_node(&mut self, id: DepNode<D>) -> IdIndex {
+    fn make_node(&mut self, id: DepNode) -> IdIndex {
         if let Some(&i) = self.indices.get(&id) {
             return i;
         }
@@ -82,7 +80,7 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
         assert_eq!(popped_node, OpenNode::Ignore);
     }
 
-    pub fn push_task(&mut self, key: DepNode<D>) {
+    pub fn push_task(&mut self, key: DepNode) {
         let top_node = self.current_node();
 
         let new_node = self.make_node(key);
@@ -95,7 +93,7 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
         }
     }
 
-    pub fn pop_task(&mut self, key: DepNode<D>) {
+    pub fn pop_task(&mut self, key: DepNode) {
         let popped_node = self.open_nodes.pop().unwrap();
         assert_eq!(OpenNode::Node(self.indices[&key]), popped_node);
     }
@@ -105,7 +103,7 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
     /// effect. Note that *reading* from tracked state is harmless if
     /// you are not in a task; what is bad is *writing* to tracked
     /// state (and leaking data that you read into a tracked task).
-    pub fn read(&mut self, v: DepNode<D>) {
+    pub fn read(&mut self, v: DepNode) {
         if self.current_node().is_some() {
             let source = self.make_node(v);
             self.add_edge_from_current_node(|current| (source, current))
@@ -115,7 +113,7 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
     /// Indicates that the current task `C` writes `v` by adding an
     /// edge from `C` to `v`. If there is no current task, panics. If
     /// you want to suppress this edge, use `ignore`.
-    pub fn write(&mut self, v: DepNode<D>) {
+    pub fn write(&mut self, v: DepNode) {
         let target = self.make_node(v);
         self.add_edge_from_current_node(|current| (current, target))
     }
@@ -159,7 +157,7 @@ impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
         }
     }
 
-    pub fn query(&self) -> DepGraphQuery<D> {
+    pub fn query(&self) -> DepGraphQuery {
         let edges: Vec<_> = self.edges.iter()
                                       .map(|&(i, j)| (self.id(i), self.id(j)))
                                       .collect();

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 extern crate std;
-//~^ ERROR an extern crate named `std` has already been imported
+//~^ ERROR the name `std` is defined multiple times
 
 fn main(){}

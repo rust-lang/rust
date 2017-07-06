@@ -95,9 +95,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
-        let method_call = ty::MethodCall::expr(id);
-        let method = self.tables.method_map[&method_call];
-        self.check_def_id(method.def_id);
+        self.check_def_id(self.tables.type_dependent_defs[&id].def_id());
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
@@ -286,6 +284,11 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     // #[used] also keeps the item alive forcefully,
     // e.g. for placing it in a specific section.
     if attr::contains_name(attrs, "used") {
+        return true;
+    }
+
+    // Don't lint about global allocators
+    if attr::contains_name(attrs, "global_allocator") {
         return true;
     }
 

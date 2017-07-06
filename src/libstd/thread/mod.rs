@@ -172,7 +172,7 @@ pub use self::local::{LocalKey, LocalKeyState};
 
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[cfg(target_thread_local)]
-#[doc(hidden)] pub use sys::fast_thread_local::Key as __FastLocalKeyInner;
+#[doc(hidden)] pub use self::local::fast::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[doc(hidden)] pub use self::local::os::Key as __OsLocalKeyInner;
 
@@ -787,12 +787,16 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// let timeout = Duration::from_secs(2);
 /// let beginning_park = Instant::now();
-/// park_timeout(timeout);
 ///
-/// while beginning_park.elapsed() < timeout {
-///     println!("restarting park_timeout after {:?}", beginning_park.elapsed());
-///     let timeout = timeout - beginning_park.elapsed();
-///     park_timeout(timeout);
+/// let mut timeout_remaining = timeout;
+/// loop {
+///     park_timeout(timeout_remaining);
+///     let elapsed = beginning_park.elapsed();
+///     if elapsed >= timeout {
+///         break;
+///     }
+///     println!("restarting park_timeout after {:?}", elapsed);
+///     timeout_remaining = timeout - elapsed;
 /// }
 /// ```
 ///
@@ -821,8 +825,6 @@ pub fn park_timeout(dur: Duration) {
 /// # Examples
 ///
 /// ```
-/// #![feature(thread_id)]
-///
 /// use std::thread;
 ///
 /// let other_thread = thread::spawn(|| {
@@ -832,7 +834,7 @@ pub fn park_timeout(dur: Duration) {
 /// let other_thread_id = other_thread.join().unwrap();
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
-#[unstable(feature = "thread_id", issue = "21507")]
+#[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
 
@@ -962,8 +964,6 @@ impl Thread {
     /// # Examples
     ///
     /// ```
-    /// #![feature(thread_id)]
-    ///
     /// use std::thread;
     ///
     /// let other_thread = thread::spawn(|| {
@@ -973,7 +973,7 @@ impl Thread {
     /// let other_thread_id = other_thread.join().unwrap();
     /// assert!(thread::current().id() != other_thread_id);
     /// ```
-    #[unstable(feature = "thread_id", issue = "21507")]
+    #[stable(feature = "thread_id", since = "1.19.0")]
     pub fn id(&self) -> ThreadId {
         self.inner.id
     }
@@ -1094,11 +1094,12 @@ impl<T> JoinInner<T> {
 
 /// An owned permission to join on a thread (block on its termination).
 ///
-/// A `JoinHandle` *detaches* the child thread when it is dropped.
+/// A `JoinHandle` *detaches* the associated thread when it is dropped, which
+/// means that there is no longer any handle to thread and no way to `join`
+/// on it.
 ///
 /// Due to platform restrictions, it is not possible to [`Clone`] this
-/// handle: the ability to join a child thread is a uniquely-owned
-/// permission.
+/// handle: the ability to join a thread is a uniquely-owned permission.
 ///
 /// This `struct` is created by the [`thread::spawn`] function and the
 /// [`thread::Builder::spawn`] method.
@@ -1127,6 +1128,30 @@ impl<T> JoinInner<T> {
 /// }).unwrap();
 /// ```
 ///
+/// Child being detached and outliving its parent:
+///
+/// ```no_run
+/// use std::thread;
+/// use std::time::Duration;
+///
+/// let original_thread = thread::spawn(|| {
+///     let _detached_thread = thread::spawn(|| {
+///         // Here we sleep to make sure that the first thread returns before.
+///         thread::sleep(Duration::from_millis(10));
+///         // This will be called, even though the JoinHandle is dropped.
+///         println!("♫ Still alive ♫");
+///     });
+/// });
+///
+/// let _ = original_thread.join();
+/// println!("Original thread is joined.");
+///
+/// // We make sure that the new thread has time to run, before the main
+/// // thread returns.
+///
+/// thread::sleep(Duration::from_millis(1000));
+/// ```
+///
 /// [`Clone`]: ../../std/clone/trait.Clone.html
 /// [`thread::spawn`]: fn.spawn.html
 /// [`thread::Builder::spawn`]: struct.Builder.html#method.spawn
@@ -1139,8 +1164,6 @@ impl<T> JoinHandle<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(thread_id)]
-    ///
     /// use std::thread;
     ///
     /// let builder = thread::Builder::new();

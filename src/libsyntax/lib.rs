@@ -27,10 +27,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(i128_type)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-
 extern crate serialize;
 #[macro_use] extern crate log;
 #[macro_use] extern crate bitflags;

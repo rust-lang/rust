@@ -33,6 +33,7 @@ pub const MAP_WRITE_COMBINE: usize = 2;
 pub const MODE_TYPE: u16 = 0xF000;
 pub const MODE_DIR: u16 = 0x4000;
 pub const MODE_FILE: u16 = 0x8000;
+pub const MODE_SYMLINK: u16 = 0xA000;
 
 pub const MODE_PERM: u16 = 0x0FFF;
 pub const MODE_SETUID: u16 = 0o4000;
@@ -53,6 +54,7 @@ pub const O_TRUNC: usize =      0x0400_0000;
 pub const O_EXCL: usize =       0x0800_0000;
 pub const O_DIRECTORY: usize =  0x1000_0000;
 pub const O_STAT: usize =       0x2000_0000;
+pub const O_SYMLINK: usize =    0x4000_0000;
 pub const O_ACCMODE: usize =    O_RDONLY | O_WRONLY | O_RDWR;
 
 pub const SEEK_SET: usize = 0;

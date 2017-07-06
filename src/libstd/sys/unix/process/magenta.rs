@@ -102,7 +102,7 @@ pub struct mx_info_process_t {
 }
 
 extern {
-    static __magenta_job_default: mx_handle_t;
+    pub fn mx_job_default() -> mx_handle_t;
 
     pub fn mx_task_kill(handle: mx_handle_t) -> mx_status_t;
 
@@ -117,10 +117,6 @@ extern {
     pub fn mx_object_get_info(handle: mx_handle_t, topic: u32, buffer: *mut c_void,
                               buffer_size: mx_size_t, actual_size: *mut mx_size_t,
                               avail: *mut mx_size_t) -> mx_status_t;
-}
-
-pub fn mx_job_default() -> mx_handle_t {
-    unsafe { return __magenta_job_default; }
 }
 
 // From `enum special_handles` in system/ulib/launchpad/launchpad.c

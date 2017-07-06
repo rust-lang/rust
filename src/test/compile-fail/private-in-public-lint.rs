@@ -18,8 +18,6 @@ mod m1 {
 }
 
 mod m2 {
-    #![deny(future_incompatible)]
-
     pub struct Pub;
     struct Priv;
 

@@ -22,5 +22,5 @@ error: expected token: `,`
    |
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

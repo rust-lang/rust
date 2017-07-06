@@ -43,4 +43,12 @@ fn main() {
     //~| NOTE cyclic type of infinite size
     //~| NOTE expected type `_`
     //~| NOTE found type `Box<_>`
+
+    let s = &mut String::new();
+    s = format!("foo");
+    //~^ ERROR E0308
+    //~| NOTE expected mutable reference, found struct `std::string::String`
+    //~| NOTE expected type `&mut std::string::String`
+    //~| HELP try with `&mut format!("foo")`
+    //~| NOTE this error originates in a macro outside of the current crate
 }

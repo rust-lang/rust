@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def_id::DefId;
 use super::DepNode;
 use super::thread::{DepGraphThreadData, DepMessage};
 
 pub struct DepTask<'graph> {
     data: &'graph DepGraphThreadData,
-    key: Option<DepNode<DefId>>,
+    key: Option<DepNode>,
 }
 
 impl<'graph> DepTask<'graph> {
-    pub fn new(data: &'graph DepGraphThreadData, key: DepNode<DefId>)
+    pub fn new(data: &'graph DepGraphThreadData, key: DepNode)
                -> Option<DepTask<'graph>> {
         if data.is_enqueue_enabled() {
             data.enqueue(DepMessage::PushTask(key.clone()));

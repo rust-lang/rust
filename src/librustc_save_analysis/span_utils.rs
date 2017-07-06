@@ -20,7 +20,6 @@ use syntax::ast;
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
 use syntax::symbol::keywords;
-use syntax::tokenstream::TokenTree;
 use syntax_pos::*;
 
 #[derive(Clone)]
@@ -277,45 +276,6 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    /// `span` must be the span for an item such as a function or struct. This
-    /// function returns the program text from the start of the span until the
-    /// end of the 'signature' part, that is up to, but not including an opening
-    /// brace or semicolon.
-    pub fn signature_string_for_span(&self, span: Span) -> String {
-        let mut toks = self.retokenise_span(span);
-        toks.real_token();
-        let mut toks = toks.parse_all_token_trees().unwrap().trees();
-        let mut prev = toks.next().unwrap();
-
-        let first_span = prev.span();
-        let mut angle_count = 0;
-        for tok in toks {
-            if let TokenTree::Token(_, ref tok) = prev {
-                angle_count += match *tok {
-                    token::Eof => { break; }
-                    token::Lt => 1,
-                    token::Gt => -1,
-                    token::BinOp(token::Shl) => 2,
-                    token::BinOp(token::Shr) => -2,
-                    _ => 0,
-                };
-            }
-            if angle_count > 0 {
-                prev = tok;
-                continue;
-            }
-            if let TokenTree::Token(_, token::Semi) = tok {
-                return self.snippet(first_span.to(prev.span()));
-            } else if let TokenTree::Delimited(_, ref d) = tok {
-                if d.delim == token::Brace {
-                    return self.snippet(first_span.to(prev.span()));
-                }
-            }
-            prev = tok;
-        }
-        self.snippet(span)
-    }
-
     pub fn sub_span_before_token(&self, span: Span, tok: Token) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.real_token();
@@ -385,57 +345,44 @@ impl<'a> SpanUtils<'a> {
         self.spans_with_brackets(span, 1, number)
     }
 
-    pub fn report_span_err(&self, kind: &str, span: Span) {
-        let loc = self.sess.codemap().lookup_char_pos(span.lo);
-        info!("({}) Could not find sub_span in `{}` in {}, line {}",
-              kind,
-              self.snippet(span),
-              loc.file.name,
-              loc.line);
-        self.err_count.set(self.err_count.get() + 1);
-        if self.err_count.get() > 1000 {
-            bug!("span errors reached 1000, giving up");
-        }
-    }
+    // // Return the name for a macro definition (identifier after first `!`)
+    // pub fn span_for_macro_def_name(&self, span: Span) -> Option<Span> {
+    //     let mut toks = self.retokenise_span(span);
+    //     loop {
+    //         let ts = toks.real_token();
+    //         if ts.tok == token::Eof {
+    //             return None;
+    //         }
+    //         if ts.tok == token::Not {
+    //             let ts = toks.real_token();
+    //             if ts.tok.is_ident() {
+    //                 return Some(ts.sp);
+    //             } else {
+    //                 return None;
+    //             }
+    //         }
+    //     }
+    // }
 
-    // Return the name for a macro definition (identifier after first `!`)
-    pub fn span_for_macro_def_name(&self, span: Span) -> Option<Span> {
-        let mut toks = self.retokenise_span(span);
-        loop {
-            let ts = toks.real_token();
-            if ts.tok == token::Eof {
-                return None;
-            }
-            if ts.tok == token::Not {
-                let ts = toks.real_token();
-                if ts.tok.is_ident() {
-                    return Some(ts.sp);
-                } else {
-                    return None;
-                }
-            }
-        }
-    }
-
-    // Return the name for a macro use (identifier before first `!`).
-    pub fn span_for_macro_use_name(&self, span:Span) -> Option<Span> {
-        let mut toks = self.retokenise_span(span);
-        let mut prev = toks.real_token();
-        loop {
-            if prev.tok == token::Eof {
-                return None;
-            }
-            let ts = toks.real_token();
-            if ts.tok == token::Not {
-                if prev.tok.is_ident() {
-                    return Some(prev.sp);
-                } else {
-                    return None;
-                }
-            }
-            prev = ts;
-        }
-    }
+    // // Return the name for a macro use (identifier before first `!`).
+    // pub fn span_for_macro_use_name(&self, span:Span) -> Option<Span> {
+    //     let mut toks = self.retokenise_span(span);
+    //     let mut prev = toks.real_token();
+    //     loop {
+    //         if prev.tok == token::Eof {
+    //             return None;
+    //         }
+    //         let ts = toks.real_token();
+    //         if ts.tok == token::Not {
+    //             if prev.tok.is_ident() {
+    //                 return Some(prev.sp);
+    //             } else {
+    //                 return None;
+    //             }
+    //         }
+    //         prev = ts;
+    //     }
+    // }
 
     /// Return true if the span is generated code, and
     /// it is not a subspan of the root callsite.

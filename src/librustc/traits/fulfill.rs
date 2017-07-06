@@ -113,6 +113,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     /// `projection_ty` again.
     pub fn normalize_projection_type(&mut self,
                                      infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                     param_env: ty::ParamEnv<'tcx>,
                                      projection_ty: ty::ProjectionTy<'tcx>,
                                      cause: ObligationCause<'tcx>)
                                      -> Ty<'tcx>
@@ -125,7 +126,11 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         // FIXME(#20304) -- cache
 
         let mut selcx = SelectionContext::new(infcx);
-        let normalized = project::normalize_projection_type(&mut selcx, projection_ty, cause, 0);
+        let normalized = project::normalize_projection_type(&mut selcx,
+                                                            param_env,
+                                                            projection_ty,
+                                                            cause,
+                                                            0);
 
         for obligation in normalized.obligations {
             self.register_predicate_obligation(infcx, obligation);
@@ -136,8 +141,12 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         normalized.value
     }
 
+    /// Requires that `ty` must implement the trait with `def_id` in
+    /// the given environment. This trait must not have any type
+    /// parameters (except for `Self`).
     pub fn register_bound(&mut self,
                           infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                          param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>,
                           def_id: DefId,
                           cause: ObligationCause<'tcx>)
@@ -149,6 +158,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         self.register_predicate_obligation(infcx, Obligation {
             cause: cause,
             recursion_depth: 0,
+            param_env,
             predicate: trait_ref.to_predicate()
         });
     }
@@ -173,7 +183,9 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
         assert!(!infcx.is_in_snapshot());
 
-        if infcx.tcx.fulfilled_predicates.borrow().check_duplicate(&obligation.predicate) {
+        let tcx = infcx.tcx;
+
+        if tcx.fulfilled_predicates.borrow().check_duplicate(tcx, &obligation.predicate) {
             debug!("register_predicate_obligation: duplicate");
             return
         }
@@ -363,7 +375,8 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
-            if selcx.tcx().fulfilled_predicates.borrow().check_duplicate_trait(data) {
+            let tcx = selcx.tcx();
+            if tcx.fulfilled_predicates.borrow().check_duplicate_trait(tcx, data) {
                 return Ok(Some(vec![]));
             }
 
@@ -410,7 +423,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::Equate(ref binder) => {
-            match selcx.infcx().equality_predicate(&obligation.cause, binder) {
+            match selcx.infcx().equality_predicate(&obligation.cause,
+                                                   obligation.param_env,
+                                                   binder) {
                 Ok(InferOk { obligations, value: () }) => {
                     Ok(Some(obligations))
                 },
@@ -498,7 +513,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::WellFormed(ty) => {
-            match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
+            match ty::wf::obligations(selcx.infcx(),
+                                      obligation.param_env,
+                                      obligation.cause.body_id,
                                       ty, obligation.cause.span) {
                 None => {
                     pending_obligation.stalled_on = vec![ty];
@@ -509,7 +526,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         }
 
         ty::Predicate::Subtype(ref subtype) => {
-            match selcx.infcx().subtype_predicate(&obligation.cause, subtype) {
+            match selcx.infcx().subtype_predicate(&obligation.cause,
+                                                  obligation.param_env,
+                                                  subtype) {
                 None => {
                     // none means that both are unresolved
                     pending_obligation.stalled_on = vec![subtype.skip_binder().a,
@@ -591,22 +610,22 @@ impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
         }
     }
 
-    pub fn check_duplicate(&self, key: &ty::Predicate<'tcx>) -> bool {
+    pub fn check_duplicate(&self, tcx: TyCtxt, key: &ty::Predicate<'tcx>) -> bool {
         if let ty::Predicate::Trait(ref data) = *key {
-            self.check_duplicate_trait(data)
+            self.check_duplicate_trait(tcx, data)
         } else {
             false
         }
     }
 
-    pub fn check_duplicate_trait(&self, data: &ty::PolyTraitPredicate<'tcx>) -> bool {
+    pub fn check_duplicate_trait(&self, tcx: TyCtxt, data: &ty::PolyTraitPredicate<'tcx>) -> bool {
         // For the global predicate registry, when we find a match, it
         // may have been computed by some other task, so we want to
         // add a read from the node corresponding to the predicate
         // processing to make sure we get the transitive dependencies.
         if self.set.contains(data) {
             debug_assert!(data.is_global());
-            self.dep_graph.read(data.dep_node());
+            self.dep_graph.read(data.dep_node(tcx));
             debug!("check_duplicate: global predicate `{:?}` already proved elsewhere", data);
 
             true

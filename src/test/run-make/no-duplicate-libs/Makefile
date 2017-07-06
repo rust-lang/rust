@@ -4,9 +4,7 @@ ifdef IS_MSVC
 # FIXME(#27979)
 all:
 else
-all:
-	$(RUSTC) foo.rs
-	$(RUSTC) bar.rs
+all: $(call STATICLIB,foo) $(call STATICLIB,bar)
 	$(RUSTC) main.rs
 	$(call RUN,main)
 endif

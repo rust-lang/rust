@@ -324,10 +324,6 @@ impl File {
         self.handle.read_at(buf, offset)
     }
 
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.handle.read_to_end(buf)
-    }
-
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.handle.write(buf)
     }
