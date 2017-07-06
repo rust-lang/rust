@@ -26,11 +26,11 @@ warning: Breaking changes in `C`
 warning: Breaking changes in `D`
   --> $REPO_PATH/tests/examples/ty_alias.rs:15:5
    |
-15 |     pub type D<'a, T, U=T> = (&'a T, U);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+15 |     pub type D<'a, T, U=Box<T>> = (&'a T, U);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: NonBreaking (TypeParameterAdded { defaulted: true })
-   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: &'a T, found: (&'a T, T) }) })
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: &'a T, found: (&'a T, std::boxed::Box<T>) }) })
 
 warning: Breaking changes in `E`
   --> $REPO_PATH/tests/examples/ty_alias.rs:16:5

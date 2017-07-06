@@ -23,7 +23,7 @@ use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 /// The main entry point to our analysis passes.
 ///
@@ -247,8 +247,8 @@ fn diff_adts(changes: &mut ChangeSet,
         _ => return,
     };
 
-    let mut variants = HashMap::new();
-    let mut fields = HashMap::new();
+    let mut variants = BTreeMap::new();
+    let mut fields = BTreeMap::new();
 
     for variant in &old_def.variants {
         variants.entry(variant.name).or_insert((None, None)).0 = Some(variant);
@@ -258,8 +258,8 @@ fn diff_adts(changes: &mut ChangeSet,
         variants.entry(variant.name).or_insert((None, None)).1 = Some(variant);
     }
 
-    for (_, items) in variants.drain() {
-        match items {
+    for items in variants.values() {
+        match *items {
             (Some(old), Some(new)) => {
                 id_mapping.add_subitem(old_def_id, old.did, new.did);
 
@@ -293,8 +293,8 @@ fn diff_adts(changes: &mut ChangeSet,
                     continue;
                 }
 
-                for (_, items2) in fields.drain() {
-                    match items2 {
+                for items2 in fields.values() {
+                    match *items2 {
                         (Some(o), Some(n)) => {
                             id_mapping.add_subitem(old_def_id, o.did, n.did);
 
@@ -325,6 +325,8 @@ fn diff_adts(changes: &mut ChangeSet,
                         (None, None) => unreachable!(),
                     }
                 }
+
+                fields.clear();
             },
             (Some(old), None) => {
                 changes.add_binary(VariantRemoved, old_def_id, Some(tcx.def_span(old.did)));

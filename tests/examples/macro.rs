@@ -20,6 +20,7 @@ pub mod new {
         }
     }
 
+    #[allow(dead_code)]
     fn abc() -> Item {
         bar!()
     }

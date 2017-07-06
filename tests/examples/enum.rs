@@ -15,6 +15,16 @@ pub mod old {
         Abc,
         Bcd,
     }
+
+    pub enum Efg {
+        Abc,
+        Bcd(u8),
+        Cde,
+        Def { f: u8 },
+        Efg(u8),
+        Fgh { f: u8 },
+        Ghi { f: u8 },
+    }
 }
 
 pub mod new {
@@ -33,5 +43,15 @@ pub mod new {
 
     pub enum Def {
         Abc,
+    }
+
+    pub enum Efg {
+        Abc(u8),
+        Bcd,
+        Cde { f: u8 },
+        Def,
+        Efg { f: u8 },
+        Fgh { f: u16 },
+        Ghi { g: u8 },
     }
 }

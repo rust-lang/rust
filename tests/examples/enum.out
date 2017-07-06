@@ -1,24 +1,24 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Breaking changes in `Abc`
-  --> $REPO_PATH/tests/examples/enum.rs:21:5
+  --> $REPO_PATH/tests/examples/enum.rs:31:5
    |
-21 | /     pub enum Abc {
-22 | |         Abc,
-23 | |     }
+31 | /     pub enum Abc {
+32 | |         Abc,
+33 | |     }
    | |_____^
    |
 warning: Breaking (VariantAdded)
-  --> $REPO_PATH/tests/examples/enum.rs:22:9
+  --> $REPO_PATH/tests/examples/enum.rs:32:9
    |
-22 |         Abc,
+32 |         Abc,
    |         ^^^
 
 warning: Breaking changes in `Bcd`
-  --> $REPO_PATH/tests/examples/enum.rs:25:5
+  --> $REPO_PATH/tests/examples/enum.rs:35:5
    |
-25 | /     pub enum Bcd {
-26 | |
-27 | |     }
+35 | /     pub enum Bcd {
+36 | |
+37 | |     }
    | |_____^
    |
 warning: Breaking (VariantRemoved)
@@ -28,26 +28,26 @@ warning: Breaking (VariantRemoved)
    |         ^^^
 
 warning: Breaking changes in `Cde`
-  --> $REPO_PATH/tests/examples/enum.rs:29:5
+  --> $REPO_PATH/tests/examples/enum.rs:39:5
    |
-29 | /     pub enum Cde {
-30 | |         Abc,
-31 | |         Bcd,
-32 | |     }
+39 | /     pub enum Cde {
+40 | |         Abc,
+41 | |         Bcd,
+42 | |     }
    | |_____^
    |
 warning: Breaking (VariantAdded)
-  --> $REPO_PATH/tests/examples/enum.rs:31:9
+  --> $REPO_PATH/tests/examples/enum.rs:41:9
    |
-31 |         Bcd,
+41 |         Bcd,
    |         ^^^
 
 warning: Breaking changes in `Def`
-  --> $REPO_PATH/tests/examples/enum.rs:34:5
+  --> $REPO_PATH/tests/examples/enum.rs:44:5
    |
-34 | /     pub enum Def {
-35 | |         Abc,
-36 | |     }
+44 | /     pub enum Def {
+45 | |         Abc,
+46 | |     }
    | |_____^
    |
 warning: Breaking (VariantRemoved)
@@ -55,4 +55,52 @@ warning: Breaking (VariantRemoved)
    |
 16 |         Bcd,
    |         ^^^
+
+warning: Breaking changes in `Efg`
+  --> $REPO_PATH/tests/examples/enum.rs:48:5
+   |
+48 | /     pub enum Efg {
+49 | |         Abc(u8),
+50 | |         Bcd,
+51 | |         Cde { f: u8 },
+...  |
+55 | |         Ghi { g: u8 },
+56 | |     }
+   | |_____^
+   |
+warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:20:9
+   |
+20 |         Abc,
+   |         ^^^
+warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:21:9
+   |
+21 |         Bcd(u8),
+   |         ^^^^^^^
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:22:9
+   |
+22 |         Cde,
+   |         ^^^
+warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:23:9
+   |
+23 |         Def { f: u8 },
+   |         ^^^^^^^^^^^^^
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/examples/enum.rs:24:9
+   |
+24 |         Efg(u8),
+   |         ^^^^^^^
+warning: Breaking (VariantFieldRemoved { public: false, total_public: false })
+  --> $REPO_PATH/tests/examples/enum.rs:26:15
+   |
+26 |         Ghi { f: u8 },
+   |               ^^^^^
+warning: Breaking (VariantFieldAdded { public: false, total_public: false })
+  --> $REPO_PATH/tests/examples/enum.rs:55:15
+   |
+55 |         Ghi { g: u8 },
+   |               ^^^^^
 
