@@ -81,57 +81,19 @@ pub enum Kind {
 }
 
 macro_rules! check {
-    (@inner $self:ident, $rule:ty, $path:expr) => {
-        let build = $self.build;
-        let hosts = if <$rule>::ONLY_BUILD_TARGETS || <$rule>::ONLY_BUILD {
-            &build.config.host[..1]
-        } else {
-            &build.hosts
-        };
-
-        // Determine the actual targets participating in this rule.
-        // NOTE: We should keep the full projection from build triple to
-        // the hosts for the dist steps, now that the hosts array above is
-        // truncated to avoid duplication of work in that case. Therefore
-        // the original non-shadowed hosts array is used below.
-        let targets = if <$rule>::ONLY_HOSTS {
-            // If --target was specified but --host wasn't specified,
-            // don't run any host-only tests. Also, respect any `--host`
-            // overrides as done for `hosts`.
-            if build.flags.host.len() > 0 {
-                &build.flags.host[..]
-            } else if build.flags.target.len() > 0 {
-                &[]
-            } else if <$rule>::ONLY_BUILD {
-                &build.config.host[..1]
-            } else {
-                &build.config.host[..]
-            }
-        } else {
-            &build.targets
-        };
-
-        build.verbose(&format!("executing {} with hosts={:?}, targets={:?}",
-            stringify!($rule), hosts, targets));
-        for host in hosts {
-            for target in targets {
-                <$rule>::make_run($self, $path, host, target);
-            }
-        }
-    };
     ($self:ident, $paths:ident, $($rule:ty),+ $(,)*) => {{
         let paths = $paths;
         if paths.is_empty() {
             $({
                 if <$rule>::DEFAULT {
-                    check!(@inner $self, $rule, None);
+                    $self.maybe_run::<$rule>(None);
                 }
             })+
         } else {
             for path in paths {
                 $({
                     if <$rule>::should_run($self, path) {
-                        check!(@inner $self, $rule, Some(path));
+                        $self.maybe_run::<$rule>(Some(path));
                     }
                 })+
             }
@@ -425,6 +387,43 @@ impl<'a> Builder<'a> {
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
         cargo
+    }
+
+    fn maybe_run<S: Step<'a>>(&'a self, path: Option<&Path>) {
+        let build = self.build;
+        let hosts = if S::ONLY_BUILD_TARGETS || S::ONLY_BUILD {
+            &build.config.host[..1]
+        } else {
+            &build.hosts
+        };
+
+        // Determine the actual targets participating in this rule.
+        // NOTE: We should keep the full projection from build triple to
+        // the hosts for the dist steps, now that the hosts array above is
+        // truncated to avoid duplication of work in that case. Therefore
+        // the original non-shadowed hosts array is used below.
+        let targets = if S::ONLY_HOSTS {
+            // If --target was specified but --host wasn't specified,
+            // don't run any host-only tests. Also, respect any `--host`
+            // overrides as done for `hosts`.
+            if build.flags.host.len() > 0 {
+                &build.flags.host[..]
+            } else if build.flags.target.len() > 0 {
+                &[]
+            } else if S::ONLY_BUILD {
+                &build.config.host[..1]
+            } else {
+                &build.config.host[..]
+            }
+        } else {
+            &build.targets
+        };
+
+        for host in hosts {
+            for target in targets {
+                S::make_run(self, path, host, target);
+            }
+        }
     }
 
     pub fn ensure<S: Step<'a> + Serialize>(&'a self, step: S) -> S::Output
