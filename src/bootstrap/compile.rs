@@ -598,7 +598,8 @@ impl<'a> Step<'a> for Rustc<'a> {
         if compiler.stage == 0 {
             cargo.env("CFG_LIBDIR_RELATIVE", "lib");
         } else {
-            let libdir_relative = build.config.libdir_relative.clone().unwrap_or(PathBuf::from("lib"));
+            let libdir_relative =
+                build.config.libdir_relative.clone().unwrap_or(PathBuf::from("lib"));
             cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
         }
 
