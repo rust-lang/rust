@@ -13,12 +13,11 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, Peekable, FusedIterator};
 use core::marker::PhantomData;
-use core::ops::Index;
+use core::ops::{Index, RangeBounds};
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{Excluded, Included, Unbounded};
-use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;
@@ -790,11 +789,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+        where T: Ord, K: Borrow<T>, R: Into<RangeBounds<T>>
     {
         let root1 = self.root.as_ref();
         let root2 = self.root.as_ref();
-        let (f, b) = range_search(root1, root2, range);
+        let (f, b) = range_search(root1, root2, range.into());
 
         Range { front: f, back: b}
     }
@@ -830,11 +829,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+        where T: Ord, K: Borrow<T>, R: Into<RangeBounds<T>>
     {
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
-        let (f, b) = range_search(root1, root2, range);
+        let (f, b) = range_search(root1, root2, range.into());
 
         RangeMut {
             front: f,
@@ -1780,15 +1779,15 @@ fn last_leaf_edge<BorrowType, K, V>
     }
 }
 
-fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
+fn range_search<BorrowType, K, V, Q: ?Sized>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    range: R
+    range: RangeBounds<&Q>
 )-> (Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
      Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
         where Q: Ord, K: Borrow<Q>
 {
-    match (range.start(), range.end()) {
+    match (range.start, range.end) {
         (Excluded(s), Excluded(e)) if s==e =>
             panic!("range start and end are equal and excluded in BTreeMap"),
         (Included(s), Included(e)) |
