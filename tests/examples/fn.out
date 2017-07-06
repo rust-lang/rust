@@ -1,27 +1,57 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Breaking changes in `bcd`
-  --> $REPO_PATH/tests/examples/fn.rs:14:5
+  --> $REPO_PATH/tests/examples/fn.rs:26:5
    |
-14 |     pub fn bcd(_: u8) {}
+26 |     pub fn bcd(_: u8) {}
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = warning: Breaking (FnArityChanged)
 
 warning: Breaking changes in `cde`
-  --> $REPO_PATH/tests/examples/fn.rs:16:5
+  --> $REPO_PATH/tests/examples/fn.rs:28:5
    |
-16 | /     pub fn cde() -> u16 { // TODO: maybe make this case TechnicallyBreaking
-17 | |         0xcde
-18 | |     }
+28 | /     pub fn cde() -> u16 {
+29 | |         0xcde
+30 | |     }
    | |_____^
    |
    = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: (), found: u16 }) })
 
 warning: Breaking changes in `def`
-  --> $REPO_PATH/tests/examples/fn.rs:20:5
+  --> $REPO_PATH/tests/examples/fn.rs:32:5
    |
-20 |     pub fn def() {}
+32 |     pub fn def() {}
    |     ^^^^^^^^^^^^^^^
    |
    = warning: Breaking (FnArityChanged)
+
+warning: Breaking changes in `efg`
+  --> $REPO_PATH/tests/examples/fn.rs:36:5
+   |
+36 | /     pub fn efg<A>(a: A, _: A) -> A {
+37 | |         a
+38 | |     }
+   | |_____^
+   |
+   = warning: Breaking (TypeParameterAdded { defaulted: false })
+
+warning: Breaking changes in `fgh`
+  --> $REPO_PATH/tests/examples/fn.rs:40:5
+   |
+40 | /     pub fn fgh(a: u8, _: u16) -> u8 {
+41 | |         a
+42 | |     }
+   | |_____^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: Breaking changes in `ghi`
+  --> $REPO_PATH/tests/examples/fn.rs:44:5
+   |
+44 | /     pub fn ghi(a: u8, _: u8) -> u16 {
+45 | |         a as u16
+46 | |     }
+   | |_____^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
 

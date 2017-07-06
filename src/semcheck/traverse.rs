@@ -156,6 +156,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             (Err, Err) => {},
                             (Fn(_), Fn(_)) |
                             (Method(_), Method(_)) => {
+                                diff_generics(changes, id_mapping, tcx, o_def_id, n_def_id);
                                 diff_fn(changes, tcx, o, n);
                             },
                             (TyAlias(_), TyAlias(_)) => {
@@ -289,7 +290,6 @@ fn diff_adts(changes: &mut ChangeSet,
                     };
                     changes.add_binary(c, old_def_id, Some(tcx.def_span(old.did)));
 
-                    // TODO: this might need a condition later on.
                     continue;
                 }
 
