@@ -71,7 +71,7 @@ pub fn find_entry_point(session: &Session, hir_map: &hir_map::Map) {
     }
 
     let mut ctxt = EntryContext {
-        session: session,
+        session,
         map: hir_map,
         main_fn: None,
         attr_main_fn: None,

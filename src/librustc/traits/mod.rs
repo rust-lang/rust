@@ -396,7 +396,7 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
            infcx.tcx.item_path_str(def_id));
 
     let trait_ref = ty::TraitRef {
-        def_id: def_id,
+        def_id,
         substs: infcx.tcx.mk_substs_trait(ty, &[]),
     };
     let obligation = Obligation {

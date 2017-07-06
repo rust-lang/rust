@@ -44,9 +44,9 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
         Preorder {
-            mir: mir,
+            mir,
             visited: BitVector::new(mir.basic_blocks().len()),
-            worklist: worklist
+            worklist,
         }
     }
 }
@@ -106,7 +106,7 @@ pub struct Postorder<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
-            mir: mir,
+            mir,
             visited: BitVector::new(mir.basic_blocks().len()),
             visit_stack: Vec::new()
         };
@@ -251,8 +251,8 @@ impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
         let len = blocks.len();
 
         ReversePostorder {
-            mir: mir,
-            blocks: blocks,
+            mir,
+            blocks,
             idx: len
         }
     }

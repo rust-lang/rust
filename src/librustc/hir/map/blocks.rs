@@ -130,9 +130,9 @@ impl<'a> ClosureParts<'a> {
         ClosureParts {
             decl: d,
             body: b,
-            id: id,
+            id,
             span: s,
-            attrs: attrs,
+            attrs,
         }
     }
 }
@@ -149,7 +149,7 @@ impl<'a> FnLikeNode<'a> {
         };
         if fn_like {
             Some(FnLikeNode {
-                node: node
+                node,
             })
         } else {
             None
@@ -224,12 +224,12 @@ impl<'a> FnLikeNode<'a> {
                         id: i.id,
                         name: i.name,
                         decl: &decl,
-                        unsafety: unsafety,
+                        unsafety,
                         body: block,
-                        generics: generics,
-                        abi: abi,
+                        generics,
+                        abi,
                         vis: &i.vis,
-                        constness: constness,
+                        constness,
                         span: i.span,
                         attrs: &i.attrs,
                     }),

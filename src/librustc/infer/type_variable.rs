@@ -181,8 +181,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.sub_relations.new_key(());
         let index = self.values.push(TypeVariableData {
             value: Bounded { default: default },
-            origin: origin,
-            diverging: diverging
+            origin,
+            diverging,
         });
         let v = ty::TyVid { index: index as u32 };
         debug!("new_var: diverging={:?} index={:?}", diverging, v);
@@ -369,7 +369,7 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate<'tcx>) {
         let Instantiate { vid, default } = action;
         values[vid.index as usize].value = Bounded {
-            default: default
+            default,
         };
     }
 }

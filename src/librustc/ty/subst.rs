@@ -352,9 +352,9 @@ impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
                                span: Option<Span>)
                                -> T
     {
-        let mut folder = SubstFolder { tcx: tcx,
-                                       substs: substs,
-                                       span: span,
+        let mut folder = SubstFolder { tcx,
+                                       substs,
+                                       span,
                                        root_ty: None,
                                        ty_stack_depth: 0,
                                        region_binders_passed: 0 };

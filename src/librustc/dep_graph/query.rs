@@ -36,8 +36,8 @@ impl DepGraphQuery {
         }
 
         DepGraphQuery {
-            graph: graph,
-            indices: indices
+            graph,
+            indices,
         }
     }
 

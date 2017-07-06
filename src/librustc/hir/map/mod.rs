@@ -228,7 +228,7 @@ pub struct Forest {
 impl Forest {
     pub fn new(krate: Crate, dep_graph: &DepGraph) -> Forest {
         Forest {
-            krate: krate,
+            krate,
             dep_graph: dep_graph.clone(),
             inlined_bodies: TypedArena::new()
         }
@@ -1057,10 +1057,10 @@ pub fn map_crate<'hir>(forest: &'hir mut Forest,
     }
 
     let map = Map {
-        forest: forest,
+        forest,
         dep_graph: forest.dep_graph.clone(),
-        map: map,
-        definitions: definitions,
+        map,
+        definitions,
         inlined_bodies: RefCell::new(DefIdMap()),
     };
 

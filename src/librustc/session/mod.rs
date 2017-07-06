@@ -485,7 +485,7 @@ impl Session {
 
         *incr_comp_session = IncrCompSession::Active {
             session_directory: session_dir,
-            lock_file: lock_file,
+            lock_file,
         };
     }
 
@@ -515,7 +515,7 @@ impl Session {
 
         // Note: This will also drop the lock file, thus unlocking the directory
         *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors {
-            session_directory: session_directory
+            session_directory,
         };
     }
 
@@ -695,18 +695,18 @@ pub fn build_session_(sopts: config::Options,
     let sess = Session {
         dep_graph: dep_graph.clone(),
         target: target_cfg,
-        host: host,
+        host,
         opts: sopts,
-        cstore: cstore,
+        cstore,
         parse_sess: p_s,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
         plugin_registrar_fn: Cell::new(None),
         derive_registrar_fn: Cell::new(None),
-        default_sysroot: default_sysroot,
-        local_crate_source_file: local_crate_source_file,
-        working_dir: working_dir,
+        default_sysroot,
+        local_crate_source_file,
+        working_dir,
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(lint::LintTable::new()),
         one_time_diagnostics: RefCell::new(FxHashSet()),
@@ -733,10 +733,10 @@ pub fn build_session_(sopts: config::Options,
             decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
         },
         code_stats: RefCell::new(CodeStats::new()),
-        optimization_fuel_crate: optimization_fuel_crate,
-        optimization_fuel_limit: optimization_fuel_limit,
-        print_fuel_crate: print_fuel_crate,
-        print_fuel: print_fuel,
+        optimization_fuel_crate,
+        optimization_fuel_limit,
+        print_fuel_crate,
+        print_fuel,
         out_of_fuel: Cell::new(false),
         // Note that this is unsafe because it may misinterpret file descriptors
         // on Unix as jobserver file descriptors. We hopefully execute this near

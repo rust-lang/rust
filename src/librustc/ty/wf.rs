@@ -31,10 +31,10 @@ pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                    span: Span)
                                    -> Option<Vec<traits::PredicateObligation<'tcx>>>
 {
-    let mut wf = WfPredicates { infcx: infcx,
-                                param_env: param_env,
-                                body_id: body_id,
-                                span: span,
+    let mut wf = WfPredicates { infcx,
+                                param_env,
+                                body_id,
+                                span,
                                 out: vec![] };
     if wf.compute(ty) {
         debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);

@@ -47,7 +47,7 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
     let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
 
     let header = ty::ImplHeader {
-        impl_def_id: impl_def_id,
+        impl_def_id,
         self_ty: tcx.type_of(impl_def_id),
         trait_ref: tcx.impl_trait_ref(impl_def_id),
         predicates: tcx.predicates_of(impl_def_id).predicates
@@ -102,7 +102,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                      .chain(&b_impl_header.predicates)
                      .map(|p| infcx.resolve_type_vars_if_possible(p))
                      .map(|p| Obligation { cause: ObligationCause::dummy(),
-                                           param_env: param_env,
+                                           param_env,
                                            recursion_depth: 0,
                                            predicate: p })
                      .chain(obligations)

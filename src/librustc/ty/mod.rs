@@ -964,8 +964,8 @@ impl<'tcx> TraitPredicate<'tcx> {
                 .next()
                 .unwrap_or(trait_def_id);
         DepNode::new(tcx, DepConstructor::TraitSelect {
-            trait_def_id: trait_def_id,
-            input_def_id: input_def_id
+            trait_def_id,
+            input_def_id,
         })
     }
 
@@ -1244,12 +1244,12 @@ impl<'tcx> ParamEnv<'tcx> {
         if value.has_param_types() || value.has_self_ty() {
             ParamEnvAnd {
                 param_env: self,
-                value: value,
+                value,
             }
         } else {
             ParamEnvAnd {
                 param_env: ParamEnv::empty(self.reveal),
-                value: value,
+                value,
             }
         }
     }
@@ -1487,10 +1487,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             AdtKind::Struct => {}
         }
         AdtDef {
-            did: did,
-            variants: variants,
-            flags: flags,
-            repr: repr,
+            did,
+            variants,
+            flags,
+            repr,
         }
     }
 
@@ -2113,11 +2113,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         AssociatedItem {
             name: trait_item_ref.name,
-            kind: kind,
+            kind,
             // Visibility of trait items is inherited from their traits.
             vis: Visibility::from_hir(parent_vis, trait_item_ref.id.node_id, self),
             defaultness: trait_item_ref.defaultness,
-            def_id: def_id,
+            def_id,
             container: TraitContainer(parent_def_id),
             method_has_self_argument: has_self
         }
@@ -2138,11 +2138,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         ty::AssociatedItem {
             name: impl_item_ref.name,
-            kind: kind,
+            kind,
             // Visibility of trait impl items doesn't matter.
             vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.node_id, self),
             defaultness: impl_item_ref.defaultness,
-            def_id: def_id,
+            def_id,
             container: ImplContainer(parent_def_id),
             method_has_self_argument: has_self
         }

@@ -383,8 +383,8 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Seed implemented trait items
     let mut life_seeder = LifeSeeder {
-        worklist: worklist,
-        krate: krate,
+        worklist,
+        krate,
     };
     krate.visit_all_item_likes(&mut life_seeder);
 
@@ -397,8 +397,8 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        -> Box<FxHashSet<ast::NodeId>> {
     let worklist = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor {
-        worklist: worklist,
-        tcx: tcx,
+        worklist,
+        tcx,
         tables: &ty::TypeckTables::empty(),
         live_symbols: box FxHashSet(),
         struct_has_extern_repr: false,

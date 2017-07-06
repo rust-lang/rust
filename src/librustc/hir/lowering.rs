@@ -126,9 +126,9 @@ pub fn lower_crate(sess: &Session,
 
     LoweringContext {
         crate_root: std_inject::injected_crate_name(krate),
-        sess: sess,
+        sess,
         parent_def: None,
-        resolver: resolver,
+        resolver,
         name_map: FxHashMap(),
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
@@ -251,15 +251,15 @@ impl<'a> LoweringContext<'a> {
             .init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
         hir::Crate {
-            module: module,
-            attrs: attrs,
+            module,
+            attrs,
             span: c.span,
             exported_macros: hir::HirVec::from(self.exported_macros),
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
             bodies: self.bodies,
-            body_ids: body_ids,
+            body_ids,
             trait_impls: self.trait_impls,
             trait_default_impl: self.trait_default_impl,
         }
@@ -368,7 +368,7 @@ impl<'a> LoweringContext<'a> {
             arguments: decl.map_or(hir_vec![], |decl| {
                 decl.inputs.iter().map(|x| self.lower_arg(x)).collect()
             }),
-            value: value
+            value,
         };
         let id = body.id();
         self.bodies.insert(id, body);
@@ -809,7 +809,7 @@ impl<'a> LoweringContext<'a> {
                 self.lower_path_segment(p.span, segment, param_mode, 0)
             }).chain(name.map(|name| {
                 hir::PathSegment {
-                    name: name,
+                    name,
                     parameters: hir::PathParameters::none()
                 }
             })).collect(),
@@ -857,7 +857,7 @@ impl<'a> LoweringContext<'a> {
 
         hir::PathSegment {
             name: self.lower_ident(segment.identifier),
-            parameters: parameters,
+            parameters,
         }
     }
 
@@ -881,7 +881,7 @@ impl<'a> LoweringContext<'a> {
         hir::ParenthesizedParameterData {
             inputs: inputs.iter().map(|ty| self.lower_ty(ty)).collect(),
             output: output.as_ref().map(|ty| self.lower_ty(ty)),
-            span: span,
+            span,
         }
     }
 
@@ -970,8 +970,8 @@ impl<'a> LoweringContext<'a> {
 
         hir::TyParam {
             id: self.lower_node_id(tp.id),
-            name: name,
-            bounds: bounds,
+            name,
+            bounds,
             default: tp.default.as_ref().map(|x| self.lower_ty(x)),
             span: tp.span,
             pure_wrt_drop: tp.attrs.iter().any(|attr| attr.check_name("may_dangle")),
@@ -1081,14 +1081,14 @@ impl<'a> LoweringContext<'a> {
                         TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
                         _ => Some(self.lower_ty_param_bound(bound))
                     }).collect(),
-                    span: span,
+                    span,
                 })
             }
             WherePredicate::RegionPredicate(WhereRegionPredicate{ ref lifetime,
                                                                   ref bounds,
                                                                   span}) => {
                 hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    span: span,
+                    span,
                     lifetime: self.lower_lifetime(lifetime),
                     bounds: bounds.iter().map(|bound| self.lower_lifetime(bound)).collect(),
                 })
@@ -1101,7 +1101,7 @@ impl<'a> LoweringContext<'a> {
                     id: self.lower_node_id(id),
                     lhs_ty: self.lower_ty(lhs_ty),
                     rhs_ty: self.lower_ty(rhs_ty),
-                    span: span,
+                    span,
                 })
             }
         }
@@ -1133,7 +1133,7 @@ impl<'a> LoweringContext<'a> {
             qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath)
         };
         hir::TraitRef {
-            path: path,
+            path,
             ref_id: self.lower_node_id(p.ref_id),
         }
     }
@@ -1201,10 +1201,10 @@ impl<'a> LoweringContext<'a> {
         P(hir::Block {
             id: self.lower_node_id(b.id),
             stmts: stmts.into(),
-            expr: expr,
+            expr,
             rules: self.lower_block_check_mode(&b.rules),
             span: b.span,
-            targeted_by_break: targeted_by_break,
+            targeted_by_break,
         })
     }
 
@@ -1259,8 +1259,8 @@ impl<'a> LoweringContext<'a> {
                                     name: import.rename.unwrap_or(ident).name,
                                     attrs: attrs.clone(),
                                     node: hir::ItemUse(P(path), hir::UseKind::Single),
-                                    vis: vis,
-                                    span: span,
+                                    vis,
+                                    span,
                                 });
                             });
                         }
@@ -1441,7 +1441,7 @@ impl<'a> LoweringContext<'a> {
             name: self.lower_ident(i.ident),
             span: i.span,
             defaultness: self.lower_defaultness(Defaultness::Default, has_default),
-            kind: kind,
+            kind,
         }
     }
 
@@ -1523,9 +1523,9 @@ impl<'a> LoweringContext<'a> {
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || i.attrs.iter().any(|attr| attr.path == "macro_export") {
                 self.exported_macros.push(hir::MacroDef {
-                    name: name,
-                    vis: vis,
-                    attrs: attrs,
+                    name,
+                    vis,
+                    attrs,
                     id: i.id,
                     span: i.span,
                     body: def.stream(),
@@ -1541,10 +1541,10 @@ impl<'a> LoweringContext<'a> {
 
         Some(hir::Item {
             id: self.lower_node_id(i.id),
-            name: name,
-            attrs: attrs,
-            node: node,
-            vis: vis,
+            name,
+            attrs,
+            node,
+            vis,
             span: i.span,
         })
     }
@@ -1650,7 +1650,7 @@ impl<'a> LoweringContext<'a> {
                             Some(def) => {
                                 hir::PatKind::Path(hir::QPath::Resolved(None, P(hir::Path {
                                     span: pth1.span,
-                                    def: def,
+                                    def,
                                     segments: hir_vec![
                                         hir::PathSegment::from_name(pth1.node.name)
                                     ],
@@ -1887,9 +1887,9 @@ impl<'a> LoweringContext<'a> {
                             let blk = P(hir::Block {
                                 stmts: hir_vec![],
                                 expr: Some(els),
-                                id: id,
+                                id,
                                 rules: hir::DefaultBlock,
-                                span: span,
+                                span,
                                 targeted_by_break: false,
                             });
                             P(self.expr_block(blk, ThinVec::new()))
@@ -2108,7 +2108,7 @@ impl<'a> LoweringContext<'a> {
                     sub_expr,
                     arms.into(),
                     hir::MatchSource::IfLetDesugar {
-                        contains_else_clause: contains_else_clause,
+                        contains_else_clause,
                     })
             }
 
@@ -2536,7 +2536,7 @@ impl<'a> LoweringContext<'a> {
     fn arm(&mut self, pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
         hir::Arm {
             attrs: hir_vec![],
-            pats: pats,
+            pats,
             guard: None,
             body: expr,
         }
@@ -2546,10 +2546,10 @@ impl<'a> LoweringContext<'a> {
         hir::Field {
             name: Spanned {
                 node: name,
-                span: span,
+                span,
             },
-            span: span,
-            expr: expr,
+            span,
+            expr,
             is_shorthand: false,
         }
     }
@@ -2578,8 +2578,8 @@ impl<'a> LoweringContext<'a> {
         };
 
         let expr_path = hir::ExprPath(hir::QPath::Resolved(None, P(hir::Path {
-            span: span,
-            def: def,
+            span,
+            def,
             segments: hir_vec![hir::PathSegment::from_name(id)],
         })));
 
@@ -2619,9 +2619,9 @@ impl<'a> LoweringContext<'a> {
     fn expr(&mut self, span: Span, node: hir::Expr_, attrs: ThinVec<Attribute>) -> hir::Expr {
         hir::Expr {
             id: self.next_id(),
-            node: node,
-            span: span,
-            attrs: attrs,
+            node,
+            span,
+            attrs,
         }
     }
 
@@ -2632,7 +2632,7 @@ impl<'a> LoweringContext<'a> {
                     source: hir::LocalSource)
                     -> hir::Stmt {
         let local = P(hir::Local {
-            pat: pat,
+            pat,
             ty: None,
             init: ex,
             id: self.next_id(),
@@ -2662,11 +2662,11 @@ impl<'a> LoweringContext<'a> {
     fn block_all(&mut self, span: Span, stmts: hir::HirVec<hir::Stmt>, expr: Option<P<hir::Expr>>)
                  -> hir::Block {
         hir::Block {
-            stmts: stmts,
-            expr: expr,
+            stmts,
+            expr,
             id: self.next_id(),
             rules: hir::DefaultBlock,
-            span: span,
+            span,
             targeted_by_break: false,
         }
     }
@@ -2719,15 +2719,15 @@ impl<'a> LoweringContext<'a> {
         };
 
         P(hir::Pat {
-            id: id,
+            id,
             node: hir::PatKind::Binding(bm,
                                         def_id,
                                         Spanned {
-                                            span: span,
+                                            span,
                                             node: name,
                                         },
                                         None),
-            span: span,
+            span,
         })
     }
 
@@ -2739,7 +2739,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::Pat {
             id: self.next_id(),
             node: pat,
-            span: span,
+            span,
         })
     }
 
@@ -2748,7 +2748,7 @@ impl<'a> LoweringContext<'a> {
     /// The path is also resolved according to `is_value`.
     fn std_path(&mut self, span: Span, components: &[&str], is_value: bool) -> hir::Path {
         let mut path = hir::Path {
-            span: span,
+            span,
             def: Def::Err,
             segments: iter::once(keywords::CrateRoot.name()).chain({
                 self.crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
@@ -2769,9 +2769,9 @@ impl<'a> LoweringContext<'a> {
         let id = self.next_id();
         let block = P(hir::Block {
             rules: rule,
-            span: span,
-            id: id,
-            stmts: stmts,
+            span,
+            id,
+            stmts,
             expr: Some(expr),
             targeted_by_break: false,
         });
@@ -2810,7 +2810,7 @@ impl<'a> LoweringContext<'a> {
     fn elided_lifetime(&mut self, span: Span) -> hir::Lifetime {
         hir::Lifetime {
             id: self.next_id(),
-            span: span,
+            span,
             name: keywords::Invalid.name()
         }
     }

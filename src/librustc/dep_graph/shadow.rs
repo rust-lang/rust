@@ -59,7 +59,7 @@ impl ShadowGraph {
 
         ShadowGraph {
             stack: RefCell::new(vec![]),
-            forbidden_edge: forbidden_edge,
+            forbidden_edge,
         }
     }
 

@@ -266,8 +266,8 @@ pub fn krate(sess: &Session,
     };
     sess.track_errors(|| {
         let mut visitor = LifetimeContext {
-            sess: sess,
-            hir_map: hir_map,
+            sess,
+            hir_map,
             map: &mut map,
             scope: ROOT_SCOPE,
             trait_ref_hack: false,
@@ -341,7 +341,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     Region::early(&mut index, def)
                 }).collect();
                 let scope = Scope::Binder {
-                    lifetimes: lifetimes,
+                    lifetimes,
                     s: ROOT_SCOPE
                 };
                 self.with(scope, |old_scope, this| {
@@ -777,13 +777,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let xcrate_object_lifetime_defaults =
             replace(&mut self.xcrate_object_lifetime_defaults, DefIdMap());
         let mut this = LifetimeContext {
-            sess: sess,
-            hir_map: hir_map,
+            sess,
+            hir_map,
             map: *map,
             scope: &wrap_scope,
             trait_ref_hack: self.trait_ref_hack,
-            labels_in_fn: labels_in_fn,
-            xcrate_object_lifetime_defaults: xcrate_object_lifetime_defaults,
+            labels_in_fn,
+            xcrate_object_lifetime_defaults,
         };
         debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);
@@ -849,7 +849,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }).collect();
 
         let scope = Scope::Binder {
-            lifetimes: lifetimes,
+            lifetimes,
             s: self.scope
         };
         self.with(scope, move |old_scope, this| {
@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         let scope = Scope::Elision {
-            elide: elide,
+            elide,
             s: self.scope
         };
         self.with(scope, |_, this| this.visit_ty(output));
@@ -1620,7 +1620,7 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
             map.issue_32330.insert(
                 lifetime.lifetime.id,
                 ty::Issue32330 {
-                    fn_def_id: fn_def_id,
+                    fn_def_id,
                     region_name: name,
                 });
             continue;

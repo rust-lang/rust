@@ -294,7 +294,7 @@ impl LintId {
     /// Get the `LintId` for a `Lint`.
     pub fn of(lint: &'static Lint) -> LintId {
         LintId {
-            lint: lint,
+            lint,
         }
     }
 

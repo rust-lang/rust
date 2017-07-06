@@ -218,7 +218,7 @@ impl PathSegment {
     /// Convert an identifier to the corresponding segment.
     pub fn from_name(name: Name) -> PathSegment {
         PathSegment {
-            name: name,
+            name,
             parameters: PathParameters::none()
         }
     }

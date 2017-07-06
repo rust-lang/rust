@@ -1122,9 +1122,9 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
     };
 
     Config {
-        target: target,
-        int_type: int_type,
-        uint_type: uint_type,
+        target,
+        int_type,
+        uint_type,
     }
 }
 
@@ -1150,7 +1150,7 @@ impl RustcOptGroup {
         where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
         RustcOptGroup {
-            name: name,
+            name,
             apply: Box::new(f),
             stability: OptionStability::Stable,
         }
@@ -1160,7 +1160,7 @@ impl RustcOptGroup {
         where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
         RustcOptGroup {
-            name: name,
+            name,
             apply: Box::new(f),
             stability: OptionStability::Unstable,
         }
@@ -1627,28 +1627,28 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let incremental = debugging_opts.incremental.as_ref().map(|m| PathBuf::from(m));
 
     (Options {
-        crate_types: crate_types,
+        crate_types,
         optimize: opt_level,
-        debuginfo: debuginfo,
-        lint_opts: lint_opts,
-        lint_cap: lint_cap,
-        describe_lints: describe_lints,
+        debuginfo,
+        lint_opts,
+        lint_cap,
+        describe_lints,
         output_types: OutputTypes(output_types),
-        search_paths: search_paths,
+        search_paths,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
-        test: test,
-        incremental: incremental,
-        debugging_opts: debugging_opts,
-        prints: prints,
-        cg: cg,
-        error_format: error_format,
+        test,
+        incremental,
+        debugging_opts,
+        prints,
+        cg,
+        error_format,
         externs: Externs(externs),
-        crate_name: crate_name,
+        crate_name,
         alt_std_name: None,
-        libs: libs,
+        libs,
         unstable_features: UnstableFeatures::from_environment(),
-        debug_assertions: debug_assertions,
+        debug_assertions,
         actually_rustdoc: false,
     },
     cfg)

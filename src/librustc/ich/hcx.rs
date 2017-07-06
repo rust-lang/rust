@@ -65,13 +65,13 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
         ignored_attr_names.sort();
 
         StableHashingContext {
-            tcx: tcx,
+            tcx,
             codemap: CachingCodemapView::new(tcx),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             overflow_checks_enabled: check_overflow_initial,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
-            ignored_attr_names: ignored_attr_names,
+            ignored_attr_names,
         }
     }
 

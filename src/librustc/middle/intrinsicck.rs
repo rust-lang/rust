@@ -20,7 +20,7 @@ use hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = ItemVisitor {
-        tcx: tcx
+        tcx,
     };
     tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }

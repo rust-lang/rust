@@ -656,8 +656,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           Def::Local(def_id) => {
             let vid = self.tcx.hir.as_local_node_id(def_id).unwrap();
             Ok(Rc::new(cmt_ {
-                id: id,
-                span: span,
+                id,
+                span,
                 cat: Categorization::Local(vid),
                 mutbl: MutabilityCategory::from_local(self.tcx, vid),
                 ty: expr_ty,
@@ -706,7 +706,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             None => span_bug!(span, "missing closure kind")
         };
 
-        let upvar_id = ty::UpvarId { var_id: var_id,
+        let upvar_id = ty::UpvarId { var_id,
                                      closure_expr_id: fn_node_id };
         let var_ty = self.node_ty(var_id)?;
 
@@ -717,8 +717,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // from the environment (perhaps we should eventually desugar
         // this field further, but it will do for now).
         let cmt_result = cmt_ {
-            id: id,
-            span: span,
+            id,
+            span,
             cat: Categorization::Upvar(Upvar {id: upvar_id, kind: kind}),
             mutbl: var_mutbl,
             ty: var_ty,
@@ -743,7 +743,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // If this is a by-ref capture, then the upvar we loaded is
         // actually a reference, so we have to add an implicit deref
         // for that.
-        let upvar_id = ty::UpvarId { var_id: var_id,
+        let upvar_id = ty::UpvarId { var_id,
                                      closure_expr_id: fn_node_id };
         let upvar_capture = self.tables.upvar_capture(upvar_id);
         let cmt_result = match upvar_capture {
@@ -753,8 +753,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ty::UpvarCapture::ByRef(upvar_borrow) => {
                 let ptr = BorrowedPtr(upvar_borrow.kind, upvar_borrow.region);
                 cmt_ {
-                    id: id,
-                    span: span,
+                    id,
+                    span,
                     cat: Categorization::Deref(Rc::new(cmt_result), ptr),
                     mutbl: MutabilityCategory::from_borrow_kind(upvar_borrow.kind),
                     ty: var_ty,
@@ -813,8 +813,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         }
 
         let ret = cmt_ {
-            id: id,
-            span: span,
+            id,
+            span,
             cat: Categorization::Deref(Rc::new(cmt_result), env_ptr),
             mutbl: deref_mutbl,
             ty: var_ty,
