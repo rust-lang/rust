@@ -269,19 +269,36 @@ where
 
         if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
-            let block_style = !formatting.ends_with_newline && last;
-            let mut formatted_comment = try_opt!(rewrite_post_comment(
-                formatting.config,
-                formatting.shape,
-                comment,
-                &cloned_items,
-                inner_item,
-                i,
-                &mut item_max_width,
-                item_last_line_width,
-                last,
-                block_style,
-            ));
+            let overhead = last_line_width(&result) + first_line_width(comment.trim());
+
+            let rewrite_post_comment = |item_max_width: &mut Option<usize>| {
+                if item_max_width.is_none() && !last && !inner_item.contains('\n') {
+                    *item_max_width = Some(max_width_of_item_with_post_comment(
+                        &cloned_items,
+                        i,
+                        overhead,
+                        formatting.config.max_width(),
+                    ));
+                }
+                let overhead = if let &mut Some(max_width) = item_max_width {
+                    max_width + 2
+                } else {
+                    // 1 = space between item and comment.
+                    item_last_line_width + 1
+                };
+                let width = formatting.shape.width.checked_sub(overhead).unwrap_or(1);
+                let offset = formatting.shape.indent + overhead;
+                let comment_shape = Shape::legacy(width, offset);
+
+                // Use block-style only for the last item or multiline comments.
+                let block_style = !formatting.ends_with_newline && last ||
+                    comment.trim().contains('\n') ||
+                    comment.trim().len() > width;
+
+                rewrite_comment(comment, block_style, comment_shape, formatting.config)
+            };
+
+            let mut formatted_comment = try_opt!(rewrite_post_comment(&mut item_max_width));
 
             if !formatted_comment.starts_with('\n') {
                 let mut comment_alignment =
@@ -290,18 +307,7 @@ where
                     comment_alignment + 1 > formatting.config.max_width()
                 {
                     item_max_width = None;
-                    formatted_comment = try_opt!(rewrite_post_comment(
-                        formatting.config,
-                        formatting.shape,
-                        comment,
-                        &cloned_items,
-                        inner_item,
-                        i,
-                        &mut item_max_width,
-                        item_last_line_width,
-                        last,
-                        block_style,
-                    ));
+                    formatted_comment = try_opt!(rewrite_post_comment(&mut item_max_width));
                     comment_alignment = post_comment_alignment(item_max_width, inner_item.len());
                 }
                 for _ in 0..(comment_alignment + 1) {
@@ -329,42 +335,12 @@ where
     Some(result)
 }
 
-fn rewrite_post_comment<I, T>(
-    config: &Config,
-    shape: Shape,
-    comment: &str,
-    cloned_items: &I,
-    inner_item: &str,
+fn max_width_of_item_with_post_comment<I, T>(
+    items: &I,
     i: usize,
-    mut item_max_width: &mut Option<usize>,
-    item_last_line_width: usize,
-    last: bool,
-    block_style: bool,
-) -> Option<String>
-where
-    I: IntoIterator<Item = T> + Clone,
-    T: AsRef<ListItem>,
-{
-    if item_max_width.is_none() && !last && !inner_item.contains('\n') {
-        *item_max_width = Some(max_width_of_item_with_post_comment(cloned_items, i));
-    }
-    let overhead = if let &mut Some(max_width) = item_max_width {
-        max_width + 2
-    } else {
-        // 1 = space between item and comment.
-        item_last_line_width + 1
-    };
-    let width = shape.width.checked_sub(overhead).unwrap_or(1);
-    let offset = shape.indent + overhead;
-
-    debug!("Width = {}, offset = {:?}", width, offset);
-    // Use block-style only for the last item or multiline comments.
-    let block_style = block_style || comment.trim().contains('\n') || comment.trim().len() > width;
-
-    rewrite_comment(comment, block_style, Shape::legacy(width, offset), config)
-}
-
-fn max_width_of_item_with_post_comment<I, T>(items: &I, i: usize) -> usize
+    overhead: usize,
+    max_budget: usize,
+) -> usize
 where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
@@ -373,10 +349,13 @@ where
     let mut first = true;
     for item in items.clone().into_iter().skip(i) {
         let item = item.as_ref();
-        if !first && (item.is_multiline() || !item.post_comment.is_some()) {
+        let inner_item_width = item.inner_as_ref().len();
+        if !first &&
+            (item.is_multiline() || !item.post_comment.is_some() ||
+                 inner_item_width + overhead > max_budget)
+        {
             return max_width;
         }
-        let inner_item_width = item.inner_as_ref().len();
         if max_width < inner_item_width {
             max_width = inner_item_width;
         }
