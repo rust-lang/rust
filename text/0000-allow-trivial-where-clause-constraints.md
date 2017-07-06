@@ -56,6 +56,11 @@ also need to allow `i32::Item: SomeTrait` to appear in the same clause, and even
 allow `for _ in 1` to appear in item bodies, and have it all successfully
 compile.
 
+Since code that was caught by this error is usually nonsense outside of macros,
+it would be valuable for the error to continue to live on as a lint. The lint
+`trivial_constraints` would be added, matching the pre-1.7 semantics of E0193,
+and would be set to warn by default.
+
 [`E0193`]: https://doc.rust-lang.org/error-index.html#E0193
 
 # How We Teach This
@@ -67,8 +72,6 @@ where clauses, one would naturally already expect this to work.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-- Code that is pretty obviously nonsense outside of the context of a macro or
-  derive would become valid.
 - The changes to the compiler could potentially increase complexity quite a bit
 
 # Alternatives
@@ -79,4 +82,4 @@ n/a
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-n/a
+Should the lint error by default instead of warn?
