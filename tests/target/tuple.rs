@@ -67,9 +67,7 @@ fn issue775() {
             (
                 "b".to_string(),
                 Array(vec![
-                    mk_object(
-                        &[("c".to_string(), String("\x0c\r".to_string()))],
-                    ),
+                    mk_object(&[("c".to_string(), String("\x0c\r".to_string()))]),
                     mk_object(&[("d".to_string(), String("".to_string()))]),
                 ]),
             ),
