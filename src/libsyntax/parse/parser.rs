@@ -150,13 +150,14 @@ fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
     lhs
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum PrevTokenKind {
     DocComment,
     Comma,
     Plus,
     Interpolated,
     Eof,
+    Ident,
     Other,
 }
 
@@ -1040,6 +1041,7 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Plus) => PrevTokenKind::Plus,
             token::Interpolated(..) => PrevTokenKind::Interpolated,
             token::Eof => PrevTokenKind::Eof,
+            token::Ident(..) => PrevTokenKind::Ident,
             _ => PrevTokenKind::Other,
         };
 
@@ -2777,10 +2779,15 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
 
-            let lhs_span = if self.prev_token_kind == PrevTokenKind::Interpolated {
-                self.prev_span
-            } else {
-                lhs.span
+            // Adjust the span for interpolated LHS to point to the `$lhs` token and not to what
+            // it refers to. Interpolated identifiers are unwrapped early and never show up here
+            // as `PrevTokenKind::Interpolated` so if LHS is a single identifier we always process
+            // it as "interpolated", it doesn't change the answer for non-interpolated idents.
+            let lhs_span = match (self.prev_token_kind, &lhs.node) {
+                (PrevTokenKind::Interpolated, _) => self.prev_span,
+                (PrevTokenKind::Ident, &ExprKind::Path(None, ref path))
+                    if path.segments.len() == 1 => self.prev_span,
+                _ => lhs.span,
             };
 
             let cur_op_span = self.span;
