@@ -82,7 +82,6 @@ exec docker \
   --env TRAVIS_BRANCH \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
-  --privileged \
   --rm \
   rust-ci \
   /checkout/src/ci/run.sh
