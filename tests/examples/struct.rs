@@ -8,6 +8,10 @@ pub mod old {
         field: u8,
     }
 
+    pub struct Def2 {
+        pub field: u8,
+    }
+
     pub struct Efg {
         pub field: u8,
     }
@@ -30,7 +34,11 @@ pub mod new {
     }
 
     pub struct Def<A=u8> {
-        field: A,
+        pub field: A,
+    }
+
+    pub struct Def2<A=u16> {
+        pub field: A,
     }
 
     pub struct Efg {

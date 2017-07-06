@@ -1,0 +1,7 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Removal of at least one path to `bar` (Breaking)
+ --> $REPO_PATH/tests/examples/macro.rs:6:9
+  |
+6 |     pub macro bar() { Item }
+  |         ^^^^^^^^^^^^^^^^^^^^
+

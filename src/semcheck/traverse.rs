@@ -159,22 +159,13 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                 diff_fn(changes, tcx, o, n);
                             },
                             (TyAlias(_), TyAlias(_)) => {
-                                let mut generics_changes =
-                                    diff_generics(tcx, o_def_id, n_def_id);
-                                for change_type in generics_changes.drain(..) {
-                                    changes.add_binary(change_type, o_def_id, None);
-                                }
+                                diff_generics(changes, id_mapping, tcx, o_def_id, n_def_id);
                             },
                             // ADTs for now
                             (Struct(_), Struct(_)) |
                             (Union(_), Union(_)) |
                             (Enum(_), Enum(_)) => {
-                                let mut generics_changes =
-                                    diff_generics(tcx, o_def_id, n_def_id);
-                                for change_type in generics_changes.drain(..) {
-                                    changes.add_binary(change_type, o_def_id, None);
-                                }
-
+                                diff_generics(changes, id_mapping, tcx, o_def_id, n_def_id);
                                 diff_adts(changes, id_mapping, tcx, o, n);
                             },
                             // non-matching item pair - register the difference and abort
@@ -347,12 +338,14 @@ fn diff_adts(changes: &mut ChangeSet,
 }
 
 /// Given two items, compare their type and region parameter sets.
-fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId)
-    -> Vec<BinaryChangeType<'static>>
-{
+fn diff_generics(changes: &mut ChangeSet,
+                 id_mapping: &mut IdMapping,
+                 tcx: TyCtxt,
+                 old: DefId,
+                 new: DefId) {
     use std::cmp::max;
 
-    let mut ret = Vec::new();
+    let mut found = Vec::new();
 
     let old_gen = tcx.generics_of(old);
     let new_gen = tcx.generics_of(new);
@@ -360,10 +353,10 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId)
     for i in 0..max(old_gen.regions.len(), new_gen.regions.len()) {
         match (old_gen.regions.get(i), new_gen.regions.get(i)) {
             (Some(_ /* old_region */), None) => {
-                ret.push(RegionParameterRemoved);
+                found.push(RegionParameterRemoved);
             },
             (None, Some(_ /* new_region */)) => {
-                ret.push(RegionParameterAdded);
+                found.push(RegionParameterAdded);
             },
             (Some(_), Some(_)) => (),
             (None, None) => unreachable!(),
@@ -374,24 +367,29 @@ fn diff_generics(tcx: TyCtxt, old: DefId, new: DefId)
         match (old_gen.types.get(i), new_gen.types.get(i)) {
             (Some(old_type), Some(new_type)) => {
                 if old_type.has_default && !new_type.has_default {
-                    ret.push(TypeParameterRemoved { defaulted: true });
-                    ret.push(TypeParameterAdded { defaulted: false });
+                    found.push(TypeParameterRemoved { defaulted: true });
+                    found.push(TypeParameterAdded { defaulted: false });
                 } else if !old_type.has_default && new_type.has_default {
-                    ret.push(TypeParameterRemoved { defaulted: false });
-                    ret.push(TypeParameterAdded { defaulted: true });
+                    found.push(TypeParameterRemoved { defaulted: false });
+                    found.push(TypeParameterAdded { defaulted: true });
                 }
             },
             (Some(old_type), None) => {
-                ret.push(TypeParameterRemoved { defaulted: old_type.has_default });
+                found.push(TypeParameterRemoved { defaulted: old_type.has_default });
             },
             (None, Some(new_type)) => {
-                ret.push(TypeParameterAdded { defaulted: new_type.has_default });
+                found.push(TypeParameterAdded { defaulted: new_type.has_default });
+                if new_type.has_default {
+                    id_mapping.add_defaulted_type_param(new_type.def_id);
+                }
             },
             (None, None) => unreachable!(),
         }
     }
 
-    ret
+    for change_type in found.drain(..) {
+        changes.add_binary(change_type, old, None);
+    }
 }
 
 // Below functions constitute the third pass of analysis, in which parameter bounds of matching
@@ -434,9 +432,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     let old_def_id = old.def.def_id();
     let new_def_id = new.def.def_id();
 
-    let substs = Substs::identity_for_item(tcx, new_def_id);
-
-    let old_ty = tcx.type_of(old_def_id).subst(tcx, substs);
+    let old_ty = tcx.type_of(old_def_id);
     let new_ty = tcx.type_of(new_def_id);
 
     match old.def {
@@ -478,11 +474,19 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        new_def_id: DefId,
                        old: Ty<'tcx>,
                        new: Ty<'tcx>) {
-    use rustc::ty::Lift;
+    use rustc::ty::{Lift, ReEarlyBound};
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
+    let substs2 = Substs::for_item(tcx, new_def_id, |def, _| {
+            tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
+        }, |def, _| if id_mapping.is_defaulted_type_param(&def.def_id) {
+            tcx.type_of(def.def_id)
+        } else {
+            tcx.mk_param_from_def(def)
+        });
 
     let old = fold_to_new(id_mapping, tcx, &old.subst(tcx, substs));
+    let new = new.subst(tcx, substs2);
 
     tcx.infer_ctxt().enter(|infcx|
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {

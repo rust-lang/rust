@@ -6,7 +6,7 @@
 use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 
-use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 
 use syntax::ast::Name;
 
@@ -22,6 +22,8 @@ pub struct IdMapping {
     mapping: HashMap<DefId, DefId>,
     /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
     child_mapping: HashMap<DefId, BTreeSet<DefId>>,
+    /// Set of new defaulted type parameters.
+    defaulted_type_params: HashSet<DefId>,
 }
 
 impl IdMapping {
@@ -55,6 +57,18 @@ impl IdMapping {
             .entry(parent)
             .or_insert_with(Default::default)
             .insert(old);
+    }
+
+    /// Record that a `DefId` represents a newly added defaulted type parameter.
+    pub fn add_defaulted_type_param(&mut self, new: DefId) {
+        self.defaulted_type_params
+            .insert(new);
+    }
+
+    /// Check whether a `DefId` represents a newly added defaulted type parameter.
+    pub fn is_defaulted_type_param(&self, new: &DefId) -> bool {
+        self.defaulted_type_params
+            .contains(new)
     }
 
     /// Get the new `DefId` associated with the given old one.

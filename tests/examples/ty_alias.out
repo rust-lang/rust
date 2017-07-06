@@ -30,7 +30,7 @@ warning: Breaking changes in `D`
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: NonBreaking (TypeParameterAdded { defaulted: true })
-   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: &'a T, found: (&'a T, U) }) })
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: &'a T, found: (&'a T, T) }) })
 
 warning: Breaking changes in `E`
   --> $REPO_PATH/tests/examples/ty_alias.rs:16:5
