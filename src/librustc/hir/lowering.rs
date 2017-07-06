@@ -1958,6 +1958,11 @@ impl<'a> LoweringContext<'a> {
                             gen = this.impl_arg.map(|_| hir::GeneratorClause::Movable);
                             e
                         });
+                        if gen.is_some() && !decl.inputs.is_empty() {
+                            this.sess.span_fatal(
+                                    fn_decl_span,
+                                    &format!("generators cannot have explicit arguments"));
+                        }
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
                                          body_id,
