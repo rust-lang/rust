@@ -974,8 +974,8 @@ fn rewrite_cond(context: &RewriteContext, expr: &ast::Expr, shape: Shape) -> Opt
         }
         _ => {
             to_control_flow(expr, ExprType::SubExpression).and_then(|control_flow| {
-                let alt_block_sep = String::from("\n") +
-                    &shape.indent.block_only().to_string(context.config);
+                let alt_block_sep =
+                    String::from("\n") + &shape.indent.block_only().to_string(context.config);
                 control_flow
                     .rewrite_cond(context, shape, &alt_block_sep)
                     .and_then(|rw| Some(rw.0))
@@ -1319,8 +1319,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
 
-        let alt_block_sep = String::from("\n") +
-            &shape.indent.block_only().to_string(context.config);
+        let alt_block_sep =
+            String::from("\n") + &shape.indent.block_only().to_string(context.config);
         let (cond_str, used_width) = try_opt!(self.rewrite_cond(context, shape, &alt_block_sep));
         // If `used_width` is 0, it indicates that whole control flow is written in a single line.
         if used_width == 0 {
@@ -1743,8 +1743,8 @@ impl Rewrite for ast::Arm {
         extend &= context.use_block_indent();
 
         let comma = arm_comma(&context.config, body);
-        let alt_block_sep = String::from("\n") +
-            &shape.indent.block_only().to_string(context.config);
+        let alt_block_sep =
+            String::from("\n") + &shape.indent.block_only().to_string(context.config);
 
         let pat_width = extra_offset(&pats_str, shape);
         // Let's try and get the arm body on the same line as the condition.
@@ -2963,26 +2963,21 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
     let orig_shape = try_opt!(shape.offset_left(last_line_width + 1));
     let rhs = ex.rewrite(context, orig_shape);
 
-    fn count_line_breaks(src: &str) -> usize {
-        src.chars().filter(|&x| x == '\n').count()
-    }
-
     match rhs {
-        Some(ref new_str) if count_line_breaks(new_str) < 2 => {
+        Some(ref new_str) if !new_str.contains('\n') => {
             result.push(' ');
             result.push_str(new_str);
         }
         _ => {
-            // Expression did not fit on the same line as the identifier or is
-            // at least three lines big. Try splitting the line and see
-            // if that works better.
+            // Expression did not fit on the same line as the identifier.
+            // Try splitting the line and see if that works better.
             let new_shape = try_opt!(shape.block_left(context.config.tab_spaces()));
             let new_rhs = ex.rewrite(context, new_shape);
 
             // FIXME: DRY!
             match (rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref replacement_rhs))
-                    if count_line_breaks(orig_rhs) > count_line_breaks(replacement_rhs) + 1 => {
+                    if prefer_next_line(orig_rhs, replacement_rhs) => {
                     result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
                     result.push_str(replacement_rhs);
                 }
@@ -3000,6 +2995,16 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
     }
 
     Some(result)
+}
+
+fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str) -> bool {
+
+    fn count_line_breaks(src: &str) -> usize {
+        src.chars().filter(|&x| x == '\n').count()
+    }
+
+    !next_line_rhs.contains('\n') ||
+        count_line_breaks(orig_rhs) > count_line_breaks(next_line_rhs) + 1
 }
 
 fn rewrite_expr_addrof(

@@ -331,8 +331,8 @@ where
                 .span_to_snippet(mk_sp(self.prev_span_end, (self.get_lo)(&item)))
                 .unwrap();
             let trimmed_pre_snippet = pre_snippet.trim();
-            let has_pre_comment = trimmed_pre_snippet.contains("//") ||
-                trimmed_pre_snippet.contains("/*");
+            let has_pre_comment =
+                trimmed_pre_snippet.contains("//") || trimmed_pre_snippet.contains("/*");
             let pre_comment = if has_pre_comment {
                 Some(trimmed_pre_snippet.to_owned())
             } else {

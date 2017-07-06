@@ -1,9 +1,9 @@
 fn main() {
-    let xxxxxxxxxxx = yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:
-        SomeTrait<AA, BB, CC>;
+    let xxxxxxxxxxx =
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: SomeTrait<AA, BB, CC>;
 
-    let xxxxxxxxxxxxxxx = yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
+    let xxxxxxxxxxxxxxx =
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
 
     let z = funk(yyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz, wwwwww):
         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
