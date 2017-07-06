@@ -61,7 +61,8 @@ for module in $modules; do
     if [ "$module" = src/llvm ]; then
         commit="$(git ls-tree HEAD src/llvm | awk '{print $3}')"
         git rm src/llvm
-        curl -sSL -O "https://github.com/rust-lang/llvm/archive/$commit.tar.gz"
+        retry sh -c "rm -f $commit.tar.gz && \
+            curl -sSL -O https://github.com/rust-lang/llvm/archive/$commit.tar.gz"
         tar -C src/ -xf "$commit.tar.gz"
         rm "$commit.tar.gz"
         mv "src/llvm-$commit" src/llvm
