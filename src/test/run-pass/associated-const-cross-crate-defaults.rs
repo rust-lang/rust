@@ -10,7 +10,6 @@
 
 // aux-build:associated-const-cc-lib.rs
 
-#![feature(associated_consts)]
 
 extern crate associated_const_cc_lib as foolib;
 

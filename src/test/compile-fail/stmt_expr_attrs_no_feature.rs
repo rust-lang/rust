@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(custom_attribute)]
-#![feature(associated_consts)]
 
 macro_rules! stmt_mac {
     () => {

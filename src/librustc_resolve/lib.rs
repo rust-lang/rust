@@ -16,8 +16,9 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
 #![feature(rustc_diagnostic_macros)]
+
+#![cfg_attr(stage0, feature(associated_consts))]
 
 #[macro_use]
 extern crate log;
