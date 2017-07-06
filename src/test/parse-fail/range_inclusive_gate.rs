@@ -12,7 +12,7 @@
 
 // Make sure that #![feature(inclusive_range_syntax)] is required.
 
-// #![feature(inclusive_range_syntax, inclusive_range)]
+// #![feature(inclusive_range_syntax)]
 
 macro_rules! m {
     () => { for _ in 1...10 {} } //~ ERROR inclusive range syntax is experimental

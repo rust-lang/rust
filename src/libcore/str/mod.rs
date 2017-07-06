@@ -1695,9 +1695,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.21.0")]
     impl ops::Index<ops::RangeInclusive<usize>> for str {
         type Output = str;
 
@@ -1707,9 +1705,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.21.0")]
     impl ops::Index<ops::RangeToInclusive<usize>> for str {
         type Output = str;
 
@@ -1719,18 +1715,14 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.21.0")]
     impl ops::IndexMut<ops::RangeInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
             index.index_mut(self)
         }
     }
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.21.0")]
     impl ops::IndexMut<ops::RangeToInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {

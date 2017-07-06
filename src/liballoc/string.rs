@@ -1771,7 +1771,7 @@ impl ops::Index<ops::RangeFull> for String {
         unsafe { str::from_utf8_unchecked(&self.vec) }
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl ops::Index<ops::RangeInclusive<usize>> for String {
     type Output = str;
 
@@ -1780,7 +1780,7 @@ impl ops::Index<ops::RangeInclusive<usize>> for String {
         Index::index(&**self, index)
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl ops::Index<ops::RangeToInclusive<usize>> for String {
     type Output = str;
 
@@ -1818,14 +1818,14 @@ impl ops::IndexMut<ops::RangeFull> for String {
         unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl ops::IndexMut<ops::RangeInclusive<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
         IndexMut::index_mut(&mut **self, index)
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl ops::IndexMut<ops::RangeToInclusive<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {

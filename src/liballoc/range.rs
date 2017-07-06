@@ -103,7 +103,7 @@ impl<T> RangeArgument<T> for Range<T> {
     }
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl<T> RangeArgument<T> for RangeInclusive<T> {
     fn start(&self) -> Bound<&T> {
         Included(&self.start)
@@ -113,7 +113,7 @@ impl<T> RangeArgument<T> for RangeInclusive<T> {
     }
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl<T> RangeArgument<T> for RangeToInclusive<T> {
     fn start(&self) -> Bound<&T> {
         Unbounded
