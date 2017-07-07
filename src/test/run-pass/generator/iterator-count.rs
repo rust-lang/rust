@@ -26,19 +26,22 @@ impl<T: Generator<Return = ()>> Iterator for W<T> {
 }
 
 fn test() -> impl Generator<Return=(), Yield=u8> {
-    for i in 1..6 {
-        yield i
+    || {
+        for i in 1..6 {
+            yield i
+        }
     }
 }
 
 fn main() {
+    let start = 6;
     let end = 11;
 
-    let closure_test = |start| {
+    let closure_test = || {
         for i in start..end {
             yield i
         }
     };
 
-    assert!(W(test()).chain(W(closure_test(6))).eq(1..11));
+    assert!(W(test()).chain(W(closure_test)).eq(1..11));
 }
