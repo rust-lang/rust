@@ -444,37 +444,99 @@ pub struct Compiletest<'a> {
     suite: &'a str,
 }
 
-static COMPILETESTS: &[(bool, &str, &str, &str)] = &[
-    // default, path, mode, suite
-    (true, "src/test/codegen", "codegen", "codegen"),
-    (true, "src/test/codegen-units", "codegen-units", "codegen-units"),
-    (true, "src/test/compile-fail", "compile-fail", "compile-fail"),
-    (true, "src/test/incremental", "incremental", "incremental"),
-    (true, "src/test/mir-opt", "mir-opt", "mir-opt"),
-    (true, "src/test/parse-fail", "parse-fail", "parse-fail"),
-    (true, "src/test/run-fail", "run-fail", "run-fail"),
-    (true, "src/test/run-pass", "run-pass", "run-pass"),
-    (true, "src/test/run-pass-valgrind", "run-pass-valgrind", "run-pass-valgrind"),
-    (true, "src/test/ui", "ui", "ui"),
-    (false, "src/test/debuginfo-lldb", "debuginfo-lldb", "debuginfo"),
-    (false, "src/test/debuginfo-gdb", "debuginfo-gdb", "debuginfo"),
+#[derive(Copy, Clone, Debug)]
+struct Test {
+    default: bool,
+    path: &'static str,
+    mode: &'static str,
+    suite: &'static str,
+}
+
+static COMPILETESTS: &[Test] = &[
+    Test { default: true, path: "src/test/codegen", mode: "codegen", suite: "codegen" },
+    Test {
+        default: true,
+        path: "src/test/codegen-units",
+        mode: "codegen-units",
+        suite: "codegen-units",
+    },
+    Test {
+        default: true,
+        path: "src/test/compile-fail",
+        mode: "compile-fail",
+        suite: "compile-fail",
+    },
+    Test { default: true, path: "src/test/incremental", mode: "incremental", suite: "incremental" },
+    Test { default: true, path: "src/test/mir-opt", mode: "mir-opt", suite: "mir-opt" },
+    Test { default: true, path: "src/test/parse-fail", mode: "parse-fail", suite: "parse-fail" },
+    Test { default: true, path: "src/test/run-fail", mode: "run-fail", suite: "run-fail" },
+    Test { default: true, path: "src/test/run-pass", mode: "run-pass", suite: "run-pass" },
+    Test {
+        default: true,
+        path: "src/test/run-pass-valgrind",
+        mode: "run-pass-valgrind",
+        suite: "run-pass-valgrind"
+    },
+    Test { default: true, path: "src/test/ui", mode: "ui", suite: "ui" },
+    Test {
+        default: false,
+        path: "src/test/debuginfo-lldb",
+        mode: "debuginfo-lldb",
+        suite: "debuginfo"
+    },
+    Test {
+        default: false,
+        path: "src/test/debuginfo-gdb",
+        mode: "debuginfo-gdb",
+        suite: "debuginfo"
+    },
 
     // FIXME: What this runs varies depending on the native platform being apple
-    (true, "src/test/debuginfo", "debuginfo-XXX", "debuginfo"),
+    Test { default: true, path: "src/test/debuginfo", mode: "debuginfo-XXX", suite: "debuginfo" },
 
-    (true, "src/test/ui-fulldeps", "ui", "ui-fulldeps"),
-    (true, "src/test/run-pass-fulldeps", "run-pass", "run-pass-fulldeps"),
-    (true, "src/test/run-fail-fulldeps", "run-fail", "run-fail-fulldeps"),
-    (true, "src/test/compile-fail-fulldeps", "compile-fail", "compile-fail-fulldeps"),
-    (true, "src/test/run-make", "run-make", "run-make"),
-    (true, "src/test/rustdoc", "rustdoc", "rustdoc"),
+    Test { default: true, path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" },
+    Test {
+        default: true,
+        path: "src/test/run-pass-fulldeps",
+        mode: "run-pass",
+        suite: "run-pass-fulldeps",
+    },
+    Test {
+        default: true,
+        path: "src/test/run-fail-fulldeps",
+        mode: "run-fail",
+        suite: "run-fail-fulldeps",
+    },
+    Test {
+        default: true,
+        path: "src/test/compile-fail-fulldeps",
+        mode: "compile-fail",
+        suite: "compile-fail-fulldeps",
+    },
+    Test { default: true, path: "src/test/run-make", mode: "run-make", suite: "run-make" },
+    Test { default: true, path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
 
-    (false, "src/test/pretty", "pretty", "pretty"),
-    (false, "src/test/run-pass/pretty", "pretty", "run-pass"),
-    (false, "src/test/run-fail/pretty", "pretty", "run-fail"),
-    (false, "src/test/run-pass-valgrind/pretty", "pretty", "run-pass-valgrind"),
-    (false, "src/test/run-pass-fulldeps/pretty", "pretty", "run-pass-fulldeps"),
-    (false, "src/test/run-fail-fulldeps/pretty", "pretty", "run-fail-fulldeps"),
+    Test { default: false, path: "src/test/pretty", mode: "pretty", suite: "pretty" },
+    Test { default: false, path: "src/test/run-pass/pretty", mode: "pretty", suite: "run-pass" },
+    Test { default: false, path: "src/test/run-fail/pretty", mode: "pretty", suite: "run-fail" },
+    Test {
+        default: false,
+        path: "src/test/run-pass-valgrind/pretty",
+        mode: "pretty",
+        suite: "run-pass-valgrind"
+    },
+    Test {
+        default: false,
+        path: "src/test/run-pass-fulldeps/pretty",
+        mode: "pretty",
+        suite: "run-pass-fulldeps",
+    },
+    Test {
+        default: false,
+        path: "src/test/run-fail-fulldeps/pretty",
+        mode: "pretty",
+        suite: "run-fail-fulldeps",
+    },
 ];
 
 
@@ -486,8 +548,8 @@ impl<'a> Step<'a> for Compiletest<'a> {
         // Note that this is general, while a few more cases are skipped inside
         // run() itself. This is to avoid duplication across should_run and
         // make_run.
-        COMPILETESTS.iter().any(|&(_, test_path, _, _)| {
-            path.ends_with(test_path)
+        COMPILETESTS.iter().any(|&test| {
+            path.ends_with(test.path)
         })
     }
 
@@ -495,8 +557,8 @@ impl<'a> Step<'a> for Compiletest<'a> {
         let compiler = builder.compiler(builder.top_stage, host);
 
         let test = path.map(|path| {
-            COMPILETESTS.iter().find(|&&(_, test_path, _, _)| {
-                path.ends_with(test_path)
+            COMPILETESTS.iter().find(|&&test| {
+                path.ends_with(test.path)
             }).unwrap_or_else(|| {
                 panic!("make_run in compile test to receive test path, received {:?}", path);
             })
@@ -504,13 +566,16 @@ impl<'a> Step<'a> for Compiletest<'a> {
 
         if let Some(test) = test { // specific test
             builder.ensure(Compiletest {
-                compiler, target, mode: test.2, suite: test.3
+                compiler, target, mode: test.mode, suite: test.suite
             });
         } else { // default tests
-            for &(default, _, mode, suite) in COMPILETESTS {
-                if default {
+            for test in COMPILETESTS {
+                if test.default {
                     builder.ensure(Compiletest {
-                        compiler, target, mode, suite
+                        compiler,
+                        target,
+                        mode: test.mode,
+                        suite: test.suite
                     });
                 }
             }
