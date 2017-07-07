@@ -247,6 +247,7 @@ fn foo() {
     convex_shape.set_point(3, &Vector2f { x: 580.0, y: 150.0 });
 }
 
+// Vertical alignment
 struct Foo {
     aaaaa: u32, // a
 
@@ -268,4 +269,18 @@ struct Foo {
                    * comment
                    * */
     b: u32, // hi
+
+    do_not_push_this_comment1: u32, // comment1
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 2
+    please_do_not_push_this_comment3: u32, // comment3
+
+    do_not_push_this_comment1: u32, // comment1
+    // separate
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 2
+    please_do_not_push_this_comment3: u32, // comment3
+
+    do_not_push_this_comment1: u32, // comment1
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 2
+    // separate
+    please_do_not_push_this_comment3: u32, // comment3
 }
