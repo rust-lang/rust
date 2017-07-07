@@ -53,28 +53,33 @@ pub unsafe extern fn __rust_probestack() {
     // The ABI here is that the stack frame size is located in `%eax`. Upon
     // return we're not supposed to modify `%esp` or `%eax`.
     asm!("
-        lea    8(%rsp),%r11     // rsp before calling this routine -> r11
+        mov    %rax,%r11        // duplicate %rax as we're clobbering %r11
 
-        // Main loop, taken in one page increments. We're decrementing r11 by
+        // Main loop, taken in one page increments. We're decrementing rsp by
         // a page each time until there's less than a page remaining. We're
         // guaranteed that this function isn't called unless there's more than a
-        // page needed
+        // page needed.
+        //
+        // Note that we're also testing against `8(%rsp)` to account for the 8
+        // bytes pushed on the stack orginally with our return address. Using
+        // `8(%rsp)` simulates us testing the stack pointer in the caller's
+        // context.
     2:
+        sub    $$0x1000,%rsp
+        test   %rsp,8(%rsp)
         sub    $$0x1000,%r11
-        test   %r11,(%r11)
-        sub    $$0x1000,%rax
-        cmp    $$0x1000,%rax
+        cmp    $$0x1000,%r11
         ja     2b
 
         // Finish up the last remaining stack space requested, getting the last
-        // bits out of rax
-        sub    %rax,%r11
-        test   %r11,(%r11)
+        // bits out of r11
+        sub    %r11,%rsp
+        test   %rsp,8(%rsp)
 
-        // We now know that %r11 is (%rsp + 8 - %rax) so to recover rax
-        // we calculate (%rsp + 8) - %r11 which will give us %rax
-        lea    8(%rsp),%rax
-        sub    %r11,%rax
+        // Restore the stack pointer to what it previously was when entering
+        // this function. The caller will readjust the stack pointer after we
+        // return.
+        add    %rax,%rsp
 
         ret
     ");
@@ -92,19 +97,18 @@ pub unsafe extern fn __rust_probestack() {
     // The ABI here is the same as x86_64, except everything is 32-bits large.
     asm!("
         push   %ecx
-        lea    8(%esp),%ecx
+        mov    %eax,%ecx
     2:
+        sub    $$0x1000,%esp
+        test   %esp,8(%esp)
         sub    $$0x1000,%ecx
-        test   %ecx,(%ecx)
-        sub    $$0x1000,%eax
-        cmp    $$0x1000,%eax
+        cmp    $$0x1000,%ecx
         ja     2b
 
-        sub    %eax,%ecx
-        test   %ecx,(%ecx)
+        sub    %ecx,%esp
+        test   %esp,8(%esp)
 
-        lea    8(%esp),%eax
-        sub    %ecx,%eax
+        add    %eax,%esp
         pop    %ecx
         ret
     ");
