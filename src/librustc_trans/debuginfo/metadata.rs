@@ -14,7 +14,7 @@ use self::MemberDescriptionFactory::*;
 use self::EnumDiscriminantInfo::*;
 
 use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align_of,
-                   get_namespace_and_span_for_item, create_DIArray, is_node_local_to_unit};
+                   get_namespace_for_item, create_DIArray, is_node_local_to_unit};
 use super::namespace::mangled_name_of_item;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
@@ -421,7 +421,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let containing_scope = match trait_type.sty {
         ty::TyDynamic(ref data, ..) => if let Some(principal) = data.principal() {
             let def_id = principal.def_id();
-            get_namespace_and_span_for_item(cx, def_id).0
+            get_namespace_for_item(cx, def_id)
         } else {
             NO_SCOPE_METADATA
         },
@@ -971,7 +971,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         _ => bug!("prepare_struct_metadata on a non-ADT")
     };
 
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, struct_def_id);
+    let containing_scope = get_namespace_for_item(cx, struct_def_id);
 
     let struct_metadata_stub = create_struct_stub(cx,
                                                   struct_llvm_type,
@@ -1096,7 +1096,7 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         _ => bug!("prepare_union_metadata on a non-ADT")
     };
 
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, union_def_id);
+    let containing_scope = get_namespace_for_item(cx, union_def_id);
 
     let union_metadata_stub = create_union_stub(cx,
                                                 union_llvm_type,
@@ -1483,7 +1483,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    -> RecursiveTypeDescription<'tcx> {
     let enum_name = compute_debuginfo_type_name(cx, enum_type, false);
 
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, enum_def_id);
+    let containing_scope = get_namespace_for_item(cx, enum_def_id);
     // FIXME: This should emit actual file metadata for the enum, but we
     // currently can't get the necessary information when it comes to types
     // imported from other crates. Formerly we violated the ODR when performing
@@ -1781,7 +1781,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let tcx = cx.tcx();
 
     let node_def_id = tcx.hir.local_def_id(node_id);
-    let (var_scope, span) = get_namespace_and_span_for_item(cx, node_def_id);
+    let var_scope = get_namespace_for_item(cx, node_def_id);
+    let span = cx.tcx().def_span(node_def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);

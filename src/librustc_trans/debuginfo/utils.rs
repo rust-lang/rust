@@ -73,13 +73,7 @@ pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx().as_ref().unwrap().builder
 }
 
-pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
-                                   -> (DIScope, Span) {
-    let containing_scope = item_namespace(cx, cx.tcx().parent(def_id)
-        .expect("get_namespace_and_span_for_item: missing parent?"));
-
-    // Try to get some span information, if we have an inlined item.
-    let definition_span = cx.tcx().def_span(def_id);
-
-    (containing_scope, definition_span)
+pub fn get_namespace_for_item(cx: &CrateContext, def_id: DefId) -> DIScope {
+    item_namespace(cx, cx.tcx().parent(def_id)
+        .expect("get_namespace_for_item: missing parent?"))
 }
