@@ -10,16 +10,24 @@
 
 #![feature(generators)]
 
-fn main() {
-    let mut a = Vec::<bool>::new();
+use std::cell::Cell;
 
-    let mut test = || {
-        let _: () = gen arg;
-        yield 3;
-        a.push(true);
-        2
+struct Flag<'a>(&'a Cell<bool>);
+
+impl<'a> Drop for Flag<'a> {
+    fn drop(&mut self) {
+        self.0.set(false)
+    }
+}
+
+fn main() {
+    let alive = Cell::new(true);
+
+    let gen = || {
+        yield;
     };
 
-    let a1 = test();
-    let a2 = test(); //~ ERROR use of moved value
+    gen.resume(Flag(&alive));
+
+    assert_eq!(alive.get(), false);
 }

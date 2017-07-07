@@ -10,7 +10,8 @@
 
 #![feature(generators)]
 
-const A: u8 = { yield 3u8; 3u8}; //~ ERROR yield statement outside of function body
-static B: u8 = { yield 3u8; 3u8}; //~ ERROR yield statement outside of function body
-
-fn main() {}
+fn main() {
+    let gen = |start| { //~ ERROR generators cannot have explicit arguments
+        yield;
+    }; 
+}
