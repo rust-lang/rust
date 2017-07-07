@@ -32,6 +32,10 @@ impl TcpStream {
         Ok(TcpStream(File::open(&Path::new(path.as_str()), &options)?))
     }
 
+    pub fn connect_timeout(_addr: &SocketAddr, _timeout: Duration) -> Result<()> {
+        Err(Error::new(ErrorKind::Other, "TcpStream::connect_timeout not implemented"))
+    }
+
     pub fn duplicate(&self) -> Result<TcpStream> {
         Ok(TcpStream(self.0.dup(&[])?))
     }

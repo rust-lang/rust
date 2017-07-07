@@ -215,6 +215,14 @@ impl TcpStream {
         Ok(TcpStream { inner: sock })
     }
 
+    pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+        init();
+
+        let sock = Socket::new(addr, c::SOCK_STREAM)?;
+        sock.connect_timeout(addr, timeout)?;
+        Ok(TcpStream { inner: sock })
+    }
+
     pub fn socket(&self) -> &Socket { &self.inner }
 
     pub fn into_socket(self) -> Socket { self.inner }
