@@ -10,35 +10,14 @@
 
 // ignore-pretty pretty-printing is unhygienic
 
+// aux-build:intercrate.rs
+
+// error-pattern:type `fn() -> u32 {intercrate::foo::bar::f}` is private
+
 #![feature(decl_macro)]
 
-mod foo {
-    struct S;
-    impl S {
-        fn f(&self) {}
-    }
-
-    pub macro m() {
-        let _: () = S.f();
-    }
-}
-
-struct S;
-
-macro m($f:ident) {
-    impl S {
-        fn f(&self) -> u32 { 0 }
-        fn $f(&self) -> i32 { 0 }
-    }
-    fn f() {
-        let _: u32 = S.f();
-        let _: i32 = S.$f();
-    }
-}
-
-m!(f);
+extern crate intercrate;
 
 fn main() {
-    let _: i32 = S.f();
-    foo::m!();
+    assert_eq!(intercrate::foo::m!(), 1);
 }
