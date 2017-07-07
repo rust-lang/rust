@@ -129,7 +129,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
                     let a_did = a.skip_binder().def_id;
                     let b_did = b.skip_binder().def_id;
                     if !self.id_mapping.contains_id(a_did) && a_did.krate == self.old_crate {
-                        self.id_mapping.add_item(a_did, b_did);
+                        self.id_mapping.add_internal_item(a_did, b_did);
                     }
 
                     // TODO: Some((a.skip_binder().def_id, b.skip_binder().def_id))
@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
         if let Some(dids) = matching {
             if !self.id_mapping.contains_id(dids.0) && dids.0.krate == self.old_crate {
                 // println!("adding mapping: {:?} => {:?}", dids.0, dids.1);
-                self.id_mapping.add_item(dids.0, dids.1);
+                self.id_mapping.add_internal_item(dids.0, dids.1);
                 self.item_queue.push_back(dids);
             }
         }

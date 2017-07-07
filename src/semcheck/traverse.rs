@@ -9,8 +9,7 @@
 //! information collected in the previous passes to compare the types of all item pairs having
 //! been matched.
 
-use rustc::hir::def::CtorKind;
-use rustc::hir::def::Export;
+use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
@@ -44,12 +43,12 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     }
 
     // third pass
-    for (old, new) in id_mapping.toplevel_values() {
-        diff_bounds(&mut changes, tcx, old.def.def_id(), new.def.def_id());
+    for &(old, new) in id_mapping.toplevel_values() {
+        diff_bounds(&mut changes, tcx, old.def_id(), new.def_id());
     }
 
     // fourth pass
-    for (old, new) in id_mapping.toplevel_values() {
+    for &(old, new) in id_mapping.toplevel_values() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
@@ -110,7 +109,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
                             mod_queue.push_back((o_did, n_did, o_vis, n_vis));
                         }
-                    } else if id_mapping.add_export(o, n) {
+                    } else if id_mapping.add_export(o.def, n.def) {
                         let o_def_id = o.def.def_id();
                         let n_def_id = n.def.def_id();
                         let o_vis = if old_vis == Public {
@@ -161,7 +160,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               true,
                                               o_def_id,
                                               n_def_id);
-                                diff_fn(changes, tcx, o, n);
+                                diff_fn(changes, tcx, o.def, n.def);
                             },
                             (TyAlias(_), TyAlias(_)) => {
                                 diff_generics(changes,
@@ -181,7 +180,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               false,
                                               o_def_id,
                                               n_def_id);
-                                diff_adts(changes, id_mapping, tcx, o, n);
+                                diff_adts(changes, id_mapping, tcx, o.def, n.def);
                             },
                             (Trait(_), Trait(_)) => {
                                 diff_traits(changes, id_mapping, tcx, o_def_id, n_def_id);
@@ -210,11 +209,11 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 }
 
 /// Given two fn items, perform structural checks.
-fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Export, new: Export) {
+fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Def, new: Def) {
     use rustc::hir::Unsafety::Unsafe;
 
-    let old_def_id = old.def.def_id();
-    let new_def_id = new.def.def_id();
+    let old_def_id = old.def_id();
+    let new_def_id = new.def_id();
 
     let old_ty = tcx.type_of(old_def_id);
     let new_ty = tcx.type_of(new_def_id);
@@ -251,14 +250,14 @@ fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Export, new: Export) {
 fn diff_adts(changes: &mut ChangeSet,
              id_mapping: &mut IdMapping,
              tcx: TyCtxt,
-             old: Export,
-             new: Export) {
+             old: Def,
+             new: Def) {
     use rustc::hir::def::Def::*;
 
-    let old_def_id = old.def.def_id();
-    let new_def_id = new.def.def_id();
+    let old_def_id = old.def_id();
+    let new_def_id = new.def_id();
 
-    let (old_def, new_def) = match (old.def, new.def) {
+    let (old_def, new_def) = match (old, new) {
         (Struct(_), Struct(_)) |
         (Union(_), Union(_)) |
         (Enum(_), Enum(_)) => (tcx.adt_def(old_def_id), tcx.adt_def(new_def_id)),
@@ -360,18 +359,17 @@ fn diff_adts(changes: &mut ChangeSet,
 ///
 /// This establishes the needed correspondence relationship between non-toplevel items found in
 /// the trait definition.
-fn diff_traits(changes: &mut ChangeSet,
+fn diff_traits(_changes: &mut ChangeSet,
                id_mapping: &mut IdMapping,
                tcx: TyCtxt,
                old: DefId,
                new: DefId) {
-    let old_unsafety = tcx.trait_def(old).unsafety;
-    let new_unsafety = tcx.trait_def(new).unsafety;
+    let _old_unsafety = tcx.trait_def(old).unsafety;
+    let _new_unsafety = tcx.trait_def(new).unsafety;
 
     let mut items = HashMap::new();
 
     for old_did in tcx.associated_item_def_ids(old).iter() {
-        println!("found: {:?}", old_did);
         items.entry(tcx.def_symbol_name(*old_did).name)
             .or_insert((None, None)).0 = tcx.describe_def(*old_did);
     }
@@ -379,6 +377,22 @@ fn diff_traits(changes: &mut ChangeSet,
     for new_did in tcx.associated_item_def_ids(new).iter() {
         items.entry(tcx.def_symbol_name(*new_did).name)
             .or_insert((None, None)).1 = tcx.describe_def(*new_did);
+    }
+
+    for item_pair in items.values() {
+        match *item_pair {
+            (Some(old_def), Some(new_def)) => {
+                id_mapping.add_trait_item(old_def, new_def);
+                // println!("map!");
+            },
+            (Some(old_def), None) => {
+                // println!("missing: {:?}", old_def);
+            },
+            (None, Some(new_def)) => {
+                // println!("added: {:?}", new_def);
+            },
+            (None, None) => unreachable!(),
+        }
     }
 }
 
@@ -466,26 +480,26 @@ fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
 fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                         id_mapping: &IdMapping,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        old: Export,
-                        new: Export) {
+                        old: Def,
+                        new: Def) {
     use rustc::hir::def::Def::*;
     use rustc::ty::Binder;
 
-    if changes.item_breaking(old.def.def_id()) {
+    let old_def_id = old.def_id();
+    let new_def_id = new.def_id();
+
+    if changes.item_breaking(old_def_id) {
         return;
     }
 
-    let old_def_id = old.def.def_id();
-    let new_def_id = new.def.def_id();
-
-    if let Trait(_) = old.def {
+    if let Trait(_) = old {
         return;
     }
 
     let old_ty = tcx.type_of(old_def_id);
     let new_ty = tcx.type_of(new_def_id);
 
-    match old.def {
+    match old {
         TyAlias(_) => {
             cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, old_ty, new_ty);
         },

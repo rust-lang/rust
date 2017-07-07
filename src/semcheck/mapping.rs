@@ -3,7 +3,7 @@
 //! This module provides facilities to record item correspondence of various kinds, as well as a
 //! map used to temporarily match up unsorted item sequences' elements by name.
 
-use rustc::hir::def::Export;
+use rustc::hir::def::{Def, Export};
 use rustc::hir::def_id::DefId;
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
@@ -17,9 +17,11 @@ use syntax::ast::Name;
 #[derive(Default)]
 pub struct IdMapping {
     /// Toplevel items' old `DefId` mapped to new `DefId`, as well as old and new exports.
-    toplevel_mapping: HashMap<DefId, (DefId, Export, Export)>,
+    toplevel_mapping: HashMap<DefId, (Def, Def)>,
+    /// Trait items' old `DefId` mapped to new `DefId`.
+    trait_item_mapping: HashMap<DefId, (Def, Def)>,
     /// Other item's old `DefId` mapped to new `DefId`.
-    mapping: HashMap<DefId, DefId>,
+    internal_mapping: HashMap<DefId, DefId>,
     /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
     child_mapping: HashMap<DefId, BTreeSet<DefId>>,
     /// Set of new defaulted type parameters.
@@ -28,31 +30,36 @@ pub struct IdMapping {
 
 impl IdMapping {
     /// Register two exports representing the same item across versions.
-    pub fn add_export(&mut self, old: Export, new: Export) -> bool {
-        if self.toplevel_mapping.contains_key(&old.def.def_id()) {
+    pub fn add_export(&mut self, old: Def, new: Def) -> bool {
+        if self.toplevel_mapping.contains_key(&old.def_id()) {
             return false;
         }
 
         self.toplevel_mapping
-            .insert(old.def.def_id(), (new.def.def_id(), old, new));
+            .insert(old.def_id(), (old, new));
 
         true
     }
 
+    /// Add any trait item pair's old and new `DefId`s.
+    pub fn add_trait_item(&mut self, old: Def, new: Def) {
+        self.trait_item_mapping.insert(old.def_id(), (old, new));
+    }
+
     /// Add any other item pair's old and new `DefId`s.
-    pub fn add_item(&mut self, old: DefId, new: DefId) {
-        assert!(!self.mapping.contains_key(&old),
+    pub fn add_internal_item(&mut self, old: DefId, new: DefId) {
+        assert!(!self.internal_mapping.contains_key(&old),
                 "bug: overwriting {:?} => {:?} with {:?}!",
                 old,
-                self.mapping[&old],
+                self.internal_mapping[&old],
                 new);
 
-        self.mapping.insert(old, new);
+        self.internal_mapping.insert(old, new);
     }
 
     /// Add any other item pair's old and new `DefId`s, together with a parent entry.
     pub fn add_subitem(&mut self, parent: DefId, old: DefId, new: DefId) {
-        self.add_item(old, new);
+        self.add_internal_item(old, new);
         self.child_mapping
             .entry(parent)
             .or_insert_with(Default::default)
@@ -74,30 +81,30 @@ impl IdMapping {
     /// Get the new `DefId` associated with the given old one.
     pub fn get_new_id(&self, old: DefId) -> DefId {
         if let Some(new) = self.toplevel_mapping.get(&old) {
-            new.0
+            new.1.def_id()
         } else {
-            self.mapping[&old]
+            self.internal_mapping[&old]
         }
     }
 
     /// Tell us whether a `DefId` is present in the mappings.
     pub fn contains_id(&self, old: DefId) -> bool {
-        self.toplevel_mapping.contains_key(&old) || self.mapping.contains_key(&old)
+        self.toplevel_mapping.contains_key(&old) || self.internal_mapping.contains_key(&old)
     }
 
     /// Construct a queue of toplevel item pairs' `DefId`s.
     pub fn construct_queue(&self) -> VecDeque<(DefId, DefId)> {
         self.toplevel_mapping
             .values()
-            .map(|&(_, old, new)| (old.def.def_id(), new.def.def_id()))
+            .map(|&(old, new)| (old.def_id(), new.def_id()))
             .collect()
     }
 
     /// Iterate over the toplevel item pairs.
-    pub fn toplevel_values<'a>(&'a self) -> impl Iterator<Item = (Export, Export)> + 'a {
+    pub fn toplevel_values<'a>(&'a self) -> impl Iterator<Item = &'a (Def, Def)> + 'a {
         self.toplevel_mapping
             .values()
-            .map(|&(_, old, new)| (old, new))
+            .chain(self.trait_item_mapping.values())
     }
 
     /// Iterate over the item pairs of all children of a given item.
@@ -106,7 +113,7 @@ impl IdMapping {
     {
         self.child_mapping
             .get(&parent)
-            .map(|m| m.iter().map(move |old| (*old, self.mapping[old])))
+            .map(|m| m.iter().map(move |old| (*old, self.internal_mapping[old])))
     }
 }
 
