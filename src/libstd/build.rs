@@ -41,6 +41,10 @@ fn main() {
     } else if target.contains("dragonfly") || target.contains("bitrig") ||
               target.contains("netbsd") || target.contains("openbsd") {
         println!("cargo:rustc-link-lib=pthread");
+    } else if target.contains("solaris") {
+        println!("cargo:rustc-link-lib=socket");
+        println!("cargo:rustc-link-lib=posix4");
+        println!("cargo:rustc-link-lib=pthread");
     } else if target.contains("apple-darwin") {
         println!("cargo:rustc-link-lib=System");
 
