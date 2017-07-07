@@ -76,7 +76,7 @@ struct NewType(Type, OtherType);
 struct NewInt<T: Copy>(
     pub i32,
     SomeType, // inline comment
-    T, // sup
+    T,        // sup
 );
 
 struct Qux<
@@ -219,7 +219,7 @@ struct Foo<T>(
 where
     T: PartialEq;
 struct Foo<T>(
-    TTTTTTTTTTTTTTTTT, // Foo
+    TTTTTTTTTTTTTTTTT,        // Foo
     UUUUUUUUUUUUUUUUUUUUUUUU, // Bar
     // Baz
     TTTTTTTTTTTTTTTTTTT,

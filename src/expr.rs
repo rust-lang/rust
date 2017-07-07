@@ -1298,9 +1298,7 @@ impl<'a> ControlFlow<'a> {
                 label_string,
                 self.keyword,
                 between_kwd_cond_comment.as_ref().map_or(
-                    if pat_expr_string.is_empty() ||
-                        pat_expr_string.starts_with('\n')
-                    {
+                    if pat_expr_string.is_empty() || pat_expr_string.starts_with('\n') {
                         ""
                     } else {
                         " "
@@ -1707,7 +1705,7 @@ impl Rewrite for ast::Arm {
             ends_with_newline: false,
             config: context.config,
         };
-        let pats_str = try_opt!(write_list(items, &fmt));
+        let pats_str = try_opt!(write_list(&items, &fmt));
 
         let guard_shape = if pats_str.contains('\n') {
             shape.with_max_width(context.config)

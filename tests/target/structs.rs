@@ -44,7 +44,7 @@ struct NewType(Type, OtherType);
 struct NewInt<T: Copy>(
     pub i32,
     SomeType, // inline comment
-    T, // sup
+    T,        // sup
 );
 
 struct Qux<
@@ -187,7 +187,7 @@ struct Foo<T>(
 where
     T: PartialEq;
 struct Foo<T>(
-    TTTTTTTTTTTTTTTTT, // Foo
+    TTTTTTTTTTTTTTTTT,        // Foo
     UUUUUUUUUUUUUUUUUUUUUUUU, // Bar
     // Baz
     TTTTTTTTTTTTTTTTTTT,
@@ -245,4 +245,42 @@ fn foo() {
     convex_shape.set_point(1, &Vector2f { x: 500.0, y: 70.0 });
     convex_shape.set_point(2, &Vector2f { x: 450.0, y: 100.0 });
     convex_shape.set_point(3, &Vector2f { x: 580.0, y: 150.0 });
+}
+
+// Vertical alignment
+struct Foo {
+    aaaaa: u32, // a
+
+    b: u32,  // b
+    cc: u32, // cc
+
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 1
+    yy: u32,  // comment2
+    zzz: u32, // comment3
+
+    aaaaaa: u32, // comment4
+    bb: u32,     // comment5
+    // separate
+    dd: u32, // comment7
+    c: u32,  // comment6
+
+    aaaaaaa: u32, /* multi
+                   * line
+                   * comment
+                   * */
+    b: u32, // hi
+
+    do_not_push_this_comment1: u32, // comment1
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 2
+    please_do_not_push_this_comment3: u32, // comment3
+
+    do_not_push_this_comment1: u32, // comment1
+    // separate
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 2
+    please_do_not_push_this_comment3: u32, // comment3
+
+    do_not_push_this_comment1: u32, // comment1
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: u32, // 2
+    // separate
+    please_do_not_push_this_comment3: u32, // comment3
 }
