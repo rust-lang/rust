@@ -444,101 +444,58 @@ pub struct Compiletest<'a> {
     suite: &'a str,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 struct Test {
-    default: bool,
     path: &'static str,
     mode: &'static str,
     suite: &'static str,
 }
 
-static COMPILETESTS: &[Test] = &[
-    Test { default: true, path: "src/test/codegen", mode: "codegen", suite: "codegen" },
+static DEFAULT_COMPILETESTS: &[Test] = &[
+    Test { path: "src/test/ui", mode: "ui", suite: "ui" },
+    Test { path: "src/test/run-pass", mode: "run-pass", suite: "run-pass" },
+    Test { path: "src/test/compile-fail", mode: "compile-fail", suite: "compile-fail" },
+    Test { path: "src/test/parse-fail", mode: "parse-fail", suite: "parse-fail" },
+    Test { path: "src/test/run-fail", mode: "run-fail", suite: "run-fail" },
     Test {
-        default: true,
-        path: "src/test/codegen-units",
-        mode: "codegen-units",
-        suite: "codegen-units",
-    },
-    Test {
-        default: true,
-        path: "src/test/compile-fail",
-        mode: "compile-fail",
-        suite: "compile-fail",
-    },
-    Test { default: true, path: "src/test/incremental", mode: "incremental", suite: "incremental" },
-    Test { default: true, path: "src/test/mir-opt", mode: "mir-opt", suite: "mir-opt" },
-    Test { default: true, path: "src/test/parse-fail", mode: "parse-fail", suite: "parse-fail" },
-    Test { default: true, path: "src/test/run-fail", mode: "run-fail", suite: "run-fail" },
-    Test { default: true, path: "src/test/run-pass", mode: "run-pass", suite: "run-pass" },
-    Test {
-        default: true,
         path: "src/test/run-pass-valgrind",
         mode: "run-pass-valgrind",
         suite: "run-pass-valgrind"
     },
-    Test { default: true, path: "src/test/ui", mode: "ui", suite: "ui" },
-    Test {
-        default: false,
-        path: "src/test/debuginfo-lldb",
-        mode: "debuginfo-lldb",
-        suite: "debuginfo"
-    },
-    Test {
-        default: false,
-        path: "src/test/debuginfo-gdb",
-        mode: "debuginfo-gdb",
-        suite: "debuginfo"
-    },
+    Test { path: "src/test/mir-opt", mode: "mir-opt", suite: "mir-opt" },
+    Test { path: "src/test/codegen", mode: "codegen", suite: "codegen" },
+    Test { path: "src/test/codegen-units", mode: "codegen-units", suite: "codegen-units" },
+    Test { path: "src/test/incremental", mode: "incremental", suite: "incremental" },
 
-    // FIXME: What this runs varies depending on the native platform being apple
-    Test { default: true, path: "src/test/debuginfo", mode: "debuginfo-XXX", suite: "debuginfo" },
+    // What this runs varies depending on the native platform being apple
+    Test { path: "src/test/debuginfo", mode: "debuginfo-XXX", suite: "debuginfo" },
+];
 
-    Test { default: true, path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" },
+// Also default, but host-only.
+static HOST_COMPILETESTS: &[Test] = &[
+    Test { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" },
+    Test { path: "src/test/run-pass-fulldeps", mode: "run-pass", suite: "run-pass-fulldeps" },
+    Test { path: "src/test/run-fail-fulldeps", mode: "run-fail", suite: "run-fail-fulldeps" },
     Test {
-        default: true,
-        path: "src/test/run-pass-fulldeps",
-        mode: "run-pass",
-        suite: "run-pass-fulldeps",
-    },
-    Test {
-        default: true,
-        path: "src/test/run-fail-fulldeps",
-        mode: "run-fail",
-        suite: "run-fail-fulldeps",
-    },
-    Test {
-        default: true,
         path: "src/test/compile-fail-fulldeps",
         mode: "compile-fail",
         suite: "compile-fail-fulldeps",
     },
-    Test { default: true, path: "src/test/run-make", mode: "run-make", suite: "run-make" },
-    Test { default: true, path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
+    Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
+    Test { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
 
-    Test { default: false, path: "src/test/pretty", mode: "pretty", suite: "pretty" },
-    Test { default: false, path: "src/test/run-pass/pretty", mode: "pretty", suite: "run-pass" },
-    Test { default: false, path: "src/test/run-fail/pretty", mode: "pretty", suite: "run-fail" },
-    Test {
-        default: false,
-        path: "src/test/run-pass-valgrind/pretty",
-        mode: "pretty",
-        suite: "run-pass-valgrind"
-    },
-    Test {
-        default: false,
-        path: "src/test/run-pass-fulldeps/pretty",
-        mode: "pretty",
-        suite: "run-pass-fulldeps",
-    },
-    Test {
-        default: false,
-        path: "src/test/run-fail-fulldeps/pretty",
-        mode: "pretty",
-        suite: "run-fail-fulldeps",
-    },
+    Test { path: "src/test/pretty", mode: "pretty", suite: "pretty" },
+    Test { path: "src/test/run-pass/pretty", mode: "pretty", suite: "run-pass" },
+    Test { path: "src/test/run-fail/pretty", mode: "pretty", suite: "run-fail" },
+    Test { path: "src/test/run-pass-valgrind/pretty", mode: "pretty", suite: "run-pass-valgrind" },
+    Test { path: "src/test/run-pass-fulldeps/pretty", mode: "pretty", suite: "run-pass-fulldeps" },
+    Test { path: "src/test/run-fail-fulldeps/pretty", mode: "pretty", suite: "run-fail-fulldeps" },
 ];
 
+static COMPILETESTS: &[Test] = &[
+    Test { path: "src/test/debuginfo-lldb", mode: "debuginfo-lldb", suite: "debuginfo" },
+    Test { path: "src/test/debuginfo-gdb", mode: "debuginfo-gdb", suite: "debuginfo" },
+];
 
 impl<'a> Step<'a> for Compiletest<'a> {
     type Output = ();
@@ -548,7 +505,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
         // Note that this is general, while a few more cases are skipped inside
         // run() itself. This is to avoid duplication across should_run and
         // make_run.
-        COMPILETESTS.iter().any(|&test| {
+        COMPILETESTS.iter().chain(DEFAULT_COMPILETESTS).chain(HOST_COMPILETESTS).any(|&test| {
             path.ends_with(test.path)
         })
     }
@@ -557,7 +514,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
         let compiler = builder.compiler(builder.top_stage, host);
 
         let test = path.map(|path| {
-            COMPILETESTS.iter().find(|&&test| {
+            COMPILETESTS.iter().chain(DEFAULT_COMPILETESTS).chain(HOST_COMPILETESTS).find(|&&test| {
                 path.ends_with(test.path)
             }).unwrap_or_else(|| {
                 panic!("make_run in compile test to receive test path, received {:?}", path);
@@ -565,15 +522,28 @@ impl<'a> Step<'a> for Compiletest<'a> {
         });
 
         if let Some(test) = test { // specific test
+            let target = if HOST_COMPILETESTS.contains(test) {
+                host
+            } else {
+                target
+            };
             builder.ensure(Compiletest {
                 compiler, target, mode: test.mode, suite: test.suite
             });
         } else { // default tests
-            for test in COMPILETESTS {
-                if test.default {
+            for test in DEFAULT_COMPILETESTS {
+                builder.ensure(Compiletest {
+                    compiler,
+                    target,
+                    mode: test.mode,
+                    suite: test.suite
+                });
+            }
+            for test in HOST_COMPILETESTS {
+                if test.mode != "pretty" {
                     builder.ensure(Compiletest {
                         compiler,
-                        target,
+                        target: host,
                         mode: test.mode,
                         suite: test.suite
                     });
@@ -623,6 +593,10 @@ impl<'a> Step<'a> for Compiletest<'a> {
                 sysroot: &builder.sysroot(compiler),
                 host: compiler.host
             });
+
+            if mode == "debuginfo-gdb" {
+                builder.ensure(RemoteCopyLibs { compiler, target });
+            }
         }
 
         if suite.ends_with("fulldeps") ||
@@ -636,10 +610,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
 
         builder.ensure(compile::Test { compiler, target });
         builder.ensure(native::TestHelpers { target });
-
-        if mode == "debuginfo-gdb" {
-            builder.ensure(RemoteCopyLibs { compiler, target });
-        }
+        builder.ensure(RemoteCopyLibs { compiler, target });
 
         let _folder = build.fold_output(|| format!("test_{}", suite));
         println!("Check compiletest suite={} mode={} ({} -> {})",
