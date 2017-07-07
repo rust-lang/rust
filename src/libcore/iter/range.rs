@@ -15,32 +15,42 @@ use usize;
 
 use super::{FusedIterator, TrustedLen};
 
-/// Objects that can be stepped over in both directions.
-///
-/// The `steps_between` function provides a way to efficiently compare
-/// two `Step` objects.
+/// Objects that have a notion of *successor* and *predecessor*
+/// for the purpose of range iterators.
 #[unstable(feature = "step_trait",
-           reason = "likely to be replaced by finer-grained traits",
+           reason = "recently redesigned",
            issue = "42168")]
 pub trait Step: Clone + PartialOrd + Sized {
-    /// Returns the number of steps between two step objects. The count is
-    /// inclusive of `start` and exclusive of `end`.
+    /// Returns the number of *successor* steps needed to get from `start` to `end`.
     ///
-    /// Returns `None` if it is not possible to calculate `steps_between`
-    /// without overflow.
+    /// Returns `None` if that number would overflow `usize`
+    /// (or is infinite, if `end` would never be reached).
+    /// Returns `Some(0)` if `start` comes after (is greater than) or equals `end`.
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
-    /// Add an usize, returning None on overflow
-    fn add_usize(&self, n: usize) -> Option<Self>;
+    /// Returns the value that would be obtained by taking the *successor* of `self`,
+    /// `step_count` times.
+    ///
+    /// Returns `None` if this would overflow the range of values supported by the type `Self`.
+    ///
+    /// Note: `step_count == 1` is a common case,
+    /// used for example in `Iterator::next` for ranges.
+    fn forward(&self, step_count: usize) -> Option<Self>;
 
-    /// Subtracts an usize, returning None on overflow
-    fn sub_usize(&self, n: usize) -> Option<Self>;
+    /// Returns the value that would be obtained by taking the *predecessor* of `self`,
+    /// `step_count` times.
+    ///
+    /// Returns `None` if this would overflow the range of values supported by the type `Self`.
+    ///
+    /// Note: `step_count == 1` is a common case,
+    /// used for example in `Iterator::next_back` for ranges.
+    fn backward(&self, step_count: usize) -> Option<Self>;
 }
 
 macro_rules! step_impl_unsigned {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
-                   reason = "likely to be replaced by finer-grained traits",
+                   reason = "recently redesigned",
                    issue = "42168")]
         impl Step for $t {
             #[inline]
@@ -55,7 +65,7 @@ macro_rules! step_impl_unsigned {
             }
 
             #[inline]
-            fn add_usize(&self, n: usize) -> Option<Self> {
+            fn forward(&self, n: usize) -> Option<Self> {
                 match <$t>::try_from(n) {
                     Ok(n_as_t) => self.checked_add(n_as_t),
                     Err(_) => None,
@@ -63,7 +73,7 @@ macro_rules! step_impl_unsigned {
             }
 
             #[inline]
-            fn sub_usize(&self, n: usize) -> Option<Self> {
+            fn backward(&self, n: usize) -> Option<Self> {
                 match <$t>::try_from(n) {
                     Ok(n_as_t) => self.checked_sub(n_as_t),
                     Err(_) => None,
@@ -75,7 +85,7 @@ macro_rules! step_impl_unsigned {
 macro_rules! step_impl_signed {
     ($( [$t:ty : $unsigned:ty] )*) => ($(
         #[unstable(feature = "step_trait",
-                   reason = "likely to be replaced by finer-grained traits",
+                   reason = "recently redesigned",
                    issue = "42168")]
         impl Step for $t {
             #[inline]
@@ -92,11 +102,11 @@ macro_rules! step_impl_signed {
             }
 
             #[inline]
-            fn add_usize(&self, n: usize) -> Option<Self> {
+            fn forward(&self, n: usize) -> Option<Self> {
                 match <$unsigned>::try_from(n) {
                     Ok(n_as_unsigned) => {
                         // Wrapping in unsigned space handles cases like
-                        // `-120_i8.add_usize(200) == Some(80_i8)`,
+                        // `-120_i8.forward(200) == Some(80_i8)`,
                         // even though 200_usize is out of range for i8.
                         let wrapped = (*self as $unsigned).wrapping_add(n_as_unsigned) as $t;
                         if wrapped >= *self {
@@ -109,11 +119,11 @@ macro_rules! step_impl_signed {
                 }
             }
             #[inline]
-            fn sub_usize(&self, n: usize) -> Option<Self> {
+            fn backward(&self, n: usize) -> Option<Self> {
                 match <$unsigned>::try_from(n) {
                     Ok(n_as_unsigned) => {
                         // Wrapping in unsigned space handles cases like
-                        // `-120_i8.add_usize(200) == Some(80_i8)`,
+                        // `-120_i8.forward(200) == Some(80_i8)`,
                         // even though 200_usize is out of range for i8.
                         let wrapped = (*self as $unsigned).wrapping_sub(n_as_unsigned) as $t;
                         if wrapped <= *self {
@@ -132,7 +142,7 @@ macro_rules! step_impl_signed {
 macro_rules! step_impl_no_between {
     ($($t:ty)*) => ($(
         #[unstable(feature = "step_trait",
-                   reason = "likely to be replaced by finer-grained traits",
+                   reason = "recently redesigned",
                    issue = "42168")]
         impl Step for $t {
             #[inline]
@@ -141,12 +151,12 @@ macro_rules! step_impl_no_between {
             }
 
             #[inline]
-            fn add_usize(&self, n: usize) -> Option<Self> {
+            fn forward(&self, n: usize) -> Option<Self> {
                 self.checked_add(n as $t)
             }
 
             #[inline]
-            fn sub_usize(&self, n: usize) -> Option<Self> {
+            fn backward(&self, n: usize) -> Option<Self> {
                 self.checked_sub(n as $t)
             }
         }
@@ -205,7 +215,7 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
             // `start + 1` should not overflow since `end` exists such that `start < end`
-            let mut n = self.start.add_usize(1).expect("overflow in Range::next");
+            let mut n = self.start.forward(1).expect("overflow in Range::next");
             mem::swap(&mut n, &mut self.start);
             Some(n)
         } else {
@@ -223,10 +233,10 @@ impl<A: Step> Iterator for ops::Range<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        if let Some(plus_n) = self.start.add_usize(n) {
+        if let Some(plus_n) = self.start.forward(n) {
             if plus_n < self.end {
                 // `plus_n + 1` should not overflow since `end` exists such that `plus_n < end`
-                self.start = plus_n.add_usize(1).expect("overflow in Range::nth");
+                self.start = plus_n.forward(1).expect("overflow in Range::nth");
                 return Some(plus_n)
             }
         }
@@ -256,7 +266,7 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
             // `end - 1` should not overflow since `start` exists such that `start < end`
-            self.end = self.end.sub_usize(1).expect("overflow in Range::nth_back");
+            self.end = self.end.backward(1).expect("overflow in Range::nth_back");
             Some(self.end.clone())
         } else {
             None
@@ -274,7 +284,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         // Overflow can happen here. Panic when it does.
-        let mut n = self.start.add_usize(1).expect("overflow in RangeFrom::next");
+        let mut n = self.start.forward(1).expect("overflow in RangeFrom::next");
         mem::swap(&mut n, &mut self.start);
         Some(n)
     }
@@ -287,8 +297,8 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
         // Overflow can happen here. Panic when it does.
-        let plus_n = self.start.add_usize(n).expect("overflow in RangeFrom::nth");
-        self.start = plus_n.add_usize(1).expect("overflow in RangeFrom::nth");
+        let plus_n = self.start.forward(n).expect("overflow in RangeFrom::nth");
+        self.start = plus_n.forward(1).expect("overflow in RangeFrom::nth");
         Some(plus_n)
     }
 }
@@ -307,18 +317,18 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         match self.start.partial_cmp(&self.end) {
             Some(Less) => {
                 // `start + 1` should not overflow since `end` exists such that `start < end`
-                let n = self.start.add_usize(1).expect("overflow in RangeInclusive::next");
+                let n = self.start.forward(1).expect("overflow in RangeInclusive::next");
                 Some(mem::replace(&mut self.start, n))
             },
             Some(Equal) => {
                 let last;
-                if let Some(end_plus_one) = self.end.add_usize(1) {
+                if let Some(end_plus_one) = self.end.forward(1) {
                     last = mem::replace(&mut self.start, end_plus_one);
                 } else {
                     last = self.start.clone();
                     // `start == end`, and `end + 1` underflowed.
                     // `start - 1` overflowing would imply a type with only one valid value?
-                    self.end = self.start.sub_usize(1).expect("overflow in RangeInclusive::next");
+                    self.end = self.start.backward(1).expect("overflow in RangeInclusive::next");
                 }
                 Some(last)
             },
@@ -340,22 +350,22 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        if let Some(plus_n) = self.start.add_usize(n) {
+        if let Some(plus_n) = self.start.forward(n) {
             use cmp::Ordering::*;
 
             match plus_n.partial_cmp(&self.end) {
                 Some(Less) => {
                     // `plus_n + 1` should not overflow since `end` exists such that `plus_n < end`
-                    self.start = plus_n.add_usize(1).expect("overflow in RangeInclusive::nth");
+                    self.start = plus_n.forward(1).expect("overflow in RangeInclusive::nth");
                     return Some(plus_n)
                 }
                 Some(Equal) => {
-                    if let Some(end_plus_one) = self.end.add_usize(1) {
+                    if let Some(end_plus_one) = self.end.forward(1) {
                         self.start = end_plus_one
                     } else {
                         // `start == end`, and `end + 1` underflowed.
                         // `start - 1` overflowing would imply a type with only one valid value?
-                        self.end = self.start.sub_usize(1).expect("overflow in RangeInclusive::nth")
+                        self.end = self.start.backward(1).expect("overflow in RangeInclusive::nth")
                     }
                     return Some(plus_n)
                 }
@@ -363,12 +373,12 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             }
         }
 
-        if let Some(end_plus_one) = self.end.add_usize(1) {
+        if let Some(end_plus_one) = self.end.forward(1) {
             self.start = end_plus_one
         } else {
             // `start == end`, and `end + 1` underflowed.
             // `start - 1` overflowing would imply a type with only one valid value?
-            self.end = self.start.sub_usize(1).expect("overflow in RangeInclusive::nth")
+            self.end = self.start.backward(1).expect("overflow in RangeInclusive::nth")
         }
         None
     }
@@ -383,18 +393,18 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         match self.start.partial_cmp(&self.end) {
             Some(Less) => {
                 // `end - 1` should not overflow since `start` exists such that `start < end`
-                let n = self.end.sub_usize(1).expect("overflow in RangeInclusive::next_back");
+                let n = self.end.backward(1).expect("overflow in RangeInclusive::next_back");
                 Some(mem::replace(&mut self.end, n))
             },
             Some(Equal) => {
                 let last;
-                if let Some(start_minus_one) = self.start.sub_usize(1) {
+                if let Some(start_minus_one) = self.start.backward(1) {
                     last = mem::replace(&mut self.end, start_minus_one);
                 } else {
                     last = self.end.clone();
                     // `start == end`, and `start - 1` underflowed.
                     // `end + 1` overflowing would imply a type with only one valid value?
-                    self.start = self.start.add_usize(1).expect("overflow in RangeInclusive::next_back");
+                    self.start = self.start.forward(1).expect("overflow in RangeInclusive::next_back");
                 }
                 Some(last)
             },

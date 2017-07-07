@@ -1284,6 +1284,16 @@ fn test_chain_fold() {
 }
 
 #[test]
-fn test_step_add_usize() {
-    assert_eq!((-120_i8).add_usize(200), Some(80));
+fn test_steps_between() {
+    assert_eq!(Step::steps_between(&-120_i8, &80_i8), Some(200_usize));
+}
+
+#[test]
+fn test_step_forward() {
+    assert_eq!((-120_i8).forward(200_usize), Some(80_i8));
+}
+
+#[test]
+fn test_step_backward() {
+    assert_eq!((120_i8).backward(200_usize), Some(-80_i8));
 }
