@@ -191,7 +191,7 @@ impl<'a> Step<'a> for Cargo<'a> {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("cargo") // FIXME: Why is this not src/tools/cargo?
+        path.ends_with("src/tools/cargo")
     }
 
     fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
