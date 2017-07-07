@@ -2777,8 +2777,6 @@ An associated const was implemented when another trait item was expected.
 Erroneous code example:
 
 ```compile_fail,E0323
-#![feature(associated_consts)]
-
 trait Foo {
     type N;
 }
@@ -2810,8 +2808,6 @@ impl Foo for Bar {
 Or:
 
 ```
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2829,8 +2825,6 @@ A method was implemented when another trait item was expected. Erroneous
 code example:
 
 ```compile_fail,E0324
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2850,8 +2844,6 @@ To fix this error, please verify that the method name wasn't misspelled and
 verify that you are indeed implementing the correct trait items. Example:
 
 ```
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2873,8 +2865,6 @@ An associated type was implemented when another trait item was expected.
 Erroneous code example:
 
 ```compile_fail,E0325
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2906,8 +2896,6 @@ impl Foo for Bar {
 Or:
 
 ```
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2927,8 +2915,6 @@ types in the trait definition. This error indicates that there was a mismatch.
 Here's an example of this error:
 
 ```compile_fail,E0326
-#![feature(associated_consts)]
-
 trait Foo {
     const BAR: bool;
 }
@@ -2991,8 +2977,6 @@ type parameter or `Self`. This is not supported yet. An example causing this
 error is shown below:
 
 ```
-#![feature(associated_consts)]
-
 trait Foo {
     const BAR: f64;
 }
@@ -3012,8 +2996,6 @@ Currently, the value of `BAR` for a particular type can only be accessed
 through a concrete type, as shown below:
 
 ```
-#![feature(associated_consts)]
-
 trait Foo {
     const BAR: f64;
 }

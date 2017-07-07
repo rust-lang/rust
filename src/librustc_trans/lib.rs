@@ -22,7 +22,6 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
@@ -34,6 +33,8 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
+
+#![cfg_attr(stage0, feature(associated_consts))]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;

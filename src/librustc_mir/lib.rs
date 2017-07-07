@@ -19,7 +19,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![crate_type = "dylib"]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(i128_type)]
@@ -27,6 +26,8 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(placement_in_syntax)]
 #![feature(collection_placement)]
 #![feature(nonzero)]
+
+#![cfg_attr(stage0, feature(associated_consts))]
 
 #[macro_use] extern crate log;
 extern crate graphviz as dot;

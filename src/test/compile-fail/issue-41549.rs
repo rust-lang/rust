@@ -10,7 +10,6 @@
 
 // aux-build:issue_41549.rs
 
-#![feature(associated_consts)]
 
 extern crate issue_41549;
 

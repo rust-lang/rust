@@ -1320,8 +1320,6 @@ match the name of any associated constant in the trait.
 Erroneous code example:
 
 ```compile_fail,E0438
-#![feature(associated_consts)]
-
 trait Foo {}
 
 impl Foo for i32 {

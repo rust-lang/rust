@@ -10,7 +10,6 @@
 
 // Test for issue #23969
 
-#![feature(associated_consts)]
 
 trait Foo {
     type Ty;

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(associated_type_defaults)]
-#![feature(associated_consts)]
 
 // @has issue_28478/trait.Bar.html
 pub trait Bar {

@@ -11,7 +11,6 @@
 // Check that we correctly prevent users from making trait objects
 // from traits with associated consts.
 
-#![feature(associated_consts)]
 
 trait Bar {
     const X: usize;

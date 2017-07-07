@@ -70,7 +70,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_type_defaults)]
-#![feature(associated_consts)]
 #![feature(cfg_target_feature)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
@@ -93,6 +92,8 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+
+#![cfg_attr(stage0, feature(associated_consts))]
 
 #[prelude_import]
 #[allow(unused)]
