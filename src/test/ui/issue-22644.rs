@@ -10,10 +10,16 @@
 
 fn main() {
     let a : u32 = 0;
-    let b : usize = 0;
+    let long_name : usize = 0;
 
-    println!("{}", a as usize > b);
-    println!("{}", a as usize < b);
+    println!("{}", a as usize > long_name);
+    println!("{}", a as usize < long_name);
+    println!("{}{}", a as usize < long_name, long_name);
+    println!("{}", a as usize < 4);
+    println!("{}", a: usize > long_name);
+    println!("{}{}", a: usize < long_name, long_name);
+    println!("{}", a: usize < 4);
+
     println!("{}", a
                    as
                    usize
@@ -28,4 +34,6 @@ fn main() {
                    usize
                    <
                    5);
+
+    println!("{}", a: &mut 4);
 }

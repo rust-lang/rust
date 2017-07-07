@@ -150,13 +150,14 @@ fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
     lhs
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum PrevTokenKind {
     DocComment,
     Comma,
     Plus,
     Interpolated,
     Eof,
+    Ident,
     Other,
 }
 
@@ -1040,6 +1041,7 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Plus) => PrevTokenKind::Plus,
             token::Interpolated(..) => PrevTokenKind::Interpolated,
             token::Eof => PrevTokenKind::Eof,
+            token::Ident(..) => PrevTokenKind::Ident,
             _ => PrevTokenKind::Other,
         };
 
@@ -1078,6 +1080,16 @@ impl<'a> Parser<'a> {
             },
             None => token::CloseDelim(self.token_cursor.frame.delim),
         })
+    }
+    fn look_ahead_span(&self, dist: usize) -> Span {
+        if dist == 0 {
+            return self.span
+        }
+
+        match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
+            Some(TokenTree::Token(span, _)) | Some(TokenTree::Delimited(span, _)) => span,
+            None => self.look_ahead_span(dist - 1),
+        }
     }
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(self.span, m)
@@ -2777,10 +2789,15 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
 
-            let lhs_span = if self.prev_token_kind == PrevTokenKind::Interpolated {
-                self.prev_span
-            } else {
-                lhs.span
+            // Adjust the span for interpolated LHS to point to the `$lhs` token and not to what
+            // it refers to. Interpolated identifiers are unwrapped early and never show up here
+            // as `PrevTokenKind::Interpolated` so if LHS is a single identifier we always process
+            // it as "interpolated", it doesn't change the answer for non-interpolated idents.
+            let lhs_span = match (self.prev_token_kind, &lhs.node) {
+                (PrevTokenKind::Interpolated, _) => self.prev_span,
+                (PrevTokenKind::Ident, &ExprKind::Path(None, ref path))
+                    if path.segments.len() == 1 => self.prev_span,
+                _ => lhs.span,
             };
 
             let cur_op_span = self.span;
@@ -2798,13 +2815,10 @@ impl<'a> Parser<'a> {
             }
             // Special cases:
             if op == AssocOp::As {
-                // Save the state of the parser before parsing type normally, in case there is a
-                // LessThan comparison after this cast.
-                lhs = self.parse_assoc_op_as(lhs, lhs_span)?;
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue
             } else if op == AssocOp::Colon {
-                let rhs = self.parse_ty_no_plus()?;
-                lhs = self.mk_expr(lhs_span.to(rhs.span), ExprKind::Type(lhs, rhs), ThinVec::new());
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
                 continue
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotDot {
                 // If we didn’t have to handle `x..`/`x...`, it would be pretty easy to
@@ -2898,61 +2912,61 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    fn parse_assoc_op_as(&mut self, lhs: P<Expr>, lhs_span: Span) -> PResult<'a, P<Expr>> {
-        let rp = self.clone();
+    fn parse_assoc_op_cast(&mut self, lhs: P<Expr>, lhs_span: Span,
+                           expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind)
+                           -> PResult<'a, P<Expr>> {
+        let mk_expr = |this: &mut Self, rhs: P<Ty>| {
+            this.mk_expr(lhs_span.to(rhs.span), expr_kind(lhs, rhs), ThinVec::new())
+        };
+
+        // Save the state of the parser before parsing type normally, in case there is a
+        // LessThan comparison after this cast.
+        let parser_snapshot_before_type = self.clone();
         match self.parse_ty_no_plus() {
             Ok(rhs) => {
-                Ok(self.mk_expr(lhs_span.to(rhs.span),
-                                ExprKind::Cast(lhs, rhs),
-                                ThinVec::new()))
+                Ok(mk_expr(self, rhs))
             }
-            Err(mut err) => {
-                let rp_err = self.clone();
-                let sp = rp_err.span.clone();
+            Err(mut type_err) => {
+                // Rewind to before attempting to parse the type with generics, to recover
+                // from situations like `x as usize < y` in which we first tried to parse
+                // `usize < y` as a type with generic arguments.
+                let parser_snapshot_after_type = self.clone();
+                mem::replace(self, parser_snapshot_before_type);
 
-                // Rewind to before attempting to parse the type with generics, to get
-                // arround #22644.
-                mem::replace(self, rp);
-                let lo = self.span;
                 match self.parse_path_without_generics(PathStyle::Type) {
                     Ok(path) => {
-                        // Successfully parsed the type leaving a `<` yet to parse
-                        err.cancel();
-                        let codemap = self.sess.codemap();
-                        let suggestion_span = lhs_span.to(self.prev_span);
-                        let warn_message = match codemap.span_to_snippet(self.prev_span) {
-                            Ok(lstring) => format!("`{}`", lstring),
-                            _ => "a type".to_string(),
-                        };
+                        // Successfully parsed the type path leaving a `<` yet to parse.
+                        type_err.cancel();
+
+                        // Report non-fatal diagnostics, keep `x as usize` as an expression
+                        // in AST and continue parsing.
                         let msg = format!("`<` is interpreted as a start of generic \
-                                           arguments for {}, not a comparison",
-                                          warn_message);
-                        let mut err = self.sess.span_diagnostic.struct_span_err(sp, &msg);
-                        err.span_label(sp, "interpreted as generic argument");
+                                           arguments for `{}`, not a comparison", path);
+                        let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
+                        err.span_label(self.look_ahead_span(1).to(parser_snapshot_after_type.span),
+                                       "interpreted as generic arguments");
                         err.span_label(self.span, "not interpreted as comparison");
-                        let suggestion = match codemap.span_to_snippet(suggestion_span) {
-                            Ok(lstring) => format!("({})", lstring),
-                            _ => format!("(<expression> as <type>)")
-                        };
-                        err.span_suggestion(suggestion_span,
+
+                        let expr = mk_expr(self, P(Ty {
+                            span: path.span,
+                            node: TyKind::Path(None, path),
+                            id: ast::DUMMY_NODE_ID
+                        }));
+
+                        let expr_str = self.sess.codemap().span_to_snippet(expr.span)
+                                                .unwrap_or(pprust::expr_to_string(&expr));
+                        err.span_suggestion(expr.span,
                                             "if you want to compare the casted value then write:",
-                                            suggestion);
+                                            format!("({})", expr_str));
                         err.emit();
 
-                        let path = TyKind::Path(None, path);
-                        let span = lo.to(self.prev_span);
-                        let rhs = P(Ty { node: path, span: span, id: ast::DUMMY_NODE_ID });
-                        // Letting the parser accept the recovered type to avoid further errors,
-                        // but the code will still not compile due to the error emitted above.
-                        Ok(self.mk_expr(lhs_span.to(rhs.span),
-                                        ExprKind::Cast(lhs, rhs),
-                                        ThinVec::new()))
+                        Ok(expr)
                     }
                     Err(mut path_err) => {
-                        // Still couldn't parse, return original error and parser state
+                        // Couldn't parse as a path, return original error and parser state.
                         path_err.cancel();
-                        mem::replace(self, rp_err);
-                        Err(err)
+                        mem::replace(self, parser_snapshot_after_type);
+                        Err(type_err)
                     }
                 }
             }
