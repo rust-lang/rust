@@ -112,8 +112,9 @@ intrinsics! {
         int_to_float!(i, u32, f64)
     }
 
-    #[use_c_shim_if(all(any(target_arch = "x86", target_arch = "x86_64"),
-                        not(windows)))]
+    #[use_c_shim_if(all(not(target_env = "msvc"),
+                        any(target_arch = "x86",
+                            all(not(windows), target_arch = "x86_64"))))]
     #[arm_aeabi_alias = __aeabi_ul2d]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
         int_to_float!(i, u64, f64)

@@ -10,7 +10,7 @@ use core::intrinsics;
 
 #[cfg(windows)]
 #[naked]
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn ___chkstk_ms() {
     asm!("push   %rcx
           push   %rax
@@ -34,7 +34,7 @@ pub unsafe fn ___chkstk_ms() {
 
 #[cfg(windows)]
 #[naked]
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __alloca() {
     asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx
           jmp    ___chkstk  // Jump to ___chkstk since fallthrough may be unreliable");
@@ -43,7 +43,7 @@ pub unsafe fn __alloca() {
 
 #[cfg(windows)]
 #[naked]
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn ___chkstk() {
     asm!("push   %rcx
           cmp    $$0x1000,%rax

@@ -44,7 +44,7 @@
 #![cfg(not(windows))] // Windows already has builtins to do this
 
 #[naked]
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg(target_arch = "x86_64")]
 pub unsafe extern fn __rust_probestack() {
     // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
@@ -87,7 +87,7 @@ pub unsafe extern fn __rust_probestack() {
 }
 
 #[naked]
-#[no_mangle]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 #[cfg(target_arch = "x86")]
 pub unsafe extern fn __rust_probestack() {
     // This is the same as x86_64 above, only translated for 32-bit sizes. Note
