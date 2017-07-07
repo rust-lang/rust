@@ -47,133 +47,182 @@ pub trait Step: Clone + PartialOrd + Sized {
     fn backward(&self, step_count: usize) -> Option<Self>;
 }
 
-macro_rules! step_impl_unsigned {
-    ($($t:ty)*) => ($(
-        #[unstable(feature = "step_trait",
-                   reason = "recently redesigned",
-                   issue = "42168")]
-        impl Step for $t {
-            #[inline]
-            #[allow(trivial_numeric_casts)]
-            fn steps_between(start: &$t, end: &$t) -> Option<usize> {
-                if *start < *end {
-                    // Note: We assume $t <= usize here
-                    Some((*end - *start) as usize)
-                } else {
-                    Some(0)
-                }
-            }
-
-            #[inline]
-            fn forward(&self, n: usize) -> Option<Self> {
-                match <$t>::try_from(n) {
-                    Ok(n_as_t) => self.checked_add(n_as_t),
-                    Err(_) => None,
-                }
-            }
-
-            #[inline]
-            fn backward(&self, n: usize) -> Option<Self> {
-                match <$t>::try_from(n) {
-                    Ok(n_as_t) => self.checked_sub(n_as_t),
-                    Err(_) => None,
-                }
-            }
-        }
-    )*)
-}
-macro_rules! step_impl_signed {
-    ($( [$t:ty : $unsigned:ty] )*) => ($(
-        #[unstable(feature = "step_trait",
-                   reason = "recently redesigned",
-                   issue = "42168")]
-        impl Step for $t {
-            #[inline]
-            #[allow(trivial_numeric_casts)]
-            fn steps_between(start: &$t, end: &$t) -> Option<usize> {
-                if *start < *end {
-                    // Note: We assume $t <= isize here
-                    // Use .wrapping_sub and cast to usize to compute the
-                    // difference that may not fit inside the range of isize.
-                    Some((*end as isize).wrapping_sub(*start as isize) as usize)
-                } else {
-                    Some(0)
-                }
-            }
-
-            #[inline]
-            fn forward(&self, n: usize) -> Option<Self> {
-                match <$unsigned>::try_from(n) {
-                    Ok(n_as_unsigned) => {
-                        // Wrapping in unsigned space handles cases like
-                        // `-120_i8.forward(200) == Some(80_i8)`,
-                        // even though 200_usize is out of range for i8.
-                        let wrapped = (*self as $unsigned).wrapping_add(n_as_unsigned) as $t;
-                        if wrapped >= *self {
-                            Some(wrapped)
-                        } else {
-                            None  // Addition overflowed
-                        }
+macro_rules! step_integer_impls {
+    (
+        narrower than or same width as usize:
+            $( [ $narrower_unsigned:ident $narrower_signed: ident ] ),+;
+        wider than usize:
+            $( [ $wider_unsigned:ident $wider_signed: ident ] ),+;
+    ) => {
+        $(
+            #[unstable(feature = "step_trait",
+                       reason = "recently redesigned",
+                       issue = "42168")]
+            impl Step for $narrower_unsigned {
+                #[inline]
+                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    if *start < *end {
+                        // This relies on $narrower_unsigned <= usize
+                        Some((*end - *start) as usize)
+                    } else {
+                        Some(0)
                     }
-                    Err(_) => None,
                 }
-            }
-            #[inline]
-            fn backward(&self, n: usize) -> Option<Self> {
-                match <$unsigned>::try_from(n) {
-                    Ok(n_as_unsigned) => {
-                        // Wrapping in unsigned space handles cases like
-                        // `-120_i8.forward(200) == Some(80_i8)`,
-                        // even though 200_usize is out of range for i8.
-                        let wrapped = (*self as $unsigned).wrapping_sub(n_as_unsigned) as $t;
-                        if wrapped <= *self {
-                            Some(wrapped)
-                        } else {
-                            None  // Subtraction underflowed
-                        }
+
+                #[inline]
+                fn forward(&self, n: usize) -> Option<Self> {
+                    match Self::try_from(n) {
+                        Ok(n_converted) => self.checked_add(n_converted),
+                        Err(_) => None,  // if n is out of range, `something_unsigned + n` is too
                     }
-                    Err(_) => None,
+                }
+
+                #[inline]
+                fn backward(&self, n: usize) -> Option<Self> {
+                    match Self::try_from(n) {
+                        Ok(n_converted) => self.checked_sub(n_converted),
+                        Err(_) => None,  // if n is out of range, `something_in_range - n` is too
+                    }
                 }
             }
-        }
-    )*)
+
+            #[unstable(feature = "step_trait",
+                       reason = "recently redesigned",
+                       issue = "42168")]
+            impl Step for $narrower_signed {
+                #[inline]
+                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    if *start < *end {
+                        // This relies on $narrower_signed <= usize
+                        //
+                        // Casting to isize extends the width but preserves the sign.
+                        // Use wrapping_sub in isize space and cast to usize
+                        // to compute the difference that may not fit inside the range of isize.
+                        Some((*end as isize).wrapping_sub(*start as isize) as usize)
+                    } else {
+                        Some(0)
+                    }
+                }
+
+                #[inline]
+                fn forward(&self, n: usize) -> Option<Self> {
+                    match <$narrower_unsigned>::try_from(n) {
+                        Ok(n_unsigned) => {
+                            // Wrapping in unsigned space handles cases like
+                            // `-120_i8.forward(200) == Some(80_i8)`,
+                            // even though 200_usize is out of range for i8.
+                            let self_unsigned = *self as $narrower_unsigned;
+                            let wrapped = self_unsigned.wrapping_add(n_unsigned) as Self;
+                            if wrapped >= *self {
+                                Some(wrapped)
+                            } else {
+                                None  // Addition overflowed
+                            }
+                        }
+                        // If n is out of range of e.g. u8,
+                        // then it is bigger than the entire range for i8 is wide
+                        // so `any_i8 + n` would overflow i8.
+                        Err(_) => None,
+                    }
+                }
+                #[inline]
+                fn backward(&self, n: usize) -> Option<Self> {
+                    match <$narrower_unsigned>::try_from(n) {
+                        Ok(n_unsigned) => {
+                            // Wrapping in unsigned space handles cases like
+                            // `-120_i8.forward(200) == Some(80_i8)`,
+                            // even though 200_usize is out of range for i8.
+                            let self_unsigned = *self as $narrower_unsigned;
+                            let wrapped = self_unsigned.wrapping_sub(n_unsigned) as Self;
+                            if wrapped <= *self {
+                                Some(wrapped)
+                            } else {
+                                None  // Subtraction underflowed
+                            }
+                        }
+                        // If n is out of range of e.g. u8,
+                        // then it is bigger than the entire range for i8 is wide
+                        // so `any_i8 - n` would underflow i8.
+                        Err(_) => None,
+                    }
+                }
+            }
+        )+
+
+        $(
+            #[unstable(feature = "step_trait",
+                       reason = "recently redesigned",
+                       issue = "42168")]
+            impl Step for $wider_unsigned {
+                #[inline]
+                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    if *start < *end {
+                        usize::try_from(*end - *start).ok()
+                    } else {
+                        Some(0)
+                    }
+                }
+
+                #[inline]
+                fn forward(&self, n: usize) -> Option<Self> {
+                    self.checked_add(n as Self)
+                }
+
+                #[inline]
+                fn backward(&self, n: usize) -> Option<Self> {
+                    self.checked_sub(n as Self)
+                }
+            }
+
+            #[unstable(feature = "step_trait",
+                       reason = "recently redesigned",
+                       issue = "42168")]
+            impl Step for $wider_signed {
+                #[inline]
+                fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    if *start < *end {
+                        match end.checked_sub(*start) {
+                            Some(diff) => usize::try_from(diff).ok(),
+                            // If the difference is too big for e.g. i128,
+                            // it’s also gonna be too big for usize with fewer bits.
+                            None => None
+                        }
+                    } else {
+                        Some(0)
+                    }
+                }
+
+                #[inline]
+                fn forward(&self, n: usize) -> Option<Self> {
+                    self.checked_add(n as Self)
+                }
+
+                #[inline]
+                fn backward(&self, n: usize) -> Option<Self> {
+                    self.checked_sub(n as Self)
+                }
+            }
+        )+
+    }
 }
 
-macro_rules! step_impl_no_between {
-    ($($t:ty)*) => ($(
-        #[unstable(feature = "step_trait",
-                   reason = "recently redesigned",
-                   issue = "42168")]
-        impl Step for $t {
-            #[inline]
-            fn steps_between(_start: &Self, _end: &Self) -> Option<usize> {
-                None
-            }
-
-            #[inline]
-            fn forward(&self, n: usize) -> Option<Self> {
-                self.checked_add(n as $t)
-            }
-
-            #[inline]
-            fn backward(&self, n: usize) -> Option<Self> {
-                self.checked_sub(n as $t)
-            }
-        }
-    )*)
+#[cfg(target_pointer_width = "64")]
+step_integer_impls! {
+    narrower than or same width as usize: [u8 i8], [u16 i16], [u32 i32], [u64 i64], [usize isize];
+    wider than usize: [u128 i128];
 }
 
-step_impl_unsigned!(usize u8 u16 u32);
-step_impl_signed!([isize: usize] [i8: u8] [i16: u16] [i32: u32]);
-#[cfg(target_pointer_width = "64")]
-step_impl_unsigned!(u64);
-#[cfg(target_pointer_width = "64")]
-step_impl_signed!([i64: u64]);
-// If the target pointer width is not 64-bits, we
-// assume here that it is less than 64-bits.
-#[cfg(not(target_pointer_width = "64"))]
-step_impl_no_between!(u64 i64);
-step_impl_no_between!(u128 i128);
+#[cfg(target_pointer_width = "32")]
+step_integer_impls! {
+    narrower than or same width as usize: [u8 i8], [u16 i16], [u32 i32], [usize isize];
+    wider than usize: [u64 i64], [u128 i128];
+}
+
+#[cfg(target_pointer_width = "16")]
+step_integer_impls! {
+    narrower than or same width as usize: [u8 i8], [u16 i16], [usize isize];
+    wider than usize: [u32 i32], [u64 i64], [u128 i128];
+}
 
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
