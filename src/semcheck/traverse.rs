@@ -156,17 +156,32 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             (Err, Err) => {},
                             (Fn(_), Fn(_)) |
                             (Method(_), Method(_)) => {
-                                diff_generics(changes, id_mapping, tcx, o_def_id, n_def_id);
+                                diff_generics(changes,
+                                              id_mapping,
+                                              tcx,
+                                              true,
+                                              o_def_id,
+                                              n_def_id);
                                 diff_fn(changes, tcx, o, n);
                             },
                             (TyAlias(_), TyAlias(_)) => {
-                                diff_generics(changes, id_mapping, tcx, o_def_id, n_def_id);
+                                diff_generics(changes,
+                                              id_mapping,
+                                              tcx,
+                                              false,
+                                              o_def_id,
+                                              n_def_id);
                             },
                             // ADTs for now
                             (Struct(_), Struct(_)) |
                             (Union(_), Union(_)) |
                             (Enum(_), Enum(_)) => {
-                                diff_generics(changes, id_mapping, tcx, o_def_id, n_def_id);
+                                diff_generics(changes,
+                                              id_mapping,
+                                              tcx,
+                                              false,
+                                              o_def_id,
+                                              n_def_id);
                                 diff_adts(changes, id_mapping, tcx, o, n);
                             },
                             // non-matching item pair - register the difference and abort
@@ -343,6 +358,7 @@ fn diff_adts(changes: &mut ChangeSet,
 fn diff_generics(changes: &mut ChangeSet,
                  id_mapping: &mut IdMapping,
                  tcx: TyCtxt,
+                 is_fn: bool,
                  old: DefId,
                  new: DefId) {
     use std::cmp::max;
@@ -379,8 +395,8 @@ fn diff_generics(changes: &mut ChangeSet,
             (Some(old_type), None) => {
                 found.push(TypeParameterRemoved { defaulted: old_type.has_default });
             },
-            (None, Some(new_type)) => {
-                found.push(TypeParameterAdded { defaulted: new_type.has_default });
+            (None, Some(new_type)) => { // FIXME: is_fn could be used in a more elegant fashion
+                found.push(TypeParameterAdded { defaulted: new_type.has_default || is_fn });
                 if new_type.has_default {
                     id_mapping.add_defaulted_type_param(new_type.def_id);
                 }
@@ -476,26 +492,34 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        new_def_id: DefId,
                        old: Ty<'tcx>,
                        new: Ty<'tcx>) {
+    use syntax_pos::DUMMY_SP;
     use rustc::ty::{Lift, ReEarlyBound};
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
-    let substs2 = Substs::for_item(tcx, new_def_id, |def, _| {
-            tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-        }, |def, _| if id_mapping.is_defaulted_type_param(&def.def_id) {
-            tcx.type_of(def.def_id)
-        } else {
-            tcx.mk_param_from_def(def)
-        });
 
     let old = fold_to_new(id_mapping, tcx, &old.subst(tcx, substs));
-    let new = new.subst(tcx, substs2);
 
-    tcx.infer_ctxt().enter(|infcx|
+    tcx.infer_ctxt().enter(|infcx| {
+        let new_substs = if new.is_fn() {
+            infcx.fresh_substs_for_item(DUMMY_SP, new_def_id)
+        } else {
+            Substs::for_item(tcx, new_def_id, |def, _| {
+                tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
+            }, |def, _| if id_mapping.is_defaulted_type_param(&def.def_id) {
+                tcx.type_of(def.def_id)
+            } else {
+                tcx.mk_param_from_def(def)
+            })
+        };
+
+        let new = new.subst(infcx.tcx, new_substs);
+
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
             changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
-        });
+        }
+    });
 }
 
 /// Fold a type of an old item to be comparable with a new type.

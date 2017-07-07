@@ -25,7 +25,7 @@ warning: Breaking changes in `def`
    |
    = warning: Breaking (FnArityChanged)
 
-warning: Breaking changes in `efg`
+warning: NonBreaking changes in `efg`
   --> $REPO_PATH/tests/examples/fn.rs:36:5
    |
 36 | /     pub fn efg<A>(a: A, _: A) -> A {
@@ -33,7 +33,7 @@ warning: Breaking changes in `efg`
 38 | |     }
    | |_____^
    |
-   = warning: Breaking (TypeParameterAdded { defaulted: false })
+   = note: NonBreaking (TypeParameterAdded { defaulted: true })
 
 warning: Breaking changes in `fgh`
   --> $REPO_PATH/tests/examples/fn.rs:40:5
