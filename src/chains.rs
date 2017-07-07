@@ -437,13 +437,22 @@ fn rewrite_method_call_with_overflow(
     context: &RewriteContext,
     shape: Shape,
 ) -> bool {
-    if let &ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) = expr_kind {
+    if let &ast::ExprKind::MethodCall(ref segment, ref expressions) = expr_kind {
         let shape = match shape.shrink_left(almost_total) {
             Some(b) => b,
             None => return false,
         };
+        let types = match segment.parameters {
+            Some(ref params) => {
+                match **params {
+                    ast::PathParameters::AngleBracketed(ref data) => &data.types[..],
+                    _ => &[],
+                }
+            }
+            _ => &[],
+        };
         let mut last_rewrite = rewrite_method_call(
-            method_name.node,
+            segment.identifier,
             types,
             expressions,
             total_span,
@@ -466,7 +475,7 @@ fn rewrite_method_call_with_overflow(
 // is a try! macro, we'll convert it to shorthand when the option is set.
 fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Expr> {
     match expr.node {
-        ast::ExprKind::MethodCall(_, _, ref expressions) => {
+        ast::ExprKind::MethodCall(_, ref expressions) => {
             Some(convert_try(&expressions[0], context))
         }
         ast::ExprKind::TupField(ref subexpr, _) |
@@ -504,8 +513,17 @@ fn rewrite_chain_subexpr(
     };
 
     match expr.node {
-        ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) => {
-            rewrite_method_call(method_name.node, types, expressions, span, context, shape)
+        ast::ExprKind::MethodCall(ref segment, ref expressions) => {
+            let types = match segment.parameters {
+                Some(ref params) => {
+                    match **params {
+                        ast::PathParameters::AngleBracketed(ref data) => &data.types[..],
+                        _ => &[],
+                    }
+                }
+                _ => &[],
+            };
+            rewrite_method_call(segment.identifier, types, expressions, span, context, shape)
         }
         ast::ExprKind::Field(_, ref field) => rewrite_element(format!(".{}", field.node)),
         ast::ExprKind::TupField(ref expr, ref field) => {
