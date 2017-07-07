@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use core::iter::*;
-use core::{i8, i16, isize};
-use core::usize;
+use core::{i8, i16, isize, u16, usize, i128, u128};
 
 #[test]
 fn test_lt() {
@@ -1285,15 +1284,77 @@ fn test_chain_fold() {
 
 #[test]
 fn test_steps_between() {
+    assert_eq!(Step::steps_between(&20_u8, &200_u8), Some(180_usize));
+    assert_eq!(Step::steps_between(&-20_i8, &80_i8), Some(100_usize));
     assert_eq!(Step::steps_between(&-120_i8, &80_i8), Some(200_usize));
+
+    assert_eq!(Step::steps_between(&20_u16, &40_100_u16), Some(40_080_usize));
+    assert_eq!(Step::steps_between(&-20_i16, &80_i16), Some(100_usize));
+    assert_eq!(Step::steps_between(&-20_030_i16, &20_050_i16), Some(40_080_usize));
+
+    assert_eq!(Step::steps_between(&20_u32, &4_000_100_u32), Some(4_000_080_usize));
+    assert_eq!(Step::steps_between(&-20_i32, &80_i32), Some(100_usize));
+    assert_eq!(Step::steps_between(&-2_000_030_i32, &2_000_050_i32), Some(4_000_080_usize));
+
+    // Skip u64 / i64 to avoid dealing with 32-bit vs 64-bit platforms.
+
+    assert_eq!(Step::steps_between(&20_u128, &200_u128), Some(180_usize));
+    assert_eq!(Step::steps_between(&-20_i128, &80_i128), Some(100_usize));
+    if cfg!(target_pointer_width = "64") {
+        assert_eq!(Step::steps_between(&20_u128, &0x1_0000_0000_0000_0019_u128), Some(usize::MAX));
+        assert_eq!(Step::steps_between(&20_i128, &0x1_0000_0000_0000_0019_i128), Some(usize::MAX));
+    }
+    assert_eq!(Step::steps_between(&20_u128, &0x1_0000_0000_0000_0020_u128), None);
+    assert_eq!(Step::steps_between(&20_i128, &0x1_0000_0000_0000_0020_i128), None);
+    assert_eq!(Step::steps_between(&-0x1_0000_0000_0000_0000_i128, &0x1_0000_0000_0000_0000_i128), None);
 }
 
 #[test]
 fn test_step_forward() {
-    assert_eq!((-120_i8).forward(200_usize), Some(80_i8));
+    assert_eq!((55_u8).forward(200_usize), Some(255_u8));
+    assert_eq!((252_u8).forward(200_usize), None);
+    assert_eq!((0_u8).forward(256_usize), None);
+    assert_eq!((-110_i8).forward(200_usize), Some(90_i8));
+    assert_eq!((-110_i8).forward(248_usize), None);
+    assert_eq!((-126_i8).forward(256_usize), None);
+
+    assert_eq!((35_u16).forward(100_usize), Some(135_u16));
+    assert_eq!((35_u16).forward(65500_usize), Some(u16::MAX));
+    assert_eq!((36_u16).forward(65500_usize), None);
+    assert_eq!((-110_i16).forward(200_usize), Some(90_i16));
+    assert_eq!((-20_030_i16).forward(50_050_usize), Some(30_020_i16));
+    assert_eq!((-10_i16).forward(40_000_usize), None);
+    assert_eq!((-10_i16).forward(70_000_usize), None);
+
+    assert_eq!((10_u128).forward(70_000_usize), Some(70_010_u128));
+    assert_eq!((10_i128).forward(70_030_usize), Some(70_020_i128));
+    assert_eq!((0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128).forward(0xff_usize), Some(u128::MAX));
+    assert_eq!((0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128).forward(0x100_usize), None);
+    assert_eq!((0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).forward(0xff_usize), Some(i128::MAX));
+    assert_eq!((0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).forward(0x100_usize), None);
 }
 
 #[test]
 fn test_step_backward() {
-    assert_eq!((120_i8).backward(200_usize), Some(-80_i8));
+    assert_eq!((255_u8).backward(200_usize), Some(55_u8));
+    assert_eq!((100_u8).backward(200_usize), None);
+    assert_eq!((255_u8).backward(256_usize), None);
+    assert_eq!((90_i8).backward(200_usize), Some(-110_i8));
+    assert_eq!((110_i8).backward(248_usize), None);
+    assert_eq!((127_i8).backward(256_usize), None);
+
+    assert_eq!((135_u16).backward(100_usize), Some(35_u16));
+    assert_eq!((u16::MAX).backward(65500_usize), Some(35_u16));
+    assert_eq!((10_u16).backward(11_usize), None);
+    assert_eq!((90_i16).backward(200_usize), Some(-110_i16));
+    assert_eq!((30_020_i16).backward(50_050_usize), Some(-20_030_i16));
+    assert_eq!((-10_i16).backward(40_000_usize), None);
+    assert_eq!((-10_i16).backward(70_000_usize), None);
+
+    assert_eq!((70_010_u128).backward(70_000_usize), Some(10_u128));
+    assert_eq!((70_020_i128).backward(70_030_usize), Some(10_i128));
+    assert_eq!((10_u128).backward(7_usize), Some(3_u128));
+    assert_eq!((10_u128).backward(11_usize), None);
+    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xfe_usize), Some(i128::MIN));
+    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xff_usize), Some(i128::MIN));
 }

@@ -166,23 +166,15 @@ impl std::iter::Step for NaiveDate {
         unimplemented!()
     }
 
-    fn replace_one(&mut self) -> Self {
-        mem::replace(self, NaiveDate(0, 0, 1))
+    fn forward(&self, step_count: usize) -> Option<Self> {
+        let mut result = *self;
+        for _ in 0..step_count {
+            result = result.succ();
+        }
+        Some(result)
     }
 
-    fn replace_zero(&mut self) -> Self {
-        mem::replace(self, NaiveDate(0, 0, 0))
-    }
-
-    fn add_one(&self) -> Self {
-        self.succ()
-    }
-
-    fn sub_one(&self) -> Self {
-        unimplemented!()
-    }
-
-    fn add_usize(&self, _: usize) -> Option<Self> {
+    fn backward(&self, _step_count: usize) -> Option<Self> {
         unimplemented!()
     }
 }

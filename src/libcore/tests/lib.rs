@@ -23,6 +23,7 @@
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(iterator_step_by)]
+#![feature(i128)]
 #![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
