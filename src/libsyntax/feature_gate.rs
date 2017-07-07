@@ -552,7 +552,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("ignore", Normal, Ungated),
     ("no_implicit_prelude", Normal, Ungated),
     ("reexport_test_harness_main", Normal, Ungated),
-    ("link_args", Normal, Ungated),
+    ("link_args", Normal, Gated(Stability::Unstable,
+                                "link_args",
+                                "the `link_args` attribute is experimental and not \
+                                 portable across platforms, it is recommended to \
+                                 use `#[link(name = \"foo\")] instead",
+                                cfg_fn!(link_args))),
     ("macro_escape", Normal, Ungated),
 
     // RFC #1445.
@@ -1185,12 +1190,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::ForeignMod(ref foreign_module) => {
-                if attr::contains_name(&i.attrs[..], "link_args") {
-                    gate_feature_post!(&self, link_args, i.span,
-                                      "the `link_args` attribute is not portable \
-                                       across platforms, it is recommended to \
-                                       use `#[link(name = \"foo\")]` instead")
-                }
                 self.check_abi(foreign_module.abi, i.span);
             }
 
