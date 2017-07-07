@@ -1,31 +1,31 @@
-error[E0622]: type mismatch in closure arguments
-  --> $DIR/closure-arg-type-mismatch.rs:15:26
+error[E0623]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:13:26
    |
-15 |         let b = a.iter().map(|x: (u32, u32)| 45);
+13 |         let b = a.iter().map(|x: (u32, u32)| 45);
    |                          ^^^ ------------------ takes a `std::ops::FnMut<((u32, u32),)>`
    |                          |
    |                          expected closure that takes a `std::ops::FnMut<(&(u32, u32),)>`
 
-error[E0622]: type mismatch in closure arguments
-  --> $DIR/closure-arg-type-mismatch.rs:16:27
+error[E0623]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:14:27
    |
-16 |         let d1 = a.iter().map(|x: &(u16,u16)| 45);
+14 |         let d1 = a.iter().map(|x: &(u16,u16)| 45);
    |                           ^^^ ------------------ takes a `for<'r> std::ops::FnMut<(&'r (u16, u16),)>`
    |                           |
    |                           expected closure that takes a `std::ops::FnMut<(&(u32, u32),)>`
 
-error[E0622]: type mismatch in closure arguments
-  --> $DIR/closure-arg-type-mismatch.rs:17:27
+error[E0623]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:15:27
    |
-17 |         let d2 = a.iter().map(|x: (u16,u16)| 45);
+15 |         let d2 = a.iter().map(|x: (u16,u16)| 45);
    |                           ^^^ ----------------- takes a `std::ops::FnMut<((u16, u16),)>`
    |                           |
    |                           expected closure that takes a `std::ops::FnMut<(&(u32, u32),)>`
 
-error[E0622]: type mismatch in closure arguments
-  --> $DIR/closure-arg-type-mismatch.rs:18:9
+error[E0623]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:16:9
    |
-18 |         foo(|y: isize| ());
+16 |         foo(|y: isize| ());
    |         ^^^ ------------- takes a `std::ops::Fn<(isize,)>`
    |         |
    |         expected closure that takes a `std::ops::Fn<(usize,)>`

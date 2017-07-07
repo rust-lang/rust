@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::{FnOnce, Fn};
-
-pub fn main() {
+fn main() {
         let a = [(1u32,2u32)];
         let b = a.iter().map(|x: (u32, u32)| 45);
         let d1 = a.iter().map(|x: &(u16,u16)| 45);
@@ -18,4 +16,4 @@ pub fn main() {
         foo(|y: isize| ());
 }
 
-fn foo<F>(m: F) where F: Fn(usize) {}
+fn foo<F>(m: F) where F: ::std::ops::Fn(usize) {}

@@ -728,7 +728,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let mut count_mismatch = None;
                     if let ty::TyTuple(expected_tys, _) = expected_found.expected.sty {
                         if let ty::TyTuple(found_tys, _) = expected_found.found.sty {
-                            if expected_tys.len() != found_tys.len() { 
+                            if expected_tys.len() != found_tys.len() {
                                 // Expected `|| { }`, found `|x, y| { }`
                                 // Expected `fn(x) -> ()`, found `|| { }`
                                 count_mismatch = Some(self.report_arg_count_mismatch(span,
@@ -745,7 +745,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        self.report_closure_arg_mismatch(span,
                                                          found_span,
                                                          expected_trait_ref,
-                                                         actual_trait_ref) 
+                                                         actual_trait_ref)
                     }
                 } else {
                     self.report_type_argument_mismatch(span,
@@ -828,7 +828,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                            found: ty::PolyTraitRef<'tcx>)
         -> DiagnosticBuilder<'tcx>
     {
-        let mut err = struct_span_err!(self.tcx.sess, span, E0622,
+        let mut err = struct_span_err!(self.tcx.sess, span, E0623,
             "type mismatch in closure arguments");
         if let Some(sp) = found_span {
             err.span_label(span, format!("expected closure that takes a `{}`", found));
@@ -836,7 +836,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         } else {
             panic!();
         }
-        
         err
     }
 }
