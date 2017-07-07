@@ -1,0 +1,36 @@
+error[E0622]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:15:26
+   |
+15 |         let b = a.iter().map(|x: (u32, u32)| 45);
+   |                          ^^^ ------------------ takes a `std::ops::FnMut<((u32, u32),)>`
+   |                          |
+   |                          expected closure that takes a `std::ops::FnMut<(&(u32, u32),)>`
+
+error[E0622]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:16:27
+   |
+16 |         let d1 = a.iter().map(|x: &(u16,u16)| 45);
+   |                           ^^^ ------------------ takes a `for<'r> std::ops::FnMut<(&'r (u16, u16),)>`
+   |                           |
+   |                           expected closure that takes a `std::ops::FnMut<(&(u32, u32),)>`
+
+error[E0622]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:17:27
+   |
+17 |         let d2 = a.iter().map(|x: (u16,u16)| 45);
+   |                           ^^^ ----------------- takes a `std::ops::FnMut<((u16, u16),)>`
+   |                           |
+   |                           expected closure that takes a `std::ops::FnMut<(&(u32, u32),)>`
+
+error[E0622]: type mismatch in closure arguments
+  --> $DIR/closure-arg-type-mismatch.rs:18:9
+   |
+18 |         foo(|y: isize| ());
+   |         ^^^ ------------- takes a `std::ops::Fn<(isize,)>`
+   |         |
+   |         expected closure that takes a `std::ops::Fn<(usize,)>`
+   |
+   = note: required by `foo`
+
+error: aborting due to 4 previous errors
+
