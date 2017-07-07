@@ -44,12 +44,20 @@ impl<'a> Deref for Builder<'a> {
     }
 }
 
-pub trait Step<'a>: Sized {
-    type Output: Serialize + Deserialize<'a>;
+pub trait Step<'a>: Serialize + Sized {
+    /// The output type of this step. This is used in a few places to return a
+    /// `PathBuf` when directories are created or to return a `Compiler` once
+    /// it's been assembled.
+    ///
+    /// When possible, this should be used instead of implicitly creating files
+    /// in a prearranged directory that will later be used by the build system.
+    /// It's not always practical, however, since it makes avoiding rebuilds
+    /// somewhat harder.
+    type Output: Serialize + Deserialize<'a> + 'a;
 
     const DEFAULT: bool = false;
 
-    /// Run this rule for all hosts, and just the same hosts as the targets.
+    /// Run this rule for all hosts without cross compiling.
     const ONLY_HOSTS: bool = false;
 
     /// Run this rule for all targets, but only with the native host.
@@ -58,10 +66,22 @@ pub trait Step<'a>: Sized {
     /// Only run this step with the build triple as host and target.
     const ONLY_BUILD: bool = false;
 
+    /// Primary function to execute this rule. Can call `builder.ensure(...)`
+    /// with other steps to run those.
     fn run(self, builder: &'a Builder) -> Self::Output;
 
+    /// When bootstrap is passed a set of paths, this controls whether this rule
+    /// will execute. However, it does not get called in a "default" context
+    /// when we are not passed any paths; in that case, make_run is called
+    /// directly.
     fn should_run(_builder: &'a Builder, _path: &Path) -> bool { false }
 
+    /// Build up a "root" rule, either as a default rule or from a path passed
+    /// to us.
+    ///
+    /// When path is `None`, we are executing in a context where no paths were
+    /// passed. When `./x.py build` is run, for example, this rule could get
+    /// called if it is in the correct list below with a path of `None`.
     fn make_run(
         _builder: &'a Builder,
         _path: Option<&Path>,
@@ -145,6 +165,10 @@ impl<'a> Builder<'a> {
             doc::Nomicon, doc::Reference);
     }
 
+    /// Obtain a compiler at a given stage and for a given host. Explictly does
+    /// not take `Compiler` since all `Compiler` instances are meant to be
+    /// obtained through this function, since it ensures that they are valid
+    /// (i.e., built and assembled).
     pub fn compiler(&'a self, stage: u32, host: &'a str) -> Compiler<'a> {
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
@@ -426,10 +450,10 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn ensure<S: Step<'a> + Serialize>(&'a self, step: S) -> S::Output
-    where
-        S::Output: 'a
-    {
+    /// Ensure that a given step is built, returning it's output. This will
+    /// cache the step, so it is safe (and good!) to call this as often as
+    /// needed to ensure that all dependencies are built.
+    pub fn ensure<S: Step<'a>>(&'a self, step: S) -> S::Output {
         let key = Cache::to_key(&step);
         {
             let mut stack = self.stack.borrow_mut();
