@@ -2771,22 +2771,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Checks a method call.
     fn check_method_call(&self,
                          expr: &'gcx hir::Expr,
-                         method_name: Spanned<ast::Name>,
+                         segment: &hir::PathSegment,
+                         span: Span,
                          args: &'gcx [hir::Expr],
-                         tps: &[P<hir::Ty>],
                          expected: Expectation<'tcx>,
                          lvalue_pref: LvaluePreference) -> Ty<'tcx> {
         let rcvr = &args[0];
         let rcvr_t = self.check_expr_with_lvalue_pref(&rcvr, lvalue_pref);
-
         // no need to check for bot/err -- callee does that
-        let expr_t = self.structurally_resolved_type(expr.span, rcvr_t);
+        let rcvr_t = self.structurally_resolved_type(expr.span, rcvr_t);
 
-        let tps = tps.iter().map(|ast_ty| self.to_ty(&ast_ty)).collect::<Vec<_>>();
-        let method = match self.lookup_method(method_name.span,
-                                              method_name.node,
-                                              expr_t,
-                                              tps,
+        let method = match self.lookup_method(rcvr_t,
+                                              segment,
+                                              span,
                                               expr,
                                               rcvr) {
             Ok(method) => {
@@ -2794,10 +2791,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Ok(method)
             }
             Err(error) => {
-                if method_name.node != keywords::Invalid.name() {
-                    self.report_method_error(method_name.span,
-                                             expr_t,
-                                             method_name.node,
+                if segment.name != keywords::Invalid.name() {
+                    self.report_method_error(span,
+                                             rcvr_t,
+                                             segment.name,
                                              Some(rcvr),
                                              error,
                                              Some(args));
@@ -2807,7 +2804,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Call the generic checker.
-        self.check_method_argument_types(method_name.span, method,
+        self.check_method_argument_types(span, method,
                                          &args[1..],
                                          DontTupleArguments,
                                          expected)
@@ -3735,8 +3732,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprCall(ref callee, ref args) => {
               self.check_call(expr, &callee, args, expected)
           }
-          hir::ExprMethodCall(name, ref tps, ref args) => {
-              self.check_method_call(expr, name, args, &tps[..], expected, lvalue_pref)
+          hir::ExprMethodCall(ref segment, span, ref args) => {
+              self.check_method_call(expr, segment, span, args, expected, lvalue_pref)
           }
           hir::ExprCast(ref e, ref t) => {
             // Find the type of `e`. Supply hints based on the type we are casting to,

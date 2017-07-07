@@ -44,15 +44,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           call_expr: &'gcx hir::Expr,
                           unadjusted_self_ty: Ty<'tcx>,
                           pick: probe::Pick<'tcx>,
-                          supplied_method_types: Vec<Ty<'tcx>>)
+                          segment: &hir::PathSegment)
                           -> MethodCallee<'tcx> {
-        debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, supplied_method_types={:?})",
+        debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
                unadjusted_self_ty,
                pick,
-               supplied_method_types);
+               segment.parameters);
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
-        confirm_cx.confirm(unadjusted_self_ty, pick, supplied_method_types)
+        confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
 }
 
@@ -73,7 +73,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn confirm(&mut self,
                unadjusted_self_ty: Ty<'tcx>,
                pick: probe::Pick<'tcx>,
-               supplied_method_types: Vec<Ty<'tcx>>)
+               segment: &hir::PathSegment)
                -> MethodCallee<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
@@ -83,7 +83,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Create substitutions for the method's type parameters.
         let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
-        let all_substs = self.instantiate_method_substs(&pick, supplied_method_types, rcvr_substs);
+        let all_substs = self.instantiate_method_substs(&pick, segment, rcvr_substs);
 
         debug!("all_substs={:?}", all_substs);
 
@@ -279,9 +279,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     fn instantiate_method_substs(&mut self,
                                  pick: &probe::Pick<'tcx>,
-                                 mut supplied_method_types: Vec<Ty<'tcx>>,
+                                 segment: &hir::PathSegment,
                                  substs: &Substs<'tcx>)
                                  -> &'tcx Substs<'tcx> {
+        let supplied_method_types = match segment.parameters {
+            hir::AngleBracketedParameters(ref data) => &data.types,
+            _ => bug!("unexpected generic arguments: {:?}", segment.parameters),
+        };
+
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
@@ -312,7 +317,6 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                          num_method_types))
                     .emit();
             }
-            supplied_method_types = vec![self.tcx.types.err; num_method_types];
         }
 
         // Create subst for early-bound lifetime parameters, combining
@@ -331,10 +335,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             let i = def.index as usize;
             if i < substs.len() {
                 substs.type_at(i)
-            } else if supplied_method_types.is_empty() {
-                self.type_var_for_def(self.span, def, cur_substs)
+            } else if let Some(ast_ty) = supplied_method_types.get(i - supplied_start) {
+                self.to_ty(ast_ty)
             } else {
-                supplied_method_types[i - supplied_start]
+                self.type_var_for_def(self.span, def, cur_substs)
             }
         })
     }
