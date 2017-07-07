@@ -23,7 +23,7 @@ use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 /// The main entry point to our analysis passes.
 ///
@@ -137,7 +137,6 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         match (o.def, n.def) {
                             // (matching) things we don't care about (for now)
                             (Mod(_), Mod(_)) |
-                            (Trait(_), Trait(_)) |
                             (AssociatedTy(_), AssociatedTy(_)) |
                             (PrimTy(_), PrimTy(_)) |
                             (TyParam(_), TyParam(_)) |
@@ -183,6 +182,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               o_def_id,
                                               n_def_id);
                                 diff_adts(changes, id_mapping, tcx, o, n);
+                            },
+                            (Trait(_), Trait(_)) => {
+                                diff_traits(changes, id_mapping, tcx, o_def_id, n_def_id);
                             },
                             // non-matching item pair - register the difference and abort
                             _ => {
@@ -354,6 +356,32 @@ fn diff_adts(changes: &mut ChangeSet,
     }
 }
 
+/// Given two trait items, perform structural checks.
+///
+/// This establishes the needed correspondence relationship between non-toplevel items found in
+/// the trait definition.
+fn diff_traits(changes: &mut ChangeSet,
+               id_mapping: &mut IdMapping,
+               tcx: TyCtxt,
+               old: DefId,
+               new: DefId) {
+    let old_unsafety = tcx.trait_def(old).unsafety;
+    let new_unsafety = tcx.trait_def(new).unsafety;
+
+    let mut items = HashMap::new();
+
+    for old_did in tcx.associated_item_def_ids(old).iter() {
+        println!("found: {:?}", old_did);
+        items.entry(tcx.def_symbol_name(*old_did).name)
+            .or_insert((None, None)).0 = tcx.describe_def(*old_did);
+    }
+
+    for new_did in tcx.associated_item_def_ids(new).iter() {
+        items.entry(tcx.def_symbol_name(*new_did).name)
+            .or_insert((None, None)).1 = tcx.describe_def(*new_did);
+    }
+}
+
 /// Given two items, compare their type and region parameter sets.
 fn diff_generics(changes: &mut ChangeSet,
                  id_mapping: &mut IdMapping,
@@ -449,6 +477,10 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     let old_def_id = old.def.def_id();
     let new_def_id = new.def.def_id();
+
+    if let Trait(_) = old.def {
+        return;
+    }
 
     let old_ty = tcx.type_of(old_def_id);
     let new_ty = tcx.type_of(new_def_id);

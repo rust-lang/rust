@@ -45,10 +45,15 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
 
     /// Process the next pair of `DefId`s in the queue and return them.
     pub fn process(&mut self) {
+        use rustc::hir::def::Def::Trait;
+
         while let Some((old_did, new_did)) = self.item_queue.pop_front() {
+            if let Some(Trait(_)) = self.tcx.describe_def(old_did) {
+                continue;
+            }
+
             let old_ty = self.tcx.type_of(old_did);
             let new_ty = self.tcx.type_of(new_did);
-            // println!("processing types: {:?}, {:?}", old_ty, new_ty);
             let _ = self.relate(&old_ty, &new_ty);
         }
     }
@@ -187,7 +192,6 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
     fn regions(&mut self, a: ty::Region<'tcx>, _: ty::Region<'tcx>)
         -> RelateResult<'tcx, ty::Region<'tcx>>
     {
-        // TODO
         Ok(a)
     }
 
