@@ -21,9 +21,14 @@ fn main() {
     #[cfg(feature = "gen-tests")]
     tests::generate();
 
-    // Build missing intrinsics from compiler-rt C source code
-    #[cfg(feature = "c")]
-    c::compile(&llvm_target);
+    // Build missing intrinsics from compiler-rt C source code. If we're
+    // mangling names though we assume that we're also in test mode so we don't
+    // build anything and we rely on the upstream implementation of compiler-rt
+    // functions
+    if !cfg!(feature = "mangled-names") {
+        #[cfg(feature = "c")]
+        c::compile(&llvm_target);
+    }
 
     // To compile intrinsics.rs for thumb targets, where there is no libc
     if llvm_target[0].starts_with("thumb") {
@@ -4099,11 +4104,9 @@ mod c {
         // also needs to satisfy intrinsics that jemalloc or C in general may
         // need, so include a few more that aren't typically needed by
         // LLVM/Rust.
-        if env::var_os("CARGO_FEATURE_RUSTBUILD").is_some() {
-            sources.extend(&[
-                "ffsdi2.c",
-            ]);
-        }
+        sources.extend(&[
+            "ffsdi2.c",
+        ]);
 
         if target_os != "ios" {
             sources.extend(
