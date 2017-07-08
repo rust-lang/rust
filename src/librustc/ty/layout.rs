@@ -285,7 +285,9 @@ impl Size {
 }
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
-/// Each field is a power of two.
+/// Each field is a power of two, giving the alignment a maximum
+/// value of 2^(2^8 - 1), which is limited by LLVM to a i32, with
+/// a maximum capacity of 2^31 - 1 or 2147483647.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Align {
     abi: u8,
@@ -298,7 +300,7 @@ impl Align {
     }
 
     pub fn from_bytes(abi: u64, pref: u64) -> Result<Align, String> {
-        let pack = |align: u64| {
+        let log2 = |align: u64| {
             // Treat an alignment of 0 bytes like 1-byte alignment.
             if align == 0 {
                 return Ok(0);
@@ -318,8 +320,8 @@ impl Align {
         };
 
         Ok(Align {
-            abi: pack(abi)?,
-            pref: pack(pref)?,
+            abi: log2(abi)?,
+            pref: log2(pref)?,
         })
     }
 
