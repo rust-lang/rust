@@ -239,10 +239,10 @@ trait_obj.method_one();
 trait_obj.method_two();
 ```
 
-You can read more about trait objects in the Trait Object section of the
-Reference:
+You can read more about trait objects in the [Trait Objects] section of the
+Reference.
 
-https://doc.rust-lang.org/reference.html#trait-objects
+[Trait Objects]: https://doc.rust-lang.org/reference/types.html#trait-objects
 "##,
 
 E0034: r##"
@@ -874,8 +874,9 @@ lvalue expression represents a memory location and can be a variable (with
 optional namespacing), a dereference, an indexing expression or a field
 reference.
 
-More details can be found here:
-https://doc.rust-lang.org/reference.html#lvalues-rvalues-and-temporaries
+More details can be found in the [Expressions] section of the Reference.
+
+[Expressions]: https://doc.rust-lang.org/reference/expressions.html#lvalues-rvalues-and-temporaries
 
 Now, we can go further. Here are some erroneous code examples:
 
@@ -3467,10 +3468,10 @@ struct Foo<'a, T: 'a> {
 }
 ```
 
-PhantomData can also be used to express information about unused type
-parameters. You can read more about it in the API documentation:
+[PhantomData] can also be used to express information about unused type
+parameters.
 
-https://doc.rust-lang.org/std/marker/struct.PhantomData.html
+[PhantomData]: https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
 E0393: r##"
@@ -4342,7 +4343,9 @@ let variable = Foo { x: 0, y: -12 };
 println!("x: {}, y: {}", variable.x, variable.y);
 ```
 
-For more information see The Rust Book: https://doc.rust-lang.org/book/
+For more information about primitives and structs, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/primitive-types.html
+https://doc.rust-lang.org/book/first-edition/structs.html
 "##,
 
 E0611: r##"
@@ -4560,9 +4563,10 @@ unsafe {
 }
 ```
 
-To fix this error, you need to pass variables corresponding to C types as much
-as possible. For better explanations, see The Rust Book:
-https://doc.rust-lang.org/book/
+Certain Rust types must be cast before passing them to a variadic function,
+because of arcane ABI rules dictated by the C standard. To fix the error,
+cast the value to the type specified by the error message (which you may need
+to import from `std::os::raw`).
 "##,
 
 E0618: r##"
