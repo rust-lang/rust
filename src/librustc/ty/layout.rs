@@ -314,6 +314,8 @@ impl Align {
             }
             if bytes != 1 {
                 Err(format!("`{}` is not a power of 2", align))
+            } else if pow > 30 {
+                Err(format!("`{}` is too large", align))
             } else {
                 Ok(pow)
             }
