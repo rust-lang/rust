@@ -2087,15 +2087,19 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         if !consts.is_empty() && !required.is_empty() {
             w.write_str("\n")?;
         }
-        for m in &required {
+        for (pos, m) in required.iter().enumerate() {
             write!(w, "    ")?;
             render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
             write!(w, ";\n")?;
+
+            if pos < required.len() - 1 {
+               write!(w, "<div class='item-spacer'></div>")?;
+            }
         }
         if !required.is_empty() && !provided.is_empty() {
             w.write_str("\n")?;
         }
-        for m in &provided {
+        for (pos, m) in provided.iter().enumerate() {
             write!(w, "    ")?;
             render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
             match m.inner {
@@ -2105,6 +2109,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 _ => {
                     write!(w, " {{ ... }}\n")?;
                 },
+            }
+            if pos < provided.len() - 1 {
+               write!(w, "<div class='item-spacer'></div>")?;
             }
         }
         write!(w, "}}")?;
