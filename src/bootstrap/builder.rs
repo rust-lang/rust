@@ -192,8 +192,13 @@ impl<'a> Builder<'a> {
         impl<'a> Step<'a> for Libdir<'a> {
             type Output = PathBuf;
             fn run(self, builder: &Builder) -> PathBuf {
-                let sysroot = builder.sysroot(self.compiler)
-                    .join("lib").join("rustlib").join(self.target).join("lib");
+                let lib = if compiler.stage >= 2 && builder.build.config.libdir_relative.is_some() {
+                    builder.build.config.libdir_relative.cloned().unwrap()
+                } else {
+                    PathBuf::from("lib")
+                };
+                let sysroot = builder.sysroot(self.compiler).join(lib)
+                    .join("rustlib").join(self.target).join("lib");
                 let _ = fs::remove_dir_all(&sysroot);
                 t!(fs::create_dir_all(&sysroot));
                 sysroot
