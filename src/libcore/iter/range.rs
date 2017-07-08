@@ -253,9 +253,7 @@ macro_rules! range_exact_iter_impl {
 
 macro_rules! range_incl_exact_iter_impl {
     ($($t:ty)*) => ($(
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
+        #[stable(feature = "inclusive_range", since = "1.21.0")]
         impl ExactSizeIterator for ops::RangeInclusive<$t> { }
     )*)
 }
@@ -269,9 +267,7 @@ macro_rules! range_trusted_len_impl {
 
 macro_rules! range_incl_trusted_len_impl {
     ($($t:ty)*) => ($(
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
+        #[stable(feature = "inclusive_range", since = "1.21.0")]
         unsafe impl TrustedLen for ops::RangeInclusive<$t> { }
     )*)
 }
@@ -359,7 +355,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> where
 impl<A> FusedIterator for ops::RangeFrom<A>
     where A: Step, for<'a> &'a A: Add<&'a A, Output = A> {}
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl<A: Step> Iterator for ops::RangeInclusive<A> where
     for<'a> &'a A: Add<&'a A, Output = A>
 {
@@ -396,7 +392,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> where
     }
 }
 
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.21.0")]
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> where
     for<'a> &'a A: Add<&'a A, Output = A>,
     for<'a> &'a A: Sub<&'a A, Output = A>
