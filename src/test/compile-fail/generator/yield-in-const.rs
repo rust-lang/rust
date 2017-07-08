@@ -13,11 +13,3 @@
 const A: u8 = { yield 3u8; gen arg; 3u8};
 //~^ ERROR yield statement outside
 //~| ERROR gen arg expression outside
-
-static B: u8 = { yield 3u8; gen arg; 3u8};
-//~^ ERROR yield statement outside
-//~| ERROR gen arg expression outside
-
-fn main() { yield; gen arg; }
-//~^ ERROR yield statement outside
-//~| ERROR gen arg expression outside

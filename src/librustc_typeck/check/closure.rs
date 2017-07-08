@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                             self.param_env,
                                                             &fn_sig);
 
-        let interior = check_fn(self, self.param_env, fn_sig, decl, expr.id, body).1;
+        let interior = check_fn(self, self.param_env, fn_sig, decl, expr.id, body, true).1;
 
         if let Some(interior) = interior {
             let closure_substs = ty::ClosureSubsts {

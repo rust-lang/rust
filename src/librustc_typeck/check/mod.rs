@@ -871,7 +871,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   param_env,
                                                   &fn_sig);
 
-            check_fn(&inh, param_env, fn_sig, decl, id, body).0
+            check_fn(&inh, param_env, fn_sig, decl, id, body, false).0
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.id);
             let expected_type = tcx.type_of(def_id);
@@ -987,7 +987,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             fn_sig: ty::FnSig<'tcx>,
                             decl: &'gcx hir::FnDecl,
                             fn_id: ast::NodeId,
-                            body: &'gcx hir::Body)
+                            body: &'gcx hir::Body,
+                            can_be_generator: bool)
                             -> (FnCtxt<'a, 'gcx, 'tcx>, Option<ty::GeneratorInterior<'tcx>>)
 {
     let mut fn_sig = fn_sig.clone();
@@ -1014,22 +1015,30 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let def_id = fcx.tcx.hir.local_def_id(fn_id);
     let span = body.value.span;
 
+    if fcx.tcx.sess.verbose() {
+        println!("checking body {} {}", fn_id, can_be_generator);
+    }
+
     if let Some(ref impl_arg) = body.impl_arg {
-        let impl_arg_ty = fcx.infcx.type_var_for_impl_arg(span, def_id);
+        if can_be_generator {
+            let impl_arg_ty = fcx.infcx.type_var_for_impl_arg(span, def_id);
 
-        // Require impl_arg: 'static
-        let cause = traits::ObligationCause::new(span, body.value.id, traits::MiscObligation);;
-        fcx.fulfillment_cx.borrow_mut()
-                          .register_region_obligation(impl_arg_ty,
-                                                      fcx.tcx.types.re_static,
-                                                      cause);
+            // Require impl_arg: 'static
+            let cause = traits::ObligationCause::new(span,
+                                                     body.value.id,
+                                                     traits::MiscObligation);
+            fcx.fulfillment_cx.borrow_mut()
+                            .register_region_obligation(impl_arg_ty,
+                                                        fcx.tcx.types.re_static,
+                                                        cause);
 
-        fcx.impl_arg_ty = Some(impl_arg_ty);
+            fcx.impl_arg_ty = Some(impl_arg_ty);
 
-        // Write the type to the impl arg id
-        fcx.write_ty(impl_arg.id, impl_arg_ty);
+            // Write the type to the impl arg id
+            fcx.write_ty(impl_arg.id, impl_arg_ty);
 
-        fcx.suspend_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
+            fcx.suspend_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
+        }
     }
 
     GatherLocalsVisitor { fcx: &fcx, }.visit_body(body);
@@ -1050,7 +1059,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.write_ty(arg.id, arg_ty);
     }
 
-    let gen_ty = if body.is_generator() {
+    let gen_ty = if can_be_generator && body.is_generator() {
         let gen_sig = ty::GenSig {
             impl_arg_ty: fcx.impl_arg_ty.unwrap(),
             suspend_ty: fcx.suspend_ty.unwrap(),
@@ -3994,7 +4003,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 None => {
                     struct_span_err!(self.tcx.sess, expr.span, E0803,
-                                 "impl arg expression outside of function body").emit();
+                                 "gen arg expression outside of generator literal").emit();
                     tcx.types.err
                 }
             }
@@ -4006,7 +4015,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 None => {
                     struct_span_err!(self.tcx.sess, expr.span, E0802,
-                                 "yield statement outside of function body").emit();
+                                 "yield statement outside of generator literal").emit();
                 }
             }
             tcx.mk_nil()
