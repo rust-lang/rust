@@ -285,7 +285,7 @@ impl<A: Step> Iterator for ops::Range<A> {
         // NOTE: the safety of `unsafe impl TrustedLen` depends on this being correct!
         match Step::steps_between(&self.start, &self.end) {
             Some(hint) => (hint, Some(hint)),
-            None => (0, None)
+            None => (usize::MAX, None)
         }
     }
 
@@ -410,7 +410,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
         match Step::steps_between(&self.start, &self.end) {
             Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
-            None => (0, None),
+            None => (usize::MAX, None),
         }
     }
 
