@@ -370,12 +370,12 @@ fn diff_traits(_changes: &mut ChangeSet,
     let mut items = HashMap::new();
 
     for old_did in tcx.associated_item_def_ids(old).iter() {
-        items.entry(tcx.def_symbol_name(*old_did).name)
+        items.entry(tcx.associated_item(*old_did).name)
             .or_insert((None, None)).0 = tcx.describe_def(*old_did);
     }
 
     for new_did in tcx.associated_item_def_ids(new).iter() {
-        items.entry(tcx.def_symbol_name(*new_did).name)
+        items.entry(tcx.associated_item(*new_did).name)
             .or_insert((None, None)).1 = tcx.describe_def(*new_did);
     }
 
@@ -383,13 +383,13 @@ fn diff_traits(_changes: &mut ChangeSet,
         match *item_pair {
             (Some(old_def), Some(new_def)) => {
                 id_mapping.add_trait_item(old_def, new_def);
-                // println!("map!");
+                println!("map!");
             },
             (Some(old_def), None) => {
-                // println!("missing: {:?}", old_def);
+                println!("missing: {:?}", old_def);
             },
             (None, Some(new_def)) => {
-                // println!("added: {:?}", new_def);
+                println!("added: {:?}", new_def);
             },
             (None, None) => unreachable!(),
         }
@@ -492,21 +492,22 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         return;
     }
 
-    if let Trait(_) = old {
-        return;
-    }
-
-    let old_ty = tcx.type_of(old_def_id);
-    let new_ty = tcx.type_of(new_def_id);
-
     match old {
         TyAlias(_) => {
-            cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, old_ty, new_ty);
+            cmp_types(changes,
+                      id_mapping,
+                      tcx,
+                      old_def_id,
+                      new_def_id,
+                      tcx.type_of(old_def_id),
+                      tcx.type_of(new_def_id));
         },
         Fn(_) => {
             let old_fn_sig =
-                Binder(fold_to_new(id_mapping, tcx, old_ty.fn_sig(tcx).skip_binder()));
-            let new_fn_sig = new_ty.fn_sig(tcx);
+                Binder(fold_to_new(id_mapping,
+                                   tcx,
+                                   tcx.type_of(old_def_id).fn_sig(tcx).skip_binder()));
+            let new_fn_sig = tcx.type_of(new_def_id).fn_sig(tcx);
 
             cmp_types(changes,
                       id_mapping,
