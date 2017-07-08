@@ -305,11 +305,34 @@ impl<A: Step> Iterator for ops::Range<A> {
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
-// Range<{u,i}64> and RangeInclusive<{u,i}{32,64,size}> are excluded
-// because they cannot guarantee having a length <= usize::MAX, which is
-// required by ExactSizeIterator.
-range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
-range_incl_exact_iter_impl!(u8 u16 i8 i16);
+//
+// * `ExactSizeIterator::len` is required to always return an exact `usize`,
+//    so no range can be longer than usize::MAX.
+// * For integer types in `Range<_>` this is the case for types narrower than or as wide as `usize`.
+//   For integer types in `RangeInclusive<_>`
+//   this is the case for types *strictly narrower* than `usize`
+//   since e.g. `(0...u64::MAX).len()` would be `u64::MAX + 1`.
+// * It hurts portability to have APIs (including `impl`s) that are only available on some platforms,
+//   so only `impl`s that are always valid should exist, regardless of the current target platform.
+//   (NOTE: https://github.com/rust-lang/rust/issues/41619 might change this.)
+// * Support exists in-tree for MSP430: https://forge.rust-lang.org/platform-support.html#tier-3
+//   and out-of-tree for AVR: https://github.com/avr-rust/rust
+//   Both are platforms where `usize` is 16 bits wide.
+range_exact_iter_impl! {
+    usize u8 u16
+    isize i8 i16
+
+    // These are incorrect per the reasoning above,
+    // but removing them would be a breaking change as they were stabilized in Rust 1.0.0.
+    // So `(0..66_000_u32).len()` for example will compile without error or warnings
+    // on 16-bit platforms, but panic at run-time.
+    u32
+    i32
+}
+range_incl_exact_iter_impl! {
+    u8
+    i8
+}
 
 // These macros generate `TrustedLen` impls.
 //
