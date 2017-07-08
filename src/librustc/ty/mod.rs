@@ -1398,7 +1398,7 @@ impl_stable_hash_for!(struct ReprFlags {
 #[derive(Copy, Clone, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
-    pub align: u16,
+    pub align: u32,
     pub flags: ReprFlags,
 }
 

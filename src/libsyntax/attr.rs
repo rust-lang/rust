@@ -974,11 +974,11 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         let mut align_error = None;
                         if let ast::LitKind::Int(align, ast::LitIntType::Unsuffixed) = value.node {
                             if align.is_power_of_two() {
-                                // rustc::ty::layout::Align restricts align to <= 32768
-                                if align <= 32768 {
-                                    acc.push(ReprAlign(align as u16));
+                                // rustc::ty::layout::Align restricts align to <= 2147483647
+                                if align <= 2147483647 {
+                                    acc.push(ReprAlign(align as u32));
                                 } else {
-                                    align_error = Some("larger than 32768");
+                                    align_error = Some("larger than 2147483647");
                                 }
                             } else {
                                 align_error = Some("not a power of two");
@@ -1027,7 +1027,7 @@ pub enum ReprAttr {
     ReprExtern,
     ReprPacked,
     ReprSimd,
-    ReprAlign(u16),
+    ReprAlign(u32),
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
