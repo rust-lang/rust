@@ -405,8 +405,9 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
 
     let dst = image.join("lib/rustlib").join(target);
     t!(fs::create_dir_all(&dst));
-    let src = build.sysroot(compiler).join("lib/rustlib");
-    cp_r(&src.join(target), &dst);
+    let mut src = build.sysroot_libdir(compiler, target);
+    src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
+    cp_r(&src, &dst);
 
     let mut cmd = rust_installer(build);
     cmd.arg("generate")

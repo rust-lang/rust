@@ -645,8 +645,14 @@ impl Build {
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
     fn sysroot_libdir(&self, compiler: &Compiler, target: &str) -> PathBuf {
-        self.sysroot(compiler).join("lib").join("rustlib")
-            .join(target).join("lib")
+        if compiler.stage >= 2 {
+            if let Some(ref libdir_relative) = self.config.libdir_relative {
+                return self.sysroot(compiler).join(libdir_relative)
+                    .join("rustlib").join(target).join("lib")
+            }
+        }
+       self.sysroot(compiler).join("lib").join("rustlib")
+           .join(target).join("lib")
     }
 
     /// Returns the root directory for all output generated in a particular
