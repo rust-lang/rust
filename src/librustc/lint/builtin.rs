@@ -131,6 +131,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+    Deny,
+    "detect public reexports of private extern crates"
+}
+
+declare_lint! {
     pub INVALID_TYPE_PARAM_DEFAULT,
     Deny,
     "type parameter default erroneously allowed in invalid location"
@@ -144,14 +150,14 @@ declare_lint! {
 
 declare_lint! {
     pub RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
-    Warn,
+    Deny,
     "attempt to resolve a trait on an expression whose type cannot be inferred but which \
      currently defaults to ()"
 }
 
 declare_lint! {
     pub SAFE_EXTERN_STATICS,
-    Warn,
+    Deny,
     "safe access to extern statics was erroneously allowed"
 }
 
@@ -169,14 +175,14 @@ declare_lint! {
 
 declare_lint! {
     pub LEGACY_DIRECTORY_OWNERSHIP,
-    Warn,
+    Deny,
     "non-inline, non-`#[path]` modules (e.g. `mod foo;`) were erroneously allowed in some files \
      not named `mod.rs`"
 }
 
 declare_lint! {
     pub LEGACY_IMPORTS,
-    Warn,
+    Deny,
     "detects names that resolve to ambiguous glob imports with RFC 1560"
 }
 
@@ -188,13 +194,13 @@ declare_lint! {
 
 declare_lint! {
     pub MISSING_FRAGMENT_SPECIFIER,
-    Warn,
+    Deny,
     "detects missing fragment specifiers in unused `macro_rules!` patterns"
 }
 
 declare_lint! {
     pub PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-    Warn,
+    Deny,
     "detects parenthesized generic parameters in type and module names"
 }
 
@@ -230,6 +236,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
+            PUB_USE_OF_PRIVATE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR,
             RENAMED_AND_REMOVED_LINTS,

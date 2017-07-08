@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub trait FromBuf<'a> {
-    fn from_buf(&'a [u8]) -> Self;
+    fn from_buf(_: &'a [u8]) -> Self;
 }

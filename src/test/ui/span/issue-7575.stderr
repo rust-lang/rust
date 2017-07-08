@@ -8,20 +8,20 @@ error[E0599]: no method named `f9` found for type `usize` in the current scope
 note: candidate #1 is defined in the trait `CtxtFn`
   --> $DIR/issue-7575.rs:16:5
    |
-16 |     fn f9(usize) -> usize; //~ NOTE candidate
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+16 |     fn f9(_: usize) -> usize; //~ NOTE candidate
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `CtxtFn::f9(u, 342)` instead
 note: candidate #2 is defined in the trait `OtherTrait`
   --> $DIR/issue-7575.rs:20:5
    |
-20 |     fn f9(usize) -> usize; //~ NOTE candidate
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+20 |     fn f9(_: usize) -> usize; //~ NOTE candidate
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `OtherTrait::f9(u, 342)` instead
 note: candidate #3 is defined in the trait `UnusedTrait`
   --> $DIR/issue-7575.rs:29:5
    |
-29 |     fn f9(usize) -> usize; //~ NOTE candidate
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+29 |     fn f9(_: usize) -> usize; //~ NOTE candidate
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `UnusedTrait::f9(u, 342)` instead
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `f9`, perhaps you need to implement one of them:

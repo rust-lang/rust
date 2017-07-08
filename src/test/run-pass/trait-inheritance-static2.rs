@@ -11,7 +11,7 @@
 pub trait MyEq {}
 
 pub trait MyNum {
-    fn from_int(isize) -> Self;
+    fn from_int(_: isize) -> Self;
 }
 
 pub trait NumExt: MyEq + MyNum { }

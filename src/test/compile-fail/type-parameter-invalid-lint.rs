@@ -10,7 +10,6 @@
 
 // gate-test-default_type_parameter_fallback
 
-#![deny(invalid_type_param_default)]
 #![allow(unused)]
 
 fn avg<T=i32>(_: T) {}

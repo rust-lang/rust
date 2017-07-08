@@ -837,7 +837,7 @@ impl Something {} // ok!
 trait Foo {
     type N;
 
-    fn bar(Self::N); // ok!
+    fn bar(_: Self::N); // ok!
 }
 
 // or:

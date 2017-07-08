@@ -13,7 +13,7 @@ pub fn main() {
     let _id: &Mat2<f64> = &Matrix::identity(1.0);
 }
 
-pub trait Index<Index,Result> { fn get(&self, Index) -> Result { panic!() } }
+pub trait Index<Index,Result> { fn get(&self, _: Index) -> Result { panic!() } }
 pub trait Dimensional<T>: Index<usize, T> { }
 
 pub struct Mat2<T> { x: T }

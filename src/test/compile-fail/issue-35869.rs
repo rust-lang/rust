@@ -11,9 +11,9 @@
 #![feature(conservative_impl_trait)]
 
 trait Foo {
-    fn foo(fn(u8) -> ()); //~ NOTE type in trait
-    fn bar(Option<u8>); //~ NOTE type in trait
-    fn baz((u8, u16)); //~ NOTE type in trait
+    fn foo(_: fn(u8) -> ()); //~ NOTE type in trait
+    fn bar(_: Option<u8>); //~ NOTE type in trait
+    fn baz(_: (u8, u16)); //~ NOTE type in trait
     fn qux() -> u8; //~ NOTE type in trait
 }
 

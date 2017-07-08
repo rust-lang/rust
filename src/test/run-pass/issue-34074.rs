@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure several unnamed function arguments don't conflict with each other
+// Make sure several unnamed function parameters don't conflict with each other
 
 trait Tr {
+    #[allow(anonymous_parameters)]
     fn f(u8, u8) {}
 }
 

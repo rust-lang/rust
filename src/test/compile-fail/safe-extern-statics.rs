@@ -11,7 +11,6 @@
 // aux-build:extern-statics.rs
 
 #![allow(unused)]
-#![deny(safe_extern_statics)]
 
 extern crate extern_statics;
 use extern_statics::*;

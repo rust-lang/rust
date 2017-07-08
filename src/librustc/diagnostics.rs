@@ -614,7 +614,7 @@ use std::mem::transmute;
 struct Foo<T>(Vec<T>);
 
 trait MyTransmutableType: Sized {
-    fn transmute(Vec<Self>) -> Foo<Self>;
+    fn transmute(_: Vec<Self>) -> Foo<Self>;
 }
 
 impl MyTransmutableType for u8 {

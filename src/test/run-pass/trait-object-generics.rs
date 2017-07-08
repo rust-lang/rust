@@ -41,7 +41,7 @@ impl<A1, A2, A3> Impl<A1, A2, A3> {
 enum Type<T> { Constant(T) }
 
 trait Trait<K,V> {
-    fn method(&self,Type<(K,V)>) -> isize;
+    fn method(&self, _: Type<(K,V)>) -> isize;
 }
 
 impl<V> Trait<u8,V> for () {

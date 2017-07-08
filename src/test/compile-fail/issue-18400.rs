@@ -9,8 +9,8 @@
 // except according to those terms.
 
 trait Set<T> {
-    fn contains(&self, T) -> bool;
-    fn set(&mut self, T);
+    fn contains(&self, _: T) -> bool;
+    fn set(&mut self, _: T);
 }
 
 impl<'a, T, S> Set<&'a [T]> for S where
