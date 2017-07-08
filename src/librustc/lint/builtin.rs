@@ -163,7 +163,7 @@ declare_lint! {
 
 declare_lint! {
     pub PATTERNS_IN_FNS_WITHOUT_BODY,
-    Deny,
+    Warn,
     "patterns in functions without body were erroneously allowed"
 }
 

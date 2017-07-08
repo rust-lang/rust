@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(patterns_in_fns_without_body)]
+
 trait Tr {
     fn f1(mut arg: u8); //~ ERROR patterns aren't allowed in methods without bodies
                         //~^ WARN was previously accepted
