@@ -61,6 +61,8 @@ macro_rules! step_integer_impls {
             impl Step for $narrower_unsigned {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
+                    // this being correct!
                     if *start < *end {
                         // This relies on $narrower_unsigned <= usize
                         Some((*end - *start) as usize)
@@ -92,6 +94,8 @@ macro_rules! step_integer_impls {
             impl Step for $narrower_signed {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
+                    // this being correct!
                     if *start < *end {
                         // This relies on $narrower_signed <= usize
                         //
@@ -156,6 +160,8 @@ macro_rules! step_integer_impls {
             impl Step for $wider_unsigned {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
+                    // this being correct!
                     if *start < *end {
                         usize::try_from(*end - *start).ok()
                     } else {
@@ -180,6 +186,8 @@ macro_rules! step_integer_impls {
             impl Step for $wider_signed {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
+                    // this being correct!
                     if *start < *end {
                         match end.checked_sub(*start) {
                             Some(diff) => usize::try_from(diff).ok(),
@@ -274,6 +282,7 @@ impl<A: Step> Iterator for ops::Range<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        // NOTE: the safety of `unsafe impl TrustedLen` depends on this being correct!
         match Step::steps_between(&self.start, &self.end) {
             Some(hint) => (hint, Some(hint)),
             None => (0, None)
@@ -306,8 +315,14 @@ range_incl_exact_iter_impl!(u8 u16 i8 i16);
 //
 // They need to guarantee that .size_hint() is either exact, or that
 // the upper bound is None when it does not fit the type limits.
-range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
-range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
+range_trusted_len_impl! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+}
+range_incl_trusted_len_impl! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> DoubleEndedIterator for ops::Range<A> {
@@ -387,6 +402,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        // NOTE: the safety of `unsafe impl TrustedLen` depends on this being correct!
+
         if !(self.start <= self.end) {
             return (0, Some(0));
         }
