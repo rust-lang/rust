@@ -9,5 +9,6 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
+rustc_apfloat = { path = "../librustc_apfloat" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }

@@ -1251,6 +1251,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_apfloat"
+version = "0.0.0"
+dependencies = [
+ "rustc_bitflags 0.0.0",
+]
+
+[[package]]
 name = "rustc_asan"
 version = "0.0.0"
 dependencies = [
@@ -1307,6 +1314,7 @@ dependencies = [
 name = "rustc_const_math"
 version = "0.0.0"
 dependencies = [
+ "rustc_apfloat 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
