@@ -1166,6 +1166,24 @@ fn test_range_inclusive_nth() {
 }
 
 #[test]
+fn test_range_len() {
+    assert_eq!((0..10_u8).len(), 10);
+    assert_eq!((9..10_u8).len(), 1);
+    assert_eq!((10..10_u8).len(), 0);
+    assert_eq!((11..10_u8).len(), 0);
+    assert_eq!((100..10_u8).len(), 0);
+}
+
+#[test]
+fn test_range_inclusive_len() {
+    assert_eq!((0...10_u8).len(), 11);
+    assert_eq!((9...10_u8).len(), 2);
+    assert_eq!((10...10_u8).len(), 1);
+    assert_eq!((11...10_u8).len(), 0);
+    assert_eq!((100...10_u8).len(), 0);
+}
+
+#[test]
 fn test_range_step() {
     #![allow(deprecated)]
 

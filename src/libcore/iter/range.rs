@@ -425,12 +425,15 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // NOTE: the safety of `unsafe impl TrustedLen` depends on this being correct!
-
+        // This seems redundant with a similar comparison that `Step::steps_between`
+        // implementations need to do, but it separates the `start > end` case from `start == end`.
+        // `steps_between` returns `Some(0)` in both of these cases, but we only want to add 1
+        // in the latter.
         if !(self.start <= self.end) {
             return (0, Some(0));
         }
 
+        // NOTE: the safety of `unsafe impl TrustedLen` depends on this being correct!
         match Step::steps_between(&self.start, &self.end) {
             Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
             None => (usize::MAX, None),
