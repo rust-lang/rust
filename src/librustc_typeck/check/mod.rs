@@ -111,6 +111,7 @@ use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::hash_map::Entry;
 use std::cmp;
+use std::fmt::Display;
 use std::mem::replace;
 use std::ops::{self, Deref};
 use syntax::abi::Abi;
@@ -2945,9 +2946,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.tcx().types.err
         } else {
             if !expr_t.is_primitive_ty() {
-                let mut err = type_error_struct!(self.tcx().sess, field.span, expr_t, E0609,
-                                                 "no field `{}` on type `{}`",
-                                                 field.node, expr_t);
+                let mut err = self.no_such_field_err(field.span, &field.node, expr_t);
+
                 match expr_t.sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         if let Some(suggested_field_name) =
@@ -3064,13 +3064,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                "attempted out-of-bounds tuple index `{}` on type `{}`",
                                idx.node, expr_t).emit();
         } else {
-            type_error_struct!(self.tcx().sess, expr.span, expr_t, E0613,
-                               "attempted to access tuple index `{}` on type `{}`, but the type \
-                                was not a tuple or tuple struct",
-                               idx.node, expr_t).emit();
+            self.no_such_field_err(expr.span, idx.node, expr_t).emit();
         }
 
         self.tcx().types.err
+    }
+
+    fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS)
+        -> DiagnosticBuilder {
+        type_error_struct!(self.tcx().sess, span, expr_t, E0609,
+                           "no field `{}` on type `{}`",
+                           field, expr_t)
     }
 
     fn report_unknown_field(&self,
