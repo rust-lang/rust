@@ -48,8 +48,8 @@ fn foo() -> bool {
         // Nothing
     }
 
-    if let Some(x) = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-                          aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
+    if let Some(x) =
+        (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)
     {}
 
     if let (
