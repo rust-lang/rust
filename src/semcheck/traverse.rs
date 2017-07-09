@@ -11,9 +11,10 @@
 
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::infer::InferCtxt;
+use rustc::ty::{Region, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
+use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::{Subst, Substs};
 
 use semcheck::changes::BinaryChangeType;
@@ -98,7 +99,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             };
 
                             if o_vis != n_vis {
-                                changes.new_binary(o, n, true);
+                                changes.new_binary(o.def.def_id(), o.ident.name, n.span, true);
 
                                 if o_vis == Public && n_vis != Public {
                                     changes.add_binary(ItemMadePrivate, o_did, None);
@@ -124,7 +125,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         };
 
                         let output = o_vis == Public || n_vis == Public;
-                        changes.new_binary(o, n, output);
+                        changes.new_binary(o.def.def_id(), o.ident.name, n.span, output);
 
                         if o_vis == Public && n_vis != Public {
                             changes.add_binary(ItemMadePrivate, o_def_id, None);
@@ -359,7 +360,7 @@ fn diff_adts(changes: &mut ChangeSet,
 ///
 /// This establishes the needed correspondence relationship between non-toplevel items found in
 /// the trait definition.
-fn diff_traits(_changes: &mut ChangeSet,
+fn diff_traits(changes: &mut ChangeSet,
                id_mapping: &mut IdMapping,
                tcx: TyCtxt,
                old: DefId,
@@ -370,26 +371,38 @@ fn diff_traits(_changes: &mut ChangeSet,
     let mut items = HashMap::new();
 
     for old_did in tcx.associated_item_def_ids(old).iter() {
-        items.entry(tcx.associated_item(*old_did).name)
-            .or_insert((None, None)).0 = tcx.describe_def(*old_did);
+        let item = tcx.associated_item(*old_did);
+        items.entry(item.name).or_insert((None, None)).0 =
+            tcx.describe_def(*old_did).map(|d| (d, item));
     }
 
     for new_did in tcx.associated_item_def_ids(new).iter() {
-        items.entry(tcx.associated_item(*new_did).name)
-            .or_insert((None, None)).1 = tcx.describe_def(*new_did);
+        let item = tcx.associated_item(*new_did);
+        items.entry(item.name).or_insert((None, None)).1 =
+            tcx.describe_def(*new_did).map(|d| (d, item));
+
     }
 
-    for item_pair in items.values() {
+    for (name, item_pair) in items.iter() {
         match *item_pair {
-            (Some(old_def), Some(new_def)) => {
+            (Some((old_def, _)), Some((new_def, _))) => {
                 id_mapping.add_trait_item(old_def, new_def);
-                println!("map!");
+                changes.new_binary(old_def.def_id(),
+                                   *name,
+                                   tcx.def_span(new_def.def_id()),
+                                   true);
             },
-            (Some(old_def), None) => {
-                println!("missing: {:?}", old_def);
+            (Some((_, old_item)), None) => {
+                let change_type = TraitItemRemoved {
+                    defaulted: old_item.defaultness.has_value(),
+                };
+                changes.add_binary(change_type , old, Some(tcx.def_span(old_item.def_id)));
             },
-            (None, Some(new_def)) => {
-                println!("added: {:?}", new_def);
+            (None, Some((_, new_item))) => {
+                let change_type = TraitItemAdded {
+                    defaulted: new_item.defaultness.has_value(),
+                };
+                changes.add_binary(change_type , old, Some(tcx.def_span(new_item.def_id)));
             },
             (None, None) => unreachable!(),
         }
@@ -502,7 +515,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                       tcx.type_of(old_def_id),
                       tcx.type_of(new_def_id));
         },
-        Fn(_) => {
+        Fn(_) | Method(_) => {
             let old_fn_sig =
                 Binder(fold_to_new(id_mapping,
                                    tcx,
@@ -528,6 +541,46 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             }
         },
         _ => (),
+    }
+}
+
+struct Resolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+}
+
+impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Resolver<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
+        -> Resolver<'a, 'gcx, 'tcx>
+    {
+        Resolver {
+            tcx: infcx.tcx,
+            infcx: infcx,
+        }
+    }
+}
+
+impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for Resolver<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        if let Ok(t) = self.infcx.fully_resolve(&t) {
+            t
+        } else {
+            panic!("*running around screaming*");
+        }
+    }
+
+    // NB: taken verbatim from: `src/librustc_typeck/check/writeback.rs`
+    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
+        match self.infcx.fully_resolve(&r) {
+            Ok(r) => r,
+            Err(_) => {
+                self.tcx.types.re_static
+            }
+        }
     }
 }
 
@@ -562,6 +615,62 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         let new = new.subst(infcx.tcx, new_substs);
 
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
+            // let err = err.fold_with(&mut Resolver::new(tcx, &infcx));
+            // TODO: replace with `TypeFoldable` as soon as possible
+            use rustc::ty::error::ExpectedFound;
+            use rustc::ty::error::TypeError::*;
+            use rustc::infer::type_variable::Default;
+            let mut folder = Resolver::new(&infcx);
+            let err = match err {
+                Mismatch => Mismatch,
+                UnsafetyMismatch(x) => UnsafetyMismatch(x.fold_with(&mut folder)),
+                AbiMismatch(x) => AbiMismatch(x.fold_with(&mut folder)),
+                Mutability => Mutability,
+                TupleSize(x) => TupleSize(x),
+                FixedArraySize(x) => FixedArraySize(x),
+                ArgCount => ArgCount,
+                RegionsDoesNotOutlive(a, b) => {
+                    RegionsDoesNotOutlive(a.fold_with(&mut folder), b.fold_with(&mut folder))
+                },
+                RegionsNotSame(a, b) => {
+                    RegionsNotSame(a.fold_with(&mut folder), b.fold_with(&mut folder))
+                },
+                RegionsNoOverlap(a, b) => {
+                    RegionsNoOverlap(a.fold_with(&mut folder), b.fold_with(&mut folder))
+                },
+                RegionsInsufficientlyPolymorphic(a, b, ref c) => {
+                    let c = c.clone();
+                    RegionsInsufficientlyPolymorphic(a, b.fold_with(&mut folder), c)
+                },
+                RegionsOverlyPolymorphic(a, b, ref c) => {
+                    let c = c.clone();
+                    RegionsOverlyPolymorphic(a, b.fold_with(&mut folder), c)
+                },
+                IntMismatch(x) => IntMismatch(x),
+                FloatMismatch(x) => FloatMismatch(x),
+                Traits(x) => Traits(x),
+                VariadicMismatch(x) => VariadicMismatch(x),
+                CyclicTy => CyclicTy,
+                ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
+                ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
+                Sorts(x) => Sorts(x.fold_with(&mut folder)),
+                TyParamDefaultMismatch(ExpectedFound { expected, found }) => {
+                    let y = Default {
+                        ty: expected.ty.fold_with(&mut folder),
+                        origin_span: expected.origin_span,
+                        def_id: expected.def_id
+                    };
+                    let z = Default {
+                        ty: found.ty.fold_with(&mut folder),
+                        origin_span: found.origin_span,
+                        def_id: found.def_id
+                    };
+
+                    TyParamDefaultMismatch(ExpectedFound { expected: y, found: z })
+                },
+                ExistentialMismatch(x) => ExistentialMismatch(x.fold_with(&mut folder)),
+            };
+
             changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);

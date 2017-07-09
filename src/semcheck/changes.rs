@@ -16,7 +16,7 @@ use semver::Version;
 use std::collections::{BTreeMap, HashMap};
 use std::cmp::Ordering;
 
-use syntax::symbol::Ident;
+use syntax::symbol::{Ident, Symbol};
 
 use syntax_pos::Span;
 
@@ -143,10 +143,6 @@ pub enum BinaryChangeType<'tcx> {
     TypeParameterAdded { defaulted: bool },
     /// A type parameter has been removed from an item.
     TypeParameterRemoved { defaulted: bool },
-    /// The bounds on a type parameter have been loosened.
-    TypeGeneralization,
-    /// The bounds on a type parameter have been tightened.
-    TypeSpecialization,
     /// A variant has been added to an enum.
     VariantAdded,
     /// A variant has been removed from an enum.
@@ -157,12 +153,6 @@ pub enum BinaryChangeType<'tcx> {
     VariantFieldRemoved { public: bool, total_public: bool },
     /// A variant has changed it's style.
     VariantStyleChanged { now_struct: bool, total_private: bool },
-    /// A field in a struct or enum has changed it's type.
-    TypeChanged { error: TypeError<'tcx> },
-    /// An impl item has been added.
-    TraitImplItemAdded { defaulted: bool },
-    /// An impl item has been removed.
-    TraitImplItemRemoved,
     /// A function changed it's variadicity.
     FnVariadicChanged,
     /// A function changed it's unsafety.
@@ -171,6 +161,12 @@ pub enum BinaryChangeType<'tcx> {
     FnAbiChanged,
     /// A function's arity changed.
     FnArityChanged,
+    /// A trait's definition added an item.
+    TraitItemAdded { defaulted: bool },
+    /// A trait's definition removed an item.
+    TraitItemRemoved { defaulted: bool },
+    /// A field in a struct or enum has changed it's type.
+    TypeChanged { error: TypeError<'tcx> },
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
@@ -187,21 +183,20 @@ impl<'tcx> BinaryChangeType<'tcx> {
             RegionParameterRemoved |
             TypeParameterAdded { defaulted: false } |
             TypeParameterRemoved { .. } |
-            TypeSpecialization |
             VariantAdded |
             VariantRemoved |
             VariantFieldAdded { .. } |
             VariantFieldRemoved { .. } |
             VariantStyleChanged { .. } |
             TypeChanged { .. } |
-            TraitImplItemAdded { .. } |
-            TraitImplItemRemoved |
             FnVariadicChanged |
             FnUnsafetyChanged { now_unsafe: true } |
             FnAbiChanged |
             FnArityChanged |
+            TraitItemAdded { defaulted: false } |
+            TraitItemRemoved { .. } |
             Unknown => Breaking,
-            TypeGeneralization |
+            TraitItemAdded { defaulted: true } |
             ItemMadePublic => TechnicallyBreaking,
             TypeParameterAdded { defaulted: true } |
             FnUnsafetyChanged { now_unsafe: false } => NonBreaking,
@@ -221,22 +216,22 @@ pub struct BinaryChange<'tcx> {
     changes: Vec<(BinaryChangeType<'tcx>, Option<Span>)>,
     /// The most severe change category already recorded for the item.
     max: ChangeCategory,
-    /// The old export of the change item.
-    old: Export,
-    /// The new export of the change item.
-    new: Export,
+    /// The symbol associated with the change item.
+    name: Symbol,
+    /// The new span associated with the change item.
+    new_span: Span,
     /// Whether to output changes. Used to distinguish all-private items.
     output: bool
 }
 
 impl<'tcx> BinaryChange<'tcx> {
     /// Construct a new empty change record for an item.
-    fn new(old: Export, new: Export, output: bool) -> BinaryChange<'tcx> {
+    fn new(name: Symbol, span: Span, output: bool) -> BinaryChange<'tcx> {
         BinaryChange {
             changes: Vec::new(),
             max: ChangeCategory::default(),
-            old: old,
-            new: new,
+            name: name,
+            new_span: span,
             output: output,
         }
     }
@@ -259,12 +254,12 @@ impl<'tcx> BinaryChange<'tcx> {
 
     /// Get the new span of the change item.
     fn new_span(&self) -> &Span {
-        &self.new.span
+        &self.new_span
     }
 
     /// Get the ident of the change item.
-    fn ident(&self) -> &Ident {
-        &self.old.ident
+    fn ident(&self) -> &Symbol {
+        &self.name
     }
 
     /// Report the change.
@@ -274,7 +269,7 @@ impl<'tcx> BinaryChange<'tcx> {
         }
 
         let msg = format!("{:?} changes in `{}`", self.max, self.ident());
-        let mut builder = session.struct_span_warn(self.new.span, &msg);
+        let mut builder = session.struct_span_warn(self.new_span, &msg);
 
         for change in &self.changes {
             let cat = change.0.to_category();
@@ -341,8 +336,8 @@ impl<'tcx> Change<'tcx> {
     }
 
     /// Construct a new binary change for the given exports.
-    fn new_binary(old: Export, new: Export, output: bool) -> Change<'tcx> {
-        Change::Binary(BinaryChange::new(old, new, output))
+    fn new_binary(name: Symbol, span: Span, output: bool) -> Change<'tcx> {
+        Change::Binary(BinaryChange::new(name, span, output))
     }
 
     /// Add a change type to a given binary change.
@@ -424,9 +419,9 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 
     /// Add a new binary change entry for the given exports.
-    pub fn new_binary(&mut self, old: Export, new: Export, output: bool) {
-        let key = ChangeKey::OldKey(old.def.def_id());
-        let change = Change::new_binary(old, new, output);
+    pub fn new_binary(&mut self, old_did: DefId, name: Symbol, span: Span, output: bool) {
+        let key = ChangeKey::OldKey(old_did);
+        let change = Change::new_binary(name, span, output);
 
         self.spans.insert(*change.span(), key.clone());
         self.changes.insert(key, change);
@@ -561,32 +556,7 @@ pub mod tests {
 
     fn build_binary_change(t: BinaryChangeType, s1: Span, s2: Span) -> BinaryChange {
         let mut interner = Interner::new();
-        let ident1 = Ident {
-            name: interner.intern("test"),
-            ctxt: SyntaxContext::empty(),
-        };
-        let ident2 = Ident {
-            name: interner.intern("test"),
-            ctxt: SyntaxContext::empty(),
-        };
-        let export1 = Export {
-            ident: ident1,
-            def: Def::Mod(DefId {
-                krate: LOCAL_CRATE,
-                index: CRATE_DEF_INDEX,
-            }),
-            span: s1,
-        };
-        let export2 = Export {
-            ident: ident2,
-            def: Def::Mod(DefId {
-                krate: LOCAL_CRATE,
-                index: CRATE_DEF_INDEX,
-            }),
-            span: s2,
-        };
-
-        let mut change = BinaryChange::new(export1, export2, true);
+        let mut change = BinaryChange::new(interner.intern("test"), s2, true);
         change.add(t, Some(s1));
 
         change
@@ -666,7 +636,11 @@ pub mod tests {
                     build_binary_change(Unknown,
                                         span1.clone().inner(),
                                         span2.clone().inner());
-                let key = ChangeKey::OldKey(change.old.def.def_id());
+                let did = DefId {
+                    krate: LOCAL_CRATE,
+                    index: CRATE_DEF_INDEX,
+                };
+                let key = ChangeKey::OldKey(did);
                 set.new_unary_change(Change::Binary(change), key);
             }
 
