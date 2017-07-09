@@ -17,15 +17,23 @@ use super::{FusedIterator, TrustedLen};
 
 /// Objects that have a notion of *successor* and *predecessor*
 /// for the purpose of range iterators.
+///
+/// This trait is `unsafe` because implementations of the `unsafe` trait `TrustedLen`
+/// depend on its implementations being correct.
 #[unstable(feature = "step_trait",
            reason = "recently redesigned",
            issue = "42168")]
-pub trait Step: Clone + PartialOrd + Sized {
+pub unsafe trait Step: Clone + PartialOrd + Sized {
     /// Returns the number of *successor* steps needed to get from `start` to `end`.
     ///
     /// Returns `None` if that number would overflow `usize`
     /// (or is infinite, if `end` would never be reached).
-    /// Returns `Some(0)` if `start` comes after (is greater than) or equals `end`.
+    ///
+    /// This must hold for any `a`, `b`, and `n`:
+    ///
+    /// * `steps_between(&a, &b) == Some(0)` if and only if `a >= b`.
+    /// * `steps_between(&a, &b) == Some(n)` if and only if `a.forward(n) == Some(b)`
+    /// * `steps_between(&a, &b) == Some(n)` if and only if `b.backward(n) == Some(a)`
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
     /// Returns the value that would be obtained by taking the *successor* of `self`,
@@ -35,6 +43,10 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///
     /// Note: `step_count == 1` is a common case,
     /// used for example in `Iterator::next` for ranges.
+    ///
+    /// This must hold for any `a`, `n`, and `m` where `n + m` doesn’t overflow:
+    ///
+    /// * `a.forward(n).and_then(|x| x.forward(m)) == a.forward(n + m)`
     fn forward(&self, step_count: usize) -> Option<Self>;
 
     /// Returns the value that would be obtained by taking the *predecessor* of `self`,
@@ -44,6 +56,10 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///
     /// Note: `step_count == 1` is a common case,
     /// used for example in `Iterator::next_back` for ranges.
+    ///
+    /// This must hold for any `a`, `n`, and `m` where `n + m` doesn’t overflow:
+    ///
+    /// * `a.backward(n).and_then(|x| x.backward(m)) == a.backward(n + m)`
     fn backward(&self, step_count: usize) -> Option<Self>;
 }
 
@@ -58,11 +74,9 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait",
                        reason = "recently redesigned",
                        issue = "42168")]
-            impl Step for $narrower_unsigned {
+            unsafe impl Step for $narrower_unsigned {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
-                    // this being correct!
                     if *start < *end {
                         // This relies on $narrower_unsigned <= usize
                         Some((*end - *start) as usize)
@@ -91,11 +105,9 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait",
                        reason = "recently redesigned",
                        issue = "42168")]
-            impl Step for $narrower_signed {
+            unsafe impl Step for $narrower_signed {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
-                    // this being correct!
                     if *start < *end {
                         // This relies on $narrower_signed <= usize
                         //
@@ -157,11 +169,9 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait",
                        reason = "recently redesigned",
                        issue = "42168")]
-            impl Step for $wider_unsigned {
+            unsafe impl Step for $wider_unsigned {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
-                    // this being correct!
                     if *start < *end {
                         usize::try_from(*end - *start).ok()
                     } else {
@@ -183,11 +193,9 @@ macro_rules! step_integer_impls {
             #[unstable(feature = "step_trait",
                        reason = "recently redesigned",
                        issue = "42168")]
-            impl Step for $wider_signed {
+            unsafe impl Step for $wider_signed {
                 #[inline]
                 fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-                    // NOTE: the safety of `unsafe impl TrustedLen` depends on
-                    // this being correct!
                     if *start < *end {
                         match end.checked_sub(*start) {
                             Some(diff) => usize::try_from(diff).ok(),
@@ -245,22 +253,6 @@ macro_rules! range_incl_exact_iter_impl {
                    reason = "recently added, follows RFC",
                    issue = "28237")]
         impl ExactSizeIterator for ops::RangeInclusive<$t> { }
-    )*)
-}
-
-macro_rules! range_trusted_len_impl {
-    ($($t:ty)*) => ($(
-        #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl TrustedLen for ops::Range<$t> { }
-    )*)
-}
-
-macro_rules! range_incl_trusted_len_impl {
-    ($($t:ty)*) => ($(
-        #[unstable(feature = "inclusive_range",
-                   reason = "recently added, follows RFC",
-                   issue = "28237")]
-        unsafe impl TrustedLen for ops::RangeInclusive<$t> { }
     )*)
 }
 
@@ -335,19 +327,6 @@ range_incl_exact_iter_impl! {
     i8
 }
 
-// These macros generate `TrustedLen` impls.
-//
-// They need to guarantee that .size_hint() is either exact, or that
-// the upper bound is None when it does not fit the type limits.
-range_trusted_len_impl! {
-    usize u8 u16 u32 u64 u128
-    isize i8 i16 i32 i64 i128
-}
-range_incl_trusted_len_impl! {
-    usize u8 u16 u32 u64 u128
-    isize i8 i16 i32 i64 i128
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
@@ -361,6 +340,9 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
         }
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T: Step> TrustedLen for ops::Range<T> {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<A: Step> FusedIterator for ops::Range<A> {}
@@ -506,6 +488,11 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         }
     }
 }
+
+#[unstable(feature = "inclusive_range",
+           reason = "recently added, follows RFC",
+           issue = "28237")]
+unsafe impl<T: Step> TrustedLen for ops::RangeInclusive<T> { }
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}
