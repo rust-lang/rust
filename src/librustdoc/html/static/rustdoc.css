@@ -658,6 +658,11 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	padding-left: 10px;
 }
 
+.item-spacer {
+	width: 100%;
+	height: 12px;
+}
+
 span.since {
 	position: initial;
 	font-size: 20px;
