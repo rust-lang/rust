@@ -11,13 +11,11 @@ warning: Breaking changes in `Abc`
 28 | |     }
    | |_____^
    |
-note: TechnicallyBreaking (TraitItemAdded { defaulted: true })
-  --> $REPO_PATH/tests/examples/trait.rs:24:9
+warning: Breaking (TraitItemRemoved { defaulted: false })
+  --> $REPO_PATH/tests/examples/trait.rs:5:9
    |
-24 | /         fn test6() -> u8 {
-25 | |             0
-26 | |         }
-   | |_________^
+5  |         fn test2(&self) -> u8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 warning: Breaking (TraitItemRemoved { defaulted: true })
   --> $REPO_PATH/tests/examples/trait.rs:9:9
    |
@@ -25,16 +23,18 @@ warning: Breaking (TraitItemRemoved { defaulted: true })
 10 | |             0
 11 | |         }
    | |_________^
-warning: Breaking (TraitItemRemoved { defaulted: false })
-  --> $REPO_PATH/tests/examples/trait.rs:5:9
-   |
-5  |         fn test2(&self) -> u8;
-   |         ^^^^^^^^^^^^^^^^^^^^^^
 warning: Breaking (TraitItemAdded { defaulted: false })
   --> $REPO_PATH/tests/examples/trait.rs:20:9
    |
 20 |         fn test3(&self) -> u8;
    |         ^^^^^^^^^^^^^^^^^^^^^^
+note: TechnicallyBreaking (TraitItemAdded { defaulted: true })
+  --> $REPO_PATH/tests/examples/trait.rs:24:9
+   |
+24 | /         fn test6() -> u8 {
+25 | |             0
+26 | |         }
+   | |_________^
 
 warning: Breaking changes in `test7`
   --> $REPO_PATH/tests/examples/trait.rs:27:9

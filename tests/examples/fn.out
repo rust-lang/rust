@@ -5,7 +5,7 @@ warning: Breaking changes in `bcd`
 26 |     pub fn bcd(_: u8) {}
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: Breaking (FnArityChanged)
+   = warning: Breaking (TypeChanged { error: ArgCount })
 
 warning: Breaking changes in `cde`
   --> $REPO_PATH/tests/examples/fn.rs:28:5
@@ -23,7 +23,7 @@ warning: Breaking changes in `def`
 32 |     pub fn def() {}
    |     ^^^^^^^^^^^^^^^
    |
-   = warning: Breaking (FnArityChanged)
+   = warning: Breaking (TypeChanged { error: ArgCount })
 
 warning: NonBreaking changes in `efg`
   --> $REPO_PATH/tests/examples/fn.rs:36:5

@@ -153,14 +153,10 @@ pub enum BinaryChangeType<'tcx> {
     VariantFieldRemoved { public: bool, total_public: bool },
     /// A variant has changed it's style.
     VariantStyleChanged { now_struct: bool, total_private: bool },
-    /// A function changed it's variadicity.
-    FnVariadicChanged,
-    /// A function changed it's unsafety.
-    FnUnsafetyChanged { now_unsafe: bool },
-    /// A function's ABI has changed.
-    FnAbiChanged,
-    /// A function's arity changed.
-    FnArityChanged,
+    /// A function has changed it's constness.
+    FnConstChanged { now_const: bool },
+    /// A method has changed whether it can be invoked as a method call.
+    MethodSelfChanged { now_self: bool },
     /// A trait's definition added an item.
     TraitItemAdded { defaulted: bool },
     /// A trait's definition removed an item.
@@ -189,17 +185,16 @@ impl<'tcx> BinaryChangeType<'tcx> {
             VariantFieldRemoved { .. } |
             VariantStyleChanged { .. } |
             TypeChanged { .. } |
-            FnVariadicChanged |
-            FnUnsafetyChanged { now_unsafe: true } |
-            FnAbiChanged |
-            FnArityChanged |
+            FnConstChanged { now_const: false } |
+            MethodSelfChanged { now_self: false } |
             TraitItemAdded { defaulted: false } |
             TraitItemRemoved { .. } |
             Unknown => Breaking,
+            MethodSelfChanged { now_self: true } |
             TraitItemAdded { defaulted: true } |
             ItemMadePublic => TechnicallyBreaking,
             TypeParameterAdded { defaulted: true } |
-            FnUnsafetyChanged { now_unsafe: false } => NonBreaking,
+            FnConstChanged { now_const: true } => NonBreaking,
         }
     }
 }

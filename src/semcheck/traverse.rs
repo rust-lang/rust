@@ -12,7 +12,7 @@
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::ty::{Region, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, Region, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::{Subst, Substs};
@@ -23,7 +23,7 @@ use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 
-use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 /// The main entry point to our analysis passes.
 ///
@@ -211,37 +211,26 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
 /// Given two fn items, perform structural checks.
 fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Def, new: Def) {
-    use rustc::hir::Unsafety::Unsafe;
-
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
-    let old_ty = tcx.type_of(old_def_id);
-    let new_ty = tcx.type_of(new_def_id);
+    let old_const = tcx.is_const_fn(old_def_id);
+    let new_const = tcx.is_const_fn(new_def_id);
 
-    let old_poly_sig = old_ty.fn_sig(tcx);
-    let new_poly_sig = new_ty.fn_sig(tcx);
+    if old_const != new_const {
+        changes.add_binary(FnConstChanged { now_const: new_const }, old_def_id, None);
+    }
+}
 
-    let old_sig = old_poly_sig.skip_binder();
-    let new_sig = new_poly_sig.skip_binder();
-
-    if old_sig.variadic != new_sig.variadic {
-        changes.add_binary(FnVariadicChanged, old_def_id, None);
+/// Given two method items, perform structural checks.
+fn diff_method(changes: &mut ChangeSet, tcx: TyCtxt, old: AssociatedItem, new: AssociatedItem) {
+    if old.method_has_self_argument != new.method_has_self_argument {
+        changes.add_binary(MethodSelfChanged { now_self: new.method_has_self_argument },
+                           old.def_id,
+                           None);
     }
 
-    if old_sig.unsafety != new_sig.unsafety {
-        let change = FnUnsafetyChanged { now_unsafe: new_sig.unsafety == Unsafe };
-        changes.add_binary(change, old_def_id, None);
-    }
-
-    if old_sig.abi != new_sig.abi {
-        // TODO: more sophisticated comparison
-        changes.add_binary(FnAbiChanged, old_def_id, None);
-    }
-
-    if old_sig.inputs_and_output.len() != new_sig.inputs_and_output.len() {
-        changes.add_binary(FnArityChanged, old_def_id, None);
-    }
+    diff_fn(changes, tcx, Def::Method(old.def_id), Def::Method(new.def_id));
 }
 
 /// Given two ADT items, perform structural checks.
@@ -368,7 +357,7 @@ fn diff_traits(changes: &mut ChangeSet,
     let _old_unsafety = tcx.trait_def(old).unsafety;
     let _new_unsafety = tcx.trait_def(new).unsafety;
 
-    let mut items = HashMap::new();
+    let mut items = BTreeMap::new();
 
     for old_did in tcx.associated_item_def_ids(old).iter() {
         let item = tcx.associated_item(*old_did);
@@ -385,12 +374,13 @@ fn diff_traits(changes: &mut ChangeSet,
 
     for (name, item_pair) in items.iter() {
         match *item_pair {
-            (Some((old_def, _)), Some((new_def, _))) => {
+            (Some((old_def, old_item)), Some((new_def, new_item))) => {
                 id_mapping.add_trait_item(old_def, new_def);
                 changes.new_binary(old_def.def_id(),
                                    *name,
                                    tcx.def_span(new_def.def_id()),
                                    true);
+                diff_method(changes, tcx, old_item, new_item);
             },
             (Some((_, old_item)), None) => {
                 let change_type = TraitItemRemoved {
