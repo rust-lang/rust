@@ -1836,13 +1836,6 @@ impl Rewrite for ast::Arm {
     }
 }
 
-// A pattern is simple if it is very short or it is short-ish and just a path.
-// E.g. `Foo::Bar` is simple, but `Foo(..)` is not.
-fn pat_is_simple(pat_str: &str) -> bool {
-    pat_str.len() <= 16 ||
-        (pat_str.len() <= 24 && pat_str.chars().all(|c| c.is_alphabetic() || c == ':'))
-}
-
 // The `if ...` guard on a match arm.
 fn rewrite_guard(
     context: &RewriteContext,
@@ -1906,55 +1899,34 @@ fn rewrite_pat_expr(
     shape: Shape,
 ) -> Option<String> {
     debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, pat, expr);
-    let mut pat_string = String::new();
-    let mut result = match pat {
-        Some(pat) => {
-            let matcher = if matcher.is_empty() {
-                matcher.to_owned()
-            } else {
-                format!("{} ", matcher)
-            };
-            let pat_shape =
-                try_opt!(try_opt!(shape.offset_left(matcher.len())).sub_width(connector.len()));
-            pat_string = try_opt!(pat.rewrite(context, pat_shape));
-            format!("{}{}{}", matcher, pat_string, connector)
-        }
-        None => String::new(),
-    };
+    if let Some(pat) = pat {
+        let matcher = if matcher.is_empty() {
+            matcher.to_owned()
+        } else {
+            format!("{} ", matcher)
+        };
+        let pat_shape =
+            try_opt!(try_opt!(shape.offset_left(matcher.len())).sub_width(connector.len()));
+        let pat_string = try_opt!(pat.rewrite(context, pat_shape));
+        let result = format!("{}{}{}", matcher, pat_string, connector);
+        return rewrite_assign_rhs(context, result, expr, shape);
+    }
 
-    // Consider only the last line of the pat string.
-    let extra_offset = extra_offset(&result, shape);
-
+    let expr_rw = expr.rewrite(context, shape);
     // The expression may (partially) fit on the current line.
-    if shape.width > extra_offset + 1 {
-        let spacer = if pat.is_some() { " " } else { "" };
-
-        let expr_shape = try_opt!(shape.offset_left(extra_offset + spacer.len()));
-        let expr_rewrite = expr.rewrite(context, expr_shape);
-
-        if let Some(expr_string) = expr_rewrite {
-            if pat.is_none() || pat_is_simple(&pat_string) || !expr_string.contains('\n') {
-                result.push_str(spacer);
-                result.push_str(&expr_string);
-                return Some(result);
-            }
-        }
+    // We do not allow splitting between `if` and condition.
+    if keyword == "if" || expr_rw.is_some() {
+        return expr_rw;
     }
-
-    if pat.is_none() && keyword == "if" {
-        return None;
-    }
-
-    let nested_indent = shape.indent.block_only().block_indent(context.config);
 
     // The expression won't fit on the current line, jump to next.
-    result.push('\n');
-    result.push_str(&nested_indent.to_string(context.config));
-
-    let expr_rewrite = expr.rewrite(&context, Shape::indented(nested_indent, context.config));
-    result.push_str(&try_opt!(expr_rewrite));
-
-    Some(result)
+    let nested_shape = shape
+        .block()
+        .block_indent(context.config.tab_spaces())
+        .with_max_width(context.config);
+    let nested_indent_str = nested_shape.indent.to_string(context.config);
+    expr.rewrite(context, nested_shape)
+        .map(|expr_rw| format!("\n{}{}", nested_indent_str, expr_rw))
 }
 
 fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Option<String> {
