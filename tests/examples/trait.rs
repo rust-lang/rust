@@ -10,6 +10,8 @@ pub mod old {
             0
         }
         fn test7() -> u8;
+        fn test8(&self) -> u8;
+        fn test9(_: &Self) -> u8;
     }
 }
 
@@ -25,5 +27,7 @@ pub mod new {
             0
         }
         fn test7() -> u16;
+        fn test8(_: &Self) -> u8;
+        fn test9(&self) -> u8;
     }
 }

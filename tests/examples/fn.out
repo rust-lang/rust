@@ -1,57 +1,77 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
 warning: Breaking changes in `bcd`
-  --> $REPO_PATH/tests/examples/fn.rs:26:5
+  --> $REPO_PATH/tests/examples/fn.rs:36:5
    |
-26 |     pub fn bcd(_: u8) {}
+36 |     pub fn bcd(_: u8) {}
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = warning: Breaking (TypeChanged { error: ArgCount })
 
 warning: Breaking changes in `cde`
-  --> $REPO_PATH/tests/examples/fn.rs:28:5
+  --> $REPO_PATH/tests/examples/fn.rs:38:5
    |
-28 | /     pub fn cde() -> u16 {
-29 | |         0xcde
-30 | |     }
+38 | /     pub fn cde() -> u16 {
+39 | |         0xcde
+40 | |     }
    | |_____^
    |
    = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: (), found: u16 }) })
 
 warning: Breaking changes in `def`
-  --> $REPO_PATH/tests/examples/fn.rs:32:5
+  --> $REPO_PATH/tests/examples/fn.rs:42:5
    |
-32 |     pub fn def() {}
+42 |     pub fn def() {}
    |     ^^^^^^^^^^^^^^^
    |
    = warning: Breaking (TypeChanged { error: ArgCount })
 
 warning: NonBreaking changes in `efg`
-  --> $REPO_PATH/tests/examples/fn.rs:36:5
+  --> $REPO_PATH/tests/examples/fn.rs:44:5
    |
-36 | /     pub fn efg<A>(a: A, _: A) -> A {
-37 | |         a
-38 | |     }
+44 | /     pub fn efg<A>(a: A, _: A) -> A {
+45 | |         a
+46 | |     }
    | |_____^
    |
    = note: NonBreaking (TypeParameterAdded { defaulted: true })
 
 warning: Breaking changes in `fgh`
-  --> $REPO_PATH/tests/examples/fn.rs:40:5
+  --> $REPO_PATH/tests/examples/fn.rs:48:5
    |
-40 | /     pub fn fgh(a: u8, _: u16) -> u8 {
-41 | |         a
-42 | |     }
+48 | /     pub fn fgh(a: u8, _: u16) -> u8 {
+49 | |         a
+50 | |     }
    | |_____^
    |
    = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
 
 warning: Breaking changes in `ghi`
-  --> $REPO_PATH/tests/examples/fn.rs:44:5
+  --> $REPO_PATH/tests/examples/fn.rs:52:5
    |
-44 | /     pub fn ghi(a: u8, _: u8) -> u16 {
-45 | |         a as u16
-46 | |     }
+52 | /     pub fn ghi(a: u8, _: u8) -> u16 {
+53 | |         a as u16
+54 | |     }
    | |_____^
    |
    = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: NonBreaking changes in `hij`
+  --> $REPO_PATH/tests/examples/fn.rs:56:5
+   |
+56 | /     pub const fn hij() -> u8 {
+57 | |         0
+58 | |     }
+   | |_____^
+   |
+   = note: NonBreaking (FnConstChanged { now_const: true })
+
+warning: Breaking changes in `ijk`
+  --> $REPO_PATH/tests/examples/fn.rs:60:5
+   |
+60 | /     pub fn ijk() -> u8 {
+61 | |         0
+62 | |     }
+   | |_____^
+   |
+   = warning: Breaking (FnConstChanged { now_const: false })
 

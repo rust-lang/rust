@@ -1,3 +1,5 @@
+#![feature(const_fn)]
+
 pub mod old {
     pub fn abc() {}
 
@@ -18,6 +20,14 @@ pub mod old {
     pub fn ghi(a: u8, _: u8) -> u8 {
         a
     }
+
+    pub fn hij() -> u8 {
+        0
+    }
+
+    pub const fn ijk() -> u8 {
+        0
+    }
 }
 
 pub mod new {
@@ -31,8 +41,6 @@ pub mod new {
 
     pub fn def() {}
 
-    // TODO: this should be non-breaking (even after we make TypeParameterAdded something
-    // that is not `Breaking`)
     pub fn efg<A>(a: A, _: A) -> A {
         a
     }
@@ -43,5 +51,13 @@ pub mod new {
 
     pub fn ghi(a: u8, _: u8) -> u16 {
         a as u16
+    }
+
+    pub const fn hij() -> u8 {
+        0
+    }
+
+    pub fn ijk() -> u8 {
+        0
     }
 }
