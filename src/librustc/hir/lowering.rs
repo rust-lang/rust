@@ -1844,10 +1844,10 @@ impl<'a> LoweringContext<'a> {
                 let f = P(self.lower_expr(f));
                 hir::ExprCall(f, args.iter().map(|x| self.lower_expr(x)).collect())
             }
-            ExprKind::MethodCall(i, ref tps, ref args) => {
-                let tps = tps.iter().map(|x| self.lower_ty(x)).collect();
+            ExprKind::MethodCall(ref seg, ref args) => {
+                let hir_seg = self.lower_path_segment(e.span, seg, ParamMode::Optional, 0);
                 let args = args.iter().map(|x| self.lower_expr(x)).collect();
-                hir::ExprMethodCall(respan(i.span, self.lower_ident(i.node)), tps, args)
+                hir::ExprMethodCall(hir_seg, seg.span, args)
             }
             ExprKind::Binary(binop, ref lhs, ref rhs) => {
                 let binop = self.lower_binop(binop);

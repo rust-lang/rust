@@ -972,19 +972,16 @@ pub enum Expr_ {
     /// The first field resolves to the function itself (usually an `ExprPath`),
     /// and the second field is the list of arguments
     ExprCall(P<Expr>, HirVec<Expr>),
-    /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
+    /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
-    /// The `Spanned<Name>` is the identifier for the method name.
-    /// The vector of `Ty`s are the ascripted type parameters for the method
+    /// The `PathSegment`/`Span` represent the method name and its generic arguments
     /// (within the angle brackets).
-    ///
-    /// The first element of the vector of `Expr`s is the expression that
-    /// evaluates to the object on which the method is being called on (the
-    /// receiver), and the remaining elements are the rest of the arguments.
-    ///
+    /// The first element of the vector of `Expr`s is the expression that evaluates
+    /// to the object on which the method is being called on (the receiver),
+    /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(Spanned<Name>, HirVec<P<Ty>>, HirVec<Expr>),
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    ExprMethodCall(PathSegment, Span, HirVec<Expr>),
     /// A tuple (`(a, b, c ,d)`)
     ExprTup(HirVec<Expr>),
     /// A binary operation (For example: `a + b`, `a * b`)

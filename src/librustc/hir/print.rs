@@ -1188,18 +1188,17 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_method_call(&mut self,
-                              name: Spanned<ast::Name>,
-                              tys: &[P<hir::Ty>],
+                              segment: &hir::PathSegment,
                               args: &[hir::Expr])
                               -> io::Result<()> {
         let base_args = &args[1..];
         self.print_expr(&args[0])?;
         word(&mut self.s, ".")?;
-        self.print_name(name.node)?;
-        if !tys.is_empty() {
-            word(&mut self.s, "::<")?;
-            self.commasep(Inconsistent, tys, |s, ty| s.print_type(&ty))?;
-            word(&mut self.s, ">")?;
+        self.print_name(segment.name)?;
+        if !segment.parameters.lifetimes().is_empty() ||
+                !segment.parameters.types().is_empty() ||
+                !segment.parameters.bindings().is_empty() {
+            self.print_path_parameters(&segment.parameters, true)?;
         }
         self.print_call_post(base_args)
     }
@@ -1254,8 +1253,8 @@ impl<'a> State<'a> {
             hir::ExprCall(ref func, ref args) => {
                 self.print_expr_call(&func, args)?;
             }
-            hir::ExprMethodCall(name, ref tys, ref args) => {
-                self.print_expr_method_call(name, &tys[..], args)?;
+            hir::ExprMethodCall(ref segment, _, ref args) => {
+                self.print_expr_method_call(segment, args)?;
             }
             hir::ExprBinary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, &lhs, &rhs)?;

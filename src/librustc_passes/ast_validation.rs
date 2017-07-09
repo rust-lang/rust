@@ -125,6 +125,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span);
             }
+            ExprKind::MethodCall(ref segment, ..) => {
+                if let Some(ref params) = segment.parameters {
+                    match **params {
+                        PathParameters::AngleBracketed(ref param_data) => {
+                            if !param_data.bindings.is_empty() {
+                                let binding_span = param_data.bindings[0].span;
+                                self.err_handler().span_err(binding_span,
+                                    "type bindings cannot be used in method calls");
+                            }
+                        }
+                        PathParameters::Parenthesized(..) => {
+                            self.err_handler().span_err(expr.span,
+                                "parenthesized parameters cannot be used on method calls");
+                        }
+                    }
+                }
+            }
             _ => {}
         }
 

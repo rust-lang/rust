@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi::{self, Abi};
-use ast::{AttrStyle, BareFnTy};
+use ast::{AngleBracketedParameterData, AttrStyle, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
@@ -1831,11 +1831,7 @@ impl<'a> Parser<'a> {
             let parameters = if parse_generics && self.eat_lt() {
                 let (lifetimes, types, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
-                ast::AngleBracketedParameterData {
-                    lifetimes: lifetimes,
-                    types: types,
-                    bindings: bindings,
-                }.into()
+                AngleBracketedParameterData { lifetimes, types, bindings }.into()
             } else if self.eat(&token::OpenDelim(token::Paren)) {
                 let lo = self.prev_span;
 
@@ -1898,11 +1894,7 @@ impl<'a> Parser<'a> {
                 segments.push(PathSegment {
                     identifier: identifier,
                     span: ident_span,
-                    parameters: ast::AngleBracketedParameterData {
-                        lifetimes: lifetimes,
-                        types: types,
-                        bindings: bindings,
-                    }.into(),
+                    parameters: AngleBracketedParameterData { lifetimes, types, bindings }.into(),
                 });
 
                 // Consumed `a::b::<T,U>`, check for `::` before proceeding
@@ -2021,14 +2013,6 @@ impl<'a> Parser<'a> {
 
     pub fn mk_call(&mut self, f: P<Expr>, args: Vec<P<Expr>>) -> ast::ExprKind {
         ExprKind::Call(f, args)
-    }
-
-    fn mk_method_call(&mut self,
-                      ident: ast::SpannedIdent,
-                      tps: Vec<P<Ty>>,
-                      args: Vec<P<Expr>>)
-                      -> ast::ExprKind {
-        ExprKind::MethodCall(ident, tps, args)
     }
 
     pub fn mk_index(&mut self, expr: P<Expr>, idx: P<Expr>) -> ast::ExprKind {
@@ -2460,7 +2444,7 @@ impl<'a> Parser<'a> {
     // parsing into an expression.
     fn parse_dot_suffix(&mut self, ident: Ident, ident_span: Span, self_value: P<Expr>, lo: Span)
                         -> PResult<'a, P<Expr>> {
-        let (_, tys, bindings) = if self.eat(&token::ModSep) {
+        let (lifetimes, types, bindings) = if self.eat(&token::ModSep) {
             self.expect_lt()?;
             let args = self.parse_generic_args()?;
             self.expect_gt()?;
@@ -2468,11 +2452,6 @@ impl<'a> Parser<'a> {
         } else {
             (Vec::new(), Vec::new(), Vec::new())
         };
-
-        if !bindings.is_empty() {
-            let prev_span = self.prev_span;
-            self.span_err(prev_span, "type bindings are only permitted on trait paths");
-        }
 
         Ok(match self.token {
             // expr.f() method call.
@@ -2486,17 +2465,20 @@ impl<'a> Parser<'a> {
                 let hi = self.prev_span;
 
                 es.insert(0, self_value);
-                let id = respan(ident_span.to(ident_span), ident);
-                let nd = self.mk_method_call(id, tys, es);
-                self.mk_expr(lo.to(hi), nd, ThinVec::new())
+                let seg = PathSegment {
+                    identifier: ident,
+                    span: ident_span.to(ident_span),
+                    parameters: AngleBracketedParameterData { lifetimes, types, bindings }.into(),
+                };
+                self.mk_expr(lo.to(hi), ExprKind::MethodCall(seg, es), ThinVec::new())
             }
             // Field access.
             _ => {
-                if !tys.is_empty() {
-                    let prev_span = self.prev_span;
-                    self.span_err(prev_span,
-                                  "field expressions may not \
-                                   have type parameters");
+                if let Some(generic_arg_span) = lifetimes.get(0).map(|x| x.span).or_else(||
+                                                types.get(0).map(|x| x.span)).or_else(||
+                                                bindings.get(0).map(|x| x.span)) {
+                    self.span_err(generic_arg_span,
+                                  "field expressions may not have generic arguments");
                 }
 
                 let id = respan(ident_span.to(ident_span), ident);

@@ -626,7 +626,7 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprBox(sub),
     ExprArray(subs),
     ExprCall(callee, args),
-    ExprMethodCall(name, ts, args),
+    ExprMethodCall(segment, span, args),
     ExprTup(fields),
     ExprBinary(op, lhs, rhs),
     ExprUnary(op, operand),
