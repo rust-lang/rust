@@ -1,0 +1,46 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `Abc`
+  --> $REPO_PATH/tests/examples/trait.rs:17:5
+   |
+17 | /     pub trait Abc {
+18 | |         type A;
+19 | |         fn test(&self) -> u8;
+20 | |         fn test3(&self) -> u8;
+...  |
+27 | |         fn test7() -> u16;
+28 | |     }
+   | |_____^
+   |
+note: TechnicallyBreaking (TraitItemAdded { defaulted: true })
+  --> $REPO_PATH/tests/examples/trait.rs:24:9
+   |
+24 | /         fn test6() -> u8 {
+25 | |             0
+26 | |         }
+   | |_________^
+warning: Breaking (TraitItemRemoved { defaulted: true })
+  --> $REPO_PATH/tests/examples/trait.rs:9:9
+   |
+9  | /         fn test5() -> u8 {
+10 | |             0
+11 | |         }
+   | |_________^
+warning: Breaking (TraitItemRemoved { defaulted: false })
+  --> $REPO_PATH/tests/examples/trait.rs:5:9
+   |
+5  |         fn test2(&self) -> u8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+warning: Breaking (TraitItemAdded { defaulted: false })
+  --> $REPO_PATH/tests/examples/trait.rs:20:9
+   |
+20 |         fn test3(&self) -> u8;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Breaking changes in `test7`
+  --> $REPO_PATH/tests/examples/trait.rs:27:9
+   |
+27 |         fn test7() -> u16;
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
