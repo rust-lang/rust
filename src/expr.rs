@@ -2914,49 +2914,54 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
     ex: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    let mut result = lhs.into();
-    let last_line_width = last_line_width(&result) -
-        if result.contains('\n') {
+    let lhs = lhs.into();
+    let last_line_width = last_line_width(&lhs) -
+        if lhs.contains('\n') {
             shape.indent.width()
         } else {
             0
         };
     // 1 = space between operator and rhs.
     let orig_shape = try_opt!(shape.offset_left(last_line_width + 1));
-    let rhs = ex.rewrite(context, orig_shape);
+    let rhs = try_opt!(choose_rhs(
+        context,
+        ex,
+        shape,
+        ex.rewrite(context, orig_shape)
+    ));
+    Some(lhs + &rhs)
+}
 
-    match rhs {
-        Some(ref new_str) if !new_str.contains('\n') => {
-            result.push(' ');
-            result.push_str(new_str);
-        }
+fn choose_rhs(
+    context: &RewriteContext,
+    expr: &ast::Expr,
+    shape: Shape,
+    orig_rhs: Option<String>,
+) -> Option<String> {
+    match orig_rhs {
+        Some(ref new_str) if !new_str.contains('\n') => Some(format!(" {}", new_str)),
         _ => {
             // Expression did not fit on the same line as the identifier.
             // Try splitting the line and see if that works better.
-            let new_shape = try_opt!(shape.block_left(context.config.tab_spaces()));
-            let new_rhs = ex.rewrite(context, new_shape);
+            let new_shape = try_opt!(
+                Shape::indented(
+                    shape.block().indent.block_indent(context.config),
+                    context.config,
+                ).sub_width(shape.rhs_overhead(context.config))
+            );
+            let new_rhs = expr.rewrite(context, new_shape);
+            let new_indent_str = &new_shape.indent.to_string(context.config);
 
-            // FIXME: DRY!
-            match (rhs, new_rhs) {
-                (Some(ref orig_rhs), Some(ref replacement_rhs))
-                    if prefer_next_line(orig_rhs, replacement_rhs) => {
-                    result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
-                    result.push_str(replacement_rhs);
+            match (orig_rhs, new_rhs) {
+                (Some(ref orig_rhs), Some(ref new_rhs)) if prefer_next_line(orig_rhs, new_rhs) => {
+                    Some(format!("\n{}{}", new_indent_str, new_rhs))
                 }
-                (None, Some(ref final_rhs)) => {
-                    result.push_str(&format!("\n{}", new_shape.indent.to_string(context.config)));
-                    result.push_str(final_rhs);
-                }
-                (None, None) => return None,
-                (Some(ref orig_rhs), _) => {
-                    result.push(' ');
-                    result.push_str(orig_rhs);
-                }
+                (None, Some(ref new_rhs)) => Some(format!("\n{}{}", new_indent_str, new_rhs)),
+                (None, None) => None,
+                (Some(ref orig_rhs), _) => Some(format!(" {}", orig_rhs)),
             }
         }
     }
-
-    Some(result)
 }
 
 fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str) -> bool {
