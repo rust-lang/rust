@@ -141,23 +141,23 @@ const METADATA_HASHES_FILENAME: &'static str = "metadata.bin";
 // case-sensitive (as opposed to base64, for example).
 const INT_ENCODE_BASE: u64 = 36;
 
-pub fn dep_graph_path(sess: &Session) -> PathBuf {
+pub(crate) fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
 }
 
-pub fn work_products_path(sess: &Session) -> PathBuf {
+pub(crate) fn work_products_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
 }
 
-pub fn metadata_hash_export_path(sess: &Session) -> PathBuf {
+pub(crate) fn metadata_hash_export_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, METADATA_HASHES_FILENAME)
 }
 
-pub fn metadata_hash_import_path(import_session_dir: &Path) -> PathBuf {
+pub(crate) fn metadata_hash_import_path(import_session_dir: &Path) -> PathBuf {
     import_session_dir.join(METADATA_HASHES_FILENAME)
 }
 
-pub fn lock_file_path(session_dir: &Path) -> PathBuf {
+pub(crate) fn lock_file_path(session_dir: &Path) -> PathBuf {
     let crate_dir = session_dir.parent().unwrap();
 
     let directory_name = session_dir.file_name().unwrap().to_string_lossy();
@@ -176,7 +176,7 @@ pub fn lock_file_path(session_dir: &Path) -> PathBuf {
              .with_extension(&LOCK_FILE_EXT[1..])
 }
 
-pub fn in_incr_comp_dir_sess(sess: &Session, file_name: &str) -> PathBuf {
+pub(crate) fn in_incr_comp_dir_sess(sess: &Session, file_name: &str) -> PathBuf {
     in_incr_comp_dir(&sess.incr_comp_session_dir(), file_name)
 }
 
@@ -193,7 +193,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// a dep-graph and work products from a previous session.
 /// If the call fails, the fn may leave behind an invalid session directory.
 /// The garbage collection will take care of it.
-pub fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
+pub(crate) fn prepare_session_directory(tcx: TyCtxt) -> Result<bool, ()> {
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
@@ -375,7 +375,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     let _ = garbage_collect_session_directories(sess);
 }
 
-pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
+pub(crate) fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
     let sess_dir_iterator = sess.incr_comp_session_dir().read_dir()?;
     for entry in sess_dir_iterator {
         let entry = entry?;
@@ -615,7 +615,7 @@ fn crate_path_tcx(tcx: TyCtxt, cnum: CrateNum) -> PathBuf {
 /// crate's (name, disambiguator) pair. The metadata hashes are only valid for
 /// the exact version of the binary we are reading from now (i.e. the hashes
 /// are part of the dependency graph of a specific compilation session).
-pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: CrateNum) -> Option<PathBuf> {
+pub(crate) fn find_metadata_hashes_for(tcx: TyCtxt, cnum: CrateNum) -> Option<PathBuf> {
     let crate_directory = crate_path_tcx(tcx, cnum);
 
     if !crate_directory.exists() {
@@ -697,7 +697,7 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
     timestamp < SystemTime::now() - Duration::from_secs(10)
 }
 
-pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
+pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
 
     let session_directory = sess.incr_comp_session_dir();

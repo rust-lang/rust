@@ -18,7 +18,7 @@ use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
-pub fn check_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub(crate) fn check_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut overlap = OverlapChecker { tcx };
 
     // this secondary walk specifically checks for some other cases,
@@ -26,7 +26,7 @@ pub fn check_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir.krate().visit_all_item_likes(&mut overlap);
 }
 
-pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
+pub(crate) fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
     let impl_def_id = tcx.hir.local_def_id(node_id);
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
     let trait_def_id = trait_ref.def_id;

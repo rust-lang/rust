@@ -23,7 +23,7 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 /// Pointer to a registrar function.
-pub type PluginRegistrarFun =
+pub(crate) type PluginRegistrarFun =
     fn(&mut Registry);
 
 pub struct PluginRegistrar {

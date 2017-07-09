@@ -34,13 +34,13 @@ use std::borrow::ToOwned;
 pub struct Registry<'a> {
     /// Compiler session. Useful if you want to emit diagnostic messages
     /// from the plugin registrar.
-    pub sess: &'a Session,
+    pub(crate) sess: &'a Session,
 
     #[doc(hidden)]
     pub args_hidden: Option<Vec<ast::NestedMetaItem>>,
 
     #[doc(hidden)]
-    pub krate_span: Span,
+    pub(crate) krate_span: Span,
 
     #[doc(hidden)]
     pub syntax_exts: Vec<NamedSyntaxExtension>,

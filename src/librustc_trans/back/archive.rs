@@ -23,19 +23,19 @@ use llvm::{self, ArchiveKind};
 use metadata::METADATA_FILENAME;
 use rustc::session::Session;
 
-pub struct ArchiveConfig<'a> {
-    pub sess: &'a Session,
-    pub dst: PathBuf,
-    pub src: Option<PathBuf>,
-    pub lib_search_paths: Vec<PathBuf>,
-    pub ar_prog: String,
-    pub command_path: OsString,
+pub(crate) struct ArchiveConfig<'a> {
+    pub(crate) sess: &'a Session,
+    pub(crate) dst: PathBuf,
+    pub(crate) src: Option<PathBuf>,
+    pub(crate) lib_search_paths: Vec<PathBuf>,
+    pub(crate) ar_prog: String,
+    pub(crate) command_path: OsString,
 }
 
 /// Helper for adding many files to an archive with a single invocation of
 /// `ar`.
 #[must_use = "must call build() to finish building the archive"]
-pub struct ArchiveBuilder<'a> {
+pub(crate) struct ArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
     removals: Vec<String>,
     additions: Vec<Addition>,
@@ -54,7 +54,7 @@ enum Addition {
     },
 }
 
-pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
+pub(crate) fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
                     -> PathBuf {
     // On Windows, static libraries sometimes show up as libfoo.a and other
     // times show up as foo.lib
@@ -87,7 +87,7 @@ fn is_relevant_child(c: &Child) -> bool {
 impl<'a> ArchiveBuilder<'a> {
     /// Create a new static archive, ready for modifying the archive specified
     /// by `config`.
-    pub fn new(config: ArchiveConfig<'a>) -> ArchiveBuilder<'a> {
+    pub(crate) fn new(config: ArchiveConfig<'a>) -> ArchiveBuilder<'a> {
         ArchiveBuilder {
             config: config,
             removals: Vec::new(),
@@ -98,12 +98,12 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     /// Removes a file from this archive
-    pub fn remove_file(&mut self, file: &str) {
+    pub(crate) fn remove_file(&mut self, file: &str) {
         self.removals.push(file.to_string());
     }
 
     /// Lists all files in an archive
-    pub fn src_files(&mut self) -> Vec<String> {
+    pub(crate) fn src_files(&mut self) -> Vec<String> {
         if self.src_archive().is_none() {
             return Vec::new()
         }
@@ -132,7 +132,7 @@ impl<'a> ArchiveBuilder<'a> {
 
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
-    pub fn add_native_library(&mut self, name: &str) {
+    pub(crate) fn add_native_library(&mut self, name: &str) {
         let location = find_library(name, &self.config.lib_search_paths,
                                     self.config.sess);
         self.add_archive(&location, |_| false).unwrap_or_else(|e| {
@@ -146,7 +146,7 @@ impl<'a> ArchiveBuilder<'a> {
     ///
     /// This ignores adding the bytecode from the rlib, and if LTO is enabled
     /// then the object file also isn't added.
-    pub fn add_rlib(&mut self,
+    pub(crate) fn add_rlib(&mut self,
                     rlib: &Path,
                     name: &str,
                     lto: bool,
@@ -198,7 +198,7 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     /// Adds an arbitrary file to this archive
-    pub fn add_file(&mut self, file: &Path) {
+    pub(crate) fn add_file(&mut self, file: &Path) {
         let name = file.file_name().unwrap().to_str().unwrap();
         self.additions.push(Addition::File {
             path: file.to_path_buf(),
@@ -208,13 +208,13 @@ impl<'a> ArchiveBuilder<'a> {
 
     /// Indicate that the next call to `build` should updates all symbols in
     /// the archive (run 'ar s' over it).
-    pub fn update_symbols(&mut self) {
+    pub(crate) fn update_symbols(&mut self) {
         self.should_update_symbols = true;
     }
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    pub fn build(&mut self) {
+    pub(crate) fn build(&mut self) {
         let kind = match self.llvm_archive_kind() {
             Ok(kind) => kind,
             Err(kind) => {

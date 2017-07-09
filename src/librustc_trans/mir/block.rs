@@ -39,7 +39,7 @@ use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_block(&mut self, bb: mir::BasicBlock) {
+    pub(crate) fn trans_block(&mut self, bb: mir::BasicBlock) {
         let mut bcx = self.get_builder(bb);
         let data = &self.mir[bb];
 
@@ -776,11 +776,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         })
     }
 
-    pub fn new_block(&self, name: &str) -> Builder<'a, 'tcx> {
+    pub(crate) fn new_block(&self, name: &str) -> Builder<'a, 'tcx> {
         Builder::new_block(self.ccx, self.llfn, name)
     }
 
-    pub fn get_builder(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
+    pub(crate) fn get_builder(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
         let builder = Builder::with_ccx(self.ccx);
         builder.position_at_end(self.blocks[bb]);
         builder

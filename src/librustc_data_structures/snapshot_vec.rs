@@ -76,7 +76,7 @@ impl<D: SnapshotVecDelegate> SnapshotVec<D> {
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.values.len()
     }
 
@@ -98,13 +98,13 @@ impl<D: SnapshotVecDelegate> SnapshotVec<D> {
     /// Returns a mutable pointer into the vec; whatever changes you make here cannot be undone
     /// automatically, so you should be sure call `record()` with some sort of suitable undo
     /// action.
-    pub fn get_mut(&mut self, index: usize) -> &mut D::Value {
+    pub(crate) fn get_mut(&mut self, index: usize) -> &mut D::Value {
         &mut self.values[index]
     }
 
     /// Updates the element at the given index. The old value will saved (and perhaps restored) if
     /// a snapshot is active.
-    pub fn set(&mut self, index: usize, new_elem: D::Value) {
+    pub(crate) fn set(&mut self, index: usize, new_elem: D::Value) {
         let old_elem = mem::replace(&mut self.values[index], new_elem);
         if self.in_snapshot() {
             self.undo_log.push(SetElem(index, old_elem));

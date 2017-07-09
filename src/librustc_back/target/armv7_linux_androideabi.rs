@@ -14,7 +14,7 @@ use target::{Target, TargetOptions, TargetResult};
 // See https://developer.android.com/ndk/guides/abis.html#v7a
 // for target ABI requirements.
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.features = "+v7,+thumb2,+vfp3,+d16,-neon".to_string();
     base.max_atomic_width = Some(64);

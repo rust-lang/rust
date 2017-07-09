@@ -20,7 +20,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
 
@@ -36,12 +36,12 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
-pub mod diagnostics;
+pub(crate) mod diagnostics;
 
 pub mod ast_validation;
 pub mod consts;
 pub mod hir_stats;
 pub mod loops;
-pub mod mir_stats;
+pub(crate) mod mir_stats;
 pub mod no_asm;
 pub mod static_recursion;

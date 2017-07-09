@@ -12,17 +12,17 @@ use core::nonzero::NonZero;
 use std::u32;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct NodeIndex {
+pub(crate) struct NodeIndex {
     index: NonZero<u32>,
 }
 
 impl NodeIndex {
-    pub fn new(value: usize) -> NodeIndex {
+    pub(crate) fn new(value: usize) -> NodeIndex {
         assert!(value < (u32::MAX as usize));
         unsafe { NodeIndex { index: NonZero::new((value as u32) + 1) } }
     }
 
-    pub fn get(self) -> usize {
+    pub(crate) fn get(self) -> usize {
         (self.index.get() - 1) as usize
     }
 }

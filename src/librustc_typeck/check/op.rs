@@ -23,7 +23,7 @@ use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Check a `a <op>= b`
-    pub fn check_binop_assign(&self,
+    pub(crate) fn check_binop_assign(&self,
                               expr: &'gcx hir::Expr,
                               op: hir::BinOp,
                               lhs_expr: &'gcx hir::Expr,
@@ -58,7 +58,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Check a potentially overloaded binary operator.
-    pub fn check_binop(&self,
+    pub(crate) fn check_binop(&self,
                        expr: &'gcx hir::Expr,
                        op: hir::BinOp,
                        lhs_expr: &'gcx hir::Expr,
@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         is_string_addition
     }
 
-    pub fn check_user_unop(&self,
+    pub(crate) fn check_user_unop(&self,
                            ex: &'gcx hir::Expr,
                            operand_ty: Ty<'tcx>,
                            op: hir::UnOp)

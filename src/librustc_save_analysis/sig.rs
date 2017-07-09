@@ -44,26 +44,26 @@ use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
 
 
-pub fn item_signature(item: &ast::Item, scx: &SaveContext) -> Option<Signature> {
+pub(crate) fn item_signature(item: &ast::Item, scx: &SaveContext) -> Option<Signature> {
     item.make(0, None, scx).ok()
 }
 
-pub fn foreign_item_signature(item: &ast::ForeignItem, scx: &SaveContext) -> Option<Signature> {
+pub(crate) fn foreign_item_signature(item: &ast::ForeignItem, scx: &SaveContext) -> Option<Signature> {
     item.make(0, None, scx).ok()
 }
 
 /// Signature for a struct or tuple field declaration.
 /// Does not include a trailing comma.
-pub fn field_signature(field: &ast::StructField, scx: &SaveContext) -> Option<Signature> {
+pub(crate) fn field_signature(field: &ast::StructField, scx: &SaveContext) -> Option<Signature> {
     field.make(0, None, scx).ok()
 }
 
 /// Does not include a trailing comma.
-pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Option<Signature> {
+pub(crate) fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Option<Signature> {
     variant.node.make(0, None, scx).ok()
 }
 
-pub fn method_signature(id: NodeId,
+pub(crate) fn method_signature(id: NodeId,
                         ident: ast::Ident,
                         m: &ast::MethodSig,
                         scx: &SaveContext)
@@ -71,7 +71,7 @@ pub fn method_signature(id: NodeId,
     make_method_signature(id, ident, m, scx).ok()
 }
 
-pub fn assoc_const_signature(id: NodeId,
+pub(crate) fn assoc_const_signature(id: NodeId,
                              ident: ast::Name,
                              ty: &ast::Ty,
                              default: Option<&ast::Expr>,
@@ -80,7 +80,7 @@ pub fn assoc_const_signature(id: NodeId,
     make_assoc_const_signature(id, ident, ty, default, scx).ok()
 }
 
-pub fn assoc_type_signature(id: NodeId,
+pub(crate) fn assoc_type_signature(id: NodeId,
                             ident: ast::Ident,
                             bounds: Option<&ast::TyParamBounds>,
                             default: Option<&ast::Ty>,
@@ -533,7 +533,7 @@ impl Sig for ast::Item {
             ast::ItemKind::ForeignMod(_) => Err("extern mod"),
             ast::ItemKind::GlobalAsm(_) => Err("glboal asm"),
             ast::ItemKind::ExternCrate(_) => Err("extern crate"),
-            // FIXME should implement this (e.g., pub use).
+            // FIXME should implement this (e.g., pub(crate) use).
             ast::ItemKind::Use(_) => Err("import"),
             ast::ItemKind::Mac(..) |
             ast::ItemKind::MacroDef(_) => Err("Macro"),

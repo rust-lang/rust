@@ -50,7 +50,7 @@ impl<A: Array> SmallVec<A> {
         SmallVec(AccumulateVec::new())
     }
 
-    pub fn with_capacity(cap: usize) -> Self {
+    pub(crate) fn with_capacity(cap: usize) -> Self {
         let mut vec = SmallVec::new();
         vec.reserve(cap);
         vec
@@ -81,7 +81,7 @@ impl<A: Array> SmallVec<A> {
         }
     }
 
-    pub fn reserve(&mut self, n: usize) {
+    pub(crate) fn reserve(&mut self, n: usize) {
         match self.0 {
             AccumulateVec::Array(_) => {
                 if self.len() + n > A::LEN {

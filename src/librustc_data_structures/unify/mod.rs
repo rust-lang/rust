@@ -56,7 +56,7 @@ impl Combine for () {
 /// time of the algorithm under control. For more information, see
 /// <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
 #[derive(PartialEq,Clone,Debug)]
-pub struct VarValue<K: UnifyKey> {
+pub(crate) struct VarValue<K: UnifyKey> {
     parent: K, // if equal to self, this is a root
     value: K::Value, // value assigned (only relevant to root)
     rank: u32, // max depth (only relevant to root)
@@ -275,7 +275,7 @@ impl<'tcx, K: UnifyKey> UnificationTable<K>
         self.get(id).value
     }
 
-    pub fn unioned(&mut self, a_id: K, b_id: K) -> bool {
+    pub(crate) fn unioned(&mut self, a_id: K, b_id: K) -> bool {
         self.find(a_id) == self.find(b_id)
     }
 }

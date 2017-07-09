@@ -108,7 +108,7 @@ impl Hasher for FxHasher {
     }
 }
 
-pub fn hash<T: Hash>(v: &T) -> u64 {
+pub(crate) fn hash<T: Hash>(v: &T) -> u64 {
     let mut state = FxHasher::default();
     v.hash(&mut state);
     state.finish()

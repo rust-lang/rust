@@ -23,7 +23,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// The operand returned from this function will *not be valid* after
     /// an ExprKind::Scope is passed, so please do *not* return it from
     /// functions to avoid bad miscompiles.
-    pub fn as_local_operand<M>(&mut self, block: BasicBlock, expr: M)
+    pub(crate) fn as_local_operand<M>(&mut self, block: BasicBlock, expr: M)
                              -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -37,7 +37,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// this time.
     ///
     /// The operand is known to be live until the end of `scope`.
-    pub fn as_operand<M>(&mut self,
+    pub(crate) fn as_operand<M>(&mut self,
                          block: BasicBlock,
                          scope: Option<CodeExtent>,
                          expr: M) -> BlockAnd<Operand<'tcx>>

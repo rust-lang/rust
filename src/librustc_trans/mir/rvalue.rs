@@ -35,7 +35,7 @@ use super::operand::{OperandRef, OperandValue};
 use super::lvalue::LvalueRef;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_rvalue(&mut self,
+    pub(crate) fn trans_rvalue(&mut self,
                         bcx: Builder<'a, 'tcx>,
                         dest: LvalueRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
@@ -164,7 +164,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
     }
 
-    pub fn trans_rvalue_operand(&mut self,
+    pub(crate) fn trans_rvalue_operand(&mut self,
                                 bcx: Builder<'a, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
                                 -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
@@ -482,7 +482,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
     }
 
-    pub fn trans_scalar_binop(&mut self,
+    pub(crate) fn trans_scalar_binop(&mut self,
                               bcx: &Builder<'a, 'tcx>,
                               op: mir::BinOp,
                               lhs: ValueRef,
@@ -558,7 +558,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
     }
 
-    pub fn trans_fat_ptr_binop(&mut self,
+    pub(crate) fn trans_fat_ptr_binop(&mut self,
                                bcx: &Builder<'a, 'tcx>,
                                op: mir::BinOp,
                                lhs_addr: ValueRef,
@@ -605,7 +605,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
     }
 
-    pub fn trans_scalar_checked_binop(&mut self,
+    pub(crate) fn trans_scalar_checked_binop(&mut self,
                                       bcx: &Builder<'a, 'tcx>,
                                       op: mir::BinOp,
                                       lhs: ValueRef,
@@ -662,7 +662,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         OperandValue::Pair(val, of)
     }
 
-    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
+    pub(crate) fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
             mir::Rvalue::Len(..) |

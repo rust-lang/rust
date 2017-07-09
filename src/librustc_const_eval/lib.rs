@@ -20,7 +20,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
@@ -41,7 +41,7 @@ extern crate syntax_pos;
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
-pub mod diagnostics;
+pub(crate) mod diagnostics;
 
 mod eval;
 mod _match;

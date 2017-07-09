@@ -43,26 +43,26 @@ impl<A> Clone for AccumulateVec<A>
 }
 
 impl<A: Array> AccumulateVec<A> {
-    pub fn new() -> AccumulateVec<A> {
+    pub(crate) fn new() -> AccumulateVec<A> {
         AccumulateVec::Array(ArrayVec::new())
     }
 
-    pub fn one(el: A::Element) -> Self {
+    pub(crate) fn one(el: A::Element) -> Self {
         iter::once(el).collect()
     }
 
-    pub fn many<I: IntoIterator<Item=A::Element>>(iter: I) -> Self {
+    pub(crate) fn many<I: IntoIterator<Item=A::Element>>(iter: I) -> Self {
         iter.into_iter().collect()
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         match *self {
             AccumulateVec::Array(ref arr) => arr.len(),
             AccumulateVec::Heap(ref vec) => vec.len(),
         }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.len() == 0
     }
 

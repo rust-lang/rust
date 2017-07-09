@@ -12,16 +12,16 @@ use rustc_data_structures::graph::NodeIndex;
 use rustc_data_structures::unify::UnifyKey;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DagId {
+pub(crate) struct DagId {
     index: u32,
 }
 
 impl DagId {
-    pub fn from_input_index(n: NodeIndex) -> Self {
+    pub(crate) fn from_input_index(n: NodeIndex) -> Self {
         DagId { index: n.0 as u32 }
     }
 
-    pub fn as_input_index(&self) -> NodeIndex {
+    pub(crate) fn as_input_index(&self) -> NodeIndex {
         NodeIndex(self.index as usize)
     }
 }

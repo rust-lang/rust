@@ -23,7 +23,7 @@ use syntax_pos::Span;
 
 type R = Result<(),()>;
 
-pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     item_scope: region::CodeExtent,
                                     span: Span,
                                     cause: euv::LoanCause,

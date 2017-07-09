@@ -26,7 +26,7 @@
 //! If you define a new `LintPass`, you will also need to add it to the
 //! `add_builtin!` or `add_builtin_with_new!` invocation in `lib.rs`.
 //! Use the former for unit-like structs and the latter for structs with
-//! a `pub fn new()`.
+//! a `pub(crate) fn new()`.
 
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
@@ -53,7 +53,7 @@ use rustc::hir::intravisit::FnKind;
 use bad_style::{MethodLateContext, method_context};
 
 // hardwired lints from librustc
-pub use lint::builtin::*;
+pub(crate) use lint::builtin::*;
 
 declare_lint! {
     WHILE_TRUE,
@@ -62,7 +62,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct WhileTrue;
+pub(crate) struct WhileTrue;
 
 impl LintPass for WhileTrue {
     fn get_lints(&self) -> LintArray {
@@ -91,7 +91,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct BoxPointers;
+pub(crate) struct BoxPointers;
 
 impl BoxPointers {
     fn check_heap_type<'a, 'tcx>(&self, cx: &LateContext, span: Span, ty: Ty) {
@@ -151,7 +151,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct NonShorthandFieldPatterns;
+pub(crate) struct NonShorthandFieldPatterns;
 
 impl LintPass for NonShorthandFieldPatterns {
     fn get_lints(&self) -> LintArray {
@@ -187,7 +187,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct UnsafeCode;
+pub(crate) struct UnsafeCode;
 
 impl LintPass for UnsafeCode {
     fn get_lints(&self) -> LintArray {
@@ -258,7 +258,7 @@ declare_lint! {
     "detects missing documentation for public members"
 }
 
-pub struct MissingDoc {
+pub(crate) struct MissingDoc {
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
@@ -268,7 +268,7 @@ pub struct MissingDoc {
 }
 
 impl MissingDoc {
-    pub fn new() -> MissingDoc {
+    pub(crate) fn new() -> MissingDoc {
         MissingDoc {
             doc_hidden_stack: vec![false],
             private_traits: HashSet::new(),
@@ -442,13 +442,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 }
 
 declare_lint! {
-    pub MISSING_COPY_IMPLEMENTATIONS,
+    pub(crate) MISSING_COPY_IMPLEMENTATIONS,
     Allow,
     "detects potentially-forgotten implementations of `Copy`"
 }
 
 #[derive(Copy, Clone)]
-pub struct MissingCopyImplementations;
+pub(crate) struct MissingCopyImplementations;
 
 impl LintPass for MissingCopyImplementations {
     fn get_lints(&self) -> LintArray {
@@ -507,12 +507,12 @@ declare_lint! {
     "detects missing implementations of fmt::Debug"
 }
 
-pub struct MissingDebugImplementations {
+pub(crate) struct MissingDebugImplementations {
     impling_types: Option<NodeSet>,
 }
 
 impl MissingDebugImplementations {
-    pub fn new() -> MissingDebugImplementations {
+    pub(crate) fn new() -> MissingDebugImplementations {
         MissingDebugImplementations { impling_types: None }
     }
 }
@@ -566,14 +566,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
 }
 
 declare_lint! {
-    pub ANONYMOUS_PARAMETERS,
+    pub(crate) ANONYMOUS_PARAMETERS,
     Allow,
     "detects anonymous parameters"
 }
 
 /// Checks for use of anonymous parameters (RFC 1685)
 #[derive(Clone)]
-pub struct AnonymousParameters;
+pub(crate) struct AnonymousParameters;
 
 impl LintPass for AnonymousParameters {
     fn get_lints(&self) -> LintArray {
@@ -611,14 +611,14 @@ declare_lint! {
 
 /// Checks for use of attributes which have been deprecated.
 #[derive(Clone)]
-pub struct DeprecatedAttr {
+pub(crate) struct DeprecatedAttr {
     // This is not free to compute, so we want to keep it around, rather than
     // compute it for every attribute.
     depr_attrs: Vec<&'static (&'static str, AttributeType, AttributeGate)>,
 }
 
 impl DeprecatedAttr {
-    pub fn new() -> DeprecatedAttr {
+    pub(crate) fn new() -> DeprecatedAttr {
         DeprecatedAttr {
             depr_attrs: deprecated_attributes(),
         }
@@ -652,14 +652,14 @@ impl EarlyLintPass for DeprecatedAttr {
 }
 
 declare_lint! {
-    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+    pub(crate) ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
     Warn,
     "floating-point literals cannot be used in patterns"
 }
 
 /// Checks for floating point literals in patterns.
 #[derive(Clone)]
-pub struct IllegalFloatLiteralPattern;
+pub(crate) struct IllegalFloatLiteralPattern;
 
 impl LintPass for IllegalFloatLiteralPattern {
     fn get_lints(&self) -> LintArray {
@@ -723,13 +723,13 @@ impl EarlyLintPass for IllegalFloatLiteralPattern {
 }
 
 declare_lint! {
-    pub UNCONDITIONAL_RECURSION,
+    pub(crate) UNCONDITIONAL_RECURSION,
     Warn,
     "functions that cannot return without calling themselves"
 }
 
 #[derive(Copy, Clone)]
-pub struct UnconditionalRecursion;
+pub(crate) struct UnconditionalRecursion;
 
 
 impl LintPass for UnconditionalRecursion {
@@ -993,7 +993,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct PluginAsLibrary;
+pub(crate) struct PluginAsLibrary;
 
 impl LintPass for PluginAsLibrary {
     fn get_lints(&self) -> LintArray {
@@ -1056,7 +1056,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct InvalidNoMangleItems;
+pub(crate) struct InvalidNoMangleItems;
 
 impl LintPass for InvalidNoMangleItems {
     fn get_lints(&self) -> LintArray {
@@ -1108,7 +1108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
 }
 
 #[derive(Clone, Copy)]
-pub struct MutableTransmutes;
+pub(crate) struct MutableTransmutes;
 
 declare_lint! {
     MUTABLE_TRANSMUTES,
@@ -1168,7 +1168,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
 
 /// Forbids using the `#[feature(...)]` attribute
 #[derive(Copy, Clone)]
-pub struct UnstableFeatures;
+pub(crate) struct UnstableFeatures;
 
 declare_lint! {
     UNSTABLE_FEATURES,
@@ -1195,7 +1195,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
 }
 
 /// Lint for unions that contain fields with possibly non-trivial destructors.
-pub struct UnionsWithDropFields;
+pub(crate) struct UnionsWithDropFields;
 
 declare_lint! {
     UNIONS_WITH_DROP_FIELDS,

@@ -64,14 +64,14 @@ use super::on_lookup_result_bits;
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeUninitializedLvals` yields the set of
 /// l-values that would require a dynamic drop-flag at that statement.
-pub struct MaybeInitializedLvals<'a, 'tcx: 'a> {
+pub(crate) struct MaybeInitializedLvals<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> MaybeInitializedLvals<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'tcx>)
                -> Self
@@ -119,14 +119,14 @@ impl<'a, 'tcx: 'a> HasMoveData<'tcx> for MaybeInitializedLvals<'a, 'tcx> {
 /// Similarly, at a given `drop` statement, the set-intersection
 /// between this data and `MaybeInitializedLvals` yields the set of
 /// l-values that would require a dynamic drop-flag at that statement.
-pub struct MaybeUninitializedLvals<'a, 'tcx: 'a> {
+pub(crate) struct MaybeUninitializedLvals<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> MaybeUninitializedLvals<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'tcx>)
                -> Self
@@ -180,14 +180,14 @@ impl<'a, 'tcx: 'a> HasMoveData<'tcx> for MaybeUninitializedLvals<'a, 'tcx> {
 /// Similarly, at a given `drop` statement, the set-difference between
 /// this data and `MaybeInitializedLvals` yields the set of l-values
 /// that would require a dynamic drop-flag at that statement.
-pub struct DefinitelyInitializedLvals<'a, 'tcx: 'a> {
+pub(crate) struct DefinitelyInitializedLvals<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> DefinitelyInitializedLvals<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'tcx>)
                -> Self
@@ -214,14 +214,14 @@ impl<'a, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedLvals<'a, 'tcx> {
 /// data of *which* particular statement causing the deinitialization
 /// that the borrow checker's error meessage may need to report.
 #[allow(dead_code)]
-pub struct MovingOutStatements<'a, 'tcx: 'a> {
+pub(crate) struct MovingOutStatements<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     mdpe: &'a MoveDataParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> MovingOutStatements<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                mdpe: &'a MoveDataParamEnv<'tcx>)
                -> Self

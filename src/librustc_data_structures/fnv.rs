@@ -12,16 +12,16 @@ use std::collections::{HashMap, HashSet};
 use std::default::Default;
 use std::hash::{Hasher, Hash, BuildHasherDefault};
 
-pub type FnvHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FnvHasher>>;
-pub type FnvHashSet<V> = HashSet<V, BuildHasherDefault<FnvHasher>>;
+pub(crate) type FnvHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FnvHasher>>;
+pub(crate) type FnvHashSet<V> = HashSet<V, BuildHasherDefault<FnvHasher>>;
 
 #[allow(non_snake_case)]
-pub fn FnvHashMap<K: Hash + Eq, V>() -> FnvHashMap<K, V> {
+pub(crate) fn FnvHashMap<K: Hash + Eq, V>() -> FnvHashMap<K, V> {
     HashMap::default()
 }
 
 #[allow(non_snake_case)]
-pub fn FnvHashSet<V: Hash + Eq>() -> FnvHashSet<V> {
+pub(crate) fn FnvHashSet<V: Hash + Eq>() -> FnvHashSet<V> {
     HashSet::default()
 }
 
@@ -32,7 +32,7 @@ pub fn FnvHashSet<V: Hash + Eq>() -> FnvHashSet<V> {
 ///
 /// This uses FNV hashing, as described here:
 /// http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-pub struct FnvHasher(u64);
+pub(crate) struct FnvHasher(u64);
 
 impl Default for FnvHasher {
     /// Creates a `FnvHasher`, with a 64-bit hex initial value.
@@ -59,7 +59,7 @@ impl Hasher for FnvHasher {
     }
 }
 
-pub fn hash<T: Hash>(v: &T) -> u64 {
+pub(crate) fn hash<T: Hash>(v: &T) -> u64 {
     let mut state = FnvHasher::default();
     v.hash(&mut state);
     state.finish()

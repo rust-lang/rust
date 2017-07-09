@@ -44,7 +44,7 @@ impl MirPass for AddCallGuards {
     }
 }
 
-pub fn add_call_guards(mir: &mut Mir) {
+pub(crate) fn add_call_guards(mir: &mut Mir) {
     let pred_count: IndexVec<_, _> =
         mir.predecessors().iter().map(|ps| ps.len()).collect();
 

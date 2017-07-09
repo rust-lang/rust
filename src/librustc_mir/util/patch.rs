@@ -16,7 +16,7 @@ use syntax_pos::Span;
 /// This struct represents a patch to MIR, which can add
 /// new statements and basic blocks and patch over block
 /// terminators.
-pub struct MirPatch<'tcx> {
+pub(crate) struct MirPatch<'tcx> {
     patch_map: IndexVec<BasicBlock, Option<TerminatorKind<'tcx>>>,
     new_blocks: Vec<BasicBlockData<'tcx>>,
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
@@ -26,7 +26,7 @@ pub struct MirPatch<'tcx> {
 }
 
 impl<'tcx> MirPatch<'tcx> {
-    pub fn new(mir: &Mir<'tcx>) -> Self {
+    pub(crate) fn new(mir: &Mir<'tcx>) -> Self {
         let mut result = MirPatch {
             patch_map: IndexVec::from_elem(None, mir.basic_blocks()),
             new_blocks: vec![],
@@ -75,15 +75,15 @@ impl<'tcx> MirPatch<'tcx> {
         result
     }
 
-    pub fn resume_block(&self) -> BasicBlock {
+    pub(crate) fn resume_block(&self) -> BasicBlock {
         self.resume_block
     }
 
-    pub fn is_patched(&self, bb: BasicBlock) -> bool {
+    pub(crate) fn is_patched(&self, bb: BasicBlock) -> bool {
         self.patch_map[bb].is_some()
     }
 
-    pub fn terminator_loc(&self, mir: &Mir<'tcx>, bb: BasicBlock) -> Location {
+    pub(crate) fn terminator_loc(&self, mir: &Mir<'tcx>, bb: BasicBlock) -> Location {
         let offset = match bb.index().checked_sub(mir.basic_blocks().len()) {
             Some(index) => self.new_blocks[index].statements.len(),
             None => mir[bb].statements.len()
@@ -94,14 +94,14 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+    pub(crate) fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
         self.new_locals.push(LocalDecl::new_temp(ty, span));
         Local::new(index as usize)
     }
 
-    pub fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
+    pub(crate) fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
         let block = BasicBlock::new(self.patch_map.len());
         debug!("MirPatch: new_block: {:?}: {:?}", block, data);
         self.new_blocks.push(data);
@@ -109,22 +109,22 @@ impl<'tcx> MirPatch<'tcx> {
         block
     }
 
-    pub fn patch_terminator(&mut self, block: BasicBlock, new: TerminatorKind<'tcx>) {
+    pub(crate) fn patch_terminator(&mut self, block: BasicBlock, new: TerminatorKind<'tcx>) {
         assert!(self.patch_map[block].is_none());
         debug!("MirPatch: patch_terminator({:?}, {:?})", block, new);
         self.patch_map[block] = Some(new);
     }
 
-    pub fn add_statement(&mut self, loc: Location, stmt: StatementKind<'tcx>) {
+    pub(crate) fn add_statement(&mut self, loc: Location, stmt: StatementKind<'tcx>) {
         debug!("MirPatch: add_statement({:?}, {:?})", loc, stmt);
         self.new_statements.push((loc, stmt));
     }
 
-    pub fn add_assign(&mut self, loc: Location, lv: Lvalue<'tcx>, rv: Rvalue<'tcx>) {
+    pub(crate) fn add_assign(&mut self, loc: Location, lv: Lvalue<'tcx>, rv: Rvalue<'tcx>) {
         self.add_statement(loc, StatementKind::Assign(lv, rv));
     }
 
-    pub fn apply(self, mir: &mut Mir<'tcx>) {
+    pub(crate) fn apply(self, mir: &mut Mir<'tcx>) {
         debug!("MirPatch: {:?} new temps, starting from index {}: {:?}",
                self.new_locals.len(), mir.local_decls.len(), self.new_locals);
         debug!("MirPatch: {} new blocks, starting from index {}",
@@ -163,14 +163,14 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn source_info_for_index(data: &BasicBlockData, loc: Location) -> SourceInfo {
+    pub(crate) fn source_info_for_index(data: &BasicBlockData, loc: Location) -> SourceInfo {
         match data.statements.get(loc.statement_index) {
             Some(stmt) => stmt.source_info,
             None => data.terminator().source_info
         }
     }
 
-    pub fn source_info_for_location(&self, mir: &Mir, loc: Location) -> SourceInfo {
+    pub(crate) fn source_info_for_location(&self, mir: &Mir, loc: Location) -> SourceInfo {
         let data = match loc.block.index().checked_sub(mir.basic_blocks().len()) {
             Some(new) => &self.new_blocks[new],
             None => &mir[loc.block]

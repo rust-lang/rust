@@ -27,7 +27,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// NB: **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
-    pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Lvalue<'tcx> {
+    pub(crate) fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Lvalue<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
         let lvalue = Lvalue::Local(temp);
         debug!("temp: created temp {:?} with type {:?}",
@@ -35,7 +35,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         lvalue
     }
 
-    pub fn literal_operand(&mut self,
+    pub(crate) fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
                            literal: Literal<'tcx>)
@@ -48,13 +48,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         Operand::Constant(constant)
     }
 
-    pub fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
+    pub(crate) fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
         Rvalue::Aggregate(box AggregateKind::Tuple, vec![])
     }
 
     // Returns a zero literal operand for the appropriate type, works for
     // bool, char and integers.
-    pub fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+    pub(crate) fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = match ty.sty {
             ty::TyBool => {
                 self.hir.false_literal()
@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.literal_operand(span, ty, literal)
     }
 
-    pub fn push_usize(&mut self,
+    pub(crate) fn push_usize(&mut self,
                       block: BasicBlock,
                       source_info: SourceInfo,
                       value: u64)

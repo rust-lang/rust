@@ -50,14 +50,14 @@ use syntax_pos::Span;
 
 /// The LLVM module name containing crate-metadata. This includes a `.` on
 /// purpose, so it cannot clash with the name of a user-defined module.
-pub const METADATA_MODULE_NAME: &'static str = "crate.metadata";
+pub(crate) const METADATA_MODULE_NAME: &'static str = "crate.metadata";
 /// The name of the crate-metadata object file the compiler generates. Must
 /// match up with `METADATA_MODULE_NAME`.
-pub const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
+pub(crate) const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
 
 // same as for metadata above, but for allocator shim
-pub const ALLOCATOR_MODULE_NAME: &'static str = "crate.allocator";
-pub const ALLOCATOR_OBJ_NAME: &'static str = "crate.allocator.o";
+pub(crate) const ALLOCATOR_MODULE_NAME: &'static str = "crate.allocator";
+pub(crate) const ALLOCATOR_OBJ_NAME: &'static str = "crate.allocator.o";
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1
@@ -70,22 +70,22 @@ pub const ALLOCATOR_OBJ_NAME: &'static str = "crate.allocator.o";
 
 // This is the "magic number" expected at the beginning of a LLVM bytecode
 // object in an rlib.
-pub const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
+pub(crate) const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
 
 // The version number this compiler will write to bytecode objects in rlibs
-pub const RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
+pub(crate) const RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
 
 // The offset in bytes the bytecode object format version number can be found at
-pub const RLIB_BYTECODE_OBJECT_VERSION_OFFSET: usize = 11;
+pub(crate) const RLIB_BYTECODE_OBJECT_VERSION_OFFSET: usize = 11;
 
 // The offset in bytes the size of the compressed bytecode can be found at in
 // format version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
+pub(crate) const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_VERSION_OFFSET + 4;
 
 // The offset in bytes the compressed LLVM bytecode can be found at in format
 // version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
+pub(crate) const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
 
@@ -138,7 +138,7 @@ pub fn find_crate_name(sess: Option<&Session>,
     "rust_out".to_string()
 }
 
-pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
+pub(crate) fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
     let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
     let r = LinkMeta {
         crate_hash: Svh::new(incremental_hashes_map[krate_dep_node].to_smaller_hash()),
@@ -150,7 +150,7 @@ pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMet
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
+pub(crate) fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
     let envs = vec![("PATH".into(), command_path(sess))];
 
     if let Some(ref linker) = sess.opts.cg.linker {
@@ -165,7 +165,7 @@ pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>
 }
 
 #[cfg(windows)]
-pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
+pub(crate) fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
     use gcc::windows_registry;
 
     let target = &sess.opts.target_triple;
@@ -181,11 +181,11 @@ pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>)
 }
 
 #[cfg(not(windows))]
-pub fn msvc_link_exe_cmd(_sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
+pub(crate) fn msvc_link_exe_cmd(_sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
     (Command::new("link.exe"), vec![])
 }
 
-pub fn get_ar_prog(sess: &Session) -> String {
+pub(crate) fn get_ar_prog(sess: &Session) -> String {
     sess.opts.cg.ar.clone().unwrap_or_else(|| {
         sess.target.target.options.ar.clone()
     })
@@ -202,7 +202,7 @@ fn command_path(sess: &Session) -> OsString {
     env::join_paths(new_path).unwrap()
 }
 
-pub fn remove(sess: &Session, path: &Path) {
+pub(crate) fn remove(sess: &Session, path: &Path) {
     match fs::remove_file(path) {
         Ok(..) => {}
         Err(e) => {
@@ -335,7 +335,7 @@ pub fn filename_for_input(sess: &Session,
     }
 }
 
-pub fn each_linked_rlib(sess: &Session,
+pub(crate) fn each_linked_rlib(sess: &Session,
                         f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
     let fmts = sess.dependency_formats.borrow();
@@ -380,7 +380,7 @@ pub fn each_linked_rlib(sess: &Session,
 /// It's unusual for a crate to not participate in LTO. Typically only
 /// compiler-specific and unstable crates have a reason to not participate in
 /// LTO.
-pub fn ignored_for_lto(sess: &Session, cnum: CrateNum) -> bool {
+pub(crate) fn ignored_for_lto(sess: &Session, cnum: CrateNum) -> bool {
     // `#![no_builtins]` crates don't participate in LTO because the state
     // of builtins gets messed up (our crate isn't tagged with no builtins).
     // Similarly `#![compiler_builtins]` doesn't participate because we want

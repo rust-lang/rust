@@ -21,7 +21,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 
 use syntax::codemap::DUMMY_SP;
 
-pub use rustc::ty::Instance;
+pub(crate) use rustc::ty::Instance;
 
 fn fn_once_adapter_instance<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -85,7 +85,7 @@ fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
     }
 }
 
-pub fn resolve_closure<'a, 'tcx> (
+pub(crate) fn resolve_closure<'a, 'tcx> (
     scx: &SharedCrateContext<'a, 'tcx>,
     def_id: DefId,
     substs: ty::ClosureSubsts<'tcx>,
@@ -151,7 +151,7 @@ fn resolve_associated_item<'a, 'tcx>(
 
 /// The point where linking happens. Resolve a (def_id, substs)
 /// pair to an instance.
-pub fn resolve<'a, 'tcx>(
+pub(crate) fn resolve<'a, 'tcx>(
     scx: &SharedCrateContext<'a, 'tcx>,
     def_id: DefId,
     substs: &'tcx Substs<'tcx>
@@ -197,7 +197,7 @@ pub fn resolve<'a, 'tcx>(
     result
 }
 
-pub fn resolve_drop_in_place<'a, 'tcx>(
+pub(crate) fn resolve_drop_in_place<'a, 'tcx>(
     scx: &SharedCrateContext<'a, 'tcx>,
     ty: Ty<'tcx>)
     -> ty::Instance<'tcx>
@@ -207,7 +207,7 @@ pub fn resolve_drop_in_place<'a, 'tcx>(
     resolve(scx, def_id, substs)
 }
 
-pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,
+pub(crate) fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,
                                              source_ty: Ty<'tcx>,
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
@@ -227,7 +227,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
 }
 
 /// Returns the normalized type of a struct field
-pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_substs: &Substs<'tcx>,
                           f: &'tcx ty::FieldDef)
                           -> Ty<'tcx>

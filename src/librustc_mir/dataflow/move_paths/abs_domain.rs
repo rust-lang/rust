@@ -25,11 +25,11 @@ use rustc::mir::LvalueElem;
 use rustc::mir::{Operand, ProjectionElem};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct AbstractOperand;
-pub type AbstractElem<'tcx> =
+pub(crate) struct AbstractOperand;
+pub(crate) type AbstractElem<'tcx> =
     ProjectionElem<'tcx, AbstractOperand>;
 
-pub trait Lift {
+pub(crate) trait Lift {
     type Abstract;
     fn lift(&self) -> Self::Abstract;
 }

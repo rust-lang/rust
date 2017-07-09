@@ -87,7 +87,7 @@ pub struct ObligationForest<O: ForestObligation> {
     scratch: Option<Vec<usize>>,
 }
 
-pub struct Snapshot {
+pub(crate) struct Snapshot {
     len: usize,
 }
 
@@ -180,7 +180,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.nodes.len()
     }
 
-    pub fn start_snapshot(&mut self) -> Snapshot {
+    pub(crate) fn start_snapshot(&mut self) -> Snapshot {
         self.snapshots.push(SnapshotData {
             node_len: self.nodes.len(),
             cache_list_len: self.cache_list.len()
@@ -188,14 +188,14 @@ impl<O: ForestObligation> ObligationForest<O> {
         Snapshot { len: self.snapshots.len() }
     }
 
-    pub fn commit_snapshot(&mut self, snapshot: Snapshot) {
+    pub(crate) fn commit_snapshot(&mut self, snapshot: Snapshot) {
         assert_eq!(snapshot.len, self.snapshots.len());
         let info = self.snapshots.pop().unwrap();
         assert!(self.nodes.len() >= info.node_len);
         assert!(self.cache_list.len() >= info.cache_list_len);
     }
 
-    pub fn rollback_snapshot(&mut self, snapshot: Snapshot) {
+    pub(crate) fn rollback_snapshot(&mut self, snapshot: Snapshot) {
         // Check that we are obeying stack discipline.
         assert_eq!(snapshot.len, self.snapshots.len());
         let info = self.snapshots.pop().unwrap();
@@ -209,7 +209,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.cache_list.truncate(info.cache_list_len);
     }
 
-    pub fn in_snapshot(&self) -> bool {
+    pub(crate) fn in_snapshot(&self) -> bool {
         !self.snapshots.is_empty()
     }
 

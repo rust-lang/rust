@@ -27,7 +27,7 @@ use rustc::hir;
 /// Check that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called)
-pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefId) {
+pub(crate) fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefId) {
     if tcx.lang_items.drop_trait() == Some(trait_id) {
         struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
             .span_label(span, "explicit destructor calls not allowed")
@@ -42,7 +42,7 @@ enum CallStep<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn check_call(&self,
+    pub(crate) fn check_call(&self,
                       call_expr: &'gcx hir::Expr,
                       callee_expr: &'gcx hir::Expr,
                       arg_exprs: &'gcx [hir::Expr],
@@ -320,7 +320,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 }
 
 #[derive(Debug)]
-pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
+pub(crate) struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
     call_expr: &'gcx hir::Expr,
     callee_expr: &'gcx hir::Expr,
     adjusted_ty: Ty<'tcx>,
@@ -330,7 +330,7 @@ pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
-    pub fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
+    pub(crate) fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}", self);
 
         // we should not be invoked until the closure kind has been

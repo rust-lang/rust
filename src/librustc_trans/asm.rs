@@ -27,7 +27,7 @@ use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'a, 'tcx>(
+pub(crate) fn trans_inline_asm<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     ia: &hir::InlineAsm,
     outputs: Vec<(ValueRef, Ty<'tcx>)>,
@@ -125,7 +125,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
     }
 }
 
-pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub(crate) fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   ga: &hir::GlobalAsm) {
     let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
     unsafe {

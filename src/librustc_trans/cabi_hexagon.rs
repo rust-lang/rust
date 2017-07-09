@@ -29,7 +29,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
     }
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub(crate) fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

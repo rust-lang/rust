@@ -58,7 +58,7 @@ use rustc::ty::TyCtxt;
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
-pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                nodes: &IndexVec<DepNodeIndex, DepNode>,
                                                dirty_inputs: &DirtyNodes) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
@@ -103,7 +103,7 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
 }
 
-pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
+pub(crate) struct DirtyCleanVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     query: &'a DepGraphQuery,
     dirty_inputs: FxHashSet<DepNode>,
@@ -231,7 +231,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_dirty_clean_metadata<'a, 'tcx>(
+pub(crate) fn check_dirty_clean_metadata<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     prev_metadata_hashes: &FxHashMap<DefId, Fingerprint>,
     current_metadata_hashes: &FxHashMap<DefId, Fingerprint>)
@@ -264,7 +264,7 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(
     });
 }
 
-pub struct DirtyCleanMetadataVisitor<'a, 'tcx: 'a, 'm> {
+pub(crate) struct DirtyCleanMetadataVisitor<'a, 'tcx: 'a, 'm> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     prev_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
     current_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
@@ -420,7 +420,7 @@ fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> ast::Name {
 // A visitor that collects all #[rustc_dirty]/#[rustc_clean] attributes from
 // the HIR. It is used to verfiy that we really ran checks for all annotated
 // nodes.
-pub struct FindAllAttrs<'a, 'tcx:'a> {
+pub(crate) struct FindAllAttrs<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     attr_names: Vec<&'static str>,
     found_attrs: Vec<&'tcx Attribute>,

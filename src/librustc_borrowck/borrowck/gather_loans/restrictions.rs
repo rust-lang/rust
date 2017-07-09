@@ -22,12 +22,12 @@ use borrowck::ToInteriorKind;
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub enum RestrictionResult<'tcx> {
+pub(crate) enum RestrictionResult<'tcx> {
     Safe,
     SafeIf(Rc<LoanPath<'tcx>>, Vec<Rc<LoanPath<'tcx>>>)
 }
 
-pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       span: Span,
                                       cause: euv::LoanCause,
                                       cmt: mc::cmt<'tcx>,

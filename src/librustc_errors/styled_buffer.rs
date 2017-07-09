@@ -13,20 +13,20 @@
 use snippet::{Style, StyledString};
 
 #[derive(Debug)]
-pub struct StyledBuffer {
+pub(crate) struct StyledBuffer {
     text: Vec<Vec<char>>,
     styles: Vec<Vec<Style>>,
 }
 
 impl StyledBuffer {
-    pub fn new() -> StyledBuffer {
+    pub(crate) fn new() -> StyledBuffer {
         StyledBuffer {
             text: vec![],
             styles: vec![],
         }
     }
 
-    pub fn copy_tabs(&mut self, row: usize) {
+    pub(crate) fn copy_tabs(&mut self, row: usize) {
         if row < self.text.len() {
             for i in row + 1..self.text.len() {
                 for j in 0..self.text[i].len() {
@@ -39,7 +39,7 @@ impl StyledBuffer {
         }
     }
 
-    pub fn render(&mut self) -> Vec<Vec<StyledString>> {
+    pub(crate) fn render(&mut self) -> Vec<Vec<StyledString>> {
         let mut output: Vec<Vec<StyledString>> = vec![];
         let mut styled_vec: Vec<StyledString> = vec![];
 
@@ -86,7 +86,7 @@ impl StyledBuffer {
         }
     }
 
-    pub fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
+    pub(crate) fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
         self.ensure_lines(line);
         if col < self.text[line].len() {
             self.text[line][col] = chr;
@@ -103,7 +103,7 @@ impl StyledBuffer {
         }
     }
 
-    pub fn puts(&mut self, line: usize, col: usize, string: &str, style: Style) {
+    pub(crate) fn puts(&mut self, line: usize, col: usize, string: &str, style: Style) {
         let mut n = col;
         for c in string.chars() {
             self.putc(line, n, c, style);
@@ -111,7 +111,7 @@ impl StyledBuffer {
         }
     }
 
-    pub fn prepend(&mut self, line: usize, string: &str, style: Style) {
+    pub(crate) fn prepend(&mut self, line: usize, string: &str, style: Style) {
         self.ensure_lines(line);
         let string_len = string.len();
 
@@ -124,7 +124,7 @@ impl StyledBuffer {
         self.puts(line, 0, string, style);
     }
 
-    pub fn append(&mut self, line: usize, string: &str, style: Style) {
+    pub(crate) fn append(&mut self, line: usize, string: &str, style: Style) {
         if line >= self.text.len() {
             self.puts(line, 0, string, style);
         } else {
@@ -133,7 +133,7 @@ impl StyledBuffer {
         }
     }
 
-    pub fn num_lines(&self) -> usize {
+    pub(crate) fn num_lines(&self) -> usize {
         self.text.len()
     }
 }

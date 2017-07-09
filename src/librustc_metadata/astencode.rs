@@ -17,11 +17,11 @@ use rustc::hir;
 use rustc::ty;
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct Ast<'tcx> {
-    pub body: Lazy<hir::Body>,
-    pub tables: Lazy<ty::TypeckTables<'tcx>>,
-    pub nested_bodies: LazySeq<hir::Body>,
-    pub rvalue_promotable_to_static: bool,
+pub(crate) struct Ast<'tcx> {
+    pub(crate) body: Lazy<hir::Body>,
+    pub(crate) tables: Lazy<ty::TypeckTables<'tcx>>,
+    pub(crate) nested_bodies: LazySeq<hir::Body>,
+    pub(crate) rvalue_promotable_to_static: bool,
 }
 
 impl_stable_hash_for!(struct Ast<'tcx> {
@@ -32,7 +32,7 @@ impl_stable_hash_for!(struct Ast<'tcx> {
 });
 
 impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
-    pub fn encode_body(&mut self, body_id: hir::BodyId) -> Lazy<Ast<'tcx>> {
+    pub(crate) fn encode_body(&mut self, body_id: hir::BodyId) -> Lazy<Ast<'tcx>> {
         let body = self.tcx.hir.body(body_id);
         let lazy_body = self.lazy(body);
 

@@ -14,7 +14,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
 
@@ -406,7 +406,7 @@ enum PathSource<'a> {
     TupleStruct,
     // `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
-    // Path in `pub(path)`
+    // Path in `pub(in path)`
     Visibility,
     // Path in `use a::b::{...};`
     ImportPrefix,
@@ -548,14 +548,14 @@ impl<'a> PathSource<'a> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Namespace {
+pub(crate) enum Namespace {
     TypeNS,
     ValueNS,
     MacroNS,
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct PerNS<T> {
+pub(crate) struct PerNS<T> {
     value_ns: T,
     type_ns: T,
     macro_ns: Option<T>,
@@ -729,7 +729,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     }
 }
 
-pub type ErrorMessage = Option<(Span, String)>;
+pub(crate) type ErrorMessage = Option<(Span, String)>;
 
 #[derive(Copy, Clone)]
 enum TypeParameters<'a, 'b> {
@@ -829,7 +829,7 @@ enum ModuleKind {
 }
 
 /// One node in the tree of modules.
-pub struct ModuleData<'a> {
+pub(crate) struct ModuleData<'a> {
     parent: Option<Module<'a>>,
     kind: ModuleKind,
 
@@ -862,7 +862,7 @@ pub struct ModuleData<'a> {
     expansion: Mark,
 }
 
-pub type Module<'a> = &'a ModuleData<'a>;
+pub(crate) type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
     fn new(parent: Option<Module<'a>>,
@@ -937,14 +937,14 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 
 // Records a possibly-private value, type, or module definition.
 #[derive(Clone, Debug)]
-pub struct NameBinding<'a> {
+pub(crate) struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     expansion: Mark,
     span: Span,
     vis: ty::Visibility,
 }
 
-pub trait ToNameBinding<'a> {
+pub(crate) trait ToNameBinding<'a> {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a>;
 }
 
@@ -1014,7 +1014,7 @@ impl<'a> NameBinding<'a> {
         resolver.get_macro(self.def_ignoring_ambiguity())
     }
 
-    // We sometimes need to treat variants as `pub` for backwards compatibility
+    // We sometimes need to treat variants as `pub(crate)` for backwards compatibility
     fn pseudo_vis(&self) -> ty::Visibility {
         if self.is_variant() { ty::Visibility::Public } else { self.vis }
     }
@@ -2899,7 +2899,7 @@ impl<'a> Resolver<'a> {
     // Calls `f` with a `Resolver` whose current lexical scope is `module`'s lexical scope,
     // i.e. the module's items and the prelude (unless the module is `#[no_implicit_prelude]`).
     // FIXME #34673: This needs testing.
-    pub fn with_module_lexical_scope<T, F>(&mut self, module: Module<'a>, f: F) -> T
+    pub(crate) fn with_module_lexical_scope<T, F>(&mut self, module: Module<'a>, f: F) -> T
         where F: FnOnce(&mut Resolver<'a>) -> T,
     {
         self.with_empty_ribs(|this| {

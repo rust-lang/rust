@@ -15,7 +15,7 @@ use rustc::hir;
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn ast_block(&mut self,
+    pub(crate) fn ast_block(&mut self,
                      destination: &Lvalue<'tcx>,
                      block: BasicBlock,
                      ast_block: &'tcx hir::Block,

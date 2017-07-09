@@ -26,11 +26,11 @@ use super::method::probe;
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Requires that the two types unify, and prints an error message if
     // they don't.
-    pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
+    pub(crate) fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         self.demand_suptype_diag(sp, expected, actual).map(|mut e| e.emit());
     }
 
-    pub fn demand_suptype_diag(&self,
+    pub(crate) fn demand_suptype_diag(&self,
                                sp: Span,
                                expected: Ty<'tcx>,
                                actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
@@ -46,20 +46,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
+    pub(crate) fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Some(mut err) = self.demand_eqtype_diag(sp, expected, actual) {
             err.emit();
         }
     }
 
-    pub fn demand_eqtype_diag(&self,
+    pub(crate) fn demand_eqtype_diag(&self,
                              sp: Span,
                              expected: Ty<'tcx>,
                              actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
-    pub fn demand_eqtype_with_origin(&self,
+    pub(crate) fn demand_eqtype_with_origin(&self,
                                      cause: &ObligationCause<'tcx>,
                                      expected: Ty<'tcx>,
                                      actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+    pub(crate) fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
         if let Some(mut err) = self.demand_coerce_diag(expr, checked_ty, expected) {
             err.emit();
         }
@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // NB: This code relies on `self.diverges` to be accurate.  In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
-    pub fn demand_coerce_diag(&self,
+    pub(crate) fn demand_coerce_diag(&self,
                               expr: &hir::Expr,
                               checked_ty: Ty<'tcx>,
                               expected: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {

@@ -14,7 +14,7 @@ use target::{Target, TargetResult};
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::android_base::opts();
 
     base.max_atomic_width = Some(64);

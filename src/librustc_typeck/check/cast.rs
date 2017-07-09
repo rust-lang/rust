@@ -55,7 +55,7 @@ use util::common::ErrorReported;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
-pub struct CastCheck<'tcx> {
+pub(crate) struct CastCheck<'tcx> {
     expr: &'tcx hir::Expr,
     expr_ty: Ty<'tcx>,
     expr_diverges: Diverges,
@@ -127,7 +127,7 @@ fn make_invalid_casting_error<'a, 'gcx, 'tcx>(sess: &'a Session,
 }
 
 impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
-    pub fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+    pub(crate) fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                expr: &'tcx hir::Expr,
                expr_ty: Ty<'tcx>,
                expr_diverges: Diverges,
@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
 
     }
 
-    pub fn check(mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
+    pub(crate) fn check(mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
 

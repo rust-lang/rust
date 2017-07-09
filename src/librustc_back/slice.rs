@@ -14,6 +14,6 @@ pub fn ref_slice<T>(ptr: &T) -> &[T; 1] {
     unsafe { mem::transmute(ptr) }
 }
 
-pub fn mut_ref_slice<T>(ptr: &mut T) -> &mut [T; 1] {
+pub(crate) fn mut_ref_slice<T>(ptr: &mut T) -> &mut [T; 1] {
     unsafe { mem::transmute(ptr) }
 }

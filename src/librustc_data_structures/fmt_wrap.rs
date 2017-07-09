@@ -13,7 +13,7 @@ use std::fmt;
 // Provide some more formatting options for some data types (at the moment
 // that's just `{:x}` for slices of u8).
 
-pub struct FmtWrap<T>(pub T);
+pub(crate) struct FmtWrap<T>(pub(crate) T);
 
 impl<'a> fmt::LowerHex for FmtWrap<&'a [u8]> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

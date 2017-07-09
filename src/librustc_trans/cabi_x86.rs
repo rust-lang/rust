@@ -12,12 +12,12 @@ use abi::{ArgAttribute, FnType, LayoutExt, Reg, RegKind};
 use common::CrateContext;
 
 #[derive(PartialEq)]
-pub enum Flavor {
+pub(crate) enum Flavor {
     General,
     Fastcall
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub(crate) fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   fty: &mut FnType<'tcx>,
                                   flavor: Flavor) {
     if !fty.ret.is_ignore() {

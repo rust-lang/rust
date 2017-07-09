@@ -12,7 +12,7 @@ use LinkerFlavor;
 use target::{LinkArgs, TargetOptions, RelroLevel};
 use std::default::Default;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();
     args.insert(LinkerFlavor::Gcc, vec![
         // GNU-style linkers will use this to omit linking to libraries

@@ -203,7 +203,7 @@ fn cast_target(cls: &[Class], size: u64) -> CastTarget {
     target
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub(crate) fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
     let mut sse_regs = 8; // XMM0-7
 

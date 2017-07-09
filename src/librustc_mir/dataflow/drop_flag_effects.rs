@@ -40,7 +40,7 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option
     return None;
 }
 
-pub struct MoveDataParamEnv<'tcx> {
+pub(crate) struct MoveDataParamEnv<'tcx> {
     pub(crate) move_data: MoveData<'tcx>,
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 }
@@ -86,7 +86,7 @@ pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mbcx.flow_state.results()
 }
 
-pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
+pub(crate) fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>

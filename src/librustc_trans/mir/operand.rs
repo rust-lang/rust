@@ -33,7 +33,7 @@ use super::lvalue::{Alignment, LvalueRef};
 /// uniquely determined by the value's type, but is kept as a
 /// safety check.
 #[derive(Copy, Clone)]
-pub enum OperandValue {
+pub(crate) enum OperandValue {
     /// A reference to the actual operand. The data is guaranteed
     /// to be valid for the operand's lifetime.
     Ref(ValueRef, Alignment),
@@ -52,12 +52,12 @@ pub enum OperandValue {
 /// directly is sure to cause problems -- use `MirContext.store_operand`
 /// instead.
 #[derive(Copy, Clone)]
-pub struct OperandRef<'tcx> {
+pub(crate) struct OperandRef<'tcx> {
     // The value.
-    pub val: OperandValue,
+    pub(crate) val: OperandValue,
 
     // The type of value being returned.
-    pub ty: Ty<'tcx>
+    pub(crate) ty: Ty<'tcx>
 }
 
 impl<'tcx> fmt::Debug for OperandRef<'tcx> {
@@ -80,7 +80,7 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> OperandRef<'tcx> {
-    pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
+    pub(crate) fn new_zst(ccx: &CrateContext<'a, 'tcx>,
                    ty: Ty<'tcx>) -> OperandRef<'tcx> {
         assert!(common::type_is_zero_size(ccx, ty));
         let llty = type_of::type_of(ccx, ty);
@@ -105,14 +105,14 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
-    pub fn immediate(self) -> ValueRef {
+    pub(crate) fn immediate(self) -> ValueRef {
         match self.val {
             OperandValue::Immediate(s) => s,
             _ => bug!("not immediate: {:?}", self)
         }
     }
 
-    pub fn deref(self) -> LvalueRef<'tcx> {
+    pub(crate) fn deref(self) -> LvalueRef<'tcx> {
         let projected_ty = self.ty.builtin_deref(true, ty::NoPreference)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
@@ -130,7 +130,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a Pair, we return an
     /// Immediate aggregate with the two values.
-    pub fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
+    pub(crate) fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
             // Reconstruct the immediate aggregate.
             let llty = type_of::type_of(bcx.ccx, self.ty);
@@ -157,7 +157,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a pair in an Immediate,
     /// we return a Pair with the two halves.
-    pub fn unpack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
+    pub(crate) fn unpack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Immediate(llval) = self.val {
             // Deconstruct the immediate aggregate.
             if common::type_is_imm_pair(bcx.ccx, self.ty) {
@@ -192,7 +192,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_load(&mut self,
+    pub(crate) fn trans_load(&mut self,
                       bcx: &Builder<'a, 'tcx>,
                       llval: ValueRef,
                       align: Alignment,
@@ -230,7 +230,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         OperandRef { val: val, ty: ty }
     }
 
-    pub fn trans_consume(&mut self,
+    pub(crate) fn trans_consume(&mut self,
                          bcx: &Builder<'a, 'tcx>,
                          lvalue: &mir::Lvalue<'tcx>)
                          -> OperandRef<'tcx>
@@ -282,7 +282,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         self.trans_load(bcx, tr_lvalue.llval, tr_lvalue.alignment, ty)
     }
 
-    pub fn trans_operand(&mut self,
+    pub(crate) fn trans_operand(&mut self,
                          bcx: &Builder<'a, 'tcx>,
                          operand: &mir::Operand<'tcx>)
                          -> OperandRef<'tcx>
@@ -307,7 +307,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
     }
 
-    pub fn store_operand(&mut self,
+    pub(crate) fn store_operand(&mut self,
                          bcx: &Builder<'a, 'tcx>,
                          lldest: ValueRef,
                          align: Option<u32>,

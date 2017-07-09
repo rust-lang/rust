@@ -39,7 +39,7 @@ const ALIGN: usize = 40;
 /// - `substring1&substring2,...` -- `&`-separated list of substrings
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
-pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           pass_num: Option<(MirSuite, MirPassIndex)>,
                           pass_name: &str,
                           disambiguator: &Display,
@@ -61,7 +61,7 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               pass_name: &str,
                               source: MirSource)
                               -> bool {
@@ -158,7 +158,7 @@ pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Ok(())
 }
 
-pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               src: MirSource,
                               mir: &Mir<'tcx>,
                               w: &mut Write)
@@ -356,7 +356,7 @@ fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     Ok(())
 }
 
-pub fn dump_mir_def_ids(tcx: TyCtxt, single: Option<DefId>) -> Vec<DefId> {
+pub(crate) fn dump_mir_def_ids(tcx: TyCtxt, single: Option<DefId>) -> Vec<DefId> {
     if let Some(i) = single {
         vec![i]
     } else {

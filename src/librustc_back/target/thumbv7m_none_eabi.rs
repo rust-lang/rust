@@ -13,7 +13,7 @@
 use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     Ok(Target {
         llvm_target: "thumbv7m-none-eabi".to_string(),
         target_endian: "little".to_string(),

@@ -14,7 +14,7 @@ use target::{Target, TargetOptions, TargetResult};
 // See https://developer.android.com/ndk/guides/abis.html#arm64-v8a
 // for target ABI requirements.
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.max_atomic_width = Some(128);
     // As documented in http://developer.android.com/ndk/guides/cpu-features.html

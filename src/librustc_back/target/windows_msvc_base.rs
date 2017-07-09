@@ -12,7 +12,7 @@ use LinkerFlavor;
 use target::{LinkArgs, TargetOptions};
 use std::default::Default;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();
     args.insert(LinkerFlavor::Msvc,
                 vec!["/NOLOGO".to_string(),

@@ -30,7 +30,7 @@ impl ConstFloat {
         }
     }
 
-    pub fn is_nan(&self) -> bool {
+    pub(crate) fn is_nan(&self) -> bool {
         match *self {
             F32(f) => f.is_nan(),
             F64(f) => f.is_nan(),

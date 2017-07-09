@@ -58,7 +58,7 @@ macro_rules! down_cast_data {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
+pub(crate) struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
@@ -76,7 +76,7 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
 }
 
 impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
-    pub fn new(save_ctxt: SaveContext<'l, 'tcx>,
+    pub(crate) fn new(save_ctxt: SaveContext<'l, 'tcx>,
                dumper: &'ll mut D)
                -> DumpVisitor<'l, 'tcx, 'll, D> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
@@ -119,7 +119,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         self.save_ctxt.span_from_span(span)
     }
 
-    pub fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
+    pub(crate) fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
         let source_file = self.tcx.sess.local_crate_source_file.as_ref();
         let crate_root = source_file.map(|source_file| {
             let source_file = Path::new(source_file);

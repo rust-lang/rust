@@ -25,7 +25,7 @@ use syntax_pos::{Span, Pos};
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
-pub fn set_source_location(
+pub(crate) fn set_source_location(
     debug_context: &FunctionDebugContext, builder: &Builder, scope: DIScope, span: Span
 ) {
     let function_debug_context = match *debug_context {
@@ -53,7 +53,7 @@ pub fn set_source_location(
 /// they are disabled when beginning to translate a new function. This functions
 /// switches source location emitting on and must therefore be called before the
 /// first real statement/expression of the function is translated.
-pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext) {
+pub(crate) fn start_emitting_source_locations(dbg_context: &FunctionDebugContext) {
     match *dbg_context {
         FunctionDebugContext::RegularContext(ref data) => {
             data.source_locations_enabled.set(true)
@@ -64,13 +64,13 @@ pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext) {
 
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum InternalDebugLocation {
+pub(crate) enum InternalDebugLocation {
     KnownLocation { scope: DIScope, line: usize, col: usize },
     UnknownLocation
 }
 
 impl InternalDebugLocation {
-    pub fn new(scope: DIScope, line: usize, col: usize) -> InternalDebugLocation {
+    pub(crate) fn new(scope: DIScope, line: usize, col: usize) -> InternalDebugLocation {
         KnownLocation {
             scope: scope,
             line: line,
@@ -79,7 +79,7 @@ impl InternalDebugLocation {
     }
 }
 
-pub fn set_debug_location(builder: &Builder, debug_location: InternalDebugLocation) {
+pub(crate) fn set_debug_location(builder: &Builder, debug_location: InternalDebugLocation) {
     let metadata_node = match debug_location {
         KnownLocation { scope, line, .. } => {
             // Always set the column to zero like Clang and GCC

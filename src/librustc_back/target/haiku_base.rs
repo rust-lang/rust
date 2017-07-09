@@ -11,7 +11,7 @@
 use target::{TargetOptions, RelroLevel};
 use std::default::Default;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         linker: "cc".to_string(),
         dynamic_linking: true,

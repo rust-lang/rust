@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     // z10 is the oldest CPU supported by LLVM
     base.cpu = "z10".to_string();

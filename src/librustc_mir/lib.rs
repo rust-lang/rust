@@ -17,7 +17,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![crate_name = "rustc_mir"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -44,10 +44,10 @@ extern crate rustc_const_math;
 extern crate rustc_const_eval;
 extern crate core; // for NonZero
 
-pub mod diagnostics;
+pub(crate) mod diagnostics;
 
 mod build;
-pub mod dataflow;
+pub(crate) mod dataflow;
 mod hair;
 mod shim;
 pub mod transform;

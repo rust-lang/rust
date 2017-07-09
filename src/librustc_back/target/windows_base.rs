@@ -12,7 +12,7 @@ use LinkerFlavor;
 use target::{LinkArgs, TargetOptions};
 use std::default::Default;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(LinkerFlavor::Gcc, vec![
             // And here, we see obscure linker flags #45. On windows, it has been

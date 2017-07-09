@@ -23,7 +23,7 @@
 use std::mem;
 use std::slice;
 
-pub struct Blake2bCtx {
+pub(crate) struct Blake2bCtx {
     b: [u8; 128],
     h: [u64; 8],
     t: [u64; 2],
@@ -257,7 +257,7 @@ fn checked_mem_copy<T1, T2>(from: &[T1], to: &mut [T2], byte_count: usize) {
     }
 }
 
-pub fn blake2b(out: &mut [u8], key: &[u8],  data: &[u8])
+pub(crate) fn blake2b(out: &mut [u8], key: &[u8],  data: &[u8])
 {
     let mut ctx = blake2b_new(out.len(), key);
     blake2b_update(&mut ctx, data);
@@ -265,7 +265,7 @@ pub fn blake2b(out: &mut [u8], key: &[u8],  data: &[u8])
     checked_mem_copy(&ctx.h, out, ctx.outlen as usize);
 }
 
-pub struct Blake2bHasher(Blake2bCtx);
+pub(crate) struct Blake2bHasher(Blake2bCtx);
 
 impl ::std::hash::Hasher for Blake2bHasher {
     fn write(&mut self, bytes: &[u8]) {
@@ -280,11 +280,11 @@ impl ::std::hash::Hasher for Blake2bHasher {
 }
 
 impl Blake2bHasher {
-    pub fn new(outlen: usize, key: &[u8]) -> Blake2bHasher {
+    pub(crate) fn new(outlen: usize, key: &[u8]) -> Blake2bHasher {
         Blake2bHasher(blake2b_new(outlen, key))
     }
 
-    pub fn finalize(&mut self) -> &[u8] {
+    pub(crate) fn finalize(&mut self) -> &[u8] {
         if !self.0.finalized {
             blake2b_final(&mut self.0);
         }

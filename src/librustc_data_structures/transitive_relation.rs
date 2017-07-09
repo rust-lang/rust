@@ -208,7 +208,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     ///     internal indices).
     ///
     /// Note that this set can, in principle, have any size.
-    pub fn minimal_upper_bounds(&self, a: &T, b: &T) -> Vec<&T> {
+    pub(crate) fn minimal_upper_bounds(&self, a: &T, b: &T) -> Vec<&T> {
         let (mut a, mut b) = match (self.index(a), self.index(b)) {
             (Some(a), Some(b)) => (a, b),
             (None, _) | (_, None) => {

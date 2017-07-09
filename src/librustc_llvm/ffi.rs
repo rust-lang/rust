@@ -86,7 +86,7 @@ pub enum Visibility {
 /// LLVMDiagnosticSeverity
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub enum DiagnosticSeverity {
+pub(crate) enum DiagnosticSeverity {
     Error = 0,
     Warning = 1,
     Remark = 2,
@@ -310,7 +310,7 @@ pub enum CodeModel {
 /// LLVMRustDiagnosticKind
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub enum DiagnosticKind {
+pub(crate) enum DiagnosticKind {
     Other,
     InlineAsm,
     StackSize,
@@ -360,7 +360,7 @@ pub enum Value_opaque {}
 pub type ValueRef = *mut Value_opaque;
 #[allow(missing_copy_implementations)]
 pub enum Metadata_opaque {}
-pub type MetadataRef = *mut Metadata_opaque;
+pub(crate) type MetadataRef = *mut Metadata_opaque;
 #[allow(missing_copy_implementations)]
 pub enum BasicBlock_opaque {}
 pub type BasicBlockRef = *mut BasicBlock_opaque;
@@ -368,11 +368,11 @@ pub type BasicBlockRef = *mut BasicBlock_opaque;
 pub enum Builder_opaque {}
 pub type BuilderRef = *mut Builder_opaque;
 #[allow(missing_copy_implementations)]
-pub enum ExecutionEngine_opaque {}
-pub type ExecutionEngineRef = *mut ExecutionEngine_opaque;
+pub(crate) enum ExecutionEngine_opaque {}
+pub(crate) type ExecutionEngineRef = *mut ExecutionEngine_opaque;
 #[allow(missing_copy_implementations)]
 pub enum MemoryBuffer_opaque {}
-pub type MemoryBufferRef = *mut MemoryBuffer_opaque;
+pub(crate) type MemoryBufferRef = *mut MemoryBuffer_opaque;
 #[allow(missing_copy_implementations)]
 pub enum PassManager_opaque {}
 pub type PassManagerRef = *mut PassManager_opaque;
@@ -380,50 +380,50 @@ pub type PassManagerRef = *mut PassManager_opaque;
 pub enum PassManagerBuilder_opaque {}
 pub type PassManagerBuilderRef = *mut PassManagerBuilder_opaque;
 #[allow(missing_copy_implementations)]
-pub enum Use_opaque {}
-pub type UseRef = *mut Use_opaque;
+pub(crate) enum Use_opaque {}
+pub(crate) type UseRef = *mut Use_opaque;
 #[allow(missing_copy_implementations)]
 pub enum TargetData_opaque {}
 pub type TargetDataRef = *mut TargetData_opaque;
 #[allow(missing_copy_implementations)]
 pub enum ObjectFile_opaque {}
-pub type ObjectFileRef = *mut ObjectFile_opaque;
+pub(crate) type ObjectFileRef = *mut ObjectFile_opaque;
 #[allow(missing_copy_implementations)]
 pub enum SectionIterator_opaque {}
-pub type SectionIteratorRef = *mut SectionIterator_opaque;
+pub(crate) type SectionIteratorRef = *mut SectionIterator_opaque;
 #[allow(missing_copy_implementations)]
 pub enum Pass_opaque {}
-pub type PassRef = *mut Pass_opaque;
+pub(crate) type PassRef = *mut Pass_opaque;
 #[allow(missing_copy_implementations)]
 pub enum TargetMachine_opaque {}
 pub type TargetMachineRef = *mut TargetMachine_opaque;
-pub enum Archive_opaque {}
-pub type ArchiveRef = *mut Archive_opaque;
-pub enum ArchiveIterator_opaque {}
-pub type ArchiveIteratorRef = *mut ArchiveIterator_opaque;
+pub(crate) enum Archive_opaque {}
+pub(crate) type ArchiveRef = *mut Archive_opaque;
+pub(crate) enum ArchiveIterator_opaque {}
+pub(crate) type ArchiveIteratorRef = *mut ArchiveIterator_opaque;
 pub enum ArchiveChild_opaque {}
-pub type ArchiveChildRef = *mut ArchiveChild_opaque;
+pub(crate) type ArchiveChildRef = *mut ArchiveChild_opaque;
 #[allow(missing_copy_implementations)]
 pub enum Twine_opaque {}
-pub type TwineRef = *mut Twine_opaque;
+pub(crate) type TwineRef = *mut Twine_opaque;
 #[allow(missing_copy_implementations)]
 pub enum DiagnosticInfo_opaque {}
 pub type DiagnosticInfoRef = *mut DiagnosticInfo_opaque;
 #[allow(missing_copy_implementations)]
 pub enum DebugLoc_opaque {}
-pub type DebugLocRef = *mut DebugLoc_opaque;
+pub(crate) type DebugLocRef = *mut DebugLoc_opaque;
 #[allow(missing_copy_implementations)]
 pub enum SMDiagnostic_opaque {}
 pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
 #[allow(missing_copy_implementations)]
 pub enum RustArchiveMember_opaque {}
-pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
+pub(crate) type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
 #[allow(missing_copy_implementations)]
 pub enum OperandBundleDef_opaque {}
-pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
+pub(crate) type OperandBundleDefRef = *mut OperandBundleDef_opaque;
 
-pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
-pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
+pub(crate) type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
+pub(crate) type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
 
 
 pub mod debuginfo {
@@ -435,21 +435,21 @@ pub mod debuginfo {
 
     pub type DIDescriptor = MetadataRef;
     pub type DIScope = DIDescriptor;
-    pub type DILocation = DIDescriptor;
+    pub(crate) type DILocation = DIDescriptor;
     pub type DIFile = DIScope;
     pub type DILexicalBlock = DIScope;
     pub type DISubprogram = DIScope;
-    pub type DINameSpace = DIScope;
+    pub(crate) type DINameSpace = DIScope;
     pub type DIType = DIDescriptor;
-    pub type DIBasicType = DIType;
-    pub type DIDerivedType = DIType;
+    pub(crate) type DIBasicType = DIType;
+    pub(crate) type DIDerivedType = DIType;
     pub type DICompositeType = DIDerivedType;
-    pub type DIVariable = DIDescriptor;
-    pub type DIGlobalVariable = DIDescriptor;
+    pub(crate) type DIVariable = DIDescriptor;
+    pub(crate) type DIGlobalVariable = DIDescriptor;
     pub type DIArray = DIDescriptor;
-    pub type DISubrange = DIDescriptor;
-    pub type DIEnumerator = DIDescriptor;
-    pub type DITemplateTypeParameter = DIDescriptor;
+    pub(crate) type DISubrange = DIDescriptor;
+    pub(crate) type DIEnumerator = DIDescriptor;
+    pub(crate) type DITemplateTypeParameter = DIDescriptor;
 
     // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
@@ -517,7 +517,7 @@ extern "C" {
     pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
 
     /// See llvm::Value::getContext
-    pub fn LLVMRustGetValueContext(V: ValueRef) -> ContextRef;
+    pub(crate) fn LLVMRustGetValueContext(V: ValueRef) -> ContextRef;
 
     // Operations on integer types
     pub fn LLVMInt1TypeInContext(C: ContextRef) -> TypeRef;
@@ -574,12 +574,12 @@ extern "C" {
     pub fn LLVMSetMetadata(Val: ValueRef, KindID: c_uint, Node: ValueRef);
 
     // Operations on Uses
-    pub fn LLVMGetFirstUse(Val: ValueRef) -> UseRef;
-    pub fn LLVMGetNextUse(U: UseRef) -> UseRef;
-    pub fn LLVMGetUser(U: UseRef) -> ValueRef;
+    pub(crate) fn LLVMGetFirstUse(Val: ValueRef) -> UseRef;
+    pub(crate) fn LLVMGetNextUse(U: UseRef) -> UseRef;
+    pub(crate) fn LLVMGetUser(U: UseRef) -> ValueRef;
 
     // Operations on Users
-    pub fn LLVMGetOperand(Val: ValueRef, Index: c_uint) -> ValueRef;
+    pub(crate) fn LLVMGetOperand(Val: ValueRef, Index: c_uint) -> ValueRef;
 
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
@@ -624,7 +624,7 @@ extern "C" {
     pub fn LLVMConstVector(ScalarConstantVals: *const ValueRef, Size: c_uint) -> ValueRef;
 
     // Constant expressions
-    pub fn LLVMSizeOf(Ty: TypeRef) -> ValueRef;
+    pub(crate) fn LLVMSizeOf(Ty: TypeRef) -> ValueRef;
     pub fn LLVMConstNeg(ConstantVal: ValueRef) -> ValueRef;
     pub fn LLVMConstFNeg(ConstantVal: ValueRef) -> ValueRef;
     pub fn LLVMConstNot(ConstantVal: ValueRef) -> ValueRef;
@@ -675,9 +675,9 @@ extern "C" {
     pub fn LLVMIsDeclaration(Global: ValueRef) -> Bool;
     pub fn LLVMRustGetLinkage(Global: ValueRef) -> Linkage;
     pub fn LLVMRustSetLinkage(Global: ValueRef, RustLinkage: Linkage);
-    pub fn LLVMGetSection(Global: ValueRef) -> *const c_char;
+    pub(crate) fn LLVMGetSection(Global: ValueRef) -> *const c_char;
     pub fn LLVMSetSection(Global: ValueRef, Section: *const c_char);
-    pub fn LLVMRustGetVisibility(Global: ValueRef) -> Visibility;
+    pub(crate) fn LLVMRustGetVisibility(Global: ValueRef) -> Visibility;
     pub fn LLVMRustSetVisibility(Global: ValueRef, Viz: Visibility);
     pub fn LLVMGetAlignment(Global: ValueRef) -> c_uint;
     pub fn LLVMSetAlignment(Global: ValueRef, Bytes: c_uint);
@@ -694,14 +694,14 @@ extern "C" {
     pub fn LLVMDeleteGlobal(GlobalVar: ValueRef);
     pub fn LLVMGetInitializer(GlobalVar: ValueRef) -> ValueRef;
     pub fn LLVMSetInitializer(GlobalVar: ValueRef, ConstantVal: ValueRef);
-    pub fn LLVMSetThreadLocal(GlobalVar: ValueRef, IsThreadLocal: Bool);
+    pub(crate) fn LLVMSetThreadLocal(GlobalVar: ValueRef, IsThreadLocal: Bool);
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
     pub fn LLVMRustGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
     // Operations on functions
-    pub fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
+    pub(crate) fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
     pub fn LLVMGetNamedFunction(M: ModuleRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMGetFirstFunction(M: ModuleRef) -> ValueRef;
     pub fn LLVMGetNextFunction(Fn: ValueRef) -> ValueRef;
@@ -709,21 +709,21 @@ extern "C" {
                                        Name: *const c_char,
                                        FunctionTy: TypeRef)
                                        -> ValueRef;
-    pub fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
+    pub(crate) fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
     pub fn LLVMRustAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: u64);
-    pub fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: Attribute);
-    pub fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
+    pub(crate) fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: Attribute);
+    pub(crate) fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
                                               index: c_uint,
                                               Name: *const c_char,
                                               Value: *const c_char);
-    pub fn LLVMRustRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: Attribute);
+    pub(crate) fn LLVMRustRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: Attribute);
 
     // Operations on parameters
-    pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;
+    pub(crate) fn LLVMCountParams(Fn: ValueRef) -> c_uint;
     pub fn LLVMGetParam(Fn: ValueRef, Index: c_uint) -> ValueRef;
 
     // Operations on basic blocks
-    pub fn LLVMBasicBlockAsValue(BB: BasicBlockRef) -> ValueRef;
+    pub(crate) fn LLVMBasicBlockAsValue(BB: BasicBlockRef) -> ValueRef;
     pub fn LLVMGetBasicBlockParent(BB: BasicBlockRef) -> ValueRef;
     pub fn LLVMAppendBasicBlockInContext(C: ContextRef,
                                          Fn: ValueRef,
@@ -732,14 +732,14 @@ extern "C" {
     pub fn LLVMDeleteBasicBlock(BB: BasicBlockRef);
 
     // Operations on instructions
-    pub fn LLVMGetInstructionParent(Inst: ValueRef) -> BasicBlockRef;
+    pub(crate) fn LLVMGetInstructionParent(Inst: ValueRef) -> BasicBlockRef;
     pub fn LLVMGetFirstBasicBlock(Fn: ValueRef) -> BasicBlockRef;
-    pub fn LLVMGetFirstInstruction(BB: BasicBlockRef) -> ValueRef;
-    pub fn LLVMInstructionEraseFromParent(Inst: ValueRef);
+    pub(crate) fn LLVMGetFirstInstruction(BB: BasicBlockRef) -> ValueRef;
+    pub(crate) fn LLVMInstructionEraseFromParent(Inst: ValueRef);
 
     // Operations on call sites
-    pub fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: c_uint);
-    pub fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: Attribute);
+    pub(crate) fn LLVMSetInstructionCallConv(Instr: ValueRef, CC: c_uint);
+    pub(crate) fn LLVMRustAddCallSiteAttribute(Instr: ValueRef, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: ValueRef, index: c_uint, bytes: u64);
 
     // Operations on load/store instructions (only)
@@ -753,7 +753,7 @@ extern "C" {
 
     // Instruction builders
     pub fn LLVMCreateBuilderInContext(C: ContextRef) -> BuilderRef;
-    pub fn LLVMPositionBuilder(Builder: BuilderRef, Block: BasicBlockRef, Instr: ValueRef);
+    pub(crate) fn LLVMPositionBuilder(Builder: BuilderRef, Block: BasicBlockRef, Instr: ValueRef);
     pub fn LLVMPositionBuilderBefore(Builder: BuilderRef, Instr: ValueRef);
     pub fn LLVMPositionBuilderAtEnd(Builder: BuilderRef, Block: BasicBlockRef);
     pub fn LLVMGetInsertBlock(Builder: BuilderRef) -> BasicBlockRef;
@@ -1213,14 +1213,14 @@ extern "C" {
 
 
     // Selected entries from the downcasts.
-    pub fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
-    pub fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
+    pub(crate) fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
+    pub(crate) fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
 
     /// Writes a module to the specified path. Returns 0 on success.
     pub fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: *const c_char) -> c_int;
 
     /// Creates target data from a target layout string.
-    pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
+    pub(crate) fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
     /// Number of bytes clobbered when doing a Store to *T.
     pub fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
 
@@ -1240,7 +1240,7 @@ extern "C" {
                                -> c_ulonglong;
 
     /// Disposes target data.
-    pub fn LLVMDisposeTargetData(TD: TargetDataRef);
+    pub(crate) fn LLVMDisposeTargetData(TD: TargetDataRef);
 
     /// Creates a pass manager.
     pub fn LLVMCreatePassManager() -> PassManagerRef;
@@ -1275,14 +1275,14 @@ extern "C" {
     // Stuff that's in rustllvm/ because it's not upstream yet.
 
     /// Opens an object file.
-    pub fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
+    pub(crate) fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
     /// Closes an object file.
-    pub fn LLVMDisposeObjectFile(ObjFile: ObjectFileRef);
+    pub(crate) fn LLVMDisposeObjectFile(ObjFile: ObjectFileRef);
 
     /// Enumerates the sections in an object file.
-    pub fn LLVMGetSections(ObjFile: ObjectFileRef) -> SectionIteratorRef;
+    pub(crate) fn LLVMGetSections(ObjFile: ObjectFileRef) -> SectionIteratorRef;
     /// Destroys a section iterator.
-    pub fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
+    pub(crate) fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
     /// Returns true if the section iterator is at the end of the section
     /// list:
     pub fn LLVMIsSectionIteratorAtEnd(ObjFile: ObjectFileRef, SI: SectionIteratorRef) -> Bool;
@@ -1613,37 +1613,37 @@ extern "C" {
     pub fn LLVMRustRunRestrictionPass(M: ModuleRef, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
 
-    pub fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
-    pub fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
-    pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
-    pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
-    pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
-    pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
-    pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
-    pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
+    pub(crate) fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
+    pub(crate) fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
+    pub(crate) fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
+    pub(crate) fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
+    pub(crate) fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
+    pub(crate) fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
+    pub(crate) fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
+    pub(crate) fn LLVMRustDestroyArchive(AR: ArchiveRef);
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef, data: *mut *const c_char) -> size_t;
 
-    pub fn LLVMRustWriteTwineToString(T: TwineRef, s: RustStringRef);
+    pub(crate) fn LLVMRustWriteTwineToString(T: TwineRef, s: RustStringRef);
 
     pub fn LLVMContextSetDiagnosticHandler(C: ContextRef,
                                            Handler: DiagnosticHandler,
                                            DiagnosticContext: *mut c_void);
 
-    pub fn LLVMRustUnpackOptimizationDiagnostic(DI: DiagnosticInfoRef,
+    pub(crate) fn LLVMRustUnpackOptimizationDiagnostic(DI: DiagnosticInfoRef,
                                                 pass_name_out: RustStringRef,
                                                 function_out: *mut ValueRef,
                                                 debugloc_out: *mut DebugLocRef,
                                                 message_out: RustStringRef);
-    pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: DiagnosticInfoRef,
+    pub(crate) fn LLVMRustUnpackInlineAsmDiagnostic(DI: DiagnosticInfoRef,
                                              cookie_out: *mut c_uint,
                                              message_out: *mut TwineRef,
                                              instruction_out: *mut ValueRef);
 
-    pub fn LLVMRustWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
-    pub fn LLVMRustGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
+    pub(crate) fn LLVMRustWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
+    pub(crate) fn LLVMRustGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
 
-    pub fn LLVMRustWriteDebugLocToString(C: ContextRef, DL: DebugLocRef, s: RustStringRef);
+    pub(crate) fn LLVMRustWriteDebugLocToString(C: ContextRef, DL: DebugLocRef, s: RustStringRef);
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: ContextRef,
                                                  H: InlineAsmDiagHandler,
@@ -1666,15 +1666,15 @@ extern "C" {
     pub fn LLVMRustSetDataLayoutFromTargetMachine(M: ModuleRef, TM: TargetMachineRef);
     pub fn LLVMRustGetModuleDataLayout(M: ModuleRef) -> TargetDataRef;
 
-    pub fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
+    pub(crate) fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
                                          Inputs: *const ValueRef,
                                          NumInputs: c_uint)
                                          -> OperandBundleDefRef;
-    pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
+    pub(crate) fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
 
     pub fn LLVMRustPositionBuilderAtStart(B: BuilderRef, BB: BasicBlockRef);
 
-    pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
-    pub fn LLVMRustUnsetComdat(V: ValueRef);
+    pub(crate) fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
+    pub(crate) fn LLVMRustUnsetComdat(V: ValueRef);
     pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
 }

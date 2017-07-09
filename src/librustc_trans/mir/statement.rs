@@ -20,7 +20,7 @@ use super::LocalRef;
 use super::super::adt;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_statement(&mut self,
+    pub(crate) fn trans_statement(&mut self,
                            bcx: Builder<'a, 'tcx>,
                            statement: &mir::Statement<'tcx>)
                            -> Builder<'a, 'tcx> {

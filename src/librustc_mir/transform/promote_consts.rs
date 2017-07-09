@@ -36,7 +36,7 @@ use std::usize;
 
 /// State of a temporary during collection and promotion.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum TempState {
+pub(crate) enum TempState {
     /// No references to this temp.
     Undefined,
     /// One direct assignment and any number of direct uses.
@@ -54,7 +54,7 @@ pub enum TempState {
 }
 
 impl TempState {
-    pub fn is_promotable(&self) -> bool {
+    pub(crate) fn is_promotable(&self) -> bool {
         if let TempState::Defined { uses, .. } = *self {
             uses > 0
         } else {
@@ -67,7 +67,7 @@ impl TempState {
 /// returned value in a promoted MIR, unless it's a subset
 /// of a larger candidate.
 #[derive(Debug)]
-pub enum Candidate {
+pub(crate) enum Candidate {
     /// Borrow of a constant temporary.
     Ref(Location),
 
@@ -136,7 +136,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
     }
 }
 
-pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Local, TempState> {
+pub(crate) fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Local, TempState> {
     let mut collector = TempCollector {
         temps: IndexVec::from_elem(TempState::Undefined, &mir.local_decls),
         span: mir.span,
@@ -339,7 +339,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
     }
 }
 
-pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
+pub(crate) fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     mut temps: IndexVec<Local, TempState>,
                                     candidates: Vec<Candidate>) {

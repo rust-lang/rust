@@ -27,7 +27,7 @@ use syntax::ast;
 
 use std::ops;
 
-pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
+pub(crate) fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
 {
     // The is_local_to_unit flag indicates whether a function is local to the
     // current compilation unit (i.e. if it is *static* in the C-sense). The
@@ -41,39 +41,39 @@ pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
 }
 
 #[allow(non_snake_case)]
-pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
+pub(crate) fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe {
         llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
     };
 }
 
 /// Return syntax_pos::Loc corresponding to the beginning of the span
-pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
+pub(crate) fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
     cx.sess().codemap().lookup_char_pos(span.lo)
 }
 
-pub fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u32) {
+pub(crate) fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u32) {
     (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type))
 }
 
-pub fn bytes_to_bits<T>(bytes: T) -> T
+pub(crate) fn bytes_to_bits<T>(bytes: T) -> T
     where T: ops::Mul<Output=T> + From<u8> {
     bytes * 8u8.into()
 }
 
 #[inline]
-pub fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
+pub(crate) fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
                            -> &'a CrateDebugContext<'tcx> {
     cx.dbg_cx().as_ref().unwrap()
 }
 
 #[inline]
 #[allow(non_snake_case)]
-pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
+pub(crate) fn DIB(cx: &CrateContext) -> DIBuilderRef {
     cx.dbg_cx().as_ref().unwrap().builder
 }
 
-pub fn get_namespace_for_item(cx: &CrateContext, def_id: DefId) -> DIScope {
+pub(crate) fn get_namespace_for_item(cx: &CrateContext, def_id: DefId) -> DIScope {
     item_namespace(cx, cx.tcx().parent(def_id)
         .expect("get_namespace_for_item: missing parent?"))
 }

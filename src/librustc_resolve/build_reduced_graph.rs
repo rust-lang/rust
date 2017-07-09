@@ -77,7 +77,7 @@ struct LegacyMacroImports {
 impl<'a> Resolver<'a> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
-    pub fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
+    pub(crate) fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
         where T: ToNameBinding<'a>,
     {
         let binding = def.to_name_binding(self.arenas);
@@ -505,7 +505,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
+    pub(crate) fn get_module(&mut self, def_id: DefId) -> Module<'a> {
         if def_id.krate == LOCAL_CRATE {
             return self.module_map[&def_id]
         }
@@ -530,7 +530,7 @@ impl<'a> Resolver<'a> {
         module
     }
 
-    pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
+    pub(crate) fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
         let def_id = self.macro_defs[&expansion];
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
@@ -543,7 +543,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
+    pub(crate) fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
         let def_id = match def {
             Def::Macro(def_id, ..) => def_id,
             _ => panic!("Expected Def::Macro(..)"),
@@ -566,7 +566,7 @@ impl<'a> Resolver<'a> {
 
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
+    pub(crate) fn populate_module_if_necessary(&mut self, module: Module<'a>) {
         if module.populated.get() { return }
         for child in self.session.cstore.item_children(module.def_id().unwrap(), self.session) {
             self.build_reduced_graph_for_external_crate_def(module, child);
@@ -713,10 +713,10 @@ impl<'a> Resolver<'a> {
     }
 }
 
-pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
-    pub resolver: &'a mut Resolver<'b>,
-    pub legacy_scope: LegacyScope<'b>,
-    pub expansion: Mark,
+pub(crate) struct BuildReducedGraphVisitor<'a, 'b: 'a> {
+    pub(crate) resolver: &'a mut Resolver<'b>,
+    pub(crate) legacy_scope: LegacyScope<'b>,
+    pub(crate) expansion: Mark,
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {

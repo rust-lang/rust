@@ -39,7 +39,7 @@ use syntax_pos::Span;
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  drop_impl_did: DefId)
                                  -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
@@ -266,7 +266,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
 ///
-pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
+pub(crate) fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: ty::Ty<'tcx>,
     span: Span,

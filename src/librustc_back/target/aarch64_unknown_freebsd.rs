@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::freebsd_base::opts();
     base.max_atomic_width = Some(128);
 

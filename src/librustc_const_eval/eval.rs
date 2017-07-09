@@ -54,7 +54,7 @@ macro_rules! math {
 ///
 /// `substs` is optional and is used for associated constants.
 /// This generally happens in late/trans const evaluation.
-pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     def_id: DefId,
                                     substs: &'tcx Substs<'tcx>)
                                     -> Option<(DefId, &'tcx Substs<'tcx>)> {
@@ -720,7 +720,7 @@ fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
     })
 }
 
-pub fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
+pub(crate) fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
                           -> Result<Ordering, ErrorReported>
 {
     let result = match (a, b) {

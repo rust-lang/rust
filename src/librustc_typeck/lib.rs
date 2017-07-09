@@ -69,7 +69,7 @@ This API is completely unstable and subject to change.
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![allow(non_camel_case_types)]
 
@@ -95,12 +95,12 @@ extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
-pub use rustc::dep_graph;
-pub use rustc::hir;
-pub use rustc::lint;
-pub use rustc::middle;
-pub use rustc::session;
-pub use rustc::util;
+pub(crate) use rustc::dep_graph;
+pub(crate) use rustc::hir;
+pub(crate) use rustc::lint;
+pub(crate) use rustc::middle;
+pub(crate) use rustc::session;
+pub(crate) use rustc::util;
 
 use hir::map as hir_map;
 use rustc::infer::InferOk;
@@ -118,7 +118,7 @@ use syntax_pos::Span;
 use std::iter;
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
-pub mod diagnostics;
+pub(crate) mod diagnostics;
 
 mod check;
 mod check_unused;
@@ -129,9 +129,9 @@ mod impl_wf_check;
 mod coherence;
 mod variance;
 
-pub struct TypeAndSubsts<'tcx> {
-    pub substs: &'tcx Substs<'tcx>,
-    pub ty: Ty<'tcx>,
+pub(crate) struct TypeAndSubsts<'tcx> {
+    pub(crate) substs: &'tcx Substs<'tcx>,
+    pub(crate) ty: Ty<'tcx>,
 }
 
 fn require_c_abi_if_variadic(tcx: TyCtxt,

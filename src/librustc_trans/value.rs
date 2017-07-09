@@ -13,7 +13,7 @@ use llvm;
 use std::fmt;
 
 #[derive(Copy, Clone, PartialEq)]
-pub struct Value(pub llvm::ValueRef);
+pub(crate) struct Value(pub(crate) llvm::ValueRef);
 
 impl fmt::Debug for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

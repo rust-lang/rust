@@ -14,11 +14,11 @@ use super::super::indexed_vec::IndexVec;
 #[cfg(test)]
 mod test;
 
-pub fn post_order_from<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
+pub(crate) fn post_order_from<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
     post_order_from_to(graph, start_node, None)
 }
 
-pub fn post_order_from_to<G: ControlFlowGraph>(graph: &G,
+pub(crate) fn post_order_from_to<G: ControlFlowGraph>(graph: &G,
                                                start_node: G::Node,
                                                end_node: Option<G::Node>)
                                                -> Vec<G::Node> {
@@ -47,7 +47,7 @@ fn post_order_walk<G: ControlFlowGraph>(graph: &G,
     result.push(node);
 }
 
-pub fn pre_order_walk<G: ControlFlowGraph>(graph: &G,
+pub(crate) fn pre_order_walk<G: ControlFlowGraph>(graph: &G,
                                            node: G::Node,
                                            result: &mut Vec<G::Node>,
                                            visited: &mut IndexVec<G::Node, bool>) {
@@ -63,7 +63,7 @@ pub fn pre_order_walk<G: ControlFlowGraph>(graph: &G,
     }
 }
 
-pub fn reverse_post_order<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
+pub(crate) fn reverse_post_order<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
     let mut vec = post_order_from(graph, start_node);
     vec.reverse();
     vec

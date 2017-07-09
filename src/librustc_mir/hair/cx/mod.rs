@@ -32,26 +32,26 @@ use rustc_const_math::{ConstInt, ConstUsize};
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub(crate) struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
-    pub region_maps: Rc<RegionMaps>,
-    pub tables: &'a ty::TypeckTables<'gcx>,
+    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    pub(crate) region_maps: Rc<RegionMaps>,
+    pub(crate) tables: &'a ty::TypeckTables<'gcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
     /// `const`, or the body of a `const fn`.
     constness: hir::Constness,
 
     /// What are we compiling?
-    pub src: MirSource,
+    pub(crate) src: MirSource,
 
     /// True if this constant/function needs overflow checks.
     check_overflow: bool,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, src: MirSource) -> Cx<'a, 'gcx, 'tcx> {
+    pub(crate) fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, src: MirSource) -> Cx<'a, 'gcx, 'tcx> {
         let constness = match src {
             MirSource::Const(_) |
             MirSource::Static(..) => hir::Constness::Const,
@@ -90,38 +90,38 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     /// Normalizes `ast` into the appropriate `mirror` type.
-    pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
+    pub(crate) fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
     }
 
-    pub fn usize_ty(&mut self) -> Ty<'tcx> {
+    pub(crate) fn usize_ty(&mut self) -> Ty<'tcx> {
         self.tcx.types.usize
     }
 
-    pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
+    pub(crate) fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
         match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
             Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val)) },
             Err(_) => bug!("usize literal out of range for target"),
         }
     }
 
-    pub fn bool_ty(&mut self) -> Ty<'tcx> {
+    pub(crate) fn bool_ty(&mut self) -> Ty<'tcx> {
         self.tcx.types.bool
     }
 
-    pub fn unit_ty(&mut self) -> Ty<'tcx> {
+    pub(crate) fn unit_ty(&mut self) -> Ty<'tcx> {
         self.tcx.mk_nil()
     }
 
-    pub fn true_literal(&mut self) -> Literal<'tcx> {
+    pub(crate) fn true_literal(&mut self) -> Literal<'tcx> {
         Literal::Value { value: ConstVal::Bool(true) }
     }
 
-    pub fn false_literal(&mut self) -> Literal<'tcx> {
+    pub(crate) fn false_literal(&mut self) -> Literal<'tcx> {
         Literal::Value { value: ConstVal::Bool(false) }
     }
 
-    pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
+    pub(crate) fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
         let tcx = self.tcx.global_tcx();
         match ConstContext::with_tables(tcx, self.tables()).eval(e) {
             Ok(value) => Literal::Value { value: value },
@@ -129,7 +129,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn fatal_const_eval_err(&self,
+    pub(crate) fn fatal_const_eval_err(&self,
         err: &ConstEvalErr<'tcx>,
         primary_span: Span,
         primary_kind: &str)
@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         unreachable!()
     }
 
-    pub fn trait_method(&mut self,
+    pub(crate) fn trait_method(&mut self,
                         trait_def_id: DefId,
                         method_name: &str,
                         self_ty: Ty<'tcx>,
@@ -162,17 +162,17 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
     }
 
-    pub fn num_variants(&mut self, adt_def: &ty::AdtDef) -> usize {
+    pub(crate) fn num_variants(&mut self, adt_def: &ty::AdtDef) -> usize {
         adt_def.variants.len()
     }
 
-    pub fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: usize) -> Vec<Field> {
+    pub(crate) fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: usize) -> Vec<Field> {
         (0..adt_def.variants[variant_index].fields.len())
             .map(Field::new)
             .collect()
     }
 
-    pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
         let (ty, param_env) = self.tcx.lift_to_global(&(ty, self.param_env)).unwrap_or_else(|| {
             bug!("MIR: Cx::needs_drop({:?}, {:?}) got \
                   type with inference types/regions",
@@ -181,15 +181,15 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty.needs_drop(self.tcx.global_tcx(), param_env)
     }
 
-    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    pub(crate) fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
 
-    pub fn tables(&self) -> &'a ty::TypeckTables<'gcx> {
+    pub(crate) fn tables(&self) -> &'a ty::TypeckTables<'gcx> {
         self.tables
     }
 
-    pub fn check_overflow(&self) -> bool {
+    pub(crate) fn check_overflow(&self) -> bool {
         self.check_overflow
     }
 }

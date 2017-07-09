@@ -10,7 +10,7 @@
 
 //! LLVM diagnostic reports.
 
-pub use self::OptimizationDiagnosticKind::*;
+pub(crate) use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
 use libc::c_uint;
@@ -46,7 +46,7 @@ impl OptimizationDiagnosticKind {
 pub struct OptimizationDiagnostic {
     pub kind: OptimizationDiagnosticKind,
     pub pass_name: String,
-    pub function: ValueRef,
+    pub(crate) function: ValueRef,
     pub debug_loc: DebugLocRef,
     pub message: String,
 }
@@ -83,7 +83,7 @@ impl OptimizationDiagnostic {
 pub struct InlineAsmDiagnostic {
     pub cookie: c_uint,
     pub message: TwineRef,
-    pub instruction: ValueRef,
+    pub(crate) instruction: ValueRef,
 }
 
 impl InlineAsmDiagnostic {

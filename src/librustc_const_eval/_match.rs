@@ -38,7 +38,7 @@ use std::cmp::{self, Ordering};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
-pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
+pub(crate) fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
                                 -> &'a Pattern<'tcx>
 {
     cx.pattern_arena.alloc(LiteralExpander.fold_pattern(&pat))
@@ -79,14 +79,14 @@ impl<'tcx> Pattern<'tcx> {
     }
 }
 
-pub struct Matrix<'a, 'tcx: 'a>(Vec<Vec<&'a Pattern<'tcx>>>);
+pub(crate) struct Matrix<'a, 'tcx: 'a>(Vec<Vec<&'a Pattern<'tcx>>>);
 
 impl<'a, 'tcx> Matrix<'a, 'tcx> {
-    pub fn empty() -> Self {
+    pub(crate) fn empty() -> Self {
         Matrix(vec![])
     }
 
-    pub fn push(&mut self, row: Vec<&'a Pattern<'tcx>>) {
+    pub(crate) fn push(&mut self, row: Vec<&'a Pattern<'tcx>>) {
         self.0.push(row)
     }
 }
@@ -143,21 +143,21 @@ impl<'a, 'tcx> FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
 }
 
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
-pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) struct MatchCheckCtxt<'a, 'tcx: 'a> {
+    pub(crate) tcx: TyCtxt<'a, 'tcx, 'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
     /// not. eg. `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside it's module and should not be matchable with an empty match
     /// statement.
-    pub module: DefId,
-    pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
-    pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
+    pub(crate) module: DefId,
+    pub(crate) pattern_arena: &'a TypedArena<Pattern<'tcx>>,
+    pub(crate) byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
-    pub fn create_and_enter<F, R>(
+    pub(crate) fn create_and_enter<F, R>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         module: DefId,
         f: F) -> R
@@ -221,7 +221,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Constructor<'tcx> {
+pub(crate) enum Constructor<'tcx> {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
     Single,
@@ -249,7 +249,7 @@ impl<'tcx> Constructor<'tcx> {
 }
 
 #[derive(Clone)]
-pub enum Usefulness<'tcx> {
+pub(crate) enum Usefulness<'tcx> {
     Useful,
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful
@@ -265,7 +265,7 @@ impl<'tcx> Usefulness<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-pub enum WitnessPreference {
+pub(crate) enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness
 }
@@ -278,10 +278,10 @@ struct PatternContext<'tcx> {
 
 /// A stack of patterns in reverse order of construction
 #[derive(Clone)]
-pub struct Witness<'tcx>(Vec<Pattern<'tcx>>);
+pub(crate) struct Witness<'tcx>(Vec<Pattern<'tcx>>);
 
 impl<'tcx> Witness<'tcx> {
-    pub fn single_pattern(&self) -> &Pattern<'tcx> {
+    pub(crate) fn single_pattern(&self) -> &Pattern<'tcx> {
         assert_eq!(self.0.len(), 1);
         &self.0[0]
     }
@@ -545,7 +545,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
-pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+pub(crate) fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                            matrix: &Matrix<'p, 'tcx>,
                            v: &[&'p Pattern<'tcx>],
                            witness: WitnessPreference)

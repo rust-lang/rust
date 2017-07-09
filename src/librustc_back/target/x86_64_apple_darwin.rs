@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::apple_base::opts();
     base.cpu = "core2".to_string();
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b

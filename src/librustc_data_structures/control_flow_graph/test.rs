@@ -15,7 +15,7 @@ use std::iter;
 
 use super::{ControlFlowGraph, GraphPredecessors, GraphSuccessors};
 
-pub struct TestGraph {
+pub(crate) struct TestGraph {
     num_nodes: usize,
     start_node: usize,
     successors: HashMap<usize, Vec<usize>>,
@@ -23,7 +23,7 @@ pub struct TestGraph {
 }
 
 impl TestGraph {
-    pub fn new(start_node: usize, edges: &[(usize, usize)]) -> Self {
+    pub(crate) fn new(start_node: usize, edges: &[(usize, usize)]) -> Self {
         let mut graph = TestGraph {
             num_nodes: start_node + 1,
             start_node: start_node,

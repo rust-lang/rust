@@ -28,7 +28,7 @@ use std::io::Read;
 use std::ffi::CString;
 use std::path::Path;
 
-pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
+pub(crate) fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
         config::CrateTypeExecutable |
         config::CrateTypeStaticlib  |
@@ -40,7 +40,7 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     }
 }
 
-pub fn run(cgcx: &CodegenContext,
+pub(crate) fn run(cgcx: &CodegenContext,
            llmod: ModuleRef,
            tm: TargetMachineRef,
            config: &ModuleConfig,

@@ -13,7 +13,7 @@ use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::util::nodemap::FxHashSet;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Parameter(pub u32);
+pub(crate) struct Parameter(pub(crate) u32);
 
 impl From<ty::ParamTy> for Parameter {
     fn from(param: ty::ParamTy) -> Self { Parameter(param.idx) }
@@ -24,7 +24,7 @@ impl From<ty::EarlyBoundRegion> for Parameter {
 }
 
 /// Return the set of parameters constrained by the impl header.
-pub fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
+pub(crate) fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
                                  impl_trait_ref: Option<ty::TraitRef<'tcx>>)
                                  -> FxHashSet<Parameter>
 {
@@ -40,7 +40,7 @@ pub fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
 /// uniquely determined by `t` (see RFC 447). If it is true, return the list
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
-pub fn parameters_for<'tcx, T>(t: &T,
+pub(crate) fn parameters_for<'tcx, T>(t: &T,
                                include_nonconstraining: bool)
                                -> Vec<Parameter>
     where T: TypeFoldable<'tcx>
@@ -86,7 +86,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 }
 
-pub fn identify_constrained_type_params<'tcx>(tcx: ty::TyCtxt,
+pub(crate) fn identify_constrained_type_params<'tcx>(tcx: ty::TyCtxt,
                                               predicates: &[ty::Predicate<'tcx>],
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut FxHashSet<Parameter>)
@@ -136,7 +136,7 @@ pub fn identify_constrained_type_params<'tcx>(tcx: ty::TyCtxt,
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(tcx: ty::TyCtxt,
+pub(crate) fn setup_constraining_predicates<'tcx>(tcx: ty::TyCtxt,
                                            predicates: &mut [ty::Predicate<'tcx>],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                            input_parameters: &mut FxHashSet<Parameter>)

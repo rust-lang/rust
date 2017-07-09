@@ -14,7 +14,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
@@ -61,8 +61,8 @@ use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
 use syntax_pos::*;
 
-pub use json_api_dumper::JsonApiDumper;
-pub use json_dumper::JsonDumper;
+pub(crate) use json_api_dumper::JsonApiDumper;
+pub(crate) use json_dumper::JsonDumper;
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
@@ -78,7 +78,7 @@ pub struct SaveContext<'l, 'tcx: 'l> {
 }
 
 #[derive(Debug)]
-pub enum Data {
+pub(crate) enum Data {
     /// Data about a macro use.
     MacroUseData(MacroRef),
     RefData(Ref),
@@ -86,7 +86,7 @@ pub enum Data {
     RelationData(Relation),
 }
 
-pub trait Dump {
+pub(crate) trait Dump {
     fn crate_prelude(&mut self, _: CratePreludeData);
     fn macro_use(&mut self, _: MacroRef) {}
     fn import(&mut self, _: bool, _: Import);
@@ -119,7 +119,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     // List external crates used by the current crate.
-    pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
+    pub(crate) fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::new();
 
         for n in self.tcx.sess.cstore.crates() {
@@ -141,7 +141,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         result
     }
 
-    pub fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
+    pub(crate) fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
         let qualname = format!("::{}", self.tcx.node_path_str(item.id));
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
@@ -189,7 +189,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
+    pub(crate) fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
             ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
@@ -344,7 +344,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_field_data(&self,
+    pub(crate) fn get_field_data(&self,
                           field: &ast::StructField,
                           scope: NodeId)
                           -> Option<Def> {
@@ -381,7 +381,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     // FIXME would be nice to take a MethodItem here, but the ast provides both
     // trait and impl flavours, so the caller must do the disassembly.
-    pub fn get_method_data(&self,
+    pub(crate) fn get_method_data(&self,
                            id: ast::NodeId,
                            name: ast::Name,
                            span: Span)
@@ -484,7 +484,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         })
     }
 
-    pub fn get_trait_ref_data(&self,
+    pub(crate) fn get_trait_ref_data(&self,
                               trait_ref: &ast::TraitRef)
                               -> Option<Ref> {
         self.lookup_ref_id(trait_ref.ref_id).and_then(|def_id| {
@@ -503,7 +503,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         })
     }
 
-    pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
+    pub(crate) fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         let hir_node = self.tcx.hir.expect_expr(expr.id);
         let ty = self.tables.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::TyError {
@@ -582,7 +582,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_def(&self, id: NodeId) -> HirDef {
+    pub(crate) fn get_path_def(&self, id: NodeId) -> HirDef {
         match self.tcx.hir.get(id) {
             Node::NodeTraitRef(tr) => tr.path.def,
 
@@ -622,7 +622,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Ref> {
+    pub(crate) fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Ref> {
         let def = self.get_path_def(id);
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
@@ -699,7 +699,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_field_ref_data(&self,
+    pub(crate) fn get_field_ref_data(&self,
                               field_ref: &ast::Field,
                               variant: &ty::VariantDef)
                               -> Option<Ref> {
@@ -720,7 +720,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     /// For a given piece of AST defined by the supplied Span and NodeId,
     /// returns None if the node is not macro-generated or the span is malformed,
     /// else uses the expansion callsite and callee to return some MacroRef.
-    pub fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
+    pub(crate) fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {
             return None;
         }
@@ -766,7 +766,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     #[inline]
-    pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
+    pub(crate) fn enclosing_scope(&self, id: NodeId) -> NodeId {
         self.tcx.hir.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
 }

@@ -36,7 +36,7 @@
 //! use syntax::tokenstream::TokenTree;
 //!
 //! #[plugin_registrar]
-//! pub fn plugin_registrar(reg: &mut Registry) {
+//! pub(crate) fn plugin_registrar(reg: &mut Registry) {
 //!     reg.register_macro("mymacro", expand_mymacro);
 //! }
 //!
@@ -66,7 +66,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
 
@@ -80,7 +80,7 @@ extern crate rustc_errors as errors;
 
 pub use self::registry::Registry;
 
-pub mod diagnostics;
+pub(crate) mod diagnostics;
 pub mod registry;
 pub mod load;
 pub mod build;

@@ -33,7 +33,7 @@ use type_of;
 ///
 /// - `ccx`: the crate context
 /// - `instance`: the instance to be instantiated
-pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub(crate) fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                         instance: Instance<'tcx>)
                         -> ValueRef
 {
@@ -139,7 +139,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
-pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub(crate) fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     def_id: DefId,
                                     substs: &'tcx Substs<'tcx>)
                                     -> ValueRef

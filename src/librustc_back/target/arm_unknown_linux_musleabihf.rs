@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::linux_musl_base::opts();
 
     // Most of these settings are copied from the arm_unknown_linux_gnueabihf

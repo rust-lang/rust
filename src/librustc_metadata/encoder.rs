@@ -49,9 +49,9 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
-pub struct EncodeContext<'a, 'tcx: 'a> {
+pub(crate) struct EncodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Encoder<'a>,
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) tcx: TyCtxt<'a, 'tcx, 'tcx>,
     link_meta: &'a LinkMeta,
     exported_symbols: &'a NodeSet,
 
@@ -59,8 +59,8 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
 
-    pub metadata_hashes: EncodedMetadataHashes,
-    pub compute_ich: bool,
+    pub(crate) metadata_hashes: EncodedMetadataHashes,
+    pub(crate) compute_ich: bool,
 }
 
 macro_rules! encoder_methods {
@@ -138,7 +138,7 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
-    pub fn position(&self) -> usize {
+    pub(crate) fn position(&self) -> usize {
         self.opaque.position()
     }
 
@@ -171,7 +171,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.emit_usize(distance)
     }
 
-    pub fn lazy<T: Encodable>(&mut self, value: &T) -> Lazy<T> {
+    pub(crate) fn lazy<T: Encodable>(&mut self, value: &T) -> Lazy<T> {
         self.emit_node(|ecx, pos| {
             value.encode(ecx).unwrap();
 
@@ -180,7 +180,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         })
     }
 
-    pub fn lazy_seq<I, T>(&mut self, iter: I) -> LazySeq<T>
+    pub(crate) fn lazy_seq<I, T>(&mut self, iter: I) -> LazySeq<T>
         where I: IntoIterator<Item = T>,
               T: Encodable
     {
@@ -192,7 +192,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         })
     }
 
-    pub fn lazy_seq_ref<'b, I, T>(&mut self, iter: I) -> LazySeq<T>
+    pub(crate) fn lazy_seq_ref<'b, I, T>(&mut self, iter: I) -> LazySeq<T>
         where I: IntoIterator<Item = &'b T>,
               T: 'b + Encodable
     {
@@ -244,7 +244,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     // Encodes something that corresponds to a single DepNode::GlobalMetaData
     // and registers the Fingerprint in the `metadata_hashes` map.
-    pub fn tracked<'x, DATA, R>(&'x mut self,
+    pub(crate) fn tracked<'x, DATA, R>(&'x mut self,
                                 def_index: DefIndex,
                                 op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
                                 data: DATA)
@@ -1635,7 +1635,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  exported_symbols: &NodeSet)
                                  -> EncodedMetadata
@@ -1687,7 +1687,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
+pub(crate) fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.sty {
         ty::TyAdt(ref def, _) => return def.repr,

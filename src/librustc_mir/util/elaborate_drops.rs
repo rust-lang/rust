@@ -22,13 +22,13 @@ use util::patch::MirPatch;
 use std::iter;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum DropFlagState {
+pub(crate) enum DropFlagState {
     Present, // i.e. initialized
     Absent, // i.e. deinitialized or "moved"
 }
 
 impl DropFlagState {
-    pub fn value(self) -> bool {
+    pub(crate) fn value(self) -> bool {
         match self {
             DropFlagState::Present => true,
             DropFlagState::Absent => false
@@ -37,7 +37,7 @@ impl DropFlagState {
 }
 
 #[derive(Debug)]
-pub enum DropStyle {
+pub(crate) enum DropStyle {
     Dead,
     Static,
     Conditional,
@@ -45,13 +45,13 @@ pub enum DropStyle {
 }
 
 #[derive(Debug)]
-pub enum DropFlagMode {
+pub(crate) enum DropFlagMode {
     Shallow,
     Deep
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum Unwind {
+pub(crate) enum Unwind {
     To(BasicBlock),
     InCleanup
 }
@@ -79,7 +79,7 @@ impl Unwind {
     }
 }
 
-pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
+pub(crate) trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
     type Path : Copy + fmt::Debug;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
@@ -111,7 +111,7 @@ struct DropCtxt<'l, 'b: 'l, 'tcx: 'b, D>
     unwind: Unwind,
 }
 
-pub fn elaborate_drop<'b, 'tcx, D>(
+pub(crate) fn elaborate_drop<'b, 'tcx, D>(
     elaborator: &mut D,
     source_info: SourceInfo,
     lvalue: &Lvalue<'tcx>,
@@ -155,7 +155,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///
     /// FIXME: I think we should just control the flags externally
     /// and then we do not need this machinery.
-    pub fn elaborate_drop<'a>(&mut self, bb: BasicBlock) {
+    pub(crate) fn elaborate_drop<'a>(&mut self, bb: BasicBlock) {
         debug!("elaborate_drop({:?})", self);
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Deep);
         debug!("elaborate_drop({:?}): live - {:?}", self, style);

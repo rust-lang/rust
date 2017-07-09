@@ -14,7 +14,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
 
@@ -41,7 +41,7 @@ use std::cmp;
 use std::mem::replace;
 use std::rc::Rc;
 
-pub mod diagnostics;
+pub(crate) mod diagnostics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Visitor used to determine if pub(restricted) is used anywhere in the crate.
@@ -156,7 +156,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemForeignMod(..) => {
                 self.prev_level
             }
-            // Other `pub` items inherit levels from parents
+            // Other `pub(crate)` items inherit levels from parents
             hir::ItemConst(..) | hir::ItemEnum(..) | hir::ItemExternCrate(..) |
             hir::ItemGlobalAsm(..) | hir::ItemFn(..) | hir::ItemMod(..) |
             hir::ItemStatic(..) | hir::ItemStruct(..) | hir::ItemTrait(..) |

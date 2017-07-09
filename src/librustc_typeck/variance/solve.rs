@@ -33,7 +33,7 @@ struct SolveContext<'a, 'tcx: 'a> {
     solutions: Vec<ty::Variance>,
 }
 
-pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariancesMap {
+pub(crate) fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariancesMap {
     let ConstraintContext { terms_cx, dependencies, constraints, .. } = constraints_cx;
 
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];

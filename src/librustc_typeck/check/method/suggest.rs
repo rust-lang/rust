@@ -68,7 +68,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn report_method_error(&self,
+    pub(crate) fn report_method_error(&self,
                                span: Span,
                                rcvr_ty: Ty<'tcx>,
                                item_name: ast::Name,
@@ -441,11 +441,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub type AllTraitsVec = Vec<DefId>;
+pub(crate) type AllTraitsVec = Vec<DefId>;
 
 #[derive(Copy, Clone)]
-pub struct TraitInfo {
-    pub def_id: DefId,
+pub(crate) struct TraitInfo {
+    pub(crate) def_id: DefId,
 }
 
 impl TraitInfo {
@@ -476,7 +476,7 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieve all traits in this crate and any dependent crates.
-pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> {
+pub(crate) fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> {
     if tcx.all_traits.borrow().is_none() {
         use rustc::hir::itemlikevisit;
 
@@ -552,7 +552,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
     }
 }
 
-pub struct AllTraits<'a> {
+pub(crate) struct AllTraits<'a> {
     borrow: cell::Ref<'a, Option<AllTraitsVec>>,
     idx: usize,
 }

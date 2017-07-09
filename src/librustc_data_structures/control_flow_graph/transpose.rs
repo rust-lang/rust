@@ -10,18 +10,18 @@
 
 use super::*;
 
-pub struct TransposedGraph<G: ControlFlowGraph> {
+pub(crate) struct TransposedGraph<G: ControlFlowGraph> {
     base_graph: G,
     start_node: G::Node,
 }
 
 impl<G: ControlFlowGraph> TransposedGraph<G> {
-    pub fn new(base_graph: G) -> Self {
+    pub(crate) fn new(base_graph: G) -> Self {
         let start_node = base_graph.start_node();
         Self::with_start(base_graph, start_node)
     }
 
-    pub fn with_start(base_graph: G, start_node: G::Node) -> Self {
+    pub(crate) fn with_start(base_graph: G, start_node: G::Node) -> Self {
         TransposedGraph {
             base_graph: base_graph,
             start_node: start_node,

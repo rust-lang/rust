@@ -25,7 +25,7 @@ use monomorphize;
 use value::Value;
 use builder::Builder;
 
-pub fn needs_drop_glue<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>) -> bool {
+pub(crate) fn needs_drop_glue<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>) -> bool {
     assert!(t.is_normalized_for_trans());
 
     let t = scx.tcx().erase_regions(&t);
@@ -61,7 +61,7 @@ pub fn needs_drop_glue<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>
     }
 }
 
-pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+pub(crate) fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, info: ValueRef)
                                        -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));

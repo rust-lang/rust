@@ -13,7 +13,7 @@ use hair::*;
 use rustc::hir;
 use syntax::ptr::P;
 
-pub trait ToRef {
+pub(crate) trait ToRef {
     type Output;
     fn to_ref(self) -> Self::Output;
 }

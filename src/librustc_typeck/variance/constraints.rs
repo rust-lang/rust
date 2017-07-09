@@ -26,8 +26,8 @@ use rustc_data_structures::transitive_relation::TransitiveRelation;
 use super::terms::*;
 use super::terms::VarianceTerm::*;
 
-pub struct ConstraintContext<'a, 'tcx: 'a> {
-    pub terms_cx: TermsContext<'a, 'tcx>,
+pub(crate) struct ConstraintContext<'a, 'tcx: 'a> {
+    pub(crate) terms_cx: TermsContext<'a, 'tcx>,
 
     // These are pointers to common `ConstantTerm` instances
     covariant: VarianceTermPtr<'a>,
@@ -35,20 +35,20 @@ pub struct ConstraintContext<'a, 'tcx: 'a> {
     invariant: VarianceTermPtr<'a>,
     bivariant: VarianceTermPtr<'a>,
 
-    pub constraints: Vec<Constraint<'a>>,
+    pub(crate) constraints: Vec<Constraint<'a>>,
 
     /// This relation tracks the dependencies between the variance of
     /// various items. In particular, if `a < b`, then the variance of
     /// `a` depends on the sources of `b`.
-    pub dependencies: TransitiveRelation<DefId>,
+    pub(crate) dependencies: TransitiveRelation<DefId>,
 }
 
 /// Declares that the variable `decl_id` appears in a location with
 /// variance `variance`.
 #[derive(Copy, Clone)]
-pub struct Constraint<'a> {
-    pub inferred: InferredIndex,
-    pub variance: &'a VarianceTerm<'a>,
+pub(crate) struct Constraint<'a> {
+    pub(crate) inferred: InferredIndex,
+    pub(crate) variance: &'a VarianceTerm<'a>,
 }
 
 /// To build constriants, we visit one item (type, trait) at a time
@@ -60,12 +60,12 @@ pub struct Constraint<'a> {
 ///
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
 /// the def-id and the start of `Foo`'s inferreds.
-pub struct CurrentItem {
+pub(crate) struct CurrentItem {
     def_id: DefId,
     inferred_start: InferredIndex,
 }
 
-pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
+pub(crate) fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
                                             -> ConstraintContext<'a, 'tcx> {
     let tcx = terms_cx.tcx;
     let covariant = terms_cx.arena.alloc(ConstantTerm(ty::Covariant));

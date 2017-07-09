@@ -27,7 +27,7 @@ use std::mem;
 // Entry point
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body)
+    pub(crate) fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body)
                                      -> &'gcx ty::TypeckTables<'gcx> {
         let item_id = self.tcx.hir.body_owner(body.id());
         let item_def_id = self.tcx.hir.local_def_id(item_id);

@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::TargetOptions;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut base = super::linux_base::opts();
 
     // Make sure that the linker/gcc really don't pull in anything, including

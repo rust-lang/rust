@@ -62,7 +62,7 @@ pub fn write_mir_graphviz<'a, 'tcx, W>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ///
 /// `init` and `fini` are callbacks for emitting additional rows of
 /// data (using HTML enclosed with `<tr>` in the emitted text).
-pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
+pub(crate) fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
                                               mir: &Mir,
                                               w: &mut W,
                                               num_cols: u32,

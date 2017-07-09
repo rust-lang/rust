@@ -34,7 +34,7 @@ use std::iter;
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
-pub use self::constant::trans_static_initializer;
+pub(crate) use self::constant::trans_static_initializer;
 
 use self::analyze::CleanupKind;
 use self::lvalue::{Alignment, LvalueRef};
@@ -43,7 +43,7 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for translating MIR.
-pub struct MirContext<'a, 'tcx:'a> {
+pub(crate) struct MirContext<'a, 'tcx:'a> {
     mir: &'a mir::Mir<'tcx>,
 
     debug_context: debuginfo::FunctionDebugContext,
@@ -105,18 +105,18 @@ pub struct MirContext<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn monomorphize<T>(&self, value: &T) -> T
+    pub(crate) fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
         self.ccx.tcx().trans_apply_param_substs(self.param_substs, value)
     }
 
-    pub fn set_debug_loc(&mut self, bcx: &Builder, source_info: mir::SourceInfo) {
+    pub(crate) fn set_debug_loc(&mut self, bcx: &Builder, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
         debuginfo::set_source_location(&self.debug_context, bcx, scope, span);
     }
 
-    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
+    pub(crate) fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
             FunctionDebugContext::DebugInfoDisabled |
@@ -193,7 +193,7 @@ impl<'tcx> LocalRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'a, 'tcx: 'a>(
+pub(crate) fn trans_mir<'a, 'tcx: 'a>(
     ccx: &'a CrateContext<'a, 'tcx>,
     llfn: ValueRef,
     mir: &'a Mir<'tcx>,
@@ -603,7 +603,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 mod analyze;
 mod block;
 mod constant;
-pub mod lvalue;
+pub(crate) mod lvalue;
 mod operand;
 mod rvalue;
 mod statement;

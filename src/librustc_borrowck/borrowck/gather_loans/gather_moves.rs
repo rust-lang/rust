@@ -35,7 +35,7 @@ struct GatherMoveInfo<'tcx> {
 
 /// Represents the kind of pattern
 #[derive(Debug, Clone, Copy)]
-pub enum PatternSource<'tcx> {
+pub(crate) enum PatternSource<'tcx> {
     MatchExpr(&'tcx Expr),
     LetDecl(&'tcx Local),
     Other,
@@ -86,7 +86,7 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
     }
 }
 
-pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              move_data: &MoveData<'tcx>,
                              var_id: ast::NodeId,
                              var_ty: Ty<'tcx>) {
@@ -94,7 +94,7 @@ pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     move_data.add_move(bccx.tcx, loan_path, var_id, Declared);
 }
 
-pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                        move_data: &MoveData<'tcx>,
                                        move_error_collector: &mut MoveErrorCollector<'tcx>,
                                        move_expr_id: ast::NodeId,
@@ -113,7 +113,7 @@ pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 
-pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       move_data: &MoveData<'tcx>,
                                       _move_error_collector: &mut MoveErrorCollector<'tcx>,
                                       move_pat: &hir::Pat,
@@ -144,7 +144,7 @@ pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     }
 }
 
-pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       move_data: &MoveData<'tcx>,
                                       move_error_collector: &mut MoveErrorCollector<'tcx>,
                                       move_pat: &hir::Pat,
@@ -202,7 +202,7 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     }
 }
 
-pub fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                    move_data: &MoveData<'tcx>,
                                    assignment_id: ast::NodeId,
                                    assignment_span: Span,

@@ -37,7 +37,7 @@ struct StatCollector<'a, 'tcx: 'a> {
     data: FxHashMap<&'static str, NodeData>,
 }
 
-pub fn print_mir_stats<'tcx, 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, title: &str) {
+pub(crate) fn print_mir_stats<'tcx, 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, title: &str) {
     let mut collector = StatCollector {
         _tcx: tcx,
         data: FxHashMap(),

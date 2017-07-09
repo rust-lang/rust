@@ -100,7 +100,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Debug)]
-pub struct Scope<'tcx> {
+pub(crate) struct Scope<'tcx> {
     /// The visibility scope this scope was created in.
     visibility_scope: VisibilityScope,
 
@@ -184,17 +184,17 @@ struct FreeData<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct BreakableScope<'tcx> {
+pub(crate) struct BreakableScope<'tcx> {
     /// Extent of the loop
-    pub extent: CodeExtent,
+    pub(crate) extent: CodeExtent,
     /// Where the body of the loop begins. `None` if block
-    pub continue_block: Option<BasicBlock>,
+    pub(crate) continue_block: Option<BasicBlock>,
     /// Block to branch into when the loop or block terminates (either by being `break`-en out
     /// from, or by having its condition to become false)
-    pub break_block: BasicBlock,
+    pub(crate) break_block: BasicBlock,
     /// The destination of the loop/block expression itself (i.e. where to put the result of a
     /// `break` expression)
-    pub break_destination: Lvalue<'tcx>,
+    pub(crate) break_destination: Lvalue<'tcx>,
 }
 
 impl<'tcx> Scope<'tcx> {
@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// should branch to. See module comment for more details.
     ///
     /// Returns the might_break attribute of the BreakableScope used.
-    pub fn in_breakable_scope<F, R>(&mut self,
+    pub(crate) fn in_breakable_scope<F, R>(&mut self,
                                     loop_block: Option<BasicBlock>,
                                     break_block: BasicBlock,
                                     break_destination: Lvalue<'tcx>,
@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         res
     }
 
-    pub fn in_opt_scope<F, R>(&mut self,
+    pub(crate) fn in_opt_scope<F, R>(&mut self,
                               opt_extent: Option<(CodeExtent, SourceInfo)>,
                               mut block: BasicBlock,
                               f: F)
@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
-    pub fn in_scope<F, R>(&mut self,
+    pub(crate) fn in_scope<F, R>(&mut self,
                           extent: (CodeExtent, SourceInfo),
                           mut block: BasicBlock,
                           f: F)
@@ -312,7 +312,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: CodeExtent) {
+    pub(crate) fn push_scope(&mut self, extent: CodeExtent) {
         debug!("push_scope({:?})", extent);
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
@@ -328,7 +328,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Pops a scope, which should have extent `extent`, adding any
     /// drops onto the end of `block` that are needed.  This must
     /// match 1-to-1 with `push_scope`.
-    pub fn pop_scope(&mut self,
+    pub(crate) fn pop_scope(&mut self,
                      extent: (CodeExtent, SourceInfo),
                      mut block: BasicBlock)
                      -> BlockAnd<()> {
@@ -353,7 +353,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// and including `extent`.  This will insert whatever drops are
     /// needed, as well as tracking this exit for the SEME region. See
     /// module comment for details.
-    pub fn exit_scope(&mut self,
+    pub(crate) fn exit_scope(&mut self,
                       span: Span,
                       extent: (CodeExtent, SourceInfo),
                       mut block: BasicBlock,
@@ -404,7 +404,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Creates a new visibility scope, nested in the current one.
-    pub fn new_visibility_scope(&mut self, span: Span) -> VisibilityScope {
+    pub(crate) fn new_visibility_scope(&mut self, span: Span) -> VisibilityScope {
         let parent = self.visibility_scope;
         let scope = VisibilityScope::new(self.visibility_scopes.len());
         self.visibility_scopes.push(VisibilityScopeData {
@@ -418,7 +418,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // ==============
     /// Finds the breakable scope for a given label. This is used for
     /// resolving `break` and `continue`.
-    pub fn find_breakable_scope(&mut self,
+    pub(crate) fn find_breakable_scope(&mut self,
                            span: Span,
                            label: CodeExtent)
                            -> &mut BreakableScope<'tcx> {
@@ -431,7 +431,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Given a span and the current visibility scope, make a SourceInfo.
-    pub fn source_info(&self, span: Span) -> SourceInfo {
+    pub(crate) fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
             span: span,
             scope: self.visibility_scope
@@ -440,7 +440,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Returns the extent of the scope which should be exited by a
     /// return.
-    pub fn extent_of_return_scope(&self) -> CodeExtent {
+    pub(crate) fn extent_of_return_scope(&self) -> CodeExtent {
         // The outermost scope (`scopes[0]`) will be the `CallSiteScope`.
         // We want `scopes[1]`, which is the `ParameterScope`.
         assert!(self.scopes.len() >= 2);
@@ -453,7 +453,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Returns the topmost active scope, which is known to be alive until
     /// the next scope expression.
-    pub fn topmost_scope(&self) -> CodeExtent {
+    pub(crate) fn topmost_scope(&self) -> CodeExtent {
         self.scopes.last().expect("topmost_scope: no scopes present").extent
     }
 
@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// When building statics/constants, returns `None` since
     /// intermediate values do not have to be dropped in that case.
-    pub fn local_scope(&self) -> Option<CodeExtent> {
+    pub(crate) fn local_scope(&self) -> Option<CodeExtent> {
         match self.hir.src {
             MirSource::Const(_) |
             MirSource::Static(..) =>
@@ -496,7 +496,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // ================
     /// Indicates that `lvalue` should be dropped on exit from
     /// `extent`.
-    pub fn schedule_drop(&mut self,
+    pub(crate) fn schedule_drop(&mut self,
                          span: Span,
                          extent: CodeExtent,
                          lvalue: &Lvalue<'tcx>,
@@ -586,7 +586,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This cleanup will only be translated into unwind branch.
     /// The extent should be for the `EXPR` inside `box EXPR`.
     /// There may only be one “free” scheduled in any given scope.
-    pub fn schedule_box_free(&mut self,
+    pub(crate) fn schedule_box_free(&mut self,
                              span: Span,
                              extent: CodeExtent,
                              value: &Lvalue<'tcx>,
@@ -618,7 +618,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This path terminates in Resume. Returns the start of the path.
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
-    pub fn diverge_cleanup(&mut self, span: Span) -> Option<BasicBlock> {
+    pub(crate) fn diverge_cleanup(&mut self, span: Span) -> Option<BasicBlock> {
         if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
             return None;
         }
@@ -658,7 +658,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Utility function for *non*-scope code to build their own drops
-    pub fn build_drop(&mut self,
+    pub(crate) fn build_drop(&mut self,
                       block: BasicBlock,
                       span: Span,
                       location: Lvalue<'tcx>,
@@ -679,7 +679,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Utility function for *non*-scope code to build their own drops
-    pub fn build_drop_and_replace(&mut self,
+    pub(crate) fn build_drop_and_replace(&mut self,
                                   block: BasicBlock,
                                   span: Span,
                                   location: Lvalue<'tcx>,
@@ -700,7 +700,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Create an Assert terminator and return the success block.
     /// If the boolean condition operand is not the expected value,
     /// a runtime panic will be caused with the given message.
-    pub fn assert(&mut self, block: BasicBlock,
+    pub(crate) fn assert(&mut self, block: BasicBlock,
                   cond: Operand<'tcx>,
                   expected: bool,
                   msg: AssertMessage<'tcx>,

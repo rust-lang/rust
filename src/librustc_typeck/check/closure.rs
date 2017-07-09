@@ -22,7 +22,7 @@ use syntax::abi::Abi;
 use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn check_expr_closure(&self,
+    pub(crate) fn check_expr_closure(&self,
                               expr: &hir::Expr,
                               _capture: hir::CaptureClause,
                               decl: &'gcx hir::FnDecl,

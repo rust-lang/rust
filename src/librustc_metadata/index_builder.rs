@@ -70,9 +70,9 @@ use std::ops::{Deref, DerefMut};
 
 /// Builder that can encode new items, adding them into the index.
 /// Item encoding cannot be nested.
-pub struct IndexBuilder<'a, 'b: 'a, 'tcx: 'b> {
+pub(crate) struct IndexBuilder<'a, 'b: 'a, 'tcx: 'b> {
     items: Index,
-    pub ecx: &'a mut EncodeContext<'b, 'tcx>,
+    pub(crate) ecx: &'a mut EncodeContext<'b, 'tcx>,
 }
 
 impl<'a, 'b, 'tcx> Deref for IndexBuilder<'a, 'b, 'tcx> {
@@ -89,7 +89,7 @@ impl<'a, 'b, 'tcx> DerefMut for IndexBuilder<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
-    pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
+    pub(crate) fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         IndexBuilder {
             items: Index::new(ecx.tcx.hir.definitions().def_index_counts_lo_hi()),
             ecx: ecx,
@@ -113,7 +113,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// holds, and that it is therefore not gaining "secret" access to
     /// bits of HIR or other state that would not be trackd by the
     /// content system.
-    pub fn record<'x, DATA>(&'x mut self,
+    pub(crate) fn record<'x, DATA>(&'x mut self,
                             id: DefId,
                             op: fn(&mut IsolatedEncoder<'x, 'b, 'tcx>, DATA) -> Entry<'tcx>,
                             data: DATA)
@@ -144,7 +144,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         self.items.record(id, entry);
     }
 
-    pub fn into_items(self) -> Index {
+    pub(crate) fn into_items(self) -> Index {
         self.items
     }
 }
@@ -153,7 +153,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 /// task.  The data must either be of some safe type, such as a
 /// `DefId` index, or implement the `read` method so that it can add
 /// a read of whatever dep-graph nodes are appropriate.
-pub trait DepGraphRead {
+pub(crate) trait DepGraphRead {
     fn read(&self, tcx: TyCtxt);
 }
 
@@ -226,7 +226,7 @@ read_hir!(hir::MacroDef);
 ///
 /// A good idea is to add to each use of `Untracked` an explanation of
 /// why this value is ok.
-pub struct Untracked<T>(pub T);
+pub(crate) struct Untracked<T>(pub(crate) T);
 
 impl<T> DepGraphRead for Untracked<T> {
     fn read(&self, _tcx: TyCtxt) {}
@@ -236,7 +236,7 @@ impl<T> DepGraphRead for Untracked<T> {
 /// HIR node that doesn't carry its own id. This will allow an
 /// arbitrary `T` to be passed in, but register a read on the given
 /// node-id.
-pub struct FromId<T>(pub ast::NodeId, pub T);
+pub(crate) struct FromId<T>(pub(crate) ast::NodeId, pub(crate) T);
 
 impl<T> DepGraphRead for FromId<T> {
     fn read(&self, tcx: TyCtxt) {

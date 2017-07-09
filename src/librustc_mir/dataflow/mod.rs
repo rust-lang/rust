@@ -23,15 +23,15 @@ use std::mem;
 use std::path::PathBuf;
 use std::usize;
 
-pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
-pub use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
+pub(crate) use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
+pub(crate) use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
 
 pub(crate) use self::drop_flag_effects::*;
 
 mod drop_flag_effects;
 mod graphviz;
 mod impls;
-pub mod move_paths;
+pub(crate) mod move_paths;
 
 pub(crate) use self::move_paths::indexes;
 
@@ -43,7 +43,7 @@ pub(crate) struct DataflowBuilder<'a, 'tcx: 'a, BD> where BD: BitDenotation
     print_postflow_to: Option<String>,
 }
 
-pub trait Dataflow<BD: BitDenotation> {
+pub(crate) trait Dataflow<BD: BitDenotation> {
     fn dataflow<P>(&mut self, p: P) where P: Fn(&BD, BD::Idx) -> &Debug;
 }
 
@@ -189,7 +189,7 @@ impl<E:Idx> Bits<E> {
     }
 }
 
-pub struct DataflowAnalysis<'a, 'tcx: 'a, O>
+pub(crate) struct DataflowAnalysis<'a, 'tcx: 'a, O>
     where O: BitDenotation
 {
     flow_state: DataflowState<O>,
@@ -200,36 +200,36 @@ pub struct DataflowAnalysis<'a, 'tcx: 'a, O>
 impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O>
     where O: BitDenotation
 {
-    pub fn results(self) -> DataflowResults<O> {
+    pub(crate) fn results(self) -> DataflowResults<O> {
         DataflowResults(self.flow_state)
     }
 
-    pub fn mir(&self) -> &'a Mir<'tcx> { self.mir }
+    pub(crate) fn mir(&self) -> &'a Mir<'tcx> { self.mir }
 }
 
-pub struct DataflowResults<O>(pub(crate) DataflowState<O>) where O: BitDenotation;
+pub(crate) struct DataflowResults<O>(pub(crate) DataflowState<O>) where O: BitDenotation;
 
 impl<O: BitDenotation> DataflowResults<O> {
-    pub fn sets(&self) -> &AllSets<O::Idx> {
+    pub(crate) fn sets(&self) -> &AllSets<O::Idx> {
         &self.0.sets
     }
 }
 
 // FIXME: This type shouldn't be public, but the graphviz::MirWithFlowState trait
 // references it in a method signature. Look into using `pub(crate)` to address this.
-pub struct DataflowState<O: BitDenotation>
+pub(crate) struct DataflowState<O: BitDenotation>
 {
     /// All the sets for the analysis. (Factored into its
     /// own structure so that we can borrow it mutably
     /// on its own separate from other fields.)
-    pub sets: AllSets<O::Idx>,
+    pub(crate) sets: AllSets<O::Idx>,
 
     /// operator used to initialize, combine, and interpret bits.
     pub(crate) operator: O,
 }
 
 #[derive(Debug)]
-pub struct AllSets<E: Idx> {
+pub(crate) struct AllSets<E: Idx> {
     /// Analysis bitwidth for each block.
     bits_per_block: usize,
 
@@ -251,7 +251,7 @@ pub struct AllSets<E: Idx> {
     on_entry_sets: Bits<E>,
 }
 
-pub struct BlockSets<'a, E: Idx> {
+pub(crate) struct BlockSets<'a, E: Idx> {
     pub(crate) on_entry: &'a mut IdxSet<E>,
     pub(crate) gen_set: &'a mut IdxSet<E>,
     pub(crate) kill_set: &'a mut IdxSet<E>,
@@ -269,8 +269,8 @@ impl<'a, E:Idx> BlockSets<'a, E> {
 }
 
 impl<E:Idx> AllSets<E> {
-    pub fn bits_per_block(&self) -> usize { self.bits_per_block }
-    pub fn for_block(&mut self, block_idx: usize) -> BlockSets<E> {
+    pub(crate) fn bits_per_block(&self) -> usize { self.bits_per_block }
+    pub(crate) fn for_block(&mut self, block_idx: usize) -> BlockSets<E> {
         let offset = self.words_per_block * block_idx;
         let range = E::new(offset)..E::new(offset + self.words_per_block);
         BlockSets {
@@ -285,24 +285,24 @@ impl<E:Idx> AllSets<E> {
         let range = E::new(offset)..E::new(offset + self.words_per_block);
         sets.bits.range(&range)
     }
-    pub fn gen_set_for(&self, block_idx: usize) -> &IdxSet<E> {
+    pub(crate) fn gen_set_for(&self, block_idx: usize) -> &IdxSet<E> {
         self.lookup_set_for(&self.gen_sets, block_idx)
     }
-    pub fn kill_set_for(&self, block_idx: usize) -> &IdxSet<E> {
+    pub(crate) fn kill_set_for(&self, block_idx: usize) -> &IdxSet<E> {
         self.lookup_set_for(&self.kill_sets, block_idx)
     }
-    pub fn on_entry_set_for(&self, block_idx: usize) -> &IdxSet<E> {
+    pub(crate) fn on_entry_set_for(&self, block_idx: usize) -> &IdxSet<E> {
         self.lookup_set_for(&self.on_entry_sets, block_idx)
     }
 }
 
 /// Parameterization for the precise form of data flow that is used.
-pub trait DataflowOperator: BitwiseOperator {
+pub(crate) trait DataflowOperator: BitwiseOperator {
     /// Specifies the initial value for each bit in the `on_entry` set
     fn bottom_value() -> bool;
 }
 
-pub trait BitDenotation {
+pub(crate) trait BitDenotation {
     /// Specifies what index type is used to access the bitvector.
     type Idx: Idx;
 
@@ -388,7 +388,7 @@ pub trait BitDenotation {
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
     where D: BitDenotation + DataflowOperator
 {
-    pub fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
                mir: &'a Mir<'tcx>,
                dead_unwinds: &'a IdxSet<mir::BasicBlock>,
                denotation: D) -> Self {

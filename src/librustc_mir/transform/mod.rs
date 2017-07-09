@@ -33,7 +33,7 @@ pub mod type_check;
 pub mod rustc_peek;
 pub mod elaborate_drops;
 pub mod add_call_guards;
-pub mod promote_consts;
+pub(crate) mod promote_consts;
 pub mod qualify_consts;
 pub mod dump_mir;
 pub mod deaggregator;

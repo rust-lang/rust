@@ -20,7 +20,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -48,7 +48,7 @@ extern crate rustc_allocator;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate rustc_incremental;
-pub extern crate rustc_llvm as llvm;
+pub(crate) extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
 #[macro_use]
@@ -79,7 +79,7 @@ pub mod back {
     pub(crate) mod symbol_export;
     pub(crate) mod symbol_names;
     pub mod write;
-    pub mod rpath;
+    pub(crate) mod rpath;
 }
 
 mod diagnostics;
@@ -139,8 +139,8 @@ pub struct ModuleTranslation {
     /// unique amongst **all** crates.  Therefore, it should contain
     /// something unique to this crate (e.g., a module path) as well
     /// as the crate name and disambiguator.
-    pub name: String,
-    pub symbol_name_hash: u64,
+    pub(crate) name: String,
+    pub(crate) symbol_name_hash: u64,
     pub source: ModuleSource,
 }
 
@@ -155,7 +155,7 @@ pub enum ModuleSource {
 
 #[derive(Copy, Clone)]
 pub struct ModuleLlvm {
-    pub llcx: llvm::ContextRef,
+    pub(crate) llcx: llvm::ContextRef,
     pub llmod: llvm::ModuleRef,
 }
 
@@ -165,14 +165,14 @@ unsafe impl Sync for ModuleTranslation { }
 pub struct CrateTranslation {
     pub crate_name: Symbol,
     pub modules: Vec<ModuleTranslation>,
-    pub metadata_module: ModuleTranslation,
-    pub allocator_module: Option<ModuleTranslation>,
+    pub(crate) metadata_module: ModuleTranslation,
+    pub(crate) allocator_module: Option<ModuleTranslation>,
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
-    pub exported_symbols: back::symbol_export::ExportedSymbols,
-    pub no_builtins: bool,
-    pub windows_subsystem: Option<String>,
-    pub linker_info: back::linker::LinkerInfo
+    pub(crate) exported_symbols: back::symbol_export::ExportedSymbols,
+    pub(crate) no_builtins: bool,
+    pub(crate) windows_subsystem: Option<String>,
+    pub(crate) linker_info: back::linker::LinkerInfo
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

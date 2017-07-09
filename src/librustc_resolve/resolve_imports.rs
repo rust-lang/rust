@@ -36,7 +36,7 @@ use std::mem;
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
-pub enum ImportDirectiveSubclass<'a> {
+pub(crate) enum ImportDirectiveSubclass<'a> {
     SingleImport {
         target: Ident,
         source: Ident,
@@ -54,31 +54,31 @@ pub enum ImportDirectiveSubclass<'a> {
 
 /// One import directive.
 #[derive(Debug,Clone)]
-pub struct ImportDirective<'a> {
-    pub id: NodeId,
-    pub parent: Module<'a>,
-    pub module_path: Vec<Ident>,
-    pub imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
-    pub subclass: ImportDirectiveSubclass<'a>,
-    pub span: Span,
-    pub vis: Cell<ty::Visibility>,
-    pub expansion: Mark,
-    pub used: Cell<bool>,
+pub(crate) struct ImportDirective<'a> {
+    pub(crate) id: NodeId,
+    pub(crate) parent: Module<'a>,
+    pub(crate) module_path: Vec<Ident>,
+    pub(crate) imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
+    pub(crate) subclass: ImportDirectiveSubclass<'a>,
+    pub(crate) span: Span,
+    pub(crate) vis: Cell<ty::Visibility>,
+    pub(crate) expansion: Mark,
+    pub(crate) used: Cell<bool>,
 }
 
 impl<'a> ImportDirective<'a> {
-    pub fn is_glob(&self) -> bool {
+    pub(crate) fn is_glob(&self) -> bool {
         match self.subclass { ImportDirectiveSubclass::GlobImport { .. } => true, _ => false }
     }
 }
 
 #[derive(Clone, Default)]
 /// Records information about the resolution of a name in a namespace of a module.
-pub struct NameResolution<'a> {
+pub(crate) struct NameResolution<'a> {
     /// The single imports that define the name in the namespace.
     single_imports: SingleImports<'a>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
-    pub binding: Option<&'a NameBinding<'a>>,
+    pub(crate) binding: Option<&'a NameBinding<'a>>,
     shadows_glob: Option<&'a NameBinding<'a>>,
 }
 
@@ -140,7 +140,7 @@ impl<'a> Resolver<'a> {
 
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `record_used` is `Some`, import resolution must be complete.
-    pub fn resolve_ident_in_module_unadjusted(&mut self,
+    pub(crate) fn resolve_ident_in_module_unadjusted(&mut self,
                                               module: Module<'a>,
                                               ident: Ident,
                                               ns: Namespace,
@@ -255,7 +255,7 @@ impl<'a> Resolver<'a> {
     }
 
     // Add an import directive to the current module.
-    pub fn add_import_directive(&mut self,
+    pub(crate) fn add_import_directive(&mut self,
                                 module_path: Vec<Ident>,
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
@@ -293,7 +293,7 @@ impl<'a> Resolver<'a> {
 
     // Given a binding and an import directive that resolves to it,
     // return the corresponding binding defined by the import directive.
-    pub fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
+    pub(crate) fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
                   -> &'a NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
                      // c.f. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
@@ -323,7 +323,7 @@ impl<'a> Resolver<'a> {
     }
 
     // Define the name or return the existing binding if there is a collision.
-    pub fn try_define(&mut self,
+    pub(crate) fn try_define(&mut self,
                       module: Module<'a>,
                       ident: Ident,
                       ns: Namespace,
@@ -360,7 +360,7 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    pub fn ambiguity(&self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
+    pub(crate) fn ambiguity(&self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
                      -> &'a NameBinding<'a> {
         self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Ambiguity { b1: b1, b2: b2, legacy: false },
@@ -425,8 +425,8 @@ impl<'a> Resolver<'a> {
     }
 }
 
-pub struct ImportResolver<'a, 'b: 'a> {
-    pub resolver: &'a mut Resolver<'b>,
+pub(crate) struct ImportResolver<'a, 'b: 'a> {
+    pub(crate) resolver: &'a mut Resolver<'b>,
 }
 
 impl<'a, 'b: 'a> ::std::ops::Deref for ImportResolver<'a, 'b> {
@@ -459,7 +459,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
-    pub fn resolve_imports(&mut self) {
+    pub(crate) fn resolve_imports(&mut self) {
         let mut prev_num_indeterminates = self.indeterminate_imports.len() + 1;
         while self.indeterminate_imports.len() < prev_num_indeterminates {
             prev_num_indeterminates = self.indeterminate_imports.len();
@@ -472,7 +472,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
     }
 
-    pub fn finalize_imports(&mut self) {
+    pub(crate) fn finalize_imports(&mut self) {
         for module in self.arenas.local_modules().iter() {
             self.finalize_resolutions_in(module);
         }

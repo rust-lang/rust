@@ -20,7 +20,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(box_syntax)]
 #![feature(libc)]
@@ -102,10 +102,10 @@ use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
 
 #[cfg(test)]
-pub mod test;
+pub(crate) mod test;
 
 pub mod driver;
-pub mod pretty;
+pub(crate) mod pretty;
 pub mod target_features;
 mod derive_registrar;
 
@@ -273,7 +273,7 @@ pub enum Compilation {
 }
 
 impl Compilation {
-    pub fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
+    pub(crate) fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
         match self {
             Compilation::Stop => Compilation::Stop,
             Compilation::Continue => next(),
@@ -617,7 +617,7 @@ fn save_analysis_format(sess: &Session) -> save::Format {
 }
 
 impl RustcDefaultCalls {
-    pub fn list_metadata(sess: &Session, matches: &getopts::Matches, input: &Input) -> Compilation {
+    pub(crate) fn list_metadata(sess: &Session, matches: &getopts::Matches, input: &Input) -> Compilation {
         let r = matches.opt_strs("Z");
         if r.contains(&("ls".to_string())) {
             match input {
@@ -759,17 +759,17 @@ impl RustcDefaultCalls {
 }
 
 /// Returns a version string such as "0.12.0-dev".
-pub fn release_str() -> Option<&'static str> {
+pub(crate) fn release_str() -> Option<&'static str> {
     option_env!("CFG_RELEASE")
 }
 
 /// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
-pub fn commit_hash_str() -> Option<&'static str> {
+pub(crate) fn commit_hash_str() -> Option<&'static str> {
     option_env!("CFG_VER_HASH")
 }
 
 /// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
-pub fn commit_date_str() -> Option<&'static str> {
+pub(crate) fn commit_date_str() -> Option<&'static str> {
     option_env!("CFG_VER_DATE")
 }
 
@@ -1016,7 +1016,7 @@ fn print_flag_list<T>(cmdline_opt: &str,
 ///
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
-pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
+pub(crate) fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
     let args = &args[1..];
 
@@ -1200,7 +1200,7 @@ fn exit_on_err() -> ! {
     panic!();
 }
 
-pub fn diagnostics_registry() -> errors::registry::Registry {
+pub(crate) fn diagnostics_registry() -> errors::registry::Registry {
     use errors::registry::Registry;
 
     let mut all_errors = Vec::new();

@@ -25,29 +25,29 @@ use std::cell::Cell;
 /// Cell (so removing it would require using UnsafeCell), and it
 /// suffices for the current purposes.
 #[derive(PartialEq)]
-pub struct Ivar<T: Copy> {
+pub(crate) struct Ivar<T: Copy> {
     data: Cell<Option<T>>,
 }
 
 impl<T: Copy> Ivar<T> {
-    pub fn new() -> Ivar<T> {
+    pub(crate) fn new() -> Ivar<T> {
         Ivar { data: Cell::new(None) }
     }
 
-    pub fn get(&self) -> Option<T> {
+    pub(crate) fn get(&self) -> Option<T> {
         self.data.get()
     }
 
-    pub fn fulfill(&self, value: T) {
+    pub(crate) fn fulfill(&self, value: T) {
         assert!(self.data.get().is_none(), "Value already set!");
         self.data.set(Some(value));
     }
 
-    pub fn is_fulfilled(&self) -> bool {
+    pub(crate) fn is_fulfilled(&self) -> bool {
         self.data.get().is_some()
     }
 
-    pub fn unwrap(&self) -> T {
+    pub(crate) fn unwrap(&self) -> T {
         self.get().unwrap()
     }
 }

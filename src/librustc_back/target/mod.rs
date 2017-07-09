@@ -72,8 +72,8 @@ mod thumb_base;
 mod fuchsia_base;
 mod redox_base;
 
-pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
-pub type TargetResult = Result<Target, String>;
+pub(crate) type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
+pub(crate) type TargetResult = Result<Target, String>;
 
 macro_rules! supported_targets {
     ( $(($triple:expr, $module:ident),)+ ) => (
@@ -355,7 +355,7 @@ pub struct TargetOptions {
     /// number sections that easily exceeds the given limit for larger
     /// codebases. Consequently we want a way to disallow weak linkage on some
     /// platforms.
-    pub allows_weak_linkage: bool,
+    pub(crate) allows_weak_linkage: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
     pub has_rpath: bool,
     /// Whether to disable linking to the default libraries, typically corresponds
@@ -401,17 +401,17 @@ pub struct TargetOptions {
     pub no_integrated_as: bool,
 
     /// Don't use this field; instead use the `.min_atomic_width()` method.
-    pub min_atomic_width: Option<u64>,
+    pub(crate) min_atomic_width: Option<u64>,
 
     /// Don't use this field; instead use the `.max_atomic_width()` method.
-    pub max_atomic_width: Option<u64>,
+    pub(crate) max_atomic_width: Option<u64>,
 
     /// Panic strategy: "unwind" or "abort"
     pub panic_strategy: PanicStrategy,
 
     /// A blacklist of ABIs unsupported by the current target. Note that generic
     /// ABIs are considered to be supported on all platforms and cannot be blacklisted.
-    pub abi_blacklist: Vec<Abi>,
+    pub(crate) abi_blacklist: Vec<Abi>,
 
     /// Whether or not the CRT is statically linked by default.
     pub crt_static_default: bool,
@@ -513,7 +513,7 @@ impl Target {
     }
 
     /// Load a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> TargetResult {
+    pub(crate) fn from_json(obj: Json) -> TargetResult {
         // While ugly, this code must remain this way to retain
         // compatibility with existing JSON fields and the internal
         // expected naming of the Target and TargetOptions structs.

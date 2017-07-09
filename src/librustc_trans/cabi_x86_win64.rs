@@ -15,7 +15,7 @@ use rustc::ty::layout::Layout;
 
 // Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub(crate) fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     let fixup = |a: &mut ArgType<'tcx>| {
         let size = a.layout.size(ccx);
         if a.layout.is_aggregate() {

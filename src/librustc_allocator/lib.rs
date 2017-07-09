@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(warnings)]
+
 #![feature(rustc_private)]
 
 extern crate rustc;
@@ -84,7 +86,7 @@ pub struct AllocatorMethod {
     pub name: &'static str,
     pub inputs: &'static [AllocatorTy],
     pub output: AllocatorTy,
-    pub is_unsafe: bool,
+    pub(crate) is_unsafe: bool,
 }
 
 pub enum AllocatorTy {

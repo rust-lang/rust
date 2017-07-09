@@ -36,7 +36,7 @@ impl MirPass for Marker {
     }
 }
 
-pub struct Disambiguator {
+pub(crate) struct Disambiguator {
     is_after: bool
 }
 

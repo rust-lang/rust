@@ -19,7 +19,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(box_syntax)]
 #![feature(concat_idents)]
@@ -40,9 +40,9 @@ pub use self::TypeKind::*;
 pub use self::AtomicRmwBinOp::*;
 pub use self::MetadataType::*;
 pub use self::CodeGenOptSize::*;
-pub use self::DiagnosticKind::*;
+pub(crate) use self::DiagnosticKind::*;
 pub use self::CallConv::*;
-pub use self::DiagnosticSeverity::*;
+pub(crate) use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
 
 use std::str::FromStr;
@@ -53,7 +53,7 @@ use libc::{c_uint, c_char, size_t};
 
 pub mod archive_ro;
 pub mod diagnostic;
-pub mod ffi;
+pub(crate) mod ffi;
 
 pub use ffi::*;
 
@@ -122,7 +122,7 @@ impl FromStr for ArchiveKind {
 
 #[allow(missing_copy_implementations)]
 pub enum RustString_opaque {}
-pub type RustStringRef = *mut RustString_opaque;
+pub(crate) type RustStringRef = *mut RustString_opaque;
 type RustStringRepr = *mut RefCell<Vec<u8>>;
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
@@ -201,8 +201,8 @@ impl Attribute {
 
 // Memory-managed interface to target data.
 
-pub struct TargetData {
-    pub lltd: TargetDataRef,
+pub(crate) struct TargetData {
+    pub(crate) lltd: TargetDataRef,
 }
 
 impl Drop for TargetData {
@@ -213,7 +213,7 @@ impl Drop for TargetData {
     }
 }
 
-pub fn mk_target_data(string_rep: &str) -> TargetData {
+pub(crate) fn mk_target_data(string_rep: &str) -> TargetData {
     let string_rep = CString::new(string_rep).unwrap();
     TargetData { lltd: unsafe { LLVMCreateTargetData(string_rep.as_ptr()) } }
 }
@@ -274,7 +274,7 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
     }
 }
 
-pub fn get_params(llfn: ValueRef) -> Vec<ValueRef> {
+pub(crate) fn get_params(llfn: ValueRef) -> Vec<ValueRef> {
     unsafe {
         let num_params = LLVMCountParams(llfn);
         let mut params = Vec::with_capacity(num_params as usize);

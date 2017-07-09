@@ -20,15 +20,15 @@ use rustc_serialize::Encodable;
 
 /// The IsolatedEncoder provides facilities to write to crate metadata while
 /// making sure that anything going through it is also feed into an ICH hasher.
-pub struct IsolatedEncoder<'a, 'b: 'a, 'tcx: 'b> {
-    pub tcx: TyCtxt<'b, 'tcx, 'tcx>,
+pub(crate) struct IsolatedEncoder<'a, 'b: 'a, 'tcx: 'b> {
+    pub(crate) tcx: TyCtxt<'b, 'tcx, 'tcx>,
     ecx: &'a mut EncodeContext<'b, 'tcx>,
     hcx: Option<(StableHashingContext<'b, 'tcx, 'tcx>, StableHasher<Fingerprint>)>,
 }
 
 impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
-    pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
+    pub(crate) fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         let tcx = ecx.tcx;
         let compute_ich = ecx.compute_ich;
         IsolatedEncoder {
@@ -52,7 +52,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    pub fn finish(self) -> (Option<Fingerprint>, &'a mut EncodeContext<'b, 'tcx>) {
+    pub(crate) fn finish(self) -> (Option<Fingerprint>, &'a mut EncodeContext<'b, 'tcx>) {
         if let Some((_, hasher)) = self.hcx {
             (Some(hasher.finish()), self.ecx)
         } else {
@@ -60,7 +60,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    pub fn lazy<T>(&mut self, value: &T) -> Lazy<T>
+    pub(crate) fn lazy<T>(&mut self, value: &T) -> Lazy<T>
         where T: Encodable + HashStable<StableHashingContext<'b, 'tcx, 'tcx>>
     {
         if let Some((ref mut hcx, ref mut hasher)) = self.hcx {
@@ -70,7 +70,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         self.ecx.lazy(value)
     }
 
-    pub fn lazy_seq<I, T>(&mut self, iter: I) -> LazySeq<T>
+    pub(crate) fn lazy_seq<I, T>(&mut self, iter: I) -> LazySeq<T>
         where I: IntoIterator<Item = T>,
               T: Encodable + HashStable<StableHashingContext<'b, 'tcx, 'tcx>>
     {
@@ -109,7 +109,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    pub fn lazy_seq_ref<'x, I, T>(&mut self, iter: I) -> LazySeq<T>
+    pub(crate) fn lazy_seq_ref<'x, I, T>(&mut self, iter: I) -> LazySeq<T>
         where I: IntoIterator<Item = &'x T>,
               T: 'x + Encodable + HashStable<StableHashingContext<'b, 'tcx, 'tcx>>
     {
@@ -148,7 +148,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    pub fn lazy_seq_from_slice<T>(&mut self, slice: &[T]) -> LazySeq<T>
+    pub(crate) fn lazy_seq_from_slice<T>(&mut self, slice: &[T]) -> LazySeq<T>
         where T: Encodable + HashStable<StableHashingContext<'b, 'tcx, 'tcx>>
     {
         if let Some((ref mut hcx, ref mut hasher)) = self.hcx {
@@ -158,7 +158,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         self.ecx.lazy_seq_ref(slice.iter())
     }
 
-    pub fn lazy_seq_ref_from_slice<T>(&mut self, slice: &[&T]) -> LazySeq<T>
+    pub(crate) fn lazy_seq_ref_from_slice<T>(&mut self, slice: &[&T]) -> LazySeq<T>
         where T: Encodable + HashStable<StableHashingContext<'b, 'tcx, 'tcx>>
     {
         if let Some((ref mut hcx, ref mut hasher)) = self.hcx {

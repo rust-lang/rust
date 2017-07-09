@@ -121,7 +121,7 @@ use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{TransItem, InstantiationMode};
 
-pub enum PartitioningStrategy {
+pub(crate) enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.
     PerModule,
 
@@ -129,7 +129,7 @@ pub enum PartitioningStrategy {
     FixedUnitCount(usize)
 }
 
-pub struct CodegenUnit<'tcx> {
+pub(crate) struct CodegenUnit<'tcx> {
     /// A name for this CGU. Incremental compilation requires that
     /// name be unique amongst **all** crates.  Therefore, it should
     /// contain something unique to this crate (e.g., a module path)
@@ -140,43 +140,43 @@ pub struct CodegenUnit<'tcx> {
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
-    pub fn new(name: InternedString,
-               items: FxHashMap<TransItem<'tcx>, (llvm::Linkage, llvm::Visibility)>)
-               -> Self {
+    pub(crate) fn new(name: InternedString,
+                      items: FxHashMap<TransItem<'tcx>, (llvm::Linkage, llvm::Visibility)>)
+                      -> Self {
         CodegenUnit {
             name,
             items,
         }
     }
 
-    pub fn empty(name: InternedString) -> Self {
+    pub(crate) fn empty(name: InternedString) -> Self {
         Self::new(name, FxHashMap())
     }
 
-    pub fn contains_item(&self, item: &TransItem<'tcx>) -> bool {
+    pub(crate) fn contains_item(&self, item: &TransItem<'tcx>) -> bool {
         self.items.contains_key(item)
     }
 
-    pub fn name(&self) -> &str {
+    pub(crate) fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn items(&self) -> &FxHashMap<TransItem<'tcx>, (llvm::Linkage, llvm::Visibility)> {
+    pub(crate) fn items(&self) -> &FxHashMap<TransItem<'tcx>, (llvm::Linkage, llvm::Visibility)> {
         &self.items
     }
 
-    pub fn work_product_id(&self) -> WorkProductId {
+    pub(crate) fn work_product_id(&self) -> WorkProductId {
         WorkProductId::from_cgu_name(self.name())
     }
 
-    pub fn work_product_dep_node(&self) -> DepNode {
+    pub(crate) fn work_product_dep_node(&self) -> DepNode {
         self.work_product_id().to_dep_node()
     }
 
-    pub fn compute_symbol_name_hash<'a>(&self,
-                                        scx: &SharedCrateContext<'a, 'tcx>,
-                                        exported_symbols: &ExportedSymbols)
-                                        -> u64 {
+    pub(crate) fn compute_symbol_name_hash<'a>(&self,
+                                               scx: &SharedCrateContext<'a, 'tcx>,
+                                               exported_symbols: &ExportedSymbols)
+                                               -> u64 {
         let mut state = IchHasher::new();
         let exported_symbols = exported_symbols.local_exports();
         let all_items = self.items_in_deterministic_order(scx.tcx());
@@ -201,14 +201,14 @@ impl<'tcx> CodegenUnit<'tcx> {
         state.finish().to_smaller_hash()
     }
 
-    pub fn items_in_deterministic_order<'a>(&self,
+    pub(crate) fn items_in_deterministic_order<'a>(&self,
                                             tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                             -> Vec<(TransItem<'tcx>,
                                                    (llvm::Linkage, llvm::Visibility))> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey(Option<NodeId>, ty::SymbolName);
+        pub(crate) struct ItemSortKey(Option<NodeId>, ty::SymbolName);
 
         fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    item: TransItem<'tcx>) -> ItemSortKey {
@@ -234,7 +234,7 @@ impl<'tcx> CodegenUnit<'tcx> {
 // Anything we can't find a proper codegen unit for goes into this.
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
-pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
+pub(crate) fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
                               inlining_map: &InliningMap<'tcx>,

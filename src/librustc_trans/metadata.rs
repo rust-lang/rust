@@ -20,7 +20,7 @@ use std::path::Path;
 use std::ptr;
 use std::slice;
 
-pub const METADATA_FILENAME: &str = "rust.metadata.bin";
+pub(crate) const METADATA_FILENAME: &str = "rust.metadata.bin";
 
 pub struct LlvmMetadataLoader;
 
@@ -95,7 +95,7 @@ fn search_meta_section<'a>(of: &'a ObjectFile,
     Err(format!("metadata not found: '{}'", filename.display()))
 }
 
-pub fn metadata_section_name(target: &Target) -> &'static str {
+pub(crate) fn metadata_section_name(target: &Target) -> &'static str {
     // Historical note:
     //
     // When using link.exe it was seen that the section name `.note.rustc`

@@ -24,7 +24,7 @@ impl BitVector {
     }
 
     #[inline]
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         for p in &mut self.data {
             *p = 0;
         }
@@ -52,7 +52,7 @@ impl BitVector {
     }
 
     #[inline]
-    pub fn insert_all(&mut self, all: &BitVector) -> bool {
+    pub(crate) fn insert_all(&mut self, all: &BitVector) -> bool {
         assert!(self.data.len() == all.data.len());
         let mut changed = false;
         for (i, j) in self.data.iter_mut().zip(&all.data) {
@@ -66,7 +66,7 @@ impl BitVector {
     }
 
     #[inline]
-    pub fn grow(&mut self, num_bits: usize) {
+    pub(crate) fn grow(&mut self, num_bits: usize) {
         let num_words = u64s(num_bits);
         if self.data.len() < num_words {
             self.data.resize(num_words, 0)
@@ -139,14 +139,14 @@ impl FromIterator<bool> for BitVector {
 /// one gigantic bitvector. In other words, it is as if you have
 /// `rows` bitvectors, each of length `columns`.
 #[derive(Clone)]
-pub struct BitMatrix {
+pub(crate) struct BitMatrix {
     columns: usize,
     vector: Vec<u64>,
 }
 
 impl BitMatrix {
     // Create a new `rows x columns` matrix, initially empty.
-    pub fn new(rows: usize, columns: usize) -> BitMatrix {
+    pub(crate) fn new(rows: usize, columns: usize) -> BitMatrix {
         // For every element, we need one bit for every other
         // element. Round up to an even number of u64s.
         let u64s_per_row = u64s(columns);
@@ -163,7 +163,7 @@ impl BitMatrix {
         (start, start + u64s_per_row)
     }
 
-    pub fn add(&mut self, source: usize, target: usize) -> bool {
+    pub(crate) fn add(&mut self, source: usize, target: usize) -> bool {
         let (start, _) = self.range(source);
         let (word, mask) = word_mask(target);
         let mut vector = &mut self.vector[..];
@@ -177,7 +177,7 @@ impl BitMatrix {
     ///
     /// Put another way, if the matrix represents (transitive)
     /// reachability, can `source` reach `target`?
-    pub fn contains(&self, source: usize, target: usize) -> bool {
+    pub(crate) fn contains(&self, source: usize, target: usize) -> bool {
         let (start, _) = self.range(source);
         let (word, mask) = word_mask(target);
         (self.vector[start + word] & mask) != 0
@@ -187,7 +187,7 @@ impl BitMatrix {
     /// `b`. This is an O(n) operation where `n` is the number of
     /// elements (somewhat independent from the actual size of the
     /// intersection, in particular).
-    pub fn intersection(&self, a: usize, b: usize) -> Vec<usize> {
+    pub(crate) fn intersection(&self, a: usize, b: usize) -> Vec<usize> {
         let (a_start, a_end) = self.range(a);
         let (b_start, b_end) = self.range(b);
         let mut result = Vec::with_capacity(self.columns);
@@ -213,7 +213,7 @@ impl BitMatrix {
     /// you have an edge `write -> read`, because in that case
     /// `write` can reach everything that `read` can (and
     /// potentially more).
-    pub fn merge(&mut self, read: usize, write: usize) -> bool {
+    pub(crate) fn merge(&mut self, read: usize, write: usize) -> bool {
         let (read_start, read_end) = self.range(read);
         let (write_start, write_end) = self.range(write);
         let vector = &mut self.vector[..];
@@ -227,7 +227,7 @@ impl BitMatrix {
         changed
     }
 
-    pub fn iter<'a>(&'a self, row: usize) -> BitVectorIter<'a> {
+    pub(crate) fn iter<'a>(&'a self, row: usize) -> BitVectorIter<'a> {
         let (start, end) = self.range(row);
         BitVectorIter {
             iter: self.vector[start..end].iter(),

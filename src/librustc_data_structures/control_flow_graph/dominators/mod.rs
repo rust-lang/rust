@@ -29,7 +29,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
     dominators_given_rpo(graph, &rpo)
 }
 
-pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
+pub(crate) fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
                                                  rpo: &[G::Node])
                                                  -> Dominators<G::Node> {
     let start_node = graph.start_node();
@@ -112,16 +112,16 @@ pub struct Dominators<N: Idx> {
 }
 
 impl<Node: Idx> Dominators<Node> {
-    pub fn is_reachable(&self, node: Node) -> bool {
+    pub(crate) fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }
 
-    pub fn immediate_dominator(&self, node: Node) -> Node {
+    pub(crate) fn immediate_dominator(&self, node: Node) -> Node {
         assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         self.immediate_dominators[node].unwrap()
     }
 
-    pub fn dominators(&self, node: Node) -> Iter<Node> {
+    pub(crate) fn dominators(&self, node: Node) -> Iter<Node> {
         assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         Iter {
             dominators: self,
@@ -134,7 +134,7 @@ impl<Node: Idx> Dominators<Node> {
         self.dominators(node).any(|n| n == dom)
     }
 
-    pub fn mutual_dominator_node(&self, node1: Node, node2: Node) -> Node {
+    pub(crate) fn mutual_dominator_node(&self, node1: Node, node2: Node) -> Node {
         assert!(self.is_reachable(node1),
                 "node {:?} is not reachable",
                 node1);
@@ -147,7 +147,7 @@ impl<Node: Idx> Dominators<Node> {
                           node2)
     }
 
-    pub fn mutual_dominator<I>(&self, iter: I) -> Option<Node>
+    pub(crate) fn mutual_dominator<I>(&self, iter: I) -> Option<Node>
         where I: IntoIterator<Item = Node>
     {
         let mut iter = iter.into_iter();
@@ -155,11 +155,11 @@ impl<Node: Idx> Dominators<Node> {
             .map(|dom| iter.fold(dom, |dom, node| self.mutual_dominator_node(dom, node)))
     }
 
-    pub fn all_immediate_dominators(&self) -> &IndexVec<Node, Option<Node>> {
+    pub(crate) fn all_immediate_dominators(&self) -> &IndexVec<Node, Option<Node>> {
         &self.immediate_dominators
     }
 
-    pub fn dominator_tree(&self) -> DominatorTree<Node> {
+    pub(crate) fn dominator_tree(&self) -> DominatorTree<Node> {
         let elem: Vec<Node> = Vec::new();
         let mut children: IndexVec<Node, Vec<Node>> =
             IndexVec::from_elem_n(elem, self.immediate_dominators.len());
@@ -186,7 +186,7 @@ impl<Node: Idx> Dominators<Node> {
     }
 }
 
-pub struct Iter<'dom, Node: Idx + 'dom> {
+pub(crate) struct Iter<'dom, Node: Idx + 'dom> {
     dominators: &'dom Dominators<Node>,
     node: Option<Node>,
 }
@@ -209,21 +209,21 @@ impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
     }
 }
 
-pub struct DominatorTree<N: Idx> {
+pub(crate) struct DominatorTree<N: Idx> {
     root: N,
     children: IndexVec<N, Vec<N>>,
 }
 
 impl<Node: Idx> DominatorTree<Node> {
-    pub fn root(&self) -> Node {
+    pub(crate) fn root(&self) -> Node {
         self.root
     }
 
-    pub fn children(&self, node: Node) -> &[Node] {
+    pub(crate) fn children(&self, node: Node) -> &[Node] {
         &self.children[node]
     }
 
-    pub fn iter_children_of(&self, node: Node) -> IterChildrenOf<Node> {
+    pub(crate) fn iter_children_of(&self, node: Node) -> IterChildrenOf<Node> {
         IterChildrenOf {
             tree: self,
             stack: vec![node],
@@ -231,7 +231,7 @@ impl<Node: Idx> DominatorTree<Node> {
     }
 }
 
-pub struct IterChildrenOf<'iter, Node: Idx + 'iter> {
+pub(crate) struct IterChildrenOf<'iter, Node: Idx + 'iter> {
     tree: &'iter DominatorTree<Node>,
     stack: Vec<Node>,
 }

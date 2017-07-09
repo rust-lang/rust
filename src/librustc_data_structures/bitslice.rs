@@ -12,7 +12,7 @@
 
 use std::mem;
 
-pub type Word = usize;
+pub(crate) type Word = usize;
 
 /// `BitSlice` provides helper methods for treating a `[Word]`
 /// as a bitvector.
@@ -132,11 +132,11 @@ pub trait BitwiseOperator {
     fn join(&self, pred1: usize, pred2: usize) -> usize;
 }
 
-pub struct Union;
+pub(crate) struct Union;
 impl BitwiseOperator for Union {
     fn join(&self, a: usize, b: usize) -> usize { a | b }
 }
-pub struct Subtract;
+pub(crate) struct Subtract;
 impl BitwiseOperator for Subtract {
     fn join(&self, a: usize, b: usize) -> usize { a & !b }
 }

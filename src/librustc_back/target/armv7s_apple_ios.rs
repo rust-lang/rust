@@ -12,7 +12,7 @@ use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let base = opts(Arch::Armv7s)?;
     Ok(Target {
         llvm_target: "armv7s-apple-ios".to_string(),

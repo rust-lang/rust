@@ -19,7 +19,7 @@ use rustc::mir::*;
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    pub fn as_temp<M>(&mut self,
+    pub(crate) fn as_temp<M>(&mut self,
                       block: BasicBlock,
                       temp_lifetime: Option<CodeExtent>,
                       expr: M)

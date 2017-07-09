@@ -49,20 +49,20 @@ use super::MirContext;
 /// The LLVM type might not be the same for a single Rust type,
 /// e.g. each enum variant would have its own LLVM struct type.
 #[derive(Copy, Clone)]
-pub struct Const<'tcx> {
-    pub llval: ValueRef,
-    pub ty: Ty<'tcx>
+pub(crate) struct Const<'tcx> {
+    pub(crate) llval: ValueRef,
+    pub(crate) ty: Ty<'tcx>
 }
 
 impl<'tcx> Const<'tcx> {
-    pub fn new(llval: ValueRef, ty: Ty<'tcx>) -> Const<'tcx> {
+    pub(crate) fn new(llval: ValueRef, ty: Ty<'tcx>) -> Const<'tcx> {
         Const {
             llval: llval,
             ty: ty
         }
     }
 
-    pub fn from_constint<'a>(ccx: &CrateContext<'a, 'tcx>, ci: &ConstInt)
+    pub(crate) fn from_constint<'a>(ccx: &CrateContext<'a, 'tcx>, ci: &ConstInt)
     -> Const<'tcx> {
         let tcx = ccx.tcx();
         let (llval, ty) = match *ci {
@@ -89,7 +89,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     /// Translate ConstVal into a LLVM constant value.
-    pub fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
+    pub(crate) fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
                              cv: ConstVal,
                              ty: Ty<'tcx>)
                              -> Const<'tcx> {
@@ -134,7 +134,7 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    pub fn to_operand<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
+    pub(crate) fn to_operand<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
         let llty = type_of::immediate_type_of(ccx, self.ty);
         let llvalty = val_ty(self.llval);
 
@@ -200,7 +200,7 @@ impl<'tcx> ConstLvalue<'tcx> {
         }
     }
 
-    pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
+    pub(crate) fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         match self.ty.sty {
             ty::TyArray(_, n) => C_uint(ccx, n),
             ty::TySlice(_) | ty::TyStr => {
@@ -844,7 +844,7 @@ fn to_const_int(value: ValueRef, t: Ty, tcx: TyCtxt) -> Option<ConstInt> {
     }
 }
 
-pub fn const_scalar_binop(op: mir::BinOp,
+pub(crate) fn const_scalar_binop(op: mir::BinOp,
                           lhs: ValueRef,
                           rhs: ValueRef,
                           input_ty: Ty) -> ValueRef {
@@ -900,7 +900,7 @@ pub fn const_scalar_binop(op: mir::BinOp,
     }
 }
 
-pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             op: mir::BinOp,
                                             lllhs: ValueRef,
                                             llrhs: ValueRef,
@@ -936,7 +936,7 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_constant(&mut self,
+    pub(crate) fn trans_constant(&mut self,
                           bcx: &Builder<'a, 'tcx>,
                           constant: &mir::Constant<'tcx>)
                           -> Const<'tcx>
@@ -969,7 +969,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 }
 
 
-pub fn trans_static_initializer<'a, 'tcx>(
+pub(crate) fn trans_static_initializer<'a, 'tcx>(
     ccx: &CrateContext<'a, 'tcx>,
     def_id: DefId)
     -> Result<ValueRef, ConstEvalErr<'tcx>>

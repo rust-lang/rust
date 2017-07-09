@@ -19,12 +19,12 @@ use super::super::indexed_vec::{IndexVec, Idx};
 #[cfg(test)]
 mod test;
 
-pub fn reachable<G: ControlFlowGraph>(graph: &G) -> Reachability<G::Node> {
+pub(crate) fn reachable<G: ControlFlowGraph>(graph: &G) -> Reachability<G::Node> {
     let reverse_post_order = reverse_post_order(graph, graph.start_node());
     reachable_given_rpo(graph, &reverse_post_order)
 }
 
-pub fn reachable_given_rpo<G: ControlFlowGraph>(graph: &G,
+pub(crate) fn reachable_given_rpo<G: ControlFlowGraph>(graph: &G,
                                                 reverse_post_order: &[G::Node])
                                                 -> Reachability<G::Node> {
     let mut reachability = Reachability::new(graph);
@@ -45,7 +45,7 @@ pub fn reachable_given_rpo<G: ControlFlowGraph>(graph: &G,
     reachability
 }
 
-pub struct Reachability<Node: Idx> {
+pub(crate) struct Reachability<Node: Idx> {
     bits: IndexVec<Node, BitVector>,
 }
 
@@ -55,7 +55,7 @@ impl<Node: Idx> Reachability<Node> {
         Reachability { bits: IndexVec::from_elem_n(BitVector::new(num_nodes), num_nodes) }
     }
 
-    pub fn can_reach(&self, source: Node, target: Node) -> bool {
+    pub(crate) fn can_reach(&self, source: Node, target: Node) -> bool {
         let bit: usize = target.index();
         self.bits[source].contains(bit)
     }

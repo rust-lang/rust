@@ -22,7 +22,7 @@ use common::CrateContext;
 use std::ffi::CString;
 use std::ptr;
 
-pub fn mangled_name_of_item(ccx: &CrateContext, def_id: DefId, extra: &str) -> String {
+pub(crate) fn mangled_name_of_item(ccx: &CrateContext, def_id: DefId, extra: &str) -> String {
     fn fill_nested(ccx: &CrateContext, def_id: DefId, extra: &str, output: &mut String) {
         let def_key = ccx.tcx().def_key(def_id);
         if let Some(parent) = def_key.parent {
@@ -48,7 +48,7 @@ pub fn mangled_name_of_item(ccx: &CrateContext, def_id: DefId, extra: &str) -> S
     name
 }
 
-pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
+pub(crate) fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
     if let Some(&scope) = debug_context(ccx).namespace_map.borrow().get(&def_id) {
         return scope;
     }

@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifyable pattern.
-    pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+    pub(crate) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
             PatternKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {
                 Test {
@@ -108,7 +108,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_cases_to_switch<'pat>(&mut self,
+    pub(crate) fn add_cases_to_switch<'pat>(&mut self,
                                      test_lvalue: &Lvalue<'tcx>,
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
@@ -149,7 +149,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_variants_to_switch<'pat>(&mut self,
+    pub(crate) fn add_variants_to_switch<'pat>(&mut self,
                                         test_lvalue: &Lvalue<'tcx>,
                                         candidate: &Candidate<'pat, 'tcx>,
                                         variants: &mut BitVector)
@@ -175,7 +175,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Generates the code to perform a test.
-    pub fn perform_test(&mut self,
+    pub(crate) fn perform_test(&mut self,
                         block: BasicBlock,
                         lvalue: &Lvalue<'tcx>,
                         test: &Test<'tcx>)
@@ -429,7 +429,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// apply. For now, we return false, indicate that the test does
     /// not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    pub fn sort_candidate<'pat>(&mut self,
+    pub(crate) fn sort_candidate<'pat>(&mut self,
                                 test_lvalue: &Lvalue<'tcx>,
                                 test: &Test<'tcx>,
                                 candidate: &Candidate<'pat, 'tcx>,

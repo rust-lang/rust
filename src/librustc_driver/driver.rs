@@ -273,7 +273,7 @@ pub fn anon_src() -> String {
     "<anon>".to_string()
 }
 
-pub fn source_name(input: &Input) -> String {
+pub(crate) fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
         Input::File(ref ifile) => ifile.to_str().unwrap().to_string(),
@@ -296,12 +296,12 @@ pub fn source_name(input: &Input) -> String {
 ///
 /// Expect more entry points to be added in the future.
 pub struct CompileController<'a> {
-    pub after_parse: PhaseController<'a>,
-    pub after_expand: PhaseController<'a>,
-    pub after_hir_lowering: PhaseController<'a>,
+    pub(crate) after_parse: PhaseController<'a>,
+    pub(crate) after_expand: PhaseController<'a>,
+    pub(crate) after_hir_lowering: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
     pub after_llvm: PhaseController<'a>,
-    pub compilation_done: PhaseController<'a>,
+    pub(crate) compilation_done: PhaseController<'a>,
 
     pub make_glob_map: MakeGlobMap,
 }
@@ -329,7 +329,7 @@ pub struct PhaseController<'a> {
 }
 
 impl<'a> PhaseController<'a> {
-    pub fn basic() -> PhaseController<'a> {
+    pub(crate) fn basic() -> PhaseController<'a> {
         PhaseController {
             stop: Compilation::Continue,
             run_callback_on_error: false,
@@ -342,21 +342,21 @@ impl<'a> PhaseController<'a> {
 /// during compilation the callback is made. See the various constructor methods
 /// (`state_*`) in the impl to see which data is provided for any given entry point.
 pub struct CompileState<'a, 'tcx: 'a> {
-    pub input: &'a Input,
+    pub(crate) input: &'a Input,
     pub session: &'tcx Session,
-    pub krate: Option<ast::Crate>,
-    pub registry: Option<Registry<'a>>,
-    pub cstore: Option<&'a CStore>,
+    pub(crate) krate: Option<ast::Crate>,
+    pub(crate) registry: Option<Registry<'a>>,
+    pub(crate) cstore: Option<&'a CStore>,
     pub crate_name: Option<&'a str>,
-    pub output_filenames: Option<&'a OutputFilenames>,
-    pub out_dir: Option<&'a Path>,
-    pub out_file: Option<&'a Path>,
-    pub arena: Option<&'tcx DroplessArena>,
-    pub arenas: Option<&'tcx GlobalArenas<'tcx>>,
+    pub(crate) output_filenames: Option<&'a OutputFilenames>,
+    pub(crate) out_dir: Option<&'a Path>,
+    pub(crate) out_file: Option<&'a Path>,
+    pub(crate) arena: Option<&'tcx DroplessArena>,
+    pub(crate) arenas: Option<&'tcx GlobalArenas<'tcx>>,
     pub expanded_crate: Option<&'a ast::Crate>,
-    pub hir_crate: Option<&'a hir::Crate>,
-    pub hir_map: Option<&'a hir_map::Map<'tcx>>,
-    pub resolutions: Option<&'a Resolutions>,
+    pub(crate) hir_crate: Option<&'a hir::Crate>,
+    pub(crate) hir_map: Option<&'a hir_map::Map<'tcx>>,
+    pub(crate) resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
@@ -546,7 +546,7 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 // modified
 
 pub struct ExpansionResult {
-    pub expanded_crate: ast::Crate,
+    pub(crate) expanded_crate: ast::Crate,
     pub defs: hir_map::Definitions,
     pub analysis: ty::CrateAnalysis,
     pub resolutions: Resolutions,
@@ -1053,7 +1053,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: &IncrementalHashesMap,
                                            output_filenames: &OutputFilenames)
@@ -1084,7 +1084,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
-pub fn phase_5_run_llvm_passes(sess: &Session,
+pub(crate) fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &trans::CrateTranslation,
                                outputs: &OutputFilenames) -> CompileResult {
     if sess.opts.cg.no_integrated_as ||
@@ -1128,7 +1128,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
 /// Run the linker on any artifacts that resulted from the LLVM run.
 /// This should produce either a finished executable or library.
-pub fn phase_6_link_output(sess: &Session,
+pub(crate) fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(),
@@ -1200,7 +1200,7 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
     }
 }
 
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
+pub(crate) fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
     // Unconditionally collect crate types from attributes to make them used
     let attr_types: Vec<config::CrateType> =
         attrs.iter()
@@ -1280,7 +1280,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         .collect()
 }
 
-pub fn compute_crate_disambiguator(session: &Session) -> String {
+pub(crate) fn compute_crate_disambiguator(session: &Session) -> String {
     use std::hash::Hasher;
 
     // The crate_disambiguator is a 128 bit hash. The disambiguator is fed
@@ -1315,7 +1315,7 @@ pub fn compute_crate_disambiguator(session: &Session) -> String {
     format!("{}{}", hasher.finish().to_hex(), if is_exe { "-exe" } else {""})
 }
 
-pub fn build_output_filenames(input: &Input,
+pub(crate) fn build_output_filenames(input: &Input,
                               odir: &Option<PathBuf>,
                               ofile: &Option<PathBuf>,
                               attrs: &[ast::Attribute],

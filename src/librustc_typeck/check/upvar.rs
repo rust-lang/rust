@@ -56,7 +56,7 @@ use rustc::util::nodemap::NodeMap;
 use std::collections::hash_map::Entry;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn closure_analyze(&self, body: &'gcx hir::Body) {
+    pub(crate) fn closure_analyze(&self, body: &'gcx hir::Body) {
         InferBorrowKindVisitor { fcx: self }.visit_body(body);
 
         // it's our job to process these.

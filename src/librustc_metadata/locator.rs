@@ -245,37 +245,37 @@ use std::time::Instant;
 use flate2::read::DeflateDecoder;
 use owning_ref::{ErasedBoxRef, OwningRef};
 
-pub struct CrateMismatch {
+pub(crate) struct CrateMismatch {
     path: PathBuf,
     got: String,
 }
 
-pub struct Context<'a> {
-    pub sess: &'a Session,
-    pub span: Span,
-    pub ident: Symbol,
-    pub crate_name: Symbol,
-    pub hash: Option<&'a Svh>,
+pub(crate) struct Context<'a> {
+    pub(crate) sess: &'a Session,
+    pub(crate) span: Span,
+    pub(crate) ident: Symbol,
+    pub(crate) crate_name: Symbol,
+    pub(crate) hash: Option<&'a Svh>,
     // points to either self.sess.target.target or self.sess.host, must match triple
-    pub target: &'a Target,
-    pub triple: &'a str,
-    pub filesearch: FileSearch<'a>,
-    pub root: &'a Option<CratePaths>,
-    pub rejected_via_hash: Vec<CrateMismatch>,
-    pub rejected_via_triple: Vec<CrateMismatch>,
-    pub rejected_via_kind: Vec<CrateMismatch>,
-    pub rejected_via_version: Vec<CrateMismatch>,
-    pub rejected_via_filename: Vec<CrateMismatch>,
-    pub should_match_name: bool,
-    pub is_proc_macro: Option<bool>,
-    pub metadata_loader: &'a MetadataLoader,
+    pub(crate) target: &'a Target,
+    pub(crate) triple: &'a str,
+    pub(crate) filesearch: FileSearch<'a>,
+    pub(crate) root: &'a Option<CratePaths>,
+    pub(crate) rejected_via_hash: Vec<CrateMismatch>,
+    pub(crate) rejected_via_triple: Vec<CrateMismatch>,
+    pub(crate) rejected_via_kind: Vec<CrateMismatch>,
+    pub(crate) rejected_via_version: Vec<CrateMismatch>,
+    pub(crate) rejected_via_filename: Vec<CrateMismatch>,
+    pub(crate) should_match_name: bool,
+    pub(crate) is_proc_macro: Option<bool>,
+    pub(crate) metadata_loader: &'a MetadataLoader,
 }
 
-pub struct CratePaths {
-    pub ident: String,
-    pub dylib: Option<PathBuf>,
-    pub rlib: Option<PathBuf>,
-    pub rmeta: Option<PathBuf>,
+pub(crate) struct CratePaths {
+    pub(crate) ident: String,
+    pub(crate) dylib: Option<PathBuf>,
+    pub(crate) rlib: Option<PathBuf>,
+    pub(crate) rmeta: Option<PathBuf>,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -302,15 +302,15 @@ impl CratePaths {
 }
 
 impl<'a> Context<'a> {
-    pub fn maybe_load_library_crate(&mut self) -> Option<Library> {
+    pub(crate) fn maybe_load_library_crate(&mut self) -> Option<Library> {
         self.find_library_crate()
     }
 
-    pub fn load_library_crate(&mut self) -> Library {
+    pub(crate) fn load_library_crate(&mut self) -> Library {
         self.find_library_crate().unwrap_or_else(|| self.report_errs())
     }
 
-    pub fn report_errs(&mut self) -> ! {
+    pub(crate) fn report_errs(&mut self) -> ! {
         let add = match self.root {
             &None => String::new(),
             &Some(ref r) => format!(" which `{}` depends on", r.ident),
@@ -819,7 +819,7 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn note_crate_name(err: &mut DiagnosticBuilder, name: &str) {
+pub(crate) fn note_crate_name(err: &mut DiagnosticBuilder, name: &str) {
     err.note(&format!("crate name: {}", name));
 }
 

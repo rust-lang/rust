@@ -23,7 +23,7 @@ struct EraseRegionsVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         EraseRegionsVisitor {
             tcx: tcx
         }

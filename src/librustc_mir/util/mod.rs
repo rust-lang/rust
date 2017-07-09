@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod elaborate_drops;
-pub mod def_use;
-pub mod patch;
+pub(crate) mod elaborate_drops;
+pub(crate) mod def_use;
+pub(crate) mod patch;
 
 mod graphviz;
 mod pretty;
 
-pub use self::pretty::{dump_enabled, dump_mir, write_mir_pretty};
+pub use self::pretty::{write_mir_pretty};
+pub(crate) use self::pretty::{dump_enabled, dump_mir/*, write_mir_pretty*/};
 pub use self::graphviz::{write_mir_graphviz};
-pub use self::graphviz::write_node_label as write_graphviz_node_label;
+pub(crate) use self::graphviz::write_node_label as write_graphviz_node_label;

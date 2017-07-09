@@ -21,13 +21,13 @@ use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
 
 #[derive(PartialEq)]
-pub enum MethodLateContext {
+pub(crate) enum MethodLateContext {
     TraitDefaultImpl,
     TraitImpl,
     PlainImpl,
 }
 
-pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
+pub(crate) fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
     let def_id = cx.tcx.hir.local_def_id(id);
     let item = cx.tcx.associated_item(def_id);
     match item.container {
@@ -42,13 +42,13 @@ pub fn method_context(cx: &LateContext, id: ast::NodeId) -> MethodLateContext {
 }
 
 declare_lint! {
-    pub NON_CAMEL_CASE_TYPES,
+    pub(crate) NON_CAMEL_CASE_TYPES,
     Warn,
     "types, variants, traits and type parameters should have camel case names"
 }
 
 #[derive(Copy, Clone)]
-pub struct NonCamelCaseTypes;
+pub(crate) struct NonCamelCaseTypes;
 
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
@@ -133,13 +133,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
 }
 
 declare_lint! {
-    pub NON_SNAKE_CASE,
+    pub(crate) NON_SNAKE_CASE,
     Warn,
     "variables, methods, functions, lifetime parameters and modules should have snake case names"
 }
 
 #[derive(Copy, Clone)]
-pub struct NonSnakeCase;
+pub(crate) struct NonSnakeCase;
 
 impl NonSnakeCase {
     fn to_snake_case(mut str: &str) -> String {
@@ -301,13 +301,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
 }
 
 declare_lint! {
-    pub NON_UPPER_CASE_GLOBALS,
+    pub(crate) NON_UPPER_CASE_GLOBALS,
     Warn,
     "static constants should have uppercase identifiers"
 }
 
 #[derive(Copy, Clone)]
-pub struct NonUpperCaseGlobals;
+pub(crate) struct NonUpperCaseGlobals;
 
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext, sort: &str, name: ast::Name, span: Span) {

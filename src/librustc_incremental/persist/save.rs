@@ -166,7 +166,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 }
 
-pub fn encode_dep_graph(tcx: TyCtxt,
+pub(crate) fn encode_dep_graph(tcx: TyCtxt,
                         preds: &Predecessors,
                         encoder: &mut Encoder)
                         -> io::Result<()> {
@@ -272,7 +272,7 @@ pub fn encode_dep_graph(tcx: TyCtxt,
     Ok(())
 }
 
-pub fn encode_metadata_hashes(tcx: TyCtxt,
+pub(crate) fn encode_metadata_hashes(tcx: TyCtxt,
                               svh: Svh,
                               metadata_hashes: &EncodedMetadataHashes,
                               current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
@@ -309,7 +309,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     Ok(())
 }
 
-pub fn encode_work_products(sess: &Session, encoder: &mut Encoder) -> io::Result<()> {
+pub(crate) fn encode_work_products(sess: &Session, encoder: &mut Encoder) -> io::Result<()> {
     let work_products: Vec<_> = sess.dep_graph
         .work_products()
         .iter()

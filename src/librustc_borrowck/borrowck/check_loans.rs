@@ -184,7 +184,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) { }
 }
 
-pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+pub(crate) fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
                                      move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
@@ -217,9 +217,9 @@ fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
 }
 
 impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.bccx.tcx }
+    pub(crate) fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.bccx.tcx }
 
-    pub fn each_issued_loan<F>(&self, node: ast::NodeId, mut op: F) -> bool where
+    pub(crate) fn each_issued_loan<F>(&self, node: ast::NodeId, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,
     {
         //! Iterates over each loan that has been issued
@@ -234,7 +234,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn each_in_scope_loan<F>(&self, scope: region::CodeExtent, mut op: F) -> bool where
+    pub(crate) fn each_in_scope_loan<F>(&self, scope: region::CodeExtent, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,
     {
         //! Like `each_issued_loan()`, but only considers loans that are
@@ -324,7 +324,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         return true;
     }
 
-    pub fn loans_generated_by(&self, node: ast::NodeId) -> Vec<usize> {
+    pub(crate) fn loans_generated_by(&self, node: ast::NodeId) -> Vec<usize> {
         //! Returns a vector of the loans that are generated as
         //! we enter `node`.
 
@@ -336,7 +336,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         return result;
     }
 
-    pub fn check_for_conflicting_loans(&self, node: ast::NodeId) {
+    pub(crate) fn check_for_conflicting_loans(&self, node: ast::NodeId) {
         //! Checks to see whether any of the loans that are issued
         //! on entrance to `node` conflict with loans that have already been
         //! issued when we enter `node` (for example, we do not
@@ -368,7 +368,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn report_error_if_loans_conflict(&self,
+    pub(crate) fn report_error_if_loans_conflict(&self,
                                           old_loan: &Loan<'tcx>,
                                           new_loan: &Loan<'tcx>)
                                           -> bool {
@@ -389,7 +389,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             new_loan, old_loan, old_loan, new_loan)
     }
 
-    pub fn report_error_if_loan_conflicts_with_restriction(&self,
+    pub(crate) fn report_error_if_loan_conflicts_with_restriction(&self,
                                                            loan1: &Loan<'tcx>,
                                                            loan2: &Loan<'tcx>,
                                                            old_loan: &Loan<'tcx>,
@@ -698,7 +698,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn analyze_restrictions_on_use(&self,
+    pub(crate) fn analyze_restrictions_on_use(&self,
                                        expr_id: ast::NodeId,
                                        use_path: &LoanPath<'tcx>,
                                        borrow_kind: ty::BorrowKind)
@@ -856,7 +856,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn report_illegal_mutation(&self,
+    pub(crate) fn report_illegal_mutation(&self,
                                    span: Span,
                                    loan_path: &LoanPath<'tcx>,
                                    loan: &Loan) {

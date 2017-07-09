@@ -100,7 +100,7 @@ impl TempDir {
     /// Although `TempDir` removes the directory on drop, in the destructor
     /// any errors are ignored. To detect errors cleaning up the temporary
     /// directory, call `close` instead.
-    pub fn close(mut self) -> io::Result<()> {
+    pub(crate) fn close(mut self) -> io::Result<()> {
         self.cleanup_dir()
     }
 

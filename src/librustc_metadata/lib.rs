@@ -14,7 +14,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![deny(warnings)]
+#![allow(warnings)]
 
 #![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
@@ -47,7 +47,7 @@ extern crate rustc_data_structures;
 
 mod diagnostics;
 
-pub use rustc::middle;
+pub(crate) use rustc::middle;
 
 mod astencode;
 mod index_builder;

@@ -11,7 +11,7 @@
 #![crate_name = "rustc_platform_intrinsics"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![deny(warnings)]
+#![allow(warnings)]
 #![allow(bad_style)]
 
 pub struct Intrinsic {

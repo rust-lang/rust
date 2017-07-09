@@ -17,7 +17,7 @@ use self::Arch::*;
 
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone)]
-pub enum Arch {
+pub(crate) enum Arch {
     Armv7,
     Armv7s,
     Arm64,
@@ -26,7 +26,7 @@ pub enum Arch {
 }
 
 impl Arch {
-    pub fn to_string(&self) -> &'static str {
+    pub(crate) fn to_string(&self) -> &'static str {
         match self {
             &Armv7 => "armv7",
             &Armv7s => "armv7s",
@@ -37,7 +37,7 @@ impl Arch {
     }
 }
 
-pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
+pub(crate) fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
     let res = Command::new("xcrun")
                       .arg("--show-sdk-path")
                       .arg("-sdk")
@@ -91,7 +91,7 @@ fn target_cpu(arch: Arch) -> String {
     }.to_string()
 }
 
-pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
+pub(crate) fn opts(arch: Arch) -> Result<TargetOptions, String> {
     let pre_link_args = build_pre_link_args(arch)?;
     Ok(TargetOptions {
         cpu: target_cpu(arch),

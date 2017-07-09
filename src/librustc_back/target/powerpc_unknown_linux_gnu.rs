@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m32".to_string());
     base.max_atomic_width = Some(32);
