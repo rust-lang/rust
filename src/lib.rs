@@ -363,6 +363,13 @@ impl Shape {
     pub fn used_width(&self) -> usize {
         self.indent.block_indent + self.offset
     }
+
+    pub fn rhs_overhead(&self, config: &Config) -> usize {
+        config
+            .max_width()
+            .checked_sub(self.used_width() + self.width)
+            .unwrap_or(0)
+    }
 }
 
 pub enum ErrorKind {

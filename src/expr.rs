@@ -419,11 +419,7 @@ where
         }
         Style::Rfc => {
             // Try to calculate the initial constraint on the right hand side.
-            let rhs_overhead = context
-                .config
-                .max_width()
-                .checked_sub(shape.used_width() + shape.width)
-                .unwrap_or(0);
+            let rhs_overhead = shape.rhs_overhead(context.config);
             try_opt!(
                 Shape::indented(shape.indent.block_indent(context.config), context.config)
                     .sub_width(rhs_overhead)
@@ -2543,12 +2539,8 @@ fn rewrite_index(
     }
 
     // Try putting index on the next line and see if it fits in a single line.
-    let indent = shape.indent.block_indent(&context.config);
-    let rhs_overhead = context
-        .config
-        .max_width()
-        .checked_sub(shape.used_width() + shape.width)
-        .unwrap_or(0);
+    let indent = shape.indent.block_indent(context.config);
+    let rhs_overhead = shape.rhs_overhead(context.config);
     let index_shape = try_opt!(Shape::indented(indent, context.config).offset_left(lbr.len()));
     let index_shape = try_opt!(index_shape.sub_width(rbr.len() + rhs_overhead));
     let new_index_rw = index.rewrite(context, index_shape);
