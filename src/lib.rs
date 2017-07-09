@@ -407,16 +407,14 @@ pub struct FormattingError {
 impl FormattingError {
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) |
-            ErrorKind::TrailingWhitespace => "Rustfmt failed at",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "Rustfmt failed at",
             ErrorKind::BadIssue(_) => "WARNING:",
         }
     }
 
     fn msg_suffix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) |
-            ErrorKind::TrailingWhitespace => "(sorry)",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "(sorry)",
             ErrorKind::BadIssue(_) => "",
         }
     }

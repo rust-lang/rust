@@ -517,8 +517,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let variant_body = match field.node.data {
-            ast::VariantData::Tuple(..) |
-            ast::VariantData::Struct(..) => {
+            ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => {
                 // FIXME: Should limit the width, as we have a trailing comma
                 format_struct(
                     &context,
@@ -732,16 +731,15 @@ fn format_impl_ref_and_type(
 
         if let Some(ref trait_ref) = *trait_ref {
             let result_len = result.len();
-            if let Some(trait_ref_str) =
-                rewrite_trait_ref(
-                    context,
-                    &trait_ref,
-                    offset,
-                    &generics_str,
-                    true,
-                    polarity_str,
-                    result_len,
-                ) {
+            if let Some(trait_ref_str) = rewrite_trait_ref(
+                context,
+                &trait_ref,
+                offset,
+                &generics_str,
+                true,
+                polarity_str,
+                result_len,
+            ) {
                 result.push_str(&trait_ref_str);
             } else {
                 let generics_str = try_opt!(rewrite_generics_inner(
@@ -2062,18 +2060,17 @@ fn rewrite_fn_base(
                 .max_width()
                 .checked_sub(last_line_width(&result))
         );
-        if let Some(where_clause_str) =
-            rewrite_where_clause(
-                context,
-                where_clause,
-                context.config.fn_brace_style(),
-                Shape::legacy(budget, indent),
-                Density::Compressed,
-                "{",
-                !has_braces,
-                put_args_in_block && ret_str.is_empty(),
-                Some(span.hi),
-            ) {
+        if let Some(where_clause_str) = rewrite_where_clause(
+            context,
+            where_clause,
+            context.config.fn_brace_style(),
+            Shape::legacy(budget, indent),
+            Density::Compressed,
+            "{",
+            !has_braces,
+            put_args_in_block && ret_str.is_empty(),
+            Some(span.hi),
+        ) {
             if !where_clause_str.contains('\n') {
                 if last_line_width(&result) + where_clause_str.len() > context.config.max_width() {
                     result.push('\n');
@@ -2628,8 +2625,7 @@ fn rewrite_where_clause(
         // If the brace is on the next line we don't need to count it otherwise it needs two
         // characters " {"
         match brace_style {
-            BraceStyle::AlwaysNextLine |
-            BraceStyle::SameLineWhere => 0,
+            BraceStyle::AlwaysNextLine | BraceStyle::SameLineWhere => 0,
             BraceStyle::PreferSameLine => 2,
         }
     } else if terminator == "=" {

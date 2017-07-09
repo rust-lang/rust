@@ -315,8 +315,7 @@ pub fn format_expr(
         }
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
-        ast::ExprKind::InPlace(..) |
-        ast::ExprKind::InlineAsm(..) => {
+        ast::ExprKind::InPlace(..) | ast::ExprKind::InlineAsm(..) => {
             wrap_str(
                 context.snippet(expr.span),
                 context.config.max_width(),
@@ -930,8 +929,7 @@ impl Rewrite for ast::Stmt {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let result = match self.node {
             ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
-            ast::StmtKind::Expr(ref ex) |
-            ast::StmtKind::Semi(ref ex) => {
+            ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
                 let suffix = if semicolon_for_stmt(self) { ";" } else { "" };
 
                 format_expr(
@@ -945,8 +943,7 @@ impl Rewrite for ast::Stmt {
                     try_opt!(shape.sub_width(suffix.len())),
                 ).map(|s| s + suffix)
             }
-            ast::StmtKind::Mac(..) |
-            ast::StmtKind::Item(..) => None,
+            ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) => None,
         };
         result.and_then(|res| {
             recover_comment_removed(res, self.span, context, shape)
@@ -1404,8 +1401,9 @@ impl<'a> Rewrite for ControlFlow<'a> {
             let after_else_comment = extract_comment(after_else, context, shape);
 
             let between_sep = match context.config.control_brace_style() {
-                ControlBraceStyle::AlwaysNextLine |
-                ControlBraceStyle::ClosingNextLine => &*alt_block_sep,
+                ControlBraceStyle::AlwaysNextLine | ControlBraceStyle::ClosingNextLine => {
+                    &*alt_block_sep
+                }
                 ControlBraceStyle::AlwaysSameLine => " ",
             };
             let after_sep = match context.config.control_brace_style() {
@@ -1729,9 +1727,10 @@ impl Rewrite for ast::Arm {
                 }
             }
             ast::ExprKind::Call(_, ref args) => (args.len() == 1, &**body),
-            ast::ExprKind::Closure(..) |
-            ast::ExprKind::Struct(..) |
-            ast::ExprKind::Tup(..) => (true, &**body),
+            ast::ExprKind::Closure(..) | ast::ExprKind::Struct(..) | ast::ExprKind::Tup(..) => (
+                true,
+                &**body,
+            ),
             _ => (false, &**body),
         };
         extend &= context.use_block_indent();
@@ -2402,8 +2401,7 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         ast::ExprKind::WhileLet(..) => {
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
-        ast::ExprKind::Block(..) |
-        ast::ExprKind::Closure(..) => {
+        ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
             context.use_block_indent() ||
                 context.config.fn_call_style() == IndentStyle::Visual && args_len > 1
         }

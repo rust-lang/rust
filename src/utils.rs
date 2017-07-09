@@ -160,9 +160,7 @@ pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
 #[inline]
 pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
     match expr.node {
-        ast::ExprKind::Ret(..) |
-        ast::ExprKind::Continue(..) |
-        ast::ExprKind::Break(..) => true,
+        ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => true,
         _ => false,
     }
 }
