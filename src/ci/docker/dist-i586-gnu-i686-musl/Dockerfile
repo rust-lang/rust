@@ -20,14 +20,13 @@ WORKDIR /build/
 COPY dist-i586-gnu-i686-musl/musl-libunwind-patch.patch dist-i586-gnu-i686-musl/build-musl.sh /build/
 RUN sh /build/build-musl.sh && rm -rf /build
 
-RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
-    dpkg -i dumb-init_*.deb && \
-    rm dumb-init_*.deb
+COPY scripts/dumb-init.sh /scripts/
+RUN sh /scripts/dumb-init.sh
+
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
+COPY scripts/sccache.sh /scripts/
+RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
       --target=i686-unknown-linux-musl,i586-unknown-linux-gnu \

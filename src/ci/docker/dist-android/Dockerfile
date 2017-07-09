@@ -1,22 +1,8 @@
 FROM ubuntu:16.04
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-  ca-certificates \
-  cmake \
-  curl \
-  file \
-  g++ \
-  git \
-  libssl-dev \
-  make \
-  pkg-config \
-  python2.7 \
-  sudo \
-  unzip \
-  xz-utils
+COPY scripts/android-base-apt-get.sh /scripts/
+RUN sh /scripts/android-base-apt-get.sh
 
-# dumb-init
 COPY scripts/dumb-init.sh /scripts/
 RUN sh /scripts/dumb-init.sh
 
@@ -48,9 +34,7 @@ ENV RUST_CONFIGURE_ARGS \
 
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 
-# cache
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# init
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
