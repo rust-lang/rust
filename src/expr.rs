@@ -1687,14 +1687,14 @@ impl Rewrite for ast::Arm {
                 .collect::<Option<Vec<_>>>()
         );
 
-        let all_simple = pat_strs.iter().all(|p| pat_is_simple(p));
+        let all_simple = pat_strs.iter().all(|p| !p.contains('\n'));
         let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
+        let mut tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, pat_shape.width);
+        if tactic == DefinitiveListTactic::Horizontal && all_simple {
+            tactic = DefinitiveListTactic::Mixed;
+        }
         let fmt = ListFormatting {
-            tactic: if all_simple {
-                DefinitiveListTactic::Mixed
-            } else {
-                DefinitiveListTactic::Vertical
-            },
+            tactic: tactic,
             separator: " |",
             trailing_separator: SeparatorTactic::Never,
             shape: pat_shape,
