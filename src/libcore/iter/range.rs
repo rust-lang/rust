@@ -312,7 +312,8 @@ impl<A: Step> Iterator for ops::Range<A> {
 //   For integer types in `RangeInclusive<_>`
 //   this is the case for types *strictly narrower* than `usize`
 //   since e.g. `(0...u64::MAX).len()` would be `u64::MAX + 1`.
-// * It hurts portability to have APIs (including `impl`s) that are only available on some platforms,
+// * It hurts portability to have APIs (including `impl`s)
+//   that are only available on some platforms,
 //   so only `impl`s that are always valid should exist, regardless of the current target platform.
 //   (NOTE: https://github.com/rust-lang/rust/issues/41619 might change this.)
 // * Support exists in-tree for MSP430: https://forge.rust-lang.org/platform-support.html#tier-3
@@ -496,7 +497,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
                     last = self.end.clone();
                     // `start == end`, and `start - 1` underflowed.
                     // `end + 1` overflowing would imply a type with only one valid value?
-                    self.start = self.start.forward(1).expect("overflow in RangeInclusive::next_back");
+                    self.start =
+                        self.start.forward(1).expect("overflow in RangeInclusive::next_back");
                 }
                 Some(last)
             },

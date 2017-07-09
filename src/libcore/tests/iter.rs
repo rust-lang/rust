@@ -1324,7 +1324,8 @@ fn test_steps_between() {
     }
     assert_eq!(Step::steps_between(&20_u128, &0x1_0000_0000_0000_0020_u128), None);
     assert_eq!(Step::steps_between(&20_i128, &0x1_0000_0000_0000_0020_i128), None);
-    assert_eq!(Step::steps_between(&-0x1_0000_0000_0000_0000_i128, &0x1_0000_0000_0000_0000_i128), None);
+    assert_eq!(Step::steps_between(&-0x1_0000_0000_0000_0000_i128, &0x1_0000_0000_0000_0000_i128),
+               None);
 }
 
 #[test]
@@ -1346,9 +1347,11 @@ fn test_step_forward() {
 
     assert_eq!((10_u128).forward(70_000_usize), Some(70_010_u128));
     assert_eq!((10_i128).forward(70_030_usize), Some(70_020_i128));
-    assert_eq!((0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128).forward(0xff_usize), Some(u128::MAX));
+    assert_eq!((0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128).forward(0xff_usize),
+               Some(u128::MAX));
     assert_eq!((0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128).forward(0x100_usize), None);
-    assert_eq!((0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).forward(0xff_usize), Some(i128::MAX));
+    assert_eq!((0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).forward(0xff_usize),
+               Some(i128::MAX));
     assert_eq!((0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).forward(0x100_usize), None);
 }
 
@@ -1373,6 +1376,8 @@ fn test_step_backward() {
     assert_eq!((70_020_i128).backward(70_030_usize), Some(10_i128));
     assert_eq!((10_u128).backward(7_usize), Some(3_u128));
     assert_eq!((10_u128).backward(11_usize), None);
-    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xfe_usize), Some(i128::MIN));
-    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xff_usize), Some(i128::MIN));
+    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xfe_usize),
+               Some(i128::MIN));
+    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xff_usize),
+               Some(i128::MIN));
 }
