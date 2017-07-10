@@ -71,8 +71,7 @@ impl<'a> CommentStyle<'a> {
             CommentStyle::Custom(..) |
             CommentStyle::Doc => "",
             CommentStyle::DoubleBullet => " **/",
-            CommentStyle::SingleBullet |
-            CommentStyle::Exclamation => " */",
+            CommentStyle::SingleBullet | CommentStyle::Exclamation => " */",
         }
     }
 
@@ -81,8 +80,7 @@ impl<'a> CommentStyle<'a> {
             CommentStyle::DoubleSlash => "// ",
             CommentStyle::TripleSlash => "/// ",
             CommentStyle::Doc => "//! ",
-            CommentStyle::SingleBullet |
-            CommentStyle::Exclamation => " * ",
+            CommentStyle::SingleBullet | CommentStyle::Exclamation => " * ",
             CommentStyle::DoubleBullet => " ** ",
             CommentStyle::Custom(opener) => opener,
         }
@@ -94,15 +92,11 @@ impl<'a> CommentStyle<'a> {
 
     pub fn line_with_same_comment_style(&self, line: &str, normalize_comments: bool) -> bool {
         match *self {
-            CommentStyle::DoubleSlash |
-            CommentStyle::TripleSlash |
-            CommentStyle::Doc => {
+            CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
                 line.trim_left().starts_with(self.line_start().trim_left()) ||
                     comment_style(line, normalize_comments) == *self
             }
-            CommentStyle::DoubleBullet |
-            CommentStyle::SingleBullet |
-            CommentStyle::Exclamation => {
+            CommentStyle::DoubleBullet | CommentStyle::SingleBullet | CommentStyle::Exclamation => {
                 line.trim_left().starts_with(self.closer().trim_left()) ||
                     line.trim_left().starts_with(self.line_start().trim_left()) ||
                     comment_style(line, normalize_comments) == *self

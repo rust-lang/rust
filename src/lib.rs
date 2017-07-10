@@ -363,6 +363,13 @@ impl Shape {
     pub fn used_width(&self) -> usize {
         self.indent.block_indent + self.offset
     }
+
+    pub fn rhs_overhead(&self, config: &Config) -> usize {
+        config
+            .max_width()
+            .checked_sub(self.used_width() + self.width)
+            .unwrap_or(0)
+    }
 }
 
 pub enum ErrorKind {
@@ -400,16 +407,14 @@ pub struct FormattingError {
 impl FormattingError {
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) |
-            ErrorKind::TrailingWhitespace => "Rustfmt failed at",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "Rustfmt failed at",
             ErrorKind::BadIssue(_) => "WARNING:",
         }
     }
 
     fn msg_suffix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) |
-            ErrorKind::TrailingWhitespace => "(sorry)",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "(sorry)",
             ErrorKind::BadIssue(_) => "",
         }
     }

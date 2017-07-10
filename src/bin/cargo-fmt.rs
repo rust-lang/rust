@@ -155,8 +155,13 @@ enum TargetKind {
 impl TargetKind {
     fn should_format(&self) -> bool {
         match *self {
-            TargetKind::Lib | TargetKind::Bin | TargetKind::Example | TargetKind::Test |
-            TargetKind::Bench | TargetKind::CustomBuild | TargetKind::ProcMacro => true,
+            TargetKind::Lib |
+            TargetKind::Bin |
+            TargetKind::Example |
+            TargetKind::Test |
+            TargetKind::Bench |
+            TargetKind::CustomBuild |
+            TargetKind::ProcMacro => true,
             _ => false,
         }
     }
