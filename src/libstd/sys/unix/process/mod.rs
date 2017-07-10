@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub use self::process_common::{Command, ExitStatus, Stdio, StdioPipes};
-pub use self::process_inner::Process;
+pub use self::process_inner::{Process, ProcessId};
 
 mod process_common;
 #[cfg(not(target_os = "fuchsia"))]

@@ -11,6 +11,7 @@
 use ascii::*;
 use collections::HashMap;
 use collections;
+use core::ops::Deref;
 use env::split_paths;
 use env;
 use ffi::{OsString, OsStr};
@@ -322,6 +323,22 @@ impl From<File> for Stdio {
 // Processes
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents a process id.
+///
+/// Returned by the [Child::id]() method.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[stable(feature = "rust1", since = "1.21.0")]
+pub struct ProcessId(pub u32);
+
+#[stable(feature = "rust1", since = "1.21.0")]
+impl Deref for ProcessId {
+    type Target = u32;
+
+    fn deref(&self) -> &u32 {
+        &self.0
+    }
+}
+
 /// A value representing a child process.
 ///
 /// The lifetime of this value is linked to the lifetime of the actual
@@ -339,9 +356,9 @@ impl Process {
         Ok(())
     }
 
-    pub fn id(&self) -> u32 {
+    pub fn id(&self) -> ProcessId {
         unsafe {
-            c::GetProcessId(self.handle.raw()) as u32
+            ProcessId(c::GetProcessId(self.handle.raw()))
         }
     }
 
