@@ -58,7 +58,7 @@ fn t2() {
 
 fn t3() {
     let b = B;
-    let mut foo = || {
+    let foo = || {
         let _: () = gen arg; // TODO: this line should not be necessary
         yield;
         drop(b);
@@ -67,7 +67,5 @@ fn t3() {
     let n = A.load(Ordering::SeqCst);
     assert_eq!(A.load(Ordering::SeqCst), n);
     drop(foo);
-    // TODO: we should assert n+1 here, not n
-    // assert_eq!(A.load(Ordering::SeqCst), n + 1);
-    assert_eq!(A.load(Ordering::SeqCst), n);
+    assert_eq!(A.load(Ordering::SeqCst), n + 1);
 }
