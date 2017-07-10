@@ -148,7 +148,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
          if borrows_impl_arg {
              span_err!(self.bccx.tcx.sess,
                 borrow_span,
-                E0805,
+                E0623,
                 "cannot borrow the implicit argument of a generator");
          }
 
@@ -226,7 +226,7 @@ fn check_yields<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         if extent_has_yield(bccx.tcx, extent) {
              span_err!(bccx.tcx.sess,
                 borrow_span,
-                E0806,
+                E0624,
                 "cannot borrow this value across the suspend point of a generator");
         }
     }

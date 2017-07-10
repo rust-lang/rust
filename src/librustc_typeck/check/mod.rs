@@ -4002,7 +4002,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty
                 }
                 None => {
-                    struct_span_err!(self.tcx.sess, expr.span, E0803,
+                    struct_span_err!(self.tcx.sess, expr.span, E0626,
                                  "gen arg expression outside of generator literal").emit();
                     tcx.types.err
                 }
@@ -4014,7 +4014,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.check_expr_coercable_to_type(&value, ty);
                 }
                 None => {
-                    struct_span_err!(self.tcx.sess, expr.span, E0802,
+                    struct_span_err!(self.tcx.sess, expr.span, E0625,
                                  "yield statement outside of generator literal").emit();
                 }
             }
