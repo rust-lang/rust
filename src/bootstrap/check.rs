@@ -334,13 +334,18 @@ pub fn docs(build: &Build, compiler: &Compiler) {
 
     while let Some(p) = stack.pop() {
         if p.is_dir() {
-            stack.extend(t!(p.read_dir()).map(|p| t!(p).path()).filter(|p| {
-                p.extension().and_then(|s| s.to_str()) == Some("md") &&
-                // The nostarch directory in the book is for no starch, and so isn't guaranteed to
-                // build. We don't care if it doesn't build, so skip it.
-                p.to_str().map_or(true, |p| !p.contains("nostarch"))
-            }));
+            stack.extend(t!(p.read_dir()).map(|p| t!(p).path()));
             continue
+        }
+
+        if p.extension().and_then(|s| s.to_str()) != Some("md") {
+            continue;
+        }
+
+        // The nostarch directory in the book is for no starch, and so isn't
+        // guaranteed to build. We don't care if it doesn't build, so skip it.
+        if p.to_str().map_or(false, |p| p.contains("nostarch")) {
+            continue;
         }
 
         markdown_test(build, compiler, &p);

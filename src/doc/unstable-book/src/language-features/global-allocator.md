@@ -27,7 +27,7 @@ looks like:
 [RFC 1974]: https://github.com/rust-lang/rfcs/pull/1974
 
 ```rust
-#![feature(global_allocator, heap_api)]
+#![feature(global_allocator, allocator_api, heap_api)]
 
 use std::heap::{Alloc, System, Layout, AllocErr};
 
