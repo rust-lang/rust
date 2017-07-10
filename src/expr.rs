@@ -2494,13 +2494,18 @@ fn rewrite_index(
         ("[", "]")
     };
 
-    let offset = expr_str.len() + lbr.len();
-    let orig_index_rw = shape
-        .visual_indent(offset)
-        .sub_width(offset + rbr.len())
-        .and_then(|index_shape| index.rewrite(context, index_shape));
+    let offset = last_line_width(&expr_str) + lbr.len();
+    let rhs_overhead = shape.rhs_overhead(context.config);
+    let index_shape = if expr_str.contains('\n') {
+        Shape::legacy(context.config.max_width(), shape.indent)
+            .offset_left(offset)
+            .and_then(|shape| shape.sub_width(rbr.len() + rhs_overhead))
+    } else {
+        shape.visual_indent(offset).sub_width(offset + rbr.len())
+    };
+    let orig_index_rw = index_shape.and_then(|s| index.rewrite(context, s));
 
-    // Return if everything fits in a single line.
+    // Return if index fits in a single line.
     match orig_index_rw {
         Some(ref index_str) if !index_str.contains('\n') => {
             return Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr));
@@ -2510,7 +2515,6 @@ fn rewrite_index(
 
     // Try putting index on the next line and see if it fits in a single line.
     let indent = shape.indent.block_indent(context.config);
-    let rhs_overhead = shape.rhs_overhead(context.config);
     let index_shape = try_opt!(Shape::indented(indent, context.config).offset_left(lbr.len()));
     let index_shape = try_opt!(index_shape.sub_width(rbr.len() + rhs_overhead));
     let new_index_rw = index.rewrite(context, index_shape);
