@@ -419,8 +419,8 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
 error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
    --> for_loop.rs:252:5
     |
-252 |     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+252 |     vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D unused-collect` implied by `-D warnings`
 

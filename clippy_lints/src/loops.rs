@@ -10,7 +10,7 @@ use rustc::middle::region::CodeExtent;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc_const_eval::ConstContext;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use syntax::ast;
 use utils::sugg;
 
@@ -579,6 +579,7 @@ fn check_for_loop_range<'a, 'tcx>(
                 cx: cx,
                 var: def_id,
                 indexed: HashMap::new(),
+                referenced: HashSet::new(),
                 nonindex: false,
             };
             walk_expr(&mut visitor, body);
@@ -588,7 +589,7 @@ fn check_for_loop_range<'a, 'tcx>(
                 let (indexed, indexed_extent) = visitor.indexed
                     .into_iter()
                     .next()
-                    .unwrap_or_else(|| unreachable!() /* len == 1 */);
+                    .expect("already checked that we have exactly 1 element");
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
@@ -599,6 +600,11 @@ fn check_for_loop_range<'a, 'tcx>(
                     if region_maps.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
+                }
+
+                // don't lint if the container that is indexed into is also used without indexing
+                if visitor.referenced.contains(&indexed) {
+                    return;
                 }
 
                 let starts_at_zero = is_integer_literal(start, 0);
@@ -952,50 +958,70 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
 }
 
 struct VarVisitor<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>, // context reference
-    var: DefId, // var name to look for as index
-    indexed: HashMap<Name, Option<CodeExtent>>, // indexed variables, the extent is None for global
-    nonindex: bool, // has the var been used otherwise?
+    /// context reference
+    cx: &'a LateContext<'a, 'tcx>,
+    /// var name to look for as index
+    var: DefId,
+    /// indexed variables, the extend is `None` for global
+    indexed: HashMap<Name, Option<CodeExtent>>,
+    /// Any names that are used outside an index operation.
+    /// Used to detect things like `&mut vec` used together with `vec[i]`
+    referenced: HashSet<Name>,
+    /// has the loop variable been used in expressions other than the index of an index op?
+    nonindex: bool,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let ExprPath(ref qpath) = expr.node {
-            if let QPath::Resolved(None, ref path) = *qpath {
-                if path.segments.len() == 1 && self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var {
-                    // we are referencing our variable! now check if it's as an index
-                    if_let_chain! {[
-                        let Some(parexpr) = get_parent_expr(self.cx, expr),
-                        let ExprIndex(ref seqexpr, _) = parexpr.node,
-                        let ExprPath(ref seqpath) = seqexpr.node,
-                        let QPath::Resolved(None, ref seqvar) = *seqpath,
-                        seqvar.segments.len() == 1
-                    ], {
-                        let def = self.cx.tables.qpath_def(seqpath, seqexpr.id);
-                        match def {
-                            Def::Local(..) | Def::Upvar(..) => {
-                                let def_id = def.def_id();
-                                let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
+        if_let_chain! {[
+            // an index op
+            let ExprIndex(ref seqexpr, ref idx) = expr.node,
+            // directly indexing a variable
+            let ExprPath(ref qpath) = idx.node,
+            let QPath::Resolved(None, ref path) = *qpath,
+            path.segments.len() == 1,
+            // our variable!
+            self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var,
+            // the indexed container is referenced by a name
+            let ExprPath(ref seqpath) = seqexpr.node,
+            let QPath::Resolved(None, ref seqvar) = *seqpath,
+            seqvar.segments.len() == 1,
+        ], {
+            let def = self.cx.tables.qpath_def(seqpath, seqexpr.id);
+            match def {
+                Def::Local(..) | Def::Upvar(..) => {
+                    let def_id = def.def_id();
+                    let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
 
-                                let parent_id = self.cx.tcx.hir.get_parent(expr.id);
-                                let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
-                                let extent = self.cx.tcx.region_maps(parent_def_id).var_scope(node_id);
-                                self.indexed.insert(seqvar.segments[0].name, Some(extent));
-                                return;  // no need to walk further
-                            }
-                            Def::Static(..) | Def::Const(..) => {
-                                self.indexed.insert(seqvar.segments[0].name, None);
-                                return;  // no need to walk further
-                            }
-                            _ => (),
-                        }
-                    }}
-                    // we are not indexing anything, record that
-                    self.nonindex = true;
-                    return;
+                    let parent_id = self.cx.tcx.hir.get_parent(expr.id);
+                    let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
+                    let extent = self.cx.tcx.region_maps(parent_def_id).var_scope(node_id);
+                    self.indexed.insert(seqvar.segments[0].name, Some(extent));
+                    return;  // no need to walk further
                 }
+                Def::Static(..) | Def::Const(..) => {
+                    self.indexed.insert(seqvar.segments[0].name, None);
+                    return;  // no need to walk further
+                }
+                _ => (),
             }
-        }
+        }}
+
+        if_let_chain! {[
+            // directly indexing a variable
+            let ExprPath(ref qpath) = expr.node,
+            let QPath::Resolved(None, ref path) = *qpath,
+            path.segments.len() == 1,
+        ], {
+            if self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var {
+                // we are not indexing anything, record that
+                self.nonindex = true;
+            } else {
+                // not the correct variable, but still a variable
+                self.referenced.insert(path.segments[0].name);
+            }
+        }}
+
         walk_expr(self, expr);
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {

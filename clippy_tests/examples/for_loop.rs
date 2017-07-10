@@ -249,8 +249,8 @@ fn main() {
     for _v in u.iter() { } // no error
 
     let mut out = vec![];
-    vec.iter().map(|x| out.push(x)).collect::<Vec<_>>();
-    let _y = vec.iter().map(|x| out.push(x)).collect::<Vec<_>>(); // this is fine
+    vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
+    let _y = vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>(); // this is fine
 
     // Loop with explicit counter variable
     let mut _index = 0;
@@ -346,6 +346,18 @@ fn main() {
     }
 
     test_for_kv_map();
+
+    fn f<T>(_: &T, _: &T) -> bool { unimplemented!() }
+    fn g<T>(_: &mut [T], _: usize, _: usize) { unimplemented!() }
+    for i in 1..vec.len() {
+        if f(&vec[i - 1], &vec[i]) {
+            g(&mut vec, i - 1, i);
+        }
+    }
+
+    for mid in 1..vec.len() {
+        let (_, _) = vec.split_at(mid);
+    }
 }
 
 #[allow(used_underscore_binding)]
@@ -357,4 +369,18 @@ fn test_for_kv_map() {
         let _ = _value;
         let _k = k;
     }
+}
+
+#[allow(dead_code)]
+fn partition<T:PartialOrd+Send>(v: &mut [T]) -> usize {
+    let pivot = v.len() - 1;
+    let mut i = 0;
+    for j in 0..pivot {
+        if v[j] <= v[pivot] {
+            v.swap(i, j);
+            i += 1;
+        }
+    }
+    v.swap(i, pivot);
+    i
 }
