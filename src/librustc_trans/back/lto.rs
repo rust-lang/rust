@@ -22,7 +22,7 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
 
 use libc;
-use flate2::read::ZlibDecoder;
+use flate2::read::DeflateDecoder;
 
 use std::io::Read;
 use std::ffi::CString;
@@ -111,7 +111,7 @@ pub fn run(cgcx: &CodegenContext,
                             (link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as usize)];
 
                         let mut inflated = Vec::new();
-                        let res = ZlibDecoder::new(compressed_data)
+                        let res = DeflateDecoder::new(compressed_data)
                             .read_to_end(&mut inflated);
                         if res.is_err() {
                             let msg = format!("failed to decompress bc of `{}`",
@@ -131,7 +131,7 @@ pub fn run(cgcx: &CodegenContext,
                     // simply inflate everything and let LLVM decide if it can
                     // make sense of it
                     let mut inflated = Vec::new();
-                    let res = ZlibDecoder::new(bc_encoded)
+                    let res = DeflateDecoder::new(bc_encoded)
                         .read_to_end(&mut inflated);
                     if res.is_err() {
                         let msg = format!("failed to decompress bc of `{}`",

@@ -730,7 +730,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                             -> (ContextRef, ModuleRef, EncodedMetadata) {
     use std::io::Write;
     use flate2::Compression;
-    use flate2::write::ZlibEncoder;
+    use flate2::write::DeflateEncoder;
 
     let (metadata_llcx, metadata_llmod) = unsafe {
         context::create_context_and_module(tcx.sess, "metadata")
@@ -770,7 +770,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
-    ZlibEncoder::new(&mut compressed, Compression::Default)
+    DeflateEncoder::new(&mut compressed, Compression::Fast)
         .write_all(&metadata.raw_data).unwrap();
 
     let llmeta = C_bytes_in_context(metadata_llcx, &compressed);
