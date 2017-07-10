@@ -372,7 +372,7 @@ fn diff_traits(changes: &mut ChangeSet,
 
     }
 
-    for (name, item_pair) in items.iter() {
+    for (name, item_pair) in &items {
         match *item_pair {
             (Some((old_def, old_item)), Some((new_def, new_item))) => {
                 id_mapping.add_trait_item(old_def, new_def);
@@ -605,62 +605,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         let new = new.subst(infcx.tcx, new_substs);
 
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
-            // let err = err.fold_with(&mut Resolver::new(tcx, &infcx));
-            // TODO: replace with `TypeFoldable` as soon as possible
-            use rustc::ty::error::ExpectedFound;
-            use rustc::ty::error::TypeError::*;
-            use rustc::infer::type_variable::Default;
-            let mut folder = Resolver::new(&infcx);
-            let err = match err {
-                Mismatch => Mismatch,
-                UnsafetyMismatch(x) => UnsafetyMismatch(x.fold_with(&mut folder)),
-                AbiMismatch(x) => AbiMismatch(x.fold_with(&mut folder)),
-                Mutability => Mutability,
-                TupleSize(x) => TupleSize(x),
-                FixedArraySize(x) => FixedArraySize(x),
-                ArgCount => ArgCount,
-                RegionsDoesNotOutlive(a, b) => {
-                    RegionsDoesNotOutlive(a.fold_with(&mut folder), b.fold_with(&mut folder))
-                },
-                RegionsNotSame(a, b) => {
-                    RegionsNotSame(a.fold_with(&mut folder), b.fold_with(&mut folder))
-                },
-                RegionsNoOverlap(a, b) => {
-                    RegionsNoOverlap(a.fold_with(&mut folder), b.fold_with(&mut folder))
-                },
-                RegionsInsufficientlyPolymorphic(a, b, ref c) => {
-                    let c = c.clone();
-                    RegionsInsufficientlyPolymorphic(a, b.fold_with(&mut folder), c)
-                },
-                RegionsOverlyPolymorphic(a, b, ref c) => {
-                    let c = c.clone();
-                    RegionsOverlyPolymorphic(a, b.fold_with(&mut folder), c)
-                },
-                IntMismatch(x) => IntMismatch(x),
-                FloatMismatch(x) => FloatMismatch(x),
-                Traits(x) => Traits(x),
-                VariadicMismatch(x) => VariadicMismatch(x),
-                CyclicTy => CyclicTy,
-                ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
-                ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
-                Sorts(x) => Sorts(x.fold_with(&mut folder)),
-                TyParamDefaultMismatch(ExpectedFound { expected, found }) => {
-                    let y = Default {
-                        ty: expected.ty.fold_with(&mut folder),
-                        origin_span: expected.origin_span,
-                        def_id: expected.def_id
-                    };
-                    let z = Default {
-                        ty: found.ty.fold_with(&mut folder),
-                        origin_span: found.origin_span,
-                        def_id: found.def_id
-                    };
-
-                    TyParamDefaultMismatch(ExpectedFound { expected: y, found: z })
-                },
-                ExistentialMismatch(x) => ExistentialMismatch(x.fold_with(&mut folder)),
-            };
-
+            let err = err.fold_with(&mut Resolver::new(&infcx));
             changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
