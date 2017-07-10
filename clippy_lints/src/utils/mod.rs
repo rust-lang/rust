@@ -336,8 +336,8 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
     let mut matched = Vec::with_capacity(methods.len());
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
-        if let ExprMethodCall(ref name, _, ref args) = current.node {
-            if name.node == *method_name {
+        if let ExprMethodCall(ref path, _, ref args) = current.node {
+            if path.name == *method_name {
                 if args.iter().any(|e| in_macro(e.span)) {
                     return None;
                 }

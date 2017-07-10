@@ -75,7 +75,7 @@ impl EarlyLintPass for Precedence {
         }
 
         if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.node {
-            if let ExprKind::MethodCall(_, _, ref args) = rhs.node {
+            if let ExprKind::MethodCall(_, ref args) = rhs.node {
                 if let Some(slf) = args.first() {
                     if let ExprKind::Lit(ref lit) = slf.node {
                         match lit.node {

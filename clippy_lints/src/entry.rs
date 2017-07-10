@@ -89,9 +89,9 @@ fn check_cond<'a, 'tcx, 'b>(
     check: &'b Expr
 ) -> Option<(&'static str, &'b Expr, &'b Expr)> {
     if_let_chain! {[
-        let ExprMethodCall(ref name, _, ref params) = check.node,
+        let ExprMethodCall(ref path, _, ref params) = check.node,
         params.len() >= 2,
-        name.node == "contains_key",
+        path.name == "contains_key",
         let ExprAddrOf(_, ref key) = params[1].node
     ], {
         let map = &params[0];
@@ -123,9 +123,9 @@ struct InsertVisitor<'a, 'tcx: 'a, 'b> {
 impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if_let_chain! {[
-            let ExprMethodCall(ref name, _, ref params) = expr.node,
+            let ExprMethodCall(ref path, _, ref params) = expr.node,
             params.len() == 3,
-            name.node == "insert",
+            path.name == "insert",
             get_item_name(self.cx, self.map) == get_item_name(self.cx, &params[0]),
             SpanlessEq::new(self.cx).eq_expr(self.key, &params[1])
         ], {

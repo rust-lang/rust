@@ -559,7 +559,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
 
         match expr.node {
-            hir::ExprMethodCall(name, _, ref args) => {
+            hir::ExprMethodCall(ref method_call, _, ref args) => {
                 // Chain calls
                 // GET_UNWRAP needs to be checked before general `UNWRAP` lints
                 if let Some(arglists) = method_chain_args(expr, &["get", "unwrap"]) {
@@ -604,17 +604,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_iter_cloned_collect(cx, expr, arglists[0]);
                 }
 
-                lint_or_fun_call(cx, expr, &name.node.as_str(), args);
+                lint_or_fun_call(cx, expr, &method_call.name.as_str(), args);
 
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
-                if args.len() == 1 && name.node == "clone" {
+                if args.len() == 1 && method_call.name == "clone" {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
                 }
 
                 match self_ty.sty {
                     ty::TyRef(_, ty) if ty.ty.sty == ty::TyStr => {
                         for &(method, pos) in &PATTERN_METHODS {
-                            if name.node == method && args.len() > pos {
+                            if method_call.name == method && args.len() > pos {
                                 lint_single_char_pattern(cx, expr, &args[pos]);
                             }
                         }
@@ -804,8 +804,8 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                     check_general_case(cx, name, fun.span, &args[0], &args[1], or_has_args, expr.span);
                 }
             },
-            hir::ExprMethodCall(fun, _, ref or_args) => {
-                check_general_case(cx, name, fun.span, &args[0], &args[1], !or_args.is_empty(), expr.span)
+            hir::ExprMethodCall(_, span, ref or_args) => {
+                check_general_case(cx, name, span, &args[0], &args[1], !or_args.is_empty(), expr.span)
             },
             _ => {},
         }
@@ -981,8 +981,8 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
         }
     }
 
-    if let hir::ExprMethodCall(name, _, ref args) = expr.node {
-        if name.node == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
+    if let hir::ExprMethodCall(ref path, _, ref args) = expr.node {
+        if path.name == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
             sugg::Sugg::hir_opt(cx, &args[0]).map(|sugg| sugg.addr())
         } else {
             None

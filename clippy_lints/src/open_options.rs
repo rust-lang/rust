@@ -34,9 +34,9 @@ impl LintPass for NonSensical {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSensical {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprMethodCall(ref name, _, ref arguments) = e.node {
+        if let ExprMethodCall(ref path, _, ref arguments) = e.node {
             let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&arguments[0]));
-            if name.node == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
+            if path.name == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
                 get_open_options(cx, &arguments[0], &mut options);
                 check_open_options(cx, &options, e.span);
@@ -62,7 +62,7 @@ enum OpenOption {
 }
 
 fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
-    if let ExprMethodCall(ref name, _, ref arguments) = argument.node {
+    if let ExprMethodCall(ref path, _, ref arguments) = argument.node {
         let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
@@ -81,7 +81,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
                 _ => Argument::Unknown,
             };
 
-            match &*name.node.as_str() {
+            match &*path.name.as_str() {
                 "create" => {
                     options.push((OpenOption::Create, argument_option));
                 },

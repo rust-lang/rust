@@ -405,10 +405,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
             let pat = &arms[0].pats[0].node;
             if let (&PatKind::TupleStruct(ref qpath, ref pat_args, _),
-                    &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
+                    &ExprMethodCall(ref method_path, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if self.loop_count < 2 && method_name.node == "next" &&
+                if self.loop_count < 2 && method_path.name == "next" &&
                    match_trait_method(cx, match_expr, &paths::ITERATOR) &&
                    lhs_constructor.name == "Some" && !is_refutable(cx, &pat_args[0]) &&
                    !is_iterator_used_after_while_let(cx, iter_expr) {
@@ -428,7 +428,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.node == "collect" && match_trait_method(cx, expr, &paths::ITERATOR) {
+                if args.len() == 1 && method.name == "collect" && match_trait_method(cx, expr, &paths::ITERATOR) {
                     span_lint(cx,
                               UNUSED_COLLECT,
                               expr.span,
@@ -660,9 +660,9 @@ fn check_for_loop_range<'a, 'tcx>(
 
 fn is_len_call(expr: &Expr, var: &Name) -> bool {
     if_let_chain! {[
-        let ExprMethodCall(method, _, ref len_args) = expr.node,
+        let ExprMethodCall(ref method, _, ref len_args) = expr.node,
         len_args.len() == 1,
-        method.node == "len",
+        method.name == "len",
         let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node,
         path.segments.len() == 1,
         path.segments[0].name == *var
@@ -747,11 +747,11 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
     if let ExprMethodCall(ref method, _, ref args) = arg.node {
         // just the receiver, no arguments
         if args.len() == 1 {
-            let method_name = method.node.as_str();
+            let method_name = &*method.name.as_str();
             // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
             if method_name == "iter" || method_name == "iter_mut" {
                 if is_ref_iterable_type(cx, &args[0]) {
-                    lint_iter_method(cx, args, arg, &method_name);
+                    lint_iter_method(cx, args, arg, method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
                 let def_id = cx.tables.type_dependent_defs[&arg.id].def_id();
@@ -761,7 +761,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                 let fn_arg_tys = method_type.fn_sig(cx.tcx).inputs();
                 assert_eq!(fn_arg_tys.skip_binder().len(), 1);
                 if fn_arg_tys.skip_binder()[0].is_region_ptr() {
-                    lint_iter_method(cx, args, arg, &method_name);
+                    lint_iter_method(cx, args, arg, method_name);
                 } else {
                     let object = snippet(cx, args[0].span, "_");
                     span_lint_and_sugg(cx,

@@ -175,9 +175,9 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
                 print_expr(cx, arg, indent + 1);
             }
         },
-        hir::ExprMethodCall(ref name, _, ref args) => {
+        hir::ExprMethodCall(ref path, _, ref args) => {
             println!("{}MethodCall", ind);
-            println!("{}method name: {}", ind, name.node);
+            println!("{}method name: {}", ind, path.name);
             for arg in args {
                 print_expr(cx, arg, indent + 1);
             }

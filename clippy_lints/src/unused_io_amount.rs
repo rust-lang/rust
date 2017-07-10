@@ -55,8 +55,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
                 }
             },
 
-            hir::ExprMethodCall(ref symbol, _, ref args) => {
-                match &*symbol.node.as_str() {
+            hir::ExprMethodCall(ref path, _, ref args) => {
+                match &*path.name.as_str() {
                     "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                         check_method_call(cx, &args[0], expr);
                     },
@@ -70,8 +70,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
 }
 
 fn check_method_call(cx: &LateContext, call: &hir::Expr, expr: &hir::Expr) {
-    if let hir::ExprMethodCall(ref symbol, _, _) = call.node {
-        let symbol = &*symbol.node.as_str();
+    if let hir::ExprMethodCall(ref path, _, _) = call.node {
+        let symbol = &*path.name.as_str();
         if match_trait_method(cx, call, &paths::IO_READ) && symbol == "read" {
             span_lint(cx,
                       UNUSED_IO_AMOUNT,

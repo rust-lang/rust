@@ -219,7 +219,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
     match expr.node {
         ExprArray(_) |
         ExprTup(_) |
-        ExprMethodCall(_, _, _) |
+        ExprMethodCall(..) |
         ExprCall(_, _) |
         ExprAssign(_, _) |
         ExprIndex(_, _) |

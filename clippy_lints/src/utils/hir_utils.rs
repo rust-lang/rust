@@ -110,10 +110,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
                 })
             },
-            (&ExprMethodCall(ref l_name, ref l_tys, ref l_args),
-             &ExprMethodCall(ref r_name, ref r_tys, ref r_args)) => {
-                !self.ignore_fn && l_name.node == r_name.node && over(l_tys, r_tys, |l, r| self.eq_ty(l, r)) &&
-                self.eq_exprs(l_args, r_args)
+            (&ExprMethodCall(ref l_path, _, ref l_args),
+             &ExprMethodCall(ref r_path, _, ref r_args)) => {
+                !self.ignore_fn && l_path == r_path && self.eq_exprs(l_args, r_args)
             },
             (&ExprRepeat(ref le, ll_id), &ExprRepeat(ref re, rl_id)) => {
                 self.eq_expr(le, re) &&
@@ -428,10 +427,10 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
                 s.hash(&mut self.s);
             },
-            ExprMethodCall(ref name, ref _tys, ref args) => {
+            ExprMethodCall(ref path, ref _tys, ref args) => {
                 let c: fn(_, _, _) -> _ = ExprMethodCall;
                 c.hash(&mut self.s);
-                self.hash_name(&name.node);
+                self.hash_name(&path.name);
                 self.hash_exprs(args);
             },
             ExprRepeat(ref e, l_id) => {

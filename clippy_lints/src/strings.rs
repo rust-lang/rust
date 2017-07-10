@@ -142,8 +142,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
         use syntax::ast::LitKind;
         use utils::{snippet, in_macro};
 
-        if let ExprMethodCall(ref name, _, ref args) = e.node {
-            if name.node == "as_bytes" {
+        if let ExprMethodCall(ref path, _, ref args) = e.node {
+            if path.name == "as_bytes" {
                 if let ExprLit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
                         if lit_content.as_str().chars().all(|c| c.is_ascii()) && !in_macro(args[0].span) {
