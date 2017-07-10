@@ -227,7 +227,7 @@ impl DepGraph {
     }
 
     pub(super) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
-        self.data.as_ref().unwrap().dep_node_debug.borrow().get(&dep_node).cloned()
+        self.data.as_ref().and_then(|t| t.dep_node_debug.borrow().get(&dep_node).cloned())
     }
 }
 
