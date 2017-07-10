@@ -76,7 +76,7 @@ declare_lint! {
 ///
 /// **Why is this bad?** `x.trailing_zeros() > 4` is much clearer than `x & 15 == 0`
 ///
-/// **Known problems:** None
+/// **Known problems:** llvm generates better code for `x & 15 == 0` on x86
 ///
 /// **Example:**
 /// ```rust
