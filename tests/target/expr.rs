@@ -283,6 +283,15 @@ fn indices() {
         [x + y + z];
     let y = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc)
         [xxxxx + yyyyy + zzzzz];
+    let z = xxxxxxxxxx
+        .x()
+        .y()
+        .zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz()[aaaaa];
+    let z = xxxxxxxxxx
+        .x()
+        .y()
+        .zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz()
+        [aaaaa];
 }
 
 fn repeats() {
