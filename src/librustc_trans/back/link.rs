@@ -1029,6 +1029,10 @@ fn link_args(cmd: &mut Linker,
         }
     }
 
+    if t.options.full_relro {
+        cmd.full_relro();
+    }
+
     // Pass optimization flags down to the linker.
     cmd.optimize();
 

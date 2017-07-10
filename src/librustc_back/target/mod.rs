@@ -367,6 +367,9 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Full RELRO makes the dynamic linker resolve all symbols at startup and marks the GOT
+    /// read-only before starting the program, preventing overwriting the GOT.
+    pub full_relro: bool,
     /// Format that archives should be emitted in. This affects whether we use
     /// LLVM to assemble an archive or fall back to the system linker, and
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
@@ -454,6 +457,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,
+            full_relro: false,
             pre_link_objects_exe: Vec::new(),
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
@@ -683,6 +687,7 @@ impl Target {
         key!(has_rpath, bool);
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
+        key!(full_relro, bool);
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
@@ -870,6 +875,7 @@ impl ToJson for Target {
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
+        target_option_val!(full_relro);
         target_option_val!(archive_format);
         target_option_val!(allow_asm);
         target_option_val!(custom_unwind_resume);

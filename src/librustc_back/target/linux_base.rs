@@ -36,6 +36,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         pre_link_args: args,
         position_independent_executables: true,
+        full_relro: true,
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: true,
         .. Default::default()

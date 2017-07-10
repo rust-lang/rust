@@ -34,6 +34,7 @@ pub fn opts() -> TargetOptions {
         is_like_openbsd: true,
         pre_link_args: args,
         position_independent_executables: true,
+        full_relro: true,
         .. Default::default()
     }
 }

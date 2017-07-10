@@ -33,6 +33,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         pre_link_args: args,
         position_independent_executables: true,
+        full_relro: true,
         .. Default::default()
     }
 }

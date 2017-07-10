@@ -19,6 +19,7 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         has_rpath: true,
         position_independent_executables: true,
+        full_relro: true,
 
         .. Default::default()
     }
