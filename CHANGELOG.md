@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.143
+* Update to *rustc 1.20.0-nightly (d84693b93 2017-07-09)*
+* Fix `cargo clippy` crashing on `dylib` projects
+* Fix false positives around `nested_while_let` and `never_loop`
+
 ## 0.0.142
 * Update to *rustc 1.20.0-nightly (067971139 2017-07-02)*
 
