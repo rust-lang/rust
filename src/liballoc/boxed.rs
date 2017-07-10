@@ -785,7 +785,7 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
     }
 }
 
-#[unstable(feature = "generator_trait", issue = "0")]
+#[unstable(feature = "generator_trait", issue = "43122")]
 impl<T, U> Generator<U> for Box<T>
     where T: Generator<U> + ?Sized
 {
