@@ -131,7 +131,9 @@ error: you don't need to add `&` to all patterns
     |
     = note: `-D match-ref-pats` implied by `-D warnings`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
-    |         match *v { .. }
+    |
+138 |         match *v { .. }
+    |         ^^^^^^^^^^^^^^^
 
 error: you don't need to add `&` to all patterns
    --> matches.rs:148:5
@@ -143,7 +145,9 @@ error: you don't need to add `&` to all patterns
     | |_____^
     |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
-    |     match *tup { .. }
+    |
+148 |     match *tup { .. }
+    |     ^^^^^^^^^^^^^^^^^
 
 error: you don't need to add `&` to both the expression and the patterns
    --> matches.rs:154:5
@@ -163,7 +167,9 @@ error: you don't need to add `&` to all patterns
     | |_____^
     |
 help: instead of prefixing all patterns with `&`, you can dereference the expression
-    |     if let .. = *a { .. }
+    |
+165 |     if let .. = *a { .. }
+    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: you don't need to add `&` to both the expression and the patterns
    --> matches.rs:170:5

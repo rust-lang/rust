@@ -1,6 +1,5 @@
 #![feature(plugin, alloc)]
 #![feature(associated_type_defaults)]
-#![feature(associated_consts)]
 
 #![plugin(clippy)]
 #![warn(clippy)]
