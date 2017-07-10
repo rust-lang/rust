@@ -1714,7 +1714,7 @@ impl Rewrite for ast::Arm {
         let (mut extend, body) = match body.node {
             ast::ExprKind::Block(ref block)
                 if !is_unsafe_block(block) && is_simple_block(block, context.codemap) &&
-                       context.config.wrap_match_arms() => {
+                    context.config.wrap_match_arms() => {
                 if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                     (false, &**expr)
                 } else {
@@ -1756,9 +1756,10 @@ impl Rewrite for ast::Arm {
             match rewrite {
                 Some(ref body_str)
                     if (!body_str.contains('\n') && body_str.len() <= arm_shape.width) ||
-                           !context.config.wrap_match_arms() ||
-                           (extend && first_line_width(body_str) <= arm_shape.width) ||
-                           is_block => {
+                        !context.config.wrap_match_arms() ||
+                        (extend && first_line_width(body_str) <= arm_shape.width) ||
+                        is_block =>
+                {
                     let block_sep = match context.config.control_brace_style() {
                         ControlBraceStyle::AlwaysNextLine if is_block => alt_block_sep.as_str(),
                         _ if guard.is_some() && pats_str.contains('\n') && is_block &&
