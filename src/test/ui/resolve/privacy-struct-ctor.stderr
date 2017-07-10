@@ -9,7 +9,9 @@ error[E0423]: expected value, found struct `Z`
    |         constructor is not visible here due to private fields
    |
 help: possible better candidate is found in another module, you can import it into scope
-   | use m::n::Z;
+   |
+15 | use m::n::Z;
+   |
 
 error[E0423]: expected value, found struct `S`
   --> $DIR/privacy-struct-ctor.rs:36:5
@@ -21,7 +23,9 @@ error[E0423]: expected value, found struct `S`
    |     constructor is not visible here due to private fields
    |
 help: possible better candidate is found in another module, you can import it into scope
-   | use m::S;
+   |
+13 | use m::S;
+   |
 
 error[E0423]: expected value, found struct `xcrate::S`
   --> $DIR/privacy-struct-ctor.rs:42:5
@@ -33,7 +37,9 @@ error[E0423]: expected value, found struct `xcrate::S`
    |     constructor is not visible here due to private fields
    |
 help: possible better candidate is found in another module, you can import it into scope
-   | use m::S;
+   |
+13 | use m::S;
+   |
 
 error[E0603]: tuple struct `Z` is private
   --> $DIR/privacy-struct-ctor.rs:25:9

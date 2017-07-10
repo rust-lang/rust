@@ -5,9 +5,13 @@ error[E0405]: cannot find trait `Mul` in this scope
    |      ^^^ not found in this scope
    |
 help: possible candidates are found in other modules, you can import them into scope
-   | use mul1::Mul;
-   | use mul2::Mul;
-   | use std::ops::Mul;
+   |
+11 | use mul1::Mul;
+   |
+11 | use mul2::Mul;
+   |
+11 | use std::ops::Mul;
+   |
 
 error[E0412]: cannot find type `Mul` in this scope
   --> $DIR/issue-21221-1.rs:72:16
@@ -16,10 +20,15 @@ error[E0412]: cannot find type `Mul` in this scope
    |                ^^^ not found in this scope
    |
 help: possible candidates are found in other modules, you can import them into scope
-   | use mul1::Mul;
-   | use mul2::Mul;
-   | use mul3::Mul;
-   | use mul4::Mul;
+   |
+11 | use mul1::Mul;
+   |
+11 | use mul2::Mul;
+   |
+11 | use mul3::Mul;
+   |
+11 | use mul4::Mul;
+   |
 and 2 other candidates
 
 error[E0405]: cannot find trait `ThisTraitReallyDoesntExistInAnyModuleReally` in this scope
@@ -35,7 +44,9 @@ error[E0405]: cannot find trait `Div` in this scope
    |      ^^^ not found in this scope
    |
 help: possible candidate is found in another module, you can import it into scope
-   | use std::ops::Div;
+   |
+11 | use std::ops::Div;
+   |
 
 error: cannot continue compilation due to previous error
 

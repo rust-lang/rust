@@ -1,10 +1,10 @@
 error[E0601]: main function not found
 
 error[E0046]: not all trait items implemented, missing: `CONSTANT`, `Type`, `method`
-  --> $DIR/m2.rs:20:1
+  --> $DIR/m2.rs:19:1
    |
-20 | / impl m1::X for X {
-21 | | }
+19 | / impl m1::X for X {
+20 | | }
    | |_^ missing `CONSTANT`, `Type`, `method` in implementation
    |
    = note: `CONSTANT` from trait: `const CONSTANT: u32;`

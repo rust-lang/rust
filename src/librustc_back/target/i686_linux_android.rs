@@ -22,6 +22,7 @@ pub fn target() -> TargetResult {
     // http://developer.android.com/ndk/guides/abis.html#x86
     base.cpu = "pentiumpro".to_string();
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3".to_string();
+    base.stack_probes = true;
 
     Ok(Target {
         llvm_target: "i686-linux-android".to_string(),

@@ -25,7 +25,7 @@ pub trait Sized {
 trait Add<RHS=Self> {
     type Output;
 
-    fn add(self, RHS) -> Self::Output;
+    fn add(self, _: RHS) -> Self::Output;
 }
 
 fn ice<A>(a: A) {

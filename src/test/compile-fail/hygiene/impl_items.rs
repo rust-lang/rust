@@ -19,7 +19,7 @@ mod foo {
     }
 
     pub macro m() {
-        let _: () = S.f();
+        let _: () = S.f(); //~ ERROR type `fn(&foo::S) {foo::S::f}` is private
     }
 }
 

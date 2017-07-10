@@ -10,10 +10,11 @@
 
 
 #![crate_name = "rustc_bitflags"]
-#![feature(associated_consts)]
 #![crate_type = "rlib"]
 #![no_std]
 #![deny(warnings)]
+
+#![cfg_attr(stage0, feature(associated_consts))]
 
 //! A typesafe bitmask flag generator.
 
@@ -31,7 +32,6 @@ extern crate std;
 ///
 /// ```{.rust}
 /// #![feature(rustc_private)]
-/// #![feature(associated_consts)]
 /// #[macro_use] extern crate rustc_bitflags;
 ///
 /// bitflags! {

@@ -1151,10 +1151,15 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::Call(folder.fold_expr(f),
                          folder.fold_exprs(args))
             }
-            ExprKind::MethodCall(i, tps, args) => {
+            ExprKind::MethodCall(seg, args) => {
                 ExprKind::MethodCall(
-                    respan(folder.new_span(i.span), folder.fold_ident(i.node)),
-                    tps.move_map(|x| folder.fold_ty(x)),
+                    PathSegment {
+                        identifier: folder.fold_ident(seg.identifier),
+                        span: folder.new_span(seg.span),
+                        parameters: seg.parameters.map(|ps| {
+                            ps.map(|ps| folder.fold_path_parameters(ps))
+                        }),
+                    },
                     folder.fold_exprs(args))
             }
             ExprKind::Binary(binop, lhs, rhs) => {

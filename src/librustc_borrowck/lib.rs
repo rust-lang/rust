@@ -20,7 +20,8 @@
 
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(associated_consts)]
+
+#![cfg_attr(stage0, feature(associated_consts))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

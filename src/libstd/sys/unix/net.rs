@@ -17,7 +17,8 @@ use str;
 use sys::fd::FileDesc;
 use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
-use time::Duration;
+use time::{Duration, Instant};
+use cmp;
 
 pub use sys::{cvt, cvt_r};
 pub extern crate libc as netc;
@@ -119,6 +120,70 @@ impl Socket {
             a.set_cloexec()?;
             b.set_cloexec()?;
             Ok((Socket(a), Socket(b)))
+        }
+    }
+
+    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
+        self.set_nonblocking(true)?;
+        let r = unsafe {
+            let (addrp, len) = addr.into_inner();
+            cvt(libc::connect(self.0.raw(), addrp, len))
+        };
+        self.set_nonblocking(false)?;
+
+        match r {
+            Ok(_) => return Ok(()),
+            // there's no ErrorKind for EINPROGRESS :(
+            Err(ref e) if e.raw_os_error() == Some(libc::EINPROGRESS) => {}
+            Err(e) => return Err(e),
+        }
+
+        let mut pollfd = libc::pollfd {
+            fd: self.0.raw(),
+            events: libc::POLLOUT,
+            revents: 0,
+        };
+
+        if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                      "cannot set a 0 duration timeout"));
+        }
+
+        let start = Instant::now();
+
+        loop {
+            let elapsed = start.elapsed();
+            if elapsed >= timeout {
+                return Err(io::Error::new(io::ErrorKind::TimedOut, "connection timed out"));
+            }
+
+            let timeout = timeout - elapsed;
+            let mut timeout = timeout.as_secs()
+                .saturating_mul(1_000)
+                .saturating_add(timeout.subsec_nanos() as u64 / 1_000_000);
+            if timeout == 0 {
+                timeout = 1;
+            }
+
+            let timeout = cmp::min(timeout, c_int::max_value() as u64) as c_int;
+
+            match unsafe { libc::poll(&mut pollfd, 1, timeout) } {
+                -1 => {
+                    let err = io::Error::last_os_error();
+                    if err.kind() != io::ErrorKind::Interrupted {
+                        return Err(err);
+                    }
+                }
+                0 => {}
+                _ => {
+                    if pollfd.revents & libc::POLLOUT == 0 {
+                        if let Some(e) = self.take_error()? {
+                            return Err(e);
+                        }
+                    }
+                    return Ok(());
+                }
+            }
         }
     }
 

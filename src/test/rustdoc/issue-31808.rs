@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts, associated_types)]
-
 // Test that associated item impls on primitive types don't crash rustdoc
 
 pub trait Foo {

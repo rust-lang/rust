@@ -36,7 +36,7 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
     pub fn new(graph: DepGraph) -> DepTrackingMap<M> {
         DepTrackingMap {
             phantom: PhantomData,
-            graph: graph,
+            graph,
             map: FxHashMap(),
         }
     }

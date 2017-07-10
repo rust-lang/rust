@@ -245,7 +245,6 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
-#![feature(associated_consts)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
@@ -320,6 +319,7 @@
 #![cfg_attr(test, feature(float_bits_conv))]
 
 #![cfg_attr(not(stage0), default_lib_allocator)]
+#![cfg_attr(stage0, feature(associated_consts))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.

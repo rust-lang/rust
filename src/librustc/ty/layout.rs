@@ -285,11 +285,13 @@ impl Size {
 }
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
-/// Since alignments are always powers of 2, we can pack both in one byte,
-/// giving each a nibble (4 bits) for a maximum alignment of 2<sup>15</sup> = 32768.
+/// Each field is a power of two, giving the alignment a maximum
+/// value of 2^(2^8 - 1), which is limited by LLVM to a i32, with
+/// a maximum capacity of 2^31 - 1 or 2147483647.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Align {
-    raw: u8
+    abi: u8,
+    pref: u8,
 }
 
 impl Align {
@@ -298,7 +300,7 @@ impl Align {
     }
 
     pub fn from_bytes(abi: u64, pref: u64) -> Result<Align, String> {
-        let pack = |align: u64| {
+        let log2 = |align: u64| {
             // Treat an alignment of 0 bytes like 1-byte alignment.
             if align == 0 {
                 return Ok(0);
@@ -312,7 +314,7 @@ impl Align {
             }
             if bytes != 1 {
                 Err(format!("`{}` is not a power of 2", align))
-            } else if pow > 0x0f {
+            } else if pow > 30 {
                 Err(format!("`{}` is too large", align))
             } else {
                 Ok(pow)
@@ -320,31 +322,30 @@ impl Align {
         };
 
         Ok(Align {
-            raw: pack(abi)? | (pack(pref)? << 4)
+            abi: log2(abi)?,
+            pref: log2(pref)?,
         })
     }
 
     pub fn abi(self) -> u64 {
-        1 << (self.raw & 0xf)
+        1 << self.abi
     }
 
     pub fn pref(self) -> u64 {
-        1 << (self.raw >> 4)
+        1 << self.pref
     }
 
     pub fn min(self, other: Align) -> Align {
-        let abi = cmp::min(self.raw & 0x0f, other.raw & 0x0f);
-        let pref = cmp::min(self.raw & 0xf0, other.raw & 0xf0);
         Align {
-            raw: abi | pref
+            abi: cmp::min(self.abi, other.abi),
+            pref: cmp::min(self.pref, other.pref),
         }
     }
 
     pub fn max(self, other: Align) -> Align {
-        let abi = cmp::max(self.raw & 0x0f, other.raw & 0x0f);
-        let pref = cmp::max(self.raw & 0xf0, other.raw & 0xf0);
         Align {
-            raw: abi | pref
+            abi: cmp::max(self.abi, other.abi),
+            pref: cmp::max(self.pref, other.pref),
         }
     }
 }
@@ -609,7 +610,7 @@ impl<'a, 'tcx> Struct {
         };
 
         let mut ret = Struct {
-            align: align,
+            align,
             primitive_align: align,
             packed: repr.packed(),
             sized: true,
@@ -910,10 +911,10 @@ impl<'a, 'tcx> Union {
     fn new(dl: &TargetDataLayout, packed: bool) -> Union {
         let align = if packed { dl.i8_align } else { dl.aggregate_align };
         Union {
-            align: align,
+            align,
             primitive_align: align,
             min_size: Size::from_bytes(0),
-            packed: packed,
+            packed,
         }
     }
 
@@ -1169,8 +1170,8 @@ impl<'a, 'tcx> Layout {
                     sized: true,
                     align: element.align(dl),
                     primitive_align: element.primitive_align(dl),
-                    element_size: element_size,
-                    count: count
+                    element_size,
+                    count,
                 }
             }
             ty::TySlice(element) => {
@@ -1280,9 +1281,9 @@ impl<'a, 'tcx> Layout {
                     // grok.
                     let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
                     return success(CEnum {
-                        discr: discr,
-                        signed: signed,
-                        non_zero: non_zero,
+                        discr,
+                        signed,
+                        non_zero,
                         // FIXME: should be u128?
                         min: min as u64,
                         max: max as u64
@@ -1364,7 +1365,7 @@ impl<'a, 'tcx> Layout {
                             };
                             return success(RawNullablePointer {
                                 nndiscr: discr as u64,
-                                value: value,
+                                value,
                             });
                         }
 
@@ -1491,10 +1492,10 @@ impl<'a, 'tcx> Layout {
 
                 General {
                     discr: ity,
-                    variants: variants,
-                    size: size,
-                    align: align,
-                    primitive_align: primitive_align
+                    variants,
+                    size,
+                    align,
+                    primitive_align,
                 }
             }
 
@@ -1957,7 +1958,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 ty::TyParam(_) | ty::TyProjection(_) => {
                     assert!(tail.has_param_types() || tail.has_self_ty());
                     Ok(SizeSkeleton::Pointer {
-                        non_zero: non_zero,
+                        non_zero,
                         tail: tcx.erase_regions(&tail)
                     })
                 }
@@ -2016,7 +2017,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                         return Ok(SizeSkeleton::Pointer {
                             non_zero: non_zero ||
                                 Some(def.did) == tcx.lang_items.non_zero(),
-                            tail: tail
+                            tail,
                         });
                     } else {
                         return Err(err);
@@ -2030,7 +2031,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                     (None, Some(SizeSkeleton::Pointer { non_zero: true, tail })) => {
                         Ok(SizeSkeleton::Pointer {
                             non_zero: false,
-                            tail: tail
+                            tail,
                         })
                     }
                     _ => Err(err)
@@ -2115,7 +2116,7 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for LayoutCx<'a, 'tcx> {
         let ty = self.normalize_projections(ty);
 
         Ok(TyLayout {
-            ty: ty,
+            ty,
             layout: ty.layout(self.tcx, self.param_env)?,
             variant_index: None
         })

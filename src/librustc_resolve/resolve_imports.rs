@@ -18,7 +18,7 @@ use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
 use rustc::ty;
-use rustc::lint::builtin::PRIVATE_IN_PUBLIC;
+use rustc::lint::builtin::PUB_USE_OF_PRIVATE_EXTERN_CRATE;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
 use rustc::util::nodemap::FxHashMap;
@@ -296,7 +296,8 @@ impl<'a> Resolver<'a> {
     pub fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
                   -> &'a NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
-                     !directive.is_glob() && binding.is_extern_crate() { // c.f. `PRIVATE_IN_PUBLIC`
+                     // c.f. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
+                     !directive.is_glob() && binding.is_extern_crate() {
             directive.vis.get()
         } else {
             binding.pseudo_vis()
@@ -735,7 +736,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                    (error E0365), consider declaring with `pub`",
                                    ident);
-                self.session.add_lint(PRIVATE_IN_PUBLIC, directive.id, directive.span, msg);
+                self.session.add_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+                                      directive.id, directive.span, msg);
             } else if ns == TypeNS {
                 struct_span_err!(self.session, directive.span, E0365,
                                  "`{}` is private, and cannot be reexported", ident)

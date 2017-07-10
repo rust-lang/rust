@@ -78,7 +78,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitRef<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| ty::TraitRef {
             def_id: self.def_id,
-            substs: substs
+            substs,
         })
     }
 }
@@ -88,7 +88,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialTraitRef<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| ty::ExistentialTraitRef {
             def_id: self.def_id,
-            substs: substs
+            substs,
         })
     }
 }
@@ -98,7 +98,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
                              -> Option<ty::TraitPredicate<'tcx>> {
         tcx.lift(&self.trait_ref).map(|trait_ref| ty::TraitPredicate {
-            trait_ref: trait_ref
+            trait_ref,
         })
     }
 }
@@ -117,8 +117,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::SubtypePredicate<'a> {
                              -> Option<ty::SubtypePredicate<'tcx>> {
         tcx.lift(&(self.a, self.b)).map(|(a, b)| ty::SubtypePredicate {
             a_is_expected: self.a_is_expected,
-            a: a,
-            b: b,
+            a,
+            b,
         })
     }
 }
@@ -146,8 +146,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
                              -> Option<ty::ProjectionPredicate<'tcx>> {
         tcx.lift(&(self.projection_ty, self.ty)).map(|(projection_ty, ty)| {
             ty::ProjectionPredicate {
-                projection_ty: projection_ty,
-                ty: ty
+                projection_ty,
+                ty,
             }
         })
     }
@@ -158,9 +158,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&(self.trait_ref, self.ty)).map(|(trait_ref, ty)| {
             ty::ExistentialProjection {
-                trait_ref: trait_ref,
+                trait_ref,
                 item_name: self.item_name,
-                ty: ty
+                ty,
             }
         })
     }
@@ -300,8 +300,8 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::error::ExpectedFound<T> {
         tcx.lift(&self.expected).and_then(|expected| {
             tcx.lift(&self.found).map(|found| {
                 ty::error::ExpectedFound {
-                    expected: expected,
-                    found: found
+                    expected,
+                    found,
                 }
             })
         })
@@ -313,7 +313,7 @@ impl<'a, 'tcx> Lift<'tcx> for type_variable::Default<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.ty).map(|ty| {
             type_variable::Default {
-                ty: ty,
+                ty,
                 origin_span: self.origin_span,
                 def_id: self.def_id
             }
@@ -960,6 +960,20 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::error::ExpectedFoun
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for type_variable::Default<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        type_variable::Default {
+            ty: self.ty.fold_with(folder),
+            origin_span: self.origin_span,
+            def_id: self.def_id
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.ty.visit_with(visitor)
+    }
+}
+
 impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         self.iter().map(|x| x.fold_with(folder)).collect()
@@ -967,5 +981,81 @@ impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> 
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use ty::error::TypeError::*;
+
+        match *self {
+            Mismatch => Mismatch,
+            UnsafetyMismatch(x) => UnsafetyMismatch(x.fold_with(folder)),
+            AbiMismatch(x) => AbiMismatch(x.fold_with(folder)),
+            Mutability => Mutability,
+            TupleSize(x) => TupleSize(x),
+            FixedArraySize(x) => FixedArraySize(x),
+            ArgCount => ArgCount,
+            RegionsDoesNotOutlive(a, b) => {
+                RegionsDoesNotOutlive(a.fold_with(folder), b.fold_with(folder))
+            },
+            RegionsNotSame(a, b) => {
+                RegionsNotSame(a.fold_with(folder), b.fold_with(folder))
+            },
+            RegionsNoOverlap(a, b) => {
+                RegionsNoOverlap(a.fold_with(folder), b.fold_with(folder))
+            },
+            RegionsInsufficientlyPolymorphic(a, b, ref c) => {
+                let c = c.clone();
+                RegionsInsufficientlyPolymorphic(a, b.fold_with(folder), c)
+            },
+            RegionsOverlyPolymorphic(a, b, ref c) => {
+                let c = c.clone();
+                RegionsOverlyPolymorphic(a, b.fold_with(folder), c)
+            },
+            IntMismatch(x) => IntMismatch(x),
+            FloatMismatch(x) => FloatMismatch(x),
+            Traits(x) => Traits(x),
+            VariadicMismatch(x) => VariadicMismatch(x),
+            CyclicTy => CyclicTy,
+            ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
+            ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
+            Sorts(x) => Sorts(x.fold_with(folder)),
+            TyParamDefaultMismatch(ref x) => TyParamDefaultMismatch(x.fold_with(folder)),
+            ExistentialMismatch(x) => ExistentialMismatch(x.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use ty::error::TypeError::*;
+
+        match *self {
+            UnsafetyMismatch(x) => x.visit_with(visitor),
+            AbiMismatch(x) => x.visit_with(visitor),
+            RegionsDoesNotOutlive(a, b) |
+            RegionsNotSame(a, b) |
+            RegionsNoOverlap(a, b) => {
+                a.visit_with(visitor) || b.visit_with(visitor)
+            },
+            RegionsInsufficientlyPolymorphic(_, b, _) |
+            RegionsOverlyPolymorphic(_, b, _) => {
+                b.visit_with(visitor)
+            },
+            Sorts(x) => x.visit_with(visitor),
+            TyParamDefaultMismatch(ref x) => x.visit_with(visitor),
+            ExistentialMismatch(x) => x.visit_with(visitor),
+            Mismatch |
+            Mutability |
+            TupleSize(_) |
+            FixedArraySize(_) |
+            ArgCount |
+            IntMismatch(_) |
+            FloatMismatch(_) |
+            Traits(_) |
+            VariadicMismatch(_) |
+            CyclicTy |
+            ProjectionNameMismatched(_) |
+            ProjectionBoundsLength(_) => false,
+        }
     }
 }

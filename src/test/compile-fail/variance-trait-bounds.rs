@@ -19,7 +19,7 @@ trait Getter<T> {
 }
 
 trait Setter<T> {
-    fn get(&self, T);
+    fn get(&self, _: T);
 }
 
 #[rustc_variance]

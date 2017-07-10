@@ -397,7 +397,7 @@ struct LocalPathBuffer {
 impl LocalPathBuffer {
     fn new(root_mode: RootMode) -> LocalPathBuffer {
         LocalPathBuffer {
-            root_mode: root_mode,
+            root_mode,
             str: String::new(),
         }
     }

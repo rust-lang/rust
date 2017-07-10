@@ -673,9 +673,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                         expr: P<ast::Expr>,
                         ident: ast::Ident,
                         mut args: Vec<P<ast::Expr>> ) -> P<ast::Expr> {
-        let id = Spanned { node: ident, span: span };
         args.insert(0, expr);
-        self.expr(span, ast::ExprKind::MethodCall(id, Vec::new(), args))
+        self.expr(span, ast::ExprKind::MethodCall(ast::PathSegment::from_ident(ident, span), args))
     }
     fn expr_block(&self, b: P<ast::Block>) -> P<ast::Expr> {
         self.expr(b.span, ast::ExprKind::Block(b))

@@ -140,8 +140,8 @@ impl<'a, S: Into<MultiSpan>> IntoEarlyLint for (S, &'a str) {
         let mut diagnostic = Diagnostic::new(errors::Level::Warning, msg);
         diagnostic.set_span(span);
         EarlyLint {
-            id: id,
-            diagnostic: diagnostic,
+            id,
+            diagnostic,
         }
     }
 }
@@ -149,7 +149,7 @@ impl<'a, S: Into<MultiSpan>> IntoEarlyLint for (S, &'a str) {
 impl IntoEarlyLint for Diagnostic {
     fn into_early_lint(self, id: LintId) -> EarlyLint {
         EarlyLint {
-            id: id,
+            id,
             diagnostic: self,
         }
     }
@@ -805,8 +805,8 @@ impl<'a> EarlyContext<'a> {
     fn new(sess: &'a Session,
            krate: &'a ast::Crate) -> EarlyContext<'a> {
         EarlyContext {
-            sess: sess,
-            krate: krate,
+            sess,
+            krate,
             lint_sess: LintSession::new(&sess.lint_store),
         }
     }
@@ -1350,10 +1350,10 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let krate = tcx.hir.krate();
 
     let mut cx = LateContext {
-        tcx: tcx,
+        tcx,
         tables: &ty::TypeckTables::empty(),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),
-        access_levels: access_levels,
+        access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
     };
 

@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
-#![deny(extra_requirement_in_impl)]
-
 // Test that you cannot add an extra where clause in the impl relating
 // two regions.
 

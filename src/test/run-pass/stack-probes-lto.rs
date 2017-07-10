@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+// ignore-arm
+// ignore-wasm
+// ignore-emscripten
+// ignore-musl FIXME #31506
+// ignore-pretty
+// no-system-llvm
+// compile-flags: -C lto
+// no-prefer-dynamic
 
-fn main() {
-   let y = Foo;
-   y.1; //~ ERROR E0613
-}
+include!("stack-probes.rs");

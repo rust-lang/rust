@@ -13,7 +13,7 @@ use intrinsics::{atomic_cxchg, atomic_xadd, atomic_xchg};
 use ptr;
 use time::Duration;
 
-use sys::mutex::{mutex_lock, mutex_unlock, Mutex};
+use sys::mutex::{mutex_unlock, Mutex};
 use sys::syscall::{futex, FUTEX_WAIT, FUTEX_WAKE, FUTEX_REQUEUE};
 
 pub struct Condvar {
@@ -83,8 +83,6 @@ impl Condvar {
             while atomic_xchg(*lock, 2) != 0 {
                 let _ = futex(*lock, FUTEX_WAIT, 2, 0, ptr::null_mut());
             }
-
-            mutex_lock(*lock);
         }
     }
 

@@ -571,8 +571,8 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
             |item| item.name == item_name).unwrap().def_id;
 
         ProjectionTy {
-            trait_ref: trait_ref,
-            item_def_id: item_def_id,
+            trait_ref,
+            item_def_id,
         }
     }
 

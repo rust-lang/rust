@@ -11,7 +11,6 @@
 // Private types and traits are not allowed in public interfaces.
 // This test also ensures that the checks are performed even inside private modules.
 
-#![feature(associated_consts)]
 #![feature(associated_type_defaults)]
 #![deny(private_in_public)]
 #![allow(unused)]

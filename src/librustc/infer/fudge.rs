@@ -102,7 +102,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infcx: self,
             type_variables: &type_variables,
             region_vars: &region_vars,
-            origin: origin
+            origin,
         };
 
         Ok(value.fold_with(&mut fudger))

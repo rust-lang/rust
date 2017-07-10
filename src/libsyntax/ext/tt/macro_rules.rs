@@ -299,6 +299,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
             TokenTree::Sequence(span, ref seq) => {
                 if seq.separator.is_none() && seq.tts.iter().all(|seq_tt| {
                     match *seq_tt {
+                        TokenTree::MetaVarDecl(_, _, id) => id.name == "vis",
                         TokenTree::Sequence(_, ref sub_seq) =>
                             sub_seq.op == quoted::KleeneOp::ZeroOrMore,
                         _ => false,

@@ -9,6 +9,7 @@
 // except according to those terms.
 #![feature(attr_literals)]
 #![feature(repr_align)]
+#![feature(box_syntax)]
 
 use std::mem;
 
@@ -58,6 +59,13 @@ struct Packed(i32);
 struct AlignContainsPacked {
     a: Packed,
     b: Packed,
+}
+
+// The align limit was originally smaller (2^15).
+// Check that it works with big numbers.
+#[repr(align(0x10000))]
+struct AlignLarge {
+    stuff: [u8; 0x10000],
 }
 
 impl Align16 {
@@ -193,4 +201,15 @@ pub fn main() {
     assert_eq!(mem::align_of_val(&a.b), 1);
     assert_eq!(mem::size_of_val(&a), 16);
     assert!(is_aligned_to(&a, 16));
+
+    let mut large = box AlignLarge {
+        stuff: [0; 0x10000],
+    };
+    large.stuff[0] = 132;
+    *large.stuff.last_mut().unwrap() = 102;
+    assert_eq!(large.stuff[0], 132);
+    assert_eq!(large.stuff.last(), Some(&102));
+    assert_eq!(mem::align_of::<AlignLarge>(), 0x10000);
+    assert_eq!(mem::align_of_val(&*large), 0x10000);
+    assert!(is_aligned_to(&*large, 0x10000));
 }

@@ -8,14 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty pretty-printing is unhygienic
+pub trait Mirror<Smoke> {
+    type Image;
+}
 
-// aux-build:intercrate.rs
+impl<T, Smoke> Mirror<Smoke> for T {
+    type Image = T;
+}
 
-#![feature(decl_macro)]
-
-extern crate intercrate;
+pub fn poison<S>(victim: String) where <String as Mirror<S>>::Image: Copy {
+    loop { drop(victim); } //~ ERROR use of moved value
+}
 
 fn main() {
-    assert_eq!(intercrate::foo::m!(), 1);
+    let s = "Hello!".to_owned();
+    let mut s_copy = s;
+    s_copy.push_str("World!");
+    "0wned!".to_owned();
+    println!("{}", s); //~ ERROR use of moved value
 }

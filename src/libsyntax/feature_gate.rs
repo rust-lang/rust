@@ -198,10 +198,6 @@ declare_features! (
     // #23121. Array patterns have some hazards yet.
     (active, slice_patterns, "1.0.0", Some(23121)),
 
-    // Allows the definition of associated constants in `trait` or `impl`
-    // blocks.
-    (active, associated_consts, "1.0.0", Some(29646)),
-
     // Allows the definition of `const fn` functions.
     (active, const_fn, "1.2.0", Some(24111)),
 
@@ -446,6 +442,9 @@ declare_features! (
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
     // Allows attributes on struct literal fields.
     (accepted, struct_field_attributes, "1.20.0", Some(38814)),
+    // Allows the definition of associated constants in `trait` or `impl`
+    // blocks.
+    (accepted, associated_consts, "1.20.0", Some(29646)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1405,11 +1404,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
         match ti.node {
-            ast::TraitItemKind::Const(..) => {
-                gate_feature_post!(&self, associated_consts,
-                                  ti.span,
-                                  "associated constants are experimental")
-            }
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.abi, ti.span);
@@ -1435,11 +1429,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match ii.node {
-            ast::ImplItemKind::Const(..) => {
-                gate_feature_post!(&self, associated_consts,
-                                  ii.span,
-                                  "associated constants are experimental")
-            }
             ast::ImplItemKind::Method(ref sig, _) => {
                 if sig.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");

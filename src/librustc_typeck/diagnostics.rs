@@ -239,10 +239,10 @@ trait_obj.method_one();
 trait_obj.method_two();
 ```
 
-You can read more about trait objects in the Trait Object section of the
-Reference:
+You can read more about trait objects in the [Trait Objects] section of the
+Reference.
 
-https://doc.rust-lang.org/reference.html#trait-objects
+[Trait Objects]: https://doc.rust-lang.org/reference/types.html#trait-objects
 "##,
 
 E0034: r##"
@@ -874,8 +874,9 @@ lvalue expression represents a memory location and can be a variable (with
 optional namespacing), a dereference, an indexing expression or a field
 reference.
 
-More details can be found here:
-https://doc.rust-lang.org/reference.html#lvalues-rvalues-and-temporaries
+More details can be found in the [Expressions] section of the Reference.
+
+[Expressions]: https://doc.rust-lang.org/reference/expressions.html#lvalues-rvalues-and-temporaries
 
 Now, we can go further. Here are some erroneous code examples:
 
@@ -2476,7 +2477,7 @@ trait T2 {
     type Bar;
 
     // error: Baz is used but not declared
-    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+    fn return_bool(&self, _: &Self::Bar, _: &Self::Baz) -> bool;
 }
 ```
 
@@ -2498,7 +2499,7 @@ trait T2 {
     type Baz; // we declare `Baz` in our trait.
 
     // and now we can use it here:
-    fn return_bool(&self, &Self::Bar, &Self::Baz) -> bool;
+    fn return_bool(&self, _: &Self::Bar, _: &Self::Baz) -> bool;
 }
 ```
 "##,
@@ -2777,8 +2778,6 @@ An associated const was implemented when another trait item was expected.
 Erroneous code example:
 
 ```compile_fail,E0323
-#![feature(associated_consts)]
-
 trait Foo {
     type N;
 }
@@ -2810,8 +2809,6 @@ impl Foo for Bar {
 Or:
 
 ```
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2829,8 +2826,6 @@ A method was implemented when another trait item was expected. Erroneous
 code example:
 
 ```compile_fail,E0324
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2850,8 +2845,6 @@ To fix this error, please verify that the method name wasn't misspelled and
 verify that you are indeed implementing the correct trait items. Example:
 
 ```
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2873,8 +2866,6 @@ An associated type was implemented when another trait item was expected.
 Erroneous code example:
 
 ```compile_fail,E0325
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2906,8 +2897,6 @@ impl Foo for Bar {
 Or:
 
 ```
-#![feature(associated_consts)]
-
 struct Bar;
 
 trait Foo {
@@ -2927,8 +2916,6 @@ types in the trait definition. This error indicates that there was a mismatch.
 Here's an example of this error:
 
 ```compile_fail,E0326
-#![feature(associated_consts)]
-
 trait Foo {
     const BAR: bool;
 }
@@ -2991,8 +2978,6 @@ type parameter or `Self`. This is not supported yet. An example causing this
 error is shown below:
 
 ```
-#![feature(associated_consts)]
-
 trait Foo {
     const BAR: f64;
 }
@@ -3012,8 +2997,6 @@ Currently, the value of `BAR` for a particular type can only be accessed
 through a concrete type, as shown below:
 
 ```
-#![feature(associated_consts)]
-
 trait Foo {
     const BAR: f64;
 }
@@ -3485,10 +3468,10 @@ struct Foo<'a, T: 'a> {
 }
 ```
 
-PhantomData can also be used to express information about unused type
-parameters. You can read more about it in the API documentation:
+[PhantomData] can also be used to express information about unused type
+parameters.
 
-https://doc.rust-lang.org/std/marker/struct.PhantomData.html
+[PhantomData]: https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
 E0393: r##"
@@ -4360,7 +4343,9 @@ let variable = Foo { x: 0, y: -12 };
 println!("x: {}, y: {}", variable.x, variable.y);
 ```
 
-For more information see The Rust Book: https://doc.rust-lang.org/book/
+For more information about primitives and structs, take a look at The Book:
+https://doc.rust-lang.org/book/first-edition/primitive-types.html
+https://doc.rust-lang.org/book/first-edition/structs.html
 "##,
 
 E0611: r##"
@@ -4440,60 +4425,6 @@ struct Foo(u32);
 
 let y = Foo(0);
 println!("{}", y.0); // ok!
-```
-"##,
-
-E0613: r##"
-Attempted tuple index on a type which isn't a tuple nor a tuple-struct.
-
-Erroneous code example:
-
-```compile_fail,E0613
-struct Foo;
-
-let y = Foo;
-println!("{}", y.1); // error: attempted to access tuple index `1` on type
-                     //        `Foo`, but the type was not a tuple or tuple
-                     //        struct
-```
-
-Only tuple and tuple-struct types can be indexed this way. Example:
-
-```
-// Let's create a tuple first:
-let x: (u32, u32, u32, u32) = (0, 1, 1, 2);
-// You can index its fields this way:
-println!("({}, {}, {}, {})", x.0, x.1, x.2, x.3);
-
-// Now let's declare a tuple-struct:
-struct TupleStruct(u32, u32, u32, u32);
-// Let's instantiate it:
-let x = TupleStruct(0, 1, 1, 2);
-// And just like the tuple:
-println!("({}, {}, {}, {})", x.0, x.1, x.2, x.3);
-```
-
-If you want to index into an array, use `[]` instead:
-
-```
-let x = &[0, 1, 1, 2];
-println!("[{}, {}, {}, {}]", x[0], x[1], x[2], x[3]);
-```
-
-If you want to access a field of a struct, check the field's name wasn't
-misspelled:
-
-```
-struct SomeStruct {
-    x: u32,
-    y: i32,
-}
-
-let s = SomeStruct {
-    x: 0,
-    y: -1,
-};
-println!("x: {} y: {}", s.x, s.y);
 ```
 "##,
 
@@ -4632,9 +4563,10 @@ unsafe {
 }
 ```
 
-To fix this error, you need to pass variables corresponding to C types as much
-as possible. For better explanations, see The Rust Book:
-https://doc.rust-lang.org/book/
+Certain Rust types must be cast before passing them to a variadic function,
+because of arcane ABI rules dictated by the C standard. To fix the error,
+cast the value to the type specified by the error message (which you may need
+to import from `std::os::raw`).
 "##,
 
 E0618: r##"
@@ -4817,4 +4749,5 @@ register_diagnostics! {
     E0568, // auto-traits can not have predicates,
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
+//  E0613, // Removed (merged with E0609)
 }

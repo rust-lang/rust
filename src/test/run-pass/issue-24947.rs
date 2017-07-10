@@ -10,7 +10,6 @@
 
 // #24947 ICE using a trait-associated const in an array size
 
-#![feature(associated_consts)]
 
 struct Foo;
 

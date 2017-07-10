@@ -185,6 +185,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
         },
         FutureIncompatibleInfo {
+            id: LintId::of(PUB_USE_OF_PRIVATE_EXTERN_CRATE),
+            reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(PATTERNS_IN_FNS_WITHOUT_BODY),
             reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
         },

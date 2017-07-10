@@ -17,7 +17,7 @@ struct A(i32);
 #[repr(align(15))] //~ ERROR: invalid `repr(align)` attribute: not a power of two
 struct B(i32);
 
-#[repr(align(65536))] //~ ERROR: invalid `repr(align)` attribute: larger than 32768
+#[repr(align(4294967296))] //~ ERROR: invalid `repr(align)` attribute: larger than 2147483647
 struct C(i32);
 
 fn main() {}

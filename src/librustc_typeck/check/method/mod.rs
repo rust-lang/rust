@@ -130,22 +130,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
     /// * `self_expr`:             the self expression (`foo`)
     pub fn lookup_method(&self,
-                         span: Span,
-                         method_name: ast::Name,
                          self_ty: ty::Ty<'tcx>,
-                         supplied_method_types: Vec<ty::Ty<'tcx>>,
+                         segment: &hir::PathSegment,
+                         span: Span,
                          call_expr: &'gcx hir::Expr,
                          self_expr: &'gcx hir::Expr)
                          -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
-               method_name,
+               segment.name,
                self_ty,
                call_expr,
                self_expr);
 
         let mode = probe::Mode::MethodCall;
         let self_ty = self.resolve_type_vars_if_possible(&self_ty);
-        let pick = self.probe_for_name(span, mode, method_name, IsSuggestion(false),
+        let pick = self.probe_for_name(span, mode, segment.name, IsSuggestion(false),
                                        self_ty, call_expr.id)?;
 
         if let Some(import_id) = pick.import_id {
@@ -161,7 +160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                call_expr,
                                self_ty,
                                pick,
-                               supplied_method_types))
+                               segment))
     }
 
     /// `lookup_method_in_trait` is used for overloaded operators.

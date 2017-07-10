@@ -23,7 +23,7 @@ fn foo<'a>(s: &'a str) {
 
 trait IntoRef<'a> {
     type T: Clone;
-    fn into_ref(self, &'a str) -> Self::T;
+    fn into_ref(self, _: &'a str) -> Self::T;
 }
 
 impl<'a> IntoRef<'a> for () {

@@ -136,15 +136,15 @@ impl<'tcx> Mir<'tcx> {
         assert_eq!(local_decls[RETURN_POINTER].ty, return_ty);
 
         Mir {
-            basic_blocks: basic_blocks,
-            visibility_scopes: visibility_scopes,
-            promoted: promoted,
-            return_ty: return_ty,
-            local_decls: local_decls,
-            arg_count: arg_count,
-            upvar_decls: upvar_decls,
+            basic_blocks,
+            visibility_scopes,
+            promoted,
+            return_ty,
+            local_decls,
+            arg_count,
+            upvar_decls,
             spread_arg: None,
-            span: span,
+            span,
             cache: cache::Cache::new()
         }
     }
@@ -395,10 +395,10 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
-            ty: ty,
+            ty,
             name: None,
             source_info: SourceInfo {
-                span: span,
+                span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
             is_user_variable: false
@@ -414,7 +414,7 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability: Mutability::Mut,
             ty: return_ty,
             source_info: SourceInfo {
-                span: span,
+                span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
             name: None,     // FIXME maybe we do want some name here?
@@ -629,7 +629,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
         BasicBlockData {
             statements: vec![],
-            terminator: terminator,
+            terminator,
             is_cleanup: false,
         }
     }
@@ -941,7 +941,7 @@ impl<'tcx> Lvalue<'tcx> {
     pub fn elem(self, elem: LvalueElem<'tcx>) -> Lvalue<'tcx> {
         Lvalue::Projection(Box::new(LvalueProjection {
             base: self,
-            elem: elem,
+            elem,
         }))
     }
 }
@@ -1023,7 +1023,7 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         Operand::Constant(box Constant {
-            span: span,
+            span,
             ty: tcx.type_of(def_id).subst(tcx, substs),
             literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
         })
@@ -1470,7 +1470,7 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             Assign(ref lval, ref rval) => Assign(lval.fold_with(folder), rval.fold_with(folder)),
             SetDiscriminant { ref lvalue, variant_index } => SetDiscriminant {
                 lvalue: lvalue.fold_with(folder),
-                variant_index: variant_index
+                variant_index,
             },
             StorageLive(ref lval) => StorageLive(lval.fold_with(folder)),
             StorageDead(ref lval) => StorageDead(lval.fold_with(folder)),
@@ -1490,7 +1490,7 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
         };
         Statement {
             source_info: self.source_info,
-            kind: kind
+            kind,
         }
     }
 
@@ -1530,14 +1530,14 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             },
             Drop { ref location, target, unwind } => Drop {
                 location: location.fold_with(folder),
-                target: target,
-                unwind: unwind
+                target,
+                unwind,
             },
             DropAndReplace { ref location, ref value, target, unwind } => DropAndReplace {
                 location: location.fold_with(folder),
                 value: value.fold_with(folder),
-                target: target,
-                unwind: unwind
+                target,
+                unwind,
             },
             Call { ref func, ref args, ref destination, cleanup } => {
                 let dest = destination.as_ref().map(|&(ref loc, dest)| {
@@ -1548,7 +1548,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     func: func.fold_with(folder),
                     args: args.fold_with(folder),
                     destination: dest,
-                    cleanup: cleanup
+                    cleanup,
                 }
             },
             Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -1562,10 +1562,10 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 };
                 Assert {
                     cond: cond.fold_with(folder),
-                    expected: expected,
-                    msg: msg,
-                    target: target,
-                    cleanup: cleanup
+                    expected,
+                    msg,
+                    target,
+                    cleanup,
                 }
             },
             Resume => Resume,
@@ -1574,7 +1574,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
         };
         Terminator {
             source_info: self.source_info,
-            kind: kind
+            kind,
         }
     }
 
@@ -1716,8 +1716,8 @@ impl<'tcx, B, V> TypeFoldable<'tcx> for Projection<'tcx, B, V>
         };
 
         Projection {
-            base: base,
-            elem: elem
+            base,
+            elem,
         }
     }
 
@@ -1750,7 +1750,7 @@ impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             Literal::Item { def_id, substs } => Literal::Item {
-                def_id: def_id,
+                def_id,
                 substs: substs.fold_with(folder)
             },
             _ => self.clone()

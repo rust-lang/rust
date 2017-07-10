@@ -13,7 +13,7 @@
 #![crate_type = "lib"]
 
 pub trait Positioned {
-  fn SetX(&mut self, isize);
+  fn SetX(&mut self, _: isize);
   fn X(&self) -> isize;
 }
 

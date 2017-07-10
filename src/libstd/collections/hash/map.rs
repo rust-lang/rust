@@ -754,6 +754,8 @@ impl<K, V, S> HashMap<K, V, S>
     ///   1) Ensure `new_raw_cap` is enough for all the elements, accounting
     ///      for the load factor.
     ///   2) Ensure `new_raw_cap` is a power of two or zero.
+    #[inline(never)]
+    #[cold]
     fn resize(&mut self, new_raw_cap: usize) {
         assert!(self.table.size() <= new_raw_cap);
         assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);

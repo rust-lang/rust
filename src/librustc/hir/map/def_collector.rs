@@ -36,8 +36,8 @@ pub struct MacroInvocationData {
 impl<'a> DefCollector<'a> {
     pub fn new(definitions: &'a mut Definitions, expansion: Mark) -> Self {
         DefCollector {
-            definitions: definitions,
-            expansion: expansion,
+            definitions,
+            expansion,
             parent_def: None,
             visit_macro_invoc: None,
         }
@@ -86,7 +86,7 @@ impl<'a> DefCollector<'a> {
         if let Some(ref mut visit) = self.visit_macro_invoc {
             visit(MacroInvocationData {
                 mark: id.placeholder_to_mark(),
-                const_expr: const_expr,
+                const_expr,
                 def_index: self.parent_def.unwrap(),
             })
         }

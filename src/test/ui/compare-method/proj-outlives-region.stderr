@@ -1,10 +1,10 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/proj-outlives-region.rs:22:5
+  --> $DIR/proj-outlives-region.rs:19:5
    |
-17 |     fn foo() where T: 'a;
+14 |     fn foo() where T: 'a;
    |     --------------------- definition of `foo` from trait
 ...
-22 |     fn foo() where U: 'a { } //~ ERROR E0276
+19 |     fn foo() where U: 'a { } //~ ERROR E0276
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `U: 'a`
    |
    = note: #[deny(extra_requirement_in_impl)] on by default

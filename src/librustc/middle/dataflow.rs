@@ -260,16 +260,16 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let nodeid_to_index = build_nodeid_to_index(body, cfg);
 
         DataFlowContext {
-            tcx: tcx,
-            analysis_name: analysis_name,
-            words_per_id: words_per_id,
-            nodeid_to_index: nodeid_to_index,
-            bits_per_id: bits_per_id,
-            oper: oper,
-            gens: gens,
+            tcx,
+            analysis_name,
+            words_per_id,
+            nodeid_to_index,
+            bits_per_id,
+            oper,
+            gens,
             action_kills: kills1,
             scope_kills: kills2,
-            on_entry: on_entry
+            on_entry,
         }
     }
 

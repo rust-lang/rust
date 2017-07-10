@@ -1951,18 +1951,14 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_method_call(&mut self,
-                              ident: ast::SpannedIdent,
-                              tys: &[P<ast::Ty>],
+                              segment: &ast::PathSegment,
                               args: &[P<ast::Expr>]) -> io::Result<()> {
         let base_args = &args[1..];
         self.print_expr(&args[0])?;
         word(&mut self.s, ".")?;
-        self.print_ident(ident.node)?;
-        if !tys.is_empty() {
-            word(&mut self.s, "::<")?;
-            self.commasep(Inconsistent, tys,
-                          |s, ty| s.print_type(ty))?;
-            word(&mut self.s, ">")?;
+        self.print_ident(segment.identifier)?;
+        if let Some(ref parameters) = segment.parameters {
+            self.print_path_parameters(parameters, true)?;
         }
         self.print_call_post(base_args)
     }
@@ -2041,8 +2037,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args[..])?;
             }
-            ast::ExprKind::MethodCall(ident, ref tys, ref args) => {
-                self.print_expr_method_call(ident, &tys[..], &args[..])?;
+            ast::ExprKind::MethodCall(ref segment, ref args) => {
+                self.print_expr_method_call(segment, &args[..])?;
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, lhs, rhs)?;

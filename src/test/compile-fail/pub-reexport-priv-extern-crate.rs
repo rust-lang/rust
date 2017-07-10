@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(unused)]
-#![deny(private_in_public)]
 
 extern crate core;
 pub use core as reexported_core; //~ ERROR `core` is private, and cannot be reexported

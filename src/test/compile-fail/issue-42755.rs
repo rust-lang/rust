@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-associated_consts
+#![feature(macro_vis_matcher)]
 
-trait MyTrait {
-    const C: bool;
-    //~^ associated constants are experimental
+macro_rules! foo {
+    ($($p:vis)*) => {} //~ ERROR repetition matches empty token tree
 }
 
-struct Foo;
-
-impl Foo {
-    const C: bool = true;
-    //~^ associated constants are experimental
-}
+foo!(a);
