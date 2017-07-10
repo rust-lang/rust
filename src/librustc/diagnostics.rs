@@ -1974,7 +1974,7 @@ fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
 ```
 
 Now the signature indicates that the function data borrowed from either `x` or
-`y`. Alternatively, you could change the body not to return data from y:
+`y`. Alternatively, you could change the body to not return data from `y`:
 
 ```
 fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
