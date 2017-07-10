@@ -1701,19 +1701,14 @@ impl Rewrite for ast::Arm {
         };
         let pats_str = try_opt!(write_list(&items, &fmt));
 
-        let guard_shape = if pats_str.contains('\n') {
-            shape.with_max_width(context.config)
-        } else {
-            shape
-        };
-
         let guard_str = try_opt!(rewrite_guard(
             context,
             guard,
-            guard_shape,
+            shape,
             trimmed_last_line_width(&pats_str),
         ));
 
+        let pats_len = pats_str.len();
         let pats_str = format!("{}{}", pats_str, guard_str);
 
         let (mut extend, body) = match body.node {
@@ -1766,6 +1761,9 @@ impl Rewrite for ast::Arm {
                            is_block => {
                     let block_sep = match context.config.control_brace_style() {
                         ControlBraceStyle::AlwaysNextLine if is_block => alt_block_sep.as_str(),
+                        _ if guard.is_some() && pats_str.contains('\n') && is_block &&
+                            body_str != "{}" &&
+                            pats_len > context.config.tab_spaces() => alt_block_sep.as_str(),
                         _ => " ",
                     };
 
@@ -1848,33 +1846,30 @@ fn rewrite_guard(
         // First try to fit the guard string on the same line as the pattern.
         // 4 = ` if `, 5 = ` => {`
         if let Some(cond_shape) = shape
-            .shrink_left(pattern_width + 4)
+            .offset_left(pattern_width + 4)
             .and_then(|s| s.sub_width(5))
         {
             if let Some(cond_str) = guard
                 .rewrite(context, cond_shape)
                 .and_then(|s| s.rewrite(context, cond_shape))
             {
-                if !cond_str.contains('\n') {
+                if !cond_str.contains('\n') || pattern_width <= context.config.tab_spaces() {
                     return Some(format!(" if {}", cond_str));
                 }
             }
         }
 
         // Not enough space to put the guard after the pattern, try a newline.
-        // 3 == `if `
-        if let Some(cond_shape) = Shape::indented(
-            shape.indent.block_indent(context.config) + 3,
-            context.config,
-        ).sub_width(3)
+        // 3 = `if `, 5 = ` => {`
+        if let Some(cond_shape) =
+            Shape::indented(shape.indent.block_indent(context.config), context.config)
+                .offset_left(3)
+                .and_then(|s| s.sub_width(5))
         {
             if let Some(cond_str) = guard.rewrite(context, cond_shape) {
                 return Some(format!(
                     "\n{}if {}",
-                    shape
-                        .indent
-                        .block_indent(context.config)
-                        .to_string(context.config),
+                    cond_shape.indent.to_string(context.config),
                     cond_str
                 ));
             }
@@ -1920,7 +1915,6 @@ fn rewrite_pat_expr(
 
     // The expression won't fit on the current line, jump to next.
     let nested_shape = shape
-        .block()
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);
     let nested_indent_str = nested_shape.indent.to_string(context.config);
