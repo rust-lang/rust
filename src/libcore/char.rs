@@ -210,7 +210,7 @@ impl From<u8> for char {
 
 
 /// An error which can be returned when parsing a char.
-#[stable(feature = "char_from_str", since = "1.19.0")]
+#[stable(feature = "char_from_str", since = "1.20.0")]
 #[derive(Clone, Debug)]
 pub struct ParseCharError {
     kind: CharErrorKind,
@@ -237,7 +237,7 @@ enum CharErrorKind {
     TooManyChars,
 }
 
-#[stable(feature = "char_from_str", since = "1.19.0")]
+#[stable(feature = "char_from_str", since = "1.20.0")]
 impl fmt::Display for ParseCharError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.__description().fmt(f)
@@ -245,7 +245,7 @@ impl fmt::Display for ParseCharError {
 }
 
 
-#[stable(feature = "char_from_str", since = "1.19.0")]
+#[stable(feature = "char_from_str", since = "1.20.0")]
 impl FromStr for char {
     type Err = ParseCharError;
 

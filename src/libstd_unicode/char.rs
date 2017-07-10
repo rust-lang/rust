@@ -38,7 +38,7 @@ use tables::{conversions, derived_property, general_category, property};
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{EscapeDebug, EscapeDefault, EscapeUnicode};
-#[stable(feature = "char_from_str", since = "1.19.0")]
+#[stable(feature = "char_from_str", since = "1.20.0")]
 pub use core::char::ParseCharError;
 
 // unstable reexports
