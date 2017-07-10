@@ -8,26 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators)]
+#![feature(generators, generator_trait)]
 
-use std::cell::Cell;
+use std::ops::Generator;
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
-struct Flag<'a>(&'a Cell<bool>);
+static A: AtomicUsize = ATOMIC_USIZE_INIT;
 
-impl<'a> Drop for Flag<'a> {
+struct B;
+
+impl Drop for B {
     fn drop(&mut self) {
-        self.0.set(false)
+        A.fetch_add(1, Ordering::SeqCst);
     }
 }
 
 fn main() {
-    let alive = Cell::new(true);
+    let b = B;
 
-    let gen = || {
+    let mut gen = || {
         yield;
     };
 
-    gen.resume(Flag(&alive));
-
-    assert_eq!(alive.get(), false);
+    assert_eq!(A.load(Ordering::SeqCst), 0);
+    gen.resume(b);
+    assert_eq!(A.load(Ordering::SeqCst), 1);
+    drop(gen);
+    assert_eq!(A.load(Ordering::SeqCst), 1);
 }

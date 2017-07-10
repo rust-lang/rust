@@ -37,7 +37,7 @@ fn main() {
     let end = 11;
 
     let closure_test = |start| {
-        || {
+        move || {
             for i in start..end {
                 yield i
             }
