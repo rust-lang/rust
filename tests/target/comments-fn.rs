@@ -27,3 +27,13 @@ where
     T: Eq, // some comment
 {
 }
+
+fn issue458<F>(a: &str, f: F)
+// comment1
+where
+    // comment2
+    F: FnOnce(&str) -> bool,
+{
+    f(a);
+    ()
+}

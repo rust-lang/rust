@@ -17,3 +17,12 @@ where
         }
     }
 }
+
+impl<T> Foo for T
+// comment1
+where
+    // comment2
+    // blah
+    T: Clone,
+{
+}

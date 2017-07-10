@@ -136,6 +136,53 @@ impl Spanned for ast::Field {
     }
 }
 
+impl Spanned for ast::WherePredicate {
+    fn span(&self) -> Span {
+        match *self {
+            ast::WherePredicate::BoundPredicate(ref p) => p.span,
+            ast::WherePredicate::RegionPredicate(ref p) => p.span,
+            ast::WherePredicate::EqPredicate(ref p) => p.span,
+        }
+    }
+}
+
+impl Spanned for ast::FunctionRetTy {
+    fn span(&self) -> Span {
+        match *self {
+            ast::FunctionRetTy::Default(span) => span,
+            ast::FunctionRetTy::Ty(ref ty) => ty.span,
+        }
+    }
+}
+
+impl Spanned for ast::TyParam {
+    fn span(&self) -> Span {
+        // Note that ty.span is the span for ty.ident, not the whole item.
+        let lo = if self.attrs.is_empty() {
+            self.span.lo
+        } else {
+            self.attrs[0].span.lo
+        };
+        if let Some(ref def) = self.default {
+            return mk_sp(lo, def.span.hi);
+        }
+        if self.bounds.is_empty() {
+            return mk_sp(lo, self.span.hi);
+        }
+        let hi = self.bounds[self.bounds.len() - 1].span().hi;
+        mk_sp(lo, hi)
+    }
+}
+
+impl Spanned for ast::TyParamBound {
+    fn span(&self) -> Span {
+        match *self {
+            ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span,
+            ast::TyParamBound::RegionTyParamBound(ref l) => l.span,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Indent {
     // Width of the block indent, in characters. Must be a multiple of
