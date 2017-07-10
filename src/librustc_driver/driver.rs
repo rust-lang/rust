@@ -828,6 +828,20 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })
 }
 
+/// Trace of Queries
+///
+/// Formally, a trace of the queries consists of a tree, where
+/// sub-trees represent sub-traces. In particular, the nesting
+/// structure of the trace of queries describes how the queries depend
+/// on one another.
+///
+/// Even more precisely, this tree represents a directed acyclic graph
+/// (DAG), where shared sub-graphs consist of tree nodes that occur
+/// multiple times in the tree, first as "cache misses" and later as
+/// "cache hits".
+///
+/// See also:
+/// https://github.com/matthewhammer/rust-forge/blob/master/profile-queries.md#trace-of-queries
 mod trace {
     use super::*;
     use syntax_pos::Span;
@@ -902,7 +916,7 @@ mod trace {
     }
 
     fn html_of_fraction(frac:f64) -> (String, String) {
-        let css = { 
+        let css = {
             if       frac > 0.50  { format!("frac-50") }
             else if  frac > 0.40  { format!("frac-40") }
             else if  frac > 0.30  { format!("frac-30") }
@@ -912,7 +926,7 @@ mod trace {
             else if  frac > 0.02  { format!("frac-02") }
             else if  frac > 0.01  { format!("frac-01") }
             else if  frac > 0.001 { format!("frac-001") }
-            else                  { format!("frac-0") } 
+            else                  { format!("frac-0") }
         };
         let percent = frac * 100 as f64;
         if percent > 0.1 as f64 { (format!("{:.1}%", percent), css) }
@@ -936,10 +950,10 @@ mod trace {
             if nom_sec == 0 {
                 nom_nanos as f64 / den_nanos as f64
             } else {
-                panic!("TODO")
+                panic!("FIXME(matthewhammer)")
             }
         } else {
-            panic!("TODO")
+            panic!("FIXME(matthewhammer)")
         }
     }
 
@@ -950,15 +964,14 @@ mod trace {
             let fraction = duration_div(t.duration, total);
             let percent = fraction * 100 as f64;
             let (frc_text, frc_css_classes) = html_of_fraction(fraction);
-            write!(file, "<div class=\"depth-{} extent-{}{} {} {} {}\">\n",
+            write!(file, "<div class=\"trace depth-{} extent-{}{} {} {} {}\">\n",
                    depth,
                    t.extent.len(),
+                   /* Heuristic for 'important' CSS class: */
                    if t.extent.len() > 5 || percent >= 1.0 as f64 {
-                       // query symbol_name     has extent 5, and is very common
-                       // query def_symbol_name has extent 6, and is somewhat common
-                       " important"
-                   } else { "" },
-                   eff_css_classes,                   
+                       " important" }
+                   else { "" },
+                   eff_css_classes,
                    dur_css_classes,
                    frc_css_classes,
             ).unwrap();
@@ -976,7 +989,7 @@ mod trace {
                 Effect::QueryBegin(ref qmsg, ref _cc) => {
                     let qcons = cons_of_query_msg(qmsg);
                     let qm = match counts.get(&qcons) {
-                        Some(qm) => 
+                        Some(qm) =>
                             QueryMetric{
                                 count:qm.count + 1,
                                 duration:qm.duration + t.duration
@@ -995,17 +1008,22 @@ mod trace {
 
     pub fn write_counts(count_file:&mut File, counts:&mut HashMap<String,QueryMetric>) {
         use rustc::util::common::duration_to_secs_str;
+        use std::cmp::Ordering;
+
+        let mut data = vec![];
         for (ref cons, ref qm) in counts.iter() {
-            write!(count_file, "{},{},{}\n", 
-                   cons, qm.count,
-                   duration_to_secs_str(qm.duration)
+            data.push((cons.clone(), qm.count.clone(), qm.duration.clone()));
+        };
+        data.sort_by(|&(_,_,d1),&(_,_,d2)|
+                     if d1 > d2 { Ordering::Less } else { Ordering::Greater } );
+        for (cons, count, duration) in data {
+            write!(count_file, "{},{},{}\n",
+                   cons, count, duration_to_secs_str(duration)
             ).unwrap();
         }
     }
 
     pub fn write_traces(html_file:&mut File, counts_file:&mut File, traces:&Vec<Rec>) {
-        // FIXME(matthewhammer): Populate counts_file with counts for
-        // each constructor (a histogram of constructor occurrences)
         let mut counts : HashMap<String,QueryMetric> = HashMap::new();
         compute_counts_rec(&mut counts, traces);
         write_counts(counts_file, &mut counts);
@@ -1020,7 +1038,7 @@ body {
     font-family: sans-serif;
     background: black;
 }
-div {
+.trace {
     color: black;
     display: inline-block;
     border-style: solid;
@@ -1048,6 +1066,14 @@ div {
     padding: 0px;
     border-color: blue;
     border-width: 3px;
+}
+.eff {
+  color: #fff;
+  display: inline-block;
+}
+.frc {
+  color: #7f7;
+  display: inline-block;
 }
 .dur {
   display: none
@@ -1112,7 +1138,8 @@ pub fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     (ParseState::NoQuery,
                      ProfileQueriesMsg::QueryBegin(span,querymsg)) => {
                         let start = Instant::now();
-                        frame.parse_st = ParseState::HaveQuery(Query{span:span, msg:querymsg}, start)
+                        frame.parse_st = ParseState::HaveQuery
+                            (Query{span:span, msg:querymsg}, start)
                     },
                     (ParseState::NoQuery,
                      ProfileQueriesMsg::CacheHit) => {
