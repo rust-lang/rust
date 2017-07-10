@@ -30,6 +30,7 @@ use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
             VtableClosureData, VtableDefaultImplData, VtableFnPointerData};
 use super::util;
 
+use dep_graph::{DepNodeIndex, DepKind};
 use hir::def_id::DefId;
 use infer;
 use infer::{InferCtxt, InferOk, TypeFreshener};
@@ -105,7 +106,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 #[derive(Clone)]
 pub struct SelectionCache<'tcx> {
     hashmap: RefCell<FxHashMap<ty::TraitRef<'tcx>,
-                               SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
+                               WithDepNode<SelectionResult<'tcx, SelectionCandidate<'tcx>>>>>,
 }
 
 /// The selection process begins by considering all impls, where
@@ -369,7 +370,7 @@ impl EvaluationResult {
 
 #[derive(Clone)]
 pub struct EvaluationCache<'tcx> {
-    hashmap: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, EvaluationResult>>
+    hashmap: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, WithDepNode<EvaluationResult>>>
 }
 
 impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
@@ -466,8 +467,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         assert!(!obligation.predicate.has_escaping_regions());
 
         let tcx = self.tcx();
-        let dep_node = obligation.predicate.dep_node(tcx);
-        let _task = tcx.dep_graph.in_task(dep_node);
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
         let ret = match self.candidate_from_obligation(&stack)? {
@@ -710,12 +709,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return result;
         }
 
-        let result = self.evaluate_stack(&stack);
+        let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
 
         debug!("CACHE MISS: EVAL({:?})={:?}",
                fresh_trait_ref,
                result);
-        self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, result);
+        self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
 
         result
     }
@@ -870,22 +869,23 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                               trait_ref: ty::PolyTraitRef<'tcx>)
                               -> Option<EvaluationResult>
     {
+        let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
-            let cache = self.tcx().evaluation_cache.hashmap.borrow();
+            let cache = tcx.evaluation_cache.hashmap.borrow();
             if let Some(cached) = cache.get(&trait_ref) {
-                let dep_node = trait_ref
-                    .to_poly_trait_predicate()
-                    .dep_node(self.tcx());
-                self.tcx().hir.dep_graph.read(dep_node);
-                return Some(cached.clone());
+                return Some(cached.get(tcx));
             }
         }
-        self.infcx.evaluation_cache.hashmap.borrow().get(&trait_ref).cloned()
+        self.infcx.evaluation_cache.hashmap
+                                   .borrow()
+                                   .get(&trait_ref)
+                                   .map(|v| v.get(tcx))
     }
 
     fn insert_evaluation_cache(&mut self,
                                param_env: ty::ParamEnv<'tcx>,
                                trait_ref: ty::PolyTraitRef<'tcx>,
+                               dep_node: DepNodeIndex,
                                result: EvaluationResult)
     {
         // Avoid caching results that depend on more than just the trait-ref:
@@ -902,12 +902,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             let mut cache = self.tcx().evaluation_cache.hashmap.borrow_mut();
             if let Some(trait_ref) = self.tcx().lift_to_global(&trait_ref) {
-                cache.insert(trait_ref, result);
+                cache.insert(trait_ref, WithDepNode::new(dep_node, result));
                 return;
             }
         }
 
-        self.infcx.evaluation_cache.hashmap.borrow_mut().insert(trait_ref, result);
+        self.infcx.evaluation_cache.hashmap
+                                   .borrow_mut()
+                                   .insert(trait_ref, WithDepNode::new(dep_node, result));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -949,17 +951,30 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         // If no match, compute result and insert into cache.
-        let candidate = self.candidate_from_obligation_no_cache(stack);
+        let (candidate, dep_node) = self.in_task(|this| {
+            this.candidate_from_obligation_no_cache(stack)
+        });
 
         if self.should_update_candidate_cache(&cache_fresh_trait_pred, &candidate) {
             debug!("CACHE MISS: SELECT({:?})={:?}",
                    cache_fresh_trait_pred, candidate);
             self.insert_candidate_cache(stack.obligation.param_env,
                                         cache_fresh_trait_pred,
+                                        dep_node,
                                         candidate.clone());
         }
 
         candidate
+    }
+
+    fn in_task<OP, R>(&mut self, op: OP) -> (R, DepNodeIndex)
+        where OP: FnOnce(&mut Self) -> R
+    {
+        let (result, dep_node) = self.tcx().dep_graph.with_anon_task(DepKind::TraitSelect, || {
+            op(self)
+        });
+        self.tcx().dep_graph.read_index(dep_node);
+        (result, dep_node)
     }
 
     // Treat negative impls as unimplemented
@@ -1151,33 +1166,41 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                              cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>)
                              -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>>
     {
+        let tcx = self.tcx();
         let trait_ref = &cache_fresh_trait_pred.0.trait_ref;
         if self.can_use_global_caches(param_env) {
-            let cache = self.tcx().selection_cache.hashmap.borrow();
+            let cache = tcx.selection_cache.hashmap.borrow();
             if let Some(cached) = cache.get(&trait_ref) {
-                return Some(cached.clone());
+                return Some(cached.get(tcx));
             }
         }
-        self.infcx.selection_cache.hashmap.borrow().get(trait_ref).cloned()
+        self.infcx.selection_cache.hashmap
+                                  .borrow()
+                                  .get(trait_ref)
+                                  .map(|v| v.get(tcx))
     }
 
     fn insert_candidate_cache(&mut self,
                               param_env: ty::ParamEnv<'tcx>,
                               cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
+                              dep_node: DepNodeIndex,
                               candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>)
     {
+        let tcx = self.tcx();
         let trait_ref = cache_fresh_trait_pred.0.trait_ref;
         if self.can_use_global_caches(param_env) {
-            let mut cache = self.tcx().selection_cache.hashmap.borrow_mut();
-            if let Some(trait_ref) = self.tcx().lift_to_global(&trait_ref) {
-                if let Some(candidate) = self.tcx().lift_to_global(&candidate) {
-                    cache.insert(trait_ref, candidate);
+            let mut cache = tcx.selection_cache.hashmap.borrow_mut();
+            if let Some(trait_ref) = tcx.lift_to_global(&trait_ref) {
+                if let Some(candidate) = tcx.lift_to_global(&candidate) {
+                    cache.insert(trait_ref, WithDepNode::new(dep_node, candidate));
                     return;
                 }
             }
         }
 
-        self.infcx.selection_cache.hashmap.borrow_mut().insert(trait_ref, candidate);
+        self.infcx.selection_cache.hashmap
+                                  .borrow_mut()
+                                  .insert(trait_ref, WithDepNode::new(dep_node, candidate));
     }
 
     fn should_update_candidate_cache(&mut self,
@@ -3136,5 +3159,22 @@ impl<'o,'tcx> Iterator for TraitObligationStackList<'o,'tcx>{
 impl<'o,'tcx> fmt::Debug for TraitObligationStack<'o,'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TraitObligationStack({:?})", self.obligation)
+    }
+}
+
+#[derive(Clone)]
+pub struct WithDepNode<T> {
+    dep_node: DepNodeIndex,
+    cached_value: T
+}
+
+impl<T: Clone> WithDepNode<T> {
+    pub fn new(dep_node: DepNodeIndex, cached_value: T) -> Self {
+        WithDepNode { dep_node, cached_value }
+    }
+
+    pub fn get(&self, tcx: TyCtxt) -> T {
+        tcx.dep_graph.read_index(self.dep_node);
+        self.cached_value.clone()
     }
 }

@@ -15,7 +15,6 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::{DepNode, DepConstructor};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -947,28 +946,6 @@ impl<'tcx> TraitPredicate<'tcx> {
         self.trait_ref.def_id
     }
 
-    /// Creates the dep-node for selecting/evaluating this trait reference.
-    fn dep_node(&self, tcx: TyCtxt) -> DepNode {
-        // Extact the trait-def and first def-id from inputs.  See the
-        // docs for `DepNode::TraitSelect` for more information.
-        let trait_def_id = self.def_id();
-        let input_def_id =
-            self.input_types()
-                .flat_map(|t| t.walk())
-                .filter_map(|t| match t.sty {
-                    ty::TyAdt(adt_def, ..) => Some(adt_def.did),
-                    ty::TyClosure(def_id, ..) => Some(def_id),
-                    ty::TyFnDef(def_id, ..) => Some(def_id),
-                    _ => None
-                })
-                .next()
-                .unwrap_or(trait_def_id);
-        DepNode::new(tcx, DepConstructor::TraitSelect {
-            trait_def_id,
-            input_def_id,
-        })
-    }
-
     pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         self.trait_ref.input_types()
     }
@@ -982,11 +959,6 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
         // ok to skip binder since trait def-id does not care about regions
         self.0.def_id()
-    }
-
-    pub fn dep_node(&self, tcx: TyCtxt) -> DepNode {
-        // ok to skip binder since depnode does not care about regions
-        self.0.dep_node(tcx)
     }
 }
 
