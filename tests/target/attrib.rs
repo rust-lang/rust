@@ -68,3 +68,16 @@ fn foo() {
     #[cfg_attr(not(target_os = "freertos"), allow(unused_variables))]
     let x = 3;
 }
+
+// #1777
+#[test]
+#[should_panic(expected = "(")]
+#[should_panic(expected = /* ( */ "(")]
+#[should_panic(/* ((((( */expected /* ((((( */= /* ((((( */ "("/* ((((( */)]
+#[should_panic(
+    /* (((((((( *//*
+    (((((((((()(((((((( */
+    expected = "("
+    // ((((((((
+)]
+fn foo() {}
