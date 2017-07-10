@@ -12,7 +12,7 @@ use cstore;
 use encoder;
 use schema;
 
-use rustc::dep_graph::DepTrackingMapConfig;
+use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
                             NativeLibrary, MetadataLoader, LinkMeta,
                             LinkagePreference, LoadedMacro, EncodedMetadata};
@@ -45,7 +45,7 @@ macro_rules! provide {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
                                     -> <ty::queries::$name<$lt> as
-                                        DepTrackingMapConfig>::Value {
+                                        QueryConfig>::Value {
                 assert!(!$def_id.is_local());
 
                 let def_path_hash = $tcx.def_path_hash($def_id);

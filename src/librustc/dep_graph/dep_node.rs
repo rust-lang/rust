@@ -64,7 +64,9 @@ use hir::def_id::{CrateNum, DefId};
 use hir::map::DefPathHash;
 
 use ich::Fingerprint;
-use ty::TyCtxt;
+use ty::{TyCtxt, Instance, InstanceDef};
+use ty::fast_reject::SimplifiedType;
+use ty::subst::Substs;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
 use std::fmt;
@@ -77,8 +79,14 @@ macro_rules! erase {
     ($x:tt) => ({})
 }
 
+macro_rules! anon_attr_to_bool {
+    (anon) => (true)
+}
+
 macro_rules! define_dep_nodes {
-    ($(
+    (<$tcx:tt>
+    $(
+        [$($anon:ident)*]
         $variant:ident $(( $($tuple_arg:tt),* ))*
                        $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
       ,)*
@@ -92,7 +100,7 @@ macro_rules! define_dep_nodes {
         impl DepKind {
             #[allow(unreachable_code)]
             #[inline]
-            pub fn can_reconstruct_query_key(&self) -> bool {
+            pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => {
@@ -109,6 +117,19 @@ macro_rules! define_dep_nodes {
                             })*
 
                             true
+                        }
+                    )*
+                }
+            }
+
+            #[allow(unreachable_code)]
+            #[inline]
+            pub fn is_anon<$tcx>(&self) -> bool {
+                match *self {
+                    $(
+                        DepKind :: $variant => {
+                            $(return anon_attr_to_bool!($anon);)*
+                            false
                         }
                     )*
                 }
@@ -139,7 +160,7 @@ macro_rules! define_dep_nodes {
             }
         }
 
-        pub enum DepConstructor {
+        pub enum DepConstructor<$tcx> {
             $(
                 $variant $(( $($tuple_arg),* ))*
                          $({ $($struct_arg_name : $struct_arg_ty),* })*
@@ -155,7 +176,12 @@ macro_rules! define_dep_nodes {
 
         impl DepNode {
             #[allow(unreachable_code, non_snake_case)]
-            pub fn new(tcx: TyCtxt, dep: DepConstructor) -> DepNode {
+            pub fn new<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       dep: DepConstructor<'gcx>)
+                                       -> DepNode
+                where 'gcx: 'a + 'tcx,
+                      'tcx: 'a
+            {
                 match dep {
                     $(
                         DepConstructor :: $variant $(( $($tuple_arg),* ))*
@@ -336,7 +362,7 @@ impl DefId {
     }
 }
 
-define_dep_nodes!(
+define_dep_nodes!( <'tcx>
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
     // the entire krate, so if you read from `Krate` (e.g., by calling
@@ -348,90 +374,101 @@ define_dep_nodes!(
     // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
     // access to the krate, but you must remember to add suitable
     // edges yourself for the individual items that you read.
-    Krate,
+    [] Krate,
 
     // Represents the HIR node with the given node-id
-    Hir(DefId),
+    [] Hir(DefId),
 
     // Represents the body of a function or method. The def-id is that of the
     // function/method.
-    HirBody(DefId),
+    [] HirBody(DefId),
 
     // Represents the metadata for a given HIR node, typically found
     // in an extern crate.
-    MetaData(DefId),
+    [] MetaData(DefId),
 
     // Represents some artifact that we save to disk. Note that these
     // do not have a def-id as part of their identifier.
-    WorkProduct(WorkProductId),
+    [] WorkProduct(WorkProductId),
 
     // Represents different phases in the compiler.
-    RegionMaps(DefId),
-    Coherence,
-    Resolve,
-    CoherenceCheckTrait(DefId),
-    PrivacyAccessLevels(CrateNum),
+    [] RegionMaps(DefId),
+    [] Coherence,
+    [] Resolve,
+    [] CoherenceCheckTrait(DefId),
+    [] PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
-    Mir(DefId),
-    MirShim(DefIdList),
+    [] MirConstQualif(DefId),
+    [] MirConst(DefId),
+    [] MirValidated(DefId),
+    [] MirOptimized(DefId),
+    [] MirShim { instance_def: InstanceDef<'tcx> },
 
-    BorrowCheckKrate,
-    BorrowCheck(DefId),
-    RvalueCheck(DefId),
-    Reachability,
-    MirKeys,
-    TransWriteMetadata,
-    CrateVariances,
+    [] BorrowCheckKrate,
+    [] BorrowCheck(DefId),
+    [] RvalueCheck(DefId),
+    [] Reachability,
+    [] MirKeys,
+    [] TransWriteMetadata,
+    [] CrateVariances,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
-    // nodes. Often we map multiple tables to the same node if there
-    // is no point in distinguishing them (e.g., both the type and
-    // predicates for an item wind up in `ItemSignature`).
-    AssociatedItems(DefId),
-    ItemSignature(DefId),
-    ItemVarianceConstraints(DefId),
-    ItemVariances(DefId),
-    IsConstFn(DefId),
-    IsForeignItem(DefId),
-    TypeParamPredicates { item_id: DefId, param_id: DefId },
-    SizedConstraint(DefId),
-    DtorckConstraint(DefId),
-    AdtDestructor(DefId),
-    AssociatedItemDefIds(DefId),
-    InherentImpls(DefId),
-    TypeckBodiesKrate,
-    TypeckTables(DefId),
-    ConstEval(DefId),
-    SymbolName(DefId),
-    SpecializationGraph(DefId),
-    ObjectSafety(DefId),
-    IsCopy(DefId),
-    IsSized(DefId),
-    IsFreeze(DefId),
-    NeedsDrop(DefId),
-    Layout(DefId),
+    // nodes.
+    [] AssociatedItems(DefId),
+    [] TypeOfItem(DefId),
+    [] GenericsOfItem(DefId),
+    [] PredicatesOfItem(DefId),
+    [] SuperPredicatesOfItem(DefId),
+    [] TraitDefOfItem(DefId),
+    [] AdtDefOfItem(DefId),
+    [] IsDefaultImpl(DefId),
+    [] ImplTraitRef(DefId),
+    [] ImplPolarity(DefId),
+    [] ClosureKind(DefId),
+    [] FnSignature(DefId),
+    [] CoerceUnsizedInfo(DefId),
 
-    // The set of impls for a given trait. Ultimately, it would be
-    // nice to get more fine-grained here (e.g., to include a
-    // simplified type), but we can't do that until we restructure the
-    // HIR to distinguish the *header* of an impl from its body.  This
-    // is because changes to the header may change the self-type of
-    // the impl and hence would require us to be more conservative
-    // than changes in the impl body.
-    TraitImpls(DefId),
+    [] ItemVarianceConstraints(DefId),
+    [] ItemVariances(DefId),
+    [] IsConstFn(DefId),
+    [] IsForeignItem(DefId),
+    [] TypeParamPredicates { item_id: DefId, param_id: DefId },
+    [] SizedConstraint(DefId),
+    [] DtorckConstraint(DefId),
+    [] AdtDestructor(DefId),
+    [] AssociatedItemDefIds(DefId),
+    [] InherentImpls(DefId),
+    [] TypeckBodiesKrate,
+    [] TypeckTables(DefId),
+    [] HasTypeckTables(DefId),
+    [] ConstEval { def_id: DefId, substs: &'tcx Substs<'tcx> },
+    [] SymbolName(DefId),
+    [] InstanceSymbolName { instance: Instance<'tcx> },
+    [] SpecializationGraph(DefId),
+    [] ObjectSafety(DefId),
 
-    AllLocalTraitImpls,
+    [anon] IsCopy(DefId),
+    [anon] IsSized(DefId),
+    [anon] IsFreeze(DefId),
+    [anon] NeedsDrop(DefId),
+    [anon] Layout(DefId),
+
+    // The set of impls for a given trait.
+    [] TraitImpls(DefId),
+    [] RelevantTraitImpls(DefId, SimplifiedType),
+
+    [] AllLocalTraitImpls,
 
     // Nodes representing caches. To properly handle a true cache, we
     // don't use a DepTrackingMap, but rather we push a task node.
     // Otherwise the write into the map would be incorrectly
     // attributed to the first task that happened to fill the cache,
     // which would yield an overly conservative dep-graph.
-    TraitItems(DefId),
-    ReprHints(DefId),
+    [] TraitItems(DefId),
+    [] ReprHints(DefId),
 
     // Trait selection cache is a little funny. Given a trait
     // reference like `Foo: SomeTrait<Bar>`, there could be
@@ -458,35 +495,45 @@ define_dep_nodes!(
     // imprecision in our dep-graph tracking.  The important thing is
     // that for any given trait-ref, we always map to the **same**
     // trait-select node.
-    TraitSelect { trait_def_id: DefId, input_def_id: DefId },
+    [] TraitSelect { trait_def_id: DefId, input_def_id: DefId },
 
     // For proj. cache, we just keep a list of all def-ids, since it is
     // not a hotspot.
-    ProjectionCache { def_ids: DefIdList },
+    [] ProjectionCache { def_ids: DefIdList },
 
-    ParamEnv(DefId),
-    DescribeDef(DefId),
-    DefSpan(DefId),
-    Stability(DefId),
-    Deprecation(DefId),
-    ItemBodyNestedBodies(DefId),
-    ConstIsRvaluePromotableToStatic(DefId),
-    ImplParent(DefId),
-    TraitOfItem(DefId),
-    IsExportedSymbol(DefId),
-    IsMirAvailable(DefId),
-    ItemAttrs(DefId),
-    FnArgNames(DefId),
-    DylibDepFormats(DefId),
-    IsAllocator(DefId),
-    IsPanicRuntime(DefId),
-    ExternCrate(DefId),
+    [] ParamEnv(DefId),
+    [] DescribeDef(DefId),
+    [] DefSpan(DefId),
+    [] Stability(DefId),
+    [] Deprecation(DefId),
+    [] ItemBodyNestedBodies(DefId),
+    [] ConstIsRvaluePromotableToStatic(DefId),
+    [] ImplParent(DefId),
+    [] TraitOfItem(DefId),
+    [] IsExportedSymbol(DefId),
+    [] IsMirAvailable(DefId),
+    [] ItemAttrs(DefId),
+    [] FnArgNames(DefId),
+    [] DylibDepFormats(DefId),
+    [] IsAllocator(DefId),
+    [] IsPanicRuntime(DefId),
+    [] ExternCrate(DefId),
 );
 
-trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
+trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
     const CAN_RECONSTRUCT_QUERY_KEY: bool;
-    fn to_fingerprint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Fingerprint;
-    fn to_debug_str(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> String;
+
+    /// This method turns the parameters of a DepNodeConstructor into an opaque
+    /// Fingerprint to be used in DepNode.
+    /// Not all DepNodeParams support being turned into a Fingerprint (they
+    /// don't need to if the corresponding DepNode is anonymous).
+    fn to_fingerprint(&self, _: TyCtxt<'a, 'gcx, 'tcx>) -> Fingerprint {
+        panic!("Not implemented. Accidentally called on anonymous node?")
+    }
+
+    fn to_debug_str(&self, _: TyCtxt<'a, 'gcx, 'tcx>) -> String {
+        format!("{:?}", self)
+    }
 }
 
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a, T> DepNodeParams<'a, 'gcx, 'tcx> for T
