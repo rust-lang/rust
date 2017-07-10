@@ -213,6 +213,7 @@ pub struct TestDesc {
     pub ignore: bool,
     pub should_panic: ShouldPanic,
     pub allow_fail: bool,
+    pub serial: bool,
 }
 
 #[derive(Clone)]
@@ -425,7 +426,10 @@ Test Attributes:
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
-                     tests."#,
+                     tests.
+    #[serial]      - When applied to a function which is already attributed as a
+                     test, then the test runner will not run these tests in
+                     parallel with any other tests."#,
              usage = options.usage(&message));
 }
 
@@ -970,6 +974,7 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        serial: false,
     };
 
     let test_b = TestDesc {
@@ -977,6 +982,7 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        serial: false,
     };
 
     let mut st = ConsoleTestState {
@@ -1091,7 +1097,9 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
         None => get_concurrency(),
     };
 
-    let mut remaining = filtered_tests;
+    let (serial, mut remaining): (Vec<_>, Vec<_>) = filtered_tests
+        .into_iter()
+        .partition(|t| t.desc.serial);
     remaining.reverse();
     let mut pending = 0;
 
@@ -1159,6 +1167,13 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
         }
         callback(TeResult(desc, result, stdout))?;
         pending -= 1;
+    }
+
+    for test in serial {
+        callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
+        run_test(opts, !opts.run_tests, test, tx.clone());
+        let (desc, result, stdout) = rx.recv().unwrap();
+        callback(TeResult(desc, result, stdout))?;
     }
 
     if opts.bench_benchmarks {
@@ -1723,8 +1738,14 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrFailedMsg, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc,
                TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
-               DynTestFn, ShouldPanic};
+               DynTestFn, ShouldPanic, TestResult};
+    use super::{TestEvent, run_tests};
+    use std::io;
     use std::sync::mpsc::channel;
+    use std::sync::{Arc, RwLock};
+    use std::thread::sleep;
+    use std::time::Duration;
+
     use bench;
     use Bencher;
 
@@ -1739,6 +1760,7 @@ mod tests {
                 ignore: true,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1757,6 +1779,7 @@ mod tests {
                 ignore: true,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1777,6 +1800,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1797,6 +1821,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage("error message"),
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1819,6 +1844,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::YesWithMessage(expected),
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1837,6 +1863,7 @@ mod tests {
                 ignore: false,
                 should_panic: ShouldPanic::Yes,
                 allow_fail: false,
+                serial: false,
             },
             testfn: DynTestFn(Box::new(move |()| f())),
         };
@@ -1871,6 +1898,7 @@ mod tests {
                                  ignore: true,
                                  should_panic: ShouldPanic::No,
                                  allow_fail: false,
+                                 serial: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          },
@@ -1880,6 +1908,7 @@ mod tests {
                                  ignore: false,
                                  should_panic: ShouldPanic::No,
                                  allow_fail: false,
+                                 serial: false,
                              },
                              testfn: DynTestFn(Box::new(move |()| {})),
                          }];
@@ -1904,6 +1933,7 @@ mod tests {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
+                    serial: false,
                 },
                 testfn: DynTestFn(Box::new(move |()| {}))
             })
@@ -1986,6 +2016,7 @@ mod tests {
                         ignore: false,
                         should_panic: ShouldPanic::No,
                         allow_fail: false,
+                        serial: false,
                     },
                     testfn: DynTestFn(Box::new(move |()| testfn())),
                 };
@@ -2008,6 +2039,118 @@ mod tests {
         for (a, b) in expected.iter().zip(filtered) {
             assert!(*a == b.desc.name.to_string());
         }
+    }
+
+    fn panic_on_non_ok_result(result: &TestResult) -> io::Result<()> {
+        match *result {
+            TestResult::TrOk => Ok(()),
+            TestResult::TrFailed => panic!("test failed (no message)"),
+            TestResult::TrFailedMsg(ref s) => panic!("test failed: {}", s),
+            TestResult::TrIgnored => panic!("test ignored"),
+            _ => panic!("test returned unexpected result"),
+        }
+    }
+
+    #[test]
+    pub fn stress_test_serial_tests() {
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.test_threads = Some(2);
+
+        let lock = Arc::new(RwLock::new(0));
+        let lock2 = lock.clone();
+        let lock3 = lock.clone();
+
+        let tests = vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("first"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: true,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    let mut c = lock2.write().unwrap();
+                    sleep(Duration::from_millis(200));
+                    *c += 1;
+                    assert_eq!(*c, 1);
+                }))
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("second"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: true,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    let mut c = lock3.write().unwrap();
+                    assert_eq!(*c, 1);
+                    *c += 1;
+                }))
+            }
+        ];
+
+        run_tests(&opts, tests, |e| {
+            match e {
+                TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
+                TestEvent::TeTimeout(_) => panic!("timeout"),
+                TestEvent::TeResult(_, ref result, _) =>
+                    panic_on_non_ok_result(result),
+                _ => Ok(())
+            }
+        }).unwrap();
+
+        assert_eq!(*(*lock).read().unwrap(), 2);
+    }
+
+    #[test]
+    pub fn run_concurrent_tests_concurrently() {
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.test_threads = Some(2);
+
+        let (tx, rx) = channel::<()>();
+
+        let tests = vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("first"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: false,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    rx.recv_timeout(Duration::from_secs(1)).unwrap();
+                }))
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("second"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                    serial: false,
+                },
+                testfn: DynTestFn(Box::new(move |()| {
+                    sleep(Duration::from_millis(100));
+                    tx.send(()).unwrap();
+                }))
+            },
+        ];
+
+        run_tests(&opts, tests, |e| {
+            match e {
+                TestEvent::TeFilteredOut(n) if n > 0 => panic!("filtered out"),
+                TestEvent::TeTimeout(_) => panic!("timeout"),
+                TestEvent::TeResult(_, ref result, _) =>
+                    panic_on_non_ok_result(result),
+                _ => Ok(())
+            }
+        }).unwrap();
     }
 
     #[test]

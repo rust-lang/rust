@@ -365,6 +365,9 @@ declare_features! (
     // global allocators and their internals
     (active, global_allocator, "1.20.0", None),
     (active, allocator_internals, "1.20.0", None),
+
+    // Forces a test to execute in serial rather than in parallel with others.
+    (active, serial_tests, "1.20.0", Some(42684)),
 );
 
 declare_features! (
@@ -842,6 +845,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "allow_fail",
                                  "allow_fail attribute is currently unstable",
                                  cfg_fn!(allow_fail))),
+
+    ("serial", Normal, Gated(Stability::Unstable,
+                             "serial_tests",
+                             "serial tests are currently unstable",
+                             cfg_fn!(serial_tests))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
