@@ -15,7 +15,7 @@ use rustc::session::config::Sanitizer;
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
-pub(crate) use syntax::attr::{self, InlineAttr};
+pub(crate) use syntax::attr::InlineAttr;
 use syntax::ast;
 use context::CrateContext;
 

@@ -34,7 +34,7 @@ use std::borrow::ToOwned;
 pub struct Registry<'a> {
     /// Compiler session. Useful if you want to emit diagnostic messages
     /// from the plugin registrar.
-    pub(crate) sess: &'a Session,
+    pub sess: &'a Session,
 
     #[doc(hidden)]
     pub args_hidden: Option<Vec<ast::NestedMetaItem>>,

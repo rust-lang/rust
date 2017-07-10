@@ -30,13 +30,6 @@ impl ConstFloat {
         }
     }
 
-    pub(crate) fn is_nan(&self) -> bool {
-        match *self {
-            F32(f) => f.is_nan(),
-            F64(f) => f.is_nan(),
-        }
-    }
-
     /// Compares the values if they are of the same type
     pub fn try_cmp(self, rhs: Self) -> Result<Ordering, ConstMathErr> {
         match (self, rhs) {

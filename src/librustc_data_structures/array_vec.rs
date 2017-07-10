@@ -70,29 +70,29 @@ impl<A> Clone for ArrayVec<A>
 }
 
 impl<A: Array> ArrayVec<A> {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         ArrayVec {
             count: 0,
             values: unsafe { ::std::mem::uninitialized() },
         }
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.count
     }
 
-    pub(crate) unsafe fn set_len(&mut self, len: usize) {
+    pub unsafe fn set_len(&mut self, len: usize) {
         self.count = len;
     }
 
     /// Panics when the stack vector is full.
-    pub(crate) fn push(&mut self, el: A::Element) {
+    pub fn push(&mut self, el: A::Element) {
         let arr = &mut self.values as &mut [ManuallyDrop<_>];
         arr[self.count] = ManuallyDrop::new(el);
         self.count += 1;
     }
 
-    pub(crate) fn pop(&mut self) -> Option<A::Element> {
+    pub fn pop(&mut self) -> Option<A::Element> {
         if self.count > 0 {
             let arr = &mut self.values as &mut [ManuallyDrop<_>];
             self.count -= 1;
@@ -105,7 +105,7 @@ impl<A: Array> ArrayVec<A> {
         }
     }
 
-    pub(crate) fn drain<R>(&mut self, range: R) -> Drain<A>
+    pub fn drain<R>(&mut self, range: R) -> Drain<A>
         where R: RangeArgument<usize>
     {
         // Memory safety

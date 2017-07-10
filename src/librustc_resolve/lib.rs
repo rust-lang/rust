@@ -14,7 +14,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![allow(warnings)]
+#![deny(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
 
@@ -728,8 +728,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         for p in &generics.where_clause.predicates { self.visit_where_predicate(p); }
     }
 }
-
-pub(crate) type ErrorMessage = Option<(Span, String)>;
 
 #[derive(Copy, Clone)]
 enum TypeParameters<'a, 'b> {
@@ -2894,31 +2892,6 @@ impl<'a> Resolver<'a> {
             _ => {}
         }
         return def;
-    }
-
-    // Calls `f` with a `Resolver` whose current lexical scope is `module`'s lexical scope,
-    // i.e. the module's items and the prelude (unless the module is `#[no_implicit_prelude]`).
-    // FIXME #34673: This needs testing.
-    pub(crate) fn with_module_lexical_scope<T, F>(&mut self, module: Module<'a>, f: F) -> T
-        where F: FnOnce(&mut Resolver<'a>) -> T,
-    {
-        self.with_empty_ribs(|this| {
-            this.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
-            this.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
-            f(this)
-        })
-    }
-
-    fn with_empty_ribs<T, F>(&mut self, f: F) -> T
-        where F: FnOnce(&mut Resolver<'a>) -> T,
-    {
-        let ribs = replace(&mut self.ribs, PerNS::<Vec<Rib>>::default());
-        let label_ribs = replace(&mut self.label_ribs, Vec::new());
-
-        let result = f(self);
-        self.ribs = ribs;
-        self.label_ribs = label_ribs;
-        result
     }
 
     fn lookup_assoc_candidate<FilterFn>(&mut self,

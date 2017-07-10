@@ -315,7 +315,7 @@ impl ConstInt {
         }
     }
 
-    pub(crate) fn int_type(self) -> IntType {
+    pub fn int_type(self) -> IntType {
         match self {
             ConstInt::I8(_) => IntType::SignedInt(IntTy::I8),
             ConstInt::I16(_) => IntType::SignedInt(IntTy::I16),

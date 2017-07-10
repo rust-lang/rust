@@ -24,7 +24,7 @@ impl BitVector {
     }
 
     #[inline]
-    pub(crate) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         for p in &mut self.data {
             *p = 0;
         }
@@ -52,7 +52,7 @@ impl BitVector {
     }
 
     #[inline]
-    pub(crate) fn insert_all(&mut self, all: &BitVector) -> bool {
+    pub fn insert_all(&mut self, all: &BitVector) -> bool {
         assert!(self.data.len() == all.data.len());
         let mut changed = false;
         for (i, j) in self.data.iter_mut().zip(&all.data) {
@@ -66,7 +66,7 @@ impl BitVector {
     }
 
     #[inline]
-    pub(crate) fn grow(&mut self, num_bits: usize) {
+    pub fn grow(&mut self, num_bits: usize) {
         let num_words = u64s(num_bits);
         if self.data.len() < num_words {
             self.data.resize(num_words, 0)

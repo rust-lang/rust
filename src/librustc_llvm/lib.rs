@@ -19,7 +19,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![allow(warnings)]
+#![deny(warnings)]
 
 #![feature(box_syntax)]
 #![feature(concat_idents)]
@@ -40,9 +40,7 @@ pub use self::TypeKind::*;
 pub use self::AtomicRmwBinOp::*;
 pub use self::MetadataType::*;
 pub use self::CodeGenOptSize::*;
-pub(crate) use self::DiagnosticKind::*;
 pub use self::CallConv::*;
-pub(crate) use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
 
 use std::str::FromStr;

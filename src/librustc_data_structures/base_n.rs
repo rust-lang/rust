@@ -13,7 +13,7 @@
 
 use std::str;
 
-pub(crate) const MAX_BASE: u64 = 64;
+pub const MAX_BASE: u64 = 64;
 pub const ALPHANUMERIC_ONLY: u64 = 62;
 
 const BASE_64: &'static [u8; MAX_BASE as usize] =

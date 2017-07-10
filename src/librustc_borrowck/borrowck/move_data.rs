@@ -53,10 +53,6 @@ pub(crate) struct MoveData<'tcx> {
     /// kill move bits.
     pub(crate) path_assignments: RefCell<Vec<Assignment>>,
 
-    /// Enum variant matched within a pattern on some match arm, like
-    /// `SomeStruct{ f: Variant1(x, y) } => ...`
-    pub(crate) variant_matches: RefCell<Vec<VariantMatch>>,
-
     /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
     pub(crate) assignee_ids: RefCell<NodeSet>,
 }
@@ -156,25 +152,10 @@ pub(crate) struct Assignment {
 
     /// span of node where assignment occurs
     pub(crate) span: Span,
-
-    /// id for l-value expression on lhs of assignment
-    pub(crate) assignee_id: ast::NodeId,
 }
 
 #[derive(Copy, Clone)]
-pub(crate) struct VariantMatch {
-    /// downcast to the variant.
-    pub(crate) path: MovePathIndex,
-
-    /// path being downcast to the variant.
-    pub(crate) base_path: MovePathIndex,
-
-    /// id where variant's pattern occurs
-    pub(crate) id: ast::NodeId,
-
-    /// says if variant established by move (and why), by copy, or by borrow.
-    pub(crate) mode: euv::MatchMode
-}
+pub(crate) struct VariantMatch {}
 
 #[derive(Clone, Copy)]
 pub(crate) struct MoveDataFlowOperator;
@@ -215,7 +196,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
             moves: RefCell::new(Vec::new()),
             path_assignments: RefCell::new(Vec::new()),
             var_assignments: RefCell::new(Vec::new()),
-            variant_matches: RefCell::new(Vec::new()),
             assignee_ids: RefCell::new(NodeSet()),
         }
     }
@@ -460,7 +440,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
             path: path_index,
             id: assign_id,
             span: span,
-            assignee_id: assignee_id,
         };
 
         if self.is_var_path(path_index) {
@@ -474,31 +453,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
             self.path_assignments.borrow_mut().push(assignment);
         }
-    }
-
-    /// Adds a new record for a match of `base_lp`, downcast to
-    /// variant `lp`, that occurs at location `pattern_id`.  (One
-    /// should be able to recover the span info from the
-    /// `pattern_id` and the hir_map, I think.)
-    pub(crate) fn add_variant_match(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             lp: Rc<LoanPath<'tcx>>,
-                             pattern_id: ast::NodeId,
-                             base_lp: Rc<LoanPath<'tcx>>,
-                             mode: euv::MatchMode) {
-        debug!("add_variant_match(lp={:?}, pattern_id={})",
-               lp, pattern_id);
-
-        let path_index = self.move_path(tcx, lp.clone());
-        let base_path_index = self.move_path(tcx, base_lp.clone());
-
-        let variant_match = VariantMatch {
-            path: path_index,
-            base_path: base_path_index,
-            id: pattern_id,
-            mode: mode,
-        };
-
-        self.variant_matches.borrow_mut().push(variant_match);
     }
 
     /// Adds the gen/kills for the various moves and

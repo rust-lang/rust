@@ -14,7 +14,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![allow(warnings)]
+#![deny(warnings)]
 
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
@@ -259,7 +259,6 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub(crate) use diagnostic::StringPart;
 pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString};
 pub use diagnostic_builder::DiagnosticBuilder;
 
@@ -597,14 +596,5 @@ impl Level {
             Help => "help",
             Cancelled => panic!("Shouldn't call on cancelled error"),
         }
-    }
-}
-
-pub(crate) fn expect<T, M>(diag: &Handler, opt: Option<T>, msg: M) -> T
-    where M: FnOnce() -> String
-{
-    match opt {
-        Some(t) => t,
-        None => diag.bug(&msg()),
     }
 }

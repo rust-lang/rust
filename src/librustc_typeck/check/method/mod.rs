@@ -27,8 +27,6 @@ use rustc::hir;
 pub(crate) use self::MethodError::*;
 pub(crate) use self::CandidateSource::*;
 
-pub(crate) use self::suggest::AllTraitsVec;
-
 mod confirm;
 pub(crate) mod probe;
 mod suggest;

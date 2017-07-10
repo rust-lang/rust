@@ -14,7 +14,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![allow(warnings)]
+#![deny(warnings)]
 
 #![allow(non_camel_case_types)]
 
@@ -39,7 +39,6 @@ extern crate core; // for NonZero
 
 pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;
-pub(crate) use borrowck::{AnalysisData, BorrowckCtxt};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.

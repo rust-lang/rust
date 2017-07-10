@@ -64,7 +64,7 @@ impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexVec<I, T> {
     }
 }
 
-pub(crate) type Enumerated<I, J> = iter::Map<iter::Enumerate<J>, IntoIdx<I>>;
+pub type Enumerated<I, J> = iter::Map<iter::Enumerate<J>, IntoIdx<I>>;
 
 impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
@@ -109,7 +109,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub(crate) fn into_iter(self) -> vec::IntoIter<T> {
+    pub fn into_iter(self) -> vec::IntoIter<T> {
         self.raw.into_iter()
     }
 
@@ -141,13 +141,13 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub(crate) fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<T>>
+    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<T>>
     {
         self.raw.iter_mut().enumerate().map(IntoIdx { _marker: PhantomData })
     }
 
     #[inline]
-    pub(crate) fn drain<'a, R: RangeArgument<usize>>(
+    pub fn drain<'a, R: RangeArgument<usize>>(
         &'a mut self, range: R) -> impl Iterator<Item=T> + 'a {
         self.raw.drain(range)
     }
@@ -184,7 +184,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub(crate) fn get_mut(&mut self, index: I) -> Option<&mut T> {
+    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
         self.raw.get_mut(index.index())
     }
 }

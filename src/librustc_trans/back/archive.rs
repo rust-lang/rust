@@ -10,7 +10,7 @@
 
 //! A helper class for dealing with static archives
 
-use std::ffi::{CString, CStr, OsString};
+use std::ffi::{CString, CStr};
 use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -28,8 +28,6 @@ pub(crate) struct ArchiveConfig<'a> {
     pub(crate) dst: PathBuf,
     pub(crate) src: Option<PathBuf>,
     pub(crate) lib_search_paths: Vec<PathBuf>,
-    pub(crate) ar_prog: String,
-    pub(crate) command_path: OsString,
 }
 
 /// Helper for adding many files to an archive with a single invocation of

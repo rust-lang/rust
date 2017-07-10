@@ -24,7 +24,7 @@ use std::path::PathBuf;
 use std::usize;
 
 pub(crate) use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
-pub(crate) use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
+pub(crate) use self::impls::{DefinitelyInitializedLvals};
 
 pub(crate) use self::drop_flag_effects::*;
 

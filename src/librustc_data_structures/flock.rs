@@ -32,22 +32,22 @@ mod imp {
         use libc;
 
         #[repr(C)]
-        pub(crate) struct flock {
-            pub(crate) l_type: libc::c_short,
-            pub(crate) l_whence: libc::c_short,
-            pub(crate) l_start: libc::off_t,
-            pub(crate) l_len: libc::off_t,
-            pub(crate) l_pid: libc::pid_t,
+        pub(super) struct flock {
+            pub(super) l_type: libc::c_short,
+            pub(super) l_whence: libc::c_short,
+            pub(super) l_start: libc::off_t,
+            pub(super) l_len: libc::off_t,
+            pub(super) l_pid: libc::pid_t,
 
             // not actually here, but brings in line with freebsd
-            pub(crate) l_sysid: libc::c_int,
+            pub(super) l_sysid: libc::c_int,
         }
 
-        pub(crate) const F_RDLCK: libc::c_short = 0;
-        pub(crate) const F_WRLCK: libc::c_short = 1;
-        pub(crate) const F_UNLCK: libc::c_short = 2;
-        pub(crate) const F_SETLK: libc::c_int = 6;
-        pub(crate) const F_SETLKW: libc::c_int = 7;
+        pub(super) const F_RDLCK: libc::c_short = 0;
+        pub(super) const F_WRLCK: libc::c_short = 1;
+        pub(super) const F_UNLCK: libc::c_short = 2;
+        pub(super) const F_SETLK: libc::c_int = 6;
+        pub(super) const F_SETLKW: libc::c_int = 7;
     }
 
     #[cfg(target_os = "freebsd")]
@@ -55,20 +55,20 @@ mod imp {
         use libc;
 
         #[repr(C)]
-        pub(crate) struct flock {
-            pub(crate) l_start: libc::off_t,
-            pub(crate) l_len: libc::off_t,
-            pub(crate) l_pid: libc::pid_t,
-            pub(crate) l_type: libc::c_short,
-            pub(crate) l_whence: libc::c_short,
-            pub(crate) l_sysid: libc::c_int,
+        pub(super) struct flock {
+            pub(super) l_start: libc::off_t,
+            pub(super) l_len: libc::off_t,
+            pub(super) l_pid: libc::pid_t,
+            pub(super) l_type: libc::c_short,
+            pub(super) l_whence: libc::c_short,
+            pub(super) l_sysid: libc::c_int,
         }
 
-        pub(crate) const F_RDLCK: libc::c_short = 1;
-        pub(crate) const F_UNLCK: libc::c_short = 2;
-        pub(crate) const F_WRLCK: libc::c_short = 3;
-        pub(crate) const F_SETLK: libc::c_int = 12;
-        pub(crate) const F_SETLKW: libc::c_int = 13;
+        pub(super) const F_RDLCK: libc::c_short = 1;
+        pub(super) const F_UNLCK: libc::c_short = 2;
+        pub(super) const F_WRLCK: libc::c_short = 3;
+        pub(super) const F_SETLK: libc::c_int = 12;
+        pub(super) const F_SETLKW: libc::c_int = 13;
     }
 
     #[cfg(any(target_os = "dragonfly",
@@ -79,22 +79,22 @@ mod imp {
         use libc;
 
         #[repr(C)]
-        pub(crate) struct flock {
-            pub(crate) l_start: libc::off_t,
-            pub(crate) l_len: libc::off_t,
-            pub(crate) l_pid: libc::pid_t,
-            pub(crate) l_type: libc::c_short,
-            pub(crate) l_whence: libc::c_short,
+        pub(super) struct flock {
+            pub(super) l_start: libc::off_t,
+            pub(super) l_len: libc::off_t,
+            pub(super) l_pid: libc::pid_t,
+            pub(super) l_type: libc::c_short,
+            pub(super) l_whence: libc::c_short,
 
             // not actually here, but brings in line with freebsd
-            pub(crate) l_sysid: libc::c_int,
+            pub(super) l_sysid: libc::c_int,
         }
 
-        pub(crate) const F_RDLCK: libc::c_short = 1;
-        pub(crate) const F_UNLCK: libc::c_short = 2;
-        pub(crate) const F_WRLCK: libc::c_short = 3;
-        pub(crate) const F_SETLK: libc::c_int = 8;
-        pub(crate) const F_SETLKW: libc::c_int = 9;
+        pub(super) const F_RDLCK: libc::c_short = 1;
+        pub(super) const F_UNLCK: libc::c_short = 2;
+        pub(super) const F_WRLCK: libc::c_short = 3;
+        pub(super) const F_SETLK: libc::c_int = 8;
+        pub(super) const F_SETLKW: libc::c_int = 9;
     }
 
     #[cfg(target_os = "haiku")]
@@ -102,22 +102,22 @@ mod imp {
         use libc;
 
         #[repr(C)]
-        pub(crate) struct flock {
-            pub(crate) l_type: libc::c_short,
-            pub(crate) l_whence: libc::c_short,
-            pub(crate) l_start: libc::off_t,
-            pub(crate) l_len: libc::off_t,
-            pub(crate) l_pid: libc::pid_t,
+        pub(super) struct flock {
+            pub(super) l_type: libc::c_short,
+            pub(super) l_whence: libc::c_short,
+            pub(super) l_start: libc::off_t,
+            pub(super) l_len: libc::off_t,
+            pub(super) l_pid: libc::pid_t,
 
             // not actually here, but brings in line with freebsd
-            pub(crate) l_sysid: libc::c_int,
+            pub(super) l_sysid: libc::c_int,
         }
 
-        pub(crate) const F_RDLCK: libc::c_short = 0x0040;
-        pub(crate) const F_UNLCK: libc::c_short = 0x0200;
-        pub(crate) const F_WRLCK: libc::c_short = 0x0400;
-        pub(crate) const F_SETLK: libc::c_int = 0x0080;
-        pub(crate) const F_SETLKW: libc::c_int = 0x0100;
+        pub(super) const F_RDLCK: libc::c_short = 0x0040;
+        pub(super) const F_UNLCK: libc::c_short = 0x0200;
+        pub(super) const F_WRLCK: libc::c_short = 0x0400;
+        pub(super) const F_SETLK: libc::c_int = 0x0080;
+        pub(super) const F_SETLKW: libc::c_int = 0x0100;
     }
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -125,22 +125,22 @@ mod imp {
         use libc;
 
         #[repr(C)]
-        pub(crate) struct flock {
-            pub(crate) l_start: libc::off_t,
-            pub(crate) l_len: libc::off_t,
-            pub(crate) l_pid: libc::pid_t,
-            pub(crate) l_type: libc::c_short,
-            pub(crate) l_whence: libc::c_short,
+        pub(super) struct flock {
+            pub(super) l_start: libc::off_t,
+            pub(super) l_len: libc::off_t,
+            pub(super) l_pid: libc::pid_t,
+            pub(super) l_type: libc::c_short,
+            pub(super) l_whence: libc::c_short,
 
             // not actually here, but brings in line with freebsd
-            pub(crate) l_sysid: libc::c_int,
+            pub(super) l_sysid: libc::c_int,
         }
 
-        pub(crate) const F_RDLCK: libc::c_short = 1;
-        pub(crate) const F_UNLCK: libc::c_short = 2;
-        pub(crate) const F_WRLCK: libc::c_short = 3;
-        pub(crate) const F_SETLK: libc::c_int = 8;
-        pub(crate) const F_SETLKW: libc::c_int = 9;
+        pub(super) const F_RDLCK: libc::c_short = 1;
+        pub(super) const F_UNLCK: libc::c_short = 2;
+        pub(super) const F_WRLCK: libc::c_short = 3;
+        pub(super) const F_SETLK: libc::c_int = 8;
+        pub(super) const F_SETLKW: libc::c_int = 9;
     }
 
     #[cfg(target_os = "solaris")]
@@ -148,20 +148,20 @@ mod imp {
         use libc;
 
         #[repr(C)]
-        pub(crate) struct flock {
-            pub(crate) l_type: libc::c_short,
-            pub(crate) l_whence: libc::c_short,
-            pub(crate) l_start: libc::off_t,
-            pub(crate) l_len: libc::off_t,
-            pub(crate) l_sysid: libc::c_int,
-            pub(crate) l_pid: libc::pid_t,
+        pub(super) struct flock {
+            pub(super) l_type: libc::c_short,
+            pub(super) l_whence: libc::c_short,
+            pub(super) l_start: libc::off_t,
+            pub(super) l_len: libc::off_t,
+            pub(super) l_sysid: libc::c_int,
+            pub(super) l_pid: libc::pid_t,
         }
 
-        pub(crate) const F_RDLCK: libc::c_short = 1;
-        pub(crate) const F_WRLCK: libc::c_short = 2;
-        pub(crate) const F_UNLCK: libc::c_short = 3;
-        pub(crate) const F_SETLK: libc::c_int = 6;
-        pub(crate) const F_SETLKW: libc::c_int = 7;
+        pub(super) const F_RDLCK: libc::c_short = 1;
+        pub(super) const F_WRLCK: libc::c_short = 2;
+        pub(super) const F_UNLCK: libc::c_short = 3;
+        pub(super) const F_SETLK: libc::c_int = 6;
+        pub(super) const F_SETLKW: libc::c_int = 7;
     }
 
     #[derive(Debug)]

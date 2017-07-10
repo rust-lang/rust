@@ -9,13 +9,10 @@
 // except according to those terms.
 
 use super::indexed_vec::Idx;
-pub(crate) use std::slice::Iter;
 
 pub mod dominators;
 pub(crate) mod iterate;
-pub(crate) mod reachable;
 mod reference;
-pub(crate) mod transpose;
 
 #[cfg(test)]
 mod test;

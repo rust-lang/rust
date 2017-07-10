@@ -185,12 +185,6 @@ pub(crate) fn msvc_link_exe_cmd(_sess: &Session) -> (Command, Vec<(OsString, OsS
     (Command::new("link.exe"), vec![])
 }
 
-pub(crate) fn get_ar_prog(sess: &Session) -> String {
-    sess.opts.cg.ar.clone().unwrap_or_else(|| {
-        sess.target.target.options.ar.clone()
-    })
-}
-
 fn command_path(sess: &Session) -> OsString {
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
@@ -497,8 +491,6 @@ fn archive_config<'a>(sess: &'a Session,
         dst: output.to_path_buf(),
         src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),
-        ar_prog: get_ar_prog(sess),
-        command_path: command_path(sess),
     }
 }
 

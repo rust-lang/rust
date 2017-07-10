@@ -1314,7 +1314,9 @@ fn stderr_isatty() -> bool {
 pub(crate) type BufferedStderr = term::Terminal<Output = BufferedWriter> + Send;
 
 pub(crate) enum Destination {
+    #[cfg_attr(not(windows), allow(dead_code))]
     Terminal(Box<term::StderrTerminal>),
+    #[cfg_attr(windows, allow(dead_code))]
     BufferedTerminal(Box<BufferedStderr>),
     Raw(Box<Write + Send>),
 }

@@ -62,10 +62,6 @@ impl IncrementalHashesMap {
         }
     }
 
-    pub(crate) fn get(&self, k: &DepNode) -> Option<&Fingerprint> {
-        self.hashes.get(k)
-    }
-
     pub(crate) fn insert(&mut self, k: DepNode, v: Fingerprint) {
         assert!(self.hashes.insert(k, v).is_none());
     }

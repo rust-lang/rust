@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(warnings)]
+#![deny(warnings)]
 
 #![feature(rustc_private)]
 
@@ -24,61 +24,51 @@ pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
         name: "alloc",
         inputs: &[AllocatorTy::Layout],
         output: AllocatorTy::ResultPtr,
-        is_unsafe: true,
     },
     AllocatorMethod {
         name: "oom",
         inputs: &[AllocatorTy::AllocErr],
         output: AllocatorTy::Bang,
-        is_unsafe: false,
     },
     AllocatorMethod {
         name: "dealloc",
         inputs: &[AllocatorTy::Ptr, AllocatorTy::Layout],
         output: AllocatorTy::Unit,
-        is_unsafe: true,
     },
     AllocatorMethod {
         name: "usable_size",
         inputs: &[AllocatorTy::LayoutRef],
         output: AllocatorTy::UsizePair,
-        is_unsafe: false,
     },
     AllocatorMethod {
         name: "realloc",
         inputs: &[AllocatorTy::Ptr, AllocatorTy::Layout, AllocatorTy::Layout],
         output: AllocatorTy::ResultPtr,
-        is_unsafe: true,
     },
     AllocatorMethod {
         name: "alloc_zeroed",
         inputs: &[AllocatorTy::Layout],
         output: AllocatorTy::ResultPtr,
-        is_unsafe: true,
     },
     AllocatorMethod {
         name: "alloc_excess",
         inputs: &[AllocatorTy::Layout],
         output: AllocatorTy::ResultExcess,
-        is_unsafe: true,
     },
     AllocatorMethod {
         name: "realloc_excess",
         inputs: &[AllocatorTy::Ptr, AllocatorTy::Layout, AllocatorTy::Layout],
         output: AllocatorTy::ResultExcess,
-        is_unsafe: true,
     },
     AllocatorMethod {
         name: "grow_in_place",
         inputs: &[AllocatorTy::Ptr, AllocatorTy::Layout, AllocatorTy::Layout],
         output: AllocatorTy::ResultUnit,
-        is_unsafe: true,
     },
     AllocatorMethod {
         name: "shrink_in_place",
         inputs: &[AllocatorTy::Ptr, AllocatorTy::Layout, AllocatorTy::Layout],
         output: AllocatorTy::ResultUnit,
-        is_unsafe: true,
     },
 ];
 
@@ -86,7 +76,6 @@ pub struct AllocatorMethod {
     pub name: &'static str,
     pub inputs: &'static [AllocatorTy],
     pub output: AllocatorTy,
-    pub(crate) is_unsafe: bool,
 }
 
 pub enum AllocatorTy {

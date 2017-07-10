@@ -22,7 +22,7 @@
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![allow(warnings)]
+#![deny(warnings)]
 
 #![feature(shared)]
 #![feature(collections_range)]
@@ -51,16 +51,14 @@ extern crate libc;
 
 pub use rustc_serialize::hex::ToHex;
 
-pub(crate) mod array_vec;
+pub mod array_vec;
 pub mod accumulate_vec;
 pub mod small_vec;
 pub mod base_n;
 pub mod bitslice;
-pub(crate) mod blake2b;
 pub mod bitvec;
-pub(crate) mod fmt_wrap;
+pub mod blake2b;
 pub mod graph;
-pub(crate) mod ivar;
 pub mod indexed_set;
 pub mod indexed_vec;
 pub mod obligation_forest;
@@ -69,13 +67,12 @@ pub mod snapshot_vec;
 pub mod stable_hasher;
 pub mod transitive_relation;
 pub mod unify;
-pub(crate) mod fnv;
 pub mod fx;
-pub(crate) mod tuple_slice;
+pub mod tuple_slice;
 pub mod veccell;
 pub mod control_flow_graph;
 pub mod flock;
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]
-pub(crate) fn __noop_fix_for_27438() {}
+pub fn __noop_fix_for_27438() {}
