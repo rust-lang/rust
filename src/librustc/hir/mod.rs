@@ -1023,7 +1023,7 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    /// 
+    ///
     /// This may also be a generator literal, in that case there is an GeneratorClause.
     ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorClause>),
     /// A block (`{ ... }`)
