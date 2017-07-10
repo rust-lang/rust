@@ -1312,12 +1312,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, indent_unit)?;
             }
-            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span, gen) => {
-                if gen.is_some() {
-                    self.head("gen")?;
-                    space(&mut self.s)?;
-                }
-
+            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_closure_args(&decl, body)?;
