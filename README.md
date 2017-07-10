@@ -21,7 +21,7 @@ to be a bit out of date). Version 0.1 of rustfmt-nightly is forked from version
 
 ## Quick start
 
-You must be using a nightly compiler toolchain.
+You must be using the latest nightly compiler toolchain.
 
 To install:
 
@@ -44,6 +44,7 @@ cargo install rustfmt-nightly
 or if you're using [Rustup](https://www.rustup.rs/)
 
 ```
+rustup update
 rustup run nightly cargo install rustfmt-nightly
 ```
 
