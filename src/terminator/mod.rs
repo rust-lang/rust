@@ -520,37 +520,111 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         sig: ty::FnSig<'tcx>,
         path: String,
     ) -> EvalResult<'tcx> {
+        // In some cases in non-MIR libstd-mode, not having a destination is legit.  Handle these early.
+        match &path[..] {
+            "std::panicking::rust_panic_with_hook" |
+            "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
+            _ => {},
+        }
+
+        let dest_ty = sig.output();
+        let (dest, dest_block) = destination.ok_or_else(|| EvalError::NoMirFor(path.clone()))?;
+
         if sig.abi == Abi::C {
             // An external C function
-            let ty = sig.output();
-            let (ret, target) = destination.unwrap();
-            self.call_c_abi(instance.def_id(), arg_operands, ret, ty, target)?;
+            // TODO: That functions actually has a similar preamble to what follows here.  May make sense to
+            // unify these two mechanisms for "hooking into missing functions".
+            self.call_c_abi(instance.def_id(), arg_operands, dest, dest_ty, dest_block)?;
             return Ok(());
         }
+
+        let args_res: EvalResult<Vec<Value>> = arg_operands.iter()
+            .map(|arg| self.eval_operand(arg))
+            .collect();
+        let args = args_res?;
+
+        let usize = self.tcx.types.usize;
     
-        // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
-        // Still, we can make many things mostly work by "emulating" or ignoring some functions.
         match &path[..] {
+            // Allocators are magic.  They have no MIR, even when the rest of libstd does.
+            "alloc::heap::::__rust_alloc" => {
+                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
+                if size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                let ptr = self.memory.allocate(size, align)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+            }
+            "alloc::heap::::__rust_alloc_zeroed" => {
+                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
+                if size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                let ptr = self.memory.allocate(size, align)?;
+                self.memory.write_repeat(PrimVal::Ptr(ptr), 0, size)?;
+                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+            }
+            "alloc::heap::::__rust_dealloc" => {
+                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
+                let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
+                let align = self.value_to_primval(args[2], usize)?.to_u64()?;
+                if old_size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                }
+                self.memory.deallocate(ptr, Some((old_size, align)))?;
+            }
+            "alloc::heap::::__rust_realloc" => {
+                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
+                let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
+                let old_align = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let new_size = self.value_to_primval(args[3], usize)?.to_u64()?;
+                let new_align = self.value_to_primval(args[4], usize)?.to_u64()?;
+                if old_size == 0 || new_size == 0 {
+                    return Err(EvalError::HeapAllocZeroBytes);
+                }
+                if !old_align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(old_align));
+                }
+                if !new_align.is_power_of_two() {
+                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(new_align));
+                }
+                let new_ptr = self.memory.reallocate(ptr, old_size, old_align, new_size, new_align)?;
+                self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
+            }
+
+            // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
+            // Still, we can make many things mostly work by "emulating" or ignoring some functions.
             "std::io::_print" => {
                 trace!("Ignoring output.  To run programs that print, make sure you have a libstd with full MIR.");
-                self.goto_block(destination.unwrap().1);
-                Ok(())
-            },
-            "std::thread::Builder::new" => Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
-            "std::env::args" => Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
-            "std::panicking::rust_panic_with_hook" |
-            "std::rt::begin_panic_fmt" => Err(EvalError::Panic),
+            }
+            "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
+            "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
             "std::panicking::panicking" |
             "std::rt::panicking" => {
-                let (lval, block) = destination.expect("std::rt::panicking does not diverge");
                 // we abort on panic -> `std::rt::panicking` always returns false
                 let bool = self.tcx.types.bool;
-                self.write_primval(lval, PrimVal::from_bool(false), bool)?;
-                self.goto_block(block);
-                Ok(())
+                self.write_primval(dest, PrimVal::from_bool(false), bool)?;
             }
-            _ => Err(EvalError::NoMirFor(path)),
+            _ => return Err(EvalError::NoMirFor(path)),
         }
+
+        // Since we pushed no stack frame, the main loop will act
+        // as if the call just completed and it's returning to the
+        // current frame.
+        self.dump_local(dest);
+        self.goto_block(dest_block);
+        return Ok(());
     }
 
     fn call_c_abi(
@@ -607,61 +681,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
                 return Err(EvalError::Unimplemented(format!("miri does not support dynamically loading libraries (requested symbol: {})", symbol_name)));
-            }
-
-            "__rust_allocate" => {
-                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
-                if size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                let ptr = self.memory.allocate(size, align)?;
-                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
-            }
-
-            "__rust_allocate_zeroed" => {
-                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
-                if size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                let ptr = self.memory.allocate(size, align)?;
-                self.memory.write_repeat(PrimVal::Ptr(ptr), 0, size)?;
-                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
-            }
-
-            "__rust_deallocate" => {
-                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
-                let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
-                let align = self.value_to_primval(args[2], usize)?.to_u64()?;
-                if old_size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                self.memory.deallocate(ptr, Some((old_size, align)))?;
-            },
-
-            "__rust_reallocate" => {
-                let ptr = args[0].read_ptr(&self.memory)?.to_ptr()?;
-                let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
-                let size = self.value_to_primval(args[2], usize)?.to_u64()?;
-                let align = self.value_to_primval(args[3], usize)?.to_u64()?;
-                if old_size == 0 || size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
-                }
-                if !align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
-                }
-                let new_ptr = self.memory.reallocate(ptr, old_size, size, align)?;
-                self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
 
             "__rust_maybe_catch_panic" => {

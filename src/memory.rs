@@ -223,10 +223,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
-    pub fn reallocate(&mut self, ptr: Pointer, old_size: u64, new_size: u64, align: u64) -> EvalResult<'tcx, Pointer> {
+    pub fn reallocate(&mut self, ptr: Pointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64) -> EvalResult<'tcx, Pointer> {
         use std::cmp::min;
 
-        assert!(align.is_power_of_two());
         // TODO(solson): Report error about non-__rust_allocate'd pointer.
         if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
             return Err(EvalError::ReallocateNonBasePtr);
@@ -236,9 +235,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc"
-        let new_ptr = self.allocate(new_size, align)?;
-        self.copy(PrimVal::Ptr(ptr), PrimVal::Ptr(new_ptr), min(old_size, new_size), align, /*nonoverlapping*/true)?;
-        self.deallocate(ptr, Some((old_size, align)))?;
+        let new_ptr = self.allocate(new_size, new_align)?;
+        self.copy(PrimVal::Ptr(ptr), PrimVal::Ptr(new_ptr), min(old_size, new_size), min(old_align, new_align), /*nonoverlapping*/true)?;
+        self.deallocate(ptr, Some((old_size, old_align)))?;
 
         Ok(new_ptr)
     }
