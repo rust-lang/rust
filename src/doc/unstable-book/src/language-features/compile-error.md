@@ -11,7 +11,7 @@ error with the specified error message.
 
 ## Examples
 
-```rust
+```rust,compile_fail
 #![feature(compile_error)]
 
 fn main() {
