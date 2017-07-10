@@ -10,7 +10,7 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
-use {Indent, Shape};
+use {Indent, Shape, Spanned};
 use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
             last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
@@ -561,7 +561,7 @@ pub fn format_impl(
     offset: Indent,
     where_span_end: Option<BytePos>,
 ) -> Option<String> {
-    if let ast::ItemKind::Impl(_, _, _, ref generics, _, _, ref items) = item.node {
+    if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.node {
         let mut result = String::new();
         let ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset));
         result.push_str(&ref_and_type);
@@ -585,6 +585,8 @@ pub fn format_impl(
             false,
             last_line_width(&ref_and_type) == 1,
             where_span_end,
+            item.span,
+            self_ty.span.hi,
         ));
 
         if try_opt!(is_impl_single_line(
@@ -963,6 +965,12 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 .max_width()
                 .checked_sub(last_line_width(&result))
         );
+        let pos_before_where = if type_param_bounds.is_empty() {
+            // We do not use this, so it does not matter
+            generics.span.hi
+        } else {
+            type_param_bounds[type_param_bounds.len() - 1].span().hi
+        };
         let where_clause_str = try_opt!(rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -973,6 +981,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             !has_body,
             trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
             None,
+            item.span,
+            pos_before_where,
         ));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
@@ -1164,6 +1174,19 @@ fn format_tuple_struct(
     } else {
         fields[0].span.lo
     };
+    let body_hi = if fields.is_empty() {
+        context.codemap.span_after(span, ")")
+    } else {
+        // This is a dirty hack to work around a missing `)` from the span of the last field.
+        let last_arg_span = fields[fields.len() - 1].span;
+        if context.snippet(last_arg_span).ends_with(")") {
+            last_arg_span.hi
+        } else {
+            context
+                .codemap
+                .span_after(mk_sp(last_arg_span.hi, span.hi), ")")
+        }
+    };
 
     let where_clause_str = match generics {
         Some(generics) => {
@@ -1184,6 +1207,8 @@ fn format_tuple_struct(
                 true,
                 false,
                 None,
+                span,
+                body_hi,
             ))
         }
         None => "".to_owned(),
@@ -1283,6 +1308,8 @@ pub fn rewrite_type_alias(
         true,
         true,
         Some(span.hi),
+        span,
+        generics.span.hi,
     ));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
@@ -1734,41 +1761,6 @@ pub fn is_named_arg(arg: &ast::Arg) -> bool {
     }
 }
 
-fn span_for_return(ret: &ast::FunctionRetTy) -> Span {
-    match *ret {
-        ast::FunctionRetTy::Default(ref span) => span.clone(),
-        ast::FunctionRetTy::Ty(ref ty) => ty.span,
-    }
-}
-
-fn span_for_ty_param(ty: &ast::TyParam) -> Span {
-    // Note that ty.span is the span for ty.ident, not the whole item.
-    let lo = if ty.attrs.is_empty() {
-        ty.span.lo
-    } else {
-        ty.attrs[0].span.lo
-    };
-    if let Some(ref def) = ty.default {
-        return mk_sp(lo, def.span.hi);
-    }
-    if ty.bounds.is_empty() {
-        return mk_sp(lo, ty.span.hi);
-    }
-    let hi = match ty.bounds[ty.bounds.len() - 1] {
-        ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span.hi,
-        ast::TyParamBound::RegionTyParamBound(ref l) => l.span.hi,
-    };
-    mk_sp(lo, hi)
-}
-
-fn span_for_where_pred(pred: &ast::WherePredicate) -> Span {
-    match *pred {
-        ast::WherePredicate::BoundPredicate(ref p) => p.span,
-        ast::WherePredicate::RegionPredicate(ref p) => p.span,
-        ast::WherePredicate::EqPredicate(ref p) => p.span,
-    }
-}
-
 // Return type is (result, force_new_line_for_brace)
 fn rewrite_fn_base(
     context: &RewriteContext,
@@ -1826,7 +1818,7 @@ fn rewrite_fn_base(
     let shape = try_opt!(
         Shape::indented(indent + last_line_width(&result), context.config).sub_width(overhead)
     );
-    let g_span = mk_sp(span.lo, span_for_return(&fd.output).lo);
+    let g_span = mk_sp(span.lo, fd.output.span().lo);
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
     result.push_str(&generics_str);
 
@@ -1905,9 +1897,15 @@ fn rewrite_fn_base(
         .ty_params
         .last()
         .map_or(span.lo, |tp| end_typaram(tp));
+    let args_end = if fd.inputs.is_empty() {
+        context.codemap.span_after(mk_sp(args_start, span.hi), ")")
+    } else {
+        let last_span = mk_sp(fd.inputs[fd.inputs.len() - 1].span().hi, span.hi);
+        context.codemap.span_after(last_span, ")")
+    };
     let args_span = mk_sp(
         context.codemap.span_after(mk_sp(args_start, span.hi), "("),
-        span_for_return(&fd.output).lo,
+        args_end,
     );
     let arg_str = try_opt!(rewrite_args(
         context,
@@ -2053,6 +2051,10 @@ fn rewrite_fn_base(
         _ => false,
     } || (put_args_in_block && ret_str.is_empty());
 
+    let pos_before_where = match fd.output {
+        ast::FunctionRetTy::Default(..) => args_span.hi,
+        ast::FunctionRetTy::Ty(ref ty) => ty.span.hi,
+    };
     if where_clause.predicates.len() == 1 && should_compress_where {
         let budget = try_opt!(
             context
@@ -2070,6 +2072,8 @@ fn rewrite_fn_base(
             !has_braces,
             put_args_in_block && ret_str.is_empty(),
             Some(span.hi),
+            span,
+            pos_before_where,
         ) {
             if !where_clause_str.contains('\n') {
                 if last_line_width(&result) + where_clause_str.len() > context.config.max_width() {
@@ -2094,6 +2098,8 @@ fn rewrite_fn_base(
         !has_braces,
         put_args_in_block && ret_str.is_empty(),
         Some(span.hi),
+        span,
+        pos_before_where,
     ));
 
     result.push_str(&where_clause_str);
@@ -2378,7 +2384,7 @@ fn rewrite_generics_inner(
         };
         mk_sp(l.lifetime.span.lo, hi)
     });
-    let ty_spans = tys.iter().map(span_for_ty_param);
+    let ty_spans = tys.iter().map(|ty| ty.span());
 
     let items = itemize_list(
         context.codemap,
@@ -2495,10 +2501,21 @@ fn rewrite_where_clause_rfc_style(
     // where clause can be kept on the current line.
     snuggle: bool,
     span_end: Option<BytePos>,
+    span: Span,
+    span_end_before_where: BytePos,
 ) -> Option<String> {
     let block_shape = shape.block().with_max_width(context.config);
 
-    let starting_newline = if snuggle {
+    let (span_before, span_after) =
+        missing_span_before_after_where(context, span.hi, span_end_before_where, where_clause);
+    let (comment_before, comment_after) = try_opt!(rewrite_comments_before_after_where(
+        context,
+        span_before,
+        span_after,
+        shape,
+    ));
+
+    let starting_newline = if snuggle && comment_before.is_empty() {
         " ".to_owned()
     } else {
         "\n".to_owned() + &block_shape.indent.to_string(context.config)
@@ -2506,18 +2523,18 @@ fn rewrite_where_clause_rfc_style(
 
     let clause_shape = block_shape.block_indent(context.config.tab_spaces());
     // each clause on one line, trailing comma (except if suppress_comma)
-    let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
+    let span_start = where_clause.predicates[0].span().lo;
     // If we don't have the start of the next span, then use the end of the
     // predicates, but that means we miss comments.
     let len = where_clause.predicates.len();
-    let end_of_preds = span_for_where_pred(&where_clause.predicates[len - 1]).hi;
+    let end_of_preds = where_clause.predicates[len - 1].span().hi;
     let span_end = span_end.unwrap_or(end_of_preds);
     let items = itemize_list(
         context.codemap,
         where_clause.predicates.iter(),
         terminator,
-        |pred| span_for_where_pred(pred).lo,
-        |pred| span_for_where_pred(pred).hi,
+        |pred| pred.span().lo,
+        |pred| pred.span().hi,
         |pred| pred.rewrite(context, block_shape),
         span_start,
         span_end,
@@ -2538,9 +2555,23 @@ fn rewrite_where_clause_rfc_style(
     };
     let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
+    let newline_before_where = if comment_before.is_empty() || comment_before.ends_with('\n') {
+        String::new()
+    } else {
+        "\n".to_owned() + &shape.indent.to_string(context.config)
+    };
+    let newline_after_where = if comment_after.is_empty() {
+        String::new()
+    } else {
+        "\n".to_owned() + &clause_shape.indent.to_string(context.config)
+    };
     Some(format!(
-        "{}where\n{}{}",
+        "{}{}{}where{}{}\n{}{}",
         starting_newline,
+        comment_before,
+        newline_before_where,
+        newline_after_where,
+        comment_after,
         clause_shape.indent.to_string(context.config),
         preds_str
     ))
@@ -2556,6 +2587,8 @@ fn rewrite_where_clause(
     suppress_comma: bool,
     snuggle: bool,
     span_end: Option<BytePos>,
+    span: Span,
+    span_end_before_where: BytePos,
 ) -> Option<String> {
     if where_clause.predicates.is_empty() {
         return Some(String::new());
@@ -2570,6 +2603,8 @@ fn rewrite_where_clause(
             suppress_comma,
             snuggle,
             span_end,
+            span,
+            span_end_before_where,
         );
     }
 
@@ -2584,18 +2619,18 @@ fn rewrite_where_clause(
     // be out by a char or two.
 
     let budget = context.config.max_width() - offset.width();
-    let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
+    let span_start = where_clause.predicates[0].span().lo;
     // If we don't have the start of the next span, then use the end of the
     // predicates, but that means we miss comments.
     let len = where_clause.predicates.len();
-    let end_of_preds = span_for_where_pred(&where_clause.predicates[len - 1]).hi;
+    let end_of_preds = where_clause.predicates[len - 1].span().hi;
     let span_end = span_end.unwrap_or(end_of_preds);
     let items = itemize_list(
         context.codemap,
         where_clause.predicates.iter(),
         terminator,
-        |pred| span_for_where_pred(pred).lo,
-        |pred| span_for_where_pred(pred).hi,
+        |pred| pred.span().lo,
+        |pred| pred.span().hi,
         |pred| pred.rewrite(context, Shape::legacy(budget, offset)),
         span_start,
         span_end,
@@ -2646,6 +2681,54 @@ fn rewrite_where_clause(
     }
 }
 
+fn missing_span_before_after_where(
+    context: &RewriteContext,
+    item_end: BytePos,
+    before_item_span_end: BytePos,
+    where_clause: &ast::WhereClause,
+) -> (Span, Span) {
+    let snippet = context.snippet(mk_sp(before_item_span_end, item_end));
+    let pos_before_where =
+        before_item_span_end + BytePos(snippet.find_uncommented("where").unwrap() as u32);
+    let missing_span_before = mk_sp(before_item_span_end, pos_before_where);
+    // 5 = `where`
+    let pos_after_where = pos_before_where + BytePos(5);
+    let missing_span_after = mk_sp(pos_after_where, where_clause.predicates[0].span().lo);
+    (missing_span_before, missing_span_after)
+}
+
+fn rewrite_missing_comment_in_where(
+    context: &RewriteContext,
+    comment: &str,
+    shape: Shape,
+) -> Option<String> {
+    let comment = comment.trim();
+    if comment.is_empty() {
+        Some(String::new())
+    } else {
+        rewrite_comment(comment, false, shape, context.config)
+    }
+}
+
+fn rewrite_comments_before_after_where(
+    context: &RewriteContext,
+    span_before_where: Span,
+    span_after_where: Span,
+    shape: Shape,
+) -> Option<(String, String)> {
+    let before_comment = try_opt!(rewrite_missing_comment_in_where(
+        context,
+        &context.snippet(span_before_where),
+        shape,
+    ));
+    let after_comment = try_opt!(rewrite_missing_comment_in_where(
+        context,
+        &context.snippet(span_after_where),
+        shape.block_indent(context.config.tab_spaces()),
+    ));
+    Some((before_comment, after_comment))
+}
+
 fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> String {
     format!("{}{}{}", format_visibility(vis), item_name, ident)
 }
@@ -2681,6 +2764,8 @@ fn format_generics(
             false,
             trimmed_last_line_width(&result) == 1,
             Some(span.hi),
+            span,
+            generics.span.hi,
         ));
         result.push_str(&where_clause_str);
         let same_line_brace = force_same_line_brace ||
