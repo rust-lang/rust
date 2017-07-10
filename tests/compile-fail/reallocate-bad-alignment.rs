@@ -2,7 +2,7 @@
 
 extern crate alloc;
 
-// error-pattern: tried to deallocate or reallocate using incorrect alignment or size
+// error-pattern: tried to access memory with alignment 1, but alignment 2 is required
 
 use alloc::heap::*;
 fn main() {
