@@ -1053,7 +1053,7 @@ fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: &ast::Visibility)
     format!("{};", format_header(item_name, ident, vis))
 }
 
-fn format_struct_struct(
+pub fn format_struct_struct(
     context: &RewriteContext,
     item_name: &str,
     ident: ast::Ident,

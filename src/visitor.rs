@@ -426,8 +426,19 @@ impl<'a> FmtVisitor<'a> {
                 );
                 self.push_rewrite(item.span, rewrite);
             }
-            ast::ItemKind::Union(..) => {
-                // FIXME(#1157): format union definitions.
+            ast::ItemKind::Union(ref def, ref generics) => {
+                let rewrite = ::items::format_struct_struct(
+                    &self.get_context(),
+                    "union ",
+                    item.ident,
+                    &item.vis,
+                    def.fields(),
+                    Some(generics),
+                    item.span,
+                    self.block_indent,
+                    None,
+                );
+                self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::GlobalAsm(..) => {
                 let snippet = Some(self.snippet(item.span));
