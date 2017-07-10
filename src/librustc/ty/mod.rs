@@ -2030,7 +2030,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::ExprBox(..) |
             hir::ExprAddrOf(..) |
             hir::ExprBinary(..) |
-            hir::ExprSuspend(..) |
+            hir::ExprYield(..) |
             hir::ExprCast(..) => {
                 false
             }

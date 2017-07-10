@@ -538,7 +538,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             sig.map_bound(|sig| {
                 let state_did = tcx.lang_items.gen_state().unwrap();
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.mk_substs([Kind::from(sig.suspend_ty),
+                let state_substs = tcx.mk_substs([Kind::from(sig.yield_ty),
                     Kind::from(sig.return_ty)].iter());
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 

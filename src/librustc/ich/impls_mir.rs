@@ -58,7 +58,7 @@ for mir::Terminator<'tcx> {
             mir::TerminatorKind::Unreachable |
             mir::TerminatorKind::Drop { .. } |
             mir::TerminatorKind::DropAndReplace { .. } |
-            mir::TerminatorKind::Suspend { .. } |
+            mir::TerminatorKind::Yield { .. } |
             mir::TerminatorKind::Call { .. } => false,
         };
 
@@ -164,7 +164,7 @@ for mir::TerminatorKind<'tcx> {
                 target.hash_stable(hcx, hasher);
                 unwind.hash_stable(hcx, hasher);
             }
-            mir::TerminatorKind::Suspend { ref value,
+            mir::TerminatorKind::Yield { ref value,
                                         resume,
                                         drop } => {
                 value.hash_stable(hcx, hasher);

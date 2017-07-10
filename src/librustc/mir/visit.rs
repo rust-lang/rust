@@ -448,7 +448,7 @@ macro_rules! make_mir_visitor {
                         cleanup.map(|t| self.visit_branch(block, t));
                     }
 
-                    TerminatorKind::Suspend { ref $($mutability)* value,
+                    TerminatorKind::Yield { ref $($mutability)* value,
                                               resume,
                                               drop } => {
                         self.visit_operand(value, source_location);

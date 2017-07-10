@@ -1156,7 +1156,7 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
     let gen_def_id = tcx.lang_items.gen_trait().unwrap();
 
     // Note: we unwrap the binder here but re-create it below (1)
-    let ty::Binder((trait_ref, suspend_ty, return_ty)) =
+    let ty::Binder((trait_ref, yield_ty, return_ty)) =
         tcx.generator_trait_ref_and_outputs(gen_def_id,
                                             obligation.predicate.trait_ref.self_ty(),
                                             gen_sig);
@@ -1165,7 +1165,7 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
     let ty = if name == Symbol::intern("Return") {
         return_ty
     } else if name == Symbol::intern("Yield") {
-        suspend_ty
+        yield_ty
     } else {
         bug!()
     };

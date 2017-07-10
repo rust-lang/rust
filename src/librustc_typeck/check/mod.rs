@@ -506,7 +506,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     ret_coercion: Option<RefCell<DynamicCoerceMany<'gcx, 'tcx>>>,
 
-    suspend_ty: Option<Ty<'tcx>>,
+    yield_ty: Option<Ty<'tcx>>,
     impl_arg_ty: Option<Ty<'tcx>>,
 
     ps: RefCell<UnsafetyState>,
@@ -1037,7 +1037,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             // Write the type to the impl arg id
             fcx.write_ty(impl_arg.id, impl_arg_ty);
 
-            fcx.suspend_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
+            fcx.yield_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
         }
     }
 
@@ -1062,7 +1062,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let gen_ty = if can_be_generator && body.is_generator() {
         let gen_sig = ty::GenSig {
             impl_arg_ty: fcx.impl_arg_ty.unwrap(),
-            suspend_ty: fcx.suspend_ty.unwrap(),
+            yield_ty: fcx.yield_ty.unwrap(),
             return_ty: ret_ty,
         };
         inherited.tables.borrow_mut().generator_sigs.insert(fn_id, Some(gen_sig));
@@ -1750,7 +1750,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
-            suspend_ty: None,
+            yield_ty: None,
             impl_arg_ty: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
@@ -4008,8 +4008,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
           }
-          hir::ExprSuspend(ref value) => {
-            match self.suspend_ty {
+          hir::ExprYield(ref value) => {
+            match self.yield_ty {
                 Some(ty) => {
                     self.check_expr_coercable_to_type(&value, ty);
                 }

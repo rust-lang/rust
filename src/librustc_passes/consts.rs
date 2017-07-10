@@ -436,7 +436,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         hir::ExprRet(_) |
 
         // Generator expressions
-        hir::ExprSuspend(_) |
+        hir::ExprYield(_) |
         hir::ExprImplArg(_) |
 
         // Expressions with side-effects.

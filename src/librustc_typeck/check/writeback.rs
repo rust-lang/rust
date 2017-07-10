@@ -329,7 +329,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         for (&node_id, gen_sig) in self.fcx.tables.borrow().generator_sigs.iter() {
             let gen_sig = gen_sig.map(|s| ty::GenSig {
                 impl_arg_ty: self.resolve(&s.impl_arg_ty, &node_id),
-                suspend_ty: self.resolve(&s.suspend_ty, &node_id),
+                yield_ty: self.resolve(&s.yield_ty, &node_id),
                 return_ty: self.resolve(&s.return_ty, &node_id),
             });
             self.tables.generator_sigs.insert(node_id, gen_sig);

@@ -579,7 +579,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         cleanup);
             }
             mir::TerminatorKind::GeneratorDrop |
-            mir::TerminatorKind::Suspend { .. } => bug!("generator ops in trans"),
+            mir::TerminatorKind::Yield { .. } => bug!("generator ops in trans"),
         }
     }
 

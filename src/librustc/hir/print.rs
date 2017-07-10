@@ -1461,8 +1461,8 @@ impl<'a> State<'a> {
 
                 self.pclose()?;
             }
-            hir::ExprSuspend(ref expr) => {
-                word(&mut self.s, "suspend ")?;
+            hir::ExprYield(ref expr) => {
+                word(&mut self.s, "yield ")?;
                 self.print_expr(&expr)?;
             }
             hir::ExprImplArg(_) => {

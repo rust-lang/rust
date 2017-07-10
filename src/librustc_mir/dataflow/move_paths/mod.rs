@@ -474,7 +474,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 // branching terminators - these don't move anything
             }
 
-            TerminatorKind::Suspend { ref value,  .. } => {
+            TerminatorKind::Yield { ref value,  .. } => {
                 self.create_move_path(&Mir::impl_arg_lvalue());
                 self.gather_operand(loc, value);
             }

@@ -78,7 +78,7 @@ impl Category {
             ExprKind::Borrow { .. } |
             ExprKind::Assign { .. } |
             ExprKind::AssignOp { .. } |
-            ExprKind::Suspend { .. } |
+            ExprKind::Yield { .. } |
             ExprKind::InlineAsm { .. } =>
                 Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 

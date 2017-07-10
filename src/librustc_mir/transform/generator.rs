@@ -159,7 +159,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                 self.return_block,
                 Operand::Consume(Lvalue::Local(self.new_ret_local)),
                 None)),
-            TerminatorKind::Suspend { ref value, resume, drop } => Some((0,
+            TerminatorKind::Yield { ref value, resume, drop } => Some((0,
                 resume,
                 value.clone(),
                 drop)),
@@ -325,7 +325,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     liveness::dump_mir(tcx, "generator_liveness", source, mir, &result);
 
     for (block, data) in mir.basic_blocks().iter_enumerated() {
-        if let TerminatorKind::Suspend { .. } = data.terminator().kind {
+        if let TerminatorKind::Yield { .. } = data.terminator().kind {
             set.union(&result.outs[block]);
         }
     }
@@ -742,8 +742,8 @@ impl MirPass for StateTransform {
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     source: MirSource,
                     mir: &mut Mir<'tcx>) {
-        let suspend_ty = if let Some(suspend_ty) = mir.suspend_ty {
-            suspend_ty
+        let yield_ty = if let Some(yield_ty) = mir.yield_ty {
+            yield_ty
         } else {
             // This only applies to generators
             return
@@ -758,7 +758,7 @@ impl MirPass for StateTransform {
 
         let state_did = tcx.lang_items.gen_state().unwrap();
         let state_adt_ref = tcx.adt_def(state_did);
-        let state_substs = tcx.mk_substs([Kind::from(suspend_ty),
+        let state_substs = tcx.mk_substs([Kind::from(yield_ty),
             Kind::from(mir.return_ty)].iter());
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
@@ -787,7 +787,7 @@ impl MirPass for StateTransform {
         transform.visit_mir(mir);
 
         mir.return_ty = ret_ty;
-        mir.suspend_ty = None;
+        mir.yield_ty = None;
         mir.arg_count = 2;
         mir.spread_arg = None;
         mir.generator_layout = Some(layout);

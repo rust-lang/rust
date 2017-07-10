@@ -1158,7 +1158,7 @@ impl<'tcx> Visitor<'tcx> for YieldFinder {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if let hir::ExprSuspend(..) = expr.node {
+        if let hir::ExprYield(..) = expr.node {
             self.0 = true;
         }
 

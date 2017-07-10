@@ -630,7 +630,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::Unreachable |
             mir::TerminatorKind::Assert { .. } => {}
             mir::TerminatorKind::GeneratorDrop |
-            mir::TerminatorKind::Suspend { .. } => bug!(),
+            mir::TerminatorKind::Yield { .. } => bug!(),
         }
 
         self.super_terminator_kind(block, kind, location);

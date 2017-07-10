@@ -573,7 +573,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::E
                 hir::ExprBreak(..)      |
                 hir::ExprAgain(..)      |
                 hir::ExprRet(..)        |
-                hir::ExprSuspend(..)    |
+                hir::ExprYield(..)    |
                 hir::ExprImplArg(..)    |
                 hir::ExprInlineAsm(..)  |
                 hir::ExprRepeat(..)     |
@@ -654,7 +654,7 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprInlineAsm(asm, inputs, outputs),
     ExprStruct(path, fields, base),
     ExprRepeat(val, times),
-    ExprSuspend(val),
+    ExprYield(val),
     ExprImplArg(id)
 });
 

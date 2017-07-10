@@ -176,7 +176,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         }
 
         // Cannot inline generators which haven't been transformed yet
-        if callee_mir.suspend_ty.is_some() {
+        if callee_mir.yield_ty.is_some() {
             return false;
         }
 
@@ -657,7 +657,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
         match *kind {
             TerminatorKind::GeneratorDrop |
-            TerminatorKind::Suspend { .. } => bug!(),
+            TerminatorKind::Yield { .. } => bug!(),
             TerminatorKind::Goto { ref mut target} => {
                 *target = self.update_target(*target);
             }

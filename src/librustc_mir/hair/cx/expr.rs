@@ -568,7 +568,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprTup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
 
         hir::ExprImplArg(_) => ExprKind::ImplArg,
-        hir::ExprSuspend(ref v) => ExprKind::Suspend { value: v.to_ref() },
+        hir::ExprYield(ref v) => ExprKind::Yield { value: v.to_ref() },
     };
 
     Expr {

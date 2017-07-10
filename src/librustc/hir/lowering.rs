@@ -2108,7 +2108,7 @@ impl<'a> LoweringContext<'a> {
                 let expr = opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| {
                     self.expr(e.span, hir::ExprTup(hir_vec![]), ThinVec::new())
                 });
-                hir::ExprSuspend(P(expr))
+                hir::ExprYield(P(expr))
             }
 
             ExprKind::ImplArg => {

@@ -304,11 +304,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::GenSig<'a> {
     type Lifted = ty::GenSig<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&(self.impl_arg_ty, self.suspend_ty, self.return_ty))
-            .map(|(impl_arg_ty, suspend_ty, return_ty)| {
+        tcx.lift(&(self.impl_arg_ty, self.yield_ty, self.return_ty))
+            .map(|(impl_arg_ty, yield_ty, return_ty)| {
                 ty::GenSig {
                     impl_arg_ty,
-                    suspend_ty,
+                    yield_ty,
                     return_ty,
                 }
             })
@@ -638,14 +638,14 @@ impl<'tcx> TypeFoldable<'tcx> for ty::GenSig<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::GenSig {
             impl_arg_ty: self.impl_arg_ty.fold_with(folder),
-            suspend_ty: self.suspend_ty.fold_with(folder),
+            yield_ty: self.yield_ty.fold_with(folder),
             return_ty: self.return_ty.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.impl_arg_ty.visit_with(visitor) ||
-        self.suspend_ty.visit_with(visitor) ||
+        self.yield_ty.visit_with(visitor) ||
         self.return_ty.visit_with(visitor)
     }
 }

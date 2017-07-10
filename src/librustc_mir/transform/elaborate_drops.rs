@@ -100,7 +100,7 @@ fn find_dead_unwinds<'a, 'tcx>(
         let location = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref location, unwind: Some(_), .. } |
             TerminatorKind::DropAndReplace { ref location, unwind: Some(_), .. } => location,
-            TerminatorKind::Suspend { .. } => &impl_arg,
+            TerminatorKind::Yield { .. } => &impl_arg,
             _ => continue,
         };
 
@@ -348,7 +348,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let location = match terminator.kind {
                 TerminatorKind::Drop { ref location, .. } |
                 TerminatorKind::DropAndReplace { ref location, .. } => location,
-                TerminatorKind::Suspend { .. } => &impl_arg,
+                TerminatorKind::Yield { .. } => &impl_arg,
                 _ => continue
             };
 

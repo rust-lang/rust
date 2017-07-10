@@ -643,7 +643,7 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct GenSig<'tcx> {
     pub impl_arg_ty: Ty<'tcx>,
-    pub suspend_ty: Ty<'tcx>,
+    pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
 }
 
@@ -652,8 +652,8 @@ pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
 
 #[allow(warnings)]
 impl<'tcx> PolyGenSig<'tcx> {
-    pub fn suspend_ty(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|sig| sig.suspend_ty)
+    pub fn yield_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.yield_ty)
     }
     pub fn return_ty(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|sig| sig.return_ty)

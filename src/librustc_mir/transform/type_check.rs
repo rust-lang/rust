@@ -512,14 +512,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Suspend { ref value, .. } => {
+            TerminatorKind::Yield { ref value, .. } => {
                 let value_ty = value.ty(mir, tcx);
-                match mir.suspend_ty {
-                    None => span_mirbug!(self, term, "suspend in non-generator"),
+                match mir.yield_ty {
+                    None => span_mirbug!(self, term, "yield in non-generator"),
                     Some(ty) if ty != value_ty => {
                         span_mirbug!(self,
                             term,
-                            "type of suspend value is ({:?}, but the suspend type is ({:?}",
+                            "type of yield value is ({:?}, but the yield type is ({:?}",
                             value_ty,
                             ty);
                     }
@@ -657,9 +657,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     span_mirbug!(self, block, "generator_drop in cleanup block")
                 }
             }
-            TerminatorKind::Suspend { resume, drop, .. } => {
+            TerminatorKind::Yield { resume, drop, .. } => {
                 if is_cleanup {
-                    span_mirbug!(self, block, "suspend in cleanup block")
+                    span_mirbug!(self, block, "yield in cleanup block")
                 }
                 self.assert_iscleanup(mir, block, resume, is_cleanup);
                 if let Some(drop) = drop {

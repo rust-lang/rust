@@ -299,7 +299,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
                                           move_data.rev_lookup.find(location),
                                           |moi| callback(moi, DropFlagState::Present))
                 }
-                mir::TerminatorKind::Suspend { .. } => {
+                mir::TerminatorKind::Yield { .. } => {
                     on_lookup_result_bits(tcx, mir, move_data,
                                           move_data.rev_lookup.find(&Mir::impl_arg_lvalue()),
                                           |moi| callback(moi, DropFlagState::Present))

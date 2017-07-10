@@ -377,7 +377,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::DropAndReplace { .. } |
                 TerminatorKind::Resume |
                 TerminatorKind::GeneratorDrop |
-                TerminatorKind::Suspend { .. } |
+                TerminatorKind::Yield { .. } |
                 TerminatorKind::Unreachable => None,
 
                 TerminatorKind::Return => {

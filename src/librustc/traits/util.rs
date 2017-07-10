@@ -523,7 +523,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             def_id: fn_trait_def_id,
             substs: self.mk_substs_trait(self_ty, &[sig.skip_binder().impl_arg_ty]),
         };
-        ty::Binder((trait_ref, sig.skip_binder().suspend_ty, sig.skip_binder().return_ty))
+        ty::Binder((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
     }
 
     pub fn impl_is_default(self, node_item_def_id: DefId) -> bool {

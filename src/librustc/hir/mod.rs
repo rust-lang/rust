@@ -1069,8 +1069,8 @@ pub enum Expr_ {
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, BodyId),
 
-    /// A suspension point for generators
-    ExprSuspend(P<Expr>),
+    /// A suspension point for generators. This is `yield <expr>` in Rust.
+    ExprYield(P<Expr>),
 
     /// The argument to a generator
     ExprImplArg(NodeId),

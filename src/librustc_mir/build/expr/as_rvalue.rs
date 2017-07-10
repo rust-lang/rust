@@ -239,7 +239,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block = unpack!(this.stmt_expr(block, expr));
                 block.and(this.unit_rvalue())
             }
-            ExprKind::Suspend { value } => {
+            ExprKind::Yield { value } => {
                 let value = unpack!(block = this.as_operand(block, scope, value));
                 let impl_arg_ty = this.impl_arg_ty.unwrap();
                 block = unpack!(this.build_drop(block,
@@ -248,7 +248,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     impl_arg_ty));
                 let resume = this.cfg.start_new_block();
                 let cleanup = this.generator_drop_cleanup(expr_span);
-                this.cfg.terminate(block, source_info, TerminatorKind::Suspend {
+                this.cfg.terminate(block, source_info, TerminatorKind::Yield {
                     value: value,
                     resume: resume,
                     drop: cleanup,

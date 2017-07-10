@@ -104,8 +104,8 @@ pub struct Mir<'tcx> {
     /// Return type of the function.
     pub return_ty: Ty<'tcx>,
 
-    /// Suspend type of the function, if it is a generator.
-    pub suspend_ty: Option<Ty<'tcx>>,
+    /// Yield type of the function, if it is a generator.
+    pub yield_ty: Option<Ty<'tcx>>,
 
     /// Generator drop glue
     pub generator_drop: Option<Box<Mir<'tcx>>>,
@@ -153,7 +153,7 @@ impl<'tcx> Mir<'tcx> {
                visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                return_ty: Ty<'tcx>,
-               suspend_ty: Option<Ty<'tcx>>,
+               yield_ty: Option<Ty<'tcx>>,
                local_decls: IndexVec<Local, LocalDecl<'tcx>>,
                arg_count: usize,
                upvar_decls: Vec<UpvarDecl>,
@@ -169,7 +169,7 @@ impl<'tcx> Mir<'tcx> {
             visibility_scopes,
             promoted,
             return_ty,
-            suspend_ty,
+            yield_ty,
             generator_drop: None,
             generator_layout: None,
             local_decls,
@@ -287,7 +287,7 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     visibility_scopes,
     promoted,
     return_ty,
-    suspend_ty,
+    yield_ty,
     generator_drop,
     generator_layout,
     local_decls,
@@ -590,7 +590,7 @@ pub enum TerminatorKind<'tcx> {
     },
 
     /// A suspend point
-    Suspend {
+    Yield {
         /// The value to return
         value: Operand<'tcx>,
         /// Where to resume to
@@ -638,8 +638,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                 slice::ref_slice(t).into_cow(),
             Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
             Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
-            Suspend { resume: t, drop: Some(c), .. } => vec![t, c].into_cow(),
-            Suspend { resume: ref t, drop: None, .. } => slice::ref_slice(t).into_cow(),
+            Yield { resume: t, drop: Some(c), .. } => vec![t, c].into_cow(),
+            Yield { resume: ref t, drop: None, .. } => slice::ref_slice(t).into_cow(),
             DropAndReplace { target, unwind: Some(unwind), .. } |
             Drop { target, unwind: Some(unwind), .. } => {
                 vec![target, unwind].into_cow()
@@ -667,8 +667,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
             Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
             Call { destination: None, cleanup: None, .. } => vec![],
-            Suspend { resume: ref mut t, drop: Some(ref mut c), .. } => vec![t, c],
-            Suspend { resume: ref mut t, drop: None, .. } => vec![t],
+            Yield { resume: ref mut t, drop: Some(ref mut c), .. } => vec![t, c],
+            Yield { resume: ref mut t, drop: None, .. } => vec![t],
             DropAndReplace { ref mut target, unwind: Some(ref mut unwind), .. } |
             Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
             DropAndReplace { ref mut target, unwind: None, .. } |
@@ -750,7 +750,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Return => write!(fmt, "return"),
             GeneratorDrop => write!(fmt, "generator_drop"),
             Resume => write!(fmt, "resume"),
-            Suspend { ref value, .. } => write!(fmt, "_1 = suspend({:?})", value),
+            Yield { ref value, .. } => write!(fmt, "_1 = suspend({:?})", value),
             Unreachable => write!(fmt, "unreachable"),
             Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
             DropAndReplace { ref location, ref value, .. } =>
@@ -818,9 +818,9 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
             Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
             Call { destination: None, cleanup: None, .. } => vec![],
-            Suspend { drop: Some(_), .. } =>
+            Yield { drop: Some(_), .. } =>
                 vec!["resume".into_cow(), "drop".into_cow()],
-            Suspend { drop: None, .. } => vec!["resume".into_cow()],
+            Yield { drop: None, .. } => vec!["resume".into_cow()],
             DropAndReplace { unwind: None, .. } |
             Drop { unwind: None, .. } => vec!["return".into_cow()],
             DropAndReplace { unwind: Some(_), .. } |
@@ -1526,7 +1526,7 @@ impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
             visibility_scopes: self.visibility_scopes.clone(),
             promoted: self.promoted.fold_with(folder),
             return_ty: self.return_ty.fold_with(folder),
-            suspend_ty: self.suspend_ty.fold_with(folder),
+            yield_ty: self.yield_ty.fold_with(folder),
             generator_drop: self.generator_drop.fold_with(folder),
             generator_layout: self.generator_layout.fold_with(folder),
             local_decls: self.local_decls.fold_with(folder),
@@ -1542,7 +1542,7 @@ impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
         self.basic_blocks.visit_with(visitor) ||
         self.generator_drop.visit_with(visitor) ||
         self.generator_layout.visit_with(visitor) ||
-        self.suspend_ty.visit_with(visitor) ||
+        self.yield_ty.visit_with(visitor) ||
         self.promoted.visit_with(visitor)     ||
         self.return_ty.visit_with(visitor)    ||
         self.local_decls.visit_with(visitor)
@@ -1665,7 +1665,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 target,
                 unwind,
             },
-            Suspend { ref value, resume, drop } => Suspend {
+            Yield { ref value, resume, drop } => Yield {
                 value: value.fold_with(folder),
                 resume: resume,
                 drop: drop,
@@ -1719,7 +1719,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Drop { ref location, ..} => location.visit_with(visitor),
             DropAndReplace { ref location, ref value, ..} =>
                 location.visit_with(visitor) || value.visit_with(visitor),
-            Suspend { ref value, ..} =>
+            Yield { ref value, ..} =>
                 value.visit_with(visitor),
             Call { ref func, ref args, ref destination, .. } => {
                 let dest = if let Some((ref loc, _)) = *destination {
