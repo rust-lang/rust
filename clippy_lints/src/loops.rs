@@ -306,7 +306,7 @@ declare_lint! {
 
 #[derive(Copy, Clone, Default)]
 pub struct Pass {
-    loop_count : usize,
+    loop_count: usize,
 }
 
 impl LintPass for Pass {
@@ -331,8 +331,10 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
-            ExprWhile(..) | ExprLoop(..) => { self.loop_count -= 1; }
-            _ => ()
+            ExprWhile(..) | ExprLoop(..) => {
+                self.loop_count -= 1;
+            },
+            _ => (),
         }
     }
 

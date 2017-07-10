@@ -110,8 +110,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
                 })
             },
-            (&ExprMethodCall(ref l_path, _, ref l_args),
-             &ExprMethodCall(ref r_path, _, ref r_args)) => {
+            (&ExprMethodCall(ref l_path, _, ref l_args), &ExprMethodCall(ref r_path, _, ref r_args)) => {
                 !self.ignore_fn && l_path == r_path && self.eq_exprs(l_args, r_args)
             },
             (&ExprRepeat(ref le, ll_id), &ExprRepeat(ref re, rl_id)) => {
