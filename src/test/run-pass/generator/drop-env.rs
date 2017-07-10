@@ -59,7 +59,7 @@ fn t2() {
 fn t3() {
     let b = B;
     let foo = || {
-        let _: () = gen arg; // TODO: this line should not be necessary
+        let _: () = gen arg; // FIXME: this line should not be necessary
         yield;
         drop(b);
     };

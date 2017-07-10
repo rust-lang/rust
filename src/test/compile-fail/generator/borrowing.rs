@@ -23,7 +23,7 @@ fn main() {
     let _b = {
         let a = 3;
         || {
-            let _: () = gen arg; // TODO: shouldn't be needed for inference
+            let _: () = gen arg; // FIXME: shouldn't be needed for inference
             yield &a
             //~^ ERROR: `a` does not live long enough
         }
