@@ -113,11 +113,16 @@ macro_rules! check {
             })+
         } else {
             for path in paths {
+                let mut attempted_run = false;
                 $({
                     if <$rule>::should_run($self, path) {
+                        attempted_run = true;
                         $self.maybe_run::<$rule>(Some(path));
                     }
                 })+
+                if !attempted_run {
+                    eprintln!("Warning: no rules matched {}.", path.display());
+                }
             }
         }
     }};
