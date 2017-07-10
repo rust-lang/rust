@@ -10,8 +10,6 @@
 
 #![allow(unused_variables)]
 
-#![feature(associated_consts)]
-
 #[derive(Clone, Copy, Debug)]
 struct Bar;
 
