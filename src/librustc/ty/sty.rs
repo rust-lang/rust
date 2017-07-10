@@ -149,7 +149,8 @@ pub enum TypeVariants<'tcx> {
     /// `|a| a`.
     TyClosure(DefId, ClosureSubsts<'tcx>),
 
-    /// The anonymous type of a generator. Pairs with a TyClosure for closure generators.
+    /// The anonymous type of a generator. Used to represent the type of
+    /// `|a| yield a`.
     TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
 
     /// The never type `!`
@@ -279,6 +280,9 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
+    /// This returns the types of the MIR locals which had to be stored across suspension points.
+    /// It is calculated in rustc_mir::transform::generator::StateTransform.
+    /// All the types here must be in the tuple in GeneratorInterior.
     pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=Ty<'tcx>> + 'tcx
     {
@@ -287,6 +291,8 @@ impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
         state.into_iter()
     }
 
+    /// This is the types of all the fields stored in a generator.
+    /// It includes the upvars, state types and the state discriminant which is u32.
     pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=Ty<'tcx>> + 'tcx
     {
