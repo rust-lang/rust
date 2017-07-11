@@ -83,6 +83,9 @@ Feedback on the design and usage is always appreciated!
 The `Generator` trait in `std::ops` currently looks like:
 
 ```
+# #![feature(generator_trait)]
+# use std::ops::State;
+
 pub trait Generator<Arg = ()> {
     type Yield;
     type Return;
@@ -165,8 +168,8 @@ fn main() {
         return ret
     };
 
-    drop(generator.resume(()))
-    drop(generator.resume(()))
+    drop(generator.resume(()));
+    drop(generator.resume(()));
 }
 ```
 
@@ -210,11 +213,11 @@ fn main() {
             }
         }
 
-        __Generator::Start(ret) : impl Generator<Yield = i32, Return = &'static str>
+        __Generator::Start(ret)
     };
 
-    drop(generator.resume(()))
-    drop(generator.resume(()))
+    drop(generator.resume(()));
+    drop(generator.resume(()));
 }
 ```
 
