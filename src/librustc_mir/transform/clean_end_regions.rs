@@ -24,13 +24,14 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc::middle::region::CodeExtent;
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::{BasicBlock, Location, Mir, Rvalue, Statement, StatementKind};
-use rustc::mir::visit::{MutVisitor, Visitor};
-use rustc::ty::{RegionKind, TyCtxt};
+use rustc::mir::visit::{MutVisitor, Visitor, Lookup};
+use rustc::ty::{Ty, RegionKind, TyCtxt};
 
 pub struct CleanEndRegions;
 
 struct GatherBorrowedRegions {
     seen_regions: FxHashSet<CodeExtent>,
+    in_validation_statement: bool,
 }
 
 struct DeleteTrivialEndRegions<'a> {
@@ -42,7 +43,7 @@ impl MirPass for CleanEndRegions {
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let mut gather = GatherBorrowedRegions { seen_regions: FxHashSet() };
+        let mut gather = GatherBorrowedRegions { seen_regions: FxHashSet(), in_validation_statement: false };
         gather.visit_mir(mir);
 
         let mut delete = DeleteTrivialEndRegions { seen_regions: &mut gather.seen_regions };
@@ -54,12 +55,38 @@ impl<'tcx> Visitor<'tcx> for GatherBorrowedRegions {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
+        // Gather regions that are used for borrows
         if let Rvalue::Ref(r, _, _) = *rvalue {
             if let RegionKind::ReScope(ce) = *r {
                 self.seen_regions.insert(ce);
             }
         }
         self.super_rvalue(rvalue, location);
+    }
+
+    fn visit_statement(&mut self,
+                       block: BasicBlock,
+                       statement: &Statement<'tcx>,
+                       location: Location) {
+        self.in_validation_statement = match statement.kind {
+            StatementKind::Validate(..) => true,
+            _ => false,
+        };
+        self.super_statement(block, statement, location);
+        self.in_validation_statement = false;
+    }
+
+    fn visit_ty(&mut self, ty: &Ty<'tcx>, _: Lookup) {
+        // Gather regions that occur in types inside AcquireValid/ReleaseValid statements
+        if self.in_validation_statement {
+            for re in ty.walk().flat_map(|t| t.regions()) {
+                match *re {
+                    RegionKind::ReScope(ce) => { self.seen_regions.insert(ce); }
+                    _ => {},
+                }
+            }
+        }
+        self.super_ty(ty);
     }
 }
 
