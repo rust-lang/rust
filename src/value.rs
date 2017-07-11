@@ -41,6 +41,10 @@ pub enum Value {
 /// A wrapper type around `PrimVal` that cannot be turned back into a `PrimVal` accidentally.
 /// This type clears up a few APIs where having a `PrimVal` argument for something that is
 /// potentially an integer pointer or a pointer to an allocation was unclear.
+///
+/// I (@oli-obk) believe it is less easy to mix up generic primvals and primvals that are just
+/// the representation of pointers. Also all the sites that convert between primvals and pointers
+/// are explicit now (and rare!)
 #[derive(Clone, Copy, Debug)]
 pub struct Pointer {
     primval: PrimVal,
