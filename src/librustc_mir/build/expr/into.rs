@@ -285,7 +285,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Deref { .. } |
             ExprKind::Literal { .. } |
             ExprKind::Yield { .. } |
-            ExprKind::ImplArg |
             ExprKind::Field { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     Category::Rvalue(RvalueFunc::Into) => false,

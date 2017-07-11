@@ -402,7 +402,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             hir::ExprClosure(..) |
             hir::ExprLit(..) |
-            hir::ExprImplArg(_) |
             hir::ExprPath(_) => {
                 self.straightline(expr, pred, None::<hir::Expr>.iter())
             }

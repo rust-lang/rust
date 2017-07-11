@@ -542,7 +542,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     Kind::from(sig.return_ty)].iter());
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-                tcx.mk_fn_sig(iter::once(env_ty).chain(iter::once(sig.impl_arg_ty)),
+                tcx.mk_fn_sig(iter::once(env_ty),
                     ret_ty,
                     false,
                     hir::Unsafety::Normal,

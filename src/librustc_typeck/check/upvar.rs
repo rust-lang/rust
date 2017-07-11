@@ -78,7 +78,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
             hir::ExprClosure(cc, _, body_id, _, gen) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
-                self.fcx.analyze_closure(expr.id, expr.span, body, cc, gen.is_some());
+                self.fcx.analyze_closure(expr.id, expr.span, body, cc,
+                                         gen == hir::IsGenerator::Yes);
             }
 
             _ => { }

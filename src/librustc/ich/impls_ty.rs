@@ -143,7 +143,6 @@ for ty::UpvarCapture<'tcx> {
 }
 
 impl_stable_hash_for!(struct ty::GenSig<'tcx> {
-    impl_arg_ty,
     yield_ty,
     return_ty
 });

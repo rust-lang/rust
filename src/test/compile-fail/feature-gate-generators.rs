@@ -10,5 +10,4 @@
 
 fn main() {
     yield true; //~ ERROR yield syntax is experimental
-    gen arg;  //~ ERROR gen arg syntax is experimental
 }

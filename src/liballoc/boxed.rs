@@ -786,12 +786,12 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<T, U> Generator<U> for Box<T>
-    where T: Generator<U> + ?Sized
+impl<T> Generator for Box<T>
+    where T: Generator + ?Sized
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self, arg: U) -> State<Self::Yield, Self::Return> {
-        (**self).resume(arg)
+    fn resume(&mut self) -> State<Self::Yield, Self::Return> {
+        (**self).resume()
     }
 }

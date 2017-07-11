@@ -92,7 +92,7 @@ pub struct LoweringContext<'a> {
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
 
-    impl_arg: Option<NodeId>,
+    is_generator: hir::IsGenerator,
 
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
@@ -139,7 +139,6 @@ pub fn lower_crate(sess: &Session,
         trait_impls: BTreeMap::new(),
         trait_default_impl: BTreeMap::new(),
         exported_macros: Vec::new(),
-        impl_arg: None,
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
@@ -147,6 +146,7 @@ pub fn lower_crate(sess: &Session,
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
         item_local_id_counters: NodeMap(),
         node_id_to_hir_id: IndexVec::new(),
+        is_generator: hir::IsGenerator::No,
     }.lower_crate(krate)
 }
 
@@ -365,24 +365,13 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn impl_arg_id(&mut self) -> NodeId {
-        if self.impl_arg.is_none() {
-            self.impl_arg = Some(self.next_id());
-        }
-        self.impl_arg.unwrap()
-    }
-
     fn record_body(&mut self, value: hir::Expr, decl: Option<&FnDecl>)
                    -> hir::BodyId {
-        let span = value.span;
         let body = hir::Body {
             arguments: decl.map_or(hir_vec![], |decl| {
                 decl.inputs.iter().map(|x| self.lower_arg(x)).collect()
             }),
-            impl_arg: self.impl_arg.map(|id| hir::ImplArg {
-                id,
-                span,
-            }),
+            is_generator: self.is_generator == hir::IsGenerator::Yes,
             value,
         };
         let id = body.id();
@@ -443,12 +432,11 @@ impl<'a> LoweringContext<'a> {
     fn lower_body<F>(&mut self, decl: Option<&FnDecl>, f: F) -> hir::BodyId
         where F: FnOnce(&mut LoweringContext) -> hir::Expr
     {
-        let old_impl_arg = self.impl_arg;
-        self.impl_arg = None;
+        let prev = mem::replace(&mut self.is_generator, hir::IsGenerator::No);
         let result = f(self);
         let r = self.record_body(result, decl);
-        self.impl_arg = old_impl_arg;
-        r
+        self.is_generator = prev;
+        return r
     }
 
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
@@ -1952,13 +1940,13 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Closure(capture_clause, ref decl, ref body, fn_decl_span) => {
                 self.with_new_scopes(|this| {
                     this.with_parent_def(e.id, |this| {
-                        let mut gen = None;
+                        let mut gen = hir::IsGenerator::No;
                         let body_id = this.lower_body(Some(decl), |this| {
                             let e = this.lower_expr(body);
-                            gen = this.impl_arg.map(|_| hir::GeneratorClause::Movable);
+                            gen = this.is_generator;
                             e
                         });
-                        if gen.is_some() && !decl.inputs.is_empty() {
+                        if gen == hir::IsGenerator::Yes && !decl.inputs.is_empty() {
                             this.sess.span_fatal(
                                     fn_decl_span,
                                     &format!("generators cannot have explicit arguments"));
@@ -2104,15 +2092,11 @@ impl<'a> LoweringContext<'a> {
             }
 
             ExprKind::Yield(ref opt_expr) => {
-                self.impl_arg_id();
+                self.is_generator = hir::IsGenerator::Yes;
                 let expr = opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| {
                     self.expr(e.span, hir::ExprTup(hir_vec![]), ThinVec::new())
                 });
                 hir::ExprYield(P(expr))
-            }
-
-            ExprKind::ImplArg => {
-                hir::ExprImplArg(self.impl_arg_id())
             }
 
             // Desugar ExprIfLet

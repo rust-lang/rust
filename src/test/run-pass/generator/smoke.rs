@@ -23,7 +23,7 @@ fn simple() {
         }
     };
 
-    match foo.resume(()) {
+    match foo.resume() {
         State::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -39,7 +39,7 @@ fn return_capture() {
         a
     };
 
-    match foo.resume(()) {
+    match foo.resume() {
         State::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -51,11 +51,11 @@ fn simple_yield() {
         yield;
     };
 
-    match foo.resume(()) {
+    match foo.resume() {
         State::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
-    match foo.resume(()) {
+    match foo.resume() {
         State::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -68,11 +68,11 @@ fn yield_capture() {
         yield b;
     };
 
-    match foo.resume(()) {
+    match foo.resume() {
         State::Yielded(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
-    match foo.resume(()) {
+    match foo.resume() {
         State::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -85,11 +85,11 @@ fn simple_yield_value() {
         return String::from("foo")
     };
 
-    match foo.resume(()) {
+    match foo.resume() {
         State::Yielded(ref s) if *s == "bar" => {}
         s => panic!("bad state: {:?}", s),
     }
-    match foo.resume(()) {
+    match foo.resume() {
         State::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -103,11 +103,11 @@ fn return_after_yield() {
         return a
     };
 
-    match foo.resume(()) {
+    match foo.resume() {
         State::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
-    match foo.resume(()) {
+    match foo.resume() {
         State::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
@@ -116,40 +116,33 @@ fn return_after_yield() {
 #[test]
 fn send_and_sync() {
     assert_send_sync(|| {
-        let _: () = gen arg;
         yield
     });
     assert_send_sync(|| {
-        let _: () = gen arg;
         yield String::from("foo");
     });
     assert_send_sync(|| {
-        let _: () = gen arg;
         yield;
         return String::from("foo");
     });
     let a = 3;
     assert_send_sync(|| {
-        let _: () = gen arg;
         yield a;
         return
     });
     let a = 3;
     assert_send_sync(move || {
-        let _: () = gen arg;
         yield a;
         return
     });
     let a = String::from("a");
     assert_send_sync(|| {
-        let _: () = gen arg;
         yield ;
         drop(a);
         return
     });
     let a = String::from("a");
     assert_send_sync(move || {
-        let _: () = gen arg;
         yield ;
         drop(a);
         return
@@ -162,11 +155,11 @@ fn send_and_sync() {
 fn send_over_threads() {
     let mut foo = || { yield };
     thread::spawn(move || {
-        match foo.resume(()) {
+        match foo.resume() {
             State::Yielded(()) => {}
             s => panic!("bad state: {:?}", s),
         }
-        match foo.resume(()) {
+        match foo.resume() {
             State::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }
@@ -175,11 +168,11 @@ fn send_over_threads() {
     let a = String::from("a");
     let mut foo = || { yield a };
     thread::spawn(move || {
-        match foo.resume(()) {
+        match foo.resume() {
             State::Yielded(ref s) if *s == "a" => {}
             s => panic!("bad state: {:?}", s),
         }
-        match foo.resume(()) {
+        match foo.resume() {
             State::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }

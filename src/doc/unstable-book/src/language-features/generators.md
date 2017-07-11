@@ -36,11 +36,11 @@ fn main() {
         return "foo"
     };
 
-    match generator.resume(()) {
+    match generator.resume() {
         State::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
-    match generator.resume(()) {
+    match generator.resume() {
         State::Complete("foo") => {}
         _ => panic!("unexpected value from resume"),
     }
@@ -69,9 +69,9 @@ fn main() {
     };
 
     println!("1");
-    generator.resume(());
+    generator.resume();
     println!("3");
-    generator.resume(());
+    generator.resume();
     println!("5");
 }
 ```
@@ -175,8 +175,8 @@ fn main() {
         return ret
     };
 
-    generator.resume(());
-    generator.resume(());
+    generator.resume();
+    generator.resume();
 }
 ```
 
@@ -200,7 +200,7 @@ fn main() {
             type Yield = i32;
             type Return = &'static str;
 
-            fn resume(&mut self, arg: ()) -> State<i32, &'static str> {
+            fn resume(&mut self) -> State<i32, &'static str> {
                 use std::mem;
                 match mem::replace(self, __Generator::Done) {
                     __Generator::Start(s) => {
@@ -223,8 +223,8 @@ fn main() {
         __Generator::Start(ret)
     };
 
-    generator.resume(());
-    generator.resume(());
+    generator.resume();
+    generator.resume();
 }
 ```
 

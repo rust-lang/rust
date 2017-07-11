@@ -55,7 +55,6 @@ pub enum Node<'hir> {
     NodeTraitRef(&'hir TraitRef),
     NodeLocal(&'hir Pat),
     NodePat(&'hir Pat),
-    NodeImplArg(&'hir ImplArg),
     NodeBlock(&'hir Block),
 
     /// NodeStructCtor represents a tuple struct.
@@ -85,7 +84,6 @@ enum MapEntry<'hir> {
     EntryTy(NodeId, &'hir Ty),
     EntryTraitRef(NodeId, &'hir TraitRef),
     EntryLocal(NodeId, &'hir Pat),
-    EntryImplArg(NodeId, &'hir ImplArg),
     EntryPat(NodeId, &'hir Pat),
     EntryBlock(NodeId, &'hir Block),
     EntryStructCtor(NodeId, &'hir VariantData),
@@ -117,7 +115,6 @@ impl<'hir> MapEntry<'hir> {
             NodeTy(n) => EntryTy(p, n),
             NodeTraitRef(n) => EntryTraitRef(p, n),
             NodeLocal(n) => EntryLocal(p, n),
-            NodeImplArg(n) => EntryImplArg(p, n),
             NodePat(n) => EntryPat(p, n),
             NodeBlock(n) => EntryBlock(p, n),
             NodeStructCtor(n) => EntryStructCtor(p, n),
@@ -139,7 +136,6 @@ impl<'hir> MapEntry<'hir> {
             EntryStmt(id, _) => id,
             EntryTy(id, _) => id,
             EntryTraitRef(id, _) => id,
-            EntryImplArg(id, _) => id,
             EntryLocal(id, _) => id,
             EntryPat(id, _) => id,
             EntryBlock(id, _) => id,
@@ -166,7 +162,6 @@ impl<'hir> MapEntry<'hir> {
             EntryTy(_, n) => NodeTy(n),
             EntryTraitRef(_, n) => NodeTraitRef(n),
             EntryLocal(_, n) => NodeLocal(n),
-            EntryImplArg(_, n) => NodeImplArg(n),
             EntryPat(_, n) => NodePat(n),
             EntryBlock(_, n) => NodeBlock(n),
             EntryStructCtor(_, n) => NodeStructCtor(n),
@@ -327,7 +322,6 @@ impl<'hir> Map<'hir> {
                 EntryTy(p, _) |
                 EntryTraitRef(p, _) |
                 EntryLocal(p, _) |
-                EntryImplArg(p, _) |
                 EntryPat(p, _) |
                 EntryBlock(p, _) |
                 EntryStructCtor(p, _) |
@@ -903,7 +897,6 @@ impl<'hir> Map<'hir> {
             Some(EntryTy(_, ty)) => ty.span,
             Some(EntryTraitRef(_, tr)) => tr.path.span,
             Some(EntryLocal(_, pat)) => pat.span,
-            Some(EntryImplArg(_, impl_arg)) => impl_arg.span,
             Some(EntryPat(_, pat)) => pat.span,
             Some(EntryBlock(_, block)) => block.span,
             Some(EntryStructCtor(_, _)) => self.expect_item(self.get_parent(id)).span,
@@ -1113,7 +1106,6 @@ impl<'a> print::State<'a> {
             }
             NodeLifetime(a)    => self.print_lifetime(&a),
             NodeVisibility(a)  => self.print_visibility(&a),
-            NodeImplArg(_)     => bug!("cannot print ImplArg"),
             NodeTyParam(_)     => bug!("cannot print TyParam"),
             NodeField(_)       => bug!("cannot print StructField"),
             // these cases do not carry enough information in the
@@ -1214,9 +1206,6 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeLocal(_)) => {
             format!("local {}{}", map.node_to_pretty_string(id), id_str)
-        }
-        Some(NodeImplArg(_)) => {
-            format!("impl_arg {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodePat(_)) => {
             format!("pat {}{}", map.node_to_pretty_string(id), id_str)

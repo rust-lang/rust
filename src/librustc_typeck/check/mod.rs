@@ -507,7 +507,6 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ret_coercion: Option<RefCell<DynamicCoerceMany<'gcx, 'tcx>>>,
 
     yield_ty: Option<Ty<'tcx>>,
-    impl_arg_ty: Option<Ty<'tcx>>,
 
     ps: RefCell<UnsafetyState>,
 
@@ -1012,29 +1011,10 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fn_sig.abi
     );
 
-    let def_id = fcx.tcx.hir.local_def_id(fn_id);
     let span = body.value.span;
 
-    if let Some(ref impl_arg) = body.impl_arg {
-        if can_be_generator {
-            let impl_arg_ty = fcx.infcx.type_var_for_impl_arg(span, def_id);
-
-            // Require impl_arg: 'static
-            let cause = traits::ObligationCause::new(span,
-                                                     body.value.id,
-                                                     traits::MiscObligation);
-            fcx.fulfillment_cx.borrow_mut()
-                            .register_region_obligation(impl_arg_ty,
-                                                        fcx.tcx.types.re_static,
-                                                        cause);
-
-            fcx.impl_arg_ty = Some(impl_arg_ty);
-
-            // Write the type to the impl arg id
-            fcx.write_ty(impl_arg.id, impl_arg_ty);
-
-            fcx.yield_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
-        }
+    if body.is_generator && can_be_generator {
+        fcx.yield_ty = Some(fcx.next_ty_var(TypeVariableOrigin::TypeInference(span)));
     }
 
     GatherLocalsVisitor { fcx: &fcx, }.visit_body(body);
@@ -1055,9 +1035,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.write_ty(arg.id, arg_ty);
     }
 
-    let gen_ty = if can_be_generator && body.is_generator() {
+    let gen_ty = if can_be_generator && body.is_generator {
         let gen_sig = ty::GenSig {
-            impl_arg_ty: fcx.impl_arg_ty.unwrap(),
             yield_ty: fcx.yield_ty.unwrap(),
             return_ty: ret_ty,
         };
@@ -1747,7 +1726,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
             yield_ty: None,
-            impl_arg_ty: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
             diverges: Cell::new(Diverges::Maybe),
@@ -2573,7 +2551,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 let is_closure = match arg.node {
                     // FIXME: Should this be applied for generators?
-                    hir::ExprClosure(.., None) => true,
+                    hir::ExprClosure(.., hir::IsGenerator::No) => true,
                     _ => false
                 };
 
@@ -3992,25 +3970,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   }
               }
            }
-          hir::ExprImplArg(_) => {
-            match self.impl_arg_ty {
-                Some(ty) => {
-                    ty
-                }
-                None => {
-                    struct_span_err!(self.tcx.sess, expr.span, E0626,
-                                 "gen arg expression outside of generator literal").emit();
-                    tcx.types.err
-                }
-            }
-          }
           hir::ExprYield(ref value) => {
             match self.yield_ty {
                 Some(ty) => {
                     self.check_expr_coercable_to_type(&value, ty);
                 }
                 None => {
-                    struct_span_err!(self.tcx.sess, expr.span, E0625,
+                    struct_span_err!(self.tcx.sess, expr.span, E0623,
                                  "yield statement outside of generator literal").emit();
                 }
             }

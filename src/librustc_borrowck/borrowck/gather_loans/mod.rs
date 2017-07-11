@@ -133,22 +133,6 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
-
-         let borrows_impl_arg = match cmt.cat {
-             Categorization::Local(id) => match self.bccx.tcx.hir.find(id) {
-                 Some(hir::map::NodeImplArg(..)) => true,
-                 _ => false,
-             },
-             _ => false,
-         };
-
-         if borrows_impl_arg {
-             span_err!(self.bccx.tcx.sess,
-                borrow_span,
-                E0623,
-                "cannot borrow the implicit argument of a generator");
-         }
-
         self.guarantee_valid(borrow_id,
                              borrow_span,
                              cmt,

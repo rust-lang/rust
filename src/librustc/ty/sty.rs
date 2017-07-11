@@ -648,7 +648,6 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct GenSig<'tcx> {
-    pub impl_arg_ty: Ty<'tcx>,
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
 }

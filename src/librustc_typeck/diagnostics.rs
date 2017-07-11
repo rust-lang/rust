@@ -4667,6 +4667,5 @@ register_diagnostics! {
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
 //  E0613, // Removed (merged with E0609)
-    E0625, // yield statement outside of generator literal
-    E0626, // gen arg expression outside of generator literal
+    E0623, // yield statement outside of generator literal
 }

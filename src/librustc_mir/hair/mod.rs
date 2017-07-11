@@ -249,7 +249,6 @@ pub enum ExprKind<'tcx> {
         outputs: Vec<ExprRef<'tcx>>,
         inputs: Vec<ExprRef<'tcx>>
     },
-    ImplArg,
     Yield {
         value: ExprRef<'tcx>,
     },

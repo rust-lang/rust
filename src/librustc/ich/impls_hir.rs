@@ -574,7 +574,6 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::E
                 hir::ExprAgain(..)      |
                 hir::ExprRet(..)        |
                 hir::ExprYield(..)    |
-                hir::ExprImplArg(..)    |
                 hir::ExprInlineAsm(..)  |
                 hir::ExprRepeat(..)     |
                 hir::ExprTup(..)        => {
@@ -654,8 +653,7 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprInlineAsm(asm, inputs, outputs),
     ExprStruct(path, fields, base),
     ExprRepeat(val, times),
-    ExprYield(val),
-    ExprImplArg(id)
+    ExprYield(val)
 });
 
 impl_stable_hash_for!(enum hir::LocalSource {
@@ -690,9 +688,9 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::M
     }
 }
 
-impl_stable_hash_for!(enum hir::GeneratorClause {
-    Immovable,
-    Movable
+impl_stable_hash_for!(enum hir::IsGenerator {
+    Yes,
+    No
 });
 
 impl_stable_hash_for!(enum hir::CaptureClause {
@@ -1031,15 +1029,10 @@ impl_stable_hash_for!(struct hir::Arg {
     id
 });
 
-impl_stable_hash_for!(struct hir::ImplArg {
-    id,
-    span
-});
-
 impl_stable_hash_for!(struct hir::Body {
     arguments,
     value,
-    impl_arg
+    is_generator
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {

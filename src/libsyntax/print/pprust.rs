@@ -2290,9 +2290,6 @@ impl<'a> State<'a> {
                     _ => ()
                 }
             }
-            ast::ExprKind::ImplArg => {
-                self.s.word("impl arg")?;
-            }
             ast::ExprKind::Try(ref e) => {
                 self.print_expr(e)?;
                 self.s.word("?")?

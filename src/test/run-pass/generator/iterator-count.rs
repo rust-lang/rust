@@ -18,7 +18,7 @@ impl<T: Generator<Return = ()>> Iterator for W<T> {
     type Item = T::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.0.resume(()) {
+        match self.0.resume() {
             State::Complete(..) => None,
             State::Yielded(v) => Some(v),
         }

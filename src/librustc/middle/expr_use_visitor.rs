@@ -528,8 +528,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             hir::ExprYield(ref value) => {
                 self.consume_expr(&value);
             }
-
-            hir::ExprImplArg(_) => { }
         }
     }
 

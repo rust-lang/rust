@@ -47,35 +47,6 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
     }
 }
 
-struct SwapLocalVisitor {
-    a: Local,
-    b: Local,
-}
-
-impl<'tcx> MutVisitor<'tcx> for SwapLocalVisitor {
-    fn visit_local(&mut self,
-                        local: &mut Local) {
-        if *local == self.a {
-            *local = self.b;
-        } else if *local == self.b {
-            *local = self.a;
-        }
-    }
-}
-
-struct InsertLocalVisitor {
-    local: Local,
-}
-
-impl<'tcx> MutVisitor<'tcx> for InsertLocalVisitor {
-    fn visit_local(&mut self,
-                        local: &mut Local) {
-        if local.index() >= self.local.index() {
-            *local = Local::new(local.index() + 1);
-        }
-    }
-}
-
 struct DerefArgVisitor;
 
 impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
@@ -251,17 +222,7 @@ fn ensure_generator_state_argument<'a, 'tcx>(
                 def_id: DefId,
                 mir: &mut Mir<'tcx>) -> (Ty<'tcx>, GeneratorInterior<'tcx>) {
     let interior = *tcx.typeck_tables_of(def_id).generator_interiors.get(&node_id).unwrap();
-
-    let gen_ty = mir.local_decls.raw[2].ty;
-
-    // Swap generator and implicit argument
-    SwapLocalVisitor {
-        a: Local::new(1),
-        b: Local::new(2),
-    }.visit_mir(mir);
-
-    mir.local_decls.raw[..].swap(1, 2);
-
+    let gen_ty = mir.local_decls.raw[1].ty;
     (gen_ty, interior)
 }
 
@@ -329,10 +290,6 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             set.union(&result.outs[block]);
         }
     }
-
-    // The implicit argument is defined after each suspend point so it can never
-    // be live in a suspend point.
-    set.remove(&Local::new(2));
 
     // The generator argument is ignored
     set.remove(&Local::new(1));
@@ -512,10 +469,6 @@ fn generate_drop<'a, 'tcx>(
             *kind = TerminatorKind::Return;
         }
     }
-
-    // Remove the implicit argument
-    mir.arg_count = 1;
-    mir.local_decls.raw.pop();
 
     // Replace the return variable
     let source_info = SourceInfo {
@@ -788,7 +741,7 @@ impl MirPass for StateTransform {
 
         mir.return_ty = ret_ty;
         mir.yield_ty = None;
-        mir.arg_count = 2;
+        mir.arg_count = 1;
         mir.spread_arg = None;
         mir.generator_layout = Some(layout);
 

@@ -21,7 +21,6 @@ fn main() {
         //~^ ERROR: Sync` is not satisfied
         let a = Cell::new(2);
         yield;
-        let _: () = gen arg;
     });
 
     let a = Cell::new(2);
@@ -29,6 +28,5 @@ fn main() {
         //~^ ERROR: Sync` is not satisfied
         drop(&a);
         yield;
-        let _: () = gen arg;
     });
 }

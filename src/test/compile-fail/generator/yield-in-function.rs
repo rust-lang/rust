@@ -10,6 +10,5 @@
 
 #![feature(generators)]
 
-fn main() { yield; gen arg; }
+fn main() { yield; }
 //~^ ERROR yield statement outside
-//~| ERROR gen arg expression outside

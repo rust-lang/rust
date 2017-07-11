@@ -50,7 +50,6 @@ impl Category {
             ExprKind::Index { .. } |
             ExprKind::SelfRef |
             ExprKind::VarRef { .. } |
-            ExprKind::ImplArg |
             ExprKind::StaticRef { .. } =>
                 Some(Category::Lvalue),
 

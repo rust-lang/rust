@@ -1191,5 +1191,4 @@ register_diagnostics! {
     E0594, // cannot assign to {}
     E0595, // closure cannot assign to {}
     E0598, // lifetime of {} is too short to guarantee its contents can be...
-    E0623, // borrow of the implicit argument of a generator
 }

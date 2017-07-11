@@ -1072,9 +1072,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         for argument in &body.arguments {
             self.visit_pat(&argument.pat);
         }
-        if let Some(ref impl_arg) = body.impl_arg {
-            record_var_lifetime(self, impl_arg.id, impl_arg.span);
-        }
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;

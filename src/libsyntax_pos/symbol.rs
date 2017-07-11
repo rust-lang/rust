@@ -307,8 +307,6 @@ declare_keywords! {
     (56, StaticLifetime, "'static")
     (57, Union,          "union")
     (58, Catch,          "catch")
-    (59, Arg,            "arg")
-    (60, Gen,            "gen")
 }
 
 // If an interner exists in TLS, return it. Otherwise, prepare a fresh one.

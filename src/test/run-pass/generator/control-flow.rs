@@ -13,10 +13,10 @@
 use std::ops::{State, Generator};
 
 fn finish<T>(mut amt: usize, mut t: T) -> T::Return
-    where T: Generator<(), Yield = ()>
+    where T: Generator<Yield = ()>
 {
     loop {
-        match t.resume(()) {
+        match t.resume() {
             State::Yielded(()) => amt = amt.checked_sub(1).unwrap(),
             State::Complete(ret) => {
                 assert_eq!(amt, 0);

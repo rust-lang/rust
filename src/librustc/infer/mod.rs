@@ -992,25 +992,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.next_region_var(EarlyBoundRegion(span, def.name, def.issue_32330))
     }
 
-    pub fn type_var_for_impl_arg(&self,
-                                span: Span,
-                                def_id: DefId)
-                            -> Ty<'tcx> {
-        let default = Some(type_variable::Default {
-            ty: self.tcx.mk_nil(),
-            origin_span: span,
-            def_id: def_id,
-        });
-
-        let ty_var_id = self.type_variables
-                            .borrow_mut()
-                            .new_var(false,
-                                     TypeVariableOrigin::TypeInference(span),
-                                     default);
-
-        self.tcx.mk_var(ty_var_id)
-    }
-
     /// Create a type inference variable for the given
     /// type parameter definition. The substitutions are
     /// for actual parameters that may be referred to by

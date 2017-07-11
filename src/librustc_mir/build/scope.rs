@@ -124,9 +124,6 @@ pub struct Scope<'tcx> {
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData<'tcx>>,
 
-    /// Is the first drop the drop of the implicit argument?
-    impl_arg_drop: bool,
-
     /// A scope may only have one associated free, because:
     ///
     /// 1. We require a `free` to only be scheduled in the scope of
@@ -254,28 +251,12 @@ impl<'tcx> Scope<'tcx> {
         }
     }
 
-    fn drops(&self, generator_drop: bool) -> &[DropData<'tcx>] {
-        if self.impl_arg_drop && generator_drop {
-            &self.drops[1..]
-        } else {
-            &self.drops[..]
-        }
-    }
-
-    fn drops_mut(&mut self, generator_drop: bool) -> &mut [DropData<'tcx>] {
-        if self.impl_arg_drop && generator_drop {
-            &mut self.drops[1..]
-        } else {
-            &mut self.drops[..]
-        }
-    }
-
     /// Returns the cached entrypoint for diverging exit from this scope.
     ///
     /// Precondition: the caches must be fully filled (i.e. diverge_cleanup is called) in order for
     /// this method to work correctly.
     fn cached_block(&self, generator_drop: bool) -> Option<BasicBlock> {
-        let mut drops = self.drops(generator_drop).iter().rev().filter_map(|data| {
+        let mut drops = self.drops.iter().rev().filter_map(|data| {
             match data.kind {
                 DropKind::Value { cached_block } => {
                     Some(cached_block.get(generator_drop))
@@ -375,7 +356,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             extent: extent,
             needs_cleanup: false,
             drops: vec![],
-            impl_arg_drop: false,
             free: None,
             cached_generator_drop: None,
             cached_exits: FxHashMap()
@@ -617,8 +597,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                          span: Span,
                          extent: CodeExtent,
                          lvalue: &Lvalue<'tcx>,
-                         lvalue_ty: Ty<'tcx>,
-                         impl_arg: bool) {
+                         lvalue_ty: Ty<'tcx>) {
         let needs_drop = self.hir.needs_drop(lvalue_ty);
         let drop_kind = if needs_drop {
             DropKind::Value { cached_block: CachedBlock::default() }
@@ -688,10 +667,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let extent_span = extent.span(&tcx.hir).unwrap();
                 // Attribute scope exit drops to scope's closing brace
                 let scope_end = Span { lo: extent_span.hi, .. extent_span};
-                if impl_arg {
-                    assert!(scope.drops.is_empty());
-                    scope.impl_arg_drop = true;
-                }
                 scope.drops.push(DropData {
                     span: scope_end,
                     location: lvalue.clone(),
@@ -865,7 +840,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            generator_drop: bool)
                            -> BlockAnd<()> {
 
-    let mut iter = scope.drops(generator_drop).iter().rev().peekable();
+    let mut iter = scope.drops.iter().rev().peekable();
     while let Some(drop_data) = iter.next() {
         let source_info = scope.source_info(drop_data.span);
         if let DropKind::Value { .. } = drop_data.kind {
@@ -958,7 +933,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // Next, build up the drops. Here we iterate the vector in
     // *forward* order, so that we generate drops[0] first (right to
     // left in diagram above).
-    for (j, drop_data) in scope.drops_mut(generator_drop).iter_mut().enumerate() {
+    for (j, drop_data) in scope.drops.iter_mut().enumerate() {
         debug!("build_diverge_scope drop_data[{}]: {:?}", j, drop_data);
         // Only full value drops are emitted in the diverging path,
         // not StorageDead.

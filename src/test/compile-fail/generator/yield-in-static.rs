@@ -10,6 +10,5 @@
 
 #![feature(generators)]
 
-static B: u8 = { yield 3u8; gen arg; 3u8};
+static B: u8 = { yield 3u8; 3u8};
 //~^ ERROR yield statement outside
-//~| ERROR gen arg expression outside

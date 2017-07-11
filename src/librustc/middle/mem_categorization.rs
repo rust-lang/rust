@@ -602,17 +602,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          hir::ExprImplArg(id) => {
-            Ok(Rc::new(cmt_ {
-                id: expr.id,
-                span: expr.span,
-                cat: Categorization::Local(id),
-                mutbl: MutabilityCategory::McDeclared,
-                ty: expr_ty,
-                note: NoteNone
-            }))
-          },
-
           hir::ExprType(ref e, _) => {
             self.cat_expr(&e)
           }

@@ -447,7 +447,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 closure_id: def_id,
                 substs: substs,
                 upvars: upvars,
-                generator: gen.is_some(),
+                generator: gen == hir::IsGenerator::Yes,
             }
         }
 
@@ -567,7 +567,6 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprArray(ref fields) => ExprKind::Array { fields: fields.to_ref() },
         hir::ExprTup(ref fields) => ExprKind::Tuple { fields: fields.to_ref() },
 
-        hir::ExprImplArg(_) => ExprKind::ImplArg,
         hir::ExprYield(ref v) => ExprKind::Yield { value: v.to_ref() },
     };
 

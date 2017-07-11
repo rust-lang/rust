@@ -475,7 +475,6 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             }
 
             TerminatorKind::Yield { ref value,  .. } => {
-                self.create_move_path(&Mir::impl_arg_lvalue());
                 self.gather_operand(loc, value);
             }
 

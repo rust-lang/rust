@@ -241,11 +241,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Yield { value } => {
                 let value = unpack!(block = this.as_operand(block, scope, value));
-                let impl_arg_ty = this.impl_arg_ty.unwrap();
-                block = unpack!(this.build_drop(block,
-                    expr_span,
-                    Lvalue::Local(Local::new(1)),
-                    impl_arg_ty));
                 let resume = this.cfg.start_new_block();
                 let cleanup = this.generator_drop_cleanup(expr_span);
                 this.cfg.terminate(block, source_info, TerminatorKind::Yield {
@@ -272,7 +267,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Continue { .. } |
             ExprKind::Return { .. } |
             ExprKind::InlineAsm { .. } |
-            ExprKind::ImplArg |
             ExprKind::StaticRef { .. } => {
                 // these do not have corresponding `Rvalue` variants,
                 // so make an operand and then return that

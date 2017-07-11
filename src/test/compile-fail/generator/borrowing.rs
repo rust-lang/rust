@@ -16,14 +16,13 @@ use std::cell::Cell;
 fn main() {
     let _b = {
         let a = 3;
-        (|| yield &a).resume(())
+        (|| yield &a).resume()
         //~^ ERROR: `a` does not live long enough
     };
 
     let _b = {
         let a = 3;
         || {
-            let _: () = gen arg; // FIXME: shouldn't be needed for inference
             yield &a
             //~^ ERROR: `a` does not live long enough
         }

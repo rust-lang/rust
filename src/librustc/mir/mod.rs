@@ -181,10 +181,6 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn impl_arg_lvalue() -> Lvalue<'tcx> {
-        Lvalue::Local(Local::new(1))
-    }
-
     #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.basic_blocks

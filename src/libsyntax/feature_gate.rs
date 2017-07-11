@@ -1335,11 +1335,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "yield syntax is experimental");
             }
-            ast::ExprKind::ImplArg => {
-                gate_feature_post!(&self, generators,
-                                  e.span,
-                                  "gen arg syntax is experimental");
-            }
             ast::ExprKind::Lit(ref lit) => {
                 if let ast::LitKind::Int(_, ref ty) = lit.node {
                     match *ty {

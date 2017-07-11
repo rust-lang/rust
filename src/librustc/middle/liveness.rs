@@ -249,7 +249,6 @@ struct LocalInfo {
 
 #[derive(Copy, Clone, Debug)]
 enum VarKind {
-    ImplArg(NodeId),
     Arg(NodeId, ast::Name),
     Local(LocalInfo),
     CleanExit
@@ -305,7 +304,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         self.num_vars += 1;
 
         match vk {
-            Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) | ImplArg(node_id) => {
+            Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             },
             CleanExit => {}
@@ -330,7 +329,6 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             Local(LocalInfo { name, .. }) | Arg(_, name) => {
                 name.to_string()
             },
-            ImplArg(_) => "<impl-arg>".to_string(),
             CleanExit => "<clean-exit>".to_string()
         }
     }
@@ -366,10 +364,6 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
             fn_maps.add_variable(Arg(arg_id, name));
         })
     };
-
-    if let Some(ref impl_arg) = body.impl_arg {
-        fn_maps.add_variable(ImplArg(impl_arg.id));
-    }
 
     // gather up the various local variables, significant expressions,
     // and so forth:
@@ -422,10 +416,6 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
         intravisit::walk_expr(ir, expr);
-      }
-      hir::ExprImplArg(_) => {
-          ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
-          intravisit::walk_expr(ir, expr);
       }
       hir::ExprClosure(..) => {
         // Interesting control flow (for loops can contain labeled
@@ -891,10 +881,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match expr.node {
           // Interesting cases with control flow or which gen/kill
-          hir::ExprImplArg(arg_id) => {
-              self.access_var(expr.id, arg_id, succ, ACC_READ | ACC_USE, expr.span)
-          }
-
           hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
               self.access_path(expr.id, path, succ, ACC_READ | ACC_USE)
           }
@@ -1226,9 +1212,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn write_lvalue(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                     -> LiveNode {
         match expr.node {
-          hir::ExprImplArg(arg_id) => {
-              self.access_var(expr.id, arg_id, succ, acc, expr.span)
-          }
           hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
               self.access_path(expr.id, path, succ, acc)
           }
@@ -1419,7 +1402,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprRet(..) |
       hir::ExprBreak(..) | hir::ExprAgain(..) | hir::ExprLit(_) |
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
-      hir::ExprStruct(..) | hir::ExprRepeat(..) | hir::ExprImplArg(_) |
+      hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprClosure(..) | hir::ExprPath(_) | hir::ExprYield(..) |
       hir::ExprBox(..) | hir::ExprType(..) => {
         intravisit::walk_expr(this, expr);
@@ -1442,7 +1425,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.warn_about_dead_assign(expr.span, expr.id, ln, var);
                 }
             }
-            hir::ExprImplArg(_) => bug!(),
             _ => {
                 // For other kinds of lvalues, no checks are required,
                 // and any embedded expressions are actually rvalues

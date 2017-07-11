@@ -36,9 +36,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for arg in &body.arguments {
             wbcx.visit_node_id(arg.pat.span, arg.id);
         }
-        if let Some(ref impl_arg) = body.impl_arg {
-            wbcx.visit_node_id(impl_arg.span, impl_arg.id);
-        }
         wbcx.visit_body(body);
         wbcx.visit_upvar_borrow_map();
         wbcx.visit_closures();
@@ -328,7 +325,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_generator_sigs(&mut self) {
         for (&node_id, gen_sig) in self.fcx.tables.borrow().generator_sigs.iter() {
             let gen_sig = gen_sig.map(|s| ty::GenSig {
-                impl_arg_ty: self.resolve(&s.impl_arg_ty, &node_id),
                 yield_ty: self.resolve(&s.yield_ty, &node_id),
                 return_ty: self.resolve(&s.return_ty, &node_id),
             });

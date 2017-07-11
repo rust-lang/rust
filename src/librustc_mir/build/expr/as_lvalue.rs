@@ -80,9 +80,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
-                block.and(Lvalue::Local(Local::new(this.arg_offset + 1)))
-            }
-            ExprKind::ImplArg => {
                 block.and(Lvalue::Local(Local::new(1)))
             }
             ExprKind::VarRef { id } => {

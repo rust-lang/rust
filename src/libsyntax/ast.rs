@@ -984,9 +984,6 @@ pub enum ExprKind {
 
     /// A `yield`, with an optional value to be yielded
     Yield(Option<P<Expr>>),
-
-    /// A reference to the implicit argument of a generator
-    ImplArg,
 }
 
 /// The explicit Self type in a "qualified path". The actual

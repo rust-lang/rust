@@ -37,7 +37,7 @@ fn t1() {
     };
 
     let n = A.load(Ordering::SeqCst);
-    drop(foo.resume(()));
+    drop(foo.resume());
     assert_eq!(A.load(Ordering::SeqCst), n);
     drop(foo);
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
@@ -50,7 +50,7 @@ fn t2() {
     };
 
     let n = A.load(Ordering::SeqCst);
-    drop(foo.resume(()));
+    drop(foo.resume());
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
     drop(foo);
     assert_eq!(A.load(Ordering::SeqCst), n + 1);
@@ -59,7 +59,6 @@ fn t2() {
 fn t3() {
     let b = B;
     let foo = || {
-        let _: () = gen arg; // FIXME: this line should not be necessary
         yield;
         drop(b);
     };

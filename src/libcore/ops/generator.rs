@@ -56,11 +56,11 @@ pub enum State<Y, R> {
 ///         return "foo"
 ///     };
 ///
-///     match generator.resume(()) {
+///     match generator.resume() {
 ///         State::Yielded(1) => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
-///     match generator.resume(()) {
+///     match generator.resume() {
 ///         State::Complete("foo") => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
@@ -73,7 +73,7 @@ pub enum State<Y, R> {
 #[cfg_attr(not(stage0), lang = "generator")]
 #[unstable(feature = "generator_trait", issue = "43122")]
 #[fundamental]
-pub trait Generator<Arg = ()> {
+pub trait Generator {
     /// The type of value this generator yields.
     ///
     /// This associated type corresponds to the `yield` expression and the
@@ -116,16 +116,16 @@ pub trait Generator<Arg = ()> {
     /// been returned previously. While generator literals in the language are
     /// guaranteed to panic on resuming after `Complete`, this is not guaranteed
     /// for all implementations of the `Generator` trait.
-    fn resume(&mut self, arg: Arg) -> State<Self::Yield, Self::Return>;
+    fn resume(&mut self) -> State<Self::Yield, Self::Return>;
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<'a, T, U> Generator<U> for &'a mut T
-    where T: Generator<U> + ?Sized
+impl<'a, T> Generator for &'a mut T
+    where T: Generator + ?Sized
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self, arg: U) -> State<Self::Yield, Self::Return> {
-        (**self).resume(arg)
+    fn resume(&mut self) -> State<Self::Yield, Self::Return> {
+        (**self).resume()
     }
 }

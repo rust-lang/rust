@@ -10,6 +10,5 @@
 
 #![feature(generators)]
 
-const A: u8 = { yield 3u8; gen arg; 3u8};
+const A: u8 = { yield 3u8; 3u8};
 //~^ ERROR yield statement outside
-//~| ERROR gen arg expression outside

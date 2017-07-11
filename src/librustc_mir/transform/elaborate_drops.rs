@@ -96,11 +96,9 @@ fn find_dead_unwinds<'a, 'tcx>(
                            MaybeInitializedLvals::new(tcx, mir, &env),
                            |bd, p| &bd.move_data().move_paths[p]);
     for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-        let impl_arg = Mir::impl_arg_lvalue();
         let location = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref location, unwind: Some(_), .. } |
             TerminatorKind::DropAndReplace { ref location, unwind: Some(_), .. } => location,
-            TerminatorKind::Yield { .. } => &impl_arg,
             _ => continue,
         };
 
@@ -344,11 +342,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     {
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let terminator = data.terminator();
-            let impl_arg = Mir::impl_arg_lvalue();
             let location = match terminator.kind {
                 TerminatorKind::Drop { ref location, .. } |
                 TerminatorKind::DropAndReplace { ref location, .. } => location,
-                TerminatorKind::Yield { .. } => &impl_arg,
                 _ => continue
             };
 
