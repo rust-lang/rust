@@ -144,7 +144,7 @@ impl<'a> FmtVisitor<'a> {
 
         if !b.stmts.is_empty() {
             if let Some(expr) = utils::stmt_expr(&b.stmts[b.stmts.len() - 1]) {
-                if utils::semicolon_for_expr(expr) {
+                if utils::semicolon_for_expr(&self.get_context(), expr) {
                     self.buffer.push_str(";");
                 }
             }

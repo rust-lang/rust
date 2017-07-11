@@ -156,21 +156,26 @@ pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
 }
 
 #[inline]
-pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
+pub fn semicolon_for_expr(context: &RewriteContext, expr: &ast::Expr) -> bool {
     match expr.node {
-        ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => true,
+        ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => {
+            context.config.trailing_semicolon()
+        }
         _ => false,
     }
 }
 
 #[inline]
-pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
+pub fn semicolon_for_stmt(context: &RewriteContext, stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Semi(ref expr) => match expr.node {
             ast::ExprKind::While(..) |
             ast::ExprKind::WhileLet(..) |
             ast::ExprKind::Loop(..) |
             ast::ExprKind::ForLoop(..) => false,
+            ast::ExprKind::Break(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Ret(..) => {
+                context.config.trailing_semicolon()
+            }
             _ => true,
         },
         ast::StmtKind::Expr(..) => false,
