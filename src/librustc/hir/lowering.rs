@@ -402,6 +402,7 @@ impl<'a> LoweringContext<'a> {
             call_site: span,
             callee: codemap::NameAndSpan {
                 format: codemap::CompilerDesugaring(Symbol::intern(reason)),
+                is_hygienic: true,
                 span: Some(span),
                 allow_internal_unstable: true,
             },

@@ -77,6 +77,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             call_site: DUMMY_SP,
             callee: NameAndSpan {
                 format: MacroAttribute(Symbol::intern(name)),
+                is_hygienic: true,
                 span: None,
                 allow_internal_unstable: true,
             }

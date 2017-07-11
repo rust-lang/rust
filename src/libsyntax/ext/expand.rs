@@ -408,6 +408,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             call_site: attr.span,
             callee: NameAndSpan {
                 format: MacroAttribute(Symbol::intern(&format!("{}", attr.path))),
+                is_hygienic: true,
                 span: None,
                 allow_internal_unstable: false,
             }
@@ -465,6 +466,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 call_site: span,
                 callee: NameAndSpan {
                     format: MacroBang(Symbol::intern(&format!("{}", path))),
+                    is_hygienic: true,
                     span: def_site_span,
                     allow_internal_unstable: allow_internal_unstable,
                 },
@@ -502,6 +504,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     call_site: span,
                     callee: NameAndSpan {
                         format: MacroBang(Symbol::intern(&format!("{}", path))),
+                        is_hygienic: true,
                         span: tt_span,
                         allow_internal_unstable: allow_internal_unstable,
                     }
@@ -534,6 +537,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     call_site: span,
                     callee: NameAndSpan {
                         format: MacroBang(Symbol::intern(&format!("{}", path))),
+                        is_hygienic: true,
                         // FIXME procedural macros do not have proper span info
                         // yet, when they do, we should use it here.
                         span: None,
@@ -575,6 +579,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             call_site: span,
             callee: NameAndSpan {
                 format: MacroAttribute(pretty_name),
+                is_hygienic: true,
                 span: None,
                 allow_internal_unstable: false,
             }

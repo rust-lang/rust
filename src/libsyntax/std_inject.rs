@@ -26,6 +26,7 @@ fn ignored_span(sp: Span) -> Span {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("std_inject")),
+            is_hygienic: true,
             span: None,
             allow_internal_unstable: true,
         }

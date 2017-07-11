@@ -62,6 +62,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
         call_site: span,
         callee: NameAndSpan {
             format: ExpnFormat::MacroAttribute(Symbol::intern(&pretty_name)),
+            is_hygienic: true,
             span: None,
             allow_internal_unstable: true,
         },
