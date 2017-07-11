@@ -486,6 +486,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::EndRegion(_) |
+            mir::StatementKind::Validate(..) |
             mir::StatementKind::Nop => {}
         }
     }

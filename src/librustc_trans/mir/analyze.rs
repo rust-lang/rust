@@ -158,6 +158,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
                 LvalueContext::StorageLive |
                 LvalueContext::StorageDead |
+                LvalueContext::Validate |
                 LvalueContext::Inspect |
                 LvalueContext::Consume => {}
 

@@ -818,11 +818,15 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
 
+    /// Execute a piece of inline Assembly.
     InlineAsm {
         asm: Box<InlineAsm>,
         outputs: Vec<Lvalue<'tcx>>,
         inputs: Vec<Operand<'tcx>>
     },
+
+    /// Assert the given lvalues to be valid inhabitants of their type.
+    Validate(ValidationOp, Vec<(Ty<'tcx>, Lvalue<'tcx>)>),
 
     /// Mark one terminating point of an extent (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
@@ -832,6 +836,13 @@ pub enum StatementKind<'tcx> {
     Nop,
 }
 
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
+pub enum ValidationOp {
+    Acquire,
+    Release,
+    Suspend(CodeExtent),
+}
+
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::StatementKind::*;
@@ -839,6 +850,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
             // (reuse lifetime rendering policy from ppaux.)
             EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
+            Validate(ref op, ref lvalues) => write!(fmt, "Validate({:?}, {:?})", op, lvalues),
             StorageLive(ref lv) => write!(fmt, "StorageLive({:?})", lv),
             StorageDead(ref lv) => write!(fmt, "StorageDead({:?})", lv),
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
@@ -1505,6 +1517,10 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             // trait with a `fn fold_extent`.
             EndRegion(ref extent) => EndRegion(extent.clone()),
 
+            Validate(ref op, ref lvals) =>
+                Validate(op.clone(),
+                         lvals.iter().map(|ty_and_lval| ty_and_lval.fold_with(folder)).collect()),
+
             Nop => Nop,
         };
         Statement {
@@ -1529,6 +1545,8 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             // to carry `[ty::Region]`, or extend the `TypeVisitor`
             // trait with a `fn visit_extent`.
             EndRegion(ref _extent) => false,
+
+            Validate(ref _op, ref lvalues) => lvalues.iter().any(|ty_and_lvalue| ty_and_lvalue.visit_with(visitor)),
 
             Nop => false,
         }

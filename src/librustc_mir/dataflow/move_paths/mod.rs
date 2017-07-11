@@ -416,6 +416,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             }
             StatementKind::InlineAsm { .. } |
             StatementKind::EndRegion(_) |
+            StatementKind::Validate(..) |
             StatementKind::Nop => {}
         }
     }
