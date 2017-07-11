@@ -603,7 +603,6 @@ pub trait FloatConvert<T: Float>: Float {
     }
 }
 
-#[allow(unused)]
 macro_rules! float_common_impls {
     ($ty:ident<$t:tt>) => {
         impl<$t> Default for $ty<$t> where Self: Float {
@@ -687,3 +686,6 @@ macro_rules! float_common_impls {
         }
     }
 }
+
+pub mod ieee;
+pub mod ppc;
