@@ -463,6 +463,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
                 if count > 0 {
+                    // TODO: Should we, at least, validate the alignment? (Also see memory::copy)
                     self.memory.check_align(ptr, ty_align, size * count)?;
                     self.memory.write_repeat(ptr, val_byte, size * count)?;
                 }

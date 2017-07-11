@@ -663,6 +663,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn copy(&mut self, src: PrimVal, dest: PrimVal, size: u64, align: u64, nonoverlapping: bool) -> EvalResult<'tcx> {
         if size == 0 {
+            // TODO: Should we check for alignment here? (Also see write_bytes intrinsic)
             return Ok(());
         }
         let src = src.to_ptr()?;
