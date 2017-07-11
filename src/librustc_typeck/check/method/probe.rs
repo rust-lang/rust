@@ -861,7 +861,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             debug!("assemble_projection_candidates: step={:?}", step);
 
             let (def_id, substs) = match step.self_ty.sty {
-                ty::TyProjection(ref data) => (data.trait_ref.def_id, data.trait_ref.substs),
+                ty::TyProjection(ref data) => {
+                    let trait_ref = data.trait_ref(self.tcx);
+                    (trait_ref.def_id, trait_ref.substs)
+                },
                 ty::TyAnon(def_id, substs) => (def_id, substs),
                 _ => continue,
             };

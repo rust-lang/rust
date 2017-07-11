@@ -156,7 +156,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
                     ty::Predicate::Projection(ref proj_predicate) => {
-                        let trait_ref = proj_predicate.to_poly_trait_ref();
+                        let trait_ref = proj_predicate.to_poly_trait_ref(self.tcx);
                         self.self_type_matches_expected_vid(trait_ref, expected_vid)
                             .and_then(|_| self.deduce_sig_from_projection(proj_predicate))
                     }
@@ -174,7 +174,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .map(|obligation| &obligation.obligation)
             .filter_map(|obligation| {
                 let opt_trait_ref = match obligation.predicate {
-                    ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref()),
+                    ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref(self.tcx)),
                     ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
                     ty::Predicate::Equate(..) => None,
                     ty::Predicate::Subtype(..) => None,
@@ -211,7 +211,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("deduce_sig_from_projection({:?})", projection);
 
-        let trait_ref = projection.to_poly_trait_ref();
+        let trait_ref = projection.to_poly_trait_ref(tcx);
 
         if tcx.lang_items.fn_trait_kind(trait_ref.def_id()).is_none() {
             return None;

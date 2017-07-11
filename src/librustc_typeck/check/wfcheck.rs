@@ -508,7 +508,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                      .map(|(index, _)| Parameter(index as u32))
                      .collect();
 
-        identify_constrained_type_params(ty_predicates.predicates.as_slice(),
+        identify_constrained_type_params(self.tcx,
+                                         ty_predicates.predicates.as_slice(),
                                          None,
                                          &mut constrained_parameters);
 

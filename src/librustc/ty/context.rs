@@ -28,7 +28,7 @@ use mir::transform::Passes;
 use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
 use traits;
-use ty::{self, TraitRef, Ty, TypeAndMut};
+use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
@@ -1387,12 +1387,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_projection(self,
-                         trait_ref: TraitRef<'tcx>,
-                         item_name: Name)
+                         item_def_id: DefId,
+                         substs: &'tcx Substs<'tcx>)
         -> Ty<'tcx> {
-            // take a copy of substs so that we own the vectors inside
-            let inner = ProjectionTy::from_ref_and_name(self, trait_ref, item_name);
-            self.mk_ty(TyProjection(inner))
+            self.mk_ty(TyProjection(ProjectionTy {
+                item_def_id: item_def_id,
+                substs: substs,
+            }))
         }
 
     pub fn mk_closure(self,

@@ -134,8 +134,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionTy<'a> {
     type Lifted = ty::ProjectionTy<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
                              -> Option<ty::ProjectionTy<'tcx>> {
-        tcx.lift(&self.trait_ref).map(|trait_ref| {
-            ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, self.item_name(tcx))
+        tcx.lift(&self.substs).map(|substs| {
+            ty::ProjectionTy {
+                item_def_id: self.item_def_id,
+                substs: substs,
+            }
         })
     }
 }
@@ -156,11 +159,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     type Lifted = ty::ExistentialProjection<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&(self.trait_ref, self.ty)).map(|(trait_ref, ty)| {
+        tcx.lift(&self.substs).map(|substs| {
             ty::ExistentialProjection {
-                trait_ref,
-                item_name: self.item_name,
-                ty,
+                substs,
+                ty: tcx.lift(&self.ty).expect("type must lift when substs do"),
+                item_def_id: self.item_def_id,
             }
         })
     }
@@ -356,7 +359,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             Traits(x) => Traits(x),
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy => CyclicTy,
-            ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
+            ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
 
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
@@ -621,10 +624,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.substs.visit_with(visitor)
     }
-
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        visitor.visit_trait_ref(*self)
-    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialTraitRef<'tcx> {
@@ -847,27 +846,27 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionPredicate<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialProjection<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ExistentialProjection {
-            trait_ref: self.trait_ref.fold_with(folder),
-            item_name: self.item_name,
             ty: self.ty.fold_with(folder),
+            substs: self.substs.fold_with(folder),
+            item_def_id: self.item_def_id,
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.trait_ref.visit_with(visitor) || self.ty.visit_with(visitor)
+        self.substs.visit_with(visitor) || self.ty.visit_with(visitor)
     }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionTy<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ProjectionTy {
-            trait_ref: self.trait_ref.fold_with(folder),
+            substs: self.substs.fold_with(folder),
             item_def_id: self.item_def_id,
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.trait_ref.visit_with(visitor)
+        self.substs.visit_with(visitor)
     }
 }
 
@@ -1018,7 +1017,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             Traits(x) => Traits(x),
             VariadicMismatch(x) => VariadicMismatch(x),
             CyclicTy => CyclicTy,
-            ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
+            ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
             Sorts(x) => Sorts(x.fold_with(folder)),
             TyParamDefaultMismatch(ref x) => TyParamDefaultMismatch(x.fold_with(folder)),
@@ -1054,7 +1053,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             Traits(_) |
             VariadicMismatch(_) |
             CyclicTy |
-            ProjectionNameMismatched(_) |
+            ProjectionMismatched(_) |
             ProjectionBoundsLength(_) => false,
         }
     }

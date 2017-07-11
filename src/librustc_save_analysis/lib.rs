@@ -608,13 +608,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         hir::QPath::TypeRelative(..) => {
                             let ty = hir_ty_to_ty(self.tcx, ty);
                             if let ty::TyProjection(proj) = ty.sty {
-                                for item in self.tcx.associated_items(proj.trait_ref.def_id) {
-                                    if item.kind == ty::AssociatedKind::Type {
-                                        if item.name == proj.item_name(self.tcx) {
-                                            return HirDef::AssociatedTy(item.def_id);
-                                        }
-                                    }
-                                }
+                                return HirDef::AssociatedTy(proj.item_def_id);
                             }
                             HirDef::Err
                         }
