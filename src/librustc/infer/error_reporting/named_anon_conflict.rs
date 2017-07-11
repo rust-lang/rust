@@ -37,7 +37,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         match *anon_region {
             ty::ReFree(ref free_region) => {
-
                 let id = free_region.scope;
                 let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                 let body_id = self.tcx.hir.maybe_body_owned_by(node_id).unwrap();
@@ -69,7 +68,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             _ => None,
-
         }
     }
 
@@ -77,7 +75,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // the function arguments consist of a named region and an anonymous
     // region and corresponds to `ConcreteFailure(..)`
     pub fn try_report_named_anon_conflict(&self, error: &RegionResolutionError<'tcx>) -> bool {
-
         let (span, sub, sup) = match *error {
             ConcreteFailure(ref origin, sub, sup) => (origin.span(), sub, sup),
             _ => return false, // inapplicable
@@ -113,7 +110,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     .collect_referenced_late_bound_regions(&sig.output());
                 if late_bound_regions.iter().any(|r| *r == br) {
                     return false;
-                } else {
                 }
             }
             _ => {}
@@ -134,9 +130,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let (error_var, span_label_var) = if let Some(simple_name) = arg.pat.simple_name() {
             (format!("the type of `{}`", simple_name), format!("the type of `{}`", simple_name))
         } else {
-            (format!("parameter type"), format!("type"))
+            ("parameter type".to_owned(), "type".to_owned())
         };
-
 
         struct_span_err!(self.tcx.sess,
                          span,
@@ -149,13 +144,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 .emit();
 
         return true;
-
     }
 
     // This method returns whether the given Region is Anonymous
     // and returns the DefId corresponding to the region.
     pub fn is_suitable_anonymous_region(&self, region: Region<'tcx>) -> Option<DefId> {
-
         match *region {
             ty::ReFree(ref free_region) => {
                 match free_region.bound_region {

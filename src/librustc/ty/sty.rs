@@ -993,7 +993,6 @@ impl RegionKind {
 
     // This method returns whether the given Region is Named
     pub fn is_named_region(&self) -> bool {
-
         match *self {
             ty::ReFree(ref free_region) => {
                 match free_region.bound_region {
