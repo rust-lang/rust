@@ -46,6 +46,7 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
         ExpansionKind::Items => Expansion::Items(SmallVector::one(P(ast::Item {
             id: id, span: span, ident: ident, vis: vis, attrs: attrs,
             node: ast::ItemKind::Mac(mac_placeholder()),
+            tokens: None,
         }))),
         ExpansionKind::TraitItems => Expansion::TraitItems(SmallVector::one(ast::TraitItem {
             id: id, span: span, ident: ident, attrs: attrs,

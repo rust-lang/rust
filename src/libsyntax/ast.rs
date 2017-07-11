@@ -1812,6 +1812,12 @@ pub struct Item {
     pub node: ItemKind,
     pub vis: Visibility,
     pub span: Span,
+
+    /// Original tokens this item was parsed from. This isn't necessarily
+    /// available for all items, although over time more and more items should
+    /// have this be `Some`. Right now this is primarily used for procedural
+    /// macros, notably custom attributes.
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

@@ -4653,6 +4653,7 @@ impl<'a> Parser<'a> {
             node: node,
             vis: vis,
             span: span,
+            tokens: None, // TODO: fill this in
         })
     }
 

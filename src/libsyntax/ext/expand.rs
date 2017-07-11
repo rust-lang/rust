@@ -214,6 +214,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             ident: keywords::Invalid.ident(),
             id: ast::DUMMY_NODE_ID,
             vis: ast::Visibility::Public,
+            tokens: None,
         })));
 
         match self.expand(krate_item).make_items().pop().map(P::unwrap) {

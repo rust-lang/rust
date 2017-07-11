@@ -236,6 +236,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             ),
             vis: ast::Visibility::Public,
             span: span,
+            tokens: None,
         })
     ]))
 }

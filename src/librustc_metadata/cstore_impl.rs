@@ -389,6 +389,7 @@ impl CrateStore for cstore::CStore {
                 legacy: def.legacy,
             }),
             vis: ast::Visibility::Inherited,
+            tokens: None,
         })
     }
 

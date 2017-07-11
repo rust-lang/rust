@@ -61,5 +61,6 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
         })),
         vis: ast::Visibility::Inherited,
         span: sp,
+        tokens: None,
     })))
 }
