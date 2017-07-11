@@ -1,7 +1,9 @@
 #![feature(box_syntax)]
+#![feature(rustc_private)]
 
 extern crate cargo;
 extern crate crates_io;
+extern crate getopts;
 
 use crates_io::{Crate, Registry};
 
@@ -9,9 +11,11 @@ use cargo::exit_with_error;
 use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
 use cargo::ops::{compile, CompileMode, CompileOptions};
 use cargo::sources::registry::RegistrySource;
-use cargo::util::{human, CargoResult, CliError};
+use cargo::util::{human, CargoError, CargoResult, CliError};
 use cargo::util::config::Config;
 use cargo::util::important_paths::find_root_manifest_for_wd;
+
+use getopts::{Matches, Options};
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -74,8 +78,12 @@ struct WorkInfo<'a> {
 
 impl<'a> WorkInfo<'a> {
     /// Construct a package/workspace pair for the local directory.
-    fn local(config: &'a Config) -> CargoResult<WorkInfo<'a>> {
-        let manifest_path = find_root_manifest_for_wd(None, config.cwd())?;
+    fn local(config: &'a Config, explicit_path: Option<PathBuf>) -> CargoResult<WorkInfo<'a>> {
+        let manifest_path = if let Some(path) = explicit_path {
+            find_root_manifest_for_wd(None, &path)?
+        } else {
+            find_root_manifest_for_wd(None, config.cwd())?
+        };
 
         Ok(WorkInfo {
             package: Package::for_path(&manifest_path, config)?,
@@ -123,34 +131,61 @@ impl<'a> WorkInfo<'a> {
 /// * possibly reduce the complexity by investigating where some of the info can be sourced from
 /// in a more direct fashion
 /// * add proper support to compare two arbitrary versions
-fn do_main() -> CargoResult<()> {
-    use std::env::var;
-    let config = Config::default()?;
-    let mut source = SourceInfo::new(&config)?;
-
-    let current =
-        if let (Ok(n), Ok(v)) = (var("RUST_SEMVER_NAME"), var("RUST_SEMVER_CURRENT")) {
-            let info = NameAndVersion { name: &n, version: &v };
-            WorkInfo::remote(&config, &mut source, info)?
+fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
+    fn parse_arg(opt: &str) -> CargoResult<(&str, &str)> {
+        let mut split = opt.split('-');
+        let name = if let Some(n) = split.next() {
+            n
         } else {
-            WorkInfo::local(&config)?
+            return Err(human("spec has to be of form `name-version`".to_owned()));
         };
+        let version = if let Some(v) = split.next() {
+            v
+        } else {
+            return Err(human("spec has to be of form `name-version`".to_owned()));
+        };
+
+        if split.next().is_some() {
+            return Err(human("spec has to be of form `name-version`".to_owned()));
+        }
+
+        Ok((name, version))
+    }
+
+    let mut source = SourceInfo::new(config)?;
+
+    let current = if let Some(opt) = matches.opt_str("C") {
+        let (name, version) = parse_arg(&opt)?;
+
+        let info = NameAndVersion { name: name, version: version };
+        WorkInfo::remote(config, &mut source, info)?
+    } else {
+        WorkInfo::local(config, matches.opt_str("c").map(PathBuf::from))?
+    };
 
     let name = current.package.name().to_owned();
 
-    let (stable, stable_version) = if let Ok(v) = var("RUST_SEMVER_STABLE") {
-        let info = NameAndVersion { name: &name, version: &v };
-        let work_info = WorkInfo::remote(&config, &mut source, info)?;
-        (work_info, v.clone())
+    let (stable, stable_version) = if let Some(opt) = matches.opt_str("S") {
+        let (name, version) = parse_arg(&opt)?;
+
+        let info = NameAndVersion { name: name, version: version };
+        let work_info = WorkInfo::remote(config, &mut source, info)?;
+
+        (work_info, version.to_owned())
+    } else if let Some(path) = matches.opt_str("s") {
+        let work_info = WorkInfo::local(config, Some(PathBuf::from(path)))?;
+        let version = format!("{}", work_info.package.version());
+        (work_info, version)
     } else {
         let stable_crate = exact_search(&name)?;
         let info = NameAndVersion { name: &name, version: &stable_crate.max_version };
-        let work_info = WorkInfo::remote(&config, &mut source, info)?;
+        let work_info = WorkInfo::remote(config, &mut source, info)?;
+
         (work_info, stable_crate.max_version.clone())
     };
 
-    let (current_rlib, current_deps_output) = current.rlib_and_dep_output(&config, &name)?;
-    let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(&config, &name)?;
+    let (current_rlib, current_deps_output) = current.rlib_and_dep_output(config, &name)?;
+    let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name)?;
 
     let mut child = Command::new("rust-semverver")
         .arg("--crate-type=lib")
@@ -178,20 +213,9 @@ fn do_main() -> CargoResult<()> {
     Ok(())
 }
 
-const CARGO_SEMVER_HELP: &str = r#"Checks a package's SemVer compatibility with already published versions.
-
-Usage:
-    cargo semver [options]
-
-Common options:
-    -h, --help               Print this message
-    -V, --version            Print version info and exit
-
-Currently, no other options are supported (this will change in the future)
-"#;
-
-fn help() {
-    println!("{}", CARGO_SEMVER_HELP);
+fn help(opts: &Options) {
+    let brief = "usage: cargo semver [options] [-- cargo options]";
+    print!("{}", opts.usage(brief));
 }
 
 fn version() {
@@ -199,21 +223,56 @@ fn version() {
 }
 
 fn main() {
-    if std::env::args().any(|arg| arg == "-h" || arg == "--help") {
-        help();
+    fn err(config: &Config, e: Box<CargoError>) -> ! {
+        exit_with_error(CliError::new(e, 1), &mut config.shell());
+    }
+
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    let mut opts = Options::new();
+
+    opts.optflag("h", "help", "print this message and exit");
+    opts.optflag("V", "version", "print version information and exit");
+    opts.optopt("s", "stable-path", "use local path as stable/old crate", "PATH");
+    opts.optopt("c", "current-path", "use local path as current/new crate", "PATH");
+    opts.optopt("S", "stable-pkg", "use a name-version string as stable/old crate", "SPEC");
+    opts.optopt("C", "current-pkg", "use a name-version string as current/new crate", "SPEC");
+
+    let config = match Config::default() {
+        Ok(cfg) => cfg,
+        Err(e) => panic!("can't obtain config: {:?}", e),
+    };
+
+    let matches = match opts.parse(&args) {
+        Ok(m) => m,
+        Err(f) => err(&config, human(f.to_string())),
+    };
+
+    if matches.opt_present("h") {
+        help(&opts);
         return;
     }
 
-    if std::env::args().any(|arg| arg == "-V" || arg == "--version") {
+    if matches.opt_present("V") {
         version();
         return;
     }
 
-    if let Err(e) = do_main() {
-        if let Ok(config) = Config::default() {
-            exit_with_error(CliError::new(e, 1), &mut config.shell());
-        } else {
-            panic!("ffs, we can't get a config and errors happened :/");
-        }
+    if (matches.opt_present("s") && matches.opt_present("S")) ||
+        matches.opt_count("s") > 1 || matches.opt_count("S") > 1
+    {
+        let msg = "at most one of `-s,--stable-path` and `-S,--stable-pkg` allowed".to_owned();
+        err(&config, human(msg));
+    }
+
+    if (matches.opt_present("c") && matches.opt_present("C")) ||
+        matches.opt_count("c") > 1 || matches.opt_count("C") > 1
+    {
+        let msg = "at most one of `-c,--current-path` and `-C,--current-pkg` allowed".to_owned();
+        err(&config, human(msg));
+    }
+
+    if let Err(e) = do_main(&config, &matches) {
+        err(&config, e);
     }
 }
