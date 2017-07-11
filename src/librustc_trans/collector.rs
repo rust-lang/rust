@@ -474,7 +474,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, target_ty) => {
                 let target_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                         &target_ty);
-                let source_ty = operand.ty(self.mir, self.scx.tcx());
+                let source_ty = operand.ty(&self.mir.local_decls, self.scx.tcx());
                 let source_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                         &source_ty);
                 let (source_ty, target_ty) = find_vtable_types_for_unsizing(self.scx,
@@ -491,13 +491,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 }
             }
             mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
-                let fn_ty = operand.ty(self.mir, self.scx.tcx());
+                let fn_ty = operand.ty(&self.mir.local_decls, self.scx.tcx());
                 let fn_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                     &fn_ty);
                 visit_fn_use(self.scx, fn_ty, false, &mut self.output);
             }
             mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
-                let source_ty = operand.ty(self.mir, self.scx.tcx());
+                let source_ty = operand.ty(&self.mir.local_decls, self.scx.tcx());
                 let source_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                         &source_ty);
                 match source_ty.sty {
@@ -555,13 +555,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         let tcx = self.scx.tcx();
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {
-                let callee_ty = func.ty(self.mir, tcx);
+                let callee_ty = func.ty(&self.mir.local_decls, tcx);
                 let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
                 visit_fn_use(self.scx, callee_ty, true, &mut self.output);
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
-                let ty = location.ty(self.mir, self.scx.tcx())
+                let ty = location.ty(&self.mir.local_decls, self.scx.tcx())
                     .to_ty(self.scx.tcx());
                 let ty = tcx.trans_apply_param_substs(self.param_substs, &ty);
                 visit_drop_use(self.scx, ty, true, self.output);

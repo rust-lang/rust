@@ -422,7 +422,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Discriminant(ref lvalue) => {
                 let discr_lvalue = self.trans_lvalue(&bcx, lvalue);
                 let enum_ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let discr_ty = rvalue.ty(&*self.mir, bcx.tcx());
+                let discr_ty = rvalue.ty(&self.mir.local_decls, bcx.tcx());
                 let discr_type = type_of::immediate_type_of(bcx.ccx, discr_ty);
                 let discr = adt::trans_get_discr(&bcx, enum_ty, discr_lvalue.llval,
                                                   discr_lvalue.alignment, Some(discr_type), true);
@@ -476,7 +476,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                let ty = rvalue.ty(&self.mir.local_decls, self.ccx.tcx());
                 (bcx, OperandRef::new_zst(self.ccx, self.monomorphize(&ty)))
             }
         }
@@ -676,7 +676,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                let ty = rvalue.ty(&self.mir.local_decls, self.ccx.tcx());
                 let ty = self.monomorphize(&ty);
                 common::type_is_zero_size(self.ccx, ty)
             }

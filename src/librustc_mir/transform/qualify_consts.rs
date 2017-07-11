@@ -507,7 +507,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 this.add(Qualif::STATIC);
                             }
 
-                            let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            let base_ty = proj.base.ty(&this.mir.local_decls, this.tcx).to_ty(this.tcx);
                             if let ty::TyRawPtr(_) = base_ty.sty {
                                 this.add(Qualif::NOT_CONST);
                                 if this.mode != Mode::Fn {
@@ -530,7 +530,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                           "cannot refer to the interior of another \
                                            static, use a constant instead");
                             }
-                            let ty = lvalue.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            let ty = lvalue.ty(&this.mir.local_decls, this.tcx).to_ty(this.tcx);
                             this.qualif.restrict(ty, this.tcx, this.param_env);
                         }
 
@@ -606,7 +606,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     self.add(Qualif::STATIC_REF);
                 }
 
-                let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
+                let ty = lvalue.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
                 if kind == BorrowKind::Mut {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
@@ -671,7 +671,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.mir, self.tcx);
+                let operand_ty = operand.ty(&self.mir.local_decls, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
@@ -689,7 +689,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::TyRawPtr(_) = lhs.ty(self.mir, self.tcx).sty {
+                if let ty::TyRawPtr(_) = lhs.ty(&self.mir.local_decls, self.tcx).sty {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -727,7 +727,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
 
                     if Some(def.did) == self.tcx.lang_items.unsafe_cell_type() {
-                        let ty = rvalue.ty(self.mir, self.tcx);
+                        let ty = rvalue.ty(&self.mir.local_decls, self.tcx);
                         self.add_type(ty);
                         assert!(self.qualif.intersects(Qualif::MUTABLE_INTERIOR));
                         // Even if the value inside may not need dropping,
@@ -748,7 +748,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
             self.visit_operand(func, location);
 
-            let fn_ty = func.ty(self.mir, self.tcx);
+            let fn_ty = func.ty(&self.mir.local_decls, self.tcx);
             let (is_shuffle, is_const_fn) = match fn_ty.sty {
                 ty::TyFnDef(def_id, _) => {
                     (self.tcx.fn_sig(def_id).abi() == Abi::PlatformIntrinsic &&
@@ -828,7 +828,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 } else {
                     // Be conservative about the returned value of a const fn.
                     let tcx = self.tcx;
-                    let ty = dest.ty(self.mir, tcx).to_ty(tcx);
+                    let ty = dest.ty(&self.mir.local_decls, tcx).to_ty(tcx);
                     self.qualif = Qualif::empty();
                     self.add_type(ty);
 

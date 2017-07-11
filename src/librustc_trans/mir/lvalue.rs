@@ -408,7 +408,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
     pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         let tcx = self.ccx.tcx();
-        let lvalue_ty = lvalue.ty(&self.mir, tcx);
+        let lvalue_ty = lvalue.ty(&self.mir.local_decls, tcx);
         self.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }
