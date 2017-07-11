@@ -128,14 +128,17 @@ closure-like semantics. Namely:
   generator progresses.
 
 * Generator literals produce a value with a unique type which implements the
-  `std::ops::Generator` trait. This allows actual execution of the genrator
+  `std::ops::Generator` trait. This allows actual execution of the generator
   through the `Generator::resume` method as well as also naming it in return
   types and such.
 
 * Traits like `Send` and `Sync` are automatically implemented for a `Generator`
-  depending on the captured variables of the environment. Note, though, that
-  generators, like closures, do not implement traits like `Copy` or `Clone`
-  automatically.
+  depending on the captured variables of the environment. Unlike closures though
+  generators also depend on variables live across suspension points. This means
+  that although the ambient environment may be `Send` or `Sync`, the generator
+  itself may not be due to internal variables live across `yield` points being
+  not-`Send` or not-`Sync`. Note, though, that generators, like closures, do
+  not implement traits like `Copy` or `Clone` automatically.
 
 * Whenever a generator is dropped it will drop all captured environment
   variables.
