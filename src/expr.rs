@@ -88,29 +88,23 @@ pub fn format_expr(
         }
     }
     let expr_rw = match expr.node {
-        ast::ExprKind::Array(ref expr_vec) => {
-            rewrite_array(
-                expr_vec.iter().map(|e| &**e),
-                mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi),
-                context,
-                shape,
-                false,
-            )
-        }
-        ast::ExprKind::Lit(ref l) => {
-            match l.node {
-                ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
-                    rewrite_string_lit(context, l.span, shape)
-                }
-                _ => {
-                    wrap_str(
-                        context.snippet(expr.span),
-                        context.config.max_width(),
-                        shape,
-                    )
-                }
+        ast::ExprKind::Array(ref expr_vec) => rewrite_array(
+            expr_vec.iter().map(|e| &**e),
+            mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi),
+            context,
+            shape,
+            false,
+        ),
+        ast::ExprKind::Lit(ref l) => match l.node {
+            ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
+                rewrite_string_lit(context, l.span, shape)
             }
-        }
+            _ => wrap_str(
+                context.snippet(expr.span),
+                context.config.max_width(),
+                shape,
+            ),
+        },
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi, expr.span.hi);
             rewrite_call_with_binary_search(
@@ -135,33 +129,27 @@ pub fn format_expr(
             )
         }
         ast::ExprKind::Unary(ref op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
-        ast::ExprKind::Struct(ref path, ref fields, ref base) => {
-            rewrite_struct_lit(
-                context,
-                path,
-                fields,
-                base.as_ref().map(|e| &**e),
-                expr.span,
-                shape,
-            )
-        }
-        ast::ExprKind::Tup(ref items) => {
-            rewrite_tuple(
-                context,
-                &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
-                expr.span,
-                shape,
-            )
-        }
+        ast::ExprKind::Struct(ref path, ref fields, ref base) => rewrite_struct_lit(
+            context,
+            path,
+            fields,
+            base.as_ref().map(|e| &**e),
+            expr.span,
+            shape,
+        ),
+        ast::ExprKind::Tup(ref items) => rewrite_tuple(
+            context,
+            &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
+            expr.span,
+            shape,
+        ),
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
         ast::ExprKind::ForLoop(..) |
         ast::ExprKind::Loop(..) |
         ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) => {
-            to_control_flow(expr, expr_type)
-                .and_then(|control_flow| control_flow.rewrite(context, shape))
-        }
+        ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
+            .and_then(|control_flow| control_flow.rewrite(context, shape)),
         ast::ExprKind::Block(ref block) => {
             match expr_type {
                 ExprType::Statement => {
@@ -271,14 +259,12 @@ pub fn format_expr(
 
             fn needs_space_before_range(context: &RewriteContext, lhs: &ast::Expr) -> bool {
                 match lhs.node {
-                    ast::ExprKind::Lit(ref lit) => {
-                        match lit.node {
-                            ast::LitKind::FloatUnsuffixed(..) => {
-                                context.snippet(lit.span).ends_with('.')
-                            }
-                            _ => false,
+                    ast::ExprKind::Lit(ref lit) => match lit.node {
+                        ast::LitKind::FloatUnsuffixed(..) => {
+                            context.snippet(lit.span).ends_with('.')
                         }
-                    }
+                        _ => false,
+                    },
                     _ => false,
                 }
             }
@@ -315,13 +301,11 @@ pub fn format_expr(
         }
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
-        ast::ExprKind::InPlace(..) | ast::ExprKind::InlineAsm(..) => {
-            wrap_str(
-                context.snippet(expr.span),
-                context.config.max_width(),
-                shape,
-            )
-        }
+        ast::ExprKind::InPlace(..) | ast::ExprKind::InlineAsm(..) => wrap_str(
+            context.snippet(expr.span),
+            context.config.max_width(),
+            shape,
+        ),
         ast::ExprKind::Catch(ref block) => {
             if let rewrite @ Some(_) =
                 rewrite_single_line_block(context, "do catch ", block, shape)
@@ -338,14 +322,12 @@ pub fn format_expr(
         }
     };
     match (attr_rw, expr_rw) {
-        (Some(attr_str), Some(expr_str)) => {
-            recover_comment_removed(
-                combine_attr_and_expr(context, shape, &attr_str, &expr_str),
-                expr.span,
-                context,
-                shape,
-            )
-        }
+        (Some(attr_str), Some(expr_str)) => recover_comment_removed(
+            combine_attr_and_expr(context, shape, &attr_str, &expr_str),
+            expr.span,
+            context,
+            shape,
+        ),
         _ => None,
     }
 }
@@ -460,22 +442,18 @@ where
     };
 
     let mut nested_shape = match context.config.array_layout() {
-        IndentStyle::Block => {
-            try_opt!(
-                shape
-                    .block()
-                    .block_indent(context.config.tab_spaces())
-                    .with_max_width(context.config)
-                    .sub_width(1)
-            )
-        }
-        IndentStyle::Visual => {
-            try_opt!(
-                shape
-                    .visual_indent(bracket_size)
-                    .sub_width(bracket_size * 2)
-            )
-        }
+        IndentStyle::Block => try_opt!(
+            shape
+                .block()
+                .block_indent(context.config.tab_spaces())
+                .with_max_width(context.config)
+                .sub_width(1)
+        ),
+        IndentStyle::Visual => try_opt!(
+            shape
+                .visual_indent(bracket_size)
+                .sub_width(bracket_size * 2)
+        ),
     };
 
     let items = itemize_list(
@@ -513,17 +491,15 @@ where
                 None => DefinitiveListTactic::Vertical,
             }
         }
-        IndentStyle::Visual => {
-            if has_long_item || items.iter().any(ListItem::is_multiline) {
-                definitive_tactic(
-                    &items,
-                    ListTactic::LimitedHorizontalVertical(context.config.array_width()),
-                    nested_shape.width,
-                )
-            } else {
-                DefinitiveListTactic::Mixed
-            }
-        }
+        IndentStyle::Visual => if has_long_item || items.iter().any(ListItem::is_multiline) {
+            definitive_tactic(
+                &items,
+                ListTactic::LimitedHorizontalVertical(context.config.array_width()),
+                nested_shape.width,
+            )
+        } else {
+            DefinitiveListTactic::Mixed
+        },
     };
     if context.config.array_horizontal_layout_threshold() > 0 &&
         items.len() > context.config.array_horizontal_layout_threshold()
@@ -965,15 +941,13 @@ fn rewrite_cond(context: &RewriteContext, expr: &ast::Expr, shape: Shape) -> Opt
         ast::ExprKind::Block(ref block) if block.stmts.len() == 1 => {
             stmt_expr(&block.stmts[0]).and_then(|e| rewrite_cond(context, e, shape))
         }
-        _ => {
-            to_control_flow(expr, ExprType::SubExpression).and_then(|control_flow| {
-                let alt_block_sep =
-                    String::from("\n") + &shape.indent.block_only().to_string(context.config);
-                control_flow
-                    .rewrite_cond(context, shape, &alt_block_sep)
-                    .and_then(|rw| Some(rw.0))
-            })
-        }
+        _ => to_control_flow(expr, ExprType::SubExpression).and_then(|control_flow| {
+            let alt_block_sep =
+                String::from("\n") + &shape.indent.block_only().to_string(context.config);
+            control_flow
+                .rewrite_cond(context, shape, &alt_block_sep)
+                .and_then(|rw| Some(rw.0))
+        }),
     }
 }
 
@@ -996,17 +970,15 @@ struct ControlFlow<'a> {
 
 fn to_control_flow<'a>(expr: &'a ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'a>> {
     match expr.node {
-        ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
-            Some(ControlFlow::new_if(
-                cond,
-                None,
-                if_block,
-                else_block.as_ref().map(|e| &**e),
-                expr_type == ExprType::SubExpression,
-                false,
-                expr.span,
-            ))
-        }
+        ast::ExprKind::If(ref cond, ref if_block, ref else_block) => Some(ControlFlow::new_if(
+            cond,
+            None,
+            if_block,
+            else_block.as_ref().map(|e| &**e),
+            expr_type == ExprType::SubExpression,
+            false,
+            expr.span,
+        )),
         ast::ExprKind::IfLet(ref pat, ref cond, ref if_block, ref else_block) => {
             Some(ControlFlow::new_if(
                 cond,
@@ -1021,21 +993,15 @@ fn to_control_flow<'a>(expr: &'a ast::Expr, expr_type: ExprType) -> Option<Contr
         ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
             Some(ControlFlow::new_for(pat, cond, block, label, expr.span))
         }
-        ast::ExprKind::Loop(ref block, label) => Some(
-            ControlFlow::new_loop(block, label, expr.span),
-        ),
-        ast::ExprKind::While(ref cond, ref block, label) => Some(
-            ControlFlow::new_while(None, cond, block, label, expr.span),
-        ),
-        ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => {
-            Some(ControlFlow::new_while(
-                Some(pat),
-                cond,
-                block,
-                label,
-                expr.span,
-            ))
+        ast::ExprKind::Loop(ref block, label) => {
+            Some(ControlFlow::new_loop(block, label, expr.span))
         }
+        ast::ExprKind::While(ref cond, ref block, label) => {
+            Some(ControlFlow::new_while(None, cond, block, label, expr.span))
+        }
+        ast::ExprKind::WhileLet(ref pat, ref cond, ref block, label) => Some(
+            ControlFlow::new_while(Some(pat), cond, block, label, expr.span),
+        ),
         _ => None,
     }
 }
@@ -2502,26 +2468,22 @@ fn rewrite_index(
     let index_shape = try_opt!(index_shape.sub_width(rbr.len() + rhs_overhead));
     let new_index_rw = index.rewrite(context, index_shape);
     match (orig_index_rw, new_index_rw) {
-        (_, Some(ref new_index_str)) if !new_index_str.contains('\n') => {
-            Some(format!(
-                "{}\n{}{}{}{}",
-                expr_str,
-                indent.to_string(&context.config),
-                lbr,
-                new_index_str,
-                rbr
-            ))
-        }
-        (None, Some(ref new_index_str)) => {
-            Some(format!(
-                "{}\n{}{}{}{}",
-                expr_str,
-                indent.to_string(&context.config),
-                lbr,
-                new_index_str,
-                rbr
-            ))
-        }
+        (_, Some(ref new_index_str)) if !new_index_str.contains('\n') => Some(format!(
+            "{}\n{}{}{}{}",
+            expr_str,
+            indent.to_string(&context.config),
+            lbr,
+            new_index_str,
+            rbr
+        )),
+        (None, Some(ref new_index_str)) => Some(format!(
+            "{}\n{}{}{}{}",
+            expr_str,
+            indent.to_string(&context.config),
+            lbr,
+            new_index_str,
+            rbr
+        )),
         (Some(ref index_str), _) => Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr)),
         _ => None,
     }

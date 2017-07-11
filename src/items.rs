@@ -362,12 +362,10 @@ impl<'a> FmtVisitor<'a> {
                             ).map(|s| s + suffix)
                                 .or_else(|| Some(self.snippet(e.span)))
                         }
-                        None => {
-                            stmt.rewrite(
-                                &self.get_context(),
-                                Shape::indented(self.block_indent, self.config),
-                            )
-                        }
+                        None => stmt.rewrite(
+                            &self.get_context(),
+                            Shape::indented(self.block_indent, self.config),
+                        ),
                     }
                 } else {
                     None
@@ -418,13 +416,11 @@ impl<'a> FmtVisitor<'a> {
         let variant_list = self.format_variant_list(enum_def, body_start, span.hi - BytePos(1));
         match variant_list {
             Some(ref body_str) => self.buffer.push_str(body_str),
-            None => {
-                if contains_comment(&enum_snippet[brace_pos..]) {
-                    self.format_missing_no_indent(span.hi - BytePos(1))
-                } else {
-                    self.format_missing(span.hi - BytePos(1))
-                }
-            }
+            None => if contains_comment(&enum_snippet[brace_pos..]) {
+                self.format_missing_no_indent(span.hi - BytePos(1))
+            } else {
+                self.format_missing(span.hi - BytePos(1))
+            },
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
 
@@ -620,14 +616,12 @@ pub fn format_impl(
                 result.push_str(&offset.to_string(context.config));
             }
             BraceStyle::PreferSameLine => result.push(' '),
-            BraceStyle::SameLineWhere => {
-                if !where_clause_str.is_empty() {
-                    result.push('\n');
-                    result.push_str(&offset.to_string(context.config));
-                } else {
-                    result.push(' ');
-                }
-            }
+            BraceStyle::SameLineWhere => if !where_clause_str.is_empty() {
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+            } else {
+                result.push(' ');
+            },
         }
 
         result.push('{');
@@ -876,31 +870,27 @@ pub fn format_struct(
 ) -> Option<String> {
     match *struct_def {
         ast::VariantData::Unit(..) => Some(format_unit_struct(item_name, ident, vis)),
-        ast::VariantData::Tuple(ref fields, _) => {
-            format_tuple_struct(
-                context,
-                item_name,
-                ident,
-                vis,
-                fields,
-                generics,
-                span,
-                offset,
-            )
-        }
-        ast::VariantData::Struct(ref fields, _) => {
-            format_struct_struct(
-                context,
-                item_name,
-                ident,
-                vis,
-                fields,
-                generics,
-                span,
-                offset,
-                one_line_width,
-            )
-        }
+        ast::VariantData::Tuple(ref fields, _) => format_tuple_struct(
+            context,
+            item_name,
+            ident,
+            vis,
+            fields,
+            generics,
+            span,
+            offset,
+        ),
+        ast::VariantData::Struct(ref fields, _) => format_struct_struct(
+            context,
+            item_name,
+            ident,
+            vis,
+            fields,
+            generics,
+            span,
+            offset,
+            one_line_width,
+        ),
     }
 }
 
@@ -1003,16 +993,14 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 result.push_str(&offset.to_string(context.config));
             }
             BraceStyle::PreferSameLine => result.push(' '),
-            BraceStyle::SameLineWhere => {
-                if !where_clause_str.is_empty() &&
-                    (!trait_items.is_empty() || result.contains('\n'))
-                {
-                    result.push('\n');
-                    result.push_str(&offset.to_string(context.config));
-                } else {
-                    result.push(' ');
-                }
-            }
+            BraceStyle::SameLineWhere => if !where_clause_str.is_empty() &&
+                (!trait_items.is_empty() || result.contains('\n'))
+            {
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+            } else {
+                result.push(' ');
+            },
         }
         result.push('{');
 
@@ -1072,19 +1060,17 @@ pub fn format_struct_struct(
     let body_lo = context.codemap.span_after(span, "{");
 
     let generics_str = match generics {
-        Some(g) => {
-            try_opt!(format_generics(
-                context,
-                g,
-                "{",
-                "{",
-                context.config.item_brace_style(),
-                fields.is_empty(),
-                offset,
-                mk_sp(span.lo, body_lo),
-                last_line_width(&result),
-            ))
-        }
+        Some(g) => try_opt!(format_generics(
+            context,
+            g,
+            "{",
+            "{",
+            context.config.item_brace_style(),
+            fields.is_empty(),
+            offset,
+            mk_sp(span.lo, body_lo),
+            last_line_width(&result),
+        )),
         None => {
             // 3 = ` {}`, 2 = ` {`.
             let overhead = if fields.is_empty() { 3 } else { 2 };
@@ -1416,16 +1402,14 @@ pub fn rewrite_struct_field_prefix(
 
     let type_annotation_spacing = type_annotation_spacing(context.config);
     Some(match field.ident {
-        Some(name) => {
-            format!(
-                "{}{}{}{}{}:",
-                attr_str,
-                missing_comment,
-                vis,
-                name,
-                type_annotation_spacing.0
-            )
-        }
+        Some(name) => format!(
+            "{}{}{}{}{}:",
+            attr_str,
+            missing_comment,
+            vis,
+            name,
+            type_annotation_spacing.0
+        ),
         None => format!("{}{}{}", attr_str, missing_comment, vis),
     })
 }
@@ -1492,19 +1476,15 @@ pub fn rewrite_struct_field(
 
     match ty_rewritten {
         // If we start from the next line and type fits in a single line, then do so.
-        Some(ref ty) => {
-            match rewrite_type_in_next_line() {
-                Some(ref new_ty) if !new_ty.contains('\n') => {
-                    Some(format!(
-                        "{}\n{}{}",
-                        prefix,
-                        type_offset.to_string(&context.config),
-                        &new_ty
-                    ))
-                }
-                _ => Some(prefix + &ty),
-            }
-        }
+        Some(ref ty) => match rewrite_type_in_next_line() {
+            Some(ref new_ty) if !new_ty.contains('\n') => Some(format!(
+                "{}\n{}{}",
+                prefix,
+                type_offset.to_string(&context.config),
+                &new_ty
+            )),
+            _ => Some(prefix + &ty),
+        },
         _ => {
             let ty = try_opt!(rewrite_type_in_next_line());
             Some(format!(
@@ -2221,20 +2201,16 @@ fn rewrite_args(
         .map_or(false, |s| s.trim().starts_with("//"));
 
     let (indent, trailing_comma, end_with_newline) = match context.config.fn_args_layout() {
-        IndentStyle::Block if fits_in_one_line => {
-            (
-                indent.block_indent(context.config),
-                SeparatorTactic::Never,
-                true,
-            )
-        }
-        IndentStyle::Block => {
-            (
-                indent.block_indent(context.config),
-                context.config.trailing_comma(),
-                true,
-            )
-        }
+        IndentStyle::Block if fits_in_one_line => (
+            indent.block_indent(context.config),
+            SeparatorTactic::Never,
+            true,
+        ),
+        IndentStyle::Block => (
+            indent.block_indent(context.config),
+            context.config.trailing_comma(),
+            true,
+        ),
         IndentStyle::Visual if last_line_ends_with_comment => {
             (arg_indent, context.config.trailing_comma(), true)
         }

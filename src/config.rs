@@ -482,11 +482,9 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
             Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
             // Return the error if it's something other than `NotFound`; otherwise we didn't
             // find the project file yet, and continue searching.
-            Err(e) => {
-                if e.kind() != ErrorKind::NotFound {
-                    return Err(e);
-                }
-            }
+            Err(e) => if e.kind() != ErrorKind::NotFound {
+                return Err(e);
+            },
             _ => {}
         }
     }

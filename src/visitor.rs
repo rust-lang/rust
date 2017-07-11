@@ -289,12 +289,10 @@ impl<'a> FmtVisitor<'a> {
                     assert!(!self.visit_attrs(&attrs));
                 }
             }
-            _ => {
-                if self.visit_attrs(&item.attrs) {
-                    self.push_rewrite(item.span, None);
-                    return;
-                }
-            }
+            _ => if self.visit_attrs(&item.attrs) {
+                self.push_rewrite(item.span, None);
+                return;
+            },
         }
 
         match item.node {

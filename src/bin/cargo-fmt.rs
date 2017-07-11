@@ -90,13 +90,11 @@ fn execute() -> i32 {
             print_usage(&opts, &e.to_string());
             failure
         }
-        Ok(status) => {
-            if status.success() {
-                success
-            } else {
-                status.code().unwrap_or(failure)
-            }
-        }
+        Ok(status) => if status.success() {
+            success
+        } else {
+            status.code().unwrap_or(failure)
+        },
     }
 }
 
@@ -324,12 +322,10 @@ fn format_files(
         .args(fmt_args)
         .spawn()
         .map_err(|e| match e.kind() {
-            std::io::ErrorKind::NotFound => {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Could not run rustfmt, please make sure it is in your PATH.",
-                )
-            }
+            std::io::ErrorKind::NotFound => std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Could not run rustfmt, please make sure it is in your PATH.",
+            ),
             _ => e,
         })?;
     command.wait()

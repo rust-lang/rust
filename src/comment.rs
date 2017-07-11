@@ -342,14 +342,12 @@ impl FindUncommented for str {
                 None => {
                     return Some(i - pat.len());
                 }
-                Some(c) => {
-                    match kind {
-                        FullCodeCharKind::Normal if b == c => {}
-                        _ => {
-                            needle_iter = pat.chars();
-                        }
+                Some(c) => match kind {
+                    FullCodeCharKind::Normal if b == c => {}
+                    _ => {
+                        needle_iter = pat.chars();
                     }
-                }
+                },
             }
         }
 
@@ -494,42 +492,34 @@ where
         let item = try_opt!(self.base.next());
         let chr = item.get_char();
         self.status = match self.status {
-            CharClassesStatus::LitString => {
-                match chr {
-                    '"' => CharClassesStatus::Normal,
-                    '\\' => CharClassesStatus::LitStringEscape,
-                    _ => CharClassesStatus::LitString,
-                }
-            }
+            CharClassesStatus::LitString => match chr {
+                '"' => CharClassesStatus::Normal,
+                '\\' => CharClassesStatus::LitStringEscape,
+                _ => CharClassesStatus::LitString,
+            },
             CharClassesStatus::LitStringEscape => CharClassesStatus::LitString,
-            CharClassesStatus::LitChar => {
-                match chr {
-                    '\\' => CharClassesStatus::LitCharEscape,
-                    '\'' => CharClassesStatus::Normal,
-                    _ => CharClassesStatus::LitChar,
-                }
-            }
+            CharClassesStatus::LitChar => match chr {
+                '\\' => CharClassesStatus::LitCharEscape,
+                '\'' => CharClassesStatus::Normal,
+                _ => CharClassesStatus::LitChar,
+            },
             CharClassesStatus::LitCharEscape => CharClassesStatus::LitChar,
-            CharClassesStatus::Normal => {
-                match chr {
-                    '"' => CharClassesStatus::LitString,
-                    '\'' => CharClassesStatus::LitChar,
-                    '/' => {
-                        match self.base.peek() {
-                            Some(next) if next.get_char() == '*' => {
-                                self.status = CharClassesStatus::BlockCommentOpening(1);
-                                return Some((FullCodeCharKind::StartComment, item));
-                            }
-                            Some(next) if next.get_char() == '/' => {
-                                self.status = CharClassesStatus::LineComment;
-                                return Some((FullCodeCharKind::StartComment, item));
-                            }
-                            _ => CharClassesStatus::Normal,
-                        }
+            CharClassesStatus::Normal => match chr {
+                '"' => CharClassesStatus::LitString,
+                '\'' => CharClassesStatus::LitChar,
+                '/' => match self.base.peek() {
+                    Some(next) if next.get_char() == '*' => {
+                        self.status = CharClassesStatus::BlockCommentOpening(1);
+                        return Some((FullCodeCharKind::StartComment, item));
+                    }
+                    Some(next) if next.get_char() == '/' => {
+                        self.status = CharClassesStatus::LineComment;
+                        return Some((FullCodeCharKind::StartComment, item));
                     }
                     _ => CharClassesStatus::Normal,
-                }
-            }
+                },
+                _ => CharClassesStatus::Normal,
+            },
             CharClassesStatus::BlockComment(deepness) => {
                 assert!(deepness != 0);
                 self.status = match self.base.peek() {
@@ -558,18 +548,16 @@ where
                     return Some((FullCodeCharKind::InComment, item));
                 }
             }
-            CharClassesStatus::LineComment => {
-                match chr {
-                    '\n' => {
-                        self.status = CharClassesStatus::Normal;
-                        return Some((FullCodeCharKind::EndComment, item));
-                    }
-                    _ => {
-                        self.status = CharClassesStatus::LineComment;
-                        return Some((FullCodeCharKind::InComment, item));
-                    }
+            CharClassesStatus::LineComment => match chr {
+                '\n' => {
+                    self.status = CharClassesStatus::Normal;
+                    return Some((FullCodeCharKind::EndComment, item));
                 }
-            }
+                _ => {
+                    self.status = CharClassesStatus::LineComment;
+                    return Some((FullCodeCharKind::InComment, item));
+                }
+            },
         };
         Some((FullCodeCharKind::Normal, item))
     }

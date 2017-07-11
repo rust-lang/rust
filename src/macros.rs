@@ -80,13 +80,11 @@ pub fn rewrite_macro(
 
     let macro_name = match extra_ident {
         None => format!("{}!", mac.node.path),
-        Some(ident) => {
-            if ident == symbol::keywords::Invalid.ident() {
-                format!("{}!", mac.node.path)
-            } else {
-                format!("{}! {}", mac.node.path, ident)
-            }
-        }
+        Some(ident) => if ident == symbol::keywords::Invalid.ident() {
+            format!("{}!", mac.node.path)
+        } else {
+            format!("{}! {}", mac.node.path, ident)
+        },
     };
 
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {

@@ -54,23 +54,15 @@ impl Rewrite for Pat {
                 let result = format!("{}{}{}{}", prefix, mut_infix, id_str, sub_pat);
                 wrap_str(result, context.config.max_width(), shape)
             }
-            PatKind::Wild => {
-                if 1 <= shape.width {
-                    Some("_".to_owned())
-                } else {
-                    None
-                }
-            }
-            PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
-                match *end_kind {
-                    RangeEnd::Included => {
-                        rewrite_pair(&**lhs, &**rhs, "", "...", "", context, shape)
-                    }
-                    RangeEnd::Excluded => {
-                        rewrite_pair(&**lhs, &**rhs, "", "..", "", context, shape)
-                    }
-                }
-            }
+            PatKind::Wild => if 1 <= shape.width {
+                Some("_".to_owned())
+            } else {
+                None
+            },
+            PatKind::Range(ref lhs, ref rhs, ref end_kind) => match *end_kind {
+                RangeEnd::Included => rewrite_pair(&**lhs, &**rhs, "", "...", "", context, shape),
+                RangeEnd::Excluded => rewrite_pair(&**lhs, &**rhs, "", "..", "", context, shape),
+            },
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, shape)
@@ -121,13 +113,11 @@ impl Rewrite for Pat {
                 rewrite_struct_pat(path, fields, elipses, self.span, context, shape)
             }
             // FIXME(#819) format pattern macros.
-            PatKind::Mac(..) => {
-                wrap_str(
-                    context.snippet(self.span),
-                    context.config.max_width(),
-                    shape,
-                )
-            }
+            PatKind::Mac(..) => wrap_str(
+                context.snippet(self.span),
+                context.config.max_width(),
+                shape,
+            ),
         }
     }
 }
@@ -250,18 +240,16 @@ impl<'a> Spanned for TuplePatField<'a> {
 
 pub fn can_be_overflowed_pat(context: &RewriteContext, pat: &TuplePatField, len: usize) -> bool {
     match pat {
-        &TuplePatField::Pat(ref pat) => {
-            match pat.node {
-                ast::PatKind::Path(..) | ast::PatKind::Tuple(..) | ast::PatKind::Struct(..) => {
-                    context.use_block_indent() && len == 1
-                }
-                ast::PatKind::Ref(ref p, _) | ast::PatKind::Box(ref p) => {
-                    can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
-                }
-                ast::PatKind::Lit(ref expr) => can_be_overflowed_expr(context, expr, len),
-                _ => false,
+        &TuplePatField::Pat(ref pat) => match pat.node {
+            ast::PatKind::Path(..) | ast::PatKind::Tuple(..) | ast::PatKind::Struct(..) => {
+                context.use_block_indent() && len == 1
             }
-        }
+            ast::PatKind::Ref(ref p, _) | ast::PatKind::Box(ref p) => {
+                can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
+            }
+            ast::PatKind::Lit(ref expr) => can_be_overflowed_expr(context, expr, len),
+            _ => false,
+        },
         &TuplePatField::Dotdot(..) => false,
     }
 }

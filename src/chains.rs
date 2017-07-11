@@ -444,12 +444,10 @@ fn rewrite_method_call_with_overflow(
             None => return false,
         };
         let types = match segment.parameters {
-            Some(ref params) => {
-                match **params {
-                    ast::PathParameters::AngleBracketed(ref data) => &data.types[..],
-                    _ => &[],
-                }
-            }
+            Some(ref params) => match **params {
+                ast::PathParameters::AngleBracketed(ref data) => &data.types[..],
+                _ => &[],
+            },
             _ => &[],
         };
         let mut last_rewrite = rewrite_method_call(
@@ -516,12 +514,10 @@ fn rewrite_chain_subexpr(
     match expr.node {
         ast::ExprKind::MethodCall(ref segment, ref expressions) => {
             let types = match segment.parameters {
-                Some(ref params) => {
-                    match **params {
-                        ast::PathParameters::AngleBracketed(ref data) => &data.types[..],
-                        _ => &[],
-                    }
-                }
+                Some(ref params) => match **params {
+                    ast::PathParameters::AngleBracketed(ref data) => &data.types[..],
+                    _ => &[],
+                },
                 _ => &[],
             };
             rewrite_method_call(segment.identifier, types, expressions, span, context, shape)

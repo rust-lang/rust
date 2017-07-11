@@ -440,29 +440,23 @@ where
                         // Comment belongs to next item.
                         (Some(i), None) if i > separator_index => separator_index + 1,
                         // Block-style post-comment before the separator.
-                        (Some(i), None) => {
-                            cmp::max(
-                                find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                separator_index + 1,
-                            )
-                        }
+                        (Some(i), None) => cmp::max(
+                            find_comment_end(&post_snippet[i..]).unwrap() + i,
+                            separator_index + 1,
+                        ),
                         // Block-style post-comment. Either before or after the separator.
-                        (Some(i), Some(j)) if i < j => {
-                            cmp::max(
-                                find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                separator_index + 1,
-                            )
-                        }
+                        (Some(i), Some(j)) if i < j => cmp::max(
+                            find_comment_end(&post_snippet[i..]).unwrap() + i,
+                            separator_index + 1,
+                        ),
                         // Potential *single* line comment.
                         (_, Some(j)) if j > separator_index => j + 1,
                         _ => post_snippet.len(),
                     }
                 }
-                None => {
-                    post_snippet
-                        .find_uncommented(self.terminator)
-                        .unwrap_or(post_snippet.len())
-                }
+                None => post_snippet
+                    .find_uncommented(self.terminator)
+                    .unwrap_or(post_snippet.len()),
             };
 
             if !post_snippet.is_empty() && comment_end > 0 {
@@ -595,11 +589,9 @@ pub fn struct_lit_shape(
     suffix_width: usize,
 ) -> Option<(Option<Shape>, Shape)> {
     let v_shape = match context.config.struct_lit_style() {
-        IndentStyle::Visual => {
-            try_opt!(
-                try_opt!(shape.visual_indent(0).shrink_left(prefix_width)).sub_width(suffix_width)
-            )
-        }
+        IndentStyle::Visual => try_opt!(
+            try_opt!(shape.visual_indent(0).shrink_left(prefix_width)).sub_width(suffix_width)
+        ),
         IndentStyle::Block => {
             let shape = shape.block_indent(context.config.tab_spaces());
             Shape {
