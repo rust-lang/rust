@@ -223,8 +223,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
     // when reallocating/deallocating any others.
-    pub fn reallocate(&mut self, ptr: Pointer, old_size: u64, new_size: u64, align: u64) -> EvalResult<'tcx, Pointer> {
-        assert!(align.is_power_of_two());
+    pub fn reallocate(&mut self, ptr: Pointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64) -> EvalResult<'tcx, Pointer> {
+        use std::cmp::min;
+
         // TODO(solson): Report error about non-__rust_allocate'd pointer.
         if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
             return Err(EvalError::ReallocateNonBasePtr);
@@ -233,39 +234,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Err(EvalError::ReallocatedStaticMemory);
         }
 
-        let size = self.get(ptr.alloc_id)?.bytes.len() as u64;
-        let real_align = self.get(ptr.alloc_id)?.align;
-        if size != old_size || real_align != align {
-            return Err(EvalError::IncorrectAllocationInformation);
-        }
+        // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc"
+        let new_ptr = self.allocate(new_size, new_align)?;
+        self.copy(PrimVal::Ptr(ptr), PrimVal::Ptr(new_ptr), min(old_size, new_size), min(old_align, new_align), /*nonoverlapping*/true)?;
+        self.deallocate(ptr, Some((old_size, old_align)))?;
 
-        if new_size > size {
-            let amount = new_size - size;
-            self.memory_usage += amount;
-            let alloc = self.get_mut(ptr.alloc_id)?;
-            assert_eq!(amount as usize as u64, amount);
-            alloc.bytes.extend(iter::repeat(0).take(amount as usize));
-            alloc.undef_mask.grow(amount, false);
-        } else if size > new_size {
-            self.memory_usage -= size - new_size;
-            self.clear_relocations(ptr.offset(new_size, self.layout)?, size - new_size)?;
-            let alloc = self.get_mut(ptr.alloc_id)?;
-            // `as usize` is fine here, since it is smaller than `size`, which came from a usize
-            alloc.bytes.truncate(new_size as usize);
-            alloc.bytes.shrink_to_fit();
-            alloc.undef_mask.truncate(new_size);
-        }
-
-        // Change allocation ID.  We do this after the above to be able to re-use methods like `clear_relocations`.
-        let id = {
-            let alloc = self.alloc_map.remove(&ptr.alloc_id).expect("We already used this pointer above");
-            let id = self.next_id;
-            self.next_id.0 += 1;
-            self.alloc_map.insert(id, alloc);
-            id
-        };
-
-        Ok(Pointer::new(id, 0))
+        Ok(new_ptr)
     }
 
     // TODO(solson): See comment on `reallocate`.
@@ -689,6 +663,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn copy(&mut self, src: PrimVal, dest: PrimVal, size: u64, align: u64, nonoverlapping: bool) -> EvalResult<'tcx> {
         if size == 0 {
+            // TODO: Should we check for alignment here? (Also see write_bytes intrinsic)
             return Ok(());
         }
         let src = src.to_ptr()?;
@@ -1137,14 +1112,6 @@ impl UndefMask {
         let start = self.len;
         self.len += amount;
         self.set_range_inbounds(start, start + amount, new_state);
-    }
-
-    fn truncate(&mut self, length: u64) {
-        self.len = length;
-        let truncate = self.len / BLOCK_SIZE + 1;
-        assert_eq!(truncate as usize as u64, truncate);
-        self.blocks.truncate(truncate as usize);
-        self.blocks.shrink_to_fit();
     }
 }
 

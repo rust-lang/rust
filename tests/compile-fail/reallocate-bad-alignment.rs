@@ -1,13 +1,16 @@
-#![feature(alloc, heap_api)]
+#![feature(alloc, allocator_api)]
 
 extern crate alloc;
+
+use alloc::heap::Heap;
+use alloc::allocator::*;
 
 // error-pattern: tried to deallocate or reallocate using incorrect alignment or size
 
 use alloc::heap::*;
 fn main() {
     unsafe {
-        let x = allocate(1, 1);
-        let _y = reallocate(x, 1, 1, 2);
+        let x = Heap.alloc(Layout::from_size_align_unchecked(1, 2)).unwrap();
+        let _y = Heap.realloc(x, Layout::from_size_align_unchecked(1, 1), Layout::from_size_align_unchecked(1, 2)).unwrap();
     }
 }

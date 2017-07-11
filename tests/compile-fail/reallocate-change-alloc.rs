@@ -1,12 +1,14 @@
-#![feature(alloc, heap_api)]
+#![feature(alloc, allocator_api)]
 
 extern crate alloc;
 
-use alloc::heap::*;
+use alloc::heap::Heap;
+use alloc::allocator::*;
+
 fn main() {
     unsafe {
-        let x = allocate(1, 1);
-        let _y = reallocate(x, 1, 1, 1);
+        let x = Heap.alloc(Layout::from_size_align_unchecked(1, 1)).unwrap();
+        let _y = Heap.realloc(x, Layout::from_size_align_unchecked(1, 1), Layout::from_size_align_unchecked(1, 1)).unwrap();
         let _z = *x; //~ ERROR: dangling pointer was dereferenced
     }
 }
