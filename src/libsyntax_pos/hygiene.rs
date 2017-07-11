@@ -304,6 +304,8 @@ pub struct ExpnInfo {
 
 #[derive(Clone, Hash, Debug)]
 pub struct NameAndSpan {
+    /// Whether the span is part of an unhygienic expansion (e.g. Macros 1.1)
+    pub is_hygienic: bool,
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
     /// Whether the macro is allowed to use #[unstable]/feature-gated
@@ -351,10 +353,23 @@ impl Decodable for SyntaxContext {
 
 impl Symbol {
     pub fn from_ident(ident: Ident) -> Symbol {
+        // do this outside `HygieneData::with`, because `outer` will also try
+        // to lock the interner
+        let is_hygienic = ident.ctxt
+            .outer()
+            .expn_info()
+            .map_or(true, |info| info.callee.is_hygienic);
         HygieneData::with(|data| {
-            let gensym = ident.name.gensymed();
-            data.gensym_to_ctxt.insert(gensym, ident.ctxt);
-            gensym
+            if is_hygienic {
+                let gensym = ident.name.gensymed();
+                data.gensym_to_ctxt.insert(gensym, ident.ctxt);
+                gensym
+            } else {
+                // we're losing the expansion info, but that's the whole point
+                // it shouldn't matter, since stringifying and retokenizing will
+                // produce new spans with their own expansion info
+                ident.name
+            }
         })
     }
 

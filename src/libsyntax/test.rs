@@ -287,6 +287,7 @@ fn generate_test_harness(sess: &ParseSess,
         call_site: DUMMY_SP,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("test")),
+            is_hygienic: true,
             span: None,
             allow_internal_unstable: true,
         }

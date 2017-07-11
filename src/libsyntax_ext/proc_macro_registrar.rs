@@ -366,6 +366,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
         call_site: DUMMY_SP,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("proc_macro")),
+            is_hygienic: true,
             span: None,
             allow_internal_unstable: true,
         }
