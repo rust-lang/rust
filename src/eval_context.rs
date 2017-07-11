@@ -687,8 +687,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let val = match extra {
                     LvalueExtra::None => ptr.to_value(),
-                    LvalueExtra::Length(len) => ptr.with_extra(PrimVal::from_u128(len as u128)),
-                    LvalueExtra::Vtable(vtable) => ptr.with_extra(PrimVal::Ptr(vtable)),
+                    LvalueExtra::Length(len) => ptr.to_value_with_len(len),
+                    LvalueExtra::Vtable(vtable) => ptr.to_value_with_vtable(vtable),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
@@ -1346,13 +1346,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         } else {
             trace!("reading fat pointer extra of type {}", pointee_ty);
             let extra = ptr.offset(self.memory.pointer_size(), self.memory.layout)?;
-            let extra = match self.tcx.struct_tail(pointee_ty).sty {
-                ty::TyDynamic(..) => self.memory.read_ptr(extra)?.into_inner_primval(),
+            match self.tcx.struct_tail(pointee_ty).sty {
+                ty::TyDynamic(..) => Ok(p.to_value_with_vtable(self.memory.read_ptr(extra)?.to_ptr()?)),
                 ty::TySlice(..) |
-                ty::TyStr => PrimVal::from_u128(self.memory.read_usize(extra)? as u128),
+                ty::TyStr => Ok(p.to_value_with_len(self.memory.read_usize(extra)?)),
                 _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
-            };
-            Ok(p.with_extra(extra))
+            }
         }
     }
 
@@ -1466,8 +1465,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                 let ptr = src.read_ptr(&self.memory)?;
-                let len = PrimVal::from_u128(length as u128);
-                self.write_value(ptr.with_extra(len), dest, dest_ty)
+                // u64 cast is from usize to u64, which is always good
+                self.write_value(ptr.to_value_with_len(length as u64), dest, dest_ty)
             }
             (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
                 // For now, upcasts are limited to changes in marker
@@ -1480,8 +1479,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                 let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
                 let ptr = src.read_ptr(&self.memory)?;
-                let extra = PrimVal::Ptr(vtable);
-                self.write_value(ptr.with_extra(extra), dest, dest_ty)
+                self.write_value(ptr.to_value_with_vtable(vtable), dest, dest_ty)
             },
 
             _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),

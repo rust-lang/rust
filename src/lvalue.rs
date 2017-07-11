@@ -315,7 +315,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {
-                let (_, align) = self.size_and_align_of_dst(base_ty, base_ptr.with_extra(PrimVal::Ptr(tab)))?;
+                let (_, align) = self.size_and_align_of_dst(base_ty, base_ptr.to_value_with_vtable(tab))?;
                 offset.abi_align(Align::from_bytes(align, align).unwrap()).bytes()
             }
             _ => offset.bytes(),

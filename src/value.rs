@@ -98,9 +98,14 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub fn with_extra(self, extra: PrimVal) -> Value {
-        Value::ByValPair(self.primval, extra)
+    pub fn to_value_with_len(self, len: u64) -> Value {
+        Value::ByValPair(self.primval, PrimVal::from_u128(len as u128))
     }
+
+    pub fn to_value_with_vtable(self, vtable: MemoryPointer) -> Value {
+        Value::ByValPair(self.primval, PrimVal::Ptr(vtable))
+    }
+
     pub fn to_value(self) -> Value {
         Value::ByVal(self.primval)
     }
