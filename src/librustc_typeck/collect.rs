@@ -777,7 +777,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     -> bool {
     struct LateBoundRegionsDetector<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        binder_depth: usize,
+        binder_depth: u32,
         has_late_bound_regions: bool,
     }
 
@@ -812,7 +812,10 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             match self.tcx.named_region_map.defs.get(&lt.id).cloned() {
                 Some(rl::Region::Static) | Some(rl::Region::EarlyBound(..)) => {}
-                _ => self.has_late_bound_regions = true
+                Some(rl::Region::LateBound(debruijn, _)) |
+                Some(rl::Region::LateBoundAnon(debruijn, _))
+                    if debruijn.depth < self.binder_depth => {}
+                _ => self.has_late_bound_regions = true,
             }
         }
     }
@@ -822,7 +825,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         decl: &'tcx hir::FnDecl)
                                         -> bool {
         let mut visitor = LateBoundRegionsDetector {
-            tcx, binder_depth: 0, has_late_bound_regions: false
+            tcx, binder_depth: 1, has_late_bound_regions: false
         };
         for lifetime in &generics.lifetimes {
             if tcx.named_region_map.late_bound.contains(&lifetime.lifetime.id) {

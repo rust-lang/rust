@@ -281,7 +281,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_substs(&mut self,
                                  pick: &probe::Pick<'tcx>,
                                  segment: &hir::PathSegment,
-                                 substs: &Substs<'tcx>)
+                                 parent_substs: &Substs<'tcx>)
                                  -> &'tcx Substs<'tcx> {
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -296,20 +296,23 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             hir::AngleBracketedParameters(ref data) => (&data.types, &data.lifetimes),
             _ => bug!("unexpected generic arguments: {:?}", segment.parameters),
         };
+        assert_eq!(method_generics.parent_count(), parent_substs.len());
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
-            if i < substs.len() {
-                substs.region_at(i)
-            } else if let Some(lifetime) = supplied_lifetimes.get(i - substs.len()) {
+            if i < parent_substs.len() {
+                parent_substs.region_at(i)
+            } else if let Some(lifetime) =
+                    supplied_lifetimes.get(i - parent_substs.len()) {
                 AstConv::ast_region_to_region(self.fcx, lifetime, Some(def))
             } else {
                 self.region_var_for_def(self.span, def)
             }
         }, |def, cur_substs| {
             let i = def.index as usize;
-            if i < substs.len() {
-                substs.type_at(i)
-            } else if let Some(ast_ty) = supplied_types.get(i - substs.len()) {
+            if i < parent_substs.len() {
+                parent_substs.type_at(i)
+            } else if let Some(ast_ty) =
+                    supplied_types.get(i - parent_substs.len() - method_generics.regions.len()) {
                 self.to_ty(ast_ty)
             } else {
                 self.type_var_for_def(self.span, def, cur_substs)

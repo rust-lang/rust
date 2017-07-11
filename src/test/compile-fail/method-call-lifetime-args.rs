@@ -19,14 +19,6 @@ impl S {
     fn late_implicit_self_early<'b>(&self) -> &'b u8 { loop {} }
     fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
     fn life_and_type<'a, T>(self) -> &'a T { loop {} }
-
-    // 'late lifetimes here belong to nested types not to the tested functions.
-    fn early_tricky_explicit<'a>(_: for<'late> fn(&'late u8),
-                                 _: Box<for<'late> Fn(&'late u8)>)
-                                 -> &'a u8 { loop {} }
-    fn early_tricky_implicit<'a>(_: fn(&u8),
-                                 _: Box<Fn(&u8)>)
-                                 -> &'a u8 { loop {} }
 }
 
 fn method_call() {
@@ -85,9 +77,6 @@ fn ufcs() {
     let _: &u8 = S::life_and_type::<'static>(S);
     S::life_and_type::<u8>(S);
     S::life_and_type::<'static, u8>(S);
-
-    S::early_tricky_explicit::<'static>(loop {}, loop {}); // OK
-    S::early_tricky_implicit::<'static>(loop {}, loop {}); // OK
 }
 
 fn main() {}

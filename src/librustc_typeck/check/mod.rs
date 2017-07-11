@@ -4697,13 +4697,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.sess.span_err(lifetimes[0].span,
                                        "cannot specify lifetime arguments explicitly \
                                         if late bound lifetime parameters are present");
+                *segment = None;
             } else {
                 self.tcx.sess.add_lint(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
                                        lifetimes[0].id, lifetimes[0].span,
                                        format!("cannot specify lifetime arguments explicitly \
                                                 if late bound lifetime parameters are present"));
             }
-            *segment = None;
             return;
         }
 
