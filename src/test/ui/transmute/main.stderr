@@ -22,7 +22,7 @@ error[E0512]: transmute called with types of different sizes
 34 |     let x: u8 = transmute("test"); //~ ERROR transmute called with types of different sizes
    |                 ^^^^^^^^^
    |
-   = note: source type: &str (128 bits)
+   = note: source type: &str ($STR bits)
    = note: target type: u8 (8 bits)
 
 error[E0512]: transmute called with types of different sizes

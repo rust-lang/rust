@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-x86
-// ignore-arm
-// ignore-emscripten
-// ignore 32-bit platforms (test output is different)
+// normalize-stderr-32bit: "&str (64 bits)" -> "&str ($STR bits)"
+// normalize-stderr-64bit: "&str (128 bits)" -> "&str ($STR bits)"
+
+
 
 #![feature(untagged_unions)]
 use std::mem::transmute;

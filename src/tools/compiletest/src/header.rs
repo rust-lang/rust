@@ -40,15 +40,8 @@ impl EarlyProps {
                     None,
                     &mut |ln| {
             props.ignore =
-                props.ignore || config.parse_name_directive(ln, "ignore-test") ||
-                config.parse_name_directive(ln, &ignore_target(config)) ||
-                config.parse_name_directive(ln, &ignore_architecture(config)) ||
-                config.parse_name_directive(ln, &ignore_stage(config)) ||
-                config.parse_name_directive(ln, &ignore_env(config)) ||
-                (config.mode == common::Pretty &&
-                 config.parse_name_directive(ln, "ignore-pretty")) ||
-                (config.target != config.host &&
-                 config.parse_name_directive(ln, "ignore-cross-compile")) ||
+                props.ignore ||
+                config.parse_cfg_name_directive(ln, "ignore") ||
                 ignore_gdb(config, ln) ||
                 ignore_lldb(config, ln) ||
                 ignore_llvm(config, ln);
@@ -62,26 +55,9 @@ impl EarlyProps {
 
         return props;
 
-        fn ignore_target(config: &Config) -> String {
-            format!("ignore-{}", util::get_os(&config.target))
-        }
-        fn ignore_architecture(config: &Config) -> String {
-            format!("ignore-{}", util::get_arch(&config.target))
-        }
-        fn ignore_stage(config: &Config) -> String {
-            format!("ignore-{}", config.stage_id.split('-').next().unwrap())
-        }
-        fn ignore_env(config: &Config) -> String {
-            format!("ignore-{}",
-                    util::get_env(&config.target).unwrap_or("<unknown>"))
-        }
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if config.mode != common::DebugInfoGdb {
                 return false;
-            }
-
-            if config.parse_name_directive(line, "ignore-gdb") {
-                return true;
             }
 
             if let Some(actual_version) = config.gdb_version {
@@ -142,10 +118,6 @@ impl EarlyProps {
         fn ignore_lldb(config: &Config, line: &str) -> bool {
             if config.mode != common::DebugInfoLldb {
                 return false;
-            }
-
-            if config.parse_name_directive(line, "ignore-lldb") {
-                return true;
             }
 
             if let Some(ref actual_version) = config.lldb_version {
@@ -239,6 +211,9 @@ pub struct TestProps {
     // The test must be compiled and run successfully. Only used in UI tests for
     // now.
     pub run_pass: bool,
+    // customized normalization rules
+    pub normalize_stdout: Vec<(String, String)>,
+    pub normalize_stderr: Vec<(String, String)>,
 }
 
 impl TestProps {
@@ -265,6 +240,8 @@ impl TestProps {
             must_compile_successfully: false,
             check_test_line_numbers_match: false,
             run_pass: false,
+            normalize_stdout: vec![],
+            normalize_stderr: vec![],
         }
     }
 
@@ -379,6 +356,13 @@ impl TestProps {
             if !self.run_pass {
                 self.run_pass = config.parse_run_pass(ln);
             }
+
+            if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
+                self.normalize_stdout.push(rule);
+            }
+            if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
+                self.normalize_stderr.push(rule);
+            }
         });
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
@@ -427,7 +411,6 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
 }
 
 impl Config {
-
     fn parse_error_pattern(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "error-pattern")
     }
@@ -525,6 +508,46 @@ impl Config {
         }
     }
 
+    fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
+        if self.parse_cfg_name_directive(line, prefix) {
+            let from = match parse_normalization_string(&mut line) {
+                Some(s) => s,
+                None => return None,
+            };
+            let to = match parse_normalization_string(&mut line) {
+                Some(s) => s,
+                None => return None,
+            };
+            Some((from, to))
+        } else {
+            None
+        }
+    }
+
+    /// Parses a name-value directive which contains config-specific information, e.g. `ignore-x86`
+    /// or `normalize-stderr-32bit`. Returns `true` if the line matches it.
+    fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> bool {
+        if line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-') {
+            let name = line[prefix.len()+1 ..].split(&[':', ' '][..]).next().unwrap();
+
+            name == "test" ||
+                name == util::get_os(&self.target) ||               // target
+                name == util::get_arch(&self.target) ||             // architecture
+                name == util::get_pointer_width(&self.target) ||    // pointer width
+                name == self.stage_id.split('-').next().unwrap() || // stage
+                Some(name) == util::get_env(&self.target) ||        // env
+                match self.mode {
+                    common::DebugInfoGdb => name == "gdb",
+                    common::DebugInfoLldb => name == "lldb",
+                    common::Pretty => name == "pretty",
+                    _ => false,
+                } ||
+                (self.target != self.host && name == "cross-compile")
+        } else {
+            false
+        }
+    }
+
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
         // Ensure the directive is a whole word. Do not match "ignore-x86" when
         // the line says "ignore-x86_64".
@@ -571,4 +594,30 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     value
+}
+
+/// Finds the next quoted string `"..."` in `line`, and extract the content from it. Move the `line`
+/// variable after the end of the quoted string.
+///
+/// # Examples
+///
+/// ```
+/// let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits)\".";
+/// let first = parse_normalization_string(&mut s);
+/// assert_eq!(first, Some("something (32 bits)".to_owned()));
+/// assert_eq!(s, " -> \"something ($WORD bits)\".");
+/// ```
+fn parse_normalization_string(line: &mut &str) -> Option<String> {
+    // FIXME support escapes in strings.
+    let begin = match line.find('"') {
+        Some(i) => i + 1,
+        None => return None,
+    };
+    let end = match line[begin..].find('"') {
+        Some(i) => i + begin,
+        None => return None,
+    };
+    let result = line[begin..end].to_owned();
+    *line = &line[end+1..];
+    Some(result)
 }

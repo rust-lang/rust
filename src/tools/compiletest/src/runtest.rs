@@ -2228,8 +2228,10 @@ actual:\n\
         let expected_stdout_path = self.expected_output_path("stdout");
         let expected_stdout = self.load_expected_output(&expected_stdout_path);
 
-        let normalized_stdout = self.normalize_output(&proc_res.stdout);
-        let normalized_stderr = self.normalize_output(&proc_res.stderr);
+        let normalized_stdout =
+            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
+        let normalized_stderr =
+            self.normalize_output(&proc_res.stderr, &self.props.normalize_stderr);
 
         let mut errors = 0;
         errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
@@ -2375,13 +2377,17 @@ actual:\n\
         mir_dump_dir
     }
 
-    fn normalize_output(&self, output: &str) -> String {
+    fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
         let parent_dir = self.testpaths.file.parent().unwrap();
         let parent_dir_str = parent_dir.display().to_string();
-        output.replace(&parent_dir_str, "$DIR")
+        let mut normalized = output.replace(&parent_dir_str, "$DIR")
               .replace("\\", "/") // normalize for paths on windows
               .replace("\r\n", "\n") // normalize for linebreaks on windows
-              .replace("\t", "\\t") // makes tabs visible
+              .replace("\t", "\\t"); // makes tabs visible
+        for rule in custom_rules {
+            normalized = normalized.replace(&rule.0, &rule.1);
+        }
+        normalized
     }
 
     fn expected_output_path(&self, kind: &str) -> PathBuf {

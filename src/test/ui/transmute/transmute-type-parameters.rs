@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-x86
-// ignore-arm
-// ignore-emscripten
-// ignore 32-bit platforms (test output is different)
+
+
+
+
 
 // Tests that `transmute` cannot be called on type parameters.
 
