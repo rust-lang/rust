@@ -12,9 +12,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(crate) fn drop_lvalue(&mut self, lval: Lvalue<'tcx>, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
         trace!("drop_lvalue: {:#?}", lval);
         let val = match self.force_allocation(lval)? {
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => Value::ByValPair(ptr, PrimVal::Ptr(vtable)),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => Value::ByValPair(ptr, PrimVal::Bytes(len as u128)),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::None } => Value::ByVal(ptr),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => ptr.to_value_with_vtable(vtable),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => ptr.to_value_with_len(len),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::None } => ptr.to_value(),
             _ => bug!("force_allocation broken"),
         };
         self.drop(val, instance, ty, span)

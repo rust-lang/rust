@@ -9,9 +9,8 @@ use syntax::abi::Abi;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
 use lvalue::Lvalue;
-use memory::{Pointer, TlsKey};
-use value::PrimVal;
-use value::Value;
+use memory::{MemoryPointer, TlsKey};
+use value::{PrimVal, Value};
 use rustc_data_structures::indexed_vec::Idx;
 
 mod drop;
@@ -461,7 +460,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(false)
     }
 
-    pub fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+    pub fn read_discriminant_value(&self, adt_ptr: MemoryPointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
         trace!("read_discriminant_value {:#?}", adt_layout);
@@ -500,7 +499,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: Pointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
+    fn read_nonnull_discriminant_value(&self, ptr: MemoryPointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
         trace!("read_nonnull_discriminant_value: {:?}, {}, {}", ptr, nndiscr, discr_size);
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
@@ -569,7 +568,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = self.memory.allocate(size, align)?;
-                self.memory.write_repeat(PrimVal::Ptr(ptr), 0, size)?;
+                self.memory.write_repeat(ptr.into(), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_dealloc" => {
@@ -652,7 +651,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "malloc" => {
                 let size = self.value_to_primval(args[0], usize)?.to_u64()?;
                 if size == 0 {
-                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                    self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.memory.pointer_size();
                     let ptr = self.memory.allocate(size, align)?;
@@ -690,7 +689,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let f = args[0].read_ptr(&self.memory)?.to_ptr()?;
                 let data = args[1].read_ptr(&self.memory)?;
                 let f_instance = self.memory.get_fn(f)?;
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                self.write_null(dest, dest_ty)?;
 
                 // Now we make a function call.  TODO: Consider making this re-usable?  EvalContext::step does sth. similar for the TLS dtors,
                 // and of course eval_main.
@@ -705,10 +704,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("Argument to __rust_maybe_catch_panic does not take enough arguments.".to_owned()))?;
                 let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                self.write_primval(arg_dest, data, u8_ptr_ty)?;
+                self.write_ptr(arg_dest, data, u8_ptr_ty)?;
 
                 // We ourselves return 0
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                self.write_null(dest, dest_ty)?;
 
                 // Don't fall through
                 return Ok(());
@@ -744,9 +743,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
                     let new_ptr = ptr.offset(num - idx as u64 - 1, self.memory.layout)?;
-                    self.write_primval(dest, new_ptr, dest_ty)?;
+                    self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
-                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                    self.write_null(dest, dest_ty)?;
                 }
             }
 
@@ -756,9 +755,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
                     let new_ptr = ptr.offset(idx as u64, self.memory.layout)?;
-                    self.write_primval(dest, new_ptr, dest_ty)?;
+                    self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
-                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                    self.write_null(dest, dest_ty)?;
                 }
             }
 
@@ -789,7 +788,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     if let Some(var) = old {
                         self.memory.deallocate(var, None)?;
                     }
-                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                    self.write_null(dest, dest_ty)?;
                 } else {
                     self.write_primval(dest, PrimVal::from_i128(-1), dest_ty)?;
                 }
@@ -816,7 +815,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     if let Some(var) = self.env_vars.insert(name.to_owned(), value_copy) {
                         self.memory.deallocate(var, None)?;
                     }
-                    self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                    self.write_null(dest, dest_ty)?;
                 } else {
                     self.write_primval(dest, PrimVal::from_i128(-1), dest_ty)?;
                 }
@@ -865,7 +864,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "mmap" => {
                 // This is a horrible hack, but well... the guard page mechanism calls mmap and expects a particular return value, so we give it that value
                 let addr = args[0].read_ptr(&self.memory)?;
-                self.write_primval(dest, addr, dest_ty)?;
+                self.write_ptr(dest, addr, dest_ty)?;
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
@@ -873,7 +872,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let key_ptr = args[0].read_ptr(&self.memory)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
-                let dtor = match args[1].read_ptr(&self.memory)? {
+                let dtor = match args[1].read_ptr(&self.memory)?.into_inner_primval() {
                     PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
                     PrimVal::Bytes(0) => None,
                     PrimVal::Bytes(_) => return Err(EvalError::ReadBytesAsPointer),
@@ -897,20 +896,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.write_uint(key_ptr.to_ptr()?, key, key_size.bytes())?;
 
                 // Return success (0)
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                self.write_null(dest, dest_ty)?;
             }
             "pthread_key_delete" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
                 let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
                 self.memory.delete_tls_key(key)?;
                 // Return success (0)
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                self.write_null(dest, dest_ty)?;
             }
             "pthread_getspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
                 let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
                 let ptr = self.memory.load_tls(key)?;
-                self.write_primval(dest, ptr, dest_ty)?;
+                self.write_ptr(dest, ptr, dest_ty)?;
             }
             "pthread_setspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
@@ -919,13 +918,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.store_tls(key, new_ptr)?;
                 
                 // Return success (0)
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                self.write_null(dest, dest_ty)?;
             }
 
             // Stub out all the other pthread calls to just return 0
             link_name if link_name.starts_with("pthread_") => {
                 warn!("ignoring C ABI call: {}", link_name);
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                self.write_null(dest, dest_ty)?;
             },
 
             _ => {

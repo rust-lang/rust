@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty};
 
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
-use memory::Pointer;
+use memory::MemoryPointer;
 use lvalue::Lvalue;
 use value::{
     PrimVal,
@@ -158,8 +158,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             match bin_op {
                 Offset if left_kind == Ptr && right_kind == usize => {
                     let pointee_ty = left_ty.builtin_deref(true, ty::LvaluePreference::NoPreference).expect("Offset called on non-ptr type").ty;
-                    let ptr = self.pointer_offset(left, pointee_ty, right.to_bytes()? as i64)?;
-                    return Ok((ptr, false));
+                    let ptr = self.pointer_offset(left.into(), pointee_ty, right.to_bytes()? as i64)?;
+                    return Ok((ptr.into_inner_primval(), false));
                 },
                 // These work on anything
                 Eq if left_kind == right_kind => {
@@ -297,13 +297,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn ptr_int_arithmetic(
         &self,
         bin_op: mir::BinOp,
-        left: Pointer,
+        left: MemoryPointer,
         right: i128,
         signed: bool,
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
         use rustc::mir::BinOp::*;
 
-        fn map_to_primval((res, over) : (Pointer, bool)) -> (PrimVal, bool) {
+        fn map_to_primval((res, over) : (MemoryPointer, bool)) -> (PrimVal, bool) {
             (PrimVal::Ptr(res), over)
         }
 
@@ -321,7 +321,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let right = right as u64;
                 if right & base_mask == base_mask {
                     // Case 1: The base address bits are all preserved, i.e., right is all-1 there
-                    (PrimVal::Ptr(Pointer::new(left.alloc_id, left.offset & right)), false)
+                    (PrimVal::Ptr(MemoryPointer::new(left.alloc_id, left.offset & right)), false)
                 } else if right & base_mask == 0 {
                     // Case 2: The base address bits are all taken away, i.e., right is all-0 there
                     (PrimVal::from_u128((left.offset & right) as u128), false)

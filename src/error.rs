@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
-use memory::Pointer;
+use memory::MemoryPointer;
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
@@ -10,14 +10,14 @@ use syntax::codemap::Span;
 pub enum EvalError<'tcx> {
     FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     NoMirFor(String),
-    UnterminatedCString(Pointer),
+    UnterminatedCString(MemoryPointer),
     DanglingPointerDeref,
     InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
     InvalidDiscriminant,
     PointerOutOfBounds {
-        ptr: Pointer,
+        ptr: MemoryPointer,
         access: bool,
         allocation_size: u64,
     },

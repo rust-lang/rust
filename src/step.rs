@@ -99,9 +99,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     Layout::RawNullablePointer { nndiscr, .. } => {
-                        use value::PrimVal;
                         if variant_index as u64 != nndiscr {
-                            self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                            self.write_null(dest, dest_ty)?;
                         }
                     }
 
