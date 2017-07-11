@@ -57,6 +57,7 @@ use syntax::symbol::Symbol;
 use syntax::tokenstream;
 use syntax_pos::DUMMY_SP;
 use syntax_pos::SyntaxContext;
+use syntax_pos::hygiene::Mark;
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens.
@@ -86,8 +87,16 @@ impl FromStr for TokenStream {
         __internal::with_sess(|(sess, mark)| {
             let src = src.to_string();
             let name = "<proc-macro source code>".to_string();
-            let call_site = mark.expn_info().unwrap().call_site;
-            let stream = parse::parse_stream_from_source_str(name, src, sess, Some(call_site));
+            let expn_info = mark.expn_info().unwrap();
+            let call_site = expn_info.call_site;
+            // notify the expansion info that it is unhygienic
+            let mark = Mark::fresh(mark);
+            mark.set_expn_info(expn_info);
+            let span = syntax_pos::Span {
+                ctxt: SyntaxContext::empty().apply_mark(mark),
+                ..call_site
+            };
+            let stream = parse::parse_stream_from_source_str(name, src, sess, Some(span));
             Ok(__internal::token_stream_wrap(stream))
         })
     }
