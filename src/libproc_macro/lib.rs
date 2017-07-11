@@ -509,14 +509,26 @@ impl TokenTree {
             Ident(ident) | Lifetime(ident) => TokenNode::Term(Term(ident.name)),
             Literal(..) | DocComment(..) => TokenNode::Literal(self::Literal(token)),
 
-            Interpolated(ref nt) => __internal::with_sess(|(sess, _)| {
-                TokenNode::Group(Delimiter::None, TokenStream(nt.1.force(|| {
-                    // FIXME(jseyfried): Avoid this pretty-print + reparse hack
-                    let name = "<macro expansion>".to_owned();
-                    let source = pprust::token_to_string(&token);
-                    parse_stream_from_source_str(name, source, sess, Some(span))
-                })))
-            }),
+            Interpolated(ref nt) => {
+                let mut node = None;
+                if let Nonterminal::NtItem(ref item) = nt.0 {
+                    if let Some(ref tokens) = item.tokens {
+                        node = Some(TokenNode::Group(Delimiter::None,
+                                                     TokenStream(tokens.clone())));
+                    }
+                }
+
+                node.unwrap_or_else(|| {
+                    __internal::with_sess(|(sess, _)| {
+                        TokenNode::Group(Delimiter::None, TokenStream(nt.1.force(|| {
+                            // FIXME(jseyfried): Avoid this pretty-print + reparse hack
+                            let name = "<macro expansion>".to_owned();
+                            let source = pprust::token_to_string(&token);
+                            parse_stream_from_source_str(name, source, sess, Some(span))
+                        })))
+                    })
+                })
+            }
 
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
