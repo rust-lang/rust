@@ -696,6 +696,7 @@ impl_stable_hash_for!(enum ty::fast_reject::SimplifiedType {
     TupleSimplifiedType(size),
     TraitSimplifiedType(def_id),
     ClosureSimplifiedType(def_id),
+    GeneratorSimplifiedType(def_id),
     AnonSimplifiedType(def_id),
     FunctionSimplifiedType(params),
     ParameterSimplifiedType
