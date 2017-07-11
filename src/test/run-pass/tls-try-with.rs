@@ -14,6 +14,8 @@
 
 use std::thread;
 
+static mut DROP_RUN: bool = false;
+
 struct Foo;
 
 thread_local!(static FOO: Foo = Foo {});
@@ -21,6 +23,7 @@ thread_local!(static FOO: Foo = Foo {});
 impl Drop for Foo {
     fn drop(&mut self) {
         assert!(FOO.try_with(|_| panic!("`try_with` closure run")).is_err());
+        unsafe { DROP_RUN = true; }
     }
 }
 
@@ -30,4 +33,5 @@ fn main() {
             132
         }).expect("`try_with` failed"), 132);
     }).join().unwrap();
+    assert!(unsafe { DROP_RUN });
 }

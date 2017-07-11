@@ -17,7 +17,7 @@ use io::{self, Initializer, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-use thread::LocalKey;
+use thread::{LocalKey, LocalKeyState};
 
 /// Stdout used by print! and println! macros
 thread_local! {
@@ -674,14 +674,20 @@ fn print_to<T>(args: fmt::Arguments,
                local_s: &'static LocalKey<RefCell<Option<Box<Write+Send>>>>,
                global_s: fn() -> T,
                label: &str) where T: Write {
-    let result = local_s.try_with(|s| {
-        if let Ok(mut borrowed) = s.try_borrow_mut() {
-            if let Some(w) = borrowed.as_mut() {
-                return w.write_fmt(args);
-            }
+    let result = match local_s.state() {
+        LocalKeyState::Uninitialized |
+        LocalKeyState::Destroyed => global_s().write_fmt(args),
+        LocalKeyState::Valid => {
+            local_s.with(|s| {
+                if let Ok(mut borrowed) = s.try_borrow_mut() {
+                    if let Some(w) = borrowed.as_mut() {
+                        return w.write_fmt(args);
+                    }
+                }
+                global_s().write_fmt(args)
+            })
         }
-        global_s().write_fmt(args)
-    }).unwrap_or_else(|_| global_s().write_fmt(args));
+    };
     if let Err(e) = result {
         panic!("failed printing to {}: {}", label, e);
     }
