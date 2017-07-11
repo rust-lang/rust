@@ -1158,10 +1158,10 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
     // Note: we unwrap the binder here but re-create it below (1)
     let ty::Binder((trait_ref, yield_ty, return_ty)) =
         tcx.generator_trait_ref_and_outputs(gen_def_id,
-                                            obligation.predicate.trait_ref.self_ty(),
+                                            obligation.predicate.self_ty(),
                                             gen_sig);
 
-    let name = obligation.predicate.item_name(tcx);
+    let name = tcx.associated_item(obligation.predicate.item_def_id).name;
     let ty = if name == Symbol::intern("Return") {
         return_ty
     } else if name == Symbol::intern("Yield") {
@@ -1172,7 +1172,7 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
 
     let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
         projection_ty: ty::ProjectionTy {
-            trait_ref: trait_ref,
+            substs: trait_ref.substs,
             item_def_id: obligation.predicate.item_def_id,
         },
         ty: ty
