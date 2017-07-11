@@ -224,7 +224,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
         start_or_continue(f, "<", ", ")?;
         ty::tls::with(|tcx|
             write!(f, "{}={}",
-            projection.projection_ty.item_name(tcx),
+            tcx.associated_item(projection.projection_ty.item_def_id).name,
             projection.ty)
         )?;
     }
@@ -958,9 +958,14 @@ impl<'tcx> fmt::Display for ty::ProjectionPredicate<'tcx> {
 
 impl<'tcx> fmt::Display for ty::ProjectionTy<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let item_name = ty::tls::with(|tcx| self.item_name(tcx));
+        // FIXME(tschottdorf): use something like
+        //   parameterized(f, self.substs, self.item_def_id, &[])
+        // (which currently ICEs).
+        let (trait_ref, item_name) = ty::tls::with(|tcx|
+            (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).name)
+        );
         write!(f, "{:?}::{}",
-               self.trait_ref,
+               trait_ref,
                item_name)
     }
 }

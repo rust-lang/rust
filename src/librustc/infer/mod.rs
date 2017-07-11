@@ -274,7 +274,7 @@ pub enum LateBoundRegionConversionTime {
     HigherRankedType,
 
     /// when projecting an associated type
-    AssocTypeProjection(ast::Name),
+    AssocTypeProjection(ast::Name), // FIXME(tschottdorf): should contain DefId, not Name
 }
 
 /// Reasons to create a region inference variable
@@ -1277,14 +1277,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                            match_b: ty::TraitRef<'tcx>)
                                            -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>>
     {
+        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref(self.tcx), p.ty));
         let span = cause.span;
-        let match_trait_ref = match_a.skip_binder().projection_ty.trait_ref;
         let trace = TypeTrace {
             cause,
-            values: TraitRefs(ExpectedFound::new(true, match_trait_ref, match_b))
+            values: TraitRefs(ExpectedFound::new(true, match_pair.skip_binder().0, match_b))
         };
 
-        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
         let mut combine = self.combine_fields(trace, param_env);
         let result = combine.higher_ranked_match(span, &match_pair, &match_b, true)?;
         Ok(InferOk { value: result, obligations: combine.obligations })

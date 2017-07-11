@@ -952,15 +952,15 @@ impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
 
 impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
-        let trait_ = match self.trait_ref.clean(cx) {
+        let trait_ = match self.trait_ref(cx.tcx).clean(cx) {
             TyParamBound::TraitBound(t, _) => t.trait_,
             TyParamBound::RegionBound(_) => {
                 panic!("cleaning a trait got a region")
             }
         };
         Type::QPath {
-            name: self.item_name(cx.tcx).clean(cx),
-            self_type: box self.trait_ref.self_ty().clean(cx),
+            name: cx.tcx.associated_item(self.item_def_id).name.clean(cx),
+            self_type: box self.self_ty().clean(cx),
             trait_: box trait_
         }
     }
@@ -1784,7 +1784,7 @@ impl Clean<Type> for hir::Ty {
                 let mut def = Def::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
                 if let ty::TyProjection(proj) = ty.sty {
-                    def = Def::Trait(proj.trait_ref.def_id);
+                    def = Def::Trait(proj.trait_ref(cx.tcx).def_id);
                 }
                 let trait_path = hir::Path {
                     span: self.span,
@@ -1901,7 +1901,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     let mut bindings = vec![];
                     for ty::Binder(ref pb) in obj.projection_bounds() {
                         bindings.push(TypeBinding {
-                            name: pb.item_name.clean(cx),
+                            name: cx.tcx.associated_item(pb.item_def_id).name.clean(cx),
                             ty: pb.ty.clean(cx)
                         });
                     }

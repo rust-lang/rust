@@ -558,7 +558,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
         for projection in projections {
             let projection = projection.skip_binder();
-            let name = &projection.item_name.as_str();
+            let name = &self.tcx.associated_item(projection.item_def_id).name.as_str();
             output.push_str(name);
             output.push_str("=");
             self.push_type_name(projection.ty, output);

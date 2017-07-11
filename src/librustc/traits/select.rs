@@ -1335,7 +1335,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                skol_map);
 
         let (def_id, substs) = match skol_trait_predicate.trait_ref.self_ty().sty {
-            ty::TyProjection(ref data) => (data.trait_ref.def_id, data.trait_ref.substs),
+            ty::TyProjection(ref data) =>
+                (data.trait_ref(self.tcx()).def_id, data.substs),
             ty::TyAnon(def_id, substs) => (def_id, substs),
             _ => {
                 span_bug!(

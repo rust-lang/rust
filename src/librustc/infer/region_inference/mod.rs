@@ -1550,8 +1550,7 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Projection(ref p) => tcx.mk_projection(
-                p.trait_ref.clone(), p.item_name(tcx)),
+            GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
         }
     }
 }

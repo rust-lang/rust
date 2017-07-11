@@ -1620,17 +1620,18 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
 
     fn projected_ty_from_poly_trait_ref(&self,
                                         span: Span,
-                                        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-                                        item_name: ast::Name)
+                                        item_def_id: DefId,
+                                        poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>
     {
+        let item = self.tcx().associated_item(item_def_id);
         let (trait_ref, _) =
             self.replace_late_bound_regions_with_fresh_var(
                 span,
-                infer::LateBoundRegionConversionTime::AssocTypeProjection(item_name),
+                infer::LateBoundRegionConversionTime::AssocTypeProjection(item.name),
                 &poly_trait_ref);
 
-        self.tcx().mk_projection(trait_ref, item_name)
+        self.tcx().mk_projection(item_def_id, trait_ref.substs)
     }
 
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {

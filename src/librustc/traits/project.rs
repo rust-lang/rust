@@ -365,9 +365,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // information is available.
 
             let tcx = selcx.infcx().tcx;
-            let def_id = tcx.associated_items(projection_ty.trait_ref.def_id).find(|i|
-                i.name == projection_ty.item_name(tcx) && i.kind == ty::AssociatedKind::Type
-            ).map(|i| i.def_id).unwrap();
+            let def_id = projection_ty.item_def_id;
             let ty_var = selcx.infcx().next_ty_var(
                 TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
             let projection = ty::Binder(ty::ProjectionPredicate {
@@ -447,8 +445,8 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // normalization. In that case, I think we will want this code:
             //
             // ```
-            // let ty = selcx.tcx().mk_projection(projection_ty.trait_ref,
-            //                                    projection_ty.item_name(tcx);
+            // let ty = selcx.tcx().mk_projection(projection_ty.item_def_id,
+            //                                    projection_ty.substs;
             // return Some(NormalizedTy { value: v, obligations: vec![] });
             // ```
 
@@ -585,15 +583,13 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
                                       depth: usize)
                                       -> NormalizedTy<'tcx>
 {
-    let trait_ref = projection_ty.trait_ref.to_poly_trait_ref();
+    let trait_ref = projection_ty.trait_ref(selcx.tcx()).to_poly_trait_ref();
     let trait_obligation = Obligation { cause,
                                         recursion_depth: depth,
                                         param_env,
                                         predicate: trait_ref.to_predicate() };
     let tcx = selcx.infcx().tcx;
-    let def_id = tcx.associated_items(projection_ty.trait_ref.def_id).find(|i|
-        i.name == projection_ty.item_name(tcx) && i.kind == ty::AssociatedKind::Type
-    ).map(|i| i.def_id).unwrap();
+    let def_id = projection_ty.item_def_id;
     let new_value = selcx.infcx().next_ty_var(
         TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
     Normalized {
@@ -654,7 +650,7 @@ fn project_type<'cx, 'gcx, 'tcx>(
         selcx.infcx().report_overflow_error(&obligation, true);
     }
 
-    let obligation_trait_ref = &obligation.predicate.trait_ref;
+    let obligation_trait_ref = &obligation.predicate.trait_ref(selcx.tcx());
 
     debug!("project: obligation_trait_ref={:?}", obligation_trait_ref);
 
@@ -743,12 +739,10 @@ fn project_type<'cx, 'gcx, 'tcx>(
                                   &obligation_trait_ref,
                                   candidate)))
         }
-        None => {
-            Ok(ProjectedTy::NoProgress(
-                selcx.tcx().mk_projection(
-                    obligation.predicate.trait_ref.clone(),
-                    obligation.predicate.item_name(selcx.tcx()))))
-        }
+        None => Ok(ProjectedTy::NoProgress(
+                    selcx.tcx().mk_projection(
+                        obligation.predicate.item_def_id,
+                        obligation.predicate.substs)))
     }
 }
 
@@ -788,10 +782,11 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
 {
     debug!("assemble_candidates_from_trait_def(..)");
 
+    let tcx = selcx.tcx();
     // Check whether the self-type is itself a projection.
     let (def_id, substs) = match obligation_trait_ref.self_ty().sty {
         ty::TyProjection(ref data) => {
-            (data.trait_ref.def_id, data.trait_ref.substs)
+            (data.trait_ref(tcx).def_id, data.substs)
         }
         ty::TyAnon(def_id, substs) => (def_id, substs),
         ty::TyInfer(ty::TyVar(_)) => {
@@ -804,9 +799,9 @@ fn assemble_candidates_from_trait_def<'cx, 'gcx, 'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = selcx.tcx().predicates_of(def_id);
-    let bounds = trait_predicates.instantiate(selcx.tcx(), substs);
-    let bounds = elaborate_predicates(selcx.tcx(), bounds.predicates);
+    let trait_predicates = tcx.predicates_of(def_id);
+    let bounds = trait_predicates.instantiate(tcx, substs);
+    let bounds = elaborate_predicates(tcx, bounds.predicates);
     assemble_candidates_from_predicates(selcx,
                                         obligation,
                                         obligation_trait_ref,
@@ -832,12 +827,12 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                predicate);
         match predicate {
             ty::Predicate::Projection(ref data) => {
-                let tcx = selcx.tcx();
-                let same_name = data.item_name(tcx) == obligation.predicate.item_name(tcx);
+                let same_def_id =
+                    data.0.projection_ty.item_def_id == obligation.predicate.item_def_id;
 
-                let is_match = same_name && infcx.probe(|_| {
+                let is_match = same_def_id && infcx.probe(|_| {
                     let data_poly_trait_ref =
-                        data.to_poly_trait_ref();
+                        data.to_poly_trait_ref(infcx.tcx);
                     let obligation_poly_trait_ref =
                         obligation_trait_ref.to_poly_trait_ref();
                     infcx.at(&obligation.cause, obligation.param_env)
@@ -850,8 +845,8 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                 });
 
                 debug!("assemble_candidates_from_predicates: candidate={:?} \
-                                                             is_match={} same_name={}",
-                       data, is_match, same_name);
+                                                             is_match={} same_def_id={}",
+                       data, is_match, same_def_id);
 
                 if is_match {
                     candidate_set.vec.push(ctor(data.clone()));
@@ -916,9 +911,10 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // In either case, we handle this by not adding a
                 // candidate for an impl if it contains a `default`
                 // type.
+                let item_name = selcx.tcx().associated_item(obligation.predicate.item_def_id).name;
                 let node_item = assoc_ty_def(selcx,
                                              impl_data.impl_def_id,
-                                             obligation.predicate.item_name(selcx.tcx()));
+                                             item_name);
 
                 let is_default = if node_item.node.is_from_trait() {
                     // If true, the impl inherited a `type Foo = Bar`
@@ -1091,10 +1087,9 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
 
         // select only those projections that are actually projecting an
         // item with the correct name
-        let tcx = selcx.tcx();
         let env_predicates = env_predicates.filter_map(|p| match p {
             ty::Predicate::Projection(data) =>
-                if data.item_name(tcx) == obligation.predicate.item_name(tcx) {
+                if data.0.projection_ty.item_def_id == obligation.predicate.item_def_id {
                     Some(data)
                 } else {
                     None
@@ -1104,7 +1099,7 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
 
         // select those with a relevant trait-ref
         let mut env_predicates = env_predicates.filter(|data| {
-            let data_poly_trait_ref = data.to_poly_trait_ref();
+            let data_poly_trait_ref = data.to_poly_trait_ref(selcx.tcx());
             let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
             selcx.infcx().probe(|_| {
                 selcx.infcx().at(&obligation.cause, obligation.param_env)
@@ -1202,7 +1197,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
     // Note: we unwrap the binder here but re-create it below (1)
     let ty::Binder((trait_ref, ret_type)) =
         tcx.closure_trait_ref_and_return_type(fn_once_def_id,
-                                              obligation.predicate.trait_ref.self_ty(),
+                                              obligation.predicate.self_ty(),
                                               fn_sig,
                                               flag);
 
@@ -1227,7 +1222,7 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     let infcx = selcx.infcx();
     let cause = obligation.cause.clone();
     let param_env = obligation.param_env;
-    let trait_ref = obligation.predicate.trait_ref;
+    let trait_ref = obligation.predicate.trait_ref(infcx.tcx);
     match infcx.match_poly_projection_predicate(cause, param_env, poly_projection, trait_ref) {
         Ok(InferOk { value: ty_match, obligations }) => {
             Progress {
@@ -1258,7 +1253,8 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 
     let tcx = selcx.tcx();
     let param_env = obligation.param_env;
-    let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_name(tcx));
+    let assoc_ty = assoc_ty_def(selcx, impl_def_id,
+        tcx.associated_item(obligation.predicate.item_def_id).name);
 
     let ty = if !assoc_ty.item.defaultness.has_value() {
         // This means that the impl is missing a definition for the
@@ -1267,7 +1263,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
         // just return TyError.
         debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
                assoc_ty.item.name,
-               obligation.predicate.trait_ref);
+               obligation.predicate);
         tcx.types.err
     } else {
         tcx.type_of(assoc_ty.item.def_id)

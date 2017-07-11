@@ -1030,8 +1030,13 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
-    pub fn item_name(&self, tcx: TyCtxt) -> Name {
-        self.0.projection_ty.item_name(tcx) // safe to skip the binder to access a name
+    pub fn to_poly_trait_ref(&self, tcx: TyCtxt) -> PolyTraitRef<'tcx> {
+        // Note: unlike with TraitRef::to_poly_trait_ref(),
+        // self.0.trait_ref is permitted to have escaping regions.
+        // This is because here `self` has a `Binder` and so does our
+        // return value, so we are preserving the number of binding
+        // levels.
+        ty::Binder(self.0.projection_ty.trait_ref(tcx))
     }
 }
 
@@ -1049,17 +1054,6 @@ impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
 impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
         self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
-    }
-}
-
-impl<'tcx> ToPolyTraitRef<'tcx> for PolyProjectionPredicate<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        // Note: unlike with TraitRef::to_poly_trait_ref(),
-        // self.0.trait_ref is permitted to have escaping regions.
-        // This is because here `self` has a `Binder` and so does our
-        // return value, so we are preserving the number of binding
-        // levels.
-        ty::Binder(self.0.projection_ty.trait_ref)
     }
 }
 
@@ -1132,8 +1126,7 @@ impl<'tcx> Predicate<'tcx> {
                 vec![]
             }
             ty::Predicate::Projection(ref data) => {
-                let trait_inputs = data.0.projection_ty.trait_ref.input_types();
-                trait_inputs.chain(Some(data.0.ty)).collect()
+                data.0.projection_ty.substs.types().chain(Some(data.0.ty)).collect()
             }
             ty::Predicate::WellFormed(data) => {
                 vec![data]

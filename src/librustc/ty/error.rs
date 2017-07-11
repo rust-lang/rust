@@ -14,7 +14,7 @@ use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
 
 use std::fmt;
 use syntax::abi;
-use syntax::ast::{self, Name};
+use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -47,7 +47,7 @@ pub enum TypeError<'tcx> {
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
     CyclicTy,
-    ProjectionNameMismatched(ExpectedFound<Name>),
+    ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
@@ -154,11 +154,11 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        if values.expected { "variadic" } else { "non-variadic" },
                        if values.found { "variadic" } else { "non-variadic" })
             }
-            ProjectionNameMismatched(ref values) => {
+            ProjectionMismatched(ref values) => ty::tls::with(|tcx| {
                 write!(f, "expected {}, found {}",
-                       values.expected,
-                       values.found)
-            }
+                       tcx.item_path_str(values.expected),
+                       tcx.item_path_str(values.found))
+            }),
             ProjectionBoundsLength(ref values) => {
                 write!(f, "expected {} associated type bindings, found {}",
                        values.expected,

@@ -187,7 +187,7 @@ for ty::OutlivesPredicate<A, B>
 }
 
 impl_stable_hash_for!(struct ty::ProjectionPredicate<'tcx> { projection_ty, ty });
-impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { trait_ref, item_def_id });
+impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { substs, item_def_id });
 
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Predicate<'tcx> {
@@ -599,8 +599,8 @@ impl_stable_hash_for!(struct ty::ExistentialTraitRef<'tcx> {
 });
 
 impl_stable_hash_for!(struct ty::ExistentialProjection<'tcx> {
-    trait_ref,
-    item_name,
+    item_def_id,
+    substs,
     ty
 });
 

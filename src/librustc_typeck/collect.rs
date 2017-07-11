@@ -225,12 +225,12 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
 
     fn projected_ty_from_poly_trait_ref(&self,
                                         span: Span,
-                                        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-                                        item_name: ast::Name)
+                                        item_def_id: DefId,
+                                        poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>
     {
         if let Some(trait_ref) = self.tcx().no_late_bound_regions(&poly_trait_ref) {
-            self.tcx().mk_projection(trait_ref, item_name)
+            self.tcx().mk_projection(item_def_id, trait_ref.substs)
         } else {
             // no late-bound regions, we can just ignore the binder
             span_err!(self.tcx().sess, span, E0212,
@@ -1438,7 +1438,10 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             };
 
-            let assoc_ty = tcx.mk_projection(self_trait_ref, trait_item.name);
+            let assoc_ty = tcx.mk_projection(
+                tcx.hir.local_def_id(trait_item.id),
+                self_trait_ref.substs,
+            );
 
             let bounds = compute_bounds(&ItemCtxt::new(tcx, def_id),
                                         assoc_ty,
@@ -1458,7 +1461,8 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let NodeItem(&Item { node: ItemImpl(..), .. }) = node {
         let self_ty = tcx.type_of(def_id);
         let trait_ref = tcx.impl_trait_ref(def_id);
-        ctp::setup_constraining_predicates(&mut predicates,
+        ctp::setup_constraining_predicates(tcx,
+                                           &mut predicates,
                                            trait_ref,
                                            &mut ctp::parameters_for_impl(self_ty, trait_ref));
     }

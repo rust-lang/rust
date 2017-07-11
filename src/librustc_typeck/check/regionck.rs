@@ -1595,15 +1595,15 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let needs_infer = projection_ty.trait_ref.needs_infer();
+        let needs_infer = projection_ty.needs_infer();
         if env_bounds.is_empty() && needs_infer {
             debug!("projection_must_outlive: no declared bounds");
 
-            for component_ty in projection_ty.trait_ref.substs.types() {
+            for component_ty in projection_ty.substs.types() {
                 self.type_must_outlive(origin.clone(), component_ty, region);
             }
 
-            for r in projection_ty.trait_ref.substs.regions() {
+            for r in projection_ty.substs.regions() {
                 self.sub_regions(origin.clone(), region, r);
             }
 
@@ -1621,7 +1621,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
             let unique_bound = env_bounds[0];
             debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
-            if projection_ty.trait_ref.substs.regions().any(|r| env_bounds.contains(&r)) {
+            if projection_ty.substs.regions().any(|r| env_bounds.contains(&r)) {
                 debug!("projection_must_outlive: unique declared bound appears in trait ref");
                 self.sub_regions(origin.clone(), region, unique_bound);
                 return;
@@ -1691,8 +1691,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                declared_bounds, projection_ty);
 
         // see the extensive comment in projection_must_outlive
-        let item_name = projection_ty.item_name(self.tcx);
-        let ty = self.tcx.mk_projection(projection_ty.trait_ref, item_name);
+        let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(span, ty);
 
         VerifyBound::AnyRegion(declared_bounds).or(recursive_bound)
@@ -1758,9 +1757,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("projection_bounds(projection_ty={:?})",
                projection_ty);
-        let item_name = projection_ty.item_name(self.tcx);
-        let ty = self.tcx.mk_projection(projection_ty.trait_ref.clone(),
-                                        item_name);
+        let ty = self.tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs);
 
         // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
         // in looking for a trait definition like:
@@ -1772,7 +1769,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // ```
         //
         // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
-        let trait_predicates = self.tcx.predicates_of(projection_ty.trait_ref.def_id);
+        let trait_predicates = self.tcx.predicates_of(projection_ty.trait_ref(self.tcx).def_id);
         assert_eq!(trait_predicates.parent, None);
         let predicates = trait_predicates.predicates.as_slice().to_vec();
         traits::elaborate_predicates(self.tcx, predicates)
@@ -1788,7 +1785,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
                 // apply the substitutions (and normalize any projected types)
                 let outlives = self.instantiate_type_scheme(span,
-                                                            projection_ty.trait_ref.substs,
+                                                            projection_ty.substs,
                                                             &outlives);
 
                 debug!("projection_bounds: outlives={:?} (2)",
@@ -1798,7 +1795,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     let (outlives, _) =
                         self.replace_late_bound_regions_with_fresh_var(
                             span,
-                            infer::AssocTypeProjection(projection_ty.item_name(self.tcx)),
+                            infer::AssocTypeProjection(
+                                self.tcx.associated_item(projection_ty.item_def_id).name),
                             &outlives);
 
                     debug!("projection_bounds: outlives={:?} (3)",

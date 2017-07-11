@@ -324,7 +324,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyProjection(ref data) => {
-                self.add_constraints_from_trait_ref(current, data.trait_ref, variance);
+                let tcx = self.tcx();
+                self.add_constraints_from_trait_ref(current, data.trait_ref(tcx), variance);
             }
 
             ty::TyAnon(_, substs) => {
