@@ -7,7 +7,7 @@
 
 Support the `#[must_use]` attribute on arbitrary functions, to make
 the compiler lint when a call to such a function is ignored. Mark
-`Result::{ok, err}` `#[must_use]`.
+`PartialEq::{eq, ne}` `#[must_use]` as well as `PartialOrd::{lt, gt, le, ge}`.
 
 # Motivation
 
@@ -85,7 +85,7 @@ The primary motivation is to mark `PartialEq` functions as `#[must_use]`:
 fn eq(&self, other: &Rhs) -> bool;
 ```
 
-The same thing for `ne`, and also `lt`, `gt`, `ge`, `gt` in `PartialOrd`. There is no reason to discard the results of those operations. This means the `impl`s of these functions are not changed, it still issues a warning even for a custom `impl`.
+The same thing for `ne`, and also `lt`, `gt`, `ge`, `le` in `PartialOrd`. There is no reason to discard the results of those operations. This means the `impl`s of these functions are not changed, it still issues a warning even for a custom `impl`.
 
 # Drawbacks
 
