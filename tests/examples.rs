@@ -100,19 +100,30 @@ fn examples() {
         let _ = dump.set_permissions(permissions);
 
         let _ = writeln!(dump, r#"#!/bin/sh
-rustc --crate-type=lib -o liboldandnew.rlib "$1"
-
+export PATH=./target/debug:$PATH
 export LD_LIBRARY_PATH={}
-export RUST_SEMVERVER_TEST=1
 export RUST_LOG=debug
 export RUST_BACKTRACE=full
 export RUST_SEMVER_CRATE_VERSION=1.0.0
 
-arg_str="set args --crate-type=lib --extern oldandnew=liboldandnew.rlib - < tests/helper/test.rs"
+if [ "$1" = "-s" ]; then
+    shift
+    arg_str="set args $(cargo semver "$@")"
+    standalone=1
+else
+    rustc --crate-type=lib -o liboldandnew.rlib "$1"
+    export RUST_SEMVERVER_TEST=1
+    arg_str="set args --crate-type=lib --extern oldandnew=liboldandnew.rlib tests/helper/test.rs"
+    standalone=0
+fi
+
 src_str="set substitute-path /checkout $(rustc --print sysroot)/lib/rustlib/src/rust"
 
 rust-gdb ./target/debug/rust-semverver -iex "$arg_str" -iex "$src_str"
-rm liboldandnew.rlib"#, path);
+
+if [ $standalone = 0 ]; then
+    rm liboldandnew.rlib
+fi"#, path);
     }
 
     assert!(success, "an error occured");

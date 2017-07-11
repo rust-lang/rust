@@ -187,6 +187,15 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     let (current_rlib, current_deps_output) = current.rlib_and_dep_output(config, &name)?;
     let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name)?;
 
+    if matches.opt_present("d") {
+        println!("--crate=type=lib --extern old={} -L{} --extern new={}, -L{} tests/helper/test2.rs",
+                 stable_rlib.display(),
+                 stable_deps_output.display(),
+                 current_rlib.display(),
+                 current_deps_output.display());
+        return Ok(());
+    }
+
     let mut child = Command::new("rust-semverver")
         .arg("--crate-type=lib")
         .args(&["--extern", &*format!("old={}", stable_rlib.display())])
@@ -233,6 +242,7 @@ fn main() {
 
     opts.optflag("h", "help", "print this message and exit");
     opts.optflag("V", "version", "print version information and exit");
+    opts.optflag("d", "debug", "print command to debug and exit");
     opts.optopt("s", "stable-path", "use local path as stable/old crate", "PATH");
     opts.optopt("c", "current-path", "use local path as current/new crate", "PATH");
     opts.optopt("S", "stable-pkg", "use a name-version string as stable/old crate", "SPEC");
