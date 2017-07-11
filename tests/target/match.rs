@@ -215,14 +215,12 @@ fn issue355() {
         wc => println!["a", b], // comment
         xc => vec![1, 2], // comment
         yc => vec![3; 4], // comment
-        yd => {
-            looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(
-                aaaaaaaaaa,
-                bbbbbbbbbb,
-                cccccccccc,
-                dddddddddd,
-            )
-        }
+        yd => looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(
+            aaaaaaaaaa,
+            bbbbbbbbbb,
+            cccccccccc,
+            dddddddddd,
+        ),
     }
 }
 
@@ -342,14 +340,12 @@ fn issue1371() {
         }
         sfEvtLostFocus => LostFocus,
         sfEvtGainedFocus => GainedFocus,
-        sfEvtTextEntered => {
-            TextEntered {
-                unicode: unsafe {
-                    ::std::char::from_u32((*event.text.as_ref()).unicode)
-                        .expect("Invalid unicode encountered on TextEntered event")
-                },
-            }
-        }
+        sfEvtTextEntered => TextEntered {
+            unicode: unsafe {
+                ::std::char::from_u32((*event.text.as_ref()).unicode)
+                    .expect("Invalid unicode encountered on TextEntered event")
+            },
+        },
         sfEvtKeyPressed => {
             let e = unsafe { event.key.as_ref() };
 

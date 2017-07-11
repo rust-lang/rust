@@ -15,14 +15,12 @@ fn main() {
     2 => "two",
     3 => "three",
     4 => "four",
-    5 => {
-        match y {
-        'a' => 'A',
-        'b' => 'B',
-        'c' => 'C',
-        _ => "Nope",
-        }
-    }
+    5 => match y {
+    'a' => 'A',
+    'b' => 'B',
+    'c' => 'C',
+    _ => "Nope",
+    },
     _ => "something else",
     }
 

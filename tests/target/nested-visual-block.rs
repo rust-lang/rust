@@ -19,13 +19,11 @@ fn main() {
         },
         |item| {
             match *item {
-                StructLitField::Regular(ref field) => {
-                    rewrite_field(
-                        inner_context,
-                        &field,
-                        &Constraints::new(v_budget.checked_sub(1).unwrap_or(0), indent),
-                    )
-                }
+                StructLitField::Regular(ref field) => rewrite_field(
+                    inner_context,
+                    &field,
+                    &Constraints::new(v_budget.checked_sub(1).unwrap_or(0), indent),
+                ),
                 StructLitField::Base(ref expr) => {
                     // 2 = ..
                     expr.rewrite(
