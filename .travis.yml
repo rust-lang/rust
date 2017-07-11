@@ -122,7 +122,7 @@ matrix:
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--enable-extended"
+        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
         SRC=.
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
