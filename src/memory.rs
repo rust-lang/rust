@@ -35,19 +35,25 @@ pub struct Allocation {
     /// The alignment of the allocation to detect unaligned reads.
     pub align: u64,
     /// Whether the allocation may be modified.
+    pub mutable: bool,
     /// Use the `mark_static_initalized` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified or deallocated in the future.
-    pub static_kind: StaticKind,
+    /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
+    pub kind: Kind,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum StaticKind {
-    /// may be deallocated without breaking miri's invariants
-    NotStatic,
-    /// may be modified, but never deallocated
-    Mutable,
-    /// may neither be modified nor deallocated
-    Immutable,
+pub enum Kind {
+    /// Error if deallocated any other way than `rust_deallocate`
+    Rust,
+    /// Error if deallocated any other way than `free`
+    C,
+    /// Error if deallocated via `rust_deallocate`
+    Stack,
+    /// May never be deallocated
+    Static,
+    /// Part of env var emulation
+    Env,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -181,14 +187,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(MemoryPointer::new(alloc_id, 0));
         }
 
-        let ptr = self.allocate(bytes.len() as u64, 1)?;
+        let ptr = self.allocate(bytes.len() as u64, 1, Kind::Static)?;
         self.write_bytes(PrimVal::Ptr(ptr), bytes)?;
-        self.mark_static_initalized(ptr.alloc_id, false)?;
+        self.mark_static_initalized(ptr.alloc_id, true)?;
         self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
         Ok(ptr)
     }
 
-    pub fn allocate(&mut self, size: u64, align: u64) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn allocate(&mut self, size: u64, align: u64, kind: Kind) -> EvalResult<'tcx, MemoryPointer> {
         assert_ne!(align, 0);
         assert!(align.is_power_of_two());
 
@@ -206,7 +212,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
             align,
-            static_kind: StaticKind::NotStatic,
+            kind,
+            mutable: true,
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -214,49 +221,45 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(MemoryPointer::new(id, 0))
     }
 
-    // TODO(solson): Track which allocations were returned from __rust_allocate and report an error
-    // when reallocating/deallocating any others.
-    pub fn reallocate(&mut self, ptr: MemoryPointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn reallocate(&mut self, ptr: MemoryPointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64, kind: Kind) -> EvalResult<'tcx, MemoryPointer> {
         use std::cmp::min;
 
-        // TODO(solson): Report error about non-__rust_allocate'd pointer.
         if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
             return Err(EvalError::ReallocateNonBasePtr);
         }
-        if self.get(ptr.alloc_id).ok().map_or(false, |alloc| alloc.static_kind != StaticKind::NotStatic) {
-            return Err(EvalError::ReallocatedStaticMemory);
+        if let Ok(alloc) = self.get(ptr.alloc_id) {
+            if alloc.kind != kind {
+                return Err(EvalError::ReallocatedWrongMemoryKind(alloc.kind, kind));
+            }
         }
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc"
-        let new_ptr = self.allocate(new_size, new_align)?;
+        let new_ptr = self.allocate(new_size, new_align, kind)?;
         self.copy(ptr.into(), new_ptr.into(), min(old_size, new_size), min(old_align, new_align), /*nonoverlapping*/true)?;
-        self.deallocate(ptr, Some((old_size, old_align)))?;
+        self.deallocate(ptr, Some((old_size, old_align)), kind)?;
 
         Ok(new_ptr)
     }
 
-    // TODO(solson): See comment on `reallocate`.
-    pub fn deallocate(&mut self, ptr: MemoryPointer, size_and_align: Option<(u64, u64)>) -> EvalResult<'tcx> {
+    pub fn deallocate(&mut self, ptr: MemoryPointer, size_and_align: Option<(u64, u64)>, kind: Kind) -> EvalResult<'tcx> {
         if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
-            // TODO(solson): Report error about non-__rust_allocate'd pointer.
             return Err(EvalError::DeallocateNonBasePtr);
         }
 
-        {
-            // deallocate_local in eval_context.rs relies on nothing actually having changed when this error occurs.
-            // So we do this test in advance.
-            let alloc = self.get(ptr.alloc_id)?;
-            if alloc.static_kind != StaticKind::NotStatic {
-                return Err(EvalError::DeallocatedStaticMemory);
-            }
-            if let Some((size, align)) = size_and_align {
-                if size != alloc.bytes.len() as u64 || align != alloc.align {
-                    return Err(EvalError::IncorrectAllocationInformation);
-                }
+        let alloc = match self.alloc_map.remove(&ptr.alloc_id) {
+            Some(alloc) => alloc,
+            None => return Err(EvalError::DoubleFree),
+        };
+
+        if alloc.kind != kind {
+            return Err(EvalError::DeallocatedWrongMemoryKind(alloc.kind, kind));
+        }
+        if let Some((size, align)) = size_and_align {
+            if size != alloc.bytes.len() as u64 || align != alloc.align {
+                return Err(EvalError::IncorrectAllocationInformation);
             }
         }
 
-        let alloc = self.alloc_map.remove(&ptr.alloc_id).expect("already verified");
         self.memory_usage -= alloc.bytes.len() as u64;
         debug!("deallocated : {}", ptr.alloc_id);
 
@@ -401,10 +404,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
         match self.alloc_map.get_mut(&id) {
-            Some(alloc) => match alloc.static_kind {
-                StaticKind::Mutable |
-                StaticKind::NotStatic => Ok(alloc),
-                StaticKind::Immutable => Err(EvalError::ModifiedConstantMemory),
+            Some(alloc) => if alloc.mutable {
+                Ok(alloc)
+            } else {
+                Err(EvalError::ModifiedConstantMemory)
             },
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
@@ -473,10 +476,13 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 }
             }
 
-            let immutable = match alloc.static_kind {
-                StaticKind::Mutable => " (static mut)",
-                StaticKind::Immutable => " (immutable)",
-                StaticKind::NotStatic => "",
+            let immutable = match (alloc.kind, alloc.mutable) {
+                (Kind::Static, true) => " (static mut)",
+                (Kind::Static, false) => " (immutable)",
+                (Kind::Env, _) => " (env var)",
+                (Kind::C, _) => " (malloc)",
+                (Kind::Rust, _) => " (heap)",
+                (Kind::Stack, _) => " (stack)",
             };
             trace!("{}({} bytes, alignment {}){}", msg, alloc.bytes.len(), alloc.align, immutable);
 
@@ -503,7 +509,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let leaks: Vec<_> = self.alloc_map
             .iter()
             .filter_map(|(&key, val)| {
-                if val.static_kind == StaticKind::NotStatic {
+                if val.kind != Kind::Static {
                     Some(key)
                 } else {
                     None
@@ -578,26 +584,31 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     /// mark an allocation pointed to by a static as static and initialized
-    pub fn mark_inner_allocation(&mut self, alloc: AllocId, mutable: bool) -> EvalResult<'tcx> {
+    pub fn mark_inner_allocation(&mut self, alloc: AllocId, make_immutable: bool) -> EvalResult<'tcx> {
         // relocations into other statics are not "inner allocations"
         if !self.static_alloc.contains(&alloc) {
-            self.mark_static_initalized(alloc, mutable)?;
+            self.mark_static_initalized(alloc, make_immutable)?;
         }
         Ok(())
     }
 
     /// mark an allocation as static and initialized, either mutable or not
-    pub fn mark_static_initalized(&mut self, alloc_id: AllocId, mutable: bool) -> EvalResult<'tcx> {
-        trace!("mark_static_initialized {:?}, mutable: {:?}", alloc_id, mutable);
+    pub fn mark_static_initalized(&mut self, alloc_id: AllocId, make_immutable: bool) -> EvalResult<'tcx> {
+        trace!("mark_static_initalized {:?}, make_immutable: {:?}", alloc_id, make_immutable);
         // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
-            Some(&mut Allocation { ref mut relocations, static_kind: ref mut kind @ StaticKind::NotStatic, .. }) => {
-                *kind = if mutable {
-                    StaticKind::Mutable
-                } else {
-                    StaticKind::Immutable
-                };
+            Some(&mut Allocation { kind: Kind::Static, ref mut mutable, .. }) => {
+                if make_immutable {
+                    *mutable = false;
+                }
+                return Ok(());
+            },
+            Some(&mut Allocation { ref mut relocations, ref mut kind, ref mut mutable, .. }) => {
+                *kind = Kind::Static;
+                if make_immutable {
+                    *mutable = false;
+                }
                 // take out the relocations vector to free the borrow on self, so we can call
                 // mark recursively
                 mem::replace(relocations, Default::default())
@@ -607,7 +618,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         };
         // recurse into inner allocations
         for &alloc in relocations.values() {
-            self.mark_inner_allocation(alloc, mutable)?;
+            self.mark_inner_allocation(alloc, make_immutable)?;
         }
         // put back the relocations
         self.alloc_map.get_mut(&alloc_id).expect("checked above").relocations = relocations;

@@ -154,7 +154,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, MemoryPointer> {
         let size = self.type_size_with_substs(ty, substs)?.expect("cannot alloc memory for unsized type");
         let align = self.type_align_with_substs(ty, substs)?;
-        self.memory.allocate(size, align)
+        self.memory.allocate(size, align, ::memory::Kind::Stack)
     }
 
     pub fn memory(&self) -> &Memory<'a, 'tcx> {
@@ -354,16 +354,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
                     Value::ByRef(ptr, _aligned) =>
                         // Alignment does not matter for this call
-                        self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?,
+                        self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, !mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
-                        self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
+                        self.memory.mark_inner_allocation(ptr.alloc_id, !mutable)?;
                     },
                     Value::ByValPair(val1, val2) => {
                         if let PrimVal::Ptr(ptr) = val1 {
-                            self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
+                            self.memory.mark_inner_allocation(ptr.alloc_id, !mutable)?;
                         }
                         if let PrimVal::Ptr(ptr) = val2 {
-                            self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
+                            self.memory.mark_inner_allocation(ptr.alloc_id, !mutable)?;
                         }
                     },
                 }
@@ -414,11 +414,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
-            match self.memory.deallocate(ptr, None) {
-                // We could alternatively check whether the alloc_id is static before calling
-                // deallocate, but this is much simpler and is probably the rare case.
-                Ok(()) | Err(EvalError::DeallocatedStaticMemory) => {},
-                other => return other,
+            match self.memory.get(ptr.alloc_id)?.kind {
+                ::memory::Kind::Static => {},
+                ::memory::Kind::Stack => self.memory.deallocate(ptr, None, ::memory::Kind::Stack)?,
+                other => bug!("local contained non-stack memory: {:?}", other),
             }
         };
         Ok(())
@@ -693,11 +692,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Err(EvalError::NeedsRfc("\"heap\" allocations".to_string()));
                 }
                 // FIXME: call the `exchange_malloc` lang item if available
-                if self.type_size(ty)?.expect("box only works with sized types") == 0 {
+                let size = self.type_size(ty)?.expect("box only works with sized types");
+                if size == 0 {
                     let align = self.type_align(ty)?;
                     self.write_primval(dest, PrimVal::Bytes(align.into()), dest_ty)?;
                 } else {
-                    let ptr = self.alloc_ptr(ty)?;
+                    let align = self.type_align(ty)?;
+                    let ptr = self.memory.allocate(size, align, ::memory::Kind::Rust)?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -1032,7 +1033,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         self.write_value_to_ptr(global_val.value, ptr.into(), global_val.ty)?;
                         // see comment on `initialized` field
                         if global_val.initialized {
-                            self.memory.mark_static_initalized(ptr.alloc_id, global_val.mutable)?;
+                            self.memory.mark_static_initalized(ptr.alloc_id, !global_val.mutable)?;
                         }
                         let lval = self.globals.get_mut(&cid).expect("already checked");
                         *lval = Global {
@@ -1686,7 +1687,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
 
             // Return value
-            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi())?;
+            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi(), ::memory::Kind::Stack)?;
             cleanup_ptr = Some(ret_ptr);
 
             // Push our stack frame
@@ -1728,7 +1729,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
         while ecx.step()? {}
         if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory.deallocate(cleanup_ptr, None)?;
+            ecx.memory.deallocate(cleanup_ptr, None, ::memory::Kind::Stack)?;
         }
         return Ok(());
     }

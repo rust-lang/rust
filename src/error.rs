@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
-use memory::MemoryPointer;
+use memory::{MemoryPointer, Kind};
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
@@ -12,6 +12,7 @@ pub enum EvalError<'tcx> {
     NoMirFor(String),
     UnterminatedCString(MemoryPointer),
     DanglingPointerDeref,
+    DoubleFree,
     InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
@@ -56,8 +57,8 @@ pub enum EvalError<'tcx> {
     AssumptionNotHeld,
     InlineAsm,
     TypeNotPrimitive(Ty<'tcx>),
-    ReallocatedStaticMemory,
-    DeallocatedStaticMemory,
+    ReallocatedWrongMemoryKind(Kind, Kind),
+    DeallocatedWrongMemoryKind(Kind, Kind),
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
     IncorrectAllocationInformation,
@@ -84,6 +85,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to access memory through an invalid pointer",
             DanglingPointerDeref =>
                 "dangling pointer was dereferenced",
+            DoubleFree =>
+                "tried to deallocate dangling pointer",
             InvalidFunctionPointer =>
                 "tried to use an integer pointer or a dangling pointer as a function pointer",
             InvalidBool =>
@@ -148,10 +151,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "miri does not support inline assembly",
             TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
-            ReallocatedStaticMemory =>
-                "tried to reallocate static memory",
-            DeallocatedStaticMemory =>
-                "tried to deallocate static memory",
+            ReallocatedWrongMemoryKind(_, _) =>
+                "tried to reallocate memory from one kind to another",
+            DeallocatedWrongMemoryKind(_, _) =>
+                "tried to deallocate memory of the wrong kind",
             ReallocateNonBasePtr =>
                 "tried to reallocate with a pointer not to the beginning of an existing object",
             DeallocateNonBasePtr =>
@@ -198,6 +201,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),
             ArrayIndexOutOfBounds(span, len, index) =>
                 write!(f, "index out of bounds: the len is {} but the index is {} at {:?}", len, index, span),
+            ReallocatedWrongMemoryKind(old, new) =>
+                write!(f, "tried to reallocate memory from {:?} to {:?}", old, new),
+            DeallocatedWrongMemoryKind(old, new) =>
+                write!(f, "tried to deallocate {:?} memory but gave {:?} as the kind", old, new),
             Math(span, ref err) =>
                 write!(f, "{:?} at {:?}", err, span),
             Intrinsic(ref err) =>
