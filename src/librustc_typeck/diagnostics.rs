@@ -1611,8 +1611,8 @@ static BAR: _ = "test"; // error, explicitly write out the type instead
 "##,
 
 E0122: r##"
-An attempt was made to add a generic constraint to a type alias. While Rust will
-allow this with a warning, it will not currently enforce the constraint.
+An attempt was made to add a generic constraint to a type alias. This constraint is
+entirely ignored. For backwards compatibility, Rust still allows this with a warning.
 Consider the example below:
 
 ```
