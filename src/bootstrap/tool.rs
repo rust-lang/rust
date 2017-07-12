@@ -239,11 +239,6 @@ tool!(
     //      .dep(|s| s.name("libstd-tool"))
     //      .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Librustc;
-    // rules.build("tool-remote-test-server", "src/tools/remote-test-server")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-server"));
-    RemoteTestServer, "src/tools/remote-test-server", "remote-test-server", Mode::Libstd;
     // rules.build("tool-remote-test-client", "src/tools/remote-test-client")
     //      .dep(|s| s.name("maybe-clean-tools"))
     //      .dep(|s| s.name("libstd-tool"))
@@ -255,6 +250,36 @@ tool!(
     //      .run(move |s| compile::tool(build, s.stage, s.target, "rust-installer"));
     RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::Libstd;
 );
+
+#[derive(Serialize)]
+pub struct RemoteTestServer<'a> {
+    pub compiler: Compiler<'a>,
+    pub target: &'a str,
+}
+
+impl<'a> Step<'a> for RemoteTestServer<'a> {
+    type Output = PathBuf;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/tools/remote-test-server")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, target: &str) {
+        builder.ensure(RemoteTestServer {
+            compiler: builder.compiler(builder.top_stage, host),
+            target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> PathBuf {
+        builder.ensure(ToolBuild {
+            stage: self.stage,
+            target: self.target,
+            tool: "remote-test-server",
+            mode: Mode::Libstd,
+        })
+    }
+}
 
 // rules.build("tool-cargo", "src/tools/cargo")
 //      .host(true)
