@@ -119,10 +119,10 @@ impl FilePermissions {
 impl FileType {
     pub fn is_dir(&self) -> bool { self.is(syscall::MODE_DIR) }
     pub fn is_file(&self) -> bool { self.is(syscall::MODE_FILE) }
-    pub fn is_symlink(&self) -> bool { false /*FIXME: Implement symlink mode*/ }
+    pub fn is_symlink(&self) -> bool { self.is(syscall::MODE_SYMLINK) }
 
     pub fn is(&self, mode: u16) -> bool {
-        self.mode & (syscall::MODE_DIR | syscall::MODE_FILE) == mode
+        self.mode & syscall::MODE_TYPE == mode
     }
 }
 
