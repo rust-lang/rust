@@ -4,9 +4,7 @@
 
 fn foo() {
     match x {
-        a => {
-            foo()
-        }
+        a => foo(),
         b => (
             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
             bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,

@@ -25,11 +25,9 @@ use SKIP_ANNOTATION;
 pub fn extra_offset(text: &str, shape: Shape) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
-        Some(idx) => {
-            text.len()
-                .checked_sub(idx + 1 + shape.used_width())
-                .unwrap_or(0)
-        }
+        Some(idx) => text.len()
+            .checked_sub(idx + 1 + shape.used_width())
+            .unwrap_or(0),
         None => text.len(),
     }
 }
@@ -168,15 +166,13 @@ pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
 #[inline]
 pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
     match stmt.node {
-        ast::StmtKind::Semi(ref expr) => {
-            match expr.node {
-                ast::ExprKind::While(..) |
-                ast::ExprKind::WhileLet(..) |
-                ast::ExprKind::Loop(..) |
-                ast::ExprKind::ForLoop(..) => false,
-                _ => true,
-            }
-        }
+        ast::StmtKind::Semi(ref expr) => match expr.node {
+            ast::ExprKind::While(..) |
+            ast::ExprKind::WhileLet(..) |
+            ast::ExprKind::Loop(..) |
+            ast::ExprKind::ForLoop(..) => false,
+            _ => true,
+        },
         ast::StmtKind::Expr(..) => false,
         _ => true,
     }

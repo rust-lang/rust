@@ -4,8 +4,7 @@
 fn main() {
     match lorem {
         true => {
-            let ipsum = dolor;
-            println!("{}", ipsum);
+            foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
         }
         false => println!("{}", sit),
     }

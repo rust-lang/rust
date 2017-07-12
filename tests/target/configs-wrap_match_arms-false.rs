@@ -3,12 +3,8 @@
 
 fn main() {
     match lorem {
-        true => {
-            let ipsum = dolor;
-            println!("{:?}", ipsum);
-        }
-        false => {
-            println!("{}", sit)
-        }
+        true =>
+            foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
+        false => println!("{}", sit),
     }
 }

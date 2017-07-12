@@ -104,6 +104,17 @@ impl Spanned for ast::Ty {
     }
 }
 
+impl Spanned for ast::Arm {
+    fn span(&self) -> Span {
+        let hi = self.body.span.hi;
+        if self.attrs.is_empty() {
+            mk_sp(self.pats[0].span.lo, hi)
+        } else {
+            mk_sp(self.attrs[0].span.lo, hi)
+        }
+    }
+}
+
 impl Spanned for ast::Arg {
     fn span(&self) -> Span {
         if items::is_named_arg(self) {
@@ -431,14 +442,12 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            ErrorKind::LineOverflow(found, maximum) => {
-                write!(
-                    fmt,
-                    "line exceeded maximum length (maximum: {}, found: {})",
-                    maximum,
-                    found
-                )
-            }
+            ErrorKind::LineOverflow(found, maximum) => write!(
+                fmt,
+                "line exceeded maximum length (maximum: {}, found: {})",
+                maximum,
+                found
+            ),
             ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
             ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
         }

@@ -173,17 +173,15 @@ fn macros() {
     baz!(one_item_macro_which_is_also_loooooooooooooooooooooooooooooooooooooooooooooooong);
 
     let _ = match option {
-        None => {
-            baz!(
-                function,
-                like,
-                macro_as,
-                expression,
-                which,
-                is,
-                loooooooooooooooong
-            )
-        }
+        None => baz!(
+            function,
+            like,
+            macro_as,
+            expression,
+            which,
+            is,
+            loooooooooooooooong
+        ),
         Some(p) => baz!(one_item_macro_as_expression_which_is_also_loooooooooooooooong),
     };
 }
@@ -318,12 +316,10 @@ fn combine_block() {
         y => func(
             xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
         ),
-        _ => {
-            func(
-                x,
-                yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
-                zzz,
-            )
-        }
+        _ => func(
+            x,
+            yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+            zzz,
+        ),
     }
 }

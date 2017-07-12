@@ -189,25 +189,19 @@ impl BadIssueSeeker {
         }
 
         match part {
-            NumberPart::OpenParen => {
-                if c != '(' {
-                    return IssueClassification::Bad(issue);
-                } else {
-                    part = NumberPart::Pound;
-                }
-            }
-            NumberPart::Pound => {
-                if c == '#' {
-                    part = NumberPart::Number;
-                }
-            }
-            NumberPart::Number => {
-                if c >= '0' && c <= '9' {
-                    part = NumberPart::CloseParen;
-                } else {
-                    return IssueClassification::Bad(issue);
-                }
-            }
+            NumberPart::OpenParen => if c != '(' {
+                return IssueClassification::Bad(issue);
+            } else {
+                part = NumberPart::Pound;
+            },
+            NumberPart::Pound => if c == '#' {
+                part = NumberPart::Number;
+            },
+            NumberPart::Number => if c >= '0' && c <= '9' {
+                part = NumberPart::CloseParen;
+            } else {
+                return IssueClassification::Bad(issue);
+            },
             NumberPart::CloseParen => {}
         }
 

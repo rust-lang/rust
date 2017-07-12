@@ -474,14 +474,12 @@ impl Rewrite for ast::WherePredicate {
                 ref lifetime,
                 ref bounds,
                 ..
-            }) => {
-                try_opt!(rewrite_bounded_lifetime(
-                    lifetime,
-                    bounds.iter(),
-                    context,
-                    shape,
-                ))
-            }
+            }) => try_opt!(rewrite_bounded_lifetime(
+                lifetime,
+                bounds.iter(),
+                context,
+                shape,
+            )),
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                 ref lhs_ty,
                 ref rhs_ty,
@@ -727,14 +725,12 @@ impl Rewrite for ast::Ty {
                         format!("[{}]", ty_str)
                     })
             }
-            ast::TyKind::Tup(ref items) => {
-                rewrite_tuple(
-                    context,
-                    &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
-                    self.span,
-                    shape,
-                )
-            }
+            ast::TyKind::Tup(ref items) => rewrite_tuple(
+                context,
+                &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
+                self.span,
+                shape,
+            ),
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
@@ -744,21 +740,17 @@ impl Rewrite for ast::Ty {
                 let rbr = if use_spaces { " ]" } else { "]" };
                 rewrite_pair(&**ty, &**repeats, lbr, "; ", rbr, context, shape)
             }
-            ast::TyKind::Infer => {
-                if shape.width >= 1 {
-                    Some("_".to_owned())
-                } else {
-                    None
-                }
-            }
+            ast::TyKind::Infer => if shape.width >= 1 {
+                Some("_".to_owned())
+            } else {
+                None
+            },
             ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
             ast::TyKind::Never => Some(String::from("!")),
             ast::TyKind::Mac(..) => None,
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(ref it) => {
-                it.rewrite(context, shape)
-                    .map(|it_str| format!("impl {}", it_str))
-            }
+            ast::TyKind::ImplTrait(ref it) => it.rewrite(context, shape)
+                .map(|it_str| format!("impl {}", it_str)),
             ast::TyKind::Err | ast::TyKind::Typeof(..) => unreachable!(),
         }
     }

@@ -482,11 +482,9 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
             Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
             // Return the error if it's something other than `NotFound`; otherwise we didn't
             // find the project file yet, and continue searching.
-            Err(e) => {
-                if e.kind() != ErrorKind::NotFound {
-                    return Err(e);
-                }
-            }
+            Err(e) => if e.kind() != ErrorKind::NotFound {
+                return Err(e);
+            },
             _ => {}
         }
     }
@@ -572,7 +570,8 @@ create_config! {
     wrap_comments: bool, false, "Break comments to fit on the line";
     comment_width: usize, 80, "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, "Convert /* */ comments to // comments where possible";
-    wrap_match_arms: bool, true, "Wrap multiline match arms in blocks";
+    wrap_match_arms: bool, true, "Wrap the body of arms in blocks when it does not fit on \
+                                  the same line with the pattern of arms";
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     indent_match_arms: bool, true, "Indent match arms instead of keeping them at the same \

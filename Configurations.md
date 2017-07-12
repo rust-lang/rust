@@ -1986,7 +1986,7 @@ Break comments to fit on the line
 
 ## `wrap_match_arms`
 
-Wrap multiline match arms in blocks
+Wrap the body of arms in blocks when it does not fit on the same line with the pattern of arms
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -1995,13 +1995,9 @@ Wrap multiline match arms in blocks
 
 ```rust
 match lorem {
-    true => {
-        let ipsum = dolor;
-        println!("{}", ipsum);
-    }
-    false => {
-        println!("{}", sit)
-    }
+    true =>
+        foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
+    false => println!("{}", sit),
 }
 ```
 
@@ -2010,8 +2006,7 @@ match lorem {
 ```rust
 match lorem {
     true => {
-        let ipsum = dolor;
-        println!("{}", ipsum);
+        foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
     }
     false => println!("{}", sit),
 }
