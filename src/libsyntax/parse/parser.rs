@@ -216,6 +216,30 @@ struct TokenCursorFrame {
     open_delim: bool,
     tree_cursor: tokenstream::Cursor,
     close_delim: bool,
+    last_token: LastToken,
+}
+
+/// This is used in `TokenCursorFrame` above to track tokens that are consumed
+/// by the parser, and then that's transitively used to record the tokens that
+/// each parse AST item is created with.
+///
+/// Right now this has two states, either collecting tokens or not collecting
+/// tokens. If we're collecting tokens we just save everything off into a local
+/// `Vec`. This should eventually though likely save tokens from the original
+/// token stream and just use slicing of token streams to avoid creation of a
+/// whole new vector.
+///
+/// The second state is where we're passively not recording tokens, but the last
+/// token is still tracked for when we want to start recording tokens. This
+/// "last token" means that when we start recording tokens we'll want to ensure
+/// that this, the first token, is included in the output.
+///
+/// You can find some more example usage of this in the `collect_tokens` method
+/// on the parser.
+#[derive(Clone)]
+enum LastToken {
+    Collecting(Vec<TokenTree>),
+    Was(Option<TokenTree>),
 }
 
 impl TokenCursorFrame {
@@ -226,6 +250,7 @@ impl TokenCursorFrame {
             open_delim: delimited.delim == token::NoDelim,
             tree_cursor: delimited.stream().into_trees(),
             close_delim: delimited.delim == token::NoDelim,
+            last_token: LastToken::Was(None),
         }
     }
 }
@@ -249,6 +274,11 @@ impl TokenCursor {
             } else {
                 return TokenAndSpan { tok: token::Eof, sp: syntax_pos::DUMMY_SP }
             };
+
+            match self.frame.last_token {
+                LastToken::Collecting(ref mut v) => v.push(tree.clone()),
+                LastToken::Was(ref mut t) => *t = Some(tree.clone()),
+            }
 
             match tree {
                 TokenTree::Token(sp, tok) => return TokenAndSpan { tok: tok, sp: sp },
@@ -1209,7 +1239,20 @@ impl<'a> Parser<'a> {
     /// Parse the items in a trait declaration
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
-        let mut attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes()?;
+        let (mut item, tokens) = self.collect_tokens(|this| {
+            this.parse_trait_item_(at_end, attrs)
+        })?;
+        // See `parse_item` for why this clause is here.
+        if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+            item.tokens = Some(tokens);
+        }
+        Ok(item)
+    }
+
+    fn parse_trait_item_(&mut self,
+                         at_end: &mut bool,
+                         mut attrs: Vec<Attribute>) -> PResult<'a, TraitItem> {
         let lo = self.span;
 
         let (name, node) = if self.eat_keyword(keywords::Type) {
@@ -1304,6 +1347,7 @@ impl<'a> Parser<'a> {
             attrs: attrs,
             node: node,
             span: lo.to(self.prev_span),
+            tokens: None,
         })
     }
 
@@ -4653,7 +4697,7 @@ impl<'a> Parser<'a> {
             node: node,
             vis: vis,
             span: span,
-            tokens: None, // TODO: fill this in
+            tokens: None,
         })
     }
 
@@ -4709,8 +4753,21 @@ impl<'a> Parser<'a> {
     /// Parse an impl item.
     pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
+        let attrs = self.parse_outer_attributes()?;
+        let (mut item, tokens) = self.collect_tokens(|this| {
+            this.parse_impl_item_(at_end, attrs)
+        })?;
 
-        let mut attrs = self.parse_outer_attributes()?;
+        // See `parse_item` for why this clause is here.
+        if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+            item.tokens = Some(tokens);
+        }
+        Ok(item)
+    }
+
+    fn parse_impl_item_(&mut self,
+                        at_end: &mut bool,
+                        mut attrs: Vec<Attribute>) -> PResult<'a, ImplItem> {
         let lo = self.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness()?;
@@ -4742,7 +4799,8 @@ impl<'a> Parser<'a> {
             vis: vis,
             defaultness: defaultness,
             attrs: attrs,
-            node: node
+            node: node,
+            tokens: None,
         })
     }
 
@@ -6018,9 +6076,71 @@ impl<'a> Parser<'a> {
         Ok(None)
     }
 
+    fn collect_tokens<F, R>(&mut self, f: F) -> PResult<'a, (R, TokenStream)>
+        where F: FnOnce(&mut Self) -> PResult<'a, R>
+    {
+        // Record all tokens we parse when parsing this item.
+        let mut tokens = Vec::new();
+        match self.token_cursor.frame.last_token {
+            LastToken::Collecting(_) => {
+                panic!("cannot collect tokens recursively yet")
+            }
+            LastToken::Was(ref mut last) => tokens.extend(last.take()),
+        }
+        self.token_cursor.frame.last_token = LastToken::Collecting(tokens);
+        let prev = self.token_cursor.stack.len();
+        let ret = f(self);
+        let last_token = if self.token_cursor.stack.len() == prev {
+            &mut self.token_cursor.frame.last_token
+        } else {
+            &mut self.token_cursor.stack[prev].last_token
+        };
+        let mut tokens = match *last_token {
+            LastToken::Collecting(ref mut v) => mem::replace(v, Vec::new()),
+            LastToken::Was(_) => panic!("our vector went away?"),
+        };
+
+        // If we're not at EOF our current token wasn't actually consumed by
+        // `f`, but it'll still be in our list that we pulled out. In that case
+        // put it back.
+        if self.token == token::Eof {
+            *last_token = LastToken::Was(None);
+        } else {
+            *last_token = LastToken::Was(tokens.pop());
+        }
+
+        Ok((ret?, tokens.into_iter().collect()))
+    }
+
     pub fn parse_item(&mut self) -> PResult<'a, Option<P<Item>>> {
         let attrs = self.parse_outer_attributes()?;
-        self.parse_item_(attrs, true, false)
+
+        let (ret, tokens) = self.collect_tokens(|this| {
+            this.parse_item_(attrs, true, false)
+        })?;
+
+        // Once we've parsed an item and recorded the tokens we got while
+        // parsing we may want to store `tokens` into the item we're about to
+        // return. Note, though, that we specifically didn't capture tokens
+        // related to outer attributes. The `tokens` field here may later be
+        // used with procedural macros to convert this item back into a token
+        // stream, but during expansion we may be removing attributes as we go
+        // along.
+        //
+        // If we've got inner attributes then the `tokens` we've got above holds
+        // these inner attributes. If an inner attribute is expanded we won't
+        // actually remove it from the token stream, so we'll just keep yielding
+        // it (bad!). To work around this case for now we just avoid recording
+        // `tokens` if we detect any inner attributes. This should help keep
+        // expansion correct, but we should fix this bug one day!
+        Ok(ret.map(|item| {
+            item.map(|mut i| {
+                if !i.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
+                    i.tokens = Some(tokens);
+                }
+                i
+            })
+        }))
     }
 
     fn parse_path_list_items(&mut self) -> PResult<'a, Vec<ast::PathListItem>> {

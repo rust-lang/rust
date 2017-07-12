@@ -843,11 +843,18 @@ mod tests {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "i32"
-        assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
+        let item = string_to_item("fn a (b : i32) { b; }".to_string()).map(|m| {
+            m.map(|mut m| {
+                m.tokens = None;
+                m
+            })
+        });
+        assert_eq!(item,
                   Some(
                       P(ast::Item{ident:Ident::from_str("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
+                            tokens: None,
                             node: ast::ItemKind::Fn(P(ast::FnDecl {
                                 inputs: vec![ast::Arg{
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,

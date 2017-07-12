@@ -957,7 +957,8 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
                 TraitItemKind::Macro(folder.fold_mac(mac))
             }
         },
-        span: folder.new_span(i.span)
+        span: folder.new_span(i.span),
+        tokens: i.tokens,
     })
 }
 
@@ -980,7 +981,8 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
             ast::ImplItemKind::Type(ty) => ast::ImplItemKind::Type(folder.fold_ty(ty)),
             ast::ImplItemKind::Macro(mac) => ast::ImplItemKind::Macro(folder.fold_mac(mac))
         },
-        span: folder.new_span(i.span)
+        span: folder.new_span(i.span),
+        tokens: i.tokens,
     })
 }
 
@@ -1042,9 +1044,10 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span,
         attrs: fold_attrs(attrs, folder),
         node: folder.fold_item_kind(node),
         span: folder.new_span(span),
-        tokens: tokens.map(|tokens| {
-            folder.fold_tts(tokens.into()).into()
-        }),
+
+        // FIXME: if this is replaced with a call to `folder.fold_tts` it causes
+        //        an ICE during resolve... odd!
+        tokens: tokens,
     }
 }
 

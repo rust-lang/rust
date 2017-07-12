@@ -510,15 +510,38 @@ impl TokenTree {
             Literal(..) | DocComment(..) => TokenNode::Literal(self::Literal(token)),
 
             Interpolated(ref nt) => {
-                let mut node = None;
-                if let Nonterminal::NtItem(ref item) = nt.0 {
-                    if let Some(ref tokens) = item.tokens {
-                        node = Some(TokenNode::Group(Delimiter::None,
-                                                     TokenStream(tokens.clone())));
+                // An `Interpolated` token means that we have a `Nonterminal`
+                // which is often a parsed AST item. At this point we now need
+                // to convert the parsed AST to an actual token stream, e.g.
+                // un-parse it basically.
+                //
+                // Unfortunately there's not really a great way to do that in a
+                // guaranteed lossless fashion right now. The fallback here is
+                // to just stringify the AST node and reparse it, but this loses
+                // all span information.
+                //
+                // As a result, some AST nodes are annotated with the token
+                // stream they came from. Attempt to extract these lossless
+                // token streams before we fall back to the stringification.
+                let mut tokens = None;
+
+                match nt.0 {
+                    Nonterminal::NtItem(ref item) => {
+                        tokens = prepend_attrs(&item.attrs, item.tokens.as_ref(), span);
                     }
+                    Nonterminal::NtTraitItem(ref item) => {
+                        tokens = prepend_attrs(&item.attrs, item.tokens.as_ref(), span);
+                    }
+                    Nonterminal::NtImplItem(ref item) => {
+                        tokens = prepend_attrs(&item.attrs, item.tokens.as_ref(), span);
+                    }
+                    _ => {}
                 }
 
-                node.unwrap_or_else(|| {
+                tokens.map(|tokens| {
+                    TokenNode::Group(Delimiter::None,
+                                     TokenStream(tokens.clone()))
+                }).unwrap_or_else(|| {
                     __internal::with_sess(|(sess, _)| {
                         TokenNode::Group(Delimiter::None, TokenStream(nt.1.force(|| {
                             // FIXME(jseyfried): Avoid this pretty-print + reparse hack
@@ -590,6 +613,34 @@ impl TokenTree {
             Spacing::Joint => tree.joint(),
         }
     }
+}
+
+fn prepend_attrs(attrs: &[ast::Attribute],
+                 tokens: Option<&tokenstream::TokenStream>,
+                 span: syntax_pos::Span)
+    -> Option<tokenstream::TokenStream>
+{
+    let tokens = match tokens {
+        Some(tokens) => tokens,
+        None => return None,
+    };
+    if attrs.len() == 0 {
+        return Some(tokens.clone())
+    }
+    let mut builder = tokenstream::TokenStreamBuilder::new();
+    for attr in attrs {
+        assert_eq!(attr.style, ast::AttrStyle::Outer,
+                   "inner attributes should prevent cached tokens from existing");
+        let stream = __internal::with_sess(|(sess, _)| {
+            // FIXME: Avoid this pretty-print + reparse hack as bove
+            let name = "<macro expansion>".to_owned();
+            let source = pprust::attr_to_string(attr);
+            parse_stream_from_source_str(name, source, sess, Some(span))
+        });
+        builder.push(stream);
+    }
+    builder.push(tokens.clone());
+    Some(builder.build())
 }
 
 /// Permanently unstable internal implementation details of this crate. This

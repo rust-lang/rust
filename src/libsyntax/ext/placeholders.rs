@@ -51,11 +51,13 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
         ExpansionKind::TraitItems => Expansion::TraitItems(SmallVector::one(ast::TraitItem {
             id: id, span: span, ident: ident, attrs: attrs,
             node: ast::TraitItemKind::Macro(mac_placeholder()),
+            tokens: None,
         })),
         ExpansionKind::ImplItems => Expansion::ImplItems(SmallVector::one(ast::ImplItem {
             id: id, span: span, ident: ident, vis: vis, attrs: attrs,
             node: ast::ImplItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
+            tokens: None,
         })),
         ExpansionKind::Pat => Expansion::Pat(P(ast::Pat {
             id: id, span: span, node: ast::PatKind::Mac(mac_placeholder()),
