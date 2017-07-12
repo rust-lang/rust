@@ -729,9 +729,49 @@ impl Rewrite for ast::NestedMetaItem {
 }
 
 fn count_missing_closing_parens(s: &str) -> u32 {
-    let op_parens = s.chars().filter(|c| *c == '(').count();
-    let cl_parens = s.chars().filter(|c| *c == ')').count();
-    op_parens.checked_sub(cl_parens).unwrap_or(0) as u32
+    let mut op_parens: u32 = 0;
+    let mut cl_parens: u32 = 0;
+
+    #[derive(Eq, PartialEq)]
+    pub enum SnippetState {
+        Normal,
+        InsideStr,
+        InsideBulletComment,
+        InsideSingleLineComment,
+    }
+
+    let mut state = SnippetState::Normal;
+    let mut iter = s.chars().peekable();
+    let mut prev_char: Option<char> = None;
+    while let Some(c) = iter.next() {
+        let next_char = iter.peek();
+        match c {
+            '/' if state == SnippetState::Normal => match next_char {
+                Some(&'*') => state = SnippetState::InsideBulletComment,
+                Some(&'/') if prev_char.map_or(true, |c| c != '*') => {
+                    state = SnippetState::InsideSingleLineComment;
+                }
+                _ => (),
+            },
+            '*' if state == SnippetState::InsideBulletComment &&
+                next_char.map_or(false, |c| *c == '/') =>
+            {
+                state = SnippetState::Normal;
+            }
+            '\n' if state == SnippetState::InsideSingleLineComment => state = SnippetState::Normal,
+            '"' if state == SnippetState::InsideStr && prev_char.map_or(false, |c| c != '\\') => {
+                state = SnippetState::Normal;
+            }
+            '"' if state == SnippetState::Normal && prev_char.map_or(false, |c| c != '\\') => {
+                state = SnippetState::InsideStr
+            }
+            '(' if state == SnippetState::Normal => op_parens += 1,
+            ')' if state == SnippetState::Normal => cl_parens += 1,
+            _ => (),
+        }
+        prev_char = Some(c);
+    }
+    op_parens.checked_sub(cl_parens).unwrap_or(0)
 }
 
 impl Rewrite for ast::MetaItem {
