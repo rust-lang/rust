@@ -1698,6 +1698,27 @@ let Lorem {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
+## `trailing_semicolon`
+
+Add trailing semicolon after break, continue and return
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `true`:
+```rust
+fn foo() -> usize {
+    return 0;
+}
+```
+
+#### `false`:
+```rust
+fn foo() -> usize {
+    return 0
+}
+```
+
 ## `type_punctuation_density`
 
 Determines if `+` or `=` are wrapped in spaces in the punctuation of types

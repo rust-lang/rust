@@ -906,7 +906,11 @@ impl Rewrite for ast::Stmt {
         let result = match self.node {
             ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
             ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
-                let suffix = if semicolon_for_stmt(self) { ";" } else { "" };
+                let suffix = if semicolon_for_stmt(context, self) {
+                    ";"
+                } else {
+                    ""
+                };
 
                 format_expr(
                     ex,

@@ -519,6 +519,7 @@ create_config! {
     impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
     trailing_comma: SeparatorTactic, SeparatorTactic::Vertical,
         "How to handle trailing commas for lists";
+    trailing_semicolon: bool, true, "Add trailing semicolon after break, continue and return";
     fn_empty_single_line: bool, true, "Put empty-body functions on a single line";
     fn_single_line: bool, false, "Put single-expression functions on a single line";
     fn_return_indent: ReturnIndent, ReturnIndent::WithArgs,

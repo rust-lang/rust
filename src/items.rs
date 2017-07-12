@@ -352,7 +352,11 @@ impl<'a> FmtVisitor<'a> {
                 if let Some(ref stmt) = block.stmts.first() {
                     match stmt_expr(stmt) {
                         Some(e) => {
-                            let suffix = if semicolon_for_expr(e) { ";" } else { "" };
+                            let suffix = if semicolon_for_expr(&self.get_context(), e) {
+                                ";"
+                            } else {
+                                ""
+                            };
 
                             format_expr(
                                 &e,
