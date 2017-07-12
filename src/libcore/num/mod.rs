@@ -2510,9 +2510,10 @@ macro_rules! same_sign_try_from_int_impl {
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
+            #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                let min = <$target as FromStrRadixHelper>::min_value() as $storage;
-                let max = <$target as FromStrRadixHelper>::max_value() as $storage;
+                let min = <$target>::min_value() as $storage;
+                let max = <$target>::max_value() as $storage;
                 if u as $storage < min || u as $storage > max {
                     Err(TryFromIntError(()))
                 } else {
@@ -2523,42 +2524,91 @@ macro_rules! same_sign_try_from_int_impl {
     )*}
 }
 
-same_sign_try_from_int_impl!(u128, u8, u8, u16, u32, u64, u128, usize);
-same_sign_try_from_int_impl!(i128, i8, i8, i16, i32, i64, i128, isize);
-same_sign_try_from_int_impl!(u128, u16, u8, u16, u32, u64, u128, usize);
-same_sign_try_from_int_impl!(i128, i16, i8, i16, i32, i64, i128, isize);
-same_sign_try_from_int_impl!(u128, u32, u8, u16, u32, u64, u128, usize);
-same_sign_try_from_int_impl!(i128, i32, i8, i16, i32, i64, i128, isize);
-same_sign_try_from_int_impl!(u128, u64, u8, u16, u32, u64, u128, usize);
-same_sign_try_from_int_impl!(i128, i64, i8, i16, i32, i64, i128, isize);
-same_sign_try_from_int_impl!(u128, u128, u8, u16, u32, u64, u128, usize);
-same_sign_try_from_int_impl!(i128, i128, i8, i16, i32, i64, i128, isize);
-same_sign_try_from_int_impl!(u128, usize, u8, u16, u32, u64, u128, usize);
-same_sign_try_from_int_impl!(i128, isize, i8, i16, i32, i64, i128, isize);
-
-macro_rules! cross_sign_from_int_impl {
-    ($unsigned:ty, $($signed:ty),*) => {$(
+macro_rules! same_sign_try_from_wider_impl {
+    ($target:ty, $($source:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
-        impl TryFrom<$unsigned> for $signed {
+        impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
-            fn try_from(u: $unsigned) -> Result<$signed, TryFromIntError> {
-                let max = <$signed as FromStrRadixHelper>::max_value() as u128;
-                if u as u128 > max {
+            #[inline]
+            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
+                let min = <$target>::min_value() as $source;
+                let max = <$target>::max_value() as $source;
+                if u as $source < min || u as $source > max {
                     Err(TryFromIntError(()))
                 } else {
-                    Ok(u as $signed)
+                    Ok(u as $target)
                 }
             }
         }
+    )*}
+}
 
+/// TryFrom on types where the conversion will always succeed.
+macro_rules! trivial_try_from_impl {
+    ($source:ty, $($target:ty),*) => {$(
+        #[unstable(feature = "try_from", issue = "33417")]
+        impl TryFrom<$source> for $target {
+            type Error = TryFromIntError;
+
+            #[inline]
+            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
+                // Using into as an extra check on the macro arguments.
+                Ok(u as $target)
+            }
+        }
+    )*}
+}
+
+// The current implementations assume that usize/isize <= 64 bits wide.
+// (source, $(target))
+trivial_try_from_impl!(u8, u8, u16, i16, u32, i32, u64, i64, u128, i128, usize);
+trivial_try_from_impl!(u16, u16, u32, i32, u64, i64, u128, i128);
+trivial_try_from_impl!(u32, u32, u64, i64, u128, i128);
+trivial_try_from_impl!(u64, u64, u128, i128);
+trivial_try_from_impl!(u128, u128);
+trivial_try_from_impl!(usize, usize, u128, i128);
+
+trivial_try_from_impl!(i8, i8, i16, i32, i64, i128, isize);
+trivial_try_from_impl!(i16, i16, i32, i64, i128);
+trivial_try_from_impl!(i32, i32, i64, i128);
+trivial_try_from_impl!(i64, i64, i128);
+trivial_try_from_impl!(i128, i128);
+trivial_try_from_impl!(isize, isize, i128);
+trivial_try_from_impl!(usize, u64);
+trivial_try_from_impl!(isize, i64);
+
+// (target, $(source))
+same_sign_try_from_wider_impl!(u8, u16, u32, u64, u128, usize);
+same_sign_try_from_wider_impl!(i8, i16, i32, i64, i128, isize);
+same_sign_try_from_wider_impl!(u16, u32, u64, u128);
+same_sign_try_from_wider_impl!(i16, i32, i64, i128);
+same_sign_try_from_wider_impl!(u32, u64, u128);
+same_sign_try_from_wider_impl!(i32, i64, i128);
+same_sign_try_from_wider_impl!(u64, u128);
+same_sign_try_from_wider_impl!(i64, i128);
+
+// Need to make sure the storage component is large enough for these.
+// (storage, target, $(source))
+same_sign_try_from_int_impl!(u64, usize, u64, u32, u16);
+same_sign_try_from_int_impl!(i64, isize, i64, i32, i16);
+same_sign_try_from_int_impl!(u64, u16, usize);
+same_sign_try_from_int_impl!(i64, i16, isize);
+same_sign_try_from_int_impl!(u64, u32, usize);
+same_sign_try_from_int_impl!(i64, i32, isize);
+same_sign_try_from_int_impl!(u128, usize, u128);
+same_sign_try_from_int_impl!(i128, isize, i128);
+
+macro_rules! unsigned_from_signed_impl {
+    ($unsigned:ty, $($signed:ty, $storage:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$signed> for $unsigned {
             type Error = TryFromIntError;
 
+            #[inline]
             fn try_from(u: $signed) -> Result<$unsigned, TryFromIntError> {
-                let max = <$unsigned as FromStrRadixHelper>::max_value() as u128;
-                if u < 0 || u as u128 > max {
+                let max: $storage = <$unsigned>::max_value().into();
+                if u < 0 || u as $storage > max {
                     Err(TryFromIntError(()))
                 } else {
                     Ok(u as $unsigned)
@@ -2568,12 +2618,39 @@ macro_rules! cross_sign_from_int_impl {
     )*}
 }
 
-cross_sign_from_int_impl!(u8, i8, i16, i32, i64, i128, isize);
-cross_sign_from_int_impl!(u16, i8, i16, i32, i64, i128, isize);
-cross_sign_from_int_impl!(u32, i8, i16, i32, i64, i128, isize);
-cross_sign_from_int_impl!(u64, i8, i16, i32, i64, i128, isize);
-cross_sign_from_int_impl!(u128, i8, i16, i32, i64, i128, isize);
-cross_sign_from_int_impl!(usize, i8, i16, i32, i64, i128, isize);
+macro_rules! signed_from_unsigned_impl {
+    ($signed:ty, $($unsigned:ty, $storage:ty),*) => {$(
+        #[unstable(feature = "try_from", issue = "33417")]
+        impl TryFrom<$unsigned> for $signed {
+            type Error = TryFromIntError;
+
+            #[inline]
+            fn try_from(u: $unsigned) -> Result<$signed, TryFromIntError> {
+                let max = <$signed>::max_value() as $storage;
+                if u as $storage > max {
+                    Err(TryFromIntError(()))
+                } else {
+                    Ok(u as $signed)
+                }
+            }
+        }
+    )*}
+}
+
+// (unsigned type, $(signed type, storage))
+unsigned_from_signed_impl!(u8, i8, u8, i16, i16, i32, i32, i64, i64, i128, i128, isize, u64);
+unsigned_from_signed_impl!(u16, i8, u16, i16, u16, i32, u32, i64, u64, i128, i128, isize, u64);
+unsigned_from_signed_impl!(u32, i8, u32, i16, u32, i32, u32, i64, u64, i128, i128, isize, u64);
+unsigned_from_signed_impl!(u64, i8, u64, i16, u64, i32, u64, i64, u64, i128, i128, isize, u64);
+unsigned_from_signed_impl!(u128, i8, u128, i16, u128, i32, u128, i64, u128, i128, u128, isize,
+                           u128);
+
+// (signed type, $(unsigned type, storage))
+signed_from_unsigned_impl!(i8, u8, u8, u16, u16, u32, u32, u64, u64, u128, u128, usize, usize);
+signed_from_unsigned_impl!(i16, u16, u16, u32, u32, u64, u64, u128, u128, usize, usize);
+signed_from_unsigned_impl!(i32, u32, u32, u64, u64, u128, u128, usize, usize);
+signed_from_unsigned_impl!(i64, u64, u64, u128, u128, usize, usize);
+signed_from_unsigned_impl!(i128, u128, u128);
 
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
@@ -2587,15 +2664,21 @@ trait FromStrRadixHelper: PartialOrd + Copy {
 
 macro_rules! doit {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
+        #[inline]
         fn min_value() -> Self { Self::min_value() }
+        #[inline]
         fn max_value() -> Self { Self::max_value() }
+        #[inline]
         fn from_u32(u: u32) -> Self { u as Self }
+        #[inline]
         fn checked_mul(&self, other: u32) -> Option<Self> {
             Self::checked_mul(*self, other as Self)
         }
+        #[inline]
         fn checked_sub(&self, other: u32) -> Option<Self> {
             Self::checked_sub(*self, other as Self)
         }
+        #[inline]
         fn checked_add(&self, other: u32) -> Option<Self> {
             Self::checked_add(*self, other as Self)
         }
