@@ -121,7 +121,9 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
 }
 
 impl<'tcx> Lvalue<'tcx> {
-    pub fn ty<'a, 'gcx, D: HasLocalDecls<'tcx>>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx> {
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx>
+        where D: HasLocalDecls<'tcx>
+    {
         match *self {
             Lvalue::Local(index) =>
                 LvalueTy::Ty { ty: local_decls.local_decls()[index].ty },
@@ -134,7 +136,8 @@ impl<'tcx> Lvalue<'tcx> {
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<'a, 'gcx, D: HasLocalDecls<'tcx>>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+        where D: HasLocalDecls<'tcx>
     {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
@@ -206,7 +209,9 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<'a, 'gcx, D: HasLocalDecls<'tcx>>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+        where D: HasLocalDecls<'tcx>
+    {
         match self {
             &Operand::Consume(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
             &Operand::Constant(ref c) => c.ty,
