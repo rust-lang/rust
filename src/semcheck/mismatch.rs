@@ -45,11 +45,12 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
 
     /// Process the next pair of `DefId`s in the queue and return them.
     pub fn process(&mut self) {
-        use rustc::hir::def::Def::Trait;
+        use rustc::hir::def::Def::*;
 
         while let Some((old_did, new_did)) = self.item_queue.pop_front() {
-            if let Some(Trait(_)) = self.tcx.describe_def(old_did) {
-                continue;
+            match self.tcx.describe_def(old_did) {
+                Some(Trait(_)) | Some(Macro(_, _)) => continue,
+                _ => (),
             }
 
             let old_ty = self.tcx.type_of(old_did);

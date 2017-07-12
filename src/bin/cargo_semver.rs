@@ -188,7 +188,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name)?;
 
     if matches.opt_present("d") {
-        println!("--crate=type=lib --extern old={} -L{} --extern new={}, -L{} tests/helper/test2.rs",
+        println!("--crate-type=lib --extern old={} -L{} --extern new={} -L{} tests/helper/test2.rs",
                  stable_rlib.display(),
                  stable_deps_output.display(),
                  current_rlib.display(),
