@@ -30,7 +30,7 @@ use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast::{self, BlockCheckMode};
 use syntax::fold::{self, Folder};
-use syntax::print::{pp, pprust};
+use syntax::print::{pprust};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
@@ -163,13 +163,12 @@ pub fn parse_pretty(sess: &Session,
 
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<'tcx, A, B, F>(&self,
+    fn call_with_pp_support<'tcx, A, F>(&self,
                                            sess: &'tcx Session,
                                            hir_map: Option<&hir_map::Map<'tcx>>,
-                                           payload: B,
                                            f: F)
                                            -> A
-        where F: FnOnce(&PrinterSupport, B) -> A
+        where F: FnOnce(&PrinterSupport) -> A
     {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
@@ -177,7 +176,7 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
-                f(&annotation, payload)
+                f(&annotation)
             }
 
             PpmIdentified | PpmExpandedIdentified => {
@@ -185,18 +184,18 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
-                f(&annotation, payload)
+                f(&annotation)
             }
             PpmExpandedHygiene => {
                 let annotation = HygieneAnnotation {
                     sess: sess,
                 };
-                f(&annotation, payload)
+                f(&annotation)
             }
             _ => panic!("Should use call_with_pp_support_hir"),
         }
     }
-    fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
+    fn call_with_pp_support_hir<'tcx, A, F>(&self,
                                                sess: &'tcx Session,
                                                hir_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis,
@@ -204,10 +203,9 @@ impl PpSourceMode {
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
                                                id: &str,
-                                               payload: B,
                                                f: F)
                                                -> A
-        where F: FnOnce(&HirPrinterSupport, B, &hir::Crate) -> A
+        where F: FnOnce(&HirPrinterSupport, &hir::Crate) -> A
     {
         match *self {
             PpmNormal => {
@@ -215,7 +213,7 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: Some(hir_map.clone()),
                 };
-                f(&annotation, payload, hir_map.forest.krate())
+                f(&annotation, hir_map.forest.krate())
             }
 
             PpmIdentified => {
@@ -223,7 +221,7 @@ impl PpSourceMode {
                     sess: sess,
                     hir_map: Some(hir_map.clone()),
                 };
-                f(&annotation, payload, hir_map.forest.krate())
+                f(&annotation, hir_map.forest.krate())
             }
             PpmTyped => {
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
@@ -240,7 +238,7 @@ impl PpSourceMode {
                         tables: Cell::new(&empty_tables)
                     };
                     let _ignore = tcx.dep_graph.in_ignore();
-                    f(&annotation, payload, hir_map.forest.krate())
+                    f(&annotation, hir_map.forest.krate())
                 }),
                              sess)
             }
@@ -357,24 +355,24 @@ impl<'hir> pprust::PpAnn for IdentifiedAnnotation<'hir> {
             pprust::NodeName(_) => Ok(()),
 
             pprust::NodeItem(item) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(item.id.to_string())
             }
             pprust::NodeSubItem(id) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(id.to_string())
             }
             pprust::NodeBlock(blk) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("block {}", blk.id))
             }
             pprust::NodeExpr(expr) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(expr.id.to_string())?;
                 s.pclose()
             }
             pprust::NodePat(pat) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("pat {}", pat.id))
             }
         }
@@ -414,24 +412,24 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
         match node {
             pprust_hir::NodeName(_) => Ok(()),
             pprust_hir::NodeItem(item) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(item.id.to_string())
             }
             pprust_hir::NodeSubItem(id) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(id.to_string())
             }
             pprust_hir::NodeBlock(blk) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("block {}", blk.id))
             }
             pprust_hir::NodeExpr(expr) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(expr.id.to_string())?;
                 s.pclose()
             }
             pprust_hir::NodePat(pat) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(format!("pat {}", pat.id))
             }
         }
@@ -456,13 +454,13 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
             pprust::NodeIdent(&ast::Ident { name, ctxt }) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
                 s.synth_comment(format!("{}{:?}", name.as_u32(), ctxt))
             }
             pprust::NodeName(&name) => {
-                pp::space(&mut s.s)?;
+                s.s.space()?;
                 s.synth_comment(name.as_u32().to_string())
             }
             _ => Ok(()),
@@ -514,10 +512,10 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     fn post(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
             pprust_hir::NodeExpr(expr) => {
-                pp::space(&mut s.s)?;
-                pp::word(&mut s.s, "as")?;
-                pp::space(&mut s.s)?;
-                pp::word(&mut s.s, &self.tables.get().expr_ty(expr).to_string())?;
+                s.s.space()?;
+                s.s.word("as")?;
+                s.s.space()?;
+                s.s.word(&self.tables.get().expr_ty(expr).to_string())?;
                 s.pclose()
             }
             _ => Ok(()),
@@ -825,7 +823,7 @@ pub fn print_after_parsing(sess: &Session,
     if let PpmSource(s) = ppm {
         // Silently ignores an identified node.
         let out: &mut Write = &mut out;
-        s.call_with_pp_support(sess, None, box out, |annotation, out| {
+        s.call_with_pp_support(sess, None, move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 pprust::print_crate(sess.codemap(),
@@ -833,7 +831,7 @@ pub fn print_after_parsing(sess: &Session,
                                     krate,
                                     src_name.to_string(),
                                     &mut rdr,
-                                    out,
+                                    box out,
                                     annotation.pp_ann(),
                                     false)
             })
@@ -883,7 +881,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             (PpmSource(s), _) => {
                 // Silently ignores an identified node.
                 let out: &mut Write = &mut out;
-                s.call_with_pp_support(sess, Some(hir_map), box out, |annotation, out| {
+                s.call_with_pp_support(sess, Some(hir_map), move |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
@@ -891,7 +889,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                         krate,
                                         src_name.to_string(),
                                         &mut rdr,
-                                        out,
+                                        box out,
                                         annotation.pp_ann(),
                                         true)
                 })
@@ -906,8 +904,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            arena,
                                            arenas,
                                            crate_name,
-                                           box out,
-                                           |annotation, out, krate| {
+                                           move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust_hir::print_crate(sess.codemap(),
@@ -915,7 +912,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                             krate,
                                             src_name.to_string(),
                                             &mut rdr,
-                                            out,
+                                            box out,
                                             annotation.pp_ann(),
                                             true)
                 })
@@ -930,8 +927,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            arena,
                                            arenas,
                                            crate_name,
-                                           (out, uii),
-                                           |annotation, (out, uii), _| {
+                                           move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     let hir_map = annotation.hir_map().expect("--unpretty missing HIR map");
@@ -945,13 +941,13 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     for node_id in uii.all_matching_node_ids(hir_map) {
                         let node = hir_map.get(node_id);
                         pp_state.print_node(node)?;
-                        pp::space(&mut pp_state.s)?;
+                        pp_state.s.space()?;
                         let path = annotation.node_path(node_id)
                             .expect("--unpretty missing node paths");
                         pp_state.synth_comment(path)?;
-                        pp::hardbreak(&mut pp_state.s)?;
+                        pp_state.s.hardbreak()?;
                     }
-                    pp::eof(&mut pp_state.s)
+                    pp_state.s.eof()
                 })
             }
             _ => unreachable!(),
