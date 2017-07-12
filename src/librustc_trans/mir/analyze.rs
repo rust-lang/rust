@@ -137,7 +137,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         // Allow uses of projections of immediate pair fields.
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
             if let mir::Lvalue::Local(_) = proj.base {
-                let ty = proj.base.ty(&self.cx.mir.local_decls, self.cx.ccx.tcx());
+                let ty = proj.base.ty(self.cx.mir, self.cx.ccx.tcx());
 
                 let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
                 if common::type_is_imm_pair(self.cx.ccx, ty) {
@@ -168,7 +168,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 }
 
                 LvalueContext::Drop => {
-                    let ty = lvalue.ty(&self.cx.mir.local_decls, self.cx.ccx.tcx());
+                    let ty = lvalue.ty(self.cx.mir, self.cx.ccx.tcx());
                     let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
 
                     // Only need the lvalue if we're actually dropping it.

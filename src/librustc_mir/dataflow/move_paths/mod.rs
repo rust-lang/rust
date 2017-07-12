@@ -286,7 +286,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                                 -> Result<MovePathIndex, MovePathError>
     {
         let base = try!(self.move_path_for(&proj.base));
-        let lv_ty = proj.base.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
+        let lv_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
         match lv_ty.sty {
             // error: can't move out of borrowed content
             ty::TyRef(..) | ty::TyRawPtr(..) => return Err(MovePathError::IllegalMove),
@@ -504,7 +504,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn gather_move(&mut self, loc: Location, lval: &Lvalue<'tcx>) {
         debug!("gather_move({:?}, {:?})", loc, lval);
 
-        let lv_ty = lval.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
+        let lv_ty = lval.ty(self.mir, self.tcx).to_ty(self.tcx);
         if !lv_ty.moves_by_default(self.tcx, self.param_env, DUMMY_SP) {
             debug!("gather_move({:?}, {:?}) - {:?} is Copy. skipping", loc, lval, lv_ty);
             return

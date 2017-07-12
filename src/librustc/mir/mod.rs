@@ -69,6 +69,22 @@ macro_rules! newtype_index {
 /// Types for locals
 type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
 
+pub trait AsLocalDeclsRef<'tcx> {
+    fn as_ref(&self) -> &LocalDecls<'tcx>;
+}
+
+impl<'tcx> AsLocalDeclsRef<'tcx> for LocalDecls<'tcx> {
+    fn as_ref(&self) -> &LocalDecls<'tcx> {
+        self
+    }
+}
+
+impl<'tcx> AsLocalDeclsRef<'tcx> for Mir<'tcx> {
+    fn as_ref(&self) -> &LocalDecls<'tcx> {
+        &self.local_decls
+    }
+}
+
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {

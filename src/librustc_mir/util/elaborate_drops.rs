@@ -130,7 +130,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     where D: DropElaborator<'b, 'tcx>
 {
     fn lvalue_ty(&self, lvalue: &Lvalue<'tcx>) -> Ty<'tcx> {
-        lvalue.ty(&self.elaborator.mir().local_decls, self.tcx()).to_ty(self.tcx())
+        lvalue.ty(self.elaborator.mir(), self.tcx()).to_ty(self.tcx())
     }
 
     fn tcx(&self) -> ty::TyCtxt<'b, 'tcx, 'tcx> {

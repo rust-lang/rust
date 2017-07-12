@@ -129,7 +129,7 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 fn lvalue_contents_drop_state_cannot_differ<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                       mir: &Mir<'tcx>,
                                                       lv: &mir::Lvalue<'tcx>) -> bool {
-    let ty = lv.ty(&mir.local_decls, tcx).to_ty(tcx);
+    let ty = lv.ty(mir, tcx).to_ty(tcx);
     match ty.sty {
         ty::TyArray(..) | ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
             debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} refd => true",
@@ -216,7 +216,7 @@ pub(crate) fn on_all_drop_children_bits<'a, 'tcx, F>(
 {
     on_all_children_bits(tcx, mir, &ctxt.move_data, path, |child| {
         let lvalue = &ctxt.move_data.move_paths[path].lvalue;
-        let ty = lvalue.ty(&mir.local_decls, tcx).to_ty(tcx);
+        let ty = lvalue.ty(mir, tcx).to_ty(tcx);
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, lvalue, ty);
 
         if ty.needs_drop(tcx, ctxt.param_env) {
@@ -263,7 +263,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
 
         // don't move out of non-Copy things
         let lvalue = &move_data.move_paths[path].lvalue;
-        let ty = lvalue.ty(&mir.local_decls, tcx).to_ty(tcx);
+        let ty = lvalue.ty(mir, tcx).to_ty(tcx);
         if !ty.moves_by_default(tcx, param_env, DUMMY_SP) {
             continue;
         }

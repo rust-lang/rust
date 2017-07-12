@@ -275,7 +275,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let span = statement.source_info.span;
                 match statement.kind {
                     mir::StatementKind::Assign(ref dest, ref rvalue) => {
-                        let ty = dest.ty(&self.mir.local_decls, tcx);
+                        let ty = dest.ty(self.mir, tcx);
                         let ty = self.monomorphize(&ty).to_ty(tcx);
                         match self.const_rvalue(rvalue, ty, span) {
                             Ok(value) => self.store(dest, value, span),
@@ -331,7 +331,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
 
                 mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
-                    let fn_ty = func.ty(&self.mir.local_decls, tcx);
+                    let fn_ty = func.ty(self.mir, tcx);
                     let fn_ty = self.monomorphize(&fn_ty);
                     let (def_id, substs) = match fn_ty.sty {
                         ty::TyFnDef(def_id, substs) => (def_id, substs),

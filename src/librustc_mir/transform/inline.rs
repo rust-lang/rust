@@ -250,7 +250,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     work_list.push(target);
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
-                    let ty = location.ty(&callee_mir.local_decls, tcx).subst(tcx, callsite.substs);
+                    let ty = location.ty(callee_mir, tcx).subst(tcx, callsite.substs);
                     let ty = ty.to_ty(tcx);
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
@@ -390,7 +390,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         BorrowKind::Mut,
                         destination.0);
 
-                    let ty = dest.ty(&caller_mir.local_decls, self.tcx);
+                    let ty = dest.ty(caller_mir, self.tcx);
 
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
@@ -422,7 +422,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         bug!("Constant arg to \"box_free\"");
                     };
 
-                    let ptr_ty = args[0].ty(&caller_mir.local_decls, self.tcx);
+                    let ptr_ty = args[0].ty(caller_mir, self.tcx);
                     vec![self.cast_box_free_arg(arg, ptr_ty, &callsite, caller_mir)]
                 } else {
                     // Copy the arguments if needed.
@@ -475,7 +475,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             BorrowKind::Mut,
             arg.deref());
 
-        let ty = arg.ty(&caller_mir.local_decls, self.tcx);
+        let ty = arg.ty(caller_mir, self.tcx);
         let ref_tmp = LocalDecl::new_temp(ty, callsite.location.span);
         let ref_tmp = caller_mir.local_decls.push(ref_tmp);
         let ref_tmp = Lvalue::Local(ref_tmp);
@@ -529,7 +529,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             // Otherwise, create a temporary for the arg
             let arg = Rvalue::Use(a);
 
-            let ty = arg.ty(&caller_mir.local_decls, tcx);
+            let ty = arg.ty(caller_mir, tcx);
 
             let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
             let arg_tmp = caller_mir.local_decls.push(arg_tmp);
