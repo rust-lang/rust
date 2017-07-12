@@ -60,6 +60,10 @@ use foo::{Bar, Baz};
 use Foo;
 use {Bar, Baz};
 
+// Root globs
+use ::*;
+use ::*;
+
 // spaces used to cause glob imports to disappear (#1356)
 use super::*;
 use foo::issue_1356::*;
