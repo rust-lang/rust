@@ -340,7 +340,7 @@ impl Error for char::CharTryFromError {
     }
 }
 
-#[stable(feature = "char_from_str", since = "1.19.0")]
+#[stable(feature = "char_from_str", since = "1.20.0")]
 impl Error for char::ParseCharError {
     fn description(&self) -> &str {
         self.__description()

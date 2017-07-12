@@ -440,7 +440,7 @@ impl<'a, T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_guard_impls", since = "1.20")]
+#[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<'a, T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)

@@ -559,7 +559,7 @@ mod impls {
 
         ( $($name:ident)+) => (
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($name: Hash),*> Hash for ($($name,)*) {
+            impl<$($name: Hash),*> Hash for ($($name,)*) where last_type!($($name,)+): ?Sized {
                 #[allow(non_snake_case)]
                 fn hash<S: Hasher>(&self, state: &mut S) {
                     let ($(ref $name,)*) = *self;
@@ -567,6 +567,11 @@ mod impls {
                 }
             }
         );
+    }
+
+    macro_rules! last_type {
+        ($a:ident,) => { $a };
+        ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
     }
 
     impl_hash_tuple! {}

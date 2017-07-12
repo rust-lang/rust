@@ -11,9 +11,12 @@
 
 #![feature(on_unimplemented)]
 
-#[rustc_on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`"]
-trait Foo<Bar, Baz, Quux>
-{}
+pub mod Bar {
+  #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}` in `{Foo}`"]
+  pub trait Foo<Bar, Baz, Quux> {}
+}
+
+use Bar::Foo;
 
 fn foobar<U: Clone, T: Foo<u8, U, u32>>() -> T {
     panic!()
