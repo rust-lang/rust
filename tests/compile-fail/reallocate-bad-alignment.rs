@@ -11,6 +11,7 @@ use alloc::heap::*;
 fn main() {
     unsafe {
         let x = Heap.alloc(Layout::from_size_align_unchecked(1, 2)).unwrap();
+        // Try realloc with a too small alignment.
         let _y = Heap.realloc(x, Layout::from_size_align_unchecked(1, 1), Layout::from_size_align_unchecked(1, 2)).unwrap();
     }
 }

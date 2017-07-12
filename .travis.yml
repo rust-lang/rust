@@ -12,9 +12,7 @@ before_script:
 script:
 - |
   # get ourselves a MIR-ful libstd
-  cd xargo &&
-  RUSTFLAGS='-Zalways-encode-mir' xargo build &&
-  cd ..
+  xargo/build.sh
 - |
   # Test plain miri
   cargo build &&
