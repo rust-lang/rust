@@ -13,27 +13,28 @@ One para explanation of the feature.
 
 Why are we doing this? What use cases does it support? What is the expected outcome?
 
-# Detailed design
-[design]: #detailed-design
+# Guide-level explanation
+[guide-level-explanation]: #guide-level-explanation
 
-This is the bulk of the RFC. Explain the design in enough detail for somebody familiar
-with the language to understand, and for somebody familiar with the compiler to implement.
-This should get into specifics and corner-cases, and include examples of how the feature is used.
+Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
 
-# How We Teach This
-[how-we-teach-this]: #how-we-teach-this
+- Introducing new named concepts.
+- Explaining the feature largely in terms of examples.
+- Explaining how Rust programmers should *think* about the feature, and how it should impact the way they use Rust. It should explain the impact as concretely as possible.
+- If applicable, provide sample error messages, deprecation warnings, or migration guidance.
 
-What names and terminology work best for these concepts and why?
-How is this idea best presented—as a continuation of existing Rust patterns, or as a wholly new one?
+For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms.
 
-Would the acceptance of this proposal change how Rust is taught to new users at any level?
-How should this feature be introduced and taught to existing Rust users?
+# Reference-level explanation
+[reference-level-explanation]: #reference-level-explanation
 
-What additions or changes to the Rust Reference, _The Rust Programming Language_, and/or _Rust by Example_ does it entail?
+This is the technical portion of the RFC. Explain the design in sufficient detail that:
 
-What would an outline of a new section in the book look like? What should the reader be able to understand by the end of the section in the book?
+- Its interaction with other features is clear.
+- It is reasonably clear how the feature would be implemented.
+- Corner cases are dissected by example.
 
-What's an example that would show off this feature?
+The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work.
 
 # Drawbacks
 [drawbacks]: #drawbacks
