@@ -303,7 +303,7 @@ impl Literal {
         Literal(token::Literal(token::Lit::Integer(Symbol::intern(&n.to_string())), None))
     }
 
-    int_literals!(u8, i8, u16, i16, u32, i32, u64, i64);
+    int_literals!(u8, i8, u16, i16, u32, i32, u64, i64, usize, isize);
     fn typed_integer(n: i128, kind: &'static str) -> Literal {
         Literal(token::Literal(token::Lit::Integer(Symbol::intern(&n.to_string())),
                                Some(Symbol::intern(kind))))
