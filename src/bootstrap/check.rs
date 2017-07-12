@@ -753,40 +753,63 @@ impl<'a> Step<'a> for Compiletest<'a> {
     }
 }
 
+#[derive(Serialize)]
+pub struct Docs<'a> {
+    compiler: Compiler<'a>,
+}
+
 // rules.test("check-docs", "src/doc")
 //     .dep(|s| s.name("libtest"))
 //     .default(true)
 //     .host(true)
 //     .run(move |s| check::docs(build, &s.compiler()));
-/// Run `rustdoc --test` for all documentation in `src/doc`.
-///
-/// This will run all tests in our markdown documentation (e.g. the book)
-/// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
-/// `compiler`.
-pub fn docs(build: &Build, compiler: &Compiler) {
-    // Do a breadth-first traversal of the `src/doc` directory and just run
-    // tests for all files that end in `*.md`
-    let mut stack = vec![build.src.join("src/doc")];
-    let _time = util::timeit();
-    let _folder = build.fold_output(|| "test_docs");
+impl<'a> Step<'a> for Docs<'a> {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
 
-    while let Some(p) = stack.pop() {
-        if p.is_dir() {
-            stack.extend(t!(p.read_dir()).map(|p| t!(p).path()));
-            continue
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/doc")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+        builder.ensure(Docs {
+            compiler: builder.compiler(builder.top_stage, host),
+        });
+    }
+
+    /// Run `rustdoc --test` for all documentation in `src/doc`.
+    ///
+    /// This will run all tests in our markdown documentation (e.g. the book)
+    /// located in `src/doc`. The `rustdoc` that's run is the one that sits next to
+    /// `compiler`.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let compiler = self.compiler;
+        // Do a breadth-first traversal of the `src/doc` directory and just run
+        // tests for all files that end in `*.md`
+        let mut stack = vec![build.src.join("src/doc")];
+        let _time = util::timeit();
+        let _folder = build.fold_output(|| "test_docs");
+
+        while let Some(p) = stack.pop() {
+            if p.is_dir() {
+                stack.extend(t!(p.read_dir()).map(|p| t!(p).path()));
+                continue
+            }
+
+            if p.extension().and_then(|s| s.to_str()) != Some("md") {
+                continue;
+            }
+
+            // The nostarch directory in the book is for no starch, and so isn't
+            // guaranteed to build. We don't care if it doesn't build, so skip it.
+            if p.to_str().map_or(false, |p| p.contains("nostarch")) {
+                continue;
+            }
+
+            markdown_test(builder, compiler, &p);
         }
-
-        if p.extension().and_then(|s| s.to_str()) != Some("md") {
-            continue;
-        }
-
-        // The nostarch directory in the book is for no starch, and so isn't
-        // guaranteed to build. We don't care if it doesn't build, so skip it.
-        if p.to_str().map_or(false, |p| p.contains("nostarch")) {
-            continue;
-        }
-
-        markdown_test(build, compiler, &p);
     }
 }
 

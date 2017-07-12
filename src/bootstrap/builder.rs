@@ -192,8 +192,9 @@ impl<'a> Builder<'a> {
         impl<'a> Step<'a> for Libdir<'a> {
             type Output = PathBuf;
             fn run(self, builder: &Builder) -> PathBuf {
+                let compiler = self.compiler;
                 let lib = if compiler.stage >= 2 && builder.build.config.libdir_relative.is_some() {
-                    builder.build.config.libdir_relative.cloned().unwrap()
+                    builder.build.config.libdir_relative.clone().unwrap()
                 } else {
                     PathBuf::from("lib")
                 };

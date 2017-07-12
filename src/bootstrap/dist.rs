@@ -553,29 +553,76 @@ impl<'a> Step<'a> for DebuggerScripts<'a> {
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::std(build, &s.compiler(), s.target));
 
-    let name = pkgname(build, "rust-std");
-    let image = tmpdir(build).join(format!("{}-{}-image", name, target));
-    let _ = fs::remove_dir_all(&image);
+#[derive(Serialize)]
+pub struct Std<'a> {
+    pub compiler: Compiler<'a>,
+    pub target: &'a str,
+}
 
-    let dst = image.join("lib/rustlib").join(target);
-    t!(fs::create_dir_all(&dst));
-    let mut src = build.sysroot_libdir(compiler, target);
-    src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
-    cp_r(&src, &dst);
+impl<'a> Step<'a> for Std<'a> {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_BUILD_TARGETS: bool = true;
 
-    let mut cmd = rust_installer(build);
-    cmd.arg("generate")
-       .arg("--product-name=Rust")
-       .arg("--rel-manifest-dir=rustlib")
-       .arg("--success-message=std-is-standing-at-the-ready.")
-       .arg("--image-dir").arg(&image)
-       .arg("--work-dir").arg(&tmpdir(build))
-       .arg("--output-dir").arg(&distdir(build))
-       .arg(format!("--package-name={}-{}", name, target))
-       .arg(format!("--component-name=rust-std-{}", target))
-       .arg("--legacy-manifest-dirs=rustlib,cargo");
-    build.run(&mut cmd);
-    t!(fs::remove_dir_all(&image));
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/libstd")
+    }
+
+    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, target: &str) {
+        builder.ensure(Std {
+            compiler: builder.compiler(builder.top_stage, host),
+            target: target,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let compiler = self.compiler;
+        let target = self.target;
+
+        println!("Dist std stage{} ({} -> {})", compiler.stage, compiler.host,
+                 target);
+
+        // The only true set of target libraries came from the build triple, so
+        // let's reduce redundant work by only producing archives from that host.
+        if compiler.host != build.build {
+            println!("\tskipping, not a build host");
+            return
+        }
+
+        // We want to package up as many target libraries as possible
+        // for the `rust-std` package, so if this is a host target we
+        // depend on librustc and otherwise we just depend on libtest.
+        if build.config.host.iter().any(|t| t == target) {
+            builder.ensure(compile::Rustc { compiler, target });
+        } else {
+            builder.ensure(compile::Test { compiler, target });
+        }
+
+        let name = pkgname(build, "rust-std");
+        let image = tmpdir(build).join(format!("{}-{}-image", name, target));
+        let _ = fs::remove_dir_all(&image);
+
+        let dst = image.join("lib/rustlib").join(target);
+        t!(fs::create_dir_all(&dst));
+        let mut src = builder.sysroot_libdir(compiler, target);
+        src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
+        cp_r(&src, &dst);
+
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rust")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=std-is-standing-at-the-ready.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(build))
+           .arg("--output-dir").arg(&distdir(build))
+           .arg(format!("--package-name={}-{}", name, target))
+           .arg(format!("--component-name=rust-std-{}", target))
+           .arg("--legacy-manifest-dirs=rustlib,cargo");
+        build.run(&mut cmd);
+        t!(fs::remove_dir_all(&image));
+    }
 }
 
 /// The path to the complete rustc-src tarball

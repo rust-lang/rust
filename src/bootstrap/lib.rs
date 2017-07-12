@@ -114,6 +114,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(warnings)]
+#![allow(stable_features)]
 #![feature(associated_consts)]
 #![feature(core_intrinsics)]
 
@@ -439,19 +440,6 @@ impl Build {
     /// given compiler.
     fn incremental_dir(&self, compiler: Compiler) -> PathBuf {
         self.out.join(compiler.host).join(format!("stage{}-incremental", compiler.stage))
-    }
-
-    /// Returns the libdir where the standard library and other artifacts are
-    /// found for a compiler's sysroot.
-    fn sysroot_libdir(&self, compiler: &Compiler, target: &str) -> PathBuf {
-        if compiler.stage >= 2 {
-            if let Some(ref libdir_relative) = self.config.libdir_relative {
-                return self.sysroot(compiler).join(libdir_relative)
-                    .join("rustlib").join(target).join("lib")
-            }
-        }
-       self.sysroot(compiler).join("lib").join("rustlib")
-           .join(target).join("lib")
     }
 
     /// Returns the root directory for all output generated in a particular
