@@ -11,10 +11,9 @@
 
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
-use rustc::ty::{AssociatedItem, Region, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
+use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 
 use semcheck::changes::BinaryChangeType;
@@ -534,46 +533,6 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 }
 
-struct Resolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-}
-
-impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Resolver<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
-        -> Resolver<'a, 'gcx, 'tcx>
-    {
-        Resolver {
-            tcx: infcx.tcx,
-            infcx: infcx,
-        }
-    }
-}
-
-impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> TypeFolder<'gcx, 'tcx> for Resolver<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let Ok(t) = self.infcx.fully_resolve(&t) {
-            t
-        } else {
-            panic!("*running around screaming*");
-        }
-    }
-
-    // NB: taken verbatim from: `src/librustc_typeck/check/writeback.rs`
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        match self.infcx.fully_resolve(&r) {
-            Ok(r) => r,
-            Err(_) => {
-                self.tcx.types.re_static
-            }
-        }
-    }
-}
-
 /// Compare two types and possibly register the error.
 fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        id_mapping: &IdMapping,
@@ -605,7 +564,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         let new = new.subst(infcx.tcx, new_substs);
 
         if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
-            let err = err.fold_with(&mut Resolver::new(&infcx));
+            let err = match infcx.fully_resolve(&err) {
+                Ok(res) => res,
+                Err(err) => panic!("err: {:?}", err),
+            };
             changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
