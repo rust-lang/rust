@@ -1,5 +1,7 @@
 # The Rust Code of Conduct
 
+A version of this document [can be found online](https://www.rust-lang.org/conduct.html).
+
 ## Conduct
 
 **Contact**: [rust-mods@rust-lang.org](mailto:rust-mods@rust-lang.org)
