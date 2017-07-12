@@ -447,7 +447,10 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    stat(p)
+    let fd = cvt(syscall::open(p.to_str().unwrap(),
+                               syscall::O_CLOEXEC | syscall::O_STAT | syscall::O_NOFOLLOW))?;
+    let file = File(FileDesc::new(fd));
+    file.file_attr()
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
