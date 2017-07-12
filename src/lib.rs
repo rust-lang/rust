@@ -17,6 +17,7 @@ extern crate syntax;
 extern crate byteorder;
 
 mod cast;
+mod const_eval;
 mod error;
 mod eval_context;
 mod lvalue;
@@ -55,4 +56,8 @@ pub use value::{
     PrimVal,
     PrimValKind,
     Value,
+};
+
+pub use const_eval::{
+    eval_body_as_integer,
 };
