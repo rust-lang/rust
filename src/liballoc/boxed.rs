@@ -726,14 +726,14 @@ impl<T: Clone> Clone for Box<[T]> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Box<T> {
     fn borrow(&self) -> &T {
         &**self
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized> borrow::BorrowMut<T> for Box<T> {
     fn borrow_mut(&mut self) -> &mut T {
         &mut **self
