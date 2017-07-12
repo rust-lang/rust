@@ -907,7 +907,7 @@ impl Child {
     /// }
     /// ```
     #[stable(feature = "process_id", since = "1.3.0")]
-    pub fn id(&self) -> u32 {
+    pub fn id(&self) -> imp::ProcessId {
         self.handle.id()
     }
 

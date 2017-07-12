@@ -13,6 +13,7 @@ use libc;
 use mem;
 use ptr;
 
+use core::ops::Deref;
 use sys::process::magenta::{Handle, mx_handle_t};
 use sys::process::process_common::*;
 
@@ -126,13 +127,29 @@ impl Command {
 // Processes
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents a process id.
+///
+/// Returned by the [Child::id]() method.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[stable(feature = "rust1", since = "1.21.0")]
+pub struct ProcessId(pub i32);
+
+#[stable(feature = "rust1", since = "1.21.0")]
+impl Deref for ProcessId {
+    type Target = i32;
+
+    fn deref(&self) -> &i32 {
+        &self.0
+    }
+}
+
 pub struct Process {
     handle: Handle,
 }
 
 impl Process {
-    pub fn id(&self) -> u32 {
-        self.handle.raw() as u32
+    pub fn id(&self) -> ProcessId {
+        ProcessId(self.handle.raw())
     }
 
     pub fn kill(&mut self) -> io::Result<()> {

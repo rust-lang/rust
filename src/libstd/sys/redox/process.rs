@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use collections::hash_map::HashMap;
+use core::ops::Deref;
 use env;
 use ffi::OsStr;
 use fmt;
@@ -483,6 +484,22 @@ impl fmt::Display for ExitStatus {
     }
 }
 
+/// Represents a process id.
+///
+/// Returned by the [Child::id]() method.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[stable(feature = "rust1", since = "1.21.0")]
+pub struct ProcessId(pub usize);
+
+#[stable(feature = "rust1", since = "1.21.0")]
+impl Deref for ProcessId {
+    type Target = usize;
+
+    fn deref(&self) -> &usize {
+        &self.0
+    }
+}
+
 /// The unique id of the process (this should never be negative).
 pub struct Process {
     pid: usize,
@@ -490,8 +507,8 @@ pub struct Process {
 }
 
 impl Process {
-    pub fn id(&self) -> u32 {
-        self.pid as u32
+    pub fn id(&self) -> ProcessId {
+        ProcessId(self.pid)
     }
 
     pub fn kill(&mut self) -> io::Result<()> {

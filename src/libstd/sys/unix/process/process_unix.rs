@@ -13,6 +13,7 @@ use libc::{self, c_int, gid_t, pid_t, uid_t};
 use mem;
 use ptr;
 
+use core::ops::Deref;
 use sys::cvt;
 use sys::process::process_common::*;
 
@@ -224,6 +225,22 @@ impl Command {
 // Processes
 ////////////////////////////////////////////////////////////////////////////////
 
+/// Represents a process id.
+///
+/// Returned by the [Child::id]() method.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Hash)]
+#[stable(feature = "rust1", since = "1.21.0")]
+pub struct ProcessId(pub i32);
+
+#[stable(feature = "rust1", since = "1.21.0")]
+impl Deref for ProcessId {
+    type Target = i32;
+
+    fn deref(&self) -> &i32 {
+        &self.0
+    }
+}
+
 /// The unique id of the process (this should never be negative).
 pub struct Process {
     pid: pid_t,
@@ -231,8 +248,8 @@ pub struct Process {
 }
 
 impl Process {
-    pub fn id(&self) -> u32 {
-        self.pid as u32
+    pub fn id(&self) -> ProcessId {
+        ProcessId(self.pid)
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
