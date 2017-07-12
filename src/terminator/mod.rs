@@ -1,5 +1,4 @@
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc::hir::def::Def;
 use rustc::mir;
 use rustc::ty::{self, TypeVariants, Ty};
 use rustc::ty::layout::Layout;
@@ -856,12 +855,50 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "sysconf" => {
                 let name = self.value_to_primval(args[0], usize)?.to_u64()?;
                 trace!("sysconf() called with name {}", name);
-                let result = match name {
-                    30 => PrimVal::Bytes(4096), // _SC_PAGESIZE
-                    70 => PrimVal::from_i128(-1), // _SC_GETPW_R_SIZE_MAX
-                    _ => return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)))
-                };
-                self.write_primval(dest, result, dest_ty)?;
+                // cache the sysconf integers
+                let paths = &[
+                    (&["libc", "_SC_PAGESIZE"], PrimVal::Bytes(4096)),
+                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], PrimVal::from_i128(-1)),
+                ];
+                let mut result = None;
+                for &(path, path_value) in paths {
+                    if let Ok(instance) = self.resolve_path(path) {
+                        use lvalue::{Global, GlobalId};
+                        let cid = GlobalId { instance, promoted: None };
+                        let val = match self.globals.get(&cid).map(|glob| glob.value) {
+                            Some(value) => value,
+                            None => {
+                                let mir = self.load_mir(instance.def)?;
+                                self.globals.insert(cid, Global::uninitialized(mir.return_ty));
+                                let cleanup = StackPopCleanup::MarkStatic(false);
+                                let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
+                                trace!("pushing stack frame for global: {}", name);
+                                let frame = self.stack.len();
+                                self.push_stack_frame(
+                                    instance,
+                                    mir.span,
+                                    mir,
+                                    Lvalue::Global(cid),
+                                    cleanup,
+                                )?;
+                                while self.stack.len() != frame {
+                                    self.step()?;
+                                }
+                                self.globals.get(&cid).expect("we just computed the global").value
+                            }
+                        };
+                        let val = self.value_to_primval(val, usize)?.to_u64()?;
+                        if val == name {
+                            result = Some(path_value);
+                            break;
+                        }
+                    }
+                }
+                if let Some(result) = result {
+                    self.write_primval(dest, result, dest_ty)?;
+                } else {
+                    return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)));
+                }
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
@@ -936,8 +973,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.goto_block(dest_block);
         Ok(())
     }
-    /// Get the definition associated to a path.
-    fn path_to_def(&self, path: &[&str]) -> Option<Def> {
+
+    /// Get an instance for a path.
+    fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         let cstore = &self.tcx.sess.cstore;
 
         let crates = cstore.crates();
@@ -955,7 +993,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     for item in &mem::replace(&mut items, vec![]) {
                         if item.ident.name == *segment {
                             if path_it.peek().is_none() {
-                                return Some(item.def);
+                                return Some(ty::Instance::mono(self.tcx, item.def.def_id()));
                             }
 
                             items = cstore.item_children(item.def.def_id(), self.tcx.sess);
@@ -964,6 +1002,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
                 None
+            })
+            .ok_or_else(|| {
+                let path = path.iter()
+                    .map(|&s| s.to_owned())
+                    .collect();
+                EvalError::PathNotFound(path)
             })
     }
 }
