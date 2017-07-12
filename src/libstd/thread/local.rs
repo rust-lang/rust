@@ -284,15 +284,8 @@ impl<T: 'static> LocalKey<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
                       where F: FnOnce(&T) -> R {
-        unsafe {
-            let slot = (self.inner)();
-            let slot = slot.expect("cannot access a TLS value during or \
-                                    after it is destroyed");
-            f(match *slot.get() {
-                Some(ref inner) => inner,
-                None => self.init(slot),
-            })
-        }
+        self.try_with(f).expect("cannot access a TLS value during or \
+                                 after it is destroyed")
     }
 
     unsafe fn init(&self, slot: &UnsafeCell<Option<T>>) -> &T {
