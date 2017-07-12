@@ -24,6 +24,11 @@
 /// The multi-argument form of this macro panics with a string and has the
 /// `format!` syntax for building a string.
 ///
+/// # Current implementation
+///
+/// If the main thread panics it will terminate all your threads and end your
+/// program with code `101`.
+///
 /// # Examples
 ///
 /// ```should_panic
