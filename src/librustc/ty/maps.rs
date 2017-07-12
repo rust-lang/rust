@@ -22,7 +22,8 @@ use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
-use ty::ProfileQueriesMsg;
+
+use util::common::{profq_msg,ProfileQueriesMsg};
 use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -393,11 +394,10 @@ impl<'tcx> QueryDescription for queries::is_mir_available<'tcx> {
 }
 
 // If enabled, send a message to the profile-queries thread
-macro_rules! profile_queries_msg {
+macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
-        if $tcx.sess.profile_queries() {
-            $tcx.profile_queries_sender.borrow().as_ref().unwrap()
-                .send($msg).unwrap()
+        if $tcx.sess.opts.debugging_opts.profile_queries {
+            profq_msg($msg)
         }
     }
 }
@@ -476,17 +476,16 @@ macro_rules! define_maps {
                        key,
                        span);
 
-                profile_queries_msg!
-                    (tcx,
-                     ProfileQueriesMsg::QueryBegin(span.clone(),
-                                                   QueryMsg::$name(format!("{:?}", key))));
+                profq_msg!(tcx, 
+                    ProfileQueriesMsg::QueryBegin(span.clone(),
+                                                  QueryMsg::$name(format!("{:?}", key))));
 
                 if let Some(result) = tcx.maps.$name.borrow().get(&key) {
-                    profile_queries_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                    profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                     return Ok(f(result));
                 }
                 // else, we are going to run the provider:
-                profile_queries_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
+                profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
 
                 // FIXME(eddyb) Get more valid Span's on queries.
                 // def_span guard is necesary to prevent a recursive loop,
@@ -501,7 +500,7 @@ macro_rules! define_maps {
                     let provider = tcx.maps.providers[key.map_crate()].$name;
                     provider(tcx.global_tcx(), key)
                 })?;
-                profile_queries_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
+                profq_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
 
                 Ok(f(tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
             }

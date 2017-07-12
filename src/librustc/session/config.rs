@@ -2501,7 +2501,7 @@ mod tests {
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.query_dep_graph = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.profile_queries = true;
+        opts.debugging_opts.profile_queries = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.no_analysis = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());

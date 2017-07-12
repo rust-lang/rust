@@ -40,7 +40,6 @@ use ty::layout::{Layout, TargetDataLayout};
 use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
-use ty::maps::{QueryMsg};
 
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -56,13 +55,11 @@ use std::mem;
 use std::ops::Deref;
 use std::iter;
 use std::rc::Rc;
-use std::sync::mpsc::{Sender};
 
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::symbol::{Symbol, keywords};
-use syntax_pos::{Span};
 
 use hir;
 
@@ -427,24 +424,6 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-/// A sequence of these messages induce a trace of query-based incremental compilation.
-/// FIXME(matthewhammer): Determine whether we should include cycle detection here or not.
-#[derive(Clone,Debug)]
-pub enum ProfileQueriesMsg {
-    /// begin a new query
-    QueryBegin(Span,QueryMsg),
-    /// query is satisfied by using an already-known value for the given key
-    CacheHit,
-    /// query requires running a provider; providers may nest, permitting queries to nest.
-    ProviderBegin,
-    /// query is satisfied by a provider terminating with a value
-    ProviderEnd,
-    /// dump a record of the queries to the given path
-    Dump(String),
-    /// stop the profilequeriesmsg service
-    Halt
-}
-
 pub struct GlobalCtxt<'tcx> {
     global_arenas: &'tcx GlobalArenas<'tcx>,
     global_interners: CtxtInterners<'tcx>,
@@ -456,9 +435,6 @@ pub struct GlobalCtxt<'tcx> {
     pub trans_trait_caches: traits::trans::TransTraitCaches<'tcx>,
 
     pub dep_graph: DepGraph,
-
-    /// Initialized for -Z profile-queries
-    pub profile_queries_sender: RefCell<Option<Sender<ProfileQueriesMsg>>>,
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
@@ -736,7 +712,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_arenas: arenas,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
-            profile_queries_sender:RefCell::new(None),
             types: common_types,
             named_region_map: named_region_map,
             trait_map: resolutions.trait_map,

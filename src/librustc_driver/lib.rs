@@ -107,6 +107,7 @@ use syntax_pos::{DUMMY_SP, MultiSpan};
 pub mod test;
 
 pub mod driver;
+pub mod profile;
 pub mod pretty;
 pub mod target_features;
 mod derive_registrar;

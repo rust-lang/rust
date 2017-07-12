@@ -75,7 +75,7 @@ pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TypeVariants::*;
 
-pub use self::context::{TyCtxt, GlobalArenas, tls, ProfileQueriesMsg};
+pub use self::context::{TyCtxt, GlobalArenas, tls};
 pub use self::context::{Lift, TypeckTables};
 
 pub use self::instance::{Instance, InstanceDef};
