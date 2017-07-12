@@ -861,12 +861,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, result, dest_ty)?;
             }
 
-            "mmap" => {
-                // This is a horrible hack, but well... the guard page mechanism calls mmap and expects a particular return value, so we give it that value
-                let addr = args[0].read_ptr(&self.memory)?;
-                self.write_ptr(dest, addr, dest_ty)?;
-            }
-
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
                 let key_ptr = args[0].read_ptr(&self.memory)?;
