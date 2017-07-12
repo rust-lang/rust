@@ -35,8 +35,6 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
 // to their equivalent in tests/target. The target file and config can be
 // overridden by annotations in the source file. The input and output must match
 // exactly.
-// FIXME(#28) would be good to check for error messages and fail on them, or at
-// least report.
 #[test]
 fn system_tests() {
     // Get all files in the tests/source directory.
@@ -240,10 +238,17 @@ fn read_config(filename: &str) -> Config {
     config
 }
 
-fn format_file<P: Into<PathBuf>>(filename: P, config: &Config) -> (FileMap, FormatReport) {
-    let input = Input::File(filename.into());
-    let (_error_summary, file_map, report) =
+fn format_file<P: Into<PathBuf>>(filepath: P, config: &Config) -> (FileMap, FormatReport) {
+    let filepath = filepath.into();
+    let display_path = filepath.display().to_string();
+    let input = Input::File(filepath);
+    let (error_summary, file_map, report) =
         format_input::<io::Stdout>(input, &config, None).unwrap();
+    assert!(
+        error_summary.has_no_errors(),
+        "Encountered errors formatting {}",
+        display_path
+    );
     return (file_map, report);
 }
 
