@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use context::SharedCrateContext;
 use monomorphize::Instance;
-use rustc::util::nodemap::FxHashMap;
-use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
+use rustc::util::nodemap::{FxHashMap, NodeSet};
+use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE, INVALID_CRATE, CRATE_DEF_INDEX};
 use rustc::session::config;
 use rustc::ty::TyCtxt;
 use syntax::attr;
@@ -28,59 +27,87 @@ pub enum SymbolExportLevel {
 }
 
 /// The set of symbols exported from each crate in the crate graph.
+#[derive(Debug)]
 pub struct ExportedSymbols {
-    exports: FxHashMap<CrateNum, Vec<(String, SymbolExportLevel)>>,
+    pub export_threshold: SymbolExportLevel,
+    exports: FxHashMap<CrateNum, Vec<(String, DefId, SymbolExportLevel)>>,
+    local_exports: NodeSet,
 }
 
 impl ExportedSymbols {
     pub fn empty() -> ExportedSymbols {
         ExportedSymbols {
+            export_threshold: SymbolExportLevel::C,
             exports: FxHashMap(),
+            local_exports: NodeSet(),
         }
     }
 
-    pub fn compute<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>) -> ExportedSymbols {
-        let mut local_crate: Vec<_> = scx
-            .exported_symbols()
+    pub fn compute<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             local_exported_symbols: &NodeSet)
+                             -> ExportedSymbols {
+        let export_threshold = crates_export_threshold(&tcx.sess.crate_types.borrow());
+
+        let mut local_crate: Vec<_> = local_exported_symbols
             .iter()
             .map(|&node_id| {
-                scx.tcx().hir.local_def_id(node_id)
+                tcx.hir.local_def_id(node_id)
             })
             .map(|def_id| {
-                let name = scx.tcx().symbol_name(Instance::mono(scx.tcx(), def_id));
-                let export_level = export_level(scx, def_id);
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id));
+                let export_level = export_level(tcx, def_id);
                 debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
-                (str::to_owned(&name), export_level)
+                (str::to_owned(&name), def_id, export_level)
             })
             .collect();
 
-        if scx.sess().entry_fn.borrow().is_some() {
-            local_crate.push(("main".to_string(), SymbolExportLevel::C));
+        let mut local_exports = local_crate
+            .iter()
+            .filter_map(|&(_, def_id, level)| {
+                if is_below_threshold(level, export_threshold) {
+                    tcx.hir.as_local_node_id(def_id)
+                } else {
+                    None
+                }
+            })
+            .collect::<NodeSet>();
+
+        const INVALID_DEF_ID: DefId = DefId {
+            krate: INVALID_CRATE,
+            index: CRATE_DEF_INDEX,
+        };
+
+        if let Some(_) = *tcx.sess.entry_fn.borrow() {
+            local_crate.push(("main".to_string(),
+                              INVALID_DEF_ID,
+                              SymbolExportLevel::C));
         }
 
-        if let Some(id) = scx.sess().derive_registrar_fn.get() {
-            let def_id = scx.tcx().hir.local_def_id(id);
+        if let Some(id) = tcx.sess.derive_registrar_fn.get() {
+            let def_id = tcx.hir.local_def_id(id);
             let idx = def_id.index;
-            let disambiguator = scx.sess().local_crate_disambiguator();
-            let registrar = scx.sess().generate_derive_registrar_symbol(disambiguator, idx);
-            local_crate.push((registrar, SymbolExportLevel::C));
+            let disambiguator = tcx.sess.local_crate_disambiguator();
+            let registrar = tcx.sess.generate_derive_registrar_symbol(disambiguator, idx);
+            local_crate.push((registrar, def_id, SymbolExportLevel::C));
+            local_exports.insert(id);
         }
 
-        if scx.sess().crate_types.borrow().contains(&config::CrateTypeDylib) {
-            local_crate.push((metadata_symbol_name(scx.tcx()),
+        if tcx.sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
+            local_crate.push((metadata_symbol_name(tcx),
+                              INVALID_DEF_ID,
                               SymbolExportLevel::Rust));
         }
 
         let mut exports = FxHashMap();
         exports.insert(LOCAL_CRATE, local_crate);
 
-        for cnum in scx.sess().cstore.crates() {
+        for cnum in tcx.sess.cstore.crates() {
             debug_assert!(cnum != LOCAL_CRATE);
 
             // If this crate is a plugin and/or a custom derive crate, then
             // we're not even going to link those in so we skip those crates.
-            if scx.sess().cstore.plugin_registrar_fn(cnum).is_some() ||
-               scx.sess().cstore.derive_registrar_fn(cnum).is_some() {
+            if tcx.sess.cstore.plugin_registrar_fn(cnum).is_some() ||
+               tcx.sess.cstore.derive_registrar_fn(cnum).is_some() {
                 continue;
             }
 
@@ -92,16 +119,16 @@ impl ExportedSymbols {
             // Down below we'll hardwire all of the symbols to the `Rust` export
             // level instead.
             let special_runtime_crate =
-                scx.tcx().is_panic_runtime(cnum.as_def_id()) ||
-                scx.sess().cstore.is_compiler_builtins(cnum);
+                tcx.is_panic_runtime(cnum.as_def_id()) ||
+                tcx.sess.cstore.is_compiler_builtins(cnum);
 
-            let crate_exports = scx
-                .sess()
+            let crate_exports = tcx
+                .sess
                 .cstore
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {
-                    let name = scx.tcx().symbol_name(Instance::mono(scx.tcx(), def_id));
+                    let name = tcx.symbol_name(Instance::mono(tcx, def_id));
                     let export_level = if special_runtime_crate {
                         // We can probably do better here by just ensuring that
                         // it has hidden visibility rather than public
@@ -118,10 +145,10 @@ impl ExportedSymbols {
                             SymbolExportLevel::Rust
                         }
                     } else {
-                        export_level(scx, def_id)
+                        export_level(tcx, def_id)
                     };
                     debug!("EXPORTED SYMBOL (re-export): {} ({:?})", name, export_level);
-                    (str::to_owned(&name), export_level)
+                    (str::to_owned(&name), def_id, export_level)
                 })
                 .collect();
 
@@ -129,14 +156,16 @@ impl ExportedSymbols {
         }
 
         return ExportedSymbols {
-            exports: exports
+            export_threshold,
+            exports,
+            local_exports,
         };
 
-        fn export_level(scx: &SharedCrateContext,
+        fn export_level(tcx: TyCtxt,
                         sym_def_id: DefId)
                         -> SymbolExportLevel {
-            let attrs = scx.tcx().get_attrs(sym_def_id);
-            if attr::contains_extern_indicator(scx.sess().diagnostic(), &attrs) {
+            let attrs = tcx.get_attrs(sym_def_id);
+            if attr::contains_extern_indicator(tcx.sess.diagnostic(), &attrs) {
                 SymbolExportLevel::C
             } else {
                 SymbolExportLevel::Rust
@@ -144,9 +173,13 @@ impl ExportedSymbols {
         }
     }
 
+    pub fn local_exports(&self) -> &NodeSet {
+        &self.local_exports
+    }
+
     pub fn exported_symbols(&self,
                             cnum: CrateNum)
-                            -> &[(String, SymbolExportLevel)] {
+                            -> &[(String, DefId, SymbolExportLevel)] {
         match self.exports.get(&cnum) {
             Some(exports) => exports,
             None => &[]
@@ -155,13 +188,12 @@ impl ExportedSymbols {
 
     pub fn for_each_exported_symbol<F>(&self,
                                        cnum: CrateNum,
-                                       export_threshold: SymbolExportLevel,
                                        mut f: F)
-        where F: FnMut(&str, SymbolExportLevel)
+        where F: FnMut(&str, DefId, SymbolExportLevel)
     {
-        for &(ref name, export_level) in self.exported_symbols(cnum) {
-            if is_below_threshold(export_level, export_threshold) {
-                f(&name, export_level)
+        for &(ref name, def_id, export_level) in self.exported_symbols(cnum) {
+            if is_below_threshold(export_level, self.export_threshold) {
+                f(&name, def_id, export_level)
             }
         }
     }

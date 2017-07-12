@@ -104,6 +104,12 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
                 let g = declare::define_global(ccx, &sym[..], llty).unwrap();
 
+                if !ccx.exported_symbols().local_exports().contains(&id) {
+                    unsafe {
+                        llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
+                    }
+                }
+
                 (g, attrs)
             }
 
@@ -243,8 +249,16 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(g));
             let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
             llvm::LLVMSetValueName(g, empty_string.as_ptr());
+
+            let linkage = llvm::LLVMRustGetLinkage(g);
+            let visibility = llvm::LLVMRustGetVisibility(g);
+
             let new_g = llvm::LLVMRustGetOrInsertGlobal(
                 ccx.llmod(), name_string.as_ptr(), val_llty.to_ref());
+
+            llvm::LLVMRustSetLinkage(new_g, linkage);
+            llvm::LLVMRustSetVisibility(new_g, visibility);
+
             // To avoid breaking any invariants, we leave around the old
             // global for the moment; we'll replace all references to it
             // with the new global later. (See base::trans_crate.)

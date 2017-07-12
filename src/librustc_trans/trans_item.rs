@@ -99,7 +99,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn predefine(&self,
                      ccx: &CrateContext<'a, 'tcx>,
-                     linkage: llvm::Linkage) {
+                     linkage: llvm::Linkage,
+                     visibility: llvm::Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
                self.to_raw_string(),
@@ -111,10 +112,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         match *self {
             TransItem::Static(node_id) => {
-                TransItem::predefine_static(ccx, node_id, linkage, &symbol_name);
+                TransItem::predefine_static(ccx, node_id, linkage, visibility, &symbol_name);
             }
             TransItem::Fn(instance) => {
-                TransItem::predefine_fn(ccx, instance, linkage, &symbol_name);
+                TransItem::predefine_fn(ccx, instance, linkage, visibility, &symbol_name);
             }
             TransItem::GlobalAsm(..) => {}
         }
@@ -128,6 +129,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
     fn predefine_static(ccx: &CrateContext<'a, 'tcx>,
                         node_id: ast::NodeId,
                         linkage: llvm::Linkage,
+                        visibility: llvm::Visibility,
                         symbol_name: &str) {
         let def_id = ccx.tcx().hir.local_def_id(node_id);
         let instance = Instance::mono(ccx.tcx(), def_id);
@@ -139,7 +141,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 &format!("symbol `{}` is already defined", symbol_name))
         });
 
-        unsafe { llvm::LLVMRustSetLinkage(g, linkage) };
+        unsafe {
+            llvm::LLVMRustSetLinkage(g, linkage);
+            llvm::LLVMRustSetVisibility(g, visibility);
+        }
 
         ccx.instances().borrow_mut().insert(instance, g);
         ccx.statics().borrow_mut().insert(g, def_id);
@@ -148,6 +153,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
     fn predefine_fn(ccx: &CrateContext<'a, 'tcx>,
                     instance: Instance<'tcx>,
                     linkage: llvm::Linkage,
+                    visibility: llvm::Visibility,
                     symbol_name: &str) {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
@@ -171,6 +177,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
            attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
             unsafe {
                 llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
+            }
+        } else {
+            unsafe {
+                llvm::LLVMRustSetVisibility(lldecl, visibility);
             }
         }
 

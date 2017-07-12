@@ -23,6 +23,7 @@ use monomorphize::{self, Instance};
 use rustc::hir::def_id::DefId;
 use rustc::ty::TypeFoldable;
 use rustc::ty::subst::Substs;
+use trans_item::TransItem;
 use type_of;
 
 /// Translates a reference to a fn/method item, monomorphizing and
@@ -99,19 +100,32 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let attrs = instance.def.attrs(ccx.tcx());
         attributes::from_fn_attrs(ccx, &attrs, llfn);
 
+        let instance_def_id = instance.def_id();
+
         // Perhaps questionable, but we assume that anything defined
         // *in Rust code* may unwind. Foreign items like `extern "C" {
         // fn foo(); }` are assumed not to unwind **unless** they have
         // a `#[unwind]` attribute.
-        if !tcx.is_foreign_item(instance.def_id()) {
+        if !tcx.is_foreign_item(instance_def_id) {
             attributes::unwind(llfn, true);
-            unsafe {
-                llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
+        }
+
+        unsafe {
+            llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
+
+            if ccx.crate_trans_items().contains(&TransItem::Fn(instance)) {
+                if let Some(node_id) = tcx.hir.as_local_node_id(instance_def_id) {
+                    if !ccx.exported_symbols().local_exports().contains(&node_id) {
+                        llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                    }
+                } else {
+                    llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
+                }
             }
         }
 
         if ccx.use_dll_storage_attrs() &&
-            ccx.sess().cstore.is_dllimport_foreign_item(instance.def_id())
+            ccx.sess().cstore.is_dllimport_foreign_item(instance_def_id)
         {
             unsafe {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);

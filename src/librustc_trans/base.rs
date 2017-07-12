@@ -77,6 +77,7 @@ use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::str;
+use std::sync::Arc;
 use std::i32;
 use syntax_pos::Span;
 use syntax::attr;
@@ -796,131 +797,6 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     return (metadata_llcx, metadata_llmod, metadata);
 }
 
-/// Find any symbols that are defined in one compilation unit, but not declared
-/// in any other compilation unit.  Give these symbols internal linkage.
-fn internalize_symbols<'a, 'tcx>(sess: &Session,
-                                 scx: &SharedCrateContext<'a, 'tcx>,
-                                 translation_items: &FxHashSet<TransItem<'tcx>>,
-                                 llvm_modules: &[ModuleLlvm],
-                                 exported_symbols: &ExportedSymbols) {
-    let export_threshold =
-        symbol_export::crates_export_threshold(&sess.crate_types.borrow());
-
-    let exported_symbols = exported_symbols
-        .exported_symbols(LOCAL_CRATE)
-        .iter()
-        .filter(|&&(_, export_level)| {
-            symbol_export::is_below_threshold(export_level, export_threshold)
-        })
-        .map(|&(ref name, _)| &name[..])
-        .collect::<FxHashSet<&str>>();
-
-    let tcx = scx.tcx();
-
-    let incr_comp = sess.opts.debugging_opts.incremental.is_some();
-
-    // 'unsafe' because we are holding on to CStr's from the LLVM module within
-    // this block.
-    unsafe {
-        let mut referenced_somewhere = FxHashSet();
-
-        // Collect all symbols that need to stay externally visible because they
-        // are referenced via a declaration in some other codegen unit. In
-        // incremental compilation, we don't need to collect. See below for more
-        // information.
-        if !incr_comp {
-            for ll in llvm_modules {
-                for val in iter_globals(ll.llmod).chain(iter_functions(ll.llmod)) {
-                    let linkage = llvm::LLVMRustGetLinkage(val);
-                    // We only care about external declarations (not definitions)
-                    // and available_externally definitions.
-                    let is_available_externally =
-                        linkage == llvm::Linkage::AvailableExternallyLinkage;
-                    let is_decl = llvm::LLVMIsDeclaration(val) == llvm::True;
-
-                    if is_decl || is_available_externally {
-                        let symbol_name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                        referenced_somewhere.insert(symbol_name);
-                    }
-                }
-            }
-        }
-
-        // Also collect all symbols for which we cannot adjust linkage, because
-        // it is fixed by some directive in the source code.
-        let (locally_defined_symbols, linkage_fixed_explicitly) = {
-            let mut locally_defined_symbols = FxHashSet();
-            let mut linkage_fixed_explicitly = FxHashSet();
-
-            for trans_item in translation_items {
-                let symbol_name = str::to_owned(&trans_item.symbol_name(tcx));
-                if trans_item.explicit_linkage(tcx).is_some() {
-                    linkage_fixed_explicitly.insert(symbol_name.clone());
-                }
-                locally_defined_symbols.insert(symbol_name);
-            }
-
-            (locally_defined_symbols, linkage_fixed_explicitly)
-        };
-
-        // Examine each external definition.  If the definition is not used in
-        // any other compilation unit, and is not reachable from other crates,
-        // then give it internal linkage.
-        for ll in llvm_modules {
-            for val in iter_globals(ll.llmod).chain(iter_functions(ll.llmod)) {
-                let linkage = llvm::LLVMRustGetLinkage(val);
-
-                let is_externally_visible = (linkage == llvm::Linkage::ExternalLinkage) ||
-                                            (linkage == llvm::Linkage::LinkOnceODRLinkage) ||
-                                            (linkage == llvm::Linkage::WeakODRLinkage);
-
-                if !is_externally_visible {
-                    // This symbol is not visible outside of its codegen unit,
-                    // so there is nothing to do for it.
-                    continue;
-                }
-
-                let name_cstr = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                let name_str = name_cstr.to_str().unwrap();
-
-                if exported_symbols.contains(&name_str) {
-                    // This symbol is explicitly exported, so we can't
-                    // mark it as internal or hidden.
-                    continue;
-                }
-
-                let is_declaration = llvm::LLVMIsDeclaration(val) == llvm::True;
-
-                if is_declaration {
-                    if locally_defined_symbols.contains(name_str) {
-                        // Only mark declarations from the current crate as hidden.
-                        // Otherwise we would mark things as hidden that are
-                        // imported from other crates or native libraries.
-                        llvm::LLVMRustSetVisibility(val, llvm::Visibility::Hidden);
-                    }
-                } else {
-                    let has_fixed_linkage = linkage_fixed_explicitly.contains(name_str);
-
-                    if !has_fixed_linkage {
-                        // In incremental compilation mode, we can't be sure that
-                        // we saw all references because we don't know what's in
-                        // cached compilation units, so we always assume that the
-                        // given item has been referenced.
-                        if incr_comp || referenced_somewhere.contains(&name_cstr) {
-                            llvm::LLVMRustSetVisibility(val, llvm::Visibility::Hidden);
-                        } else {
-                            llvm::LLVMRustSetLinkage(val, llvm::Linkage::InternalLinkage);
-                        }
-
-                        llvm::LLVMSetDLLStorageClass(val, llvm::DLLStorageClass::Default);
-                        llvm::UnsetComdat(val);
-                    }
-                }
-            }
-        }
-    }
-}
-
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
 // This is required to satisfy `dllimport` references to static data in .rlibs
 // when using MSVC linker.  We do this only for data, as linker can fix up
@@ -992,15 +868,6 @@ fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
     }
 }
 
-fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
-    unsafe {
-        ValueIter {
-            cur: llvm::LLVMGetFirstFunction(llmod),
-            step: llvm::LLVMGetNextFunction,
-        }
-    }
-}
-
 /// The context provided lists a set of reachable ids as calculated by
 /// middle::reachable, but this contains far more ids and symbols than we're
 /// actually exposing from the object file. This function will filter the set in
@@ -1063,20 +930,19 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let krate = tcx.hir.krate();
 
     let ty::CrateAnalysis { reachable, .. } = analysis;
-    let exported_symbols = find_exported_symbols(tcx, &reachable);
 
     let check_overflow = tcx.sess.overflow_checks();
 
     let link_meta = link::build_link_meta(incremental_hashes_map);
 
+    let exported_symbol_node_ids = find_exported_symbols(tcx, &reachable);
     let shared_ccx = SharedCrateContext::new(tcx,
-                                             exported_symbols,
                                              check_overflow,
                                              output_filenames);
     // Translate the metadata.
     let (metadata_llcx, metadata_llmod, metadata) =
         time(tcx.sess.time_passes(), "write metadata", || {
-            write_metadata(tcx, &link_meta, shared_ccx.exported_symbols())
+            write_metadata(tcx, &link_meta, &exported_symbol_node_ids)
         });
 
     let metadata_module = ModuleTranslation {
@@ -1089,7 +955,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
-
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
@@ -1110,10 +975,15 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
     }
 
+    let exported_symbols = Arc::new(ExportedSymbols::compute(tcx,
+                                                             &exported_symbol_node_ids));
+
     // Run the translation item collector and partition the collected items into
     // codegen units.
     let (translation_items, codegen_units) =
-        collect_and_partition_translation_items(&shared_ccx);
+        collect_and_partition_translation_items(&shared_ccx, &exported_symbols);
+
+    let translation_items = Arc::new(translation_items);
 
     let mut all_stats = Stats::default();
     let modules: Vec<ModuleTranslation> = codegen_units
@@ -1123,7 +993,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let ((stats, module), _) =
                 tcx.dep_graph.with_task(dep_node,
                                         AssertDepGraphSafe(&shared_ccx),
-                                        AssertDepGraphSafe(cgu),
+                                        AssertDepGraphSafe((cgu,
+                                                            translation_items.clone(),
+                                                            exported_symbols.clone())),
                                         module_translation);
             all_stats.extend(stats);
             module
@@ -1132,16 +1004,18 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
-        args: AssertDepGraphSafe<CodegenUnit<'tcx>>)
+        args: AssertDepGraphSafe<(CodegenUnit<'tcx>,
+                                  Arc<FxHashSet<TransItem<'tcx>>>,
+                                  Arc<ExportedSymbols>)>)
         -> (Stats, ModuleTranslation)
     {
         // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
         let AssertDepGraphSafe(scx) = scx;
-        let AssertDepGraphSafe(cgu) = args;
+        let AssertDepGraphSafe((cgu, crate_trans_items, exported_symbols)) = args;
 
         let cgu_name = String::from(cgu.name());
         let cgu_id = cgu.work_product_id();
-        let symbol_name_hash = cgu.compute_symbol_name_hash(scx);
+        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &exported_symbols);
 
         // Check whether there is a previous work-product we can
         // re-use.  Not only must the file exist, and the inputs not
@@ -1176,13 +1050,13 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Instantiate translation items without filling out definitions yet...
-        let lcx = LocalCrateContext::new(scx, cgu);
+        let lcx = LocalCrateContext::new(scx, cgu, crate_trans_items, exported_symbols);
         let module = {
             let ccx = CrateContext::new(scx, &lcx);
             let trans_items = ccx.codegen_unit()
                                  .items_in_deterministic_order(ccx.tcx());
-            for &(trans_item, linkage) in &trans_items {
-                trans_item.predefine(&ccx, linkage);
+            for &(trans_item, (linkage, visibility)) in &trans_items {
+                trans_item.predefine(&ccx, linkage, visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
@@ -1272,8 +1146,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let sess = shared_ccx.sess();
 
-    let exported_symbols = ExportedSymbols::compute(&shared_ccx);
-
     // Get the list of llvm modules we created. We'll do a few wacky
     // transforms on them now.
 
@@ -1284,16 +1156,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    _ => None,
                })
                .collect();
-
-    // Now that we have all symbols that are exported from the CGUs of this
-    // crate, we can run the `internalize_symbols` pass.
-    time(shared_ccx.sess().time_passes(), "internalize symbols", || {
-        internalize_symbols(sess,
-                            &shared_ccx,
-                            &translation_items,
-                            &llvm_modules,
-                            &exported_symbols);
-    });
 
     if sess.target.target.options.is_like_msvc &&
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
@@ -1355,7 +1217,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         allocator_module: allocator_module,
         link: link_meta,
         metadata: metadata,
-        exported_symbols: exported_symbols,
+        exported_symbols: Arc::try_unwrap(exported_symbols)
+            .expect("There's still a reference to exported_symbols?"),
         no_builtins: no_builtins,
         linker_info: linker_info,
         windows_subsystem: windows_subsystem,
@@ -1410,7 +1273,8 @@ fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_i
     }
 }
 
-fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>)
+fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                                                     exported_symbols: &ExportedSymbols)
                                                      -> (FxHashSet<TransItem<'tcx>>,
                                                          Vec<CodegenUnit<'tcx>>) {
     let time_passes = scx.sess().time_passes();
@@ -1452,7 +1316,8 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         partitioning::partition(scx,
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map)
+                                &inlining_map,
+                                exported_symbols)
     });
 
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
@@ -1480,7 +1345,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
                 let mut cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
                 cgus.as_mut_slice().sort_by_key(|&(ref name, _)| name.clone());
                 cgus.dedup();
-                for &(ref cgu_name, linkage) in cgus.iter() {
+                for &(ref cgu_name, (linkage, _)) in cgus.iter() {
                     output.push_str(" ");
                     output.push_str(&cgu_name);
 

@@ -243,21 +243,19 @@ impl<'tcx> InliningMap<'tcx> {
 
     fn record_accesses<I>(&mut self,
                           source: TransItem<'tcx>,
-                          targets: I)
-        where I: Iterator<Item=(TransItem<'tcx>, bool)>
+                          new_targets: I)
+        where I: Iterator<Item=(TransItem<'tcx>, bool)> + ExactSizeIterator
     {
         assert!(!self.index.contains_key(&source));
 
         let start_index = self.targets.len();
-        let (targets_size_hint, targets_size_hint_max) = targets.size_hint();
-        debug_assert_eq!(targets_size_hint_max, Some(targets_size_hint));
-        let new_items_count = targets_size_hint;
+        let new_items_count = new_targets.len();
         let new_items_count_total = new_items_count + self.targets.len();
 
         self.targets.reserve(new_items_count);
         self.inlines.grow(new_items_count_total);
 
-        for (i, (target, inline)) in targets.enumerate() {
+        for (i, (target, inline)) in new_targets.enumerate() {
             self.targets.push(target);
             if inline {
                 self.inlines.insert(i + start_index);
