@@ -102,7 +102,6 @@ fn examples() {
         let _ = writeln!(dump, r#"#!/bin/sh
 export PATH=./target/debug:$PATH
 export LD_LIBRARY_PATH={}
-export RUST_LOG=debug
 export RUST_BACKTRACE=full
 export RUST_SEMVER_CRATE_VERSION=1.0.0
 
@@ -116,6 +115,8 @@ else
     arg_str="set args --crate-type=lib --extern oldandnew=liboldandnew.rlib tests/helper/test.rs"
     standalone=0
 fi
+
+export RUST_LOG=debug
 
 src_str="set substitute-path /checkout $(rustc --print sysroot)/lib/rustlib/src/rust"
 
