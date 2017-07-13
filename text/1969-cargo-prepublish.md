@@ -1,7 +1,7 @@
 - Feature Name: prepublish
 - Start Date: 2017-03-22
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1969](https://github.com/rust-lang/rfcs/pull/1969)
+- Rust Issue: N/A
 
 # Summary
 [summary]: #summary
