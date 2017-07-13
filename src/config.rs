@@ -10,15 +10,14 @@
 
 extern crate toml;
 
+use std::{env, fs};
 use std::cell::Cell;
-use std::fs;
 use std::fs::File;
-use std::env;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
 use file_lines::FileLines;
-use lists::{SeparatorTactic, ListTactic};
+use lists::{ListTactic, SeparatorTactic};
 
 macro_rules! configuration_option_enum{
     ($e:ident: $( $x:ident ),+ $(,)*) => {

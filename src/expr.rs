@@ -8,33 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{Ordering, min};
-use std::iter::ExactSizeIterator;
+use std::cmp::{min, Ordering};
 use std::fmt::Write;
-
-use {Indent, Shape, Spanned};
-use codemap::SpanUtils;
-use rewrite::{Rewrite, RewriteContext};
-use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
-            DefinitiveListTactic, definitive_tactic, ListItem, struct_lit_shape,
-            struct_lit_tactic, shape_for_tactic, struct_lit_formatting};
-use string::{StringFormat, rewrite_string};
-use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
-            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
-            colon_spaces, contains_skip, mk_sp, last_line_extendable, paren_overhead};
-use visitor::FmtVisitor;
-use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle, Style};
-use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
-use types::{rewrite_path, PathContext, can_be_overflowed_type};
-use items::{span_lo_for_arg, span_hi_for_arg};
-use chains::rewrite_chain;
-use macros::{rewrite_macro, MacroPosition};
-use patterns::{TuplePatField, can_be_overflowed_pat};
-use vertical::rewrite_with_alignment;
+use std::iter::ExactSizeIterator;
 
 use syntax::{ast, ptr};
-use syntax::codemap::{CodeMap, Span, BytePos};
+use syntax::codemap::{BytePos, CodeMap, Span};
 use syntax::parse::classify;
+
+use {Indent, Shape, Spanned};
+use chains::rewrite_chain;
+use codemap::SpanUtils;
+use comment::{contains_comment, recover_comment_removed, rewrite_comment, FindUncommented};
+use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
+use items::{span_hi_for_arg, span_lo_for_arg};
+use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
+            struct_lit_shape, struct_lit_tactic, write_list, DefinitiveListTactic, ListFormatting,
+            ListItem, ListTactic, SeparatorTactic};
+use macros::{rewrite_macro, MacroPosition};
+use patterns::{can_be_overflowed_pat, TuplePatField};
+use rewrite::{Rewrite, RewriteContext};
+use string::{rewrite_string, StringFormat};
+use types::{can_be_overflowed_type, rewrite_path, PathContext};
+use utils::{binary_search, colon_spaces, contains_skip, extra_offset, first_line_width,
+            last_line_extendable, last_line_width, left_most_sub_expr, mk_sp, paren_overhead,
+            semicolon_for_stmt, stmt_expr, trimmed_last_line_width, wrap_str};
+use vertical::rewrite_with_alignment;
+use visitor::FmtVisitor;
 
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {

@@ -11,7 +11,7 @@
 use std::cmp;
 use std::iter::Peekable;
 
-use syntax::codemap::{CodeMap, BytePos};
+use syntax::codemap::{BytePos, CodeMap};
 
 use {Indent, Shape};
 use comment::{find_comment_end, rewrite_comment, FindUncommented};

@@ -17,7 +17,7 @@ use syntax::codemap::Span;
 use {Indent, Shape};
 use config::Config;
 use rewrite::RewriteContext;
-use string::{StringFormat, rewrite_string};
+use string::{rewrite_string, StringFormat};
 use utils::wrap_str;
 
 fn is_custom_comment(comment: &str) -> bool {
@@ -809,8 +809,8 @@ fn remove_comment_header(comment: &str) -> &str {
 
 #[cfg(test)]
 mod test {
-    use super::{CharClasses, CodeCharKind, FullCodeCharKind, contains_comment, rewrite_comment,
-                FindUncommented, CommentCodeSlices};
+    use super::{contains_comment, rewrite_comment, CharClasses, CodeCharKind, CommentCodeSlices,
+                FindUncommented, FullCodeCharKind};
     use {Indent, Shape};
 
     #[test]

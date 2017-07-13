@@ -28,27 +28,26 @@ extern crate regex;
 extern crate diff;
 extern crate term;
 
-use errors::{Handler, DiagnosticBuilder};
-use errors::emitter::{ColorConfig, EmitterWriter};
-use syntax::ast;
-use syntax::codemap::{CodeMap, Span, FilePathMapping};
-use syntax::parse::{self, ParseSess};
-
-use strings::string_buffer::StringBuffer;
-
+use std::collections::HashMap;
+use std::fmt;
 use std::io::{self, stdout, Write};
 use std::ops::{Add, Sub};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::collections::HashMap;
-use std::fmt;
 
-use issues::{BadIssueSeeker, Issue};
-use filemap::FileMap;
-use visitor::FmtVisitor;
+use errors::{DiagnosticBuilder, Handler};
+use errors::emitter::{ColorConfig, EmitterWriter};
+use strings::string_buffer::StringBuffer;
+use syntax::ast;
+use syntax::codemap::{CodeMap, FilePathMapping, Span};
+use syntax::parse::{self, ParseSess};
+
+use checkstyle::{output_footer, output_header};
 use config::Config;
-use checkstyle::{output_header, output_footer};
+use filemap::FileMap;
+use issues::{BadIssueSeeker, Issue};
 use utils::mk_sp;
+use visitor::FmtVisitor;
 
 pub use self::summary::Summary;
 
@@ -77,10 +76,6 @@ mod macros;
 mod patterns;
 mod summary;
 mod vertical;
-
-const MIN_STRING: usize = 10;
-// When we get scoped annotations, we should have rustfmt::skip.
-const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
 pub trait Spanned {
     fn span(&self) -> Span;

@@ -21,17 +21,17 @@
 
 use syntax::ast;
 use syntax::codemap::BytePos;
-use syntax::parse::token::Token;
 use syntax::parse::new_parser_from_tts;
-use syntax::tokenstream::TokenStream;
+use syntax::parse::token::Token;
 use syntax::symbol;
+use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
 
 use Shape;
 use codemap::SpanUtils;
+use comment::{contains_comment, FindUncommented};
+use expr::{rewrite_array, rewrite_call_inner};
 use rewrite::{Rewrite, RewriteContext};
-use expr::{rewrite_call_inner, rewrite_array};
-use comment::{FindUncommented, contains_comment};
 use utils::mk_sp;
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];

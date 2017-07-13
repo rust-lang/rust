@@ -77,11 +77,11 @@
 /// ```
 
 use Shape;
-use rewrite::{Rewrite, RewriteContext};
-use utils::{wrap_str, first_line_width, last_line_width, mk_sp, last_line_extendable};
-use expr::rewrite_call;
 use config::IndentStyle;
+use expr::rewrite_call;
 use macros::convert_try_mac;
+use rewrite::{Rewrite, RewriteContext};
+use utils::{first_line_width, last_line_extendable, last_line_width, mk_sp, wrap_str};
 
 use std::cmp::min;
 use std::iter;

@@ -8,24 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::Deref;
 use std::iter::ExactSizeIterator;
+use std::ops::Deref;
 
 use syntax::abi;
-use syntax::ast::{self, Mutability, FunctionRetTy};
-use syntax::codemap::{self, Span, BytePos};
+use syntax::ast::{self, FunctionRetTy, Mutability};
+use syntax::codemap::{self, BytePos, Span};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
 
 use {Shape, Spanned};
 use codemap::SpanUtils;
-use items::{format_generics_item_list, generics_shape_from_config};
-use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
-            definitive_tactic};
-use rewrite::{Rewrite, RewriteContext};
-use utils::{extra_offset, format_mutability, colon_spaces, wrap_str, mk_sp, last_line_width};
-use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple, wrap_args_with_parens};
 use config::{IndentStyle, Style, TypeDensity};
+use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens};
+use items::{format_generics_item_list, generics_shape_from_config};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic,
+            SeparatorTactic};
+use rewrite::{Rewrite, RewriteContext};
+use utils::{colon_spaces, extra_offset, format_mutability, last_line_width, mk_sp, wrap_str};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {

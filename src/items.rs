@@ -10,25 +10,25 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
+use syntax::{abi, ast, ptr, symbol};
+use syntax::ast::ImplItem;
+use syntax::codemap::{BytePos, Span};
+
 use {Indent, Shape, Spanned};
 use codemap::SpanUtils;
-use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
-            last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
-            trimmed_last_line_width, colon_spaces, mk_sp};
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
-            DefinitiveListTactic, ListTactic, definitive_tactic};
+use comment::{contains_comment, recover_comment_removed, rewrite_comment, FindUncommented};
+use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
-use comment::{FindUncommented, contains_comment, rewrite_comment, recover_comment_removed};
-use visitor::FmtVisitor;
+use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
+            ListItem, ListTactic, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
-use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style};
 use types::join_bounds;
+use utils::{colon_spaces, contains_skip, end_typaram, format_mutability, format_unsafety,
+            format_visibility, last_line_width, mk_sp, semicolon_for_expr, stmt_expr,
+            trim_newlines, trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
-
-use syntax::{ast, abi, ptr, symbol};
-use syntax::codemap::{Span, BytePos};
-use syntax::ast::ImplItem;
+use visitor::FmtVisitor;
 
 fn type_annotation_separator(config: &Config) -> &str {
     colon_spaces(

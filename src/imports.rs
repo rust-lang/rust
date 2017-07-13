@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Shape;
-use utils;
-use syntax::codemap::{BytePos, Span};
-use codemap::SpanUtils;
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
-use types::{rewrite_path, PathContext};
-use rewrite::{Rewrite, RewriteContext};
-use visitor::FmtVisitor;
 use std::cmp::{self, Ordering};
 
 use syntax::{ast, ptr};
+use syntax::codemap::{BytePos, Span};
+
+use Shape;
+use codemap::SpanUtils;
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, SeparatorTactic};
+use rewrite::{Rewrite, RewriteContext};
+use types::{rewrite_path, PathContext};
+use utils;
+use visitor::FmtVisitor;
 
 fn path_of(a: &ast::ViewPath_) -> &ast::Path {
     match *a {

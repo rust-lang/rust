@@ -7,10 +7,11 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use rustfmt_diff::{Mismatch, DiffLine};
-use std::io::{self, Write};
-use config::WriteMode;
 
+use std::io::{self, Write};
+
+use config::WriteMode;
+use rustfmt_diff::{DiffLine, Mismatch};
 
 pub fn output_header<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
 where

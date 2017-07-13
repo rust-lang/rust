@@ -12,6 +12,9 @@
 
 use std::cmp;
 
+use syntax::ast;
+use syntax::codemap::{BytePos, Span};
+
 use {Indent, Shape, Spanned};
 use codemap::SpanUtils;
 use comment::contains_comment;
@@ -20,9 +23,6 @@ use items::{rewrite_struct_field, rewrite_struct_field_prefix};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{contains_skip, mk_sp};
-
-use syntax::ast;
-use syntax::codemap::{Span, BytePos};
 
 pub trait AlignedItem {
     fn skip(&self) -> bool;
