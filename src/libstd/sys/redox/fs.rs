@@ -383,7 +383,7 @@ pub fn unlink(p: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
+pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     copy(old, new)?;
     unlink(old)?;
     Ok(())
