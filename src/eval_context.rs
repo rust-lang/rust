@@ -1460,7 +1460,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                let ptr = src.read_ptr(&self.memory)?;
+                let ptr = src.into_ptr(&self.memory)?;
                 // u64 cast is from usize to u64, which is always good
                 self.write_value(ptr.to_value_with_len(length as u64), dest, dest_ty)
             }
@@ -1474,7 +1474,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                 let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
-                let ptr = src.read_ptr(&self.memory)?;
+                let ptr = src.into_ptr(&self.memory)?;
                 self.write_value(ptr.to_value_with_vtable(vtable), dest, dest_ty)
             },
 

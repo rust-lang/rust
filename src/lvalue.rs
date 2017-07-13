@@ -391,14 +391,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 match self.tcx.struct_tail(pointee_type).sty {
                     ty::TyDynamic(..) => {
-                        let (ptr, vtable) = val.expect_ptr_vtable_pair(&self.memory)?;
+                        let (ptr, vtable) = val.into_ptr_vtable_pair(&self.memory)?;
                         (ptr, LvalueExtra::Vtable(vtable), true)
                     },
                     ty::TyStr | ty::TySlice(_) => {
-                        let (ptr, len) = val.expect_slice(&self.memory)?;
+                        let (ptr, len) = val.into_slice(&self.memory)?;
                         (ptr, LvalueExtra::Length(len), true)
                     },
-                    _ => (val.read_ptr(&self.memory)?, LvalueExtra::None, true),
+                    _ => (val.into_ptr(&self.memory)?, LvalueExtra::None, true),
                 }
             }
 

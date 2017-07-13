@@ -158,7 +158,9 @@ pub enum PrimValKind {
 }
 
 impl<'a, 'tcx: 'a> Value {
-    pub(super) fn read_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
+    /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
+    /// this may have to perform a load.
+    pub(super) fn into_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef(ptr) => mem.read_ptr(ptr.to_ptr()?),
@@ -166,7 +168,7 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn expect_ptr_vtable_pair(
+    pub(super) fn into_ptr_vtable_pair(
         &self,
         mem: &Memory<'a, 'tcx>
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
@@ -184,7 +186,7 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn expect_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
+    pub(super) fn into_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr) => {
