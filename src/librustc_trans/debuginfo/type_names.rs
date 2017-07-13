@@ -61,21 +61,27 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(')');
         },
         ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
-            output.push('*');
+            let is_like_msvc = cx.sess().target.target.options.is_like_msvc;
+
+            if !is_like_msvc {output.push('*');}
             match mutbl {
                 hir::MutImmutable => output.push_str("const "),
                 hir::MutMutable => output.push_str("mut "),
             }
 
             push_debuginfo_type_name(cx, inner_type, true, output);
+            if is_like_msvc {output.push('*');}
         },
         ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
-            output.push('&');
+            let is_like_msvc = cx.sess().target.target.options.is_like_msvc;
+
+            if !is_like_msvc {output.push('&');}
             if mutbl == hir::MutMutable {
                 output.push_str("mut ");
             }
 
             push_debuginfo_type_name(cx, inner_type, true, output);
+            if is_like_msvc {output.push('*');}
         },
         ty::TyArray(inner_type, len) => {
             output.push('[');
@@ -84,9 +90,10 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(']');
         },
         ty::TySlice(inner_type) => {
-            output.push('[');
+            let is_like_msvc = cx.sess().target.target.options.is_like_msvc;
+            output.push_str(if is_like_msvc {"slice<"} else {"["});
             push_debuginfo_type_name(cx, inner_type, true, output);
-            output.push(']');
+            output.push(if is_like_msvc {'>'} else {']'});
         },
         ty::TyDynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
