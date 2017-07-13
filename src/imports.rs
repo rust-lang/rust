@@ -15,7 +15,9 @@ use syntax::codemap::{BytePos, Span};
 
 use Shape;
 use codemap::SpanUtils;
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, SeparatorTactic};
+use config::IndentStyle;
+use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
+            ListItem, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::{rewrite_path, PathContext};
 use utils;
@@ -250,13 +252,12 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn format_import(&mut self, vis: &ast::Visibility, vp: &ast::ViewPath, span: Span) {
         let vis = utils::format_visibility(vis);
-        let mut offset = self.block_indent;
-        offset.alignment += vis.len() + "use ".len();
-        // 1 = ";"
-        match vp.rewrite(
-            &self.get_context(),
-            Shape::legacy(self.config.max_width() - offset.width() - 1, offset),
-        ) {
+        // 4 = `use `, 1 = `;`
+        let rw = Shape::indented(self.block_indent, self.config)
+            .offset_left(vis.len() + 4)
+            .and_then(|shape| shape.sub_width(1))
+            .and_then(|shape| vp.rewrite(&self.get_context(), shape));
+        match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = utils::mk_sp(self.last_pos, source!(self, span).lo);
@@ -385,7 +386,7 @@ impl<'a> Ord for ImportItem<'a> {
 
 // Pretty prints a multi-item import.
 // Assumes that path_list.len() > 0.
-pub fn rewrite_use_list(
+fn rewrite_use_list(
     shape: Shape,
     path: &ast::Path,
     path_list: &[ast::PathListItem],
@@ -407,13 +408,14 @@ pub fn rewrite_use_list(
         _ => (),
     }
 
-    let colons_offset = if path_str.is_empty() { 0 } else { 2 };
+    let path_str = if path_str.is_empty() {
+        path_str
+    } else {
+        format!("{}::", path_str)
+    };
 
     // 2 = "{}"
-    let remaining_width = shape
-        .width
-        .checked_sub(path_str.len() + 2 + colons_offset)
-        .unwrap_or(0);
+    let remaining_width = shape.width.checked_sub(path_str.len() + 2).unwrap_or(0);
 
     let mut items = {
         // Dummy value, see explanation below.
@@ -446,32 +448,53 @@ pub fn rewrite_use_list(
         });
     }
 
-
     let tactic = definitive_tactic(
         &items[first_index..],
-        ::lists::ListTactic::Mixed,
+        context.config.imports_layout(),
         remaining_width,
     );
+
+    let nested_indent = match context.config.imports_indent() {
+        IndentStyle::Block => shape.indent.block_indent(context.config),
+        // 1 = `{`
+        IndentStyle::Visual => shape.visual_indent(path_str.len() + 1).indent,
+    };
+
+    let nested_shape = match context.config.imports_indent() {
+        IndentStyle::Block => Shape::indented(nested_indent, context.config),
+        IndentStyle::Visual => Shape::legacy(remaining_width, nested_indent),
+    };
+
+    let ends_with_newline = context.config.imports_indent() == IndentStyle::Block &&
+        tactic != DefinitiveListTactic::Horizontal;
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        // Add one to the indent to account for "{"
-        shape: Shape::legacy(
-            remaining_width,
-            shape.indent + path_str.len() + colons_offset + 1,
-        ),
-        ends_with_newline: false,
+        trailing_separator: if ends_with_newline {
+            context.config.trailing_comma()
+        } else {
+            SeparatorTactic::Never
+        },
+        shape: nested_shape,
+        ends_with_newline: ends_with_newline,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
-    Some(if path_str.is_empty() {
-        format!("{{{}}}", list_str)
-    } else {
-        format!("{}::{{{}}}", path_str, list_str)
-    })
+    let result =
+        if list_str.contains('\n') && context.config.imports_indent() == IndentStyle::Block {
+            format!(
+                "{}{{\n{}{}\n{}}}",
+                path_str,
+                nested_shape.indent.to_string(context.config),
+                list_str,
+                shape.indent.to_string(context.config)
+            )
+        } else {
+            format!("{}{{{}}}", path_str, list_str)
+        };
+    Some(result)
 }
 
 // Returns true when self item was found.

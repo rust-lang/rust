@@ -556,6 +556,8 @@ create_config! {
     chain_one_line_max: usize, 60, "Maximum length of a chain to fit on a single line";
     chain_split_single_child: bool, false, "Split a chain with a single child if its length \
                                             exceeds `chain_one_line_max`";
+    imports_indent: IndentStyle, IndentStyle::Visual, "Indent of imports";
+    imports_layout: ListTactic, ListTactic::Mixed, "Item layout inside a import block";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imports_in_group: bool, false, "Reorder import statements in group";
     reorder_imported_names: bool, true,
