@@ -181,16 +181,15 @@ impl<'a, 'tcx: 'a> Value {
 
     pub(super) fn into_ptr_vtable_pair(
         &self,
-        mem: &Memory<'a, 'tcx>
+        mem: &mut Memory<'a, 'tcx>
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr, aligned) => {
-                if !aligned {
-                    return Err(EvalError::Unimplemented(format!("Unaligned fat-pointers are not implemented")));
-                }
+                mem.begin_unaligned_read(aligned);
                 let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
                 let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
+                mem.end_unaligned_read();
                 Ok((ptr, vtable.to_ptr()?))
             }
 
@@ -200,15 +199,14 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn into_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
+    pub(super) fn into_slice(&self, mem: &mut Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr, aligned) => {
-                if !aligned {
-                    return Err(EvalError::Unimplemented(format!("Unaligned fat-pointers are not implemented")));
-                }
+                mem.begin_unaligned_read(aligned);
                 let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
                 let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
+                mem.end_unaligned_read();
                 Ok((ptr, len))
             },
             ByValPair(ptr, val) => {
@@ -216,7 +214,7 @@ impl<'a, 'tcx: 'a> Value {
                 assert_eq!(len as u64 as u128, len);
                 Ok((ptr.into(), len as u64))
             },
-            ByVal(_) => unimplemented!(),
+            ByVal(_) => bug!("expected ptr and length, got {:?}", self),
         }
     }
 }

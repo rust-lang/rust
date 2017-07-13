@@ -482,7 +482,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn size_and_align_of_dst(
-        &self,
+        &mut self,
         ty: ty::Ty<'tcx>,
         value: Value,
     ) -> EvalResult<'tcx, (u64, u64)> {
@@ -546,7 +546,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Ok((size, align.abi()))
                 }
                 ty::TyDynamic(..) => {
-                    let (_, vtable) = value.into_ptr_vtable_pair(&self.memory)?;
+                    let (_, vtable) = value.into_ptr_vtable_pair(&mut self.memory)?;
                     // the second entry in the vtable is the dynamic size of the object.
                     self.read_size_and_align_from_vtable(vtable)
                 }
@@ -554,7 +554,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ty::TySlice(_) | ty::TyStr => {
                     let elem_ty = ty.sequence_element_type(self.tcx);
                     let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized") as u64;
-                    let (_, len) = value.into_slice(&self.memory)?;
+                    let (_, len) = value.into_slice(&mut self.memory)?;
                     let align = self.type_align(elem_ty)?;
                     Ok((len * elem_size, align as u64))
                 }

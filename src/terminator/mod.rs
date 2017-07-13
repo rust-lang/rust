@@ -394,7 +394,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
-                let (_, vtable) = self.eval_operand(&arg_operands[0])?.into_ptr_vtable_pair(&self.memory)?;
+                let (_, vtable) = self.eval_operand(&arg_operands[0])?.into_ptr_vtable_pair(&mut self.memory)?;
                 let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3), self.memory.layout)?)?;
                 let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
                 let mut arg_operands = arg_operands.to_vec();
