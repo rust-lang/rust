@@ -745,6 +745,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if self.check_defined(ptr, size).is_err() {
             return Ok(PrimVal::Undef.into());
         }
+        self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianess = self.endianess();
         let bytes = self.get_bytes_unchecked(ptr, size, size)?;
         let offset = read_target_uint(endianess, bytes).unwrap();
