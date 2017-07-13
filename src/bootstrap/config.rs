@@ -636,6 +636,11 @@ impl Config {
                     let target = self.target_config.entry(target).or_insert(Target::default());
                     target.qemu_rootfs = Some(parse_configure_path(value));
                 }
+                "CFG_QEMU_AARCH64_ROOTFS" if value.len() > 0 => {
+                    let target = INTERNER.intern_str("aarch64-unknown-linux-gnu");
+                    let target = self.target_config.entry(target).or_insert(Target::default());
+                    target.qemu_rootfs = Some(parse_configure_path(value));
+                }
                 _ => {}
             }
         }

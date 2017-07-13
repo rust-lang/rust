@@ -533,9 +533,17 @@ mod tests {
         assert!(b > a);
         assert_eq!(b - a, Duration::new(1, 0));
 
-        // let's assume that we're all running computers later than 2000
         let thirty_years = Duration::new(1, 0) * 60 * 60 * 24 * 365 * 30;
-        assert!(a > thirty_years);
+
+        // Right now for CI this test is run in an emulator, and apparently the
+        // aarch64 emulator's sense of time is that we're still living in the
+        // 70s.
+        //
+        // Otherwise let's assume that we're all running computers later than
+        // 2000.
+        if !cfg!(target_arch = "aarch64") {
+            assert!(a > thirty_years);
+        }
 
         // let's assume that we're all running computers earlier than 2090.
         // Should give us ~70 years to fix this!
