@@ -56,6 +56,9 @@ pub trait Step<'a>: Serialize + Sized {
     /// somewhat harder.
     type Output: Serialize + Deserialize<'a> + 'a;
 
+    /// This type, but with a 'static bound. Used for caching the step.
+    type Id: 'static;
+
     const DEFAULT: bool = false;
 
     /// Run this rule for all hosts without cross compiling.
@@ -190,6 +193,7 @@ impl<'a> Builder<'a> {
             target: &'a str,
         }
         impl<'a> Step<'a> for Libdir<'a> {
+            type Id = Libdir<'static>;
             type Output = PathBuf;
             fn run(self, builder: &Builder) -> PathBuf {
                 let compiler = self.compiler;

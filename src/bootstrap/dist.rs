@@ -78,6 +78,7 @@ pub struct Docs<'a> {
 }
 
 impl<'a> Step<'a> for Docs<'a> {
+    type Id = Docs<'static>;
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -287,6 +288,7 @@ pub struct Mingw<'a> {
 }
 
 impl<'a> Step<'a> for Mingw<'a> {
+    type Id = Mingw<'static>;
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -355,6 +357,7 @@ pub struct Rustc<'a> {
 }
 
 impl<'a> Step<'a> for Rustc<'a> {
+    type Id = Rustc<'static>;
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -495,6 +498,7 @@ pub struct DebuggerScripts<'a> {
 }
 
 impl<'a> Step<'a> for DebuggerScripts<'a> {
+    type Id = DebuggerScripts<'static>;
     type Output = ();
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -567,6 +571,7 @@ pub struct Std<'a> {
 }
 
 impl<'a> Step<'a> for Std<'a> {
+    type Id = Std<'static>;
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -647,6 +652,7 @@ pub struct Analysis<'a> {
 }
 
 impl<'a> Step<'a> for Analysis<'a> {
+    type Id = Analysis<'static>;
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -767,6 +773,7 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
 pub struct Src;
 
 impl<'a> Step<'a> for Src {
+    type Id = Src;
     /// The output path of the src installer tarball
     type Output = PathBuf;
     const DEFAULT: bool = true;
@@ -864,6 +871,7 @@ const CARGO_VENDOR_VERSION: &str = "0.1.4";
 pub struct PlainSourceTarball;
 
 impl<'a> Step<'a> for PlainSourceTarball {
+    type Id = PlainSourceTarball;
     /// Produces the location of the tarball generated
     type Output = PathBuf;
     const DEFAULT: bool = true;
@@ -1018,6 +1026,7 @@ pub struct Cargo<'a> {
 }
 
 impl<'a> Step<'a> for Cargo<'a> {
+    type Id = Cargo<'static>;
     type Output = PathBuf;
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1114,6 +1123,7 @@ pub struct Rls<'a> {
 }
 
 impl<'a> Step<'a> for Rls<'a> {
+    type Id = Rls<'static>;
     type Output = PathBuf;
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1207,6 +1217,7 @@ pub struct Extended<'a> {
 }
 
 impl<'a> Step<'a> for Extended<'a> {
+    type Id = Extended<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -1613,6 +1624,7 @@ fn add_env(build: &Build, cmd: &mut Command, target: &str) {
 pub struct HashSign;
 
 impl<'a> Step<'a> for HashSign {
+    type Id = HashSign;
     type Output = ();
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;

@@ -147,6 +147,7 @@ pub struct Std<'a> {
 }
 
 impl<'a> Step<'a> for Std<'a> {
+    type Id = Std<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -268,6 +269,7 @@ struct StdLink<'a> {
 }
 
 impl<'a> Step<'a> for StdLink<'a> {
+    type Id = StdLink<'static>;
     type Output = ();
 
     /// Link all libstd rlibs/dylibs into the sysroot location.
@@ -337,6 +339,7 @@ pub struct StartupObjects<'a> {
 }
 
 impl<'a> Step<'a> for StartupObjects<'a> {
+    type Id = StartupObjects<'static>;
     type Output = ();
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -403,6 +406,7 @@ pub struct Test<'a> {
 }
 
 impl<'a> Step<'a> for Test<'a> {
+    type Id = Test<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -485,6 +489,7 @@ pub struct TestLink<'a> {
 }
 
 impl<'a> Step<'a> for TestLink<'a> {
+    type Id = TestLink<'static>;
     type Output = ();
 
     /// Same as `std_link`, only for libtest
@@ -519,6 +524,7 @@ pub struct Rustc<'a> {
 }
 
 impl<'a> Step<'a> for Rustc<'a> {
+    type Id = Rustc<'static>;
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
@@ -668,6 +674,7 @@ struct RustcLink<'a> {
 }
 
 impl<'a> Step<'a> for RustcLink<'a> {
+    type Id = RustcLink<'static>;
     type Output = ();
 
     /// Same as `std_link`, only for librustc
@@ -720,6 +727,7 @@ pub struct Sysroot<'a> {
 }
 
 impl<'a> Step<'a> for Sysroot<'a> {
+    type Id = Sysroot<'static>;
     type Output = PathBuf;
 
     /// Returns the sysroot for the `compiler` specified that *this build system
@@ -766,6 +774,7 @@ pub struct Assemble<'a> {
 }
 
 impl<'a> Step<'a> for Assemble<'a> {
+    type Id = Assemble<'static>;
     type Output = Compiler<'a>;
 
     /// Prepare a new compiler from the artifacts in `stage`

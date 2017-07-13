@@ -51,6 +51,7 @@ pub struct Llvm<'a> {
 }
 
 impl<'a> Step<'a> for Llvm<'a> {
+    type Id = Llvm<'static>;
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -250,6 +251,7 @@ pub struct TestHelpers<'a> {
 }
 
 impl<'a> Step<'a> for TestHelpers<'a> {
+    type Id = TestHelpers<'static>;
     type Output = ();
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -310,6 +312,7 @@ pub struct Openssl<'a> {
 }
 
 impl<'a> Step<'a> for Openssl<'a> {
+    type Id = Openssl<'static>;
     type Output = ();
 
     fn should_run(_builder: &Builder, _path: &Path) -> bool {

@@ -99,6 +99,7 @@ pub struct Linkcheck<'a> {
 }
 
 impl<'a> Step<'a> for Linkcheck<'a> {
+    type Id = Linkcheck<'static>;
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
@@ -148,6 +149,7 @@ pub struct Cargotest<'a> {
 }
 
 impl<'a> Step<'a> for Cargotest<'a> {
+    type Id = Cargotest<'static>;
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -198,6 +200,7 @@ pub struct Cargo<'a> {
 }
 
 impl<'a> Step<'a> for Cargo<'a> {
+    type Id = Cargo<'static>;
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -307,6 +310,7 @@ pub struct Tidy<'a> {
 }
 
 impl<'a> Step<'a> for Tidy<'a> {
+    type Id = Tidy<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -509,6 +513,7 @@ static COMPILETESTS: &[Test] = &[
 ];
 
 impl<'a> Step<'a> for Compiletest<'a> {
+    type Id = Compiletest<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -775,6 +780,7 @@ pub struct Docs<'a> {
 //     .host(true)
 //     .run(move |s| check::docs(build, &s.compiler()));
 impl<'a> Step<'a> for Docs<'a> {
+    type Id = Docs<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -840,6 +846,7 @@ pub struct ErrorIndex<'a> {
 }
 
 impl<'a> Step<'a> for ErrorIndex<'a> {
+    type Id = ErrorIndex<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -935,6 +942,7 @@ pub struct KrateLibrustc<'a> {
 }
 
 impl<'a> Step<'a> for KrateLibrustc<'a> {
+    type Id = KrateLibrustc<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1045,6 +1053,7 @@ pub struct Krate<'a> {
 }
 
 impl<'a> Step<'a> for Krate<'a> {
+    type Id = Krate<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -1311,6 +1320,7 @@ pub struct RemoteCopyLibs<'a> {
 }
 
 impl<'a> Step<'a> for RemoteCopyLibs<'a> {
+    type Id = RemoteCopyLibs<'static>;
     type Output = ();
 
     fn run(self, builder: &Builder) {
@@ -1362,6 +1372,7 @@ impl<'a> Step<'a> for RemoteCopyLibs<'a> {
 pub struct Distcheck;
 
 impl<'a> Step<'a> for Distcheck {
+    type Id = Distcheck;
     type Output = ();
 
     /// Run "distcheck", a 'make check' from a tarball
@@ -1429,6 +1440,7 @@ impl<'a> Step<'a> for Distcheck {
 pub struct Bootstrap;
 
 impl<'a> Step<'a> for Bootstrap {
+    type Id = Bootstrap;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;

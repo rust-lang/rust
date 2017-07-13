@@ -135,6 +135,7 @@ macro_rules! install {
         }
 
         impl<'a> Step<'a> for $name<'a> {
+            type Id = $name<'static>;
             type Output = ();
             const DEFAULT: bool = true;
             const ONLY_BUILD_TARGETS: bool = true;

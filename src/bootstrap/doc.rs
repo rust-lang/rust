@@ -40,6 +40,7 @@ macro_rules! book {
         }
 
         impl<'a> Step<'a> for $name<'a> {
+            type Id = $name<'static>;
             type Output = ();
             const DEFAULT: bool = true;
 
@@ -99,6 +100,7 @@ pub struct Rustbook<'a> {
 }
 
 impl<'a> Step<'a> for Rustbook<'a> {
+    type Id = Rustbook<'static>;
     type Output = ();
 
     /// Invoke `rustbook` for `target` for the doc book `name`.
@@ -134,6 +136,7 @@ pub struct UnstableBook<'a> {
 }
 
 impl<'a> Step<'a> for UnstableBook<'a> {
+    type Id = UnstableBook<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -172,6 +175,7 @@ pub struct RustbookSrc<'a> {
 }
 
 impl<'a> Step<'a> for RustbookSrc<'a> {
+    type Id = UnstableBook<'static>;
     type Output = ();
 
     /// Invoke `rustbook` for `target` for the doc book `name` from the `src` path.
@@ -220,6 +224,7 @@ pub struct TheBook<'a> {
 }
 
 impl<'a> Step<'a> for TheBook<'a> {
+    type Id = TheBook<'static>;
     type Output = ();
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -341,6 +346,7 @@ pub struct Standalone<'a> {
 }
 
 impl<'a> Step<'a> for Standalone<'a> {
+    type Id = Standalone<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -448,6 +454,7 @@ pub struct Std<'a> {
 }
 
 impl<'a> Step<'a> for Std<'a> {
+    type Id = Std<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -559,6 +566,7 @@ pub struct Test<'a> {
 }
 
 impl<'a> Step<'a> for Test<'a> {
+    type Id = Test<'static>;
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -646,6 +654,7 @@ pub struct Rustc<'a> {
 }
 
 impl<'a> Step<'a> for Rustc<'a> {
+    type Id = Rustc<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -746,6 +755,7 @@ pub struct ErrorIndex<'a> {
 }
 
 impl<'a> Step<'a> for ErrorIndex<'a> {
+    type Id = ErrorIndex<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -808,6 +818,7 @@ pub struct UnstableBookGen<'a> {
 }
 
 impl<'a> Step<'a> for UnstableBookGen<'a> {
+    type Id = UnstableBookGen<'static>;
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;

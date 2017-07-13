@@ -10,10 +10,11 @@
 
 use serde_json;
 use serde::{Serialize, Deserialize};
+use std::any::TypeId;
+use builder::Step;
 
 use std::fmt;
 use std::mem;
-use std::intrinsics;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
@@ -29,31 +30,20 @@ use std::cell::RefCell;
 pub struct Cache(RefCell<HashMap<Key, Box<str>>>);
 
 fn to_json<T: Serialize>(element: &T) -> String {
-    let type_id = unsafe {
-        intrinsics::type_name::<T>()
-    };
-
-    t!(serde_json::to_string(&(type_id, element)))
+    t!(serde_json::to_string(element))
 }
 
 fn from_json<'a, O: Deserialize<'a>>(data: &'a str) -> O {
-    let type_id = unsafe {
-        intrinsics::type_name::<O>()
-    };
-
-    let (de_type_id, element): (&'a str, O)  = t!(serde_json::from_str(data));
-
-    assert_eq!(type_id, de_type_id);
-
-    element
+    t!(serde_json::from_str(data))
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Key(String);
+pub struct Key(TypeId, String);
 
 impl fmt::Debug for Key {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(&self.0)
+        fmt.write_str(&format!("{:?}; ", self.0))?;
+        fmt.write_str(&self.1)
     }
 }
 
@@ -62,8 +52,8 @@ impl Cache {
         Cache(RefCell::new(HashMap::new()))
     }
 
-    pub fn to_key<K: Serialize>(key: &K) -> Key {
-        Key(to_json(key))
+    pub fn to_key<'a, K: Step<'a>>(key: &K) -> Key {
+        Key(TypeId::of::<K::Id>(), to_json(key))
     }
 
     /// Puts a value into the cache. Will panic if called more than once with

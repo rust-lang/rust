@@ -52,6 +52,7 @@ pub struct CleanTools<'a> {
 }
 
 impl<'a> Step<'a> for CleanTools<'a> {
+    type Id = CleanTools<'static>;
     type Output = ();
 
     /// Build a tool in `src/tools`
@@ -86,6 +87,7 @@ pub struct ToolBuild<'a> {
 }
 
 impl<'a> Step<'a> for ToolBuild<'a> {
+    type Id = ToolBuild<'static>;
     type Output = PathBuf;
 
     /// Build a tool in `src/tools`
@@ -172,6 +174,7 @@ macro_rules! tool {
         }
 
         impl<'a> Step<'a> for $name<'a> {
+            type Id = $name<'static>;
             type Output = PathBuf;
 
             fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -258,6 +261,7 @@ pub struct RemoteTestServer<'a> {
 }
 
 impl<'a> Step<'a> for RemoteTestServer<'a> {
+    type Id = RemoteTestServer<'static>;
     type Output = PathBuf;
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
@@ -302,6 +306,7 @@ pub struct Cargo<'a> {
 }
 
 impl<'a> Step<'a> for Cargo<'a> {
+    type Id = Cargo<'static>;
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -359,6 +364,7 @@ pub struct Rls<'a> {
 }
 
 impl<'a> Step<'a> for Rls<'a> {
+    type Id = Rls<'static>;
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;

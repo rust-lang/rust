@@ -116,7 +116,6 @@
 #![deny(warnings)]
 #![allow(stable_features)]
 #![feature(associated_consts)]
-#![feature(core_intrinsics)]
 
 #[macro_use]
 extern crate build_helper;
