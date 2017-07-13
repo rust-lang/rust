@@ -4,7 +4,7 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
 use error::{EvalError, EvalResult};
-use eval_context::{EvalContext};
+use eval_context::EvalContext;
 use memory::MemoryPointer;
 use value::{PrimVal, Value, Pointer};
 

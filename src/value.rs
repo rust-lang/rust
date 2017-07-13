@@ -5,7 +5,7 @@ use std::mem::transmute;
 use rustc::ty::layout::TargetDataLayout;
 
 use error::{EvalError, EvalResult};
-use memory::{Memory, MemoryPointer};
+use memory::{Memory, MemoryPointer, HasMemory};
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     unsafe { transmute::<u32, f32>(bytes as u32) }
@@ -170,10 +170,7 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ptr, aligned) => {
-                mem.begin_unaligned_read(aligned);
-                let r = mem.read_ptr(ptr.to_ptr()?);
-                mem.end_unaligned_read();
-                r
+                mem.read_maybe_aligned(aligned, |mem| mem.read_ptr(ptr.to_ptr()?) )
             },
             ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr.into()),
         }
@@ -186,11 +183,11 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr, aligned) => {
-                mem.begin_unaligned_read(aligned);
-                let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
-                let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
-                mem.end_unaligned_read();
-                Ok((ptr, vtable.to_ptr()?))
+                mem.read_maybe_aligned(aligned, |mem| {
+                    let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
+                    let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
+                    Ok((ptr, vtable.to_ptr()?))
+                })
             }
 
             ByValPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
@@ -203,11 +200,11 @@ impl<'a, 'tcx: 'a> Value {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr, aligned) => {
-                mem.begin_unaligned_read(aligned);
-                let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
-                let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
-                mem.end_unaligned_read();
-                Ok((ptr, len))
+                mem.write_maybe_aligned(aligned, |mem| {
+                    let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
+                    let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
+                    Ok((ptr, len))
+                })
             },
             ByValPair(ptr, val) => {
                 let len = val.to_u128()?;

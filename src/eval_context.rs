@@ -17,7 +17,7 @@ use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
-use memory::{Memory, MemoryPointer, TlsKey};
+use memory::{Memory, MemoryPointer, TlsKey, HasMemory};
 use operator;
 use value::{PrimVal, PrimValKind, Value, Pointer};
 
@@ -1051,10 +1051,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
             Value::ByRef(ptr, aligned) => {
-                self.memory.begin_unaligned_read(aligned);
-                let r = self.read_value(ptr, ty);
-                self.memory.end_unaligned_read();
-                r
+                self.read_maybe_aligned(aligned, |ectx| ectx.read_value(ptr, ty))
             }
             other => Ok(other),
         }
@@ -1127,10 +1124,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.memory.begin_unaligned_write(aligned);
-                let r = self.write_value_to_ptr(src_val, ptr, dest_ty);
-                self.memory.end_unaligned_write();
-                r
+                self.write_maybe_aligned(aligned,
+                    |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty))
             }
 
             Lvalue::Local { frame, local } => {
@@ -1161,9 +1156,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
             // knew for certain that there were no outstanding pointers to this allocation.
-            self.memory.begin_unaligned_write(aligned);
-            self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
-            self.memory.end_unaligned_write();
+            self.write_maybe_aligned(aligned,
+                |ectx| ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty))?;
 
         } else if let Value::ByRef(src_ptr, aligned) = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
@@ -1177,15 +1171,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // It is a valid optimization to attempt reading a primitive value out of the
             // source and write that into the destination without making an allocation, so
             // we do so here.
-            self.memory.begin_unaligned_read(aligned);
-            if let Ok(Some(src_val)) = self.try_read_value(src_ptr, dest_ty) {
-                write_dest(self, src_val)?;
-            } else {
-                let dest_ptr = self.alloc_ptr(dest_ty)?.into();
-                self.copy(src_ptr, dest_ptr, dest_ty)?;
-                write_dest(self, Value::by_ref(dest_ptr))?;
-            }
-            self.memory.end_unaligned_read();
+            self.read_maybe_aligned(aligned, |ectx| {
+                if let Ok(Some(src_val)) = ectx.try_read_value(src_ptr, dest_ty) {
+                    write_dest(ectx, src_val)?;
+                } else {
+                    let dest_ptr = ectx.alloc_ptr(dest_ty)?.into();
+                    ectx.copy(src_ptr, dest_ptr, dest_ty)?;
+                    write_dest(ectx, Value::by_ref(dest_ptr))?;
+                }
+                Ok(())
+            })?;
 
         } else {
             // Finally, we have the simple case where neither source nor destination are
@@ -1203,10 +1198,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx> {
         match value {
             Value::ByRef(ptr, aligned) => {
-                self.memory.begin_unaligned_read(aligned);
-                let r = self.copy(ptr, dest, dest_ty);
-                self.memory.end_unaligned_read();
-                r
+                self.read_maybe_aligned(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
             },
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");

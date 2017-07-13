@@ -7,6 +7,7 @@ use rustc::ty::layout::{self, TargetDataLayout};
 
 use error::{EvalError, EvalResult};
 use value::{PrimVal, self, Pointer};
+use eval_context::EvalContext;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -383,33 +384,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
         return Ok(None);
-    }
-
-    #[inline]
-    pub(crate) fn begin_unaligned_read(&mut self, aligned: bool) {
-        assert!(self.reads_are_aligned, "Unaligned reads must not be nested");
-        self.reads_are_aligned = aligned;
-    }
-
-    #[inline]
-    pub(crate) fn end_unaligned_read(&mut self) {
-        self.reads_are_aligned = true;
-    }
-
-    #[inline]
-    pub(crate) fn begin_unaligned_write(&mut self, aligned: bool) {
-        assert!(self.writes_are_aligned, "Unaligned writes must not be nested");
-        self.writes_are_aligned = aligned;
-    }
-
-    #[inline]
-    pub(crate) fn end_unaligned_write(&mut self) {
-        self.writes_are_aligned = true;
-    }
-
-    #[inline]
-    pub(crate) fn assert_all_aligned(&mut self) {
-        assert!(self.reads_are_aligned && self.writes_are_aligned, "Someone forgot to clear the 'unaligned' flag");
     }
 }
 
@@ -1100,4 +1074,47 @@ fn bit_index(bits: u64) -> (usize, usize) {
     assert_eq!(a as usize as u64, a);
     assert_eq!(b as usize as u64, b);
     (a as usize, b as usize)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Unaligned accesses
+////////////////////////////////////////////////////////////////////////////////
+
+pub(crate) trait HasMemory<'a, 'tcx> {
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx>;
+
+    // These are not supposed to be overriden.
+    fn read_maybe_aligned<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+        where F: FnOnce(&mut Self) -> EvalResult<'tcx, T>
+    {
+        assert!(self.memory_mut().reads_are_aligned, "Unaligned reads must not be nested");
+        self.memory_mut().reads_are_aligned = aligned;
+        let t = f(self);
+        self.memory_mut().reads_are_aligned = true;
+        t
+    }
+
+    fn write_maybe_aligned<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+        where F: FnOnce(&mut Self) -> EvalResult<'tcx, T>
+    {
+        assert!(self.memory_mut().writes_are_aligned, "Unaligned writes must not be nested");
+        self.memory_mut().writes_are_aligned = aligned;
+        let t = f(self);
+        self.memory_mut().writes_are_aligned = true;
+        t
+    }
+}
+
+impl<'a, 'tcx> HasMemory<'a, 'tcx> for Memory<'a, 'tcx> {
+    #[inline]
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+        self
+    }
+}
+
+impl<'a, 'tcx> HasMemory<'a, 'tcx> for EvalContext<'a, 'tcx> {
+    #[inline]
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+        &mut self.memory
+    }
 }

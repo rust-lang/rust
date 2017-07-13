@@ -8,6 +8,7 @@ use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
 use lvalue::{Lvalue, LvalueExtra};
 use value::{PrimVal, PrimValKind, Value, Pointer};
+use memory::HasMemory;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
@@ -396,9 +397,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "transmute" => {
                 let src_ty = substs.type_at(0);
                 let ptr = self.force_allocation(dest)?.to_ptr()?;
-                self.memory.begin_unaligned_write(/*aligned*/false);
-                self.write_value_to_ptr(arg_vals[0], ptr.into(), src_ty)?;
-                self.memory.end_unaligned_write();
+                self.write_maybe_aligned(/*aligned*/false, |ectx| {
+                    ectx.write_value_to_ptr(arg_vals[0], ptr.into(), src_ty)
+                })?;
             }
 
             "unchecked_shl" => {
