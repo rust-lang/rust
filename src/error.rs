@@ -69,6 +69,7 @@ pub enum EvalError<'tcx> {
     NeedsRfc(String),
     NotConst(String),
     ReadFromReturnPointer,
+    PathNotFound(Vec<String>),
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -175,6 +176,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "this feature is not compatible with constant evaluation",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
+            EvalError::PathNotFound(_) =>
+                "a path could not be resolved, maybe the crate is not loaded",
         }
     }
 
@@ -215,6 +218,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg),
             NotConst(ref msg) =>
                 write!(f, "Cannot evaluate within constants: \"{}\"", msg),
+            EvalError::PathNotFound(ref path) =>
+                write!(f, "Cannot find path {:?}", path),
             _ => write!(f, "{}", self.description()),
         }
     }

@@ -1,4 +1,4 @@
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{self, TypeVariants, Ty};
 use rustc::ty::layout::Layout;
@@ -12,6 +12,8 @@ use lvalue::Lvalue;
 use memory::{MemoryPointer, TlsKey};
 use value::{PrimVal, Value};
 use rustc_data_structures::indexed_vec::Idx;
+
+use std::mem;
 
 mod drop;
 mod intrinsic;
@@ -853,12 +855,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "sysconf" => {
                 let name = self.value_to_primval(args[0], usize)?.to_u64()?;
                 trace!("sysconf() called with name {}", name);
-                let result = match name {
-                    30 => PrimVal::Bytes(4096), // _SC_PAGESIZE
-                    70 => PrimVal::from_i128(-1), // _SC_GETPW_R_SIZE_MAX
-                    _ => return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)))
-                };
-                self.write_primval(dest, result, dest_ty)?;
+                // cache the sysconf integers via miri's global cache
+                let paths = &[
+                    (&["libc", "_SC_PAGESIZE"], PrimVal::Bytes(4096)),
+                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], PrimVal::from_i128(-1)),
+                ];
+                let mut result = None;
+                for &(path, path_value) in paths {
+                    if let Ok(instance) = self.resolve_path(path) {
+                        use lvalue::GlobalId;
+                        let cid = GlobalId { instance, promoted: None };
+                        // compute global if not cached
+                        let val = match self.globals.get(&cid).map(|glob| glob.value) {
+                            Some(value) => self.value_to_primval(value, usize)?.to_u64()?,
+                            None => ::const_eval::eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
+                        };
+                        if val == name {
+                            result = Some(path_value);
+                            break;
+                        }
+                    }
+                }
+                if let Some(result) = result {
+                    self.write_primval(dest, result, dest_ty)?;
+                } else {
+                    return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)));
+                }
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
@@ -932,5 +954,42 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.dump_local(dest);
         self.goto_block(dest_block);
         Ok(())
+    }
+
+    /// Get an instance for a path.
+    fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+        let cstore = &self.tcx.sess.cstore;
+
+        let crates = cstore.crates();
+        crates.iter()
+            .find(|&&krate| cstore.crate_name(krate) == path[0])
+            .and_then(|krate| {
+                let krate = DefId {
+                    krate: *krate,
+                    index: CRATE_DEF_INDEX,
+                };
+                let mut items = cstore.item_children(krate, self.tcx.sess);
+                let mut path_it = path.iter().skip(1).peekable();
+
+                while let Some(segment) = path_it.next() {
+                    for item in &mem::replace(&mut items, vec![]) {
+                        if item.ident.name == *segment {
+                            if path_it.peek().is_none() {
+                                return Some(ty::Instance::mono(self.tcx, item.def.def_id()));
+                            }
+
+                            items = cstore.item_children(item.def.def_id(), self.tcx.sess);
+                            break;
+                        }
+                    }
+                }
+                None
+            })
+            .ok_or_else(|| {
+                let path = path.iter()
+                    .map(|&s| s.to_owned())
+                    .collect();
+                EvalError::PathNotFound(path)
+            })
     }
 }
