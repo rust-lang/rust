@@ -364,24 +364,21 @@ impl<'a> Step<'a> for StartupObjects<'a> {
             return
         }
 
-        let compiler = builder.compiler(0, &build.build);
-        let compiler_path = builder.rustc(compiler);
         let src_dir = &build.src.join("src/rtstartup");
         let dst_dir = &build.native_dir(target).join("rtstartup");
         let sysroot_dir = &builder.sysroot_libdir(for_compiler, target);
         t!(fs::create_dir_all(dst_dir));
-        t!(fs::create_dir_all(sysroot_dir));
 
         for file in &["rsbegin", "rsend"] {
             let src_file = &src_dir.join(file.to_string() + ".rs");
             let dst_file = &dst_dir.join(file.to_string() + ".o");
             if !up_to_date(src_file, dst_file) {
-                let mut cmd = Command::new(&compiler_path);
+                let mut cmd = Command::new(&build.initial_rustc);
                 build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
-                            .arg("--cfg").arg(format!("stage{}", compiler.stage))
+                            .arg("--cfg").arg("stage0")
                             .arg("--target").arg(target)
                             .arg("--emit=obj")
-                            .arg("--out-dir").arg(dst_dir)
+                            .arg("--o").arg(dst_file)
                             .arg(src_file));
             }
 

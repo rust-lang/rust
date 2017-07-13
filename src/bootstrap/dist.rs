@@ -74,11 +74,11 @@ fn rust_installer(builder: &Builder) -> Command {
 #[derive(Serialize)]
 pub struct Docs<'a> {
     pub stage: u32,
-    pub host: &'a str,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for Docs<'a> {
-    type Output = ();
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
@@ -89,33 +89,33 @@ impl<'a> Step<'a> for Docs<'a> {
     fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
         builder.ensure(Docs {
             stage: builder.top_stage,
-            host: target,
+            target: target,
         });
     }
 
     /// Builds the `rust-docs` installer component.
     ///
-    /// Slurps up documentation from the `stage`'s `host`.
-    fn run(self, builder: &Builder) {
+    /// Slurps up documentation from the `stage`'s `target`.
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         let build = builder.build;
         let stage = self.stage;
-        let host = self.host;
+        let target = self.target;
 
         builder.default_doc(None);
 
-        println!("Dist docs stage{} ({})", stage, host);
+        println!("Dist docs stage{} ({})", stage, target);
         if !build.config.docs {
             println!("\tskipping - docs disabled");
-            return
+            return None;
         }
 
         let name = pkgname(build, "rust-docs");
-        let image = tmpdir(build).join(format!("{}-{}-image", name, host));
+        let image = tmpdir(build).join(format!("{}-{}-image", name, target));
         let _ = fs::remove_dir_all(&image);
 
         let dst = image.join("share/doc/rust/html");
         t!(fs::create_dir_all(&dst));
-        let src = build.out.join(host).join("doc");
+        let src = build.out.join(target).join("doc");
         cp_r(&src, &dst);
 
         let mut cmd = rust_installer(builder);
@@ -126,7 +126,7 @@ impl<'a> Step<'a> for Docs<'a> {
            .arg("--image-dir").arg(&image)
            .arg("--work-dir").arg(&tmpdir(build))
            .arg("--output-dir").arg(&distdir(build))
-           .arg(format!("--package-name={}-{}", name, host))
+           .arg(format!("--package-name={}-{}", name, target))
            .arg("--component-name=rust-docs")
            .arg("--legacy-manifest-dirs=rustlib,cargo")
            .arg("--bulk-dirs=share/doc/rust/html");
@@ -135,11 +135,13 @@ impl<'a> Step<'a> for Docs<'a> {
 
         // As part of this step, *also* copy the docs directory to a directory which
         // buildbot typically uploads.
-        if host == build.build {
+        if target == build.build {
             let dst = distdir(build).join("doc").join(build.rust_package_vers());
             t!(fs::create_dir_all(&dst));
             cp_r(&src, &dst);
         }
+
+        Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
     }
 }
 
@@ -281,11 +283,11 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
 
 #[derive(Serialize)]
 pub struct Mingw<'a> {
-    host: &'a str,
+    target: &'a str,
 }
 
 impl<'a> Step<'a> for Mingw<'a> {
-    type Output = ();
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
@@ -293,27 +295,25 @@ impl<'a> Step<'a> for Mingw<'a> {
         false
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
-        builder.ensure(Mingw {
-            host: host,
-        });
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+        builder.ensure(Mingw { target });
     }
 
     /// Build the `rust-mingw` installer component.
     ///
     /// This contains all the bits and pieces to run the MinGW Windows targets
     /// without any extra installed software (e.g. we bundle gcc, libraries, etc).
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         let build = builder.build;
-        let host = self.host;
+        let target = self.target;
 
-        if !host.contains("pc-windows-gnu") {
-            return;
+        if !target.contains("pc-windows-gnu") {
+            return None;
         }
 
-        println!("Dist mingw ({})", host);
+        println!("Dist mingw ({})", target);
         let name = pkgname(build, "rust-mingw");
-        let image = tmpdir(build).join(format!("{}-{}-image", name, host));
+        let image = tmpdir(build).join(format!("{}-{}-image", name, target));
         let _ = fs::remove_dir_all(&image);
         t!(fs::create_dir_all(&image));
 
@@ -321,7 +321,7 @@ impl<'a> Step<'a> for Mingw<'a> {
         // thrown away (this contains the runtime DLLs included in the rustc package
         // above) and the second argument is where to place all the MinGW components
         // (which is what we want).
-        make_win_dist(&tmpdir(build), &image, host, &build);
+        make_win_dist(&tmpdir(build), &image, target, &build);
 
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -331,11 +331,12 @@ impl<'a> Step<'a> for Mingw<'a> {
            .arg("--image-dir").arg(&image)
            .arg("--work-dir").arg(&tmpdir(build))
            .arg("--output-dir").arg(&distdir(build))
-           .arg(format!("--package-name={}-{}", name, host))
+           .arg(format!("--package-name={}-{}", name, target))
            .arg("--component-name=rust-mingw")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
         build.run(&mut cmd);
         t!(fs::remove_dir_all(&image));
+        Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
     }
 }
 
@@ -350,11 +351,11 @@ impl<'a> Step<'a> for Mingw<'a> {
 #[derive(Serialize)]
 pub struct Rustc<'a> {
     pub stage: u32,
-    pub host: &'a str,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for Rustc<'a> {
-    type Output = ();
+    type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -363,27 +364,32 @@ impl<'a> Step<'a> for Rustc<'a> {
         path.ends_with("src/librustc")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
         builder.ensure(Rustc {
             stage: builder.top_stage,
-            host: host,
+            target: target,
         });
     }
 
     /// Creates the `rustc` installer component.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
         let stage = self.stage;
-        let host = self.host;
-        println!("Dist rustc stage{} ({})", stage, host);
+        let target = self.target;
+
+        let compiler = builder.ensure(compile::Assemble {
+            target_compiler: builder.compiler(stage, &build.build),
+        });
+
+        println!("Dist rustc stage{} ({})", stage, target);
         let name = pkgname(build, "rustc");
-        let image = tmpdir(build).join(format!("{}-{}-image", name, host));
+        let image = tmpdir(build).join(format!("{}-{}-image", name, target));
         let _ = fs::remove_dir_all(&image);
-        let overlay = tmpdir(build).join(format!("{}-{}-overlay", name, host));
+        let overlay = tmpdir(build).join(format!("{}-{}-overlay", name, target));
         let _ = fs::remove_dir_all(&overlay);
 
         // Prepare the rustc "image", what will actually end up getting installed
-        prepare_image(builder, stage, host, &image);
+        prepare_image(builder, compiler, target, &image);
 
         // Prepare the overlay which is part of the tarball but won't actually be
         // installed
@@ -408,8 +414,8 @@ impl<'a> Step<'a> for Rustc<'a> {
         // anything requiring us to distribute a license, but it's likely the
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
-        if host.contains("pc-windows-gnu") {
-            make_win_dist(&image, &tmpdir(build), host, build);
+        if target.contains("pc-windows-gnu") {
+            make_win_dist(&image, &tmpdir(build), target, build);
 
             let dst = image.join("share/doc");
             t!(fs::create_dir_all(&dst));
@@ -426,17 +432,19 @@ impl<'a> Step<'a> for Rustc<'a> {
            .arg("--work-dir").arg(&tmpdir(build))
            .arg("--output-dir").arg(&distdir(build))
            .arg("--non-installed-overlay").arg(&overlay)
-           .arg(format!("--package-name={}-{}", name, host))
+           .arg(format!("--package-name={}-{}", name, target))
            .arg("--component-name=rustc")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
         build.run(&mut cmd);
         t!(fs::remove_dir_all(&image));
         t!(fs::remove_dir_all(&overlay));
 
-        fn prepare_image(builder: &Builder, stage: u32, host: &str, image: &Path) {
+        return distdir(build).join(format!("{}-{}.tar.gz", name, target));
+
+        fn prepare_image(builder: &Builder, compiler: Compiler, target: &str, image: &Path) {
             let build = builder.build;
-            let src = builder.sysroot(builder.compiler(stage, host));
-            let libdir = libdir(host);
+            let src = builder.sysroot(compiler);
+            let libdir = libdir(target);
 
             // Copy rustc/rustdoc binaries
             t!(fs::create_dir_all(image.join("bin")));
@@ -461,7 +469,7 @@ impl<'a> Step<'a> for Rustc<'a> {
             // Debugger scripts
             builder.ensure(DebuggerScripts {
                 sysroot: &image,
-                host: host,
+                target: target,
             });
 
             // Misc license info
@@ -483,7 +491,7 @@ impl<'a> Step<'a> for Rustc<'a> {
 #[derive(Serialize)]
 pub struct DebuggerScripts<'a> {
     pub sysroot: &'a Path,
-    pub host: &'a str,
+    pub target: &'a str,
 }
 
 impl<'a> Step<'a> for DebuggerScripts<'a> {
@@ -493,25 +501,24 @@ impl<'a> Step<'a> for DebuggerScripts<'a> {
         path.ends_with("src/etc/lldb_batchmode.py")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, target: &str) {
         builder.ensure(DebuggerScripts {
-            // FIXME: builder.top_stage is likely wrong in some cases.
             sysroot: &builder.sysroot(builder.compiler(builder.top_stage, host)),
-            host: host,
+            target: target,
         });
     }
 
-    /// Copies debugger scripts for `host` into the `sysroot` specified.
+    /// Copies debugger scripts for `target` into the `sysroot` specified.
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let host = self.host;
+        let target = self.target;
         let sysroot = self.sysroot;
         let dst = sysroot.join("lib/rustlib/etc");
         t!(fs::create_dir_all(&dst));
         let cp_debugger_script = |file: &str| {
             install(&build.src.join("src/etc/").join(file), &dst, 0o644);
         };
-        if host.contains("windows-msvc") {
+        if target.contains("windows-msvc") {
             // windbg debugger scripts
             install(&build.src.join("src/etc/rust-windbg.cmd"), &sysroot.join("bin"),
                 0o755);
@@ -560,7 +567,7 @@ pub struct Std<'a> {
 }
 
 impl<'a> Step<'a> for Std<'a> {
-    type Output = ();
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
@@ -575,7 +582,7 @@ impl<'a> Step<'a> for Std<'a> {
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
@@ -587,7 +594,7 @@ impl<'a> Step<'a> for Std<'a> {
         // let's reduce redundant work by only producing archives from that host.
         if compiler.host != build.build {
             println!("\tskipping, not a build host");
-            return
+            return None;
         }
 
         // We want to package up as many target libraries as possible
@@ -622,19 +629,8 @@ impl<'a> Step<'a> for Std<'a> {
            .arg("--legacy-manifest-dirs=rustlib,cargo");
         build.run(&mut cmd);
         t!(fs::remove_dir_all(&image));
+        Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
     }
-}
-
-/// The path to the complete rustc-src tarball
-pub fn rust_src_location(build: &Build) -> PathBuf {
-    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
-    distdir(build).join(&format!("{}.tar.gz", plain_name))
-}
-
-/// The path to the rust-src component installer
-pub fn rust_src_installer(build: &Build) -> PathBuf {
-    let name = pkgname(build, "rust-src");
-    distdir(build).join(&format!("{}.tar.gz", name))
 }
 
 // rules.dist("dist-analysis", "analysis")
@@ -651,7 +647,7 @@ pub struct Analysis<'a> {
 }
 
 impl<'a> Step<'a> for Analysis<'a> {
-    type Output = ();
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
@@ -670,7 +666,7 @@ impl<'a> Step<'a> for Analysis<'a> {
     }
 
     /// Creates a tarball of save-analysis metadata, if available.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
@@ -679,7 +675,7 @@ impl<'a> Step<'a> for Analysis<'a> {
 
         if compiler.host != build.build {
             println!("\tskipping, not a build host");
-            return;
+            return None;
         }
 
         // Package save-analysis from stage1 if not doing a full bootstrap, as the
@@ -715,6 +711,7 @@ impl<'a> Step<'a> for Analysis<'a> {
            .arg("--legacy-manifest-dirs=rustlib,cargo");
         build.run(&mut cmd);
         t!(fs::remove_dir_all(&image));
+        Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
     }
 }
 
@@ -770,7 +767,8 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
 pub struct Src;
 
 impl<'a> Step<'a> for Src {
-    type Output = ();
+    /// The output path of the src installer tarball
+    type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -785,7 +783,7 @@ impl<'a> Step<'a> for Src {
     }
 
     /// Creates the `rust-src` installer component
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
         println!("Dist src");
 
@@ -848,6 +846,7 @@ impl<'a> Step<'a> for Src {
         build.run(&mut cmd);
 
         t!(fs::remove_dir_all(&image));
+        distdir(build).join(&format!("{}.tar.gz", name))
     }
 }
 
@@ -865,7 +864,8 @@ const CARGO_VENDOR_VERSION: &str = "0.1.4";
 pub struct PlainSourceTarball;
 
 impl<'a> Step<'a> for PlainSourceTarball {
-    type Output = ();
+    /// Produces the location of the tarball generated
+    type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -884,7 +884,7 @@ impl<'a> Step<'a> for PlainSourceTarball {
     }
 
     /// Creates the plain source tarball
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
         println!("Create plain source tarball");
 
@@ -947,10 +947,11 @@ impl<'a> Step<'a> for PlainSourceTarball {
         }
 
         // Create plain source tarball
-        let mut tarball = rust_src_location(build);
+        let plain_name = format!("rustc-{}-src", build.rust_package_vers());
+        let mut tarball = distdir(build).join(&format!("{}.tar.gz", plain_name));
         tarball.set_extension(""); // strip .gz
         tarball.set_extension(""); // strip .tar
-        if let Some(dir) = tarball.parent() {
+        if let Some(dir) = distdir(build).parent() {
             t!(fs::create_dir_all(dir));
         }
         let mut cmd = rust_installer(builder);
@@ -960,6 +961,7 @@ impl<'a> Step<'a> for PlainSourceTarball {
            .arg("--work-dir=.")
            .current_dir(tmpdir(build));
         build.run(&mut cmd);
+        distdir(build).join(&format!("{}.tar.gz", plain_name))
     }
 }
 
@@ -1016,7 +1018,7 @@ pub struct Cargo<'a> {
 }
 
 impl<'a> Step<'a> for Cargo<'a> {
-    type Output = ();
+    type Output = PathBuf;
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1031,7 +1033,7 @@ impl<'a> Step<'a> for Cargo<'a> {
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
@@ -1095,6 +1097,7 @@ impl<'a> Step<'a> for Cargo<'a> {
            .arg("--component-name=cargo")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
         build.run(&mut cmd);
+        distdir(build).join(format!("{}-{}.tar.gz", name, target))
     }
 }
 
@@ -1111,7 +1114,7 @@ pub struct Rls<'a> {
 }
 
 impl<'a> Step<'a> for Rls<'a> {
-    type Output = ();
+    type Output = PathBuf;
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1126,7 +1129,7 @@ impl<'a> Step<'a> for Rls<'a> {
         });
     }
 
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
@@ -1179,6 +1182,7 @@ impl<'a> Step<'a> for Rls<'a> {
            .arg("--component-name=rls")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
         build.run(&mut cmd);
+        distdir(build).join(format!("{}-{}.tar.gz", name, target))
     }
 }
 
@@ -1229,38 +1233,15 @@ impl<'a> Step<'a> for Extended<'a> {
         let target = self.target;
         let compiler = builder.compiler(stage, &build.build);
 
-        builder.ensure(Std { compiler, target });
-        builder.ensure(Rustc { stage, host: target });
-        builder.ensure(Mingw { host: target });
-        builder.ensure(Docs { stage, host: target });
-        builder.ensure(Cargo { stage, target });
-        builder.ensure(Rls { stage, target });
-        builder.ensure(Analysis { compiler, target });
-
         println!("Dist extended stage{} ({})", stage, target);
 
-        let dist = distdir(build);
-        let rustc_installer = dist.join(format!("{}-{}.tar.gz",
-                                                pkgname(build, "rustc"),
-                                                target));
-        let cargo_installer = dist.join(format!("{}-{}.tar.gz",
-                                                pkgname(build, "cargo"),
-                                                target));
-        let rls_installer = dist.join(format!("{}-{}.tar.gz",
-                                                pkgname(build, "rls"),
-                                                target));
-        let analysis_installer = dist.join(format!("{}-{}.tar.gz",
-                                                    pkgname(build, "rust-analysis"),
-                                                    target));
-        let docs_installer = dist.join(format!("{}-{}.tar.gz",
-                                                pkgname(build, "rust-docs"),
-                                                target));
-        let mingw_installer = dist.join(format!("{}-{}.tar.gz",
-                                                pkgname(build, "rust-mingw"),
-                                                target));
-        let std_installer = dist.join(format!("{}-{}.tar.gz",
-                                                pkgname(build, "rust-std"),
-                                                target));
+        let rustc_installer = builder.ensure(Rustc { stage, target });
+        let cargo_installer = builder.ensure(Cargo { stage, target });
+        let rls_installer = builder.ensure(Rls { stage, target });
+        let analysis_installer = builder.ensure(Analysis { compiler, target }).unwrap();
+        let docs_installer = builder.ensure(Docs { stage, target }).unwrap();
+        let mingw_installer = builder.ensure(Mingw { target });
+        let std_installer = builder.ensure(Std { compiler, target }).unwrap();
 
         let tmp = tmpdir(build);
         let overlay = tmp.join("extended-overlay");
@@ -1282,7 +1263,7 @@ impl<'a> Step<'a> for Extended<'a> {
         let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
                                 analysis_installer, docs_installer, std_installer];
         if target.contains("pc-windows-gnu") {
-            tarballs.push(mingw_installer);
+            tarballs.push(mingw_installer.unwrap());
         }
         let mut input_tarballs = tarballs[0].as_os_str().to_owned();
         for tarball in &tarballs[1..] {

@@ -253,7 +253,7 @@ tool!(
 
 #[derive(Serialize)]
 pub struct RemoteTestServer<'a> {
-    pub compiler: Compiler<'a>,
+    pub stage: u32,
     pub target: &'a str,
 }
 
@@ -264,9 +264,9 @@ impl<'a> Step<'a> for RemoteTestServer<'a> {
         path.ends_with("src/tools/remote-test-server")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
         builder.ensure(RemoteTestServer {
-            compiler: builder.compiler(builder.top_stage, host),
+            stage: builder.top_stage,
             target,
         });
     }

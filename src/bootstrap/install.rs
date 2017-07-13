@@ -201,7 +201,7 @@ install!(
     //      .dep(|s| s.name("dist-docs"))
     //      .run(move |s| install::Installer::new(build).install_docs(s.stage, s.target));
     Docs, "src/doc", builder.build.config.docs, only_hosts: false, (self, builder), {
-        builder.ensure(dist::Docs { stage: self.stage, host: self.host });
+        builder.ensure(dist::Docs { stage: self.stage, target: self.target });
         Installer::new(builder.build).install_docs(self.stage, self.target);
     };
     // rules.install("install-std", "src/libstd")
@@ -266,7 +266,7 @@ install!(
     //      .dep(|s| s.name("dist-rustc"))
     //      .run(move |s| install::Installer::new(build).install_rustc(s.stage, s.target));
     Rustc, "src/librustc", builder.build.config.extended, only_hosts: true, (self, builder), {
-        builder.ensure(dist::Rustc { stage: self.stage, host: self.host });
+        builder.ensure(dist::Rustc { stage: self.stage, target: self.target });
         Installer::new(builder.build).install_rustc(self.stage, self.target);
     };
 );

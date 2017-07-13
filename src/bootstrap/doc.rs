@@ -222,6 +222,22 @@ pub struct TheBook<'a> {
 impl<'a> Step<'a> for TheBook<'a> {
     type Output = ();
 
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/doc/book")
+    }
+
+    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+        if path.is_none() && !builder.build.config.docs {
+            // Not a default rule if docs are disabled.
+            return;
+        }
+
+        builder.ensure(TheBook {
+            target,
+            name: "book",
+        });
+    }
+
     /// Build the book and associated stuff.
     ///
     /// We need to build:
