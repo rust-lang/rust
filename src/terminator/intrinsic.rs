@@ -270,8 +270,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
-                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } => self.memory.write_repeat(ptr, 0, size)?,
-                    Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat ptr target"),
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true } => self.memory.write_repeat(ptr, 0, size)?,
+                    Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat or unaligned ptr target"),
                     Lvalue::Global(cid) => self.modify_global(cid, init)?,
                 }
             }
@@ -394,11 +394,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "transmute" => {
                 let src_ty = substs.type_at(0);
-                let dest_ty = substs.type_at(1);
-                let size = self.type_size(dest_ty)?.expect("transmute() type must be sized");
                 let ptr = self.force_allocation(dest)?.to_ptr()?;
-                self.memory.mark_packed(ptr, size);
+                self.memory.writes_are_aligned = false;
                 self.write_value_to_ptr(arg_vals[0], ptr.into(), src_ty)?;
+                self.memory.writes_are_aligned = true;
             }
 
             "unchecked_shl" => {
@@ -448,9 +447,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, uninit)?,
-                    Lvalue::Ptr { ptr, extra: LvalueExtra::None } =>
+                    Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true } =>
                         self.memory.mark_definedness(ptr, size, false)?,
-                    Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat ptr target"),
+                    Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat or unaligned ptr target"),
                     Lvalue::Global(cid) => self.modify_global(cid, uninit)?,
                 }
             }
@@ -465,7 +464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
                 if count > 0 {
                     // TODO: Should we, at least, validate the alignment? (Also see memory::copy)
-                    self.memory.check_align(ptr, ty_align, size * count)?;
+                    self.memory.check_align(ptr, ty_align)?;
                     self.memory.write_repeat(ptr, val_byte, size * count)?;
                 }
             }

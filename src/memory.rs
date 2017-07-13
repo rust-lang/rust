@@ -1,5 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque, BTreeSet};
+use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr, mem, io};
 
 use rustc::ty;
@@ -124,20 +124,6 @@ pub struct Memory<'a, 'tcx> {
     /// Target machine data layout to emulate.
     pub layout: &'a TargetDataLayout,
 
-    /// List of memory regions containing packed structures.
-    ///
-    /// We mark memory as "packed" or "unaligned" for a single statement, and clear the marking
-    /// afterwards. In the case where no packed structs are present, it's just a single emptyness
-    /// check of a set instead of heavily influencing all memory access code as other solutions
-    /// would. This is simpler than the alternative of passing a "packed" parameter to every
-    /// load/store method.
-    ///
-    /// One disadvantage of this solution is the fact that you can cast a pointer to a packed
-    /// struct to a pointer to a normal struct and if you access a field of both in the same MIR
-    /// statement, the normal struct access will succeed even though it shouldn't. But even with
-    /// mir optimizations, that situation is hard/impossible to produce.
-    packed: BTreeSet<Entry>,
-
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
@@ -147,6 +133,11 @@ pub struct Memory<'a, 'tcx> {
 
     /// The Key to use for the next thread-local allocation.
     next_thread_local: TlsKey,
+
+    /// To avoid having to pass flags to every single memory access, we have some global state saying whether
+    /// alignment checking is currently enforced for read and/or write accesses.
+    pub reads_are_aligned: bool,
+    pub writes_are_aligned: bool,
 }
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
@@ -159,11 +150,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             layout,
             memory_size: max_memory,
             memory_usage: 0,
-            packed: BTreeSet::new(),
             static_alloc: HashSet::new(),
             literal_alloc_cache: HashMap::new(),
             thread_local: BTreeMap::new(),
             next_thread_local: 0,
+            reads_are_aligned: true,
+            writes_are_aligned: true,
         }
     }
 
@@ -278,30 +270,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    pub fn check_align(&self, ptr: Pointer, align: u64, len: u64) -> EvalResult<'tcx> {
+    pub fn check_align(&self, ptr: Pointer, align: u64) -> EvalResult<'tcx> {
         let offset = match ptr.into_inner_primval() {
             PrimVal::Ptr(ptr) => {
                 let alloc = self.get(ptr.alloc_id)?;
-                // check whether the memory was marked as packed
-                // we select all elements that have the correct alloc_id and are within
-                // the range given by the offset into the allocation and the length
-                let start = Entry {
-                    alloc_id: ptr.alloc_id,
-                    packed_start: 0,
-                    packed_end: ptr.offset + len,
-                };
-                let end = Entry {
-                    alloc_id: ptr.alloc_id,
-                    packed_start: ptr.offset + len,
-                    packed_end: 0,
-                };
-                for &Entry { packed_start, packed_end, .. } in self.packed.range(start..end) {
-                    // if the region we are checking is covered by a region in `packed`
-                    // ignore the actual alignment
-                    if packed_start <= ptr.offset && (ptr.offset + len) <= packed_end {
-                        return Ok(());
-                    }
-                }
                 if alloc.align < align {
                     return Err(EvalError::AlignmentCheckFailed {
                         has: alloc.align,
@@ -336,18 +308,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Err(EvalError::PointerOutOfBounds { ptr, access, allocation_size });
         }
         Ok(())
-    }
-
-    pub(crate) fn mark_packed(&mut self, ptr: MemoryPointer, len: u64) {
-        self.packed.insert(Entry {
-            alloc_id: ptr.alloc_id,
-            packed_start: ptr.offset,
-            packed_end: ptr.offset + len,
-        });
-    }
-
-    pub(crate) fn clear_packed(&mut self) {
-        self.packed.clear();
     }
 
     pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
@@ -424,20 +384,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
         return Ok(None);
     }
-}
-
-// The derived `Ord` impl sorts first by the first field, then, if the fields are the same
-// by the second field, and if those are the same, too, then by the third field.
-// This is exactly what we need for our purposes, since a range within an allocation
-// will give us all `Entry`s that have that `AllocId`, and whose `packed_start` is <= than
-// the one we're looking for, but not > the end of the range we're checking.
-// At the same time the `packed_end` is irrelevant for the sorting and range searching, but used for the check.
-// This kind of search breaks, if `packed_end < packed_start`, so don't do that!
-#[derive(Eq, PartialEq, Ord, PartialOrd)]
-struct Entry {
-    alloc_id: AllocId,
-    packed_start: u64,
-    packed_end: u64,
 }
 
 /// Allocation accessors
@@ -576,7 +522,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&[]);
         }
         // FIXME: check alignment for zst memory accesses?
-        self.check_align(ptr.into(), align, size)?;
+        if self.reads_are_aligned {
+            self.check_align(ptr.into(), align)?;
+        }
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -590,7 +538,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(&mut []);
         }
         // FIXME: check alignment for zst memory accesses?
-        self.check_align(ptr.into(), align, size)?;
+        if self.writes_are_aligned {
+            self.check_align(ptr.into(), align)?;
+        }
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);

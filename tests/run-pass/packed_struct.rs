@@ -5,7 +5,7 @@ struct S {
 }
 
 fn main() {
-    let x = S {
+    let mut x = S {
         a: 42,
         b: 99,
     };
@@ -16,4 +16,7 @@ fn main() {
     // can't do `assert_eq!(x.a, 42)`, because `assert_eq!` takes a reference
     assert_eq!({x.a}, 42);
     assert_eq!({x.b}, 99);
+
+    x.b = 77;
+    assert_eq!({x.b}, 77);
 }

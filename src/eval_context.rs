@@ -446,6 +446,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let dest = Lvalue::Ptr {
             ptr: dest_ptr.into(),
             extra: LvalueExtra::DowncastVariant(variant_idx),
+            aligned: true,
         };
 
         self.assign_fields(dest, dest_ty, operands)
@@ -496,8 +497,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                let value = self.eval_operand(operand)?;
+                let (value, aligned) = self.eval_operand_maybe_unaligned(operand)?;
+                self.memory.reads_are_aligned = aligned;
                 self.write_value(value, dest, dest_ty)?;
+                self.memory.reads_are_aligned = true;
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
@@ -528,15 +531,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.inc_step_counter_and_check_limit(operands.len() as u64)?;
                 use rustc::ty::layout::Layout::*;
                 match *dest_layout {
-                    Univariant { ref variant, .. } => {
-                        if variant.packed {
-                            let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
-                            self.memory.mark_packed(ptr, variant.stride().bytes());
-                        }
-                        self.assign_fields(dest, dest_ty, operands)?;
-                    }
-
-                    Array { .. } => {
+                    Univariant { .. } | Array { .. } => {
                         self.assign_fields(dest, dest_ty, operands)?;
                     }
 
@@ -547,10 +542,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 .expect("broken mir: Adt variant id invalid")
                                 .to_u128_unchecked();
                             let discr_size = discr.size().bytes();
-                            if variants[variant].packed {
-                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
-                                self.memory.mark_packed(ptr, variants[variant].stride().bytes());
-                            }
 
                             self.assign_discr_and_fields(
                                 dest,
@@ -587,12 +578,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
 
-                    StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
+                    StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
-                            if nonnull.packed {
-                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
-                                self.memory.mark_packed(ptr, nonnull.stride().bytes());
-                            }
                             if nndiscr == variant as u64 {
                                 self.assign_fields(dest, dest_ty, operands)?;
                             } else {
@@ -682,7 +669,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
-                let (ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
+                // We ignore the alignment of the lvalue here -- this rvalue produces sth. of type &, which must always be aligned.
+                let (ptr, extra, _aligned) = self.force_allocation(src)?.to_ptr_extra_aligned();
                 let ty = self.lvalue_ty(lvalue);
 
                 let val = match extra {
@@ -695,7 +683,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 // Check alignment and non-NULLness.
                 let (_, align) = self.size_and_align_of_dst(ty, val)?;
-                self.memory.check_align(ptr, align, 0)?;
+                self.memory.check_align(ptr, align)?;
 
                 self.write_value(val, dest, dest_ty)?;
             }
@@ -967,7 +955,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.value_to_primval(value, ty)
     }
 
-    pub(super) fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn eval_operand_maybe_unaligned(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, (Value, bool)> {
         use rustc::mir::Operand::*;
         match *op {
             Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
@@ -993,9 +981,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 };
 
-                Ok(value)
+                Ok((value, true))
             }
         }
+    }
+
+    pub(super) fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
+        // This is called when the packed flag is not taken into account. Ignore alignment.
+        Ok(self.eval_operand_maybe_unaligned(op)?.0)
     }
 
     pub(super) fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
@@ -1131,9 +1124,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_value_possibly_by_val(src_val, write_dest, dest.value, dest_ty)
             },
 
-            Lvalue::Ptr { ptr, extra } => {
+            Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_value_to_ptr(src_val, ptr, dest_ty)
+                self.memory.writes_are_aligned = aligned;
+                let r = self.write_value_to_ptr(src_val, ptr, dest_ty);
+                self.memory.writes_are_aligned = true;
+                r
             }
 
             Lvalue::Local { frame, local } => {
