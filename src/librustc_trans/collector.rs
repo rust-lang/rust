@@ -209,6 +209,7 @@ use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use trans_item::{TransItem, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
+use back::symbol_export::ExportedSymbols;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {
@@ -293,13 +294,14 @@ impl<'tcx> InliningMap<'tcx> {
 }
 
 pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                                                 exported_symbols: &ExportedSymbols,
                                                  mode: TransItemCollectionMode)
                                                  -> (FxHashSet<TransItem<'tcx>>,
                                                      InliningMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
     scx.tcx().dep_graph.with_ignore(|| {
-        let roots = collect_roots(scx, mode);
+        let roots = collect_roots(scx, exported_symbols, mode);
 
         debug!("Building translation item graph, beginning at roots");
         let mut visited = FxHashSet();
@@ -321,6 +323,7 @@ pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                           exported_symbols: &ExportedSymbols,
                            mode: TransItemCollectionMode)
                            -> Vec<TransItem<'tcx>> {
     debug!("Collecting roots");
@@ -330,6 +333,7 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         let mut visitor = RootCollector {
             scx: scx,
             mode: mode,
+            exported_symbols,
             output: &mut roots,
         };
 
@@ -853,6 +857,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
 
 struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     scx: &'b SharedCrateContext<'a, 'tcx>,
+    exported_symbols: &'b ExportedSymbols,
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
 }
@@ -908,20 +913,19 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 // const items only generate translation items if they are
                 // actually used somewhere. Just declaring them is insufficient.
             }
-            hir::ItemFn(_, _, constness, _, ref generics, _) => {
-                let is_const = match constness {
-                    hir::Constness::Const => true,
-                    hir::Constness::NotConst => false,
-                };
+            hir::ItemFn(..) => {
+                let tcx = self.scx.tcx();
+                let def_id = tcx.hir.local_def_id(item.id);
 
-                if !generics.is_type_parameterized() &&
-                   (!is_const || self.mode == TransItemCollectionMode::Eager) {
-                    let def_id = self.scx.tcx().hir.local_def_id(item.id);
+                if (self.mode == TransItemCollectionMode::Eager ||
+                    !tcx.is_const_fn(def_id) ||
+                    self.exported_symbols.local_exports().contains(&item.id)) &&
+                   !item_has_type_parameters(tcx, def_id) {
 
                     debug!("RootCollector: ItemFn({})",
-                           def_id_to_string(self.scx.tcx(), def_id));
+                           def_id_to_string(tcx, def_id));
 
-                    let instance = Instance::mono(self.scx.tcx(), def_id);
+                    let instance = Instance::mono(tcx, def_id);
                     self.output.push(TransItem::Fn(instance));
                 }
             }
@@ -935,45 +939,29 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.node {
-            hir::ImplItemKind::Method(hir::MethodSig {
-                constness,
-                ref generics,
-                ..
-            }, _) => {
-                let hir_map = &self.scx.tcx().hir;
-                let parent_node_id = hir_map.get_parent_node(ii.id);
-                let is_impl_generic = || match hir_map.expect_item(parent_node_id) {
-                    &hir::Item {
-                        node: hir::ItemImpl(_, _, _, ref generics, ..),
-                        ..
-                    } => {
-                        generics.is_type_parameterized()
-                    }
-                    _ => {
-                        bug!()
-                    }
-                };
+            hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
+                let tcx = self.scx.tcx();
+                let def_id = tcx.hir.local_def_id(ii.id);
 
-                let is_const = match constness {
-                    hir::Constness::Const => true,
-                    hir::Constness::NotConst => false,
-                };
-
-                if (!is_const || self.mode == TransItemCollectionMode::Eager) &&
-                   !generics.is_type_parameterized() &&
-                   !is_impl_generic() {
-                    let def_id = self.scx.tcx().hir.local_def_id(ii.id);
-
+                if (self.mode == TransItemCollectionMode::Eager ||
+                    !tcx.is_const_fn(def_id) ||
+                    self.exported_symbols.local_exports().contains(&ii.id)) &&
+                   !item_has_type_parameters(tcx, def_id) {
                     debug!("RootCollector: MethodImplItem({})",
-                           def_id_to_string(self.scx.tcx(), def_id));
+                           def_id_to_string(tcx, def_id));
 
-                    let instance = Instance::mono(self.scx.tcx(), def_id);
+                    let instance = Instance::mono(tcx, def_id);
                     self.output.push(TransItem::Fn(instance));
                 }
             }
             _ => { /* Nothing to do here */ }
         }
     }
+}
+
+fn item_has_type_parameters<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    let generics = tcx.generics_of(def_id);
+    generics.parent_types as usize + generics.types.len() > 0
 }
 
 fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,

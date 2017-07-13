@@ -1301,7 +1301,9 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
 
     let (items, inlining_map) =
         time(time_passes, "translation item collection", || {
-            collector::collect_crate_translation_items(&scx, collection_mode)
+            collector::collect_crate_translation_items(&scx,
+                                                       exported_symbols,
+                                                       collection_mode)
     });
 
     assert_symbols_are_distinct(scx.tcx(), items.iter());

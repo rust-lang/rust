@@ -576,7 +576,6 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
             cgu_name: cgu.name.clone()
         };
 
-        'item:
         for (accessee, &mut (ref mut linkage, _)) in &mut cgu.items {
             if !partitioning.internalization_candidates.contains(accessee) {
                 // This item is no candidate for internalizing, so skip it.
@@ -594,7 +593,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             .any(|placement| *placement != home_cgu) {
                     // Found an accessor from another CGU, so skip to the next
                     // item without marking this one as internal.
-                    continue 'item;
+                    continue
                 }
             }
 
