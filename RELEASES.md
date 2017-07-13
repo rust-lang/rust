@@ -29,7 +29,7 @@ Compiler
   `aborting due to N previous errors`][42150] This was previously inaccurate and
   would only count certain kinds of errors.
 - [The compiler now supports Visual Studio 2017][42225]
-- [The compiler is now be built against LLVM 4.0 by default][40123]
+- [The compiler is now be built against LLVM 4.0.1 by default][42948]
 - [Added a lot][42264] of [new error codes][42302]
 - [Added `target-feature=+crt-static` option][37406] [RFC 1721] Which allows
   libraries with C Run-time Libraries(CRT) to be statically linked.
@@ -53,15 +53,13 @@ Stabilized APIs
 
 - [`OsString::shrink_to_fit`]
 - [`cmp::Reverse`]
-- [`ops::RangeArgument`]
-- [`ops::Bound`]
 - [`Command::envs`]
 - [`thread::ThreadId`]
 
 Cargo
 -----
 
-- [Build scripts can now add environment variables the environment
+- [Build scripts can now add environment variables to the environment
   the crate is being compiled in.
   Example: `println!("cargo:rustc-env=FOO=bar");`][cargo/3929]
 - [Subcommands now replace the current process rather than spawning a new
@@ -100,6 +98,9 @@ Compatibility Notes
 - [`MutexGuard<T>` may only be `Sync` if `T` is `Sync`.][41624]
 - [`-Z` flags are now no longer allowed to be used on the stable
   compiler.][41751] This has been a warning for a year previous to this.
+- [As a result of the `-Z` flag change, the `cargo-check` plugin no
+  longer works][42844]. Users should migrate to the built-in `check`
+  command, which has been available since 1.16.
 - [Ending a float literal with `._` is now a hard error.
   Example: `42._` .][41946]
 - [Publicly reexporting a private enum variant is now a hard error][34537] This was
@@ -117,6 +118,12 @@ Compatibility Notes
   a warning.
 - [From the pound escape, lines consisting of multiple `#`s are
   now visible][41785]
+- [It is an error to reexport private enum variants][42460]. This is
+  known to break a number of crates that depend on an older version of
+  mustache.
+- [On Windows, if `VCINSTALLDIR` is set incorrectly, `rustc` will try
+  to use it to find the linker, and the build will fail where it did
+  not previously][42607]
 
 [34537]: https://github.com/rust-lang/rust/issues/34537
 [36886]: https://github.com/rust-lang/rust/issues/36886
@@ -126,7 +133,6 @@ Compatibility Notes
 [36892]: https://github.com/rust-lang/rust/issues/36892
 [37406]: https://github.com/rust-lang/rust/issues/37406
 [39983]: https://github.com/rust-lang/rust/pull/39983
-[40123]: https://github.com/rust-lang/rust/pull/40123
 [41145]: https://github.com/rust-lang/rust/pull/41145
 [41192]: https://github.com/rust-lang/rust/pull/41192
 [41258]: https://github.com/rust-lang/rust/pull/41258
@@ -151,7 +157,11 @@ Compatibility Notes
 [42225]: https://github.com/rust-lang/rust/pull/42225
 [42264]: https://github.com/rust-lang/rust/pull/42264
 [42302]: https://github.com/rust-lang/rust/pull/42302
+[42460]: https://github.com/rust-lang/rust/issues/42460
+[42607]: https://github.com/rust-lang/rust/issues/42607
 [42740]: https://github.com/rust-lang/rust/pull/42740
+[42844]: https://github.com/rust-lang/rust/issues/42844
+[42948]: https://github.com/rust-lang/rust/pull/42948
 [RFC 1444]: https://github.com/rust-lang/rfcs/pull/1444
 [RFC 1506]: https://github.com/rust-lang/rfcs/pull/1506
 [RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
@@ -160,8 +170,6 @@ Compatibility Notes
 [`Command::envs`]: https://doc.rust-lang.org/nightly/std/process/struct.Command.html#method.envs
 [`OsString::shrink_to_fit`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to_fit
 [`cmp::Reverse`]: https://doc.rust-lang.org/std/cmp/struct.Reverse.html
-[`ops::Bound`]: https://doc.rust-lang.org/std/ops/enum.Bound.html
-[`ops::RangeArgument`]: https://doc.rust-lang.org/std/ops/trait.RangeArgument.html
 [`thread::ThreadId`]: https://doc.rust-lang.org/std/thread/struct.ThreadId.html
 [cargo/3929]: https://github.com/rust-lang/cargo/pull/3929
 [cargo/3954]: https://github.com/rust-lang/cargo/pull/3954
