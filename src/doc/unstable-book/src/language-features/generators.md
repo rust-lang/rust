@@ -9,7 +9,10 @@ The tracking issue for this feature is: [#43122]
 The `generators` feature gate in Rust allows you to define generator or
 coroutine literals. A generator is a "resumable function" that syntactically
 resembles a closure but compiles to much different semantics in the compiler
-itself.
+itself. The primary feature of a generator is that it can be suspended during
+execution to be resumed at a later date. Generators use the `yield` keyword to
+"return", and then the caller can `resume` a generator to resume execution just
+after the `yield` keyword.
 
 Generators are an extra-unstable feature in the compiler right now. Added in
 [RFC 2033] they're mostly intended right now as a information/constraint
@@ -48,7 +51,7 @@ Generators are closure-like literals which can contain a `yield` statement. The
 `yield` statement takes an optional expression of a value to yield out of the
 generator. All generator literals implement the `Generator` trait in the
 `std::ops` module. The `Generator` trait has one main method, `resume`, which
-resumes execution of the closure at the previous suspension point.
+resumes execution of the generator at the previous suspension point.
 
 An example of the control flow of generators is that the following example
 prints all numbers in order:
@@ -86,10 +89,10 @@ The `Generator` trait in `std::ops` currently looks like:
 # #![feature(generator_trait)]
 # use std::ops::State;
 
-pub trait Generator<Arg = ()> {
+pub trait Generator {
     type Yield;
     type Return;
-    fn resume(&mut self, arg: Arg) -> State<Self::Yield, Self::Return>;
+    fn resume(&mut self) -> State<Self::Yield, Self::Return>;
 }
 ```
 
@@ -145,6 +148,10 @@ closure-like semantics. Namely:
 
 * Whenever a generator is dropped it will drop all captured environment
   variables.
+
+Note that unlike closures generators at this time cannot take any arguments.
+That is, generators must always look like `|| { ... }`. This restriction may be
+lifted at a future date, the design is ongoing!
 
 ### Generators as state machines
 
