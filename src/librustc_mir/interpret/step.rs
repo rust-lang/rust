@@ -5,14 +5,14 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
-use rustc::mir::{self, ValidationOp};
+use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::Layout;
 use rustc::ty::{subst, self};
 
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
-use lvalue::{Global, GlobalId, Lvalue};
+use lvalue::{Global, GlobalId, Lvalue, ValidationCtx};
 use value::{Value, PrimVal};
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
@@ -132,19 +132,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             // Validity checks.
             Validate(ref op, ref lvalues) => {
-                match *op {
-                    ValidationOp::Acquire => {
-                        for operand in lvalues {
-                            let lvalue = self.eval_lvalue(&operand.lval)?;
-                            self.acquire_valid(lvalue, operand.ty, hir::MutMutable)?;
-                        }
-                    }
-                    _ => { /* not yet implemented */ }
+                for operand in lvalues {
+                    let lvalue = self.eval_lvalue(&operand.lval)?;
+                    self.validate(lvalue, operand.ty, ValidationCtx::new(*op))?;
                 }
             }
 
             // Just a borrowck thing
-            EndRegion(..) => {}
+            EndRegion(ce) => {
+                self.memory.locks_lifetime_ended(Some(ce));
+            }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.

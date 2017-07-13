@@ -1,5 +1,5 @@
 use rustc::hir::Mutability as TyMutability;
-use rustc::mir;
+use rustc::mir::{self, ValidationOp};
 use rustc::ty::layout::{Size, Align};
 use rustc::ty::{self, Ty};
 use rustc::middle::region::CodeExtent;
@@ -469,6 +469,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 }
 
 // Validity checks
+#[derive(Copy, Clone, Debug)]
+pub struct ValidationCtx {
+    op: ValidationOp,
+    region: Option<CodeExtent>,
+    mutbl: TyMutability,
+}
+
+impl ValidationCtx {
+    pub fn new(op: ValidationOp) -> Self {
+        ValidationCtx {
+            op, region: None, mutbl: TyMutability::MutMutable,
+        }
+    }
+}
+
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn validate_variant(
         &mut self,
@@ -476,38 +491,44 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         variant: &ty::VariantDef,
         subst: &ty::subst::Substs<'tcx>,
-        outer_mutbl: TyMutability
+        vctx: ValidationCtx,
     ) -> EvalResult<'tcx> {
         // TODO: Take visibility/privacy into account.
         for (idx, field) in variant.fields.iter().enumerate() {
             let field_ty = field.ty(self.tcx, subst);
             let field_lvalue = self.lvalue_field(lvalue, idx, ty, field_ty)?;
-            self.acquire_valid(field_lvalue, field_ty, outer_mutbl)?;
+            self.validate(field_lvalue, field_ty, vctx)?;
         }
         Ok(())
     }
 
-    fn validate_ptr(&mut self, val: Value, region: Option<CodeExtent>, pointee_ty: Ty<'tcx>, mutbl: TyMutability) -> EvalResult<'tcx> {
+    fn validate_ptr(&mut self, val: Value, pointee_ty: Ty<'tcx>, vctx: ValidationCtx) -> EvalResult<'tcx> {
         use self::TyMutability::*;
 
         // Acquire lock
         let (len, _) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = val.into_ptr(&mut self.memory)?.to_ptr()?;
-        let access = match mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
-        self.memory.acquire_lock(ptr, len, region, access)?;
+        let access = match vctx.mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
+        match vctx.op {
+            ValidationOp::Acquire => self.memory.acquire_lock(ptr, len, vctx.region, access)?,
+            ValidationOp::Release => self.memory.release_lock_until(ptr, len, None)?,
+            ValidationOp::Suspend(region) => self.memory.release_lock_until(ptr, len, Some(region))?,
+        }
 
         // Recurse
         let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
-        self.acquire_valid(pointee_lvalue, pointee_ty, mutbl)
+        self.validate(pointee_lvalue, pointee_ty, vctx)
     }
 
-    pub(super) fn acquire_valid(&mut self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>, outer_mutbl: TyMutability) -> EvalResult<'tcx> {
+    /// Validate the lvalue at the given type. If `release` is true, just do a release of all write locks
+    pub(super) fn validate(&mut self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>, mut vctx: ValidationCtx) -> EvalResult<'tcx>
+    {
         use rustc::ty::TypeVariants::*;
         use rustc::ty::RegionKind::*;
         use rustc::ty::AdtKind;
         use self::TyMutability::*;
 
-        trace!("Validating {:?} at type {}, outer mutability {:?}", lvalue, ty, outer_mutbl);
+        trace!("Validating {:?} at type {}, context {:?}", lvalue, ty, vctx);
         match ty.sty {
             TyChar | TyInt(_) | TyUint(_) | TyRawPtr(_) => {
                 // TODO: Make sure these are not undef.
@@ -520,17 +541,29 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             TyRef(region, ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
                 let val = self.read_lvalue(lvalue)?;
-                let combined_mutbl = match outer_mutbl { MutMutable => mutbl, MutImmutable => MutImmutable };
-                let extent = match *region {
-                    ReScope(extent) => Some(extent),
-                    _ => None,
-                };
-                self.validate_ptr(val, extent, pointee_ty, combined_mutbl)
+                // Sharing restricts our context
+                if mutbl == MutImmutable {
+                    // Actually, in case of releasing-validation, this means we are done.
+                    if vctx.op != ValidationOp::Acquire {
+                        return Ok(());
+                    }
+                    vctx.mutbl = MutImmutable;
+                }
+                // Inner lifetimes *outlive* outer ones, so only if we have no lifetime restriction yet,
+                // we record the region of this borrow to the context.
+                if vctx.region == None {
+                    match *region {
+                        ReScope(ce) => vctx.region = Some(ce),
+                        // It is possible for us to encode erased lifetimes here because the lifetimes in
+                        // this functions' Subst will be erased.
+                        _ => {},
+                    }
+                }
+                self.validate_ptr(val, pointee_ty, vctx)
             }
             TyAdt(adt, _) if adt.is_box() => {
                 let val = self.read_lvalue(lvalue)?;
-                // TODO: The region can't always be None.  It must take outer borrows into account.
-                self.validate_ptr(val, None, ty.boxed_ty(), outer_mutbl)
+                self.validate_ptr(val, ty.boxed_ty(), vctx)
             }
             TySlice(elem_ty) => {
                 let len = match lvalue {
@@ -539,7 +572,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 for i in 0..len {
                     let inner_lvalue = self.lvalue_index(lvalue, ty, i)?;
-                    self.acquire_valid(inner_lvalue, elem_ty, outer_mutbl)?;
+                    self.validate(inner_lvalue, elem_ty, vctx)?;
                 }
                 Ok(())
             }
@@ -568,14 +601,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             let lvalue = self.eval_lvalue_projection(lvalue, ty, &mir::ProjectionElem::Downcast(adt, variant_idx))?;
 
                             // Recursively validate the fields
-                            self.validate_variant(lvalue, ty, variant, subst, outer_mutbl)
+                            self.validate_variant(lvalue, ty, variant, subst, vctx)
                         } else {
                             // No fields, nothing left to check.  Downcasting may fail, e.g. in case of a CEnum.
                             Ok(())
                         }
                     }
                     AdtKind::Struct => {
-                        self.validate_variant(lvalue, ty, adt.struct_variant(), subst, outer_mutbl)
+                        self.validate_variant(lvalue, ty, adt.struct_variant(), subst, vctx)
                     }
                     AdtKind::Union => {
                         // No guarantees are provided for union types.
