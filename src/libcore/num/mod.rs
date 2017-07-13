@@ -2504,26 +2504,6 @@ impl fmt::Display for TryFromIntError {
     }
 }
 
-macro_rules! same_sign_try_from_int_impl {
-    ($storage:ty, $target:ty, $($source:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
-        impl TryFrom<$source> for $target {
-            type Error = TryFromIntError;
-
-            #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                let min = <$target>::min_value() as $storage;
-                let max = <$target>::max_value() as $storage;
-                if u as $storage < min || u as $storage > max {
-                    Err(TryFromIntError(()))
-                } else {
-                    Ok(u as $target)
-                }
-            }
-        }
-    )*}
-}
-
 macro_rules! same_sign_try_from_wider_impl {
     ($target:ty, $($source:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
@@ -2553,29 +2533,31 @@ macro_rules! trivial_try_from_impl {
 
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                // Using into as an extra check on the macro arguments.
                 Ok(u as $target)
             }
         }
     )*}
 }
 
-// The current implementations assume that usize/isize <= 64 bits wide.
+#[cfg(not(any(
+    target_pointer_width = "16", target_pointer_width = "32", target_pointer_width = "64")))]
+compile_error!("The current implementations of try_from on usize/isize assumes that \
+                the pointer width is either 16, 32, or 64");
 // (source, $(target))
 trivial_try_from_impl!(u8, u8, u16, i16, u32, i32, u64, i64, u128, i128, usize);
-trivial_try_from_impl!(u16, u16, u32, i32, u64, i64, u128, i128);
+trivial_try_from_impl!(u16, u16, u32, i32, u64, i64, u128, i128, usize);
 trivial_try_from_impl!(u32, u32, u64, i64, u128, i128);
 trivial_try_from_impl!(u64, u64, u128, i128);
 trivial_try_from_impl!(u128, u128);
 trivial_try_from_impl!(usize, usize, u128, i128);
+trivial_try_from_impl!(usize, u64);
 
 trivial_try_from_impl!(i8, i8, i16, i32, i64, i128, isize);
-trivial_try_from_impl!(i16, i16, i32, i64, i128);
+trivial_try_from_impl!(i16, i16, i32, i64, i128, isize);
 trivial_try_from_impl!(i32, i32, i64, i128);
 trivial_try_from_impl!(i64, i64, i128);
 trivial_try_from_impl!(i128, i128);
 trivial_try_from_impl!(isize, isize, i128);
-trivial_try_from_impl!(usize, u64);
 trivial_try_from_impl!(isize, i64);
 
 // (target, $(source))
@@ -2587,17 +2569,64 @@ same_sign_try_from_wider_impl!(u32, u64, u128);
 same_sign_try_from_wider_impl!(i32, i64, i128);
 same_sign_try_from_wider_impl!(u64, u128);
 same_sign_try_from_wider_impl!(i64, i128);
+same_sign_try_from_wider_impl!(usize, u128);
+same_sign_try_from_wider_impl!(isize, u128);
 
-// Need to make sure the storage component is large enough for these.
-// (storage, target, $(source))
-same_sign_try_from_int_impl!(u64, usize, u64, u32, u16);
-same_sign_try_from_int_impl!(i64, isize, i64, i32, i16);
-same_sign_try_from_int_impl!(u64, u16, usize);
-same_sign_try_from_int_impl!(i64, i16, isize);
-same_sign_try_from_int_impl!(u64, u32, usize);
-same_sign_try_from_int_impl!(i64, i32, isize);
-same_sign_try_from_int_impl!(u128, usize, u128);
-same_sign_try_from_int_impl!(i128, isize, i128);
+macro_rules! cfg_block {
+    ($(#[$attr:meta]{$($it:item)*})*) => {$($(
+        #[$attr]
+        $it
+    )*)*}
+}
+
+
+cfg_block!(
+    // Platform specific impls for conversions with the same sign:
+    // xsize -> x32
+    // xsize -> x16
+    // x32 -> xsize
+    // x64 -> xsize
+
+    // 16-bit.
+    #[cfg(target_pointer_width = "16")] {
+        // x32 -> xsize
+        same_sign_try_from_wider_impl!(usize, u32);
+        same_sign_try_from_wider_impl!(isize, i32);
+        // xsize -> x16
+        trivial_try_from_impl!(usize, u16);
+        trivial_try_from_impl!(isize, i16);
+    }
+
+    // Same for 16 and 32-bit platforms.
+    #[cfg(any(target_pointer_width = "16", target_pointer_width = "32"))] {
+        // xsize -> x32
+        trivial_try_from_impl!(usize, u32);
+        trivial_try_from_impl!(isize, i32);
+        // x64 -> xsize
+        same_sign_try_from_wider_impl!(usize, u64);
+        same_sign_try_from_wider_impl!(isize, u64);
+    }
+
+    // Same for 32 and 64-bit platforms.
+    #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))] {
+        // xsize -> x16
+        same_sign_try_from_wider_impl!(u16, usize);
+        same_sign_try_from_wider_impl!(i16, isize);
+        // x32 -> xsize
+        trivial_try_from_impl!(u32, usize);
+        trivial_try_from_impl!(i32, isize);
+    }
+
+    // 64-bit.
+    #[cfg(target_pointer_width = "64")] {
+        // xsize -> x32
+        same_sign_try_from_wider_impl!(u32, usize);
+        same_sign_try_from_wider_impl!(i32, isize);
+        // x64 -> xsize
+        trivial_try_from_impl!(u64, usize);
+        trivial_try_from_impl!(i64, isize);
+    }
+);
 
 macro_rules! unsigned_from_signed_impl {
     ($unsigned:ty, $($signed:ty, $storage:ty),*) => {$(
