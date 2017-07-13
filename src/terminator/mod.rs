@@ -855,7 +855,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "sysconf" => {
                 let name = self.value_to_primval(args[0], usize)?.to_u64()?;
                 trace!("sysconf() called with name {}", name);
-                // cache the sysconf integers
+                // cache the sysconf integers via miri's global cache
                 let paths = &[
                     (&["libc", "_SC_PAGESIZE"], PrimVal::Bytes(4096)),
                     (&["libc", "_SC_GETPW_R_SIZE_MAX"], PrimVal::from_i128(-1)),
@@ -863,31 +863,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let mut result = None;
                 for &(path, path_value) in paths {
                     if let Ok(instance) = self.resolve_path(path) {
-                        use lvalue::{Global, GlobalId};
+                        use lvalue::GlobalId;
                         let cid = GlobalId { instance, promoted: None };
+                        // compute global if not cached
                         let val = match self.globals.get(&cid).map(|glob| glob.value) {
-                            Some(value) => value,
-                            None => {
-                                let mir = self.load_mir(instance.def)?;
-                                self.globals.insert(cid, Global::uninitialized(mir.return_ty));
-                                let cleanup = StackPopCleanup::MarkStatic(false);
-                                let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
-                                trace!("pushing stack frame for global: {}", name);
-                                let frame = self.stack.len();
-                                self.push_stack_frame(
-                                    instance,
-                                    mir.span,
-                                    mir,
-                                    Lvalue::Global(cid),
-                                    cleanup,
-                                )?;
-                                while self.stack.len() != frame {
-                                    self.step()?;
-                                }
-                                self.globals.get(&cid).expect("we just computed the global").value
-                            }
+                            Some(value) => self.value_to_primval(value, usize)?.to_u64()?,
+                            None => ::const_eval::eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
                         };
-                        let val = self.value_to_primval(val, usize)?.to_u64()?;
                         if val == name {
                             result = Some(path_value);
                             break;

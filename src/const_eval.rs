@@ -1,22 +1,20 @@
-use rustc::hir::def_id::DefId;
 use rustc::traits::Reveal;
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Ty, Instance};
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue};
+use value::PrimVal;
 use rustc_const_math::ConstInt;
 use eval_context::{EvalContext, StackPopCleanup};
 
-pub fn eval_body_as_integer<'a, 'tcx>(
+pub fn eval_body_as_primval<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    (def_id, substs): (DefId, &'tcx Substs<'tcx>),
-) -> EvalResult<'tcx, ConstInt> {
+    instance: Instance<'tcx>,
+) -> EvalResult<'tcx, (PrimVal, Ty<'tcx>)> {
     let limits = ::ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, limits);
-    let instance = ecx.resolve_associated_const(def_id, substs);
     let cid = GlobalId { instance, promoted: None };
-    if ecx.tcx.has_attr(def_id, "linkage") {
+    if ecx.tcx.has_attr(instance.def_id(), "linkage") {
         return Err(EvalError::NotConst("extern global".to_string()));
     }
     
@@ -28,7 +26,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
                 ty::ParamEnv::empty(Reveal::All),
                 mir.span);
         let cleanup = StackPopCleanup::MarkStatic(mutable);
-        let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
+        let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
         trace!("pushing stack frame for global: {}", name);
         ecx.push_stack_frame(
             instance,
@@ -41,11 +39,19 @@ pub fn eval_body_as_integer<'a, 'tcx>(
         while ecx.step()? {}
     }
     let value = ecx.globals.get(&cid).expect("global not cached").value;
-    let prim = ecx.value_to_primval(value, mir.return_ty)?.to_bytes()?;
+    Ok((ecx.value_to_primval(value, mir.return_ty)?, mir.return_ty))
+}
+
+pub fn eval_body_as_integer<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: Instance<'tcx>,
+) -> EvalResult<'tcx, ConstInt> {
+    let (prim, ty) = eval_body_as_primval(tcx, instance)?;
+    let prim = prim.to_bytes()?;
     use syntax::ast::{IntTy, UintTy};
     use rustc::ty::TypeVariants::*;
     use rustc_const_math::{ConstIsize, ConstUsize};
-    Ok(match mir.return_ty.sty {
+    Ok(match ty.sty {
         TyInt(IntTy::I8) => ConstInt::I8(prim as i128 as i8),
         TyInt(IntTy::I16) => ConstInt::I16(prim as i128 as i16),
         TyInt(IntTy::I32) => ConstInt::I32(prim as i128 as i32),
