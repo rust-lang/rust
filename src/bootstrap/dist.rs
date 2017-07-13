@@ -834,9 +834,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     let cargo_installer = dist.join(format!("{}-{}.tar.gz",
                                             pkgname(build, "cargo"),
                                             target));
-    let rls_installer = dist.join(format!("{}-{}.tar.gz",
-                                          pkgname(build, "rls"),
-                                          target));
     let analysis_installer = dist.join(format!("{}-{}.tar.gz",
                                                pkgname(build, "rust-analysis"),
                                                target));
@@ -867,7 +864,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
     // the std files during uninstall. To do this ensure that rustc comes
     // before rust-std in the list below.
-    let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
+    let mut tarballs = vec![rustc_installer, cargo_installer,
                             analysis_installer, docs_installer, std_installer];
     if target.contains("pc-windows-gnu") {
         tarballs.push(mingw_installer);
@@ -1184,7 +1181,6 @@ pub fn hash_and_sign(build: &Build) {
     cmd.arg(today.trim());
     cmd.arg(build.rust_package_vers());
     cmd.arg(build.package_vers(&build.release_num("cargo")));
-    cmd.arg(build.package_vers(&build.release_num("rls")));
     cmd.arg(addr);
 
     t!(fs::create_dir_all(distdir(build)));
