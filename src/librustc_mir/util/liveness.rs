@@ -46,7 +46,10 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
                     location: Location) {
         if let Lvalue::Local(local) = *lvalue {
             match context {
-                LvalueContext::Store | LvalueContext::Call => {
+                LvalueContext::Store |
+                LvalueContext::Call |
+                LvalueContext::StorageLive |
+                LvalueContext::StorageDead => {
                     self.defs.add(&local);
                 }
                 LvalueContext::Projection(..) |
@@ -59,7 +62,6 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
                         self.uses.add(&local);
                     }
                 }
-                LvalueContext::StorageLive | LvalueContext::StorageDead => (),
             }
         }
 
