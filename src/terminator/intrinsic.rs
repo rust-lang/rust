@@ -396,9 +396,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "transmute" => {
                 let src_ty = substs.type_at(0);
                 let ptr = self.force_allocation(dest)?.to_ptr()?;
-                self.memory.begin_unaligned_read(false);
+                self.memory.begin_unaligned_write(/*aligned*/false);
                 self.write_value_to_ptr(arg_vals[0], ptr.into(), src_ty)?;
-                self.memory.end_unaligned_read();
+                self.memory.end_unaligned_write();
             }
 
             "unchecked_shl" => {
