@@ -86,9 +86,10 @@ impl<'tcx> Lvalue<'tcx> {
     }
 
     pub(super) fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
-        let (ptr, extra, aligned) = self.to_ptr_extra_aligned();
+        let (ptr, extra, _aligned) = self.to_ptr_extra_aligned();
+        // At this point, we forget about the alignment information -- the lvalue has been turned into a reference,
+        // and no matter where it came from, it now must be aligned.
         assert_eq!(extra, LvalueExtra::None);
-        assert_eq!(aligned, true, "tried converting an unaligned lvalue into a ptr");
         ptr.to_ptr()
     }
 

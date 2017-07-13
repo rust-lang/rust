@@ -1575,9 +1575,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Err(err) => {
                     panic!("Failed to access local: {:?}", err);
                 }
-                Ok(Value::ByRef(ptr, _aligned)) => match ptr.into_inner_primval() {
+                Ok(Value::ByRef(ptr, aligned)) => match ptr.into_inner_primval() {
                     PrimVal::Ptr(ptr) => {
-                        write!(msg, " by ref:").unwrap();
+                        write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " }).unwrap();
                         allocs.push(ptr.alloc_id);
                     },
                     ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
