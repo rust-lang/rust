@@ -39,9 +39,7 @@ pub mod thread_local;
 pub mod time;
 
 #[cfg(not(test))]
-pub fn init() {
-    
-}
+pub fn init() {}
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno {
