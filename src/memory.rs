@@ -48,7 +48,7 @@ pub enum Kind {
     Rust,
     /// Error if deallocated any other way than `free`
     C,
-    /// Error if deallocated via `rust_deallocate`
+    /// Error if deallocated except during a stack pop
     Stack,
     /// May never be deallocated
     Static,
