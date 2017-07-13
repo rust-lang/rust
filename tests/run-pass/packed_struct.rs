@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+#![feature(unsize, coerce_unsized)]
+
 #[repr(packed)]
 struct S {
     a: i32,
@@ -22,6 +24,25 @@ fn test(t: Test2) {
     assert_eq!(x, 42);
 }
 
+fn test_unsizing() {
+    #[repr(packed)]
+    struct UnalignedPtr<'a, T: ?Sized>
+    where T: 'a,
+    {
+        data: &'a T,
+    }
+
+    impl<'a, T, U> std::ops::CoerceUnsized<UnalignedPtr<'a, U>> for UnalignedPtr<'a, T>
+    where
+        T: std::marker::Unsize<U> + ?Sized,
+        U: ?Sized,
+    { }
+
+    let arr = [1, 2, 3];
+    let arr_unaligned: UnalignedPtr<[i32; 3]> = UnalignedPtr { data: &arr };
+    let _uns: UnalignedPtr<[i32]> = arr_unaligned;
+}
+
 fn main() {
     let mut x = S {
         a: 42,
@@ -39,4 +60,6 @@ fn main() {
     assert_eq!({x.b}, 77);
 
     test(Test2 { x: 0, other: &Test1 { x: 0, other: &42 }});
+
+    test_unsizing();
 }
