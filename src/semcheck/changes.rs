@@ -47,12 +47,10 @@ impl<'a> Default for ChangeCategory {
     }
 }
 
-/// A change record of a change that introduced or removed an item.
+/// A change record of a newly introduced or removed item.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
-/// regard the span of the associated item export. This allows us to sort them by appearance
-/// in the source, but possibly could create conflict later on.
-// TODO: regard the origin of the span as well.
+/// regard the span of the associated item export.
 pub enum UnaryChange {
     /// An item has been added.
     Addition(Export),
@@ -172,7 +170,6 @@ pub enum BinaryChangeType<'tcx> {
 pub use self::BinaryChangeType::*;
 
 impl<'tcx> BinaryChangeType<'tcx> {
-    // TODO: this will need a lot of changes (it's *very* conservative rn)
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
             ItemMadePrivate |
@@ -206,9 +203,7 @@ impl<'tcx> BinaryChangeType<'tcx> {
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the *new* span of the associated item export. This allows us to sort them
-/// by appearance in the *new* source, but possibly could create conflict later on.
-// TODO: we should introduce an invariant that the two exports present are *always*
-// tied together.
+/// by appearance in the *new* source.
 pub struct BinaryChange<'tcx> {
     /// The type of the change affecting the item.
     changes: Vec<(BinaryChangeType<'tcx>, Option<Span>)>,

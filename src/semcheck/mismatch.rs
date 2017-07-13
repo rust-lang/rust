@@ -37,7 +37,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
     {
         Mismatch {
             tcx: tcx,
-            item_queue: id_mapping.construct_queue(),
+            item_queue: id_mapping.toplevel_queue(),
             id_mapping: id_mapping,
             old_crate: old_crate,
         }
@@ -119,22 +119,10 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
                 Some((a_def.did, b_def.did))
             },
             (&TyDynamic(a_obj, a_r), &TyDynamic(b_obj, b_r)) => {
-                // let _ = self.relate(&a_obj, &b_obj);
                 let _ = self.relate(&a_r, &b_r);
-
                 if let (Some(a), Some(b)) = (a_obj.principal(), b_obj.principal()) {
                     let _ = self.relate(&a, &b);
-                    /* println!("kinda adding mapping: {:?} => {:?}",
-                             a.skip_binder().def_id,
-                             b.skip_binder().def_id); */
-                    let a_did = a.skip_binder().def_id;
-                    let b_did = b.skip_binder().def_id;
-                    if !self.id_mapping.contains_id(a_did) && a_did.krate == self.old_crate {
-                        self.id_mapping.add_internal_item(a_did, b_did);
-                    }
-
-                    // TODO: Some((a.skip_binder().def_id, b.skip_binder().def_id))
-                    None
+                    Some((a.skip_binder().def_id, b.skip_binder().def_id))
                 } else {
                     None
                 }
@@ -179,11 +167,10 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
             _ => None,
         };
 
-        if let Some(dids) = matching {
-            if !self.id_mapping.contains_id(dids.0) && dids.0.krate == self.old_crate {
-                // println!("adding mapping: {:?} => {:?}", dids.0, dids.1);
-                self.id_mapping.add_internal_item(dids.0, dids.1);
-                self.item_queue.push_back(dids);
+        if let Some((old_did, new_did)) = matching {
+            if !self.id_mapping.contains_id(old_did) && old_did.krate == self.old_crate {
+                self.id_mapping.add_internal_item(old_did, new_did);
+                self.item_queue.push_back((old_did, new_did));
             }
         }
 

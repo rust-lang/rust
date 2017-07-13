@@ -41,12 +41,12 @@ impl IdMapping {
         true
     }
 
-    /// Add any trait item pair's old and new `DefId`s.
+    /// Add any trait item's old and new `DefId`s.
     pub fn add_trait_item(&mut self, old: Def, new: Def) {
         self.trait_item_mapping.insert(old.def_id(), (old, new));
     }
 
-    /// Add any other item pair's old and new `DefId`s.
+    /// Add any other item's old and new `DefId`s.
     pub fn add_internal_item(&mut self, old: DefId, new: DefId) {
         assert!(!self.internal_mapping.contains_key(&old),
                 "bug: overwriting {:?} => {:?} with {:?}!",
@@ -57,7 +57,7 @@ impl IdMapping {
         self.internal_mapping.insert(old, new);
     }
 
-    /// Add any other item pair's old and new `DefId`s, together with a parent entry.
+    /// Add any other item's old and new `DefId`s, together with a parent entry.
     pub fn add_subitem(&mut self, parent: DefId, old: DefId, new: DefId) {
         self.add_internal_item(old, new);
         self.child_mapping
@@ -97,22 +97,22 @@ impl IdMapping {
     }
 
     /// Construct a queue of toplevel item pairs' `DefId`s.
-    pub fn construct_queue(&self) -> VecDeque<(DefId, DefId)> {
+    pub fn toplevel_queue(&self) -> VecDeque<(DefId, DefId)> {
         self.toplevel_mapping
             .values()
             .map(|&(old, new)| (old.def_id(), new.def_id()))
             .collect()
     }
 
-    /// Iterate over the toplevel item pairs.
-    pub fn toplevel_values<'a>(&'a self) -> impl Iterator<Item = &'a (Def, Def)> + 'a {
+    /// Iterate over the toplevel and trait item pairs.
+    pub fn items<'a>(&'a self) -> impl Iterator<Item = &'a (Def, Def)> + 'a {
         self.toplevel_mapping
             .values()
             .chain(self.trait_item_mapping.values())
     }
 
     /// Iterate over the item pairs of all children of a given item.
-    pub fn children_values<'a>(&'a self, parent: DefId)
+    pub fn children_of<'a>(&'a self, parent: DefId)
         -> Option<impl Iterator<Item = (DefId, DefId)> + 'a>
     {
         self.child_mapping

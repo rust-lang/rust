@@ -126,11 +126,7 @@ impl<'a> WorkInfo<'a> {
 ///
 /// Obtain the local crate and compile it, then fetch the latest version from the registry, and
 /// build it as well.
-///
-/// TODO:
-/// * possibly reduce the complexity by investigating where some of the info can be sourced from
-/// in a more direct fashion
-/// * add proper support to compare two arbitrary versions
+// TODO: possibly reduce the complexity by finding where some info can be taken from directly
 fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     fn parse_arg(opt: &str) -> CargoResult<(&str, &str)> {
         let mut split = opt.split('-');

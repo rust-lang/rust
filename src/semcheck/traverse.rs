@@ -43,12 +43,12 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     }
 
     // third pass
-    for &(old, new) in id_mapping.toplevel_values() {
+    for &(old, new) in id_mapping.items() {
         diff_bounds(&mut changes, tcx, old.def_id(), new.def_id());
     }
 
     // fourth pass
-    for &(old, new) in id_mapping.toplevel_values() {
+    for &(old, new) in id_mapping.items() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
@@ -169,7 +169,6 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               o_def_id,
                                               n_def_id);
                             },
-                            // ADTs for now
                             (Struct(_), Struct(_)) |
                             (Union(_), Union(_)) |
                             (Enum(_), Enum(_)) => {
@@ -532,7 +531,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                       tcx.mk_fn_ptr(new_fn_sig));
         },
         Struct(_) | Enum(_) | Union(_) => {
-            if let Some(children) = id_mapping.children_values(old_def_id) {
+            if let Some(children) = id_mapping.children_of(old_def_id) {
                 for (o_did, n_did) in children {
                     let o_ty = tcx.type_of(o_did);
                     let n_ty = tcx.type_of(n_did);
