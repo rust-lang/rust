@@ -25,7 +25,6 @@ use std::process::{Stdio, Command};
 ///
 /// If no crate with the exact name is present, error out.
 fn exact_search(query: &str) -> CargoResult<Crate> {
-    // TODO: maybe we can get this with less constants :)
     let mut registry = Registry::new("https://crates.io".to_owned(), None);
 
     registry
@@ -184,7 +183,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name)?;
 
     if matches.opt_present("d") {
-        println!("--crate-type=lib --extern old={} -L{} --extern new={} -L{} tests/helper/test2.rs",
+        println!("--extern old={} -L{} --extern new={} -L{}",
                  stable_rlib.display(),
                  stable_deps_output.display(),
                  current_rlib.display(),

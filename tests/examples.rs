@@ -107,7 +107,7 @@ export RUST_SEMVER_CRATE_VERSION=1.0.0
 
 if [ "$1" = "-s" ]; then
     shift
-    arg_str="set args $(cargo semver "$@")"
+    arg_str="set args --crate-type=lib $(cargo semver "$@") tests/helper/test2.rs"
     standalone=1
 else
     rustc --crate-type=lib -o liboldandnew.rlib "$1"
