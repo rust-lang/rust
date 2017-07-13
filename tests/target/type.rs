@@ -25,7 +25,7 @@ struct F {
         y: String, // comment 3
         z: Foo,
         // comment
-        ... /* comment 2 */
+        ... // comment 2
     ),
 }
 

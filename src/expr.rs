@@ -501,10 +501,12 @@ where
             DefinitiveListTactic::Mixed
         },
     };
+    let mut ends_with_newline = tactic.ends_with_newline(context.config.array_layout());
     if context.config.array_horizontal_layout_threshold() > 0 &&
         items.len() > context.config.array_horizontal_layout_threshold()
     {
         tactic = DefinitiveListTactic::Mixed;
+        ends_with_newline = false;
         if context.config.array_layout() == IndentStyle::Block {
             nested_shape = try_opt!(
                 shape
@@ -525,7 +527,7 @@ where
             SeparatorTactic::Vertical
         },
         shape: nested_shape,
-        ends_with_newline: false,
+        ends_with_newline: ends_with_newline,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&items, &fmt));

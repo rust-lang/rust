@@ -360,7 +360,7 @@ where
             context.config.trailing_comma()
         },
         shape: list_shape,
-        ends_with_newline: false,
+        ends_with_newline: tactic.ends_with_newline(context.config.fn_call_style()),
         config: context.config,
     };
 

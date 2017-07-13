@@ -4,7 +4,7 @@
 // Test compressed layout of args.
 fn foo(
     a: Aaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbb, c: Ccccccccccccccccc, d: Ddddddddddddddddddddddddd,
-    e: Eeeeeeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeeeeeee,
 ) {
     foo();
 }
@@ -12,7 +12,7 @@ fn foo(
 impl Foo {
     fn foo(
         self, a: Aaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbb, c: Ccccccccccccccccc,
-        d: Ddddddddddddddddddddddddd, e: Eeeeeeeeeeeeeeeeeee
+        d: Ddddddddddddddddddddddddd, e: Eeeeeeeeeeeeeeeeeee,
     ) {
         foo();
     }

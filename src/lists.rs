@@ -124,6 +124,15 @@ pub enum DefinitiveListTactic {
     Mixed,
 }
 
+impl DefinitiveListTactic {
+    pub fn ends_with_newline(&self, indent_style: IndentStyle) -> bool {
+        match indent_style {
+            IndentStyle::Block => *self != DefinitiveListTactic::Horizontal,
+            IndentStyle::Visual => false,
+        }
+    }
+}
+
 pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> DefinitiveListTactic
 where
     I: IntoIterator<Item = T> + Clone,
@@ -169,7 +178,7 @@ where
 
     // Now that we know how we will layout, we can decide for sure if there
     // will be a trailing separator.
-    let trailing_separator = needs_trailing_separator(formatting.trailing_separator, tactic);
+    let mut trailing_separator = needs_trailing_separator(formatting.trailing_separator, tactic);
     let mut result = String::new();
     let cloned_items = items.clone();
     let mut iter = items.into_iter().enumerate().peekable();
@@ -182,7 +191,7 @@ where
         let inner_item = try_opt!(item.item.as_ref());
         let first = i == 0;
         let last = iter.peek().is_none();
-        let separate = !last || trailing_separator;
+        let mut separate = !last || trailing_separator;
         let item_sep_len = if separate { sep_len } else { 0 };
 
         // Item string may be multi-line. Its length (used for block comment alignment)
@@ -213,6 +222,13 @@ where
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
+                    if tactic == DefinitiveListTactic::Mixed && formatting.ends_with_newline {
+                        if last {
+                            separate = true;
+                        } else {
+                            trailing_separator = true;
+                        }
+                    }
                 }
 
                 if line_len > 0 {
