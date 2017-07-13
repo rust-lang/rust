@@ -583,16 +583,16 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: &T) -> T
     where T: TypeFoldable<'tcx>
 {
-    use rustc::ty::{AdtDef, /*Binder,*/ BoundRegion, EarlyBoundRegion, /*ExistentialProjection,
-                    ExistentialTraitRef,*/ Region, RegionKind};
-    // use rustc::ty::ExistentialPredicate::*;
+    use rustc::ty::{AdtDef, Binder, BoundRegion, EarlyBoundRegion, ExistentialProjection,
+                    ExistentialTraitRef, Region, RegionKind};
+    use rustc::ty::ExistentialPredicate::*;
     use rustc::ty::TypeVariants::*;
 
     fn replace_bound_region_did(id_mapping: &IdMapping, region: &BoundRegion) -> BoundRegion {
         use rustc::ty::BoundRegion::BrNamed;
 
         match *region {
-            BrNamed(def_id, name) =>  BrNamed(id_mapping.get_new_id(def_id), name),
+            BrNamed(def_id, name) => BrNamed(id_mapping.get_new_id(def_id), name),
             reg => reg,
         }
     }
@@ -643,7 +643,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             TyAnon(did, substs) => {
                 tcx.mk_anon(id_mapping.get_new_id(did), substs)
             },
-            /* TODO: TyDynamic(preds, region) => {
+            TyDynamic(preds, region) => {
                 let new_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
                     match *p.skip_binder() {
                         Trait(ExistentialTraitRef { def_id: did, substs }) => {
@@ -658,23 +658,18 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 substs: substs
                             })
                         },
-                        Projection(ExistentialProjection { trait_ref, item_name, ty }) => {
-                            let ExistentialTraitRef { def_id: did, substs } = trait_ref;
-                            let new_did = if id_mapping.contains_id(did) {
-                                id_mapping.get_new_id(did)
+                        Projection(ExistentialProjection { item_def_id, substs, ty }) => {
+                            let new_did = if id_mapping.contains_id(item_def_id) {
+                                id_mapping.get_new_id(item_def_id)
                             } else {
-                                did
+                                item_def_id
                             };
 
                             Projection(ExistentialProjection {
-                                trait_ref: ExistentialTraitRef {
-                                    def_id: new_did,
-                                    substs: substs,
-                                },
-                                item_name: item_name,
+                                item_def_id: new_did,
+                                substs: substs,
                                 ty: ty,
                             })
-
                         },
                         AutoTrait(did) => {
                             if id_mapping.contains_id(did) {
@@ -687,7 +682,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }));
 
                 tcx.mk_dynamic(Binder(new_preds), region)
-            }, */
+            },
             _ => ty,
         }
     }})

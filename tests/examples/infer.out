@@ -1,13 +1,1 @@
-version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Breaking changes in `Hij`
-  --> $REPO_PATH/tests/examples/infer.rs:41:5
-   |
-41 | /     pub struct Hij<'a> {
-42 | |         pub field: &'a a::Def,
-43 | |         pub field2: ::std::rc::Rc<a::Def>,
-44 | |     }
-   | |_____^
-   |
-   = warning: Breaking (TypeChanged { error: Traits(ExpectedFound { expected: DefId { krate: CrateNum(12), node: DefIndex(5) => infer/8cd878b::old[0]::a[0]::Abc[0] }, found: DefId { krate: CrateNum(12), node: DefIndex(12) => infer/8cd878b::new[0]::a[0]::Def[0] } }) })
-   = warning: Breaking (TypeChanged { error: Traits(ExpectedFound { expected: DefId { krate: CrateNum(12), node: DefIndex(5) => infer/8cd878b::old[0]::a[0]::Abc[0] }, found: DefId { krate: CrateNum(12), node: DefIndex(12) => infer/8cd878b::new[0]::a[0]::Def[0] } }) })
-
+version bump: 1.0.0 -> (Patch) -> 1.0.1
