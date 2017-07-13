@@ -4,36 +4,36 @@
 // Imports.
 
 // Long import.
-use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
+use syntax::ast::{ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
 use exceedingly::looooooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA,
                                                                                                 ItemB};
 use exceedingly::loooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA,
                                                                                              ItemB};
 
-use list::{// Some item
-           SomeItem, // Comment
-           // Another item
+use list::{// Another item
            AnotherItem, // Another Comment
            // Last Item
-           LastItem};
+           LastItem,
+           // Some item
+           SomeItem /* Comment */};
 
 use test::{/* A */ self /* B */, Other /* C */};
 
 use syntax;
-use {/* Pre-comment! */ Foo, Bar /* comment */};
+use {Bar /* comment */, /* Pre-comment! */ Foo};
 use Foo::{Bar, Baz};
-pub use syntax::ast::{Expr_, Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath};
+pub use syntax::ast::{Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath, Expr_};
 
 use self;
 use std::io;
 use std::io;
 
 mod Foo {
-    pub use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
+    pub use syntax::ast::{ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
 
     mod Foo2 {
-        pub use syntax::ast::{self, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic,
-                              ItemDefaultImpl};
+        pub use syntax::ast::{self, ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod,
+                              ItemStatic};
     }
 }
 

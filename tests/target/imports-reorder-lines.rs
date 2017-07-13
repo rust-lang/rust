@@ -1,7 +1,7 @@
 // rustfmt-reorder_imports: true
 
-use std::cmp::{d, c, b, a};
-use std::cmp::{b, e, g, f};
+use std::cmp::{a, b, c, d};
+use std::cmp::{b, e, f, g};
 // This comment should stay with `use std::ddd;`
 use std::ddd;
 use std::ddd::aaa;

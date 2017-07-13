@@ -15,7 +15,7 @@ extern crate term;
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, Read, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 
 use rustfmt::*;
