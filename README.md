@@ -213,6 +213,20 @@ options covering different styles. File an issue, or even better, submit a PR.
 * If you're having issues compiling Rustfmt (or compile errors when trying to
   install), make sure you have the most recent version of Rust installed.
 
+* If you get an error like `error while loading shared libraries` while starting
+  up rustfmt you should try the following:
+
+On Linux:
+
+```
+export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+```
+
+On MacOS:
+
+```
+export DYLD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
+```
 
 ## License
 
