@@ -363,7 +363,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if alloc.kind != kind {
             return Err(EvalError::DeallocatedWrongMemoryKind(alloc.kind, kind));
         }
-        if !alloc.locks.is_empty() {
+        if alloc.locks.values().any(|locks| !locks.is_empty()) {
             return Err(EvalError::DeallocatedLockedMemory);
         }
         if let Some((size, align)) = size_and_align {
@@ -524,7 +524,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     /// Acquire the lock for the given lifetime
     pub(crate) fn acquire_lock(&mut self, ptr: MemoryPointer, len: u64, region: Option<CodeExtent>, kind: AccessKind) -> EvalResult<'tcx> {
-        trace!("Acquiring {:?} lock at {:?}, size {}", kind, ptr, len);
+        trace!("Acquiring {:?} lock at {:?}, size {} for region {:?}", kind, ptr, len, region);
         if len == 0 {
             return Ok(());
         }
@@ -536,9 +536,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    /// Release a lock prematurely
+    /// Release a write lock prematurely
     pub(crate) fn release_lock_until(&mut self, ptr: MemoryPointer, len: u64, release_until: Option<CodeExtent>) -> EvalResult<'tcx> {
-        // TODO: More tracing.
+        trace!("Releasing write lock at {:?}, size {} until {:?}", ptr, len, release_until);
         // Make sure there are no read locks and no *other* write locks here
         if let Err(_) = self.check_locks(ptr, len, AccessKind::Write) {
             return Err(EvalError::InvalidMemoryLockRelease { ptr, len });
@@ -565,7 +565,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub(crate) fn locks_lifetime_ended(&mut self, ending_region: Option<CodeExtent>) {
-        // TODO: More tracing.
+        trace!("Releasing locks that expire at {:?}", ending_region);
         let cur_frame = self.cur_frame;
         let has_ended =  |lock: &LockInfo| -> bool {
             if lock.lifetime.frame != cur_frame {

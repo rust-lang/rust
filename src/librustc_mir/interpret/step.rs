@@ -7,8 +7,9 @@ use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir;
 use rustc::traits::Reveal;
+use rustc::ty;
 use rustc::ty::layout::Layout;
-use rustc::ty::{subst, self};
+use rustc::ty::subst::{Subst, Substs};
 
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
@@ -133,12 +134,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // Validity checks.
             Validate(ref op, ref lvalues) => {
                 for operand in lvalues {
+                    // We need to monomorphize ty *without* erasing lifetimes
+                    let ty = operand.ty.subst(self.tcx, self.substs());
+                    // TODO: do we have to self.tcx.normalize_associated_type(&{ty}) ?  That however seems to erase lifetimes.
                     let lvalue = self.eval_lvalue(&operand.lval)?;
-                    self.validate(lvalue, operand.ty, ValidationCtx::new(*op))?;
+                    self.validate(lvalue, ty, ValidationCtx::new(*op))?;
                 }
             }
-
-            // Just a borrowck thing
             EndRegion(ce) => {
                 self.memory.locks_lifetime_ended(Some(ce));
             }
@@ -180,7 +182,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     fn global_item(
         &mut self,
         def_id: DefId,
-        substs: &'tcx subst::Substs<'tcx>,
+        substs: &'tcx Substs<'tcx>,
         span: Span,
         mutability: Mutability,
     ) {
