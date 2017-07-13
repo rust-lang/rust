@@ -384,8 +384,9 @@ pub fn unlink(p: &Path) -> io::Result<()> {
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
-    ::sys_common::util::dumb_print(format_args!("Rename\n"));
-    unimplemented!();
+    copy(old, new)?;
+    unlink(old)?;
+    Ok(())
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
