@@ -161,6 +161,8 @@ pub enum BinaryChangeType<'tcx> {
     TraitItemAdded { defaulted: bool },
     /// A trait's definition removed an item.
     TraitItemRemoved { defaulted: bool },
+    /// A trait's definition changed it's unsafety.
+    TraitUnsafetyChanged { now_unsafe: bool },
     /// A field in a struct or enum has changed it's type.
     TypeChanged { error: TypeError<'tcx> },
     /// An unknown change is any change we don't yet explicitly handle.
@@ -189,6 +191,7 @@ impl<'tcx> BinaryChangeType<'tcx> {
             MethodSelfChanged { now_self: false } |
             TraitItemAdded { defaulted: false } |
             TraitItemRemoved { .. } |
+            TraitUnsafetyChanged { .. } |
             Unknown => Breaking,
             MethodSelfChanged { now_self: true } |
             TraitItemAdded { defaulted: true } |

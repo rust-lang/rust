@@ -359,9 +359,18 @@ fn diff_traits(changes: &mut ChangeSet,
                tcx: TyCtxt,
                old: DefId,
                new: DefId) {
-    // TODO
-    let _old_unsafety = tcx.trait_def(old).unsafety;
-    let _new_unsafety = tcx.trait_def(new).unsafety;
+    use rustc::hir::Unsafety::Unsafe;
+
+    let old_unsafety = tcx.trait_def(old).unsafety;
+    let new_unsafety = tcx.trait_def(new).unsafety;
+
+    if old_unsafety != new_unsafety {
+        let change_type = TraitUnsafetyChanged {
+            now_unsafe: new_unsafety == Unsafe,
+        };
+
+        changes.add_binary(change_type, old, None);
+    }
 
     let mut items = BTreeMap::new();
 
@@ -391,13 +400,13 @@ fn diff_traits(changes: &mut ChangeSet,
                 let change_type = TraitItemRemoved {
                     defaulted: old_item.defaultness.has_value(),
                 };
-                changes.add_binary(change_type , old, Some(tcx.def_span(old_item.def_id)));
+                changes.add_binary(change_type, old, Some(tcx.def_span(old_item.def_id)));
             },
             (None, Some((_, new_item))) => {
                 let change_type = TraitItemAdded {
                     defaulted: new_item.defaultness.has_value(),
                 };
-                changes.add_binary(change_type , old, Some(tcx.def_span(new_item.def_id)));
+                changes.add_binary(change_type, old, Some(tcx.def_span(new_item.def_id)));
             },
             (None, None) => unreachable!(),
         }
