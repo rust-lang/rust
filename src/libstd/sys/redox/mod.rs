@@ -40,23 +40,7 @@ pub mod time;
 
 #[cfg(not(test))]
 pub fn init() {
-    use alloc::oom;
-
-    oom::set_oom_handler(oom_handler);
-
-    // A nicer handler for out-of-memory situations than the default one. This
-    // one prints a message to stderr before aborting. It is critical that this
-    // code does not allocate any memory since we are in an OOM situation. Any
-    // errors are ignored while printing since there's nothing we can do about
-    // them and we are about to exit anyways.
-    fn oom_handler() -> ! {
-        use intrinsics;
-        let msg = "fatal runtime error: out of memory\n";
-        unsafe {
-            let _ = syscall::write(2, msg.as_bytes());
-            intrinsics::abort();
-        }
-    }
+    
 }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
