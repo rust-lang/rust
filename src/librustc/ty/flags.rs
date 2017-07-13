@@ -86,8 +86,6 @@ impl FlagComputation {
             }
 
             &ty::TyGenerator(_, ref substs, ref interior) => {
-                // FIXME: Find out why TyClosure has HAS_TY_CLOSURE
-                // and see if the same reason applies here
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
                 self.add_substs(&substs.substs);

@@ -406,6 +406,8 @@ bitflags! {
         const HAS_FREE_REGIONS   = 1 << 6,
         const HAS_TY_ERR         = 1 << 7,
         const HAS_PROJECTION     = 1 << 8,
+
+        // FIXME: Rename this to the actual property since it's used for generators too
         const HAS_TY_CLOSURE     = 1 << 9,
 
         // true if there are "names" of types and regions and so forth
