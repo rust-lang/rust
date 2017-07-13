@@ -414,7 +414,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
             match self.memory.get(ptr.alloc_id)?.kind {
-                ::memory::Kind::Static => {},
+                ::memory::Kind::Static | ::memory::Kind::UninitializedStatic => {},
                 ::memory::Kind::Stack => self.memory.deallocate(ptr, None, ::memory::Kind::Stack)?,
                 other => bug!("local contained non-stack memory: {:?}", other),
             }

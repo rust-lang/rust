@@ -193,9 +193,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Ok(MemoryPointer::new(alloc_id, 0));
         }
 
-        let ptr = self.allocate(bytes.len() as u64, 1, Kind::Static)?;
+        let ptr = self.allocate(bytes.len() as u64, 1, Kind::UninitializedStatic)?;
         self.write_bytes(PrimVal::Ptr(ptr), bytes)?;
-        self.mark_static_initalized(ptr.alloc_id, Mutability::Mutable)?;
+        self.mark_static_initalized(ptr.alloc_id, Mutability::Immutable)?;
         self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
         Ok(ptr)
     }
@@ -605,7 +605,24 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
-            Some(&mut Allocation { ref mut relocations, kind: ref mut kind @ Kind::UninitializedStatic, ref mut mutable, .. }) => {
+            Some(&mut Allocation { ref mut relocations, ref mut kind, ref mut mutable, .. }) => {
+                match *kind {
+                    // const eval results can refer to "locals".
+                    // E.g. `const Foo: &u32 = &1;` refers to the temp local that stores the `1`
+                    Kind::Stack |
+                    // The entire point of this function
+                    Kind::UninitializedStatic |
+                    // In the future const eval will allow heap allocations so we'll need to protect them
+                    // from deallocation, too
+                    Kind::Rust |
+                    Kind::C => {},
+                    Kind::Static => {
+                        trace!("mark_static_initalized: skipping already initialized static referred to by static currently being initialized");
+                        return Ok(());
+                    },
+                    // FIXME: This could be allowed, but not for env vars set during miri execution
+                    Kind::Env => return Err(EvalError::Unimplemented("statics can't refer to env vars".to_owned())),
+                }
                 *kind = Kind::Static;
                 *mutable = mutability;
                 // take out the relocations vector to free the borrow on self, so we can call

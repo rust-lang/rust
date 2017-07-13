@@ -51,7 +51,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let ptr_size = self.memory.pointer_size();
         let methods = ::rustc::traits::get_vtable_methods(self.tcx, trait_ref);
-        let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size, Kind::Static)?;
+        let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size, Kind::UninitializedStatic)?;
 
         let drop = ::eval_context::resolve_drop_in_place(self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
