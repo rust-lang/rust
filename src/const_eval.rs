@@ -1,5 +1,6 @@
 use rustc::traits::Reveal;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
+use syntax::ast::Mutability;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue};
@@ -25,7 +26,12 @@ pub fn eval_body_as_primval<'a, 'tcx>(
                 ecx.tcx,
                 ty::ParamEnv::empty(Reveal::All),
                 mir.span);
-        let cleanup = StackPopCleanup::MarkStatic(mutable);
+        let mutability = if mutable {
+            Mutability::Mutable
+        } else {
+            Mutability::Immutable
+        };
+        let cleanup = StackPopCleanup::MarkStatic(mutability);
         let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
         trace!("pushing stack frame for global: {}", name);
         ecx.push_stack_frame(

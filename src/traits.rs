@@ -8,7 +8,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use syntax::codemap::DUMMY_SP;
-use syntax::ast;
+use syntax::ast::{self, Mutability};
 
 use error::{EvalResult, EvalError};
 
@@ -68,7 +68,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
 
-        self.memory.mark_static_initalized(vtable.alloc_id, true)?;
+        self.memory.mark_static_initalized(vtable.alloc_id, Mutability::Mutable)?;
 
         Ok(vtable)
     }

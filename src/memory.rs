@@ -4,6 +4,7 @@ use std::{fmt, iter, ptr, mem, io};
 
 use rustc::ty;
 use rustc::ty::layout::{self, TargetDataLayout};
+use syntax::ast::Mutability;
 
 use error::{EvalError, EvalResult};
 use value::{PrimVal, self, Pointer};
@@ -35,7 +36,7 @@ pub struct Allocation {
     /// The alignment of the allocation to detect unaligned reads.
     pub align: u64,
     /// Whether the allocation may be modified.
-    pub mutable: bool,
+    pub mutable: Mutability,
     /// Use the `mark_static_initalized` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified or deallocated in the future.
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
@@ -50,6 +51,11 @@ pub enum Kind {
     C,
     /// Error if deallocated except during a stack pop
     Stack,
+    /// Static in the process of being initialized.
+    /// The difference is important: An immutable static referring to a
+    /// mutable initialized static will freeze immutably and would not
+    /// be able to distinguish already initialized statics from uninitialized ones
+    UninitializedStatic,
     /// May never be deallocated
     Static,
     /// Part of env var emulation
@@ -189,7 +195,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
         let ptr = self.allocate(bytes.len() as u64, 1, Kind::Static)?;
         self.write_bytes(PrimVal::Ptr(ptr), bytes)?;
-        self.mark_static_initalized(ptr.alloc_id, true)?;
+        self.mark_static_initalized(ptr.alloc_id, Mutability::Mutable)?;
         self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
         Ok(ptr)
     }
@@ -213,7 +219,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             undef_mask: UndefMask::new(size),
             align,
             kind,
-            mutable: true,
+            mutable: Mutability::Mutable,
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -404,7 +410,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
         match self.alloc_map.get_mut(&id) {
-            Some(alloc) => if alloc.mutable {
+            Some(alloc) => if alloc.mutable == Mutability::Mutable {
                 Ok(alloc)
             } else {
                 Err(EvalError::ModifiedConstantMemory)
@@ -477,8 +483,9 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
 
             let immutable = match (alloc.kind, alloc.mutable) {
-                (Kind::Static, true) => " (static mut)",
-                (Kind::Static, false) => " (immutable)",
+                (Kind::UninitializedStatic, _) => " (static in the process of initialization)",
+                (Kind::Static, Mutability::Mutable) => " (static mut)",
+                (Kind::Static, Mutability::Immutable) => " (immutable)",
                 (Kind::Env, _) => " (env var)",
                 (Kind::C, _) => " (malloc)",
                 (Kind::Rust, _) => " (heap)",
@@ -584,31 +591,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     /// mark an allocation pointed to by a static as static and initialized
-    pub fn mark_inner_allocation(&mut self, alloc: AllocId, make_immutable: bool) -> EvalResult<'tcx> {
+    pub fn mark_inner_allocation(&mut self, alloc: AllocId, mutability: Mutability) -> EvalResult<'tcx> {
         // relocations into other statics are not "inner allocations"
         if !self.static_alloc.contains(&alloc) {
-            self.mark_static_initalized(alloc, make_immutable)?;
+            self.mark_static_initalized(alloc, mutability)?;
         }
         Ok(())
     }
 
     /// mark an allocation as static and initialized, either mutable or not
-    pub fn mark_static_initalized(&mut self, alloc_id: AllocId, make_immutable: bool) -> EvalResult<'tcx> {
-        trace!("mark_static_initalized {:?}, make_immutable: {:?}", alloc_id, make_immutable);
+    pub fn mark_static_initalized(&mut self, alloc_id: AllocId, mutability: Mutability) -> EvalResult<'tcx> {
+        trace!("mark_static_initalized {:?}, mutability: {:?}", alloc_id, mutability);
         // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
-            Some(&mut Allocation { kind: Kind::Static, ref mut mutable, .. }) => {
-                if make_immutable {
-                    *mutable = false;
-                }
-                return Ok(());
-            },
-            Some(&mut Allocation { ref mut relocations, ref mut kind, ref mut mutable, .. }) => {
+            Some(&mut Allocation { ref mut relocations, kind: ref mut kind @ Kind::UninitializedStatic, ref mut mutable, .. }) => {
                 *kind = Kind::Static;
-                if make_immutable {
-                    *mutable = false;
-                }
+                *mutable = mutability;
                 // take out the relocations vector to free the borrow on self, so we can call
                 // mark recursively
                 mem::replace(relocations, Default::default())
@@ -618,7 +617,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         };
         // recurse into inner allocations
         for &alloc in relocations.values() {
-            self.mark_inner_allocation(alloc, make_immutable)?;
+            self.mark_inner_allocation(alloc, mutability)?;
         }
         // put back the relocations
         self.alloc_map.get_mut(&alloc_id).expect("checked above").relocations = relocations;

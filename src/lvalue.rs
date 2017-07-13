@@ -2,6 +2,7 @@ use rustc::mir;
 use rustc::ty::layout::{Size, Align};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
+use syntax::ast::Mutability;
 
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
@@ -51,7 +52,7 @@ pub struct GlobalId<'tcx> {
     pub(super) promoted: Option<mir::Promoted>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Global<'tcx> {
     pub(super) value: Value,
     /// Only used in `force_allocation` to ensure we don't mark the memory
@@ -59,7 +60,7 @@ pub struct Global<'tcx> {
     /// global which initially is `Value::ByVal(PrimVal::Undef)` and gets
     /// lifted to an allocation before the static is fully initialized
     pub(super) initialized: bool,
-    pub(super) mutable: bool,
+    pub(super) mutable: Mutability,
     pub(super) ty: Ty<'tcx>,
 }
 
@@ -113,13 +114,13 @@ impl<'tcx> Global<'tcx> {
     pub(super) fn uninitialized(ty: Ty<'tcx>) -> Self {
         Global {
             value: Value::ByVal(PrimVal::Undef),
-            mutable: true,
+            mutable: Mutability::Mutable,
             ty,
             initialized: false,
         }
     }
 
-    pub(super) fn initialized(ty: Ty<'tcx>, value: Value, mutable: bool) -> Self {
+    pub(super) fn initialized(ty: Ty<'tcx>, value: Value, mutable: Mutability) -> Self {
         Global {
             value,
             mutable,
