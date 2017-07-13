@@ -232,6 +232,32 @@ pub enum LocalKeyState {
     Destroyed,
 }
 
+/// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
+#[unstable(feature = "thread_local_state",
+           reason = "state querying was recently added",
+           issue = "27716")]
+pub struct AccessError {
+    _private: (),
+}
+
+#[unstable(feature = "thread_local_state",
+           reason = "state querying was recently added",
+           issue = "27716")]
+impl fmt::Debug for AccessError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("AccessError").finish()
+    }
+}
+
+#[unstable(feature = "thread_local_state",
+           reason = "state querying was recently added",
+           issue = "27716")]
+impl fmt::Display for AccessError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt("already destroyed", f)
+    }
+}
+
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
     #[unstable(feature = "thread_local_internals",
@@ -258,15 +284,8 @@ impl<T: 'static> LocalKey<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
                       where F: FnOnce(&T) -> R {
-        unsafe {
-            let slot = (self.inner)();
-            let slot = slot.expect("cannot access a TLS value during or \
-                                    after it is destroyed");
-            f(match *slot.get() {
-                Some(ref inner) => inner,
-                None => self.init(slot),
-            })
-        }
+        self.try_with(f).expect("cannot access a TLS value during or \
+                                 after it is destroyed")
     }
 
     unsafe fn init(&self, slot: &UnsafeCell<Option<T>>) -> &T {
@@ -329,6 +348,32 @@ impl<T: 'static> LocalKey<T> {
                 }
                 None => LocalKeyState::Destroyed,
             }
+        }
+    }
+
+    /// Acquires a reference to the value in this TLS key.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet. If the key has been destroyed (which may happen if this is called
+    /// in a destructor), this function will return a ThreadLocalError.
+    ///
+    /// # Panics
+    ///
+    /// This function will still `panic!()` if the key is uninitialized and the
+    /// key's initializer panics.
+    #[unstable(feature = "thread_local_state",
+               reason = "state querying was recently added",
+               issue = "27716")]
+    pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
+                      where F: FnOnce(&T) -> R {
+        unsafe {
+            let slot = (self.inner)().ok_or(AccessError {
+                _private: (),
+            })?;
+            Ok(f(match *slot.get() {
+                Some(ref inner) => inner,
+                None => self.init(slot),
+            }))
         }
     }
 }
