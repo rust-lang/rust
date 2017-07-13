@@ -310,6 +310,78 @@ fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
     }
 }
 
+#[derive(Eq, PartialEq)]
+enum ImportItem<'a> {
+    // `self` or `self as a`
+    SelfImport(&'a str),
+    // name_one, name_two, ...
+    SnakeCase(&'a str),
+    // NameOne, NameTwo, ...
+    CamelCase(&'a str),
+    // NAME_ONE, NAME_TWO, ...
+    AllCaps(&'a str),
+    // Failed to format the import item
+    Invalid,
+}
+
+impl<'a> ImportItem<'a> {
+    fn from_str(s: &str) -> ImportItem {
+        if s == "self" || s.starts_with("self as") {
+            ImportItem::SelfImport(s)
+        } else if s.chars().all(|c| c.is_lowercase() || c == '_' || c == ' ') {
+            ImportItem::SnakeCase(s)
+        } else if s.chars().all(|c| c.is_uppercase() || c == '_' || c == ' ') {
+            ImportItem::AllCaps(s)
+        } else {
+            ImportItem::CamelCase(s)
+        }
+    }
+
+    fn from_opt_str(s: Option<&String>) -> ImportItem {
+        s.map_or(ImportItem::Invalid, |s| ImportItem::from_str(s))
+    }
+
+    fn to_str(&self) -> Option<&str> {
+        match *self {
+            ImportItem::SelfImport(s) |
+            ImportItem::SnakeCase(s) |
+            ImportItem::CamelCase(s) |
+            ImportItem::AllCaps(s) => Some(s),
+            ImportItem::Invalid => None,
+        }
+    }
+
+    fn to_u32(&self) -> u32 {
+        match *self {
+            ImportItem::SelfImport(..) => 0,
+            ImportItem::SnakeCase(..) => 1,
+            ImportItem::CamelCase(..) => 2,
+            ImportItem::AllCaps(..) => 3,
+            ImportItem::Invalid => 4,
+        }
+    }
+}
+
+impl<'a> PartialOrd for ImportItem<'a> {
+    fn partial_cmp(&self, other: &ImportItem<'a>) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'a> Ord for ImportItem<'a> {
+    fn cmp(&self, other: &ImportItem<'a>) -> Ordering {
+        let res = self.to_u32().cmp(&other.to_u32());
+        if res != Ordering::Equal {
+            return res;
+        }
+        self.to_str().map_or(Ordering::Greater, |self_str| {
+            other
+                .to_str()
+                .map_or(Ordering::Less, |other_str| self_str.cmp(other_str))
+        })
+    }
+}
+
 // Pretty prints a multi-item import.
 // Assumes that path_list.len() > 0.
 pub fn rewrite_use_list(
@@ -366,7 +438,11 @@ pub fn rewrite_use_list(
     let first_index = if has_self { 0 } else { 1 };
 
     if context.config.reorder_imported_names() {
-        items[1..].sort_by(|a, b| a.item.cmp(&b.item));
+        items[1..].sort_by(|a, b| {
+            let a = ImportItem::from_opt_str(a.item.as_ref());
+            let b = ImportItem::from_opt_str(b.item.as_ref());
+            a.cmp(&b)
+        });
     }
 
 
