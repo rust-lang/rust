@@ -43,6 +43,7 @@ impl IdMapping {
 
     /// Add any trait item pair's old and new `DefId`s.
     pub fn add_trait_item(&mut self, old: Def, new: Def) {
+        self.internal_mapping.insert(old.def_id(), new.def_id()); // TODO: fugly
         self.trait_item_mapping.insert(old.def_id(), (old, new));
     }
 

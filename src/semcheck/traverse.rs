@@ -359,6 +359,7 @@ fn diff_traits(changes: &mut ChangeSet,
                tcx: TyCtxt,
                old: DefId,
                new: DefId) {
+    // TODO
     let _old_unsafety = tcx.trait_def(old).unsafety;
     let _new_unsafety = tcx.trait_def(new).unsafety;
 
@@ -374,7 +375,6 @@ fn diff_traits(changes: &mut ChangeSet,
         let item = tcx.associated_item(*new_did);
         items.entry(item.name).or_insert((None, None)).1 =
             tcx.describe_def(*new_did).map(|d| (d, item));
-
     }
 
     for (name, item_pair) in &items {
@@ -637,9 +637,15 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             TyFnDef(did, substs) => {
                 tcx.mk_fn_def(id_mapping.get_new_id(did), substs)
             },
-            /* TyProjection(proj) => {
-                tcx.mk_projection(id_mapping.get_new_id(proj.item_def_id), proj.substs)
-            }, */
+            TyProjection(proj) => {
+                let new_did = if id_mapping.contains_id(proj.item_def_id) {
+                    id_mapping.get_new_id(proj.item_def_id)
+                } else {
+                    proj.item_def_id
+                };
+
+                tcx.mk_projection(new_did, proj.substs)
+            },
             TyAnon(did, substs) => {
                 tcx.mk_anon(id_mapping.get_new_id(did), substs)
             },
