@@ -2281,19 +2281,17 @@ impl<'a> State<'a> {
                 self.pclose()?;
             },
             ast::ExprKind::Yield(ref e) => {
-                word(&mut self.s, "yield")?;
+                self.s.word("yield")?;
                 match *e {
                     Some(ref expr) => {
-                        word(&mut self.s, " ")?;
+                        self.s.space()?;
                         self.print_expr(&expr)?;
                     }
                     _ => ()
                 }
             }
             ast::ExprKind::ImplArg => {
-                word(&mut self.s, "impl")?;
-                space(&mut self.s)?;
-                word(&mut self.s, "arg")?;
+                self.s.word("impl arg")?;
             }
             ast::ExprKind::Try(ref e) => {
                 self.print_expr(e)?;

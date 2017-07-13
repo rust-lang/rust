@@ -1462,13 +1462,12 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             hir::ExprYield(ref expr) => {
-                word(&mut self.s, "yield ")?;
+                self.s.word("yield")?;
+                self.s.space()?;
                 self.print_expr(&expr)?;
             }
             hir::ExprImplArg(_) => {
-                word(&mut self.s, "gen")?;
-                space(&mut self.s)?;
-                word(&mut self.s, "arg")?;
+                self.s.word("gen arg")?;
             }
         }
         self.ann.post(self, NodeExpr(expr))?;
