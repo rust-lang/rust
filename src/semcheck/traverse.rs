@@ -183,6 +183,12 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                 diff_adts(changes, id_mapping, tcx, o.def, n.def);
                             },
                             (Trait(_), Trait(_)) => {
+                                diff_generics(changes,
+                                              id_mapping,
+                                              tcx,
+                                              false,
+                                              o_def_id,
+                                              n_def_id);
                                 diff_traits(changes, id_mapping, tcx, o_def_id, n_def_id);
                             },
                             // non-matching item pair - register the difference and abort
@@ -414,13 +420,15 @@ fn diff_generics(changes: &mut ChangeSet,
 
     for i in 0..max(old_gen.regions.len(), new_gen.regions.len()) {
         match (old_gen.regions.get(i), new_gen.regions.get(i)) {
+            (Some(old_region), Some(new_region)) => {
+                id_mapping.add_internal_item(old_region.def_id, new_region.def_id);
+            },
             (Some(_ /* old_region */), None) => {
                 found.push(RegionParameterRemoved);
             },
             (None, Some(_ /* new_region */)) => {
                 found.push(RegionParameterAdded);
             },
-            (Some(_), Some(_)) => (),
             (None, None) => unreachable!(),
         }
     }
@@ -485,7 +493,6 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                         old: Def,
                         new: Def) {
     use rustc::hir::def::Def::*;
-    use rustc::ty::Binder;
 
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
@@ -505,10 +512,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                       tcx.type_of(new_def_id));
         },
         Fn(_) | Method(_) => {
-            let old_fn_sig =
-                Binder(fold_to_new(id_mapping,
-                                   tcx,
-                                   tcx.type_of(old_def_id).fn_sig(tcx).skip_binder()));
+            let old_fn_sig = tcx.type_of(old_def_id).fn_sig(tcx);
             let new_fn_sig = tcx.type_of(new_def_id).fn_sig(tcx);
 
             cmp_types(changes,
@@ -545,8 +549,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     use rustc::ty::{Lift, ReEarlyBound};
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
-
-    let old = fold_to_new(id_mapping, tcx, &old.subst(tcx, substs));
+    let old = fold_to_new(id_mapping, tcx, &old).subst(tcx, substs);
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = if new.is_fn() {
@@ -568,6 +571,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 Ok(res) => res,
                 Err(err) => panic!("err: {:?}", err),
             };
+
             changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
@@ -579,9 +583,46 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: &T) -> T
     where T: TypeFoldable<'tcx>
 {
-    use rustc::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
-    use rustc::ty::ExistentialPredicate::*;
+    use rustc::ty::{AdtDef, /*Binder,*/ BoundRegion, EarlyBoundRegion, /*ExistentialProjection,
+                    ExistentialTraitRef,*/ Region, RegionKind};
+    // use rustc::ty::ExistentialPredicate::*;
     use rustc::ty::TypeVariants::*;
+
+    fn replace_bound_region_did(id_mapping: &IdMapping, region: &BoundRegion) -> BoundRegion {
+        use rustc::ty::BoundRegion::BrNamed;
+
+        match *region {
+            BrNamed(def_id, name) =>  BrNamed(id_mapping.get_new_id(def_id), name),
+            reg => reg,
+        }
+    }
+
+    fn replace_region_did<'tcx>(id_mapping: &IdMapping, region: Region<'tcx>) -> RegionKind {
+        use rustc::ty::FreeRegion;
+        use rustc::ty::RegionKind::*;
+
+        match *region {
+            ReEarlyBound(early) => {
+                let new_early = EarlyBoundRegion {
+                    def_id: id_mapping.get_new_id(early.def_id),
+                    index: early.index,
+                    name: early.name,
+                };
+
+                ReEarlyBound(new_early)
+            },
+            ReLateBound(index, region) => {
+                ReLateBound(index, replace_bound_region_did(id_mapping, &region))
+            },
+            ReFree(FreeRegion { scope, bound_region }) => {
+                ReFree(FreeRegion {
+                    scope: id_mapping.get_new_id(scope),
+                    bound_region: replace_bound_region_did(id_mapping, &bound_region),
+                })
+            },
+            reg => reg,
+        }
+    }
 
     old.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
         match ty.sty {
@@ -590,7 +631,19 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let new_adt = tcx.adt_def(new_did);
                 tcx.mk_adt(new_adt, substs)
             },
-            TyDynamic(preds, region) => {
+            TyRef(region, type_and_mut) => {
+                tcx.mk_ref(tcx.mk_region(replace_region_did(id_mapping, region)), type_and_mut)
+            },
+            TyFnDef(did, substs) => {
+                tcx.mk_fn_def(id_mapping.get_new_id(did), substs)
+            },
+            /* TyProjection(proj) => {
+                tcx.mk_projection(id_mapping.get_new_id(proj.item_def_id), proj.substs)
+            }, */
+            TyAnon(did, substs) => {
+                tcx.mk_anon(id_mapping.get_new_id(did), substs)
+            },
+            /* TODO: TyDynamic(preds, region) => {
                 let new_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
                     match *p.skip_binder() {
                         Trait(ExistentialTraitRef { def_id: did, substs }) => {
@@ -634,7 +687,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }));
 
                 tcx.mk_dynamic(Binder(new_preds), region)
-            },
+            }, */
             _ => ty,
         }
     }})
