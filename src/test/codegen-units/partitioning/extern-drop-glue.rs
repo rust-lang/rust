@@ -24,7 +24,7 @@ extern crate cgu_extern_drop_glue;
 
 struct LocalStruct(cgu_extern_drop_glue::Struct);
 
-//~ TRANS_ITEM fn extern_drop_glue::user[0] @@ extern_drop_glue[External]
+//~ TRANS_ITEM fn extern_drop_glue::user[0] @@ extern_drop_glue[Internal]
 fn user()
 {
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<extern_drop_glue::LocalStruct[0]> @@ extern_drop_glue[Internal]
@@ -36,7 +36,7 @@ mod mod1 {
 
     struct LocalStruct(cgu_extern_drop_glue::Struct);
 
-    //~ TRANS_ITEM fn extern_drop_glue::mod1[0]::user[0] @@ extern_drop_glue-mod1[External]
+    //~ TRANS_ITEM fn extern_drop_glue::mod1[0]::user[0] @@ extern_drop_glue-mod1[Internal]
     fn user()
     {
         //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<extern_drop_glue::mod1[0]::LocalStruct[0]> @@ extern_drop_glue-mod1[Internal]
