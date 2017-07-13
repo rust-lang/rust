@@ -2504,6 +2504,53 @@ impl fmt::Display for TryFromIntError {
     }
 }
 
+/// This error will actually never be returned.
+#[unstable(feature = "try_from", issue = "33417")]
+#[derive(Debug, Copy, Clone)]
+pub struct TryFromBoolError {}
+
+impl TryFromBoolError {
+    #[unstable(feature = "bool_error_internals",
+               reason = "available through Error trait and this method should \
+                         not be exposed publicly",
+               issue = "0")]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        "should not be used"
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl fmt::Display for TryFromBoolError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.__description().fmt(fmt)
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl TryFrom<bool> for bool {
+    type Error = TryFromBoolError;
+
+    fn try_from(u: bool) -> Result<bool, TryFromBoolError> {
+        Ok(u)
+    }
+}
+
+macro_rules! try_from_for_bool {
+    ($($source:ty),*) => {$(
+        #[unstable(feature = "try_from", issue = "33417")]
+        impl TryFrom<$source> for bool {
+            type Error = TryFromBoolError;
+
+            fn try_from(u: $source) -> Result<bool, TryFromBoolError> {
+                Ok(u != 0)
+            }
+        }
+    )*}
+}
+
+try_from_for_bool!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128);
+
 macro_rules! same_sign_try_from_int_impl {
     ($storage:ty, $target:ty, $($source:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
@@ -2535,6 +2582,19 @@ same_sign_try_from_int_impl!(u128, u128, u8, u16, u32, u64, u128, usize);
 same_sign_try_from_int_impl!(i128, i128, i8, i16, i32, i64, i128, isize);
 same_sign_try_from_int_impl!(u128, usize, u8, u16, u32, u64, u128, usize);
 same_sign_try_from_int_impl!(i128, isize, i8, i16, i32, i64, i128, isize);
+
+same_sign_try_from_int_impl!(f64, usize, f32, f64);
+same_sign_try_from_int_impl!(f64, isize, f32, f64);
+same_sign_try_from_int_impl!(f64, i128, f32, f64);
+same_sign_try_from_int_impl!(f64, u128, f32, f64);
+same_sign_try_from_int_impl!(f64, i64, f32, f64);
+same_sign_try_from_int_impl!(f64, u64, f32, f64);
+same_sign_try_from_int_impl!(f64, i32, f32, f64);
+same_sign_try_from_int_impl!(f64, u32, f32, f64);
+same_sign_try_from_int_impl!(f64, i16, f32, f64);
+same_sign_try_from_int_impl!(f64, u16, f32, f64);
+same_sign_try_from_int_impl!(f64, i8, f32, f64);
+same_sign_try_from_int_impl!(f64, u8, f32, f64);
 
 macro_rules! cross_sign_from_int_impl {
     ($unsigned:ty, $($signed:ty),*) => {$(
@@ -2574,6 +2634,59 @@ cross_sign_from_int_impl!(u32, i8, i16, i32, i64, i128, isize);
 cross_sign_from_int_impl!(u64, i8, i16, i32, i64, i128, isize);
 cross_sign_from_int_impl!(u128, i8, i16, i32, i64, i128, isize);
 cross_sign_from_int_impl!(usize, i8, i16, i32, i64, i128, isize);
+
+/// The error type returned when a checked floating type conversion fails.
+#[unstable(feature = "try_from", issue = "33417")]
+#[derive(Debug, Copy, Clone)]
+pub struct TryFromFloatError(());
+
+impl TryFromFloatError {
+    #[unstable(feature = "float_error_internals",
+               reason = "available through Error trait and this method should \
+                         not be exposed publicly",
+               issue = "0")]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        "out of range floating type conversion attempted"
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl fmt::Display for TryFromFloatError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.__description().fmt(fmt)
+    }
+}
+
+macro_rules! try_from_float_impl {
+    ($storage:ty, $target:ident, $($source:ty),*) => {$(
+        #[unstable(feature = "try_from", issue = "33417")]
+        impl TryFrom<$source> for $target {
+            type Error = TryFromFloatError;
+
+            fn try_from(u: $source) -> Result<$target, TryFromFloatError> {
+                use $target;
+
+                if u.is_nan() {
+                    Ok($target::NAN)
+                } else if u.is_infinite() {
+                    Ok($target::INFINITY)
+                } else {
+                    let min = $target::MIN as $storage;
+                    let max = $target::MAX as $storage;
+                    if u as $storage < min || u as $storage > max {
+                        Err(TryFromFloatError(()))
+                    } else {
+                        Ok(u as $target)
+                    }
+                }
+            }
+        }
+    )*}
+}
+
+try_from_float_impl!(f64, f32, f32, f64);
+try_from_float_impl!(f64, f64, f32, f64);
 
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
