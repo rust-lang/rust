@@ -35,7 +35,6 @@
 #![feature(slice_patterns)]
 #![feature(unicode)]
 #![feature(conservative_impl_trait)]
-#![feature(command_envs)]
 
 #![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
 #![cfg_attr(stage0, feature(rustc_private))]
