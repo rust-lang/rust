@@ -1500,6 +1500,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(());
         }
 
+        // ok to skip binder because the substs on generator types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters
         let self_ty = *obligation.self_ty().skip_binder();
         let (closure_def_id, substs) = match self_ty.sty {
             ty::TyGenerator(id, substs, _) => (id, substs),
