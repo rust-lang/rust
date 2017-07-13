@@ -15,20 +15,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq \
   bzip2
 
-# dumb-init
 COPY scripts/dumb-init.sh /scripts/
 RUN sh /scripts/dumb-init.sh
 
-# emscripten
 COPY scripts/emscripten-wasm.sh /scripts/
 RUN bash /scripts/emscripten-wasm.sh
 COPY disabled/wasm32/node.sh /usr/local/bin/node
 
-# cache
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# env
 ENV PATH=$PATH:/emsdk-portable
 ENV PATH=$PATH:/emsdk-portable/clang/e1.37.13_64bit/
 ENV PATH=$PATH:/emsdk-portable/emscripten/1.37.13/
@@ -42,5 +38,4 @@ ENV RUST_CONFIGURE_ARGS --target=$TARGETS --experimental-targets=WebAssembly
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS
 
-# init
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
