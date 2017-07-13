@@ -132,7 +132,6 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             changes.add_binary(ItemMadePublic, o_def_id, None);
                         }
 
-                        // TODO: extend as needed.
                         match (o.def, n.def) {
                             // (matching) things we don't care about (for now)
                             (Mod(_), Mod(_)) |

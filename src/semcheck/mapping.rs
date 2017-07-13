@@ -43,7 +43,6 @@ impl IdMapping {
 
     /// Add any trait item pair's old and new `DefId`s.
     pub fn add_trait_item(&mut self, old: Def, new: Def) {
-        self.internal_mapping.insert(old.def_id(), new.def_id()); // TODO: fugly
         self.trait_item_mapping.insert(old.def_id(), (old, new));
     }
 
@@ -83,6 +82,8 @@ impl IdMapping {
     pub fn get_new_id(&self, old: DefId) -> DefId {
         if let Some(new) = self.toplevel_mapping.get(&old) {
             new.1.def_id()
+        } else if let Some(new) = self.trait_item_mapping.get(&old) {
+            new.1.def_id()
         } else {
             self.internal_mapping[&old]
         }
@@ -90,7 +91,9 @@ impl IdMapping {
 
     /// Tell us whether a `DefId` is present in the mappings.
     pub fn contains_id(&self, old: DefId) -> bool {
-        self.toplevel_mapping.contains_key(&old) || self.internal_mapping.contains_key(&old)
+        self.toplevel_mapping.contains_key(&old) ||
+            self.trait_item_mapping.contains_key(&old) ||
+            self.internal_mapping.contains_key(&old)
     }
 
     /// Construct a queue of toplevel item pairs' `DefId`s.
