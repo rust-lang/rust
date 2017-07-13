@@ -179,13 +179,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     /// Returns a value and (in case of a ByRef) if we are supposed to use aligned accesses.
-    pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, (Value, bool)> {
+    pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
         let ty = self.lvalue_ty(lvalue);
         // Shortcut for things like accessing a fat pointer's field,
         // which would otherwise (in the `eval_lvalue` path) require moving a `ByValPair` to memory
         // and returning an `Lvalue::Ptr` to it
         if let Some(val) = self.try_read_lvalue(lvalue)? {
-            return Ok((val, true));
+            return Ok(val);
         }
         let lvalue = self.eval_lvalue(lvalue)?;
 
@@ -196,13 +196,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match lvalue {
             Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
-                Ok((Value::ByRef(ptr), aligned))
+                Ok(Value::ByRef(ptr, aligned))
             }
             Lvalue::Local { frame, local } => {
-                Ok((self.stack[frame].get_local(local)?, true))
+                Ok(self.stack[frame].get_local(local)?)
             }
             Lvalue::Global(cid) => {
-                Ok((self.globals.get(&cid).expect("global not cached").value, true))
+                Ok(self.globals.get(&cid).expect("global not cached").value)
             }
         }
     }
@@ -301,7 +301,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
                     return Ok(base);
                 },
-                Value::ByRef(_) |
+                Value::ByRef(..) |
                 Value::ByValPair(..) |
                 Value::ByVal(_) => self.force_allocation(base)?.to_ptr_extra_aligned(),
             },
@@ -311,7 +311,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
                     return Ok(base);
                 },
-                Value::ByRef(_) |
+                Value::ByRef(..) |
                 Value::ByValPair(..) |
                 Value::ByVal(_) => self.force_allocation(base)?.to_ptr_extra_aligned(),
             },
@@ -376,9 +376,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Deref => {
                 let base_ty = self.lvalue_ty(&proj.base);
-                let (val, _aligned) = self.eval_and_read_lvalue(&proj.base)?;
-                // Conservatively, the intermediate accesses of a Deref lvalue do not take into account the packed flag.
-                // Hence we ignore alignment here.
+                let val = self.eval_and_read_lvalue(&proj.base)?;
 
                 let pointee_type = match base_ty.sty {
                     ty::TyRawPtr(ref tam) |
@@ -398,7 +396,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let (ptr, len) = val.into_slice(&self.memory)?;
                         (ptr, LvalueExtra::Length(len), true)
                     },
-                    _ => (val.into_ptr(&self.memory)?, LvalueExtra::None, true),
+                    _ => (val.into_ptr(&mut self.memory)?, LvalueExtra::None, true),
                 }
             }
 

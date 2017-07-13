@@ -28,7 +28,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// Returns true as long as there are more things to do.
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {
-        assert!(self.memory.reads_are_aligned && self.memory.writes_are_aligned, "Someone forgot to clear the 'unaligned' flag");
+        self.memory.assert_all_aligned();
         self.inc_step_counter_and_check_limit(1)?;
         if self.stack.is_empty() {
             return Ok(false);

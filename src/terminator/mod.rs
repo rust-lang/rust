@@ -310,9 +310,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             if self.frame().mir.args_iter().count() == fields.len() + 1 {
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
                                 match arg_val {
-                                    Value::ByRef(ptr) => {
+                                    Value::ByRef(ptr, aligned) => {
+                                        assert!(aligned, "Unaligned ByRef-values cannot occur as function arguments");
                                         for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
-                                            let arg = Value::ByRef(ptr.offset(offset, self.memory.layout)?);
+                                            let arg = Value::ByRef(ptr.offset(offset, self.memory.layout)?, true);
                                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                                             trace!("writing arg {:?} to {:?} (type: {})", arg, dest, ty);
                                             self.write_value(arg, dest, ty)?;
@@ -572,7 +573,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_dealloc" => {
-                let ptr = args[0].into_ptr(&self.memory)?.to_ptr()?;
+                let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if old_size == 0 {
@@ -584,7 +585,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.memory.deallocate(ptr, Some((old_size, align)))?;
             }
             "alloc::heap::::__rust_realloc" => {
-                let ptr = args[0].into_ptr(&self.memory)?.to_ptr()?;
+                let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
                 let old_align = self.value_to_primval(args[2], usize)?.to_u64()?;
                 let new_size = self.value_to_primval(args[3], usize)?.to_u64()?;
@@ -660,7 +661,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "free" => {
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = args[0].into_ptr(&mut self.memory)?;
                 if !ptr.is_null()? {
                     self.memory.deallocate(ptr.to_ptr()?, None)?;
                 }
@@ -674,8 +675,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "dlsym" => {
-                let _handle = args[0].into_ptr(&self.memory)?;
-                let symbol = args[1].into_ptr(&self.memory)?.to_ptr()?;
+                let _handle = args[0].into_ptr(&mut self.memory)?;
+                let symbol = args[1].into_ptr(&mut self.memory)?.to_ptr()?;
                 let symbol_name = self.memory.read_c_str(symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
@@ -686,8 +687,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // fn __rust_maybe_catch_panic(f: fn(*mut u8), data: *mut u8, data_ptr: *mut usize, vtable_ptr: *mut usize) -> u32
                 // We abort on panic, so not much is going on here, but we still have to call the closure
                 let u8_ptr_ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                let f = args[0].into_ptr(&self.memory)?.to_ptr()?;
-                let data = args[1].into_ptr(&self.memory)?;
+                let f = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
+                let data = args[1].into_ptr(&mut self.memory)?;
                 let f_instance = self.memory.get_fn(f)?;
                 self.write_null(dest, dest_ty)?;
 
@@ -718,8 +719,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memcmp" => {
-                let left = args[0].into_ptr(&self.memory)?;
-                let right = args[1].into_ptr(&self.memory)?;
+                let left = args[0].into_ptr(&mut self.memory)?;
+                let right = args[1].into_ptr(&mut self.memory)?;
                 let n = self.value_to_primval(args[2], usize)?.to_u64()?;
 
                 let result = {
@@ -738,7 +739,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memrchr" => {
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = args[0].into_ptr(&mut self.memory)?;
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
@@ -750,7 +751,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "memchr" => {
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = args[0].into_ptr(&mut self.memory)?;
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
@@ -763,7 +764,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "getenv" => {
                 let result = {
-                    let name_ptr = args[0].into_ptr(&self.memory)?.to_ptr()?;
+                    let name_ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
                     let name = self.memory.read_c_str(name_ptr)?;
                     match self.env_vars.get(name) {
                         Some(&var) => PrimVal::Ptr(var),
@@ -776,7 +777,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "unsetenv" => {
                 let mut success = None;
                 {
-                    let name_ptr = args[0].into_ptr(&self.memory)?;
+                    let name_ptr = args[0].into_ptr(&mut self.memory)?;
                     if !name_ptr.is_null()? {
                         let name = self.memory.read_c_str(name_ptr.to_ptr()?)?;
                         if !name.is_empty() && !name.contains(&b'=') {
@@ -797,8 +798,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "setenv" => {
                 let mut new = None;
                 {
-                    let name_ptr = args[0].into_ptr(&self.memory)?;
-                    let value_ptr = args[1].into_ptr(&self.memory)?.to_ptr()?;
+                    let name_ptr = args[0].into_ptr(&mut self.memory)?;
+                    let value_ptr = args[1].into_ptr(&mut self.memory)?.to_ptr()?;
                     let value = self.memory.read_c_str(value_ptr)?;
                     if !name_ptr.is_null()? {
                         let name = self.memory.read_c_str(name_ptr.to_ptr()?)?;
@@ -823,7 +824,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "write" => {
                 let fd = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let buf = args[1].into_ptr(&self.memory)?;
+                let buf = args[1].into_ptr(&mut self.memory)?;
                 let n = self.value_to_primval(args[2], usize)?.to_u64()?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 { // stdout/stderr
@@ -840,7 +841,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "strlen" => {
-                let ptr = args[0].into_ptr(&self.memory)?.to_ptr()?;
+                let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
                 let n = self.memory.read_c_str(ptr)?.len();
                 self.write_primval(dest, PrimVal::Bytes(n as u128), dest_ty)?;
             }
@@ -863,10 +864,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
-                let key_ptr = args[0].into_ptr(&self.memory)?;
+                let key_ptr = args[0].into_ptr(&mut self.memory)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
-                let dtor = match args[1].into_ptr(&self.memory)?.into_inner_primval() {
+                let dtor = match args[1].into_ptr(&mut self.memory)?.into_inner_primval() {
                     PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
                     PrimVal::Bytes(0) => None,
                     PrimVal::Bytes(_) => return Err(EvalError::ReadBytesAsPointer),
@@ -908,7 +909,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "pthread_setspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
                 let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
-                let new_ptr = args[1].into_ptr(&self.memory)?;
+                let new_ptr = args[1].into_ptr(&mut self.memory)?;
                 self.memory.store_tls(key, new_ptr)?;
                 
                 // Return success (0)

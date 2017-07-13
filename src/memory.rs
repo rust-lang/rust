@@ -136,8 +136,8 @@ pub struct Memory<'a, 'tcx> {
 
     /// To avoid having to pass flags to every single memory access, we have some global state saying whether
     /// alignment checking is currently enforced for read and/or write accesses.
-    pub reads_are_aligned: bool,
-    pub writes_are_aligned: bool,
+    reads_are_aligned: bool,
+    writes_are_aligned: bool,
 }
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
@@ -383,6 +383,33 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
         return Ok(None);
+    }
+
+    #[inline]
+    pub(crate) fn begin_unaligned_read(&mut self, aligned: bool) {
+        assert!(self.reads_are_aligned, "Unaligned reads must not be nested");
+        self.reads_are_aligned = aligned;
+    }
+
+    #[inline]
+    pub(crate) fn end_unaligned_read(&mut self) {
+        self.reads_are_aligned = true;
+    }
+
+    #[inline]
+    pub(crate) fn begin_unaligned_write(&mut self, aligned: bool) {
+        assert!(self.writes_are_aligned, "Unaligned writes must not be nested");
+        self.writes_are_aligned = aligned;
+    }
+
+    #[inline]
+    pub(crate) fn end_unaligned_write(&mut self) {
+        self.writes_are_aligned = true;
+    }
+
+    #[inline]
+    pub(crate) fn assert_all_aligned(&mut self) {
+        assert!(self.reads_are_aligned && self.writes_are_aligned, "Someone forgot to clear the 'unaligned' flag");
     }
 }
 

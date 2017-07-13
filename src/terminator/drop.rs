@@ -11,10 +11,11 @@ use value::Value;
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(crate) fn drop_lvalue(&mut self, lval: Lvalue<'tcx>, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
         trace!("drop_lvalue: {:#?}", lval);
+        // We take the address of the object.
         let val = match self.force_allocation(lval)? {
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable), aligned: true } => ptr.to_value_with_vtable(vtable),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len), aligned: true } => ptr.to_value_with_len(len),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true } => ptr.to_value(),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable), aligned: _ } => ptr.to_value_with_vtable(vtable),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len), aligned: _ } => ptr.to_value_with_len(len),
+            Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: _ } => ptr.to_value(),
             _ => bug!("force_allocation broken"),
         };
         self.drop(val, instance, ty, span)
