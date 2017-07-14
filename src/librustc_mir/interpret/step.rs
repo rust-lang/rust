@@ -14,7 +14,8 @@ use rustc::infer::TransNormalize;
 
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
-use lvalue::{Global, GlobalId, Lvalue, ValidationCtx};
+use lvalue::{Global, GlobalId, Lvalue};
+use validation::ValidationCtx;
 use value::{Value, PrimVal};
 use syntax::codemap::Span;
 use syntax::ast::Mutability;

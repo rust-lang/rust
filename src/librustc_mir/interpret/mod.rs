@@ -22,6 +22,7 @@ mod const_eval;
 mod error;
 mod eval_context;
 mod lvalue;
+mod validation;
 mod memory;
 mod operator;
 mod step;
