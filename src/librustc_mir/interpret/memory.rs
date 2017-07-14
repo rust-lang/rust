@@ -386,7 +386,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    /// Check that the pointer is aligned and non-NULL
+    /// Check that the pointer is aligned AND non-NULL.
     pub fn check_align(&self, ptr: Pointer, align: u64) -> EvalResult<'tcx> {
         let offset = match ptr.into_inner_primval() {
             PrimVal::Ptr(ptr) => {

@@ -505,9 +505,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn validate_ptr(&mut self, val: Value, pointee_ty: Ty<'tcx>, vctx: ValidationCtx) -> EvalResult<'tcx> {
         use self::TyMutability::*;
 
-        // Acquire lock
-        let (len, _) = self.size_and_align_of_dst(pointee_ty, val)?;
-        let ptr = val.into_ptr(&mut self.memory)?.to_ptr()?;
+        // Check alignment and non-NULLness
+        let (len, align) = self.size_and_align_of_dst(pointee_ty, val)?;
+        let ptr = val.into_ptr(&mut self.memory)?;
+        self.memory.check_align(ptr, align)?;
+
+        // For ZSTs, do no more
+        if len == 0 {
+            return Ok(())
+        }
+
+        // Acquire lock (also establishing that this is in-bounds etc.)
+        let ptr = ptr.to_ptr()?;
         let access = match vctx.mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
         match vctx.op {
             ValidationOp::Acquire => self.memory.acquire_lock(ptr, len, vctx.region, access)?,
