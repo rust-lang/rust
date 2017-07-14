@@ -15,12 +15,11 @@ macro_rules! test {
             let path = Path::new($path);
 
             let out_file = path.join("stdout");
-            let stdout = File::create(&out_file).expect("could not create `stdout` file");
-            let err_file = path.join("stderr");
-            let stderr = File::create(&err_file).expect("could not create `stderr` file");
 
             let old_rlib = path.join("libold.rlib");
             let new_rlib = path.join("libnew.rlib");
+
+            let stdout = File::create(&out_file).expect("could not create `stdout` file");
 
             success &= Command::new("rustc")
                 .args(&["--crate-type=lib", "-o", old_rlib.to_str().unwrap()])
@@ -45,11 +44,10 @@ macro_rules! test {
                     .arg(&subst)
                     .stdin(Stdio::piped())
                     .stdout(stdout)
-                    .stderr(stderr)
                     .spawn()
                     .expect("could not run sed");
 
-                let (err_pipe, out_pipe) = if let Some(ref mut stdin) = sed_child.stdin {
+                let (err_pipe, out_pipe) = if let Some(ref stdin) = sed_child.stdin {
                     let fd = stdin.as_raw_fd();
                     unsafe { (Stdio::from_raw_fd(fd), Stdio::from_raw_fd(fd)) }
                 } else {
@@ -74,8 +72,7 @@ macro_rules! test {
                 success &= sed_child.wait().expect("could not wait for sed child").success();
 
                 success &= Command::new("git")
-                    .args(&["diff", "--quiet",
-                          out_file.to_str().unwrap(), err_file.to_str().unwrap()])
+                    .args(&["diff", "--quiet", out_file.to_str().unwrap()])
                     .status()
                     .expect("could not run git diff")
                     .success();
