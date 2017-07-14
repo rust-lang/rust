@@ -17,7 +17,7 @@ use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
-use memory::{Memory, MemoryPointer, TlsKey};
+use memory::{Memory, MemoryPointer, TlsKey, HasMemory};
 use operator;
 use value::{PrimVal, PrimValKind, Value, Pointer};
 
@@ -352,7 +352,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .expect("global should have been cached (static)");
                 match global_value.value {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
-                    Value::ByRef(ptr) => self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?,
+                    Value::ByRef(ptr, _aligned) =>
+                        // Alignment does not matter for this call
+                        self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
                         self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
                     },
@@ -408,7 +410,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn deallocate_local(&mut self, local: Option<Value>) -> EvalResult<'tcx> {
-        if let Some(Value::ByRef(ptr)) = local {
+        if let Some(Value::ByRef(ptr, _aligned)) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
@@ -446,6 +448,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let dest = Lvalue::Ptr {
             ptr: dest_ptr.into(),
             extra: LvalueExtra::DowncastVariant(variant_idx),
+            aligned: true,
         };
 
         self.assign_fields(dest, dest_ty, operands)
@@ -528,15 +531,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.inc_step_counter_and_check_limit(operands.len() as u64)?;
                 use rustc::ty::layout::Layout::*;
                 match *dest_layout {
-                    Univariant { ref variant, .. } => {
-                        if variant.packed {
-                            let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
-                            self.memory.mark_packed(ptr, variant.stride().bytes());
-                        }
-                        self.assign_fields(dest, dest_ty, operands)?;
-                    }
-
-                    Array { .. } => {
+                    Univariant { .. } | Array { .. } => {
                         self.assign_fields(dest, dest_ty, operands)?;
                     }
 
@@ -547,10 +542,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 .expect("broken mir: Adt variant id invalid")
                                 .to_u128_unchecked();
                             let discr_size = discr.size().bytes();
-                            if variants[variant].packed {
-                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
-                                self.memory.mark_packed(ptr, variants[variant].stride().bytes());
-                            }
 
                             self.assign_discr_and_fields(
                                 dest,
@@ -587,12 +578,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
 
-                    StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
+                    StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
-                            if nonnull.packed {
-                                let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0.to_ptr()?;
-                                self.memory.mark_packed(ptr, nonnull.stride().bytes());
-                            }
                             if nndiscr == variant as u64 {
                                 self.assign_fields(dest, dest_ty, operands)?;
                             } else {
@@ -682,7 +669,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
-                let (ptr, extra) = self.force_allocation(src)?.to_ptr_and_extra();
+                // We ignore the alignment of the lvalue here -- this rvalue produces sth. of type &, which must always be aligned.
+                let (ptr, extra, _aligned) = self.force_allocation(src)?.to_ptr_extra_aligned();
                 let ty = self.lvalue_ty(lvalue);
 
                 let val = match extra {
@@ -695,7 +683,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 // Check alignment and non-NULLness.
                 let (_, align) = self.size_and_align_of_dst(ty, val)?;
-                self.memory.check_align(ptr, align, 0)?;
+                self.memory.check_align(ptr, align)?;
 
                 self.write_value(val, dest, dest_ty)?;
             }
@@ -737,7 +725,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src_ty = self.operand_ty(operand);
                         if self.type_is_fat_ptr(src_ty) {
                             match (src, self.type_is_fat_ptr(dest_ty)) {
-                                (Value::ByRef(_), _) |
+                                (Value::ByRef(..), _) |
                                 (Value::ByValPair(..), true) => {
                                     self.write_value(src, dest, dest_ty)?;
                                 },
@@ -1018,15 +1006,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // -1 since we don't store the return value
                 match self.stack[frame].locals[local.index() - 1] {
                     None => return Err(EvalError::DeadLocal),
-                    Some(Value::ByRef(ptr)) => {
-                        Lvalue::from_primval_ptr(ptr)
+                    Some(Value::ByRef(ptr, aligned)) => {
+                        Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None }
                     },
                     Some(val) => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
                         let substs = self.stack[frame].instance.substs;
                         let ptr = self.alloc_ptr_with_substs(ty, substs)?;
-                        self.stack[frame].locals[local.index() - 1] = Some(Value::ByRef(ptr.into())); // it stays live
+                        self.stack[frame].locals[local.index() - 1] = Some(Value::by_ref(ptr.into())); // it stays live
                         self.write_value_to_ptr(val, ptr.into(), ty)?;
                         Lvalue::from_ptr(ptr)
                     }
@@ -1036,7 +1024,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Global(cid) => {
                 let global_val = *self.globals.get(&cid).expect("global not cached");
                 match global_val.value {
-                    Value::ByRef(ptr) => Lvalue::from_primval_ptr(ptr),
+                    Value::ByRef(ptr, aligned) =>
+                        Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None },
                     _ => {
                         let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.instance.substs)?;
                         self.memory.mark_static(ptr.alloc_id);
@@ -1047,7 +1036,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                         let lval = self.globals.get_mut(&cid).expect("already checked");
                         *lval = Global {
-                            value: Value::ByRef(ptr.into()),
+                            value: Value::by_ref(ptr.into()),
                             .. global_val
                         };
                         Lvalue::from_ptr(ptr)
@@ -1061,14 +1050,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     /// ensures this Value is not a ByRef
     pub(super) fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
-            Value::ByRef(ptr) => self.read_value(ptr, ty),
+            Value::ByRef(ptr, aligned) => {
+                self.read_maybe_aligned(aligned, |ectx| ectx.read_value(ptr, ty))
+            }
             other => Ok(other),
         }
     }
 
     pub(super) fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match self.follow_by_ref_value(value, ty)? {
-            Value::ByRef(_) => bug!("follow_by_ref_value can't result in `ByRef`"),
+            Value::ByRef(..) => bug!("follow_by_ref_value can't result in `ByRef`"),
 
             Value::ByVal(primval) => {
                 self.ensure_valid_value(primval, ty)?;
@@ -1131,9 +1122,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_value_possibly_by_val(src_val, write_dest, dest.value, dest_ty)
             },
 
-            Lvalue::Ptr { ptr, extra } => {
+            Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_value_to_ptr(src_val, ptr, dest_ty)
+                self.write_maybe_aligned(aligned,
+                    |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty))
             }
 
             Lvalue::Local { frame, local } => {
@@ -1156,7 +1148,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         old_dest_val: Value,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        if let Value::ByRef(dest_ptr) = old_dest_val {
+        if let Value::ByRef(dest_ptr, aligned) = old_dest_val {
             // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
             // other pointers into the allocation. These other pointers are logically
@@ -1164,9 +1156,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
             // knew for certain that there were no outstanding pointers to this allocation.
-            self.write_value_to_ptr(src_val, dest_ptr, dest_ty)?;
+            self.write_maybe_aligned(aligned,
+                |ectx| ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty))?;
 
-        } else if let Value::ByRef(src_ptr) = src_val {
+        } else if let Value::ByRef(src_ptr, aligned) = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
             // and we can simply overwrite the `Value` in the locals array directly.
             //
@@ -1178,13 +1171,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // It is a valid optimization to attempt reading a primitive value out of the
             // source and write that into the destination without making an allocation, so
             // we do so here.
-            if let Ok(Some(src_val)) = self.try_read_value(src_ptr, dest_ty) {
-                write_dest(self, src_val)?;
-            } else {
-                let dest_ptr = self.alloc_ptr(dest_ty)?.into();
-                self.copy(src_ptr, dest_ptr, dest_ty)?;
-                write_dest(self, Value::ByRef(dest_ptr))?;
-            }
+            self.read_maybe_aligned(aligned, |ectx| {
+                if let Ok(Some(src_val)) = ectx.try_read_value(src_ptr, dest_ty) {
+                    write_dest(ectx, src_val)?;
+                } else {
+                    let dest_ptr = ectx.alloc_ptr(dest_ty)?.into();
+                    ectx.copy(src_ptr, dest_ptr, dest_ty)?;
+                    write_dest(ectx, Value::by_ref(dest_ptr))?;
+                }
+                Ok(())
+            })?;
 
         } else {
             // Finally, we have the simple case where neither source nor destination are
@@ -1201,7 +1197,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         match value {
-            Value::ByRef(ptr) => self.copy(ptr, dest, dest_ty),
+            Value::ByRef(ptr, aligned) => {
+                self.read_maybe_aligned(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
+            },
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
                 self.memory.write_primval(dest, primval, size)
@@ -1464,7 +1462,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                let ptr = src.read_ptr(&self.memory)?;
+                let ptr = src.into_ptr(&mut self.memory)?;
                 // u64 cast is from usize to u64, which is always good
                 self.write_value(ptr.to_value_with_len(length as u64), dest, dest_ty)
             }
@@ -1478,7 +1476,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                 let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
-                let ptr = src.read_ptr(&self.memory)?;
+                let ptr = src.into_ptr(&mut self.memory)?;
                 self.write_value(ptr.to_value_with_vtable(vtable), dest, dest_ty)
             },
 
@@ -1521,8 +1519,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 //let src = adt::MaybeSizedValue::sized(src);
                 //let dst = adt::MaybeSizedValue::sized(dst);
                 let src_ptr = match src {
-                    Value::ByRef(ptr) => ptr,
-                    _ => bug!("expected pointer, got {:?}", src),
+                    Value::ByRef(ptr, true) => ptr,
+                    // TODO: Is it possible for unaligned pointers to occur here?
+                    _ => bug!("expected aligned pointer, got {:?}", src),
                 };
 
                 // FIXME(solson)
@@ -1541,7 +1540,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     if src_fty == dst_fty {
                         self.copy(src_f_ptr, dst_f_ptr.into(), src_fty)?;
                     } else {
-                        self.unsize_into(Value::ByRef(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
+                        self.unsize_into(Value::by_ref(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
                     }
                 }
                 Ok(())
@@ -1568,9 +1567,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Err(err) => {
                     panic!("Failed to access local: {:?}", err);
                 }
-                Ok(Value::ByRef(ptr)) => match ptr.into_inner_primval() {
+                Ok(Value::ByRef(ptr, aligned)) => match ptr.into_inner_primval() {
                     PrimVal::Ptr(ptr) => {
-                        write!(msg, " by ref:").unwrap();
+                        write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " }).unwrap();
                         allocs.push(ptr.alloc_id);
                     },
                     ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
