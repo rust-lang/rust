@@ -92,18 +92,9 @@ macro_rules! lint_initializer {
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
-    (pub(crate) $name:ident, $level:ident, $desc:expr) => (
-        pub(crate) static $name: &'static ::rustc::lint::Lint
-            = &lint_initializer!($name, $level, $desc);
-    );
-    (pub $name:ident, $level:ident, $desc:expr) => (
-        pub static $name: &'static ::rustc::lint::Lint
-            = &lint_initializer!($name, $level, $desc);
-    );
-    ($name:ident, $level:ident, $desc:expr) => (
-        static $name: &'static ::rustc::lint::Lint
-            = &lint_initializer!($name, $level, $desc);
-    );
+    ($vis: vis $name: ident, $level: ident, $desc: expr) => {
+        $vis static $name: &$crate::lint::Lint = &lint_initializer!($name, $level, $desc);
+    }
 }
 
 /// Declare a static `LintArray` and return it as an expression.

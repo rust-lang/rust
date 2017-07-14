@@ -30,6 +30,7 @@
 #![feature(discriminant_value)]
 #![feature(i128_type)]
 #![feature(libc)]
+#![feature(macro_vis_matcher)]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]
