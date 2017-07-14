@@ -562,7 +562,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.check_bounds(ptr.offset(len, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         self.check_locks(ptr, len, kind)?; // make sure we have the access we are acquiring
         let lifetime = DynamicLifetime { frame: self.cur_frame, region };
-        let alloc = self.get_mut(ptr.alloc_id)?;
+        let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
         alloc.locks.entry(MemoryRange::new(ptr.offset, len)).or_insert_with(|| Vec::new()).push(LockInfo { lifetime, kind, status: LockStatus::Held });
         Ok(())
     }
@@ -571,7 +571,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub(crate) fn release_write_lock_until(&mut self, ptr: MemoryPointer, len: u64, release_until: Option<CodeExtent>) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
-        let alloc = self.get_mut(ptr.alloc_id)?;
+        let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
         for (range, locks) in alloc.iter_lock_vecs_mut(ptr.offset, len) {
             if !range.contains(ptr.offset, len) {
@@ -648,18 +648,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
     }
-
-    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+    
+    fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
         match self.alloc_map.get_mut(&id) {
-            Some(alloc) => if alloc.mutable == Mutability::Mutable {
-                Ok(alloc)
-            } else {
-                Err(EvalError::ModifiedConstantMemory)
-            },
+            Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
                 None => Err(EvalError::DanglingPointerDeref),
             }
+        }
+    }
+
+    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+        let alloc = self.get_mut_unchecked(id)?;
+        if alloc.mutable == Mutability::Mutable {
+            Ok(alloc)
+        } else {
+            Err(EvalError::ModifiedConstantMemory)
         }
     }
 
