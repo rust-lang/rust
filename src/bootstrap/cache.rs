@@ -257,9 +257,6 @@ lazy_static! {
 /// any type in its output. It is a write-once cache; values are never evicted,
 /// which means that references to the value can safely be returned from the
 /// get() method.
-//
-// FIXME: This type does not permit retrieving &Path from a PathBuf, primarily
-// due to a lack of any obvious way to ensure that this is safe, but also not
 #[derive(Debug)]
 pub struct Cache(
     RefCell<HashMap<
