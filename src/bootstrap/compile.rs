@@ -23,6 +23,7 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
+use std::cmp::min;
 
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
@@ -846,7 +847,18 @@ impl Step for Assemble {
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-        builder.ensure(Rustc { compiler: build_compiler, target: target_compiler.host });
+        if builder.build.flags.keep_stage.map_or(false, |s| target_compiler.stage <= s) {
+            builder.verbose("skipping compilation of compiler due to --keep-stage");
+            let compiler = build_compiler;
+            for stage in 0..min(target_compiler.stage, builder.flags.keep_stage.unwrap()) {
+                let target_compiler = builder.compiler(stage, target_compiler.host);
+                builder.ensure(StdLink { compiler, target_compiler, target: target_compiler.host });
+                builder.ensure(TestLink { compiler, target_compiler, target: target_compiler.host });
+                builder.ensure(RustcLink { compiler, target_compiler, target: target_compiler.host });
+            }
+        } else {
+            builder.ensure(Rustc { compiler: build_compiler, target: target_compiler.host });
+        }
 
         let stage = target_compiler.stage;
         let host = target_compiler.host;
