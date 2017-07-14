@@ -66,6 +66,25 @@ macro_rules! newtype_index {
     )
 }
 
+/// Types for locals
+type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;
+
+pub trait HasLocalDecls<'tcx> {
+    fn local_decls(&self) -> &LocalDecls<'tcx>;
+}
+
+impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
+    fn local_decls(&self) -> &LocalDecls<'tcx> {
+        self
+    }
+}
+
+impl<'tcx> HasLocalDecls<'tcx> for Mir<'tcx> {
+    fn local_decls(&self) -> &LocalDecls<'tcx> {
+        &self.local_decls
+    }
+}
+
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
@@ -90,7 +109,7 @@ pub struct Mir<'tcx> {
     /// The first local is the return value pointer, followed by `arg_count`
     /// locals for the function arguments, followed by any user-declared
     /// variables and temporaries.
-    pub local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    pub local_decls: LocalDecls<'tcx>,
 
     /// Number of arguments this function takes.
     ///

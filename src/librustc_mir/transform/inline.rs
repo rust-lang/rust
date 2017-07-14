@@ -250,7 +250,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     work_list.push(target);
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
-                    let ty = location.ty(&callee_mir, tcx).subst(tcx, callsite.substs);
+                    let ty = location.ty(callee_mir, tcx).subst(tcx, callsite.substs);
                     let ty = ty.to_ty(tcx);
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
