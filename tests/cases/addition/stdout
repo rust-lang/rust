@@ -1,5 +1,19 @@
 version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
-warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
+warning: TechnicallyBreaking changes in `b`
+ --> $REPO_PATH/tests/cases/addition/old.rs:6:1
+  |
+6 | }
+  | ^
+  |
+  = note: TechnicallyBreaking (ItemMadePublic)
+
+warning: Path changes to `Abc`
+ --> $REPO_PATH/tests/cases/addition/new.rs:1:1
+  |
+1 | pub struct Abc;
+  | ^^^^^^^^^^^^^^^
+  |
+note: TechnicallyBreaking: added path
  --> $REPO_PATH/tests/cases/addition/new.rs:1:1
   |
 1 | pub struct Abc;
@@ -13,23 +27,25 @@ warning: TechnicallyBreaking changes in `Bcd`
   |
   = note: TechnicallyBreaking (ItemMadePublic)
 
-warning: Addition of at least one path to `a` (TechnicallyBreaking)
+warning: Path changes to `a`
+ --> $REPO_PATH/tests/cases/addition/new.rs:7:1
+  |
+7 | }
+  | ^
+  |
+note: TechnicallyBreaking: added path
  --> $REPO_PATH/tests/cases/addition/new.rs:7:1
   |
 7 | }
   | ^
 
-warning: TechnicallyBreaking changes in `b`
-  --> $REPO_PATH/tests/cases/addition/new.rs:10:5
+warning: Path changes to `Cde`
+  --> $REPO_PATH/tests/cases/addition/new.rs:11:5
    |
-10 | /     #[allow(dead_code)]
-11 | |     pub struct Cde;
-12 | | }
-   | |_^
+11 |     pub struct Cde;
+   |     ^^^^^^^^^^^^^^^
    |
-   = note: TechnicallyBreaking (ItemMadePublic)
-
-warning: Addition of at least one path to `Cde` (TechnicallyBreaking)
+note: TechnicallyBreaking: added path
   --> $REPO_PATH/tests/cases/addition/new.rs:11:5
    |
 11 |     pub struct Cde;

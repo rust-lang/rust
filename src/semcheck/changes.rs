@@ -6,17 +6,16 @@
 //! version as well. The ordering of changes and output generation is performed using these data
 //! structures, too.
 
-use rustc::hir::def::Export;
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
 use rustc::ty::error::TypeError;
 
 use semver::Version;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeSet, BTreeMap, HashMap};
 use std::cmp::Ordering;
 
-use syntax::symbol::{Ident, Symbol};
+use syntax::symbol::Symbol;
 
 use syntax_pos::Span;
 
@@ -47,86 +46,100 @@ impl<'a> Default for ChangeCategory {
     }
 }
 
-/// A change record of a newly introduced or removed item.
+/// A change record of newly introduced or removed paths to an item.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
-/// regard the span of the associated item export.
-pub enum UnaryChange {
-    /// An item has been added.
-    Addition(Export),
-    /// An item has been removed.
-    Removal(Export),
+/// regard the span of the associated item definition.
+pub struct PathChange {
+    /// The name of the item.
+    name: Symbol,
+    /// The definition span of the item.
+    def_span: Span,
+    /// The set of spans of newly added exports of the item.
+    additions: BTreeSet<Span>,
+    /// The set of spans of removed exports of the item.
+    removals: BTreeSet<Span>,
 }
 
-impl UnaryChange {
+impl PathChange {
+    /// Construct a new empty change record for an item.
+    fn new(name: Symbol, def_span: Span) -> PathChange {
+        PathChange {
+            name: name,
+            def_span: def_span,
+            additions: BTreeSet::new(),
+            removals: BTreeSet::new(),
+        }
+    }
+
+    fn insert(&mut self, span: Span, add: bool) {
+        if add {
+            self.additions.insert(span);
+        } else {
+            self.removals.insert(span);
+        }
+    }
+
     /// Get the change's category.
     pub fn to_category(&self) -> ChangeCategory {
-        match *self {
-            UnaryChange::Addition(_) => TechnicallyBreaking,
-            UnaryChange::Removal(_) => Breaking,
+        if !self.removals.is_empty() {
+            Breaking
+        } else if !self.additions.is_empty() {
+            TechnicallyBreaking
+        } else {
+            Patch
         }
     }
 
-    /// Get the change item's sole export.
-    fn export(&self) -> &Export {
-        match *self {
-            UnaryChange::Addition(ref e) | UnaryChange::Removal(ref e) => e,
-        }
-    }
-
-    /// Get the change item's sole span.
+    /// Get the change item's definition span.
     pub fn span(&self) -> &Span {
-        &self.export().span
-    }
-
-    /// Get the change item's ident.
-    pub fn ident(&self) -> &Ident {
-        &self.export().ident
-    }
-
-    /// Render the change's type to a string.
-    pub fn type_(&self) -> &'static str {
-        match *self {
-            UnaryChange::Addition(_) => "Addition",
-            UnaryChange::Removal(_) => "Removal",
-        }
+        &self.def_span
     }
 
     /// Report the change.
     fn report(&self, session: &Session) {
-        let msg = format!("{} of at least one path to `{}` ({:?})",
-                          self.type_(),
-                          self.ident(),
-                          self.to_category());
-        let mut builder = session.struct_span_warn(self.export().span, &msg);
+        if self.to_category() == Patch {
+            return;
+        }
+
+        let msg = format!("Path changes to `{}`", self.name);
+        let mut builder = session.struct_span_warn(self.def_span, &msg);
+
+        for removed_span in &self.removals {
+            builder.span_warn(*removed_span, "Breaking: removed path");
+        }
+
+        for added_span in &self.additions {
+            builder.span_note(*added_span, "TechnicallyBreaking: added path");
+        }
 
         builder.emit();
     }
 }
 
-impl PartialEq for UnaryChange {
-    fn eq(&self, other: &UnaryChange) -> bool {
+impl PartialEq for PathChange {
+    fn eq(&self, other: &PathChange) -> bool {
         self.span() == other.span()
     }
 }
 
-impl Eq for UnaryChange {}
+impl Eq for PathChange {}
 
-impl PartialOrd for UnaryChange {
-    fn partial_cmp(&self, other: &UnaryChange) -> Option<Ordering> {
+impl PartialOrd for PathChange {
+    fn partial_cmp(&self, other: &PathChange) -> Option<Ordering> {
         self.span().partial_cmp(other.span())
     }
 }
 
-impl Ord for UnaryChange {
-    fn cmp(&self, other: &UnaryChange) -> Ordering {
+impl Ord for PathChange {
+    fn cmp(&self, other: &PathChange) -> Ordering {
         self.span().cmp(other.span())
     }
 }
 
 /// The types of changes we identify between items present in both crate versions.
 #[derive(Clone, Debug)]
-pub enum BinaryChangeType<'tcx> {
+pub enum ChangeType<'tcx> {
     /// An item has been made public.
     ItemMadePublic,
     /// An item has been made private
@@ -167,9 +180,9 @@ pub enum BinaryChangeType<'tcx> {
     Unknown,
 }
 
-pub use self::BinaryChangeType::*;
+pub use self::ChangeType::*;
 
-impl<'tcx> BinaryChangeType<'tcx> {
+impl<'tcx> ChangeType<'tcx> {
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
             ItemMadePrivate |
@@ -204,9 +217,9 @@ impl<'tcx> BinaryChangeType<'tcx> {
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
 /// regard the *new* span of the associated item export. This allows us to sort them
 /// by appearance in the *new* source.
-pub struct BinaryChange<'tcx> {
+pub struct Change<'tcx> {
     /// The type of the change affecting the item.
-    changes: Vec<(BinaryChangeType<'tcx>, Option<Span>)>,
+    changes: Vec<(ChangeType<'tcx>, Option<Span>)>,
     /// The most severe change category already recorded for the item.
     max: ChangeCategory,
     /// The symbol associated with the change item.
@@ -217,10 +230,10 @@ pub struct BinaryChange<'tcx> {
     output: bool
 }
 
-impl<'tcx> BinaryChange<'tcx> {
+impl<'tcx> Change<'tcx> {
     /// Construct a new empty change record for an item.
-    fn new(name: Symbol, span: Span, output: bool) -> BinaryChange<'tcx> {
-        BinaryChange {
+    fn new(name: Symbol, span: Span, output: bool) -> Change<'tcx> {
+        Change {
             changes: Vec::new(),
             max: ChangeCategory::default(),
             name: name,
@@ -230,7 +243,7 @@ impl<'tcx> BinaryChange<'tcx> {
     }
 
     /// Add another change type to the change record.
-    fn add(&mut self, type_: BinaryChangeType<'tcx>, span: Option<Span>) {
+    fn add(&mut self, type_: ChangeType<'tcx>, span: Option<Span>) {
         let cat = type_.to_category();
 
         if cat > self.max {
@@ -285,161 +298,84 @@ impl<'tcx> BinaryChange<'tcx> {
     }
 }
 
-impl<'tcx> PartialEq for BinaryChange<'tcx> {
-    fn eq(&self, other: &BinaryChange) -> bool {
+impl<'tcx> PartialEq for Change<'tcx> {
+    fn eq(&self, other: &Change) -> bool {
         self.new_span() == other.new_span()
     }
 }
 
-impl<'tcx> Eq for BinaryChange<'tcx> {}
+impl<'tcx> Eq for Change<'tcx> {}
 
-impl<'tcx> PartialOrd for BinaryChange<'tcx> {
-    fn partial_cmp(&self, other: &BinaryChange<'tcx>) -> Option<Ordering> {
+impl<'tcx> PartialOrd for Change<'tcx> {
+    fn partial_cmp(&self, other: &Change<'tcx>) -> Option<Ordering> {
         self.new_span().partial_cmp(other.new_span())
     }
 }
 
-impl<'tcx> Ord for BinaryChange<'tcx> {
-    fn cmp(&self, other: &BinaryChange<'tcx>) -> Ordering {
+impl<'tcx> Ord for Change<'tcx> {
+    fn cmp(&self, other: &Change<'tcx>) -> Ordering {
         self.new_span().cmp(other.new_span())
     }
-}
-
-/// A change record for any item.
-///
-/// Consists of all information we need to compute semantic versioning properties of
-/// the change(s) performed on it, as well as data we use to output it in a nice fashion.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum Change<'tcx> {
-    /// A wrapper around a unary change.
-    Unary(UnaryChange),
-    /// A wrapper around a binary change set.
-    Binary(BinaryChange<'tcx>),
-}
-
-impl<'tcx> Change<'tcx> {
-    /// Construct a new addition-change for the given export.
-    fn new_addition(item: Export) -> Change<'tcx> {
-        Change::Unary(UnaryChange::Addition(item))
-    }
-
-    /// Construct a new removal-change for the given export.
-    fn new_removal(item: Export) -> Change<'tcx> {
-        Change::Unary(UnaryChange::Removal(item))
-    }
-
-    /// Construct a new binary change for the given exports.
-    fn new_binary(name: Symbol, span: Span, output: bool) -> Change<'tcx> {
-        Change::Binary(BinaryChange::new(name, span, output))
-    }
-
-    /// Add a change type to a given binary change.
-    fn add(&mut self, type_: BinaryChangeType<'tcx>, span: Option<Span>) {
-        match *self {
-            Change::Unary(_) => panic!("can't add binary change types to unary change"),
-            Change::Binary(ref mut b) => b.add(type_, span),
-        }
-    }
-
-    /// Get the change's representative span.
-    fn span(&self) -> &Span {
-        match *self {
-            Change::Unary(ref u) => u.span(),
-            Change::Binary(ref b) => b.new_span(),
-        }
-    }
-
-    /// Get the change's category.
-    fn to_category(&self) -> ChangeCategory {
-        match *self {
-            Change::Unary(ref u) => u.to_category(),
-            Change::Binary(ref b) => b.to_category(),
-        }
-    }
-
-    /// Report the change.
-    fn report(&self, session: &Session) {
-        match *self {
-            Change::Unary(ref u) => u.report(session),
-            Change::Binary(ref b) => b.report(session),
-        }
-    }
-}
-
-/// An identifier used to unambiguously refer to items we record changes for.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum ChangeKey {
-    /// An item referred to using the old definition's id.
-    /// This includes items that have been removed *or* changed.
-    OldKey(DefId),
-    /// An item referred to using the new definition's id.
-    /// This includes items that have been added *only*
-    NewKey(DefId),
 }
 
 /// The total set of changes recorded for two crate versions.
 #[derive(Default)]
 pub struct ChangeSet<'tcx> {
+    /// The currently recorded path manipulations.
+    path_changes: HashMap<DefId, PathChange>,
     /// The currently recorded changes.
-    changes: HashMap<ChangeKey, Change<'tcx>>,
+    changes: HashMap<DefId, Change<'tcx>>,
     /// The mapping of spans to changes, for ordering purposes.
-    spans: BTreeMap<Span, ChangeKey>,
+    spans: BTreeMap<Span, DefId>,
     /// The most severe change category already recorded.
     max: ChangeCategory,
 }
 
 impl<'tcx> ChangeSet<'tcx> {
-    /// Add a new addition-change for the given export.
-    pub fn new_addition(&mut self, item: Export) {
-        self.new_unary_change(Change::new_addition(item), ChangeKey::NewKey(item.def.def_id()));
-    }
+    /// Add a new unary change entry for the given exports.
+    pub fn new_unary(&mut self, old: DefId, name: Symbol, def_span: Span, span: Span, add: bool) {
+        self.spans.insert(def_span, old);
 
-    /// Add a new removal-change for the given export.
-    pub fn new_removal(&mut self, item: Export) {
-        self.new_unary_change(Change::new_removal(item), ChangeKey::NewKey(item.def.def_id()));
-    }
+        let change = self.path_changes
+            .entry(old)
+            .or_insert_with(|| PathChange::new(name, def_span));
 
-    /// Add a new (unary) change for the given key.
-    fn new_unary_change(&mut self, change: Change<'tcx>, key: ChangeKey) {
+        change.insert(span, add);
+
         let cat = change.to_category();
 
         if cat > self.max {
             self.max = cat.clone();
         }
-
-        self.spans.insert(*change.span(), key.clone());
-        self.changes.insert(key, change);
     }
 
     /// Add a new binary change entry for the given exports.
-    pub fn new_binary(&mut self, old_did: DefId, name: Symbol, span: Span, output: bool) {
-        let key = ChangeKey::OldKey(old_did);
-        let change = Change::new_binary(name, span, output);
+    pub fn new_binary(&mut self, old: DefId, name: Symbol, span: Span, output: bool) {
+        let change = Change::new(name, span, output);
 
-        self.spans.insert(*change.span(), key.clone());
-        self.changes.insert(key, change);
+        self.spans.insert(*change.new_span(), old);
+        self.changes.insert(old, change);
     }
 
     /// Add a new binary change to an already existing entry.
-    pub fn add_binary(&mut self, type_: BinaryChangeType<'tcx>, old: DefId, span: Option<Span>) {
-        let key = ChangeKey::OldKey(old);
+    pub fn add_binary(&mut self, type_: ChangeType<'tcx>, old: DefId, span: Option<Span>) {
         let cat = type_.to_category();
 
         if cat > self.max {
             self.max = cat.clone();
         }
 
-        self.changes.get_mut(&key).unwrap().add(type_, span);
+        self.changes.get_mut(&old).unwrap().add(type_, span);
     }
 
     /// Check whether an item with the given id has undergone breaking changes.
     ///
     /// The expected `DefId` is obviously an *old* one.
-    pub fn item_breaking(&self, key: DefId) -> bool {
+    pub fn item_breaking(&self, old: DefId) -> bool {
         // we only care about items that were present before, since only those can get breaking
         // changes (additions don't count).
         self.changes
-            .get(&ChangeKey::OldKey(key))
+            .get(&old)
             .map(|changes| changes.to_category() == Breaking)
             .unwrap_or(false)
     }
@@ -459,7 +395,13 @@ impl<'tcx> ChangeSet<'tcx> {
         }
 
         for key in self.spans.values() {
-            self.changes[key].report(session);
+            if let Some(change) = self.path_changes.get(key) {
+                change.report(session);
+            }
+
+            if let Some(change) = self.changes.get(key) {
+                change.report(session);
+            }
         }
     }
 }
@@ -547,9 +489,9 @@ pub mod tests {
 
     pub type BinaryChange_ = (Span_, Span_);
 
-    fn build_binary_change(t: BinaryChangeType, s1: Span, s2: Span) -> BinaryChange {
+    fn build_binary_change(t: ChangeType, s1: Span, s2: Span) -> Change {
         let mut interner = Interner::new();
-        let mut change = BinaryChange::new(interner.intern("test"), s2, true);
+        let mut change = Change::new(interner.intern("test"), s2, true);
         change.add(t, Some(s1));
 
         change

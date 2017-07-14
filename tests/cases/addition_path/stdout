@@ -1,19 +1,23 @@
 version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
-warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
+warning: Path changes to `Abc`
+ --> $REPO_PATH/tests/cases/addition_path/new.rs:2:5
+  |
+2 |     pub struct Abc;
+  |     ^^^^^^^^^^^^^^^
+  |
+note: TechnicallyBreaking: added path
  --> $REPO_PATH/tests/cases/addition_path/new.rs:6:13
   |
 6 |     pub use a::*;
   |             ^^^^^
-
-warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
- --> $REPO_PATH/tests/cases/addition_path/new.rs:6:13
+note: TechnicallyBreaking: added path
+ --> $REPO_PATH/tests/cases/addition_path/new.rs:10:13
   |
-6 |     pub use a::*;
-  |             ^^^^^
-
-warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
- --> $REPO_PATH/tests/cases/addition_path/new.rs:6:13
+10|     pub use a::Abc;
+  |             ^^^^^^
+note: TechnicallyBreaking: added path
+ --> $REPO_PATH/tests/cases/addition_path/new.rs:13:9
   |
-6 |     pub use a::*;
-  |             ^^^^^
+13| pub use self::a::Abc;
+  |         ^^^^^^^^^^^^
 

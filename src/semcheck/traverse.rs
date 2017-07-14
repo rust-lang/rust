@@ -16,8 +16,8 @@ use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 
-use semcheck::changes::BinaryChangeType;
-use semcheck::changes::BinaryChangeType::*;
+use semcheck::changes::ChangeType;
+use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
@@ -98,7 +98,10 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             };
 
                             if o_vis != n_vis {
-                                changes.new_binary(o.def.def_id(), o.ident.name, n.span, true);
+                                changes.new_binary(o_did,
+                                                   o.ident.name,
+                                                   tcx.def_span(o_did),
+                                                   true);
 
                                 if o_vis == Public && n_vis != Public {
                                     changes.add_binary(ItemMadePrivate, o_did, None);
@@ -198,12 +201,22 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                 }
                 (Some(o), None) => {
                     if old_vis == Public && cstore.visibility(o.def.def_id()) == Public {
-                        changes.new_removal(o);
+                        let o_did = o.def.def_id();
+                        changes.new_unary(o_did,
+                                          o.ident.name,
+                                          tcx.def_span(o_did),
+                                          o.span,
+                                          false);
                     }
                 }
                 (None, Some(n)) => {
                     if new_vis == Public && cstore.visibility(n.def.def_id()) == Public {
-                        changes.new_addition(n);
+                        let n_did = n.def.def_id();
+                        changes.new_unary(n_did,
+                                          n.ident.name,
+                                          tcx.def_span(n_did),
+                                          n.span,
+                                          true);
                     }
                 }
                 (None, None) => unreachable!(),
@@ -478,7 +491,7 @@ fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          _old: DefId,
                          _new: DefId)
-    -> (Vec<BinaryChangeType<'tcx>>, Vec<(DefId, DefId)>)
+    -> (Vec<ChangeType<'tcx>>, Vec<(DefId, DefId)>)
 {
     /* let res = Default::default();
 
