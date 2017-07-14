@@ -393,11 +393,13 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             Some(alloc) => alloc,
             None => return Err(EvalError::DoubleFree),
         };
-        
+
         // It is okay for us to still holds locks on deallocation -- for example, we could store data we own
         // in a local, and the local could be deallocated (from StorageDead) before the function returns.
-        // However, we must have write access to the entire allocation.
-        alloc.check_locks(self.cur_frame, 0, alloc.bytes.len() as u64, AccessKind::Write)
+        // However, we should check *something*.  For now, we make sure that there is no conflicting write
+        // lock by another frame.  We *have* to permit deallocation if we hold a read lock.
+        // TODO: Figure out the exact rules here.
+        alloc.check_locks(self.cur_frame, 0, alloc.bytes.len() as u64, AccessKind::Read)
             .map_err(|lock| EvalError::DeallocatedLockedMemory { ptr, lock })?;
 
         if alloc.kind != kind {
