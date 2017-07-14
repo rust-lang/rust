@@ -70,9 +70,19 @@ impl MirPass for AddValidation {
                         returns.push((source_info, destination.0.clone(), destination.1));
                     }
                 }
+                Some(Terminator { kind: TerminatorKind::Drop { location: ref lval, .. }, source_info }) |
+                Some(Terminator { kind: TerminatorKind::DropAndReplace { location: ref lval, .. }, source_info }) => {
+                    // Before the call: Release all arguments
+                    let ty = lval.ty(&local_decls, tcx).to_ty(tcx);
+                    let release_stmt = Statement {
+                        source_info,
+                        kind: StatementKind::Validate(ValidationOp::Release, vec![(ty, lval.clone())])
+                    };
+                    block_data.statements.push(release_stmt);
+                    // drop doesn't return anything, so we need no acquire.
+                }
                 _ => {
                     // Not a block ending in a Call -> ignore.
-                    // TODO: Handle drop.
                 }
             }
         }
@@ -108,7 +118,6 @@ impl MirPass for AddValidation {
                 block_data.statements.insert(i+1, acquire_stmt);
 
                 // The source is released until the region of the borrow ends.
-                // FIXME: We have to check whether the source path was writable.
                 let src_ty = src_lval.ty(&local_decls, tcx).to_ty(tcx);
                 let op = match re {
                     &RegionKind::ReScope(ce) => ValidationOp::Suspend(ce),
