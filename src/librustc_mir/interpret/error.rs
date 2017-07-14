@@ -57,11 +57,15 @@ pub enum EvalError<'tcx> {
         access: AccessKind,
         lock: LockInfo,
     },
-    ValidationFailure(String),
     InvalidMemoryLockRelease {
         ptr: MemoryPointer,
         len: u64,
     },
+    DeallocatedLockedMemory {
+        ptr: MemoryPointer,
+        lock: LockInfo,
+    },
+    ValidationFailure(String),
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
@@ -70,7 +74,6 @@ pub enum EvalError<'tcx> {
     TypeNotPrimitive(Ty<'tcx>),
     ReallocatedWrongMemoryKind(Kind, Kind),
     DeallocatedWrongMemoryKind(Kind, Kind),
-    DeallocatedLockedMemory,
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
     IncorrectAllocationInformation,
@@ -113,10 +116,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "memory access conflicts with lock",
             ValidationFailure(..) =>
                 "type validation failed",
-            DeallocatedLockedMemory =>
-                "deallocated memory while a lock was held",
             InvalidMemoryLockRelease { .. } =>
                 "memory lock released that was never acquired",
+            DeallocatedLockedMemory { .. } =>
+                "tried to deallocate memory in conflict with a lock",
             ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             ReadBytesAsPointer =>
@@ -221,8 +224,12 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                        access, ptr, len, lock)
             }
             InvalidMemoryLockRelease { ptr, len } => {
-                write!(f, "tried to release memory write lock at {:?}, size {}, which was not acquired by this function",
+                write!(f, "tried to release memory write lock at {:?}, size {}, but the write lock is held by someone else",
                        ptr, len)
+            }
+            DeallocatedLockedMemory { ptr, lock } => {
+                write!(f, "tried to deallocate memory at {:?} in conflict with lock {:?}",
+                       ptr, lock)
             }
             ValidationFailure(ref err) => {
                 write!(f, "type validation failed: {}", err)

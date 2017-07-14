@@ -503,26 +503,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     fn validate_ptr(&mut self, val: Value, pointee_ty: Ty<'tcx>, vctx: ValidationCtx) -> EvalResult<'tcx> {
-        use self::TyMutability::*;
-
         // Check alignment and non-NULLness
-        let (len, align) = self.size_and_align_of_dst(pointee_ty, val)?;
+        let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = val.into_ptr(&mut self.memory)?;
         self.memory.check_align(ptr, align)?;
-
-        // For ZSTs, do no more
-        if len == 0 {
-            return Ok(())
-        }
-
-        // Acquire lock (also establishing that this is in-bounds etc.)
-        let ptr = ptr.to_ptr()?;
-        let access = match vctx.mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
-        match vctx.op {
-            ValidationOp::Acquire => self.memory.acquire_lock(ptr, len, vctx.region, access)?,
-            ValidationOp::Release => self.memory.release_lock_until(ptr, len, None)?,
-            ValidationOp::Suspend(region) => self.memory.release_lock_until(ptr, len, Some(region))?,
-        }
 
         // Recurse
         let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
@@ -538,14 +522,64 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use self::TyMutability::*;
 
         trace!("Validating {:?} at type {}, context {:?}", lvalue, ty, vctx);
+
+        // Decide whether this type *owns* the memory it covers (like integers), or whether it
+        // just assembles pieces (that each own their memory) together to a larger whole.
+        // TODO: Currently, we don't acquire locks for padding and discriminants. We should.
+        let is_owning = match ty.sty {
+            TyInt(_) | TyUint(_) | TyRawPtr(_) |
+            TyBool | TyFloat(_) | TyChar | TyStr |
+            TyRef(..) => true,
+            TyAdt(adt, _) if adt.is_box() => true,
+            TyAdt(_, _) | TyTuple(..) | TyClosure(..) => false,
+            TyParam(_) | TyInfer(_) => bug!("I got an incomplete type for validation"),
+            _ => return Err(EvalError::Unimplemented(format!("Unimplemented type encountered when checking validity."))),
+        };
+        if is_owning {
+            match lvalue {
+                Lvalue::Ptr { ptr, extra, aligned: _ } => {
+                    // Determine the size
+                    // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
+                    let len = match self.type_size(ty)? {
+                        Some(size) => {
+                            assert_eq!(extra, LvalueExtra::None, "Got a fat ptr to a sized type");
+                            size
+                        }
+                        None => {
+                            // The only unsized typ we concider "owning" is TyStr.
+                            assert_eq!(ty.sty, TyStr, "Found a surprising unsized owning type");
+                            // The extra must be the length, in bytes.
+                            match extra {
+                                LvalueExtra::Length(len) => len,
+                                _ => bug!("TyStr must have a length as extra"),
+                            }
+                        }
+                    };
+                    // Handle locking
+                    if len > 0 {
+                        let ptr = ptr.to_ptr()?;
+                        let access = match vctx.mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
+                        match vctx.op {
+                            ValidationOp::Acquire => self.memory.acquire_lock(ptr, len, vctx.region, access)?,
+                            ValidationOp::Release => self.memory.release_write_lock_until(ptr, len, None)?,
+                            ValidationOp::Suspend(region) => self.memory.release_write_lock_until(ptr, len, Some(region))?,
+                        }
+                    }
+                }
+                Lvalue::Local { ..} | Lvalue::Global(..) => {
+                    // These are not backed by memory, so we have nothing to do.
+                }
+            }
+        }
+
         match ty.sty {
-            TyChar | TyInt(_) | TyUint(_) | TyRawPtr(_) => {
+            TyInt(_) | TyUint(_) | TyRawPtr(_) => {
                 // TODO: Make sure these are not undef.
                 // We could do a bounds-check and other sanity checks on the lvalue, but it would be a bug in miri for this to ever fail.
                 Ok(())
             }
-            TyBool | TyFloat(_) | TyStr => {
-                // TODO: Check if these are valid bool/float/UTF-8, respectively (and in particular, not undef).
+            TyBool | TyFloat(_) | TyChar | TyStr => {
+                // TODO: Check if these are valid bool/float/codepoint/UTF-8, respectively (and in particular, not undef).
                 Ok(())
             }
             TyNever => {
@@ -643,8 +677,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 Ok(())
             }
-            TyParam(_) | TyInfer(_) => bug!("I got an incomplete type for validation"),
-            _ => unimplemented!("Unimplemented type encountered when checking validity.")
+            _ => bug!("We already establishd that this is a type we support.")
         }
     }
 }

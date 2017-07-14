@@ -1,6 +1,7 @@
 #![feature(
     i128_type,
     rustc_private,
+    conservative_impl_trait,
 )]
 
 // From rustc.
