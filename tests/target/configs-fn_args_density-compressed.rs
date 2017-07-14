@@ -10,12 +10,12 @@ trait Lorem {
 
     fn lorem(
         ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
-        adipiscing: Adipiscing, elit: Elit
+        adipiscing: Adipiscing, elit: Elit,
     );
 
     fn lorem(
         ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: onsectetur,
-        adipiscing: Adipiscing, elit: Elit
+        adipiscing: Adipiscing, elit: Elit,
     ) {
         // body
     }

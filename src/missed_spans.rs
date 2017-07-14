@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::WriteMode;
-use visitor::FmtVisitor;
-use syntax::codemap::{BytePos, Span, Pos};
-use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
 use Shape;
+use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
+use config::WriteMode;
+use syntax::codemap::{BytePos, Pos, Span};
 use utils::mk_sp;
+use visitor::FmtVisitor;
 
 impl<'a> FmtVisitor<'a> {
     fn output_at_start(&self) -> bool {

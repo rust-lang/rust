@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Shape;
-use utils;
-use syntax::codemap::{BytePos, Span};
-use codemap::SpanUtils;
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
-use types::{rewrite_path, PathContext};
-use rewrite::{Rewrite, RewriteContext};
-use visitor::FmtVisitor;
 use std::cmp::{self, Ordering};
 
 use syntax::{ast, ptr};
+use syntax::codemap::{BytePos, Span};
+
+use Shape;
+use codemap::SpanUtils;
+use config::IndentStyle;
+use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
+            ListItem, SeparatorTactic};
+use rewrite::{Rewrite, RewriteContext};
+use types::{rewrite_path, PathContext};
+use utils;
+use visitor::FmtVisitor;
 
 fn path_of(a: &ast::ViewPath_) -> &ast::Path {
     match *a {
@@ -249,13 +252,12 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn format_import(&mut self, vis: &ast::Visibility, vp: &ast::ViewPath, span: Span) {
         let vis = utils::format_visibility(vis);
-        let mut offset = self.block_indent;
-        offset.alignment += vis.len() + "use ".len();
-        // 1 = ";"
-        match vp.rewrite(
-            &self.get_context(),
-            Shape::legacy(self.config.max_width() - offset.width() - 1, offset),
-        ) {
+        // 4 = `use `, 1 = `;`
+        let rw = Shape::indented(self.block_indent, self.config)
+            .offset_left(vis.len() + 4)
+            .and_then(|shape| shape.sub_width(1))
+            .and_then(|shape| vp.rewrite(&self.get_context(), shape));
+        match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = utils::mk_sp(self.last_pos, source!(self, span).lo);
@@ -310,9 +312,81 @@ fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
     }
 }
 
+#[derive(Eq, PartialEq)]
+enum ImportItem<'a> {
+    // `self` or `self as a`
+    SelfImport(&'a str),
+    // name_one, name_two, ...
+    SnakeCase(&'a str),
+    // NameOne, NameTwo, ...
+    CamelCase(&'a str),
+    // NAME_ONE, NAME_TWO, ...
+    AllCaps(&'a str),
+    // Failed to format the import item
+    Invalid,
+}
+
+impl<'a> ImportItem<'a> {
+    fn from_str(s: &str) -> ImportItem {
+        if s == "self" || s.starts_with("self as") {
+            ImportItem::SelfImport(s)
+        } else if s.chars().all(|c| c.is_lowercase() || c == '_' || c == ' ') {
+            ImportItem::SnakeCase(s)
+        } else if s.chars().all(|c| c.is_uppercase() || c == '_' || c == ' ') {
+            ImportItem::AllCaps(s)
+        } else {
+            ImportItem::CamelCase(s)
+        }
+    }
+
+    fn from_opt_str(s: Option<&String>) -> ImportItem {
+        s.map_or(ImportItem::Invalid, |s| ImportItem::from_str(s))
+    }
+
+    fn to_str(&self) -> Option<&str> {
+        match *self {
+            ImportItem::SelfImport(s) |
+            ImportItem::SnakeCase(s) |
+            ImportItem::CamelCase(s) |
+            ImportItem::AllCaps(s) => Some(s),
+            ImportItem::Invalid => None,
+        }
+    }
+
+    fn to_u32(&self) -> u32 {
+        match *self {
+            ImportItem::SelfImport(..) => 0,
+            ImportItem::SnakeCase(..) => 1,
+            ImportItem::CamelCase(..) => 2,
+            ImportItem::AllCaps(..) => 3,
+            ImportItem::Invalid => 4,
+        }
+    }
+}
+
+impl<'a> PartialOrd for ImportItem<'a> {
+    fn partial_cmp(&self, other: &ImportItem<'a>) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'a> Ord for ImportItem<'a> {
+    fn cmp(&self, other: &ImportItem<'a>) -> Ordering {
+        let res = self.to_u32().cmp(&other.to_u32());
+        if res != Ordering::Equal {
+            return res;
+        }
+        self.to_str().map_or(Ordering::Greater, |self_str| {
+            other
+                .to_str()
+                .map_or(Ordering::Less, |other_str| self_str.cmp(other_str))
+        })
+    }
+}
+
 // Pretty prints a multi-item import.
 // Assumes that path_list.len() > 0.
-pub fn rewrite_use_list(
+fn rewrite_use_list(
     shape: Shape,
     path: &ast::Path,
     path_list: &[ast::PathListItem],
@@ -334,13 +408,14 @@ pub fn rewrite_use_list(
         _ => (),
     }
 
-    let colons_offset = if path_str.is_empty() { 0 } else { 2 };
+    let path_str = if path_str.is_empty() {
+        path_str
+    } else {
+        format!("{}::", path_str)
+    };
 
     // 2 = "{}"
-    let remaining_width = shape
-        .width
-        .checked_sub(path_str.len() + 2 + colons_offset)
-        .unwrap_or(0);
+    let remaining_width = shape.width.checked_sub(path_str.len() + 2).unwrap_or(0);
 
     let mut items = {
         // Dummy value, see explanation below.
@@ -366,35 +441,60 @@ pub fn rewrite_use_list(
     let first_index = if has_self { 0 } else { 1 };
 
     if context.config.reorder_imported_names() {
-        items[1..].sort_by(|a, b| a.item.cmp(&b.item));
+        items[1..].sort_by(|a, b| {
+            let a = ImportItem::from_opt_str(a.item.as_ref());
+            let b = ImportItem::from_opt_str(b.item.as_ref());
+            a.cmp(&b)
+        });
     }
-
 
     let tactic = definitive_tactic(
         &items[first_index..],
-        ::lists::ListTactic::Mixed,
+        context.config.imports_layout(),
         remaining_width,
     );
+
+    let nested_indent = match context.config.imports_indent() {
+        IndentStyle::Block => shape.indent.block_indent(context.config),
+        // 1 = `{`
+        IndentStyle::Visual => shape.visual_indent(path_str.len() + 1).indent,
+    };
+
+    let nested_shape = match context.config.imports_indent() {
+        IndentStyle::Block => Shape::indented(nested_indent, context.config),
+        IndentStyle::Visual => Shape::legacy(remaining_width, nested_indent),
+    };
+
+    let ends_with_newline = context.config.imports_indent() == IndentStyle::Block &&
+        tactic != DefinitiveListTactic::Horizontal;
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        // Add one to the indent to account for "{"
-        shape: Shape::legacy(
-            remaining_width,
-            shape.indent + path_str.len() + colons_offset + 1,
-        ),
-        ends_with_newline: false,
+        trailing_separator: if ends_with_newline {
+            context.config.trailing_comma()
+        } else {
+            SeparatorTactic::Never
+        },
+        shape: nested_shape,
+        ends_with_newline: ends_with_newline,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
-    Some(if path_str.is_empty() {
-        format!("{{{}}}", list_str)
-    } else {
-        format!("{}::{{{}}}", path_str, list_str)
-    })
+    let result =
+        if list_str.contains('\n') && context.config.imports_indent() == IndentStyle::Block {
+            format!(
+                "{}{{\n{}{}\n{}}}",
+                path_str,
+                nested_shape.indent.to_string(context.config),
+                list_str,
+                shape.indent.to_string(context.config)
+            )
+        } else {
+            format!("{}{{{}}}", path_str, list_str)
+        };
+    Some(result)
 }
 
 // Returns true when self item was found.

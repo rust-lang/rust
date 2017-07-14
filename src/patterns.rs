@@ -8,21 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Shape;
-use codemap::SpanUtils;
-use rewrite::{Rewrite, RewriteContext};
-use utils::{wrap_str, format_mutability, mk_sp};
-use lists::{DefinitiveListTactic, SeparatorTactic, itemize_list, struct_lit_shape,
-            struct_lit_tactic, shape_for_tactic, struct_lit_formatting, write_list};
-use expr::{rewrite_call_inner, rewrite_unary_prefix, rewrite_pair, can_be_overflowed_expr,
-           wrap_struct_field};
-use types::{rewrite_path, PathContext};
-use super::Spanned;
-use comment::FindUncommented;
-
-use syntax::ast::{self, BindingMode, Pat, PatKind, FieldPat, RangeEnd};
-use syntax::ptr;
+use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd};
 use syntax::codemap::{self, BytePos, Span};
+use syntax::ptr;
+
+use {Shape, Spanned};
+use codemap::SpanUtils;
+use comment::FindUncommented;
+use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_unary_prefix,
+           wrap_struct_field};
+use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
+            struct_lit_tactic, write_list, DefinitiveListTactic, SeparatorTactic};
+use rewrite::{Rewrite, RewriteContext};
+use types::{rewrite_path, PathContext};
+use utils::{format_mutability, mk_sp, wrap_str};
 
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {

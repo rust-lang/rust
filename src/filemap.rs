@@ -11,14 +11,14 @@
 
 // TODO: add tests
 
+use std::fs::{self, File};
+use std::io::{self, BufWriter, Read, Write};
+
 use strings::string_buffer::StringBuffer;
 
-use std::fs::{self, File};
-use std::io::{self, Write, Read, BufWriter};
-
-use config::{NewlineStyle, Config, WriteMode};
+use checkstyle::{output_checkstyle_file, output_footer, output_header};
+use config::{Config, NewlineStyle, WriteMode};
 use rustfmt_diff::{make_diff, print_diff, Mismatch};
-use checkstyle::{output_header, output_footer, output_checkstyle_file};
 
 // A map of the files of a crate, with their new content
 pub type FileMap = Vec<FileRecord>;

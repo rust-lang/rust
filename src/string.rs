@@ -10,14 +10,14 @@
 
 // Format string literals.
 
-use unicode_segmentation::UnicodeSegmentation;
 use regex::Regex;
+use unicode_segmentation::UnicodeSegmentation;
 
 use Shape;
 use config::Config;
 use utils::wrap_str;
 
-use MIN_STRING;
+const MIN_STRING: usize = 10;
 
 pub struct StringFormat<'a> {
     pub opener: &'a str,
@@ -127,7 +127,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
 
 #[cfg(test)]
 mod test {
-    use super::{StringFormat, rewrite_string};
+    use super::{rewrite_string, StringFormat};
 
     #[test]
     fn issue343() {

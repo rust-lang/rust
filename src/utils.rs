@@ -11,15 +11,16 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, NestedMetaItem,
-                  NestedMetaItemKind, Path};
-use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 use syntax::abi;
+use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
+                  Path, Visibility};
+use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 
 use Shape;
 use rewrite::{Rewrite, RewriteContext};
 
-use SKIP_ANNOTATION;
+// When we get scoped annotations, we should have rustfmt::skip.
+const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
 // Computes the length of a string's last line, minus offset.
 pub fn extra_offset(text: &str, shape: Shape) -> usize {

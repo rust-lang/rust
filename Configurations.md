@@ -979,6 +979,87 @@ match lorem {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma), [`wrap_match_arms`](#wrap_match_arms).
 
+## `imports_indent`
+
+Indent style of imports
+
+- **Default Value**: `"Visual"`
+- **Possible values**: `"Block"`, `"Visual"`
+
+#### `"Block"`
+
+```rust
+use foo::{
+    xxx,
+    yyy,
+    zzz,
+};
+```
+
+#### `"Visual"`
+
+```rust
+use foo::{xxx,
+          yyy,
+          zzz};
+```
+
+See also: [`imports_layout`](#imports_layout).
+
+## `imports_layout`
+
+Item layout inside a imports block
+
+- **Default value**: "Mixed"
+- **Possible values**: "Horizontal", "HorizontalVertical", "Mixed", "Vertical"
+
+#### `"Mixed"`
+
+```rust
+use foo::{xxx, yyy, zzz};
+
+use foo::{aaa, bbb, ccc,
+          ddd, eee, fff};
+```
+
+#### `"Horizontal"`
+
+**Note**: This option forces to put everything on one line and may exceeds `max_width`.
+
+```rust
+use foo::{xxx, yyy, zzz};
+
+use foo::{aaa, bbb, ccc, ddd, eee, fff};
+```
+
+#### `"HorizontalVertical"`
+
+```rust
+use foo::{xxx, yyy, zzz};
+
+use foo::{aaa,
+          bbb,
+          ccc,
+          ddd, 
+          eee, 
+          fff};
+```
+
+#### `"Vertical"`
+
+```rust
+use foo::{xxx,
+          yyy,
+          zzz};
+
+use foo::{aaa,
+          bbb,
+          ccc,
+          ddd,
+          eee,
+          fff};
+```
+
 ## `item_brace_style`
 
 Brace style for structs and enums

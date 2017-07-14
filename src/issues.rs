@@ -13,6 +13,7 @@
 // associated issue number.
 
 use std::fmt;
+
 pub use config::ReportTactic;
 
 const TO_DO_CHARS: &'static [char] = &['T', 'O', 'D', 'O'];

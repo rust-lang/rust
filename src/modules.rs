@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use utils;
-
-use std::path::{Path, PathBuf};
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 use syntax::ast;
 use syntax::codemap;
 use syntax::parse::parser;
+
+use utils::contains_skip;
 
 
 /// List all the files containing modules of a crate.
@@ -46,7 +46,7 @@ fn list_submodules<'a>(
     debug!("list_submodules: search_dir: {:?}", search_dir);
     for item in &module.items {
         if let ast::ItemKind::Mod(ref sub_mod) = item.node {
-            if !utils::contains_skip(&item.attrs) {
+            if !contains_skip(&item.attrs) {
                 let is_internal =
                     codemap.span_to_filename(item.span) == codemap.span_to_filename(sub_mod.inner);
                 let dir_path = if is_internal {

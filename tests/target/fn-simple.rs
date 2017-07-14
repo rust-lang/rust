@@ -42,7 +42,7 @@ where
         C,
         D,
         // pre comment
-        E, /* last comment */
+        E, // last comment
     ) -> &SomeType,
 {
     arg(a, b, c, d, e)

@@ -10,15 +10,14 @@
 
 extern crate toml;
 
+use std::{env, fs};
 use std::cell::Cell;
-use std::fs;
 use std::fs::File;
-use std::env;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
 use file_lines::FileLines;
-use lists::{SeparatorTactic, ListTactic};
+use lists::{ListTactic, SeparatorTactic};
 
 macro_rules! configuration_option_enum{
     ($e:ident: $( $x:ident ),+ $(,)*) => {
@@ -557,9 +556,11 @@ create_config! {
     chain_one_line_max: usize, 60, "Maximum length of a chain to fit on a single line";
     chain_split_single_child: bool, false, "Split a chain with a single child if its length \
                                             exceeds `chain_one_line_max`";
+    imports_indent: IndentStyle, IndentStyle::Visual, "Indent of imports";
+    imports_layout: ListTactic, ListTactic::Mixed, "Item layout inside a import block";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imports_in_group: bool, false, "Reorder import statements in group";
-    reorder_imported_names: bool, false,
+    reorder_imported_names: bool, true,
         "Reorder lists of names in import statements alphabetically";
     single_line_if_else_max_width: usize, 50, "Maximum line length for single line if-else \
                                                 expressions. A value of zero means always break \

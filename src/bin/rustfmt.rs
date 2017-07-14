@@ -17,10 +17,6 @@ extern crate toml;
 extern crate env_logger;
 extern crate getopts;
 
-use rustfmt::{run, Input, Summary};
-use rustfmt::file_lines::FileLines;
-use rustfmt::config::{Config, WriteMode, get_toml_path};
-
 use std::{env, error};
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -28,6 +24,10 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use getopts::{Matches, Options};
+
+use rustfmt::{run, Input, Summary};
+use rustfmt::file_lines::FileLines;
+use rustfmt::config::{get_toml_path, Config, WriteMode};
 
 type FmtError = Box<error::Error + Send + Sync>;
 type FmtResult<T> = std::result::Result<T, FmtError>;

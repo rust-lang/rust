@@ -10,24 +10,23 @@
 
 use std::cmp;
 
+use strings::string_buffer::StringBuffer;
 use syntax::{ast, ptr, visit};
-use syntax::codemap::{CodeMap, Span, BytePos};
+use syntax::codemap::{BytePos, CodeMap, Span};
 use syntax::parse::ParseSess;
 
-use strings::string_buffer::StringBuffer;
-
 use {Indent, Shape};
-use expr::{format_expr, ExprType};
-use utils::{self, mk_sp};
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, FindUncommented};
-use config::Config;
-use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
-use macros::{rewrite_macro, MacroPosition};
-use items::{rewrite_static, rewrite_associated_type, rewrite_associated_impl_type,
-            rewrite_type_alias, format_impl, format_trait};
+use config::Config;
+use expr::{format_expr, ExprType};
+use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
+            rewrite_static, rewrite_type_alias};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorTactic};
+use macros::{rewrite_macro, MacroPosition};
+use rewrite::{Rewrite, RewriteContext};
+use utils::{self, mk_sp};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {

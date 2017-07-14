@@ -24,9 +24,8 @@ use std::str;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
+use getopts::{Matches, Options};
 use json::Value;
-
-use getopts::{Options, Matches};
 
 fn main() {
     let exit_status = execute();
