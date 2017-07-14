@@ -82,6 +82,7 @@ dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -132,6 +133,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -144,6 +148,7 @@ dependencies = [
  "cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dbghelp-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -184,6 +189,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "rustc-demangle 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Make html_diff compiles only after stage0
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -195,6 +203,7 @@ version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -232,6 +241,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -266,9 +278,8 @@ dependencies = [
  "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
-<<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -280,15 +291,25 @@ dependencies = [
  "toml 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 <<<<<<< HEAD
-<<<<<<< HEAD
 =======
->>>>>>> Update html-diff-rs dependency
- "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
+<<<<<<< HEAD
+ "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Make html_diff compiles only after stage0
 >>>>>>> Make html_diff compiles only after stage0
+=======
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -306,7 +327,11 @@ version = "0.1.0"
 dependencies = [
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -318,55 +343,17 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 version = "0.22.0"
+<<<<<<< HEAD
 source = "git+https://github.com/rust-lang/cargo#bcf3997b1fa177afc5b6c632a6fbbf6cc75df427"
+=======
+source = "git+https://github.com/rust-lang/cargo#305bc25d5e105e84ffe261655b46cf74570f6e5b"
+>>>>>>> Update to last master
 replace = "cargo 0.22.0"
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Update unstable-crate test
-version = "0.21.0"
-<<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
-<<<<<<< HEAD
-<<<<<<< HEAD
-source = "git+https://github.com/rust-lang/cargo#1566c92b5d28e435613918e59dc94755f99d73b1"
-replace = "cargo 0.21.0"
-=======
-<<<<<<< HEAD
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-source = "git+https://github.com/rust-lang/cargo#ac04d2e0afa95cb749406f4934421342506da4f2"
-replace = "cargo 0.20.0"
->>>>>>> Add warnings when rustdoc html rendering differs
->>>>>>> Add warnings when rustdoc html rendering differs
-=======
-source = "git+https://github.com/rust-lang/cargo#eb6cf012a6cc23c9c89c4009564de9fccc38b9cb"
->>>>>>> Update unstable-crate test
-=======
-source = "git+https://github.com/rust-lang/cargo#854bc167bbf74053f821f65cb86d506033f3d3a7"
->>>>>>> Update unstable-crate test
-=======
-source = "git+https://github.com/rust-lang/cargo#cc8aa6f03274a91c3f3d86835ab36eb7de5099f0"
->>>>>>> Update unstable check test
-=======
-source = "git+https://github.com/rust-lang/cargo#74e54214c9d13871934fde0ecb07250e523c4e92"
->>>>>>> Update html-diff-rs dependency
-replace = "cargo 0.21.0"
->>>>>>> Update unstable-crate test
 
 [[package]]
 name = "cargo"
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
 version = "0.22.0"
-=======
-version = "0.21.0"
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-=======
->>>>>>> Make html_diff compiles only after stage0
->>>>>>> Make html_diff compiles only after stage0
-=======
->>>>>>> Update unstable-crate test
 dependencies = [
  "advapi32-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "atty 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -375,15 +362,7 @@ dependencies = [
  "core-foundation 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "crates-io 0.11.0",
  "crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "curl 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Update unstable-crate test
- "curl 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Make html_diff compiles only after stage0
  "docopt 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.11.0-rc.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -399,11 +378,16 @@ dependencies = [
  "ignore 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "jobserver 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "libgit2-sys 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
  "openssl 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
@@ -429,6 +413,9 @@ dependencies = [
 =======
 >>>>>>> Update unstable-crate test
 >>>>>>> Update unstable-crate test
+=======
+ "openssl 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "psapi-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "same-file 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "scoped-tls 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -441,7 +428,11 @@ dependencies = [
  "tar 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "termcolor 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -465,6 +456,7 @@ dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -479,29 +471,11 @@ dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Update unstable-crate test
- "libc 0.2.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
-<<<<<<< HEAD
- "serde 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Make html_diff compiles only after stage0
-<<<<<<< e2c9478fe8b57ec12517eccb24b420a9f92293a2
->>>>>>> Make html_diff compiles only after stage0
-=======
-=======
- "serde 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Update unstable check test
->>>>>>> Update unstable check test
-=======
- "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Update html-diff-rs dependency
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tar 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -570,6 +544,7 @@ dependencies = [
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -587,6 +562,9 @@ dependencies = [
 =======
 >>>>>>> Update unstable-crate test
 >>>>>>> Update unstable-crate test
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -594,6 +572,14 @@ dependencies = [
 [[package]]
 name = "completion"
 version = "0.1.0"
+
+[[package]]
+name = "conv"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "custom_derive 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "core"
@@ -668,6 +654,7 @@ dependencies = [
  "curl-sys 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -699,6 +686,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "openssl-probe 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
  "openssl-sys 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -725,13 +715,22 @@ version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "libz-sys 1.0.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl-sys 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "vcpkg 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "custom_derive"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "dbghelp-sys"
@@ -771,6 +770,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -820,6 +820,10 @@ dependencies = [
  "serde 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
+=======
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "strsim 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -884,6 +888,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -927,6 +932,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -946,6 +954,7 @@ name = "flate2"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -983,6 +992,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "miniz-sys 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1008,6 +1020,7 @@ dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1043,15 +1056,13 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
-name = "futures"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-=======
 name = "futf"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1059,7 +1070,11 @@ dependencies = [
  "debug_unreachable 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "mac 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
->>>>>>> Add warnings when rustdoc html rendering differs
+
+[[package]]
+name = "futures"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gcc"
@@ -1077,6 +1092,7 @@ version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1104,6 +1120,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "libgit2-sys 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl-probe 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl-sys 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1175,26 +1194,6 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "html-diff"
-version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "kuchiki 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "html5ever"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "mac 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "markup5ever 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "syn 0.11.11 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "highlight"
 version = "0.1.0"
 
@@ -1213,6 +1212,26 @@ dependencies = [
 [[package]]
 name = "hover"
 version = "0.1.0"
+
+[[package]]
+name = "html-diff"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "kuchiki 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "html5ever"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mac 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "markup5ever 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 0.11.11 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "idna"
@@ -1278,6 +1297,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1314,6 +1334,10 @@ dependencies = [
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
  "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -1377,6 +1401,7 @@ dependencies = [
 name = "libc"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 version = "0.2.29"
 =======
 =======
@@ -1412,6 +1437,9 @@ version = "0.2.24"
 version = "0.2.26"
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+version = "0.2.28"
+>>>>>>> Update to last master
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -1422,9 +1450,14 @@ dependencies = [
  "cmake 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl-sys 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "libssh2-sys 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "libz-sys 1.0.16 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
  "openssl-sys 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
@@ -1448,6 +1481,9 @@ dependencies = [
 =======
 >>>>>>> Update unstable-crate test
 >>>>>>> Update unstable-crate test
+=======
+ "openssl-sys 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1459,6 +1495,7 @@ dependencies = [
  "cmake 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1467,18 +1504,19 @@ dependencies = [
 <<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "libc 0.2.27 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Make html_diff compiles only after stage0
+<<<<<<< HEAD
  "libz-sys 1.0.16 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
  "openssl-sys 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
  "openssl-sys 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
-<<<<<<< HEAD
-<<<<<<< HEAD
+>>>>>>> Update to last master
 =======
->>>>>>> Update html-diff-rs dependency
- "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "libz-sys 1.0.16 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "openssl-sys 0.9.14 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
 =======
@@ -1493,6 +1531,9 @@ dependencies = [
 =======
 >>>>>>> Update unstable-crate test
 >>>>>>> Update unstable-crate test
+=======
+ "openssl-sys 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1502,7 +1543,11 @@ version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "vcpkg 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1525,6 +1570,7 @@ dependencies = [
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1560,12 +1606,32 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
 name = "mac"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "magenta"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "conv 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "magenta-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "magenta-sys"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "markup5ever"
@@ -1592,6 +1658,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1606,6 +1673,9 @@ dependencies = [
  "clap 2.25.0 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Add warnings when rustdoc html rendering differs
 >>>>>>> Add warnings when rustdoc html rendering differs
+=======
+ "clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "handlebars 0.26.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1614,7 +1684,11 @@ dependencies = [
  "regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -1624,6 +1698,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1659,6 +1734,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -1668,6 +1746,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1703,6 +1782,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -1713,6 +1795,7 @@ dependencies = [
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1748,6 +1831,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -1774,6 +1860,7 @@ dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1809,6 +1896,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ws2_32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1833,7 +1923,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num-integer 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1886,6 +1976,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -1922,6 +2013,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -1935,6 +2029,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "openssl"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 version = "0.9.17"
@@ -1958,11 +2053,15 @@ version = "0.9.13"
 version = "0.9.14"
 >>>>>>> Update unstable-crate test
 >>>>>>> Update unstable-crate test
+=======
+version = "0.9.15"
+>>>>>>> Update to last master
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "foreign-types 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1976,8 +2075,8 @@ dependencies = [
 <<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "libc 0.2.27 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Make html_diff compiles only after stage0
- "openssl-sys 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2007,6 +2106,11 @@ dependencies = [
  "openssl-sys 0.9.14 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
+ "openssl-sys 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -2018,17 +2122,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "openssl-sys"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 version = "0.9.17"
 =======
 =======
 <<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
 >>>>>>> Update unstable-crate test
 <<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
+=======
+>>>>>>> Update to last master
 version = "0.9.15"
 >>>>>>> Make html_diff compiles only after stage0
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
@@ -2067,6 +2175,9 @@ dependencies = [
 >>>>>>> Update unstable-crate test
 =======
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "vcpkg 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2130,7 +2241,7 @@ version = "0.7.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "phf_shared 0.7.21 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2210,6 +2321,7 @@ name = "racer"
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 version = "2.0.10"
 =======
 =======
@@ -2229,10 +2341,14 @@ version = "2.0.8"
 =======
 version = "2.0.9"
 >>>>>>> Update unstable-crate test
+=======
+version = "2.0.10"
+>>>>>>> Update to last master
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -2244,6 +2360,8 @@ dependencies = [
 =======
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update unstable-crate test
+=======
+>>>>>>> Update to last master
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntex_errors 0.52.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntex_syntax 0.52.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2260,9 +2378,10 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.3.15"
+version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2273,10 +2392,13 @@ dependencies = [
 <<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "libc 0.2.27 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Make html_diff compiles only after stage0
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "magenta 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 name = "reformat"
 version = "0.1.0"
 
@@ -2285,39 +2407,6 @@ name = "reformat_with_range"
 version = "0.1.0"
 
 [[package]]
-=======
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> Update html-diff-rs dependency
- "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-<<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
-=======
->>>>>>> Make html_diff compiles only after stage0
->>>>>>> Make html_diff compiles only after stage0
-<<<<<<< HEAD
-=======
->>>>>>> Update unstable-crate test
- "libc 0.2.24 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "ref_slice"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
->>>>>>> Add warnings when rustdoc html rendering differs
->>>>>>> Add warnings when rustdoc html rendering differs
-=======
->>>>>>> Make html_diff compiles only after stage0
-=======
->>>>>>> Update html-diff-rs dependency
 name = "regex"
 version = "0.1.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2371,6 +2460,7 @@ dependencies = [
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "jsonrpc-core 7.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "languageserver-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2381,10 +2471,13 @@ dependencies = [
 <<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
 >>>>>>> Update html-diff-rs dependency
 <<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
+=======
+>>>>>>> Update to last master
  "jsonrpc-core 7.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "languageserver-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "racer 2.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 >>>>>>> Add warnings when rustdoc html rendering differs
@@ -2429,8 +2522,14 @@ dependencies = [
 >>>>>>> Make html_diff compiles only after stage0
 =======
 >>>>>>> Update unstable check test
+=======
+ "racer 2.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-analysis 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-data 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
  "rustfmt-nightly 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2477,6 +2576,13 @@ dependencies = [
 >>>>>>> Update html-diff-rs dependency
  "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "rustfmt-nightly 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "url_serde 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2522,6 +2628,7 @@ dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "racer 2.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -2541,6 +2648,9 @@ dependencies = [
 =======
  "racer 2.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update unstable-crate test
+=======
+ "racer 2.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2560,18 +2670,7 @@ dependencies = [
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "jobserver 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
-=======
-<<<<<<< HEAD
- "jobserver 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
-=======
->>>>>>> Make html_diff compiles only after stage0
->>>>>>> Make html_diff compiles only after stage0
-=======
- "jobserver 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Update unstable-crate test
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_back 0.0.0",
@@ -2880,6 +2979,7 @@ dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "rls-data 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -2901,6 +3001,9 @@ dependencies = [
  "rls-data 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update unstable-crate test
 >>>>>>> Update unstable-crate test
+=======
+ "rls-data 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2924,18 +3027,7 @@ dependencies = [
 >>>>>>> Make html_diff compiles only after stage0
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "jobserver 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
-=======
- "jobserver 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-=======
- "flate 0.0.0",
- "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Make html_diff compiles only after stage0
->>>>>>> Make html_diff compiles only after stage0
-=======
->>>>>>> Update unstable-crate test
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3015,61 +3107,24 @@ dependencies = [
 name = "rustfmt-nightly"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 version = "0.2.2"
 =======
 =======
 <<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
 >>>>>>> Update html-diff-rs dependency
 <<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
+=======
+>>>>>>> Update to last master
 version = "0.2.1"
 >>>>>>> Add warnings when rustdoc html rendering differs
 source = "registry+https://github.com/rust-lang/crates.io-index"
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-version = "0.1.8"
-source = "git+https://github.com/rust-lang-nursery/rustfmt?branch=rustfmt-42492#7333dfc95b4af5c7283ba03f33c50f108d2be3f5"
-=======
-version = "0.1.7"
-=======
-version = "0.1.8"
->>>>>>> Update unstable check test
-source = "registry+https://github.com/rust-lang/crates.io-index"
-<<<<<<< HEAD
-=======
-name = "rustfmt"
-version = "0.9.0"
-source = "git+https://github.com/rust-lang-nursery/rustfmt?branch=libsyntax#6c1de7694782d9f710b2f00b1f650f266a99b384"
-<<<<<<< HEAD
-=======
-version = "0.8.4"
-source = "git+https://github.com/rust-lang-nursery/rustfmt#c0fae6a82a4cea3320f6e35432a4fc6bbad6b0f9"
->>>>>>> Add warnings when rustdoc html rendering differs
->>>>>>> Add warnings when rustdoc html rendering differs
-<<<<<<< HEAD
->>>>>>> Add warnings when rustdoc html rendering differs
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
->>>>>>> Add warnings when rustdoc html rendering differs
-=======
-=======
-=======
->>>>>>> Make html_diff compiles only after stage0
->>>>>>> Make html_diff compiles only after stage0
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
->>>>>>> Make html_diff compiles only after stage0
-=======
-=======
->>>>>>> Update unstable-crate test
->>>>>>> Update unstable-crate test
-=======
-version = "0.1.8"
-source = "git+https://github.com/rust-lang-nursery/rustfmt?branch=rustfmt-42492#7333dfc95b4af5c7283ba03f33c50f108d2be3f5"
->>>>>>> Update html-diff-rs dependency
 dependencies = [
  "diff 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3107,6 +3162,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3114,6 +3172,7 @@ dependencies = [
  "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "strings 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "term 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
  "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3140,6 +3199,10 @@ dependencies = [
 >>>>>>> Add warnings when rustdoc html rendering differs
 =======
 >>>>>>> Update html-diff-rs dependency
+=======
+ "toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-segmentation 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3158,6 +3221,11 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "scopeguard"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "selectors"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3171,11 +3239,6 @@ dependencies = [
  "precomputed-hash 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "scopeguard"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "semver"
@@ -3193,6 +3256,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "serde"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 version = "1.0.11"
@@ -3220,6 +3284,9 @@ version = "1.0.9"
 version = "1.0.10"
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+version = "1.0.11"
+>>>>>>> Update to last master
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -3246,6 +3313,7 @@ name = "serde_ignored"
 version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3279,6 +3347,9 @@ dependencies = [
  "serde 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -3288,8 +3359,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "dtoa 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "itoa 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
-<<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
  "num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
@@ -3298,6 +3369,9 @@ dependencies = [
 >>>>>>> Update html-diff-rs dependency
  "serde 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
+=======
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -3326,7 +3400,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ws2_32-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -3377,7 +3455,7 @@ dependencies = [
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "phf_shared 0.7.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "precomputed-hash 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "string_cache_codegen 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "string_cache_shared 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -3477,6 +3555,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -3512,6 +3591,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntex_pos 0.52.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3535,6 +3617,7 @@ dependencies = [
  "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -3570,6 +3653,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntex_errors 0.52.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3586,6 +3672,7 @@ dependencies = [
  "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -3621,6 +3708,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "xattr 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3629,7 +3719,7 @@ name = "tempdir"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3663,6 +3753,7 @@ dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -3698,6 +3789,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3732,6 +3826,7 @@ version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3787,6 +3882,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -3820,7 +3918,11 @@ dependencies = [
 
 [[package]]
 name = "toml"
+<<<<<<< HEAD
 version = "0.4.5"
+=======
+version = "0.4.4"
+>>>>>>> Update to last master
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3892,15 +3994,7 @@ name = "url"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
  "idna 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
-=======
-<<<<<<< HEAD
-=======
->>>>>>> Update unstable-crate test
- "idna 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Make html_diff compiles only after stage0
  "matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "percent-encoding 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -3915,24 +4009,20 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 name = "userenv-sys"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-=======
+]
+
+[[package]]
 name = "utf-8"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
- "matches 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Add warnings when rustdoc html rendering differs
-=======
  "matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
->>>>>>> Make html_diff compiles only after stage0
 ]
 
 [[package]]
@@ -4005,6 +4095,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  "libc 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)",
 =======
 =======
@@ -4040,6 +4131,9 @@ dependencies = [
  "libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)",
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+ "libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)",
+>>>>>>> Update to last master
 ]
 
 [[package]]
@@ -4062,48 +4156,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum ansi_term 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "23ac7c30002a5accbf7e8987d0632fa6de155b7c3d39d0067317a391e00a2ef6"
 "checksum ar 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b24e4eef8e3fa7e2ca75b157e6039cdf8d9d3a68213ddc19d0fd9d576b9717c9"
 "checksum atty 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d912da0db7fa85514874458ca3651fe2cddace8d0b0505571dbdcd41ab490159"
-<<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 "checksum backtrace 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "72f9b4182546f4b04ebc4ab7f84948953a118bd6021a1b6a6c909e3e94f6be76"
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 "checksum backtrace-sys 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "afccc5772ba333abccdf60d55200fa3406f8c59dcf54d5f7998c9107d3799c7c"
-=======
-"checksum backtrace-sys 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "3a0d842ea781ce92be2bf78a9b38883948542749640b8378b3b2f03d1fd9f1ff"
-<<<<<<< HEAD
-=======
-=======
-"checksum backtrace 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f551bc2ddd53aea015d453ef0b635af89444afa5ed2405dd0b2062ad5d600d80"
-"checksum backtrace-sys 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "d192fd129132fbc97497c1f2ec2c2c5174e376b95f535199ef4fe0a293d33842"
->>>>>>> Add warnings when rustdoc html rendering differs
-=======
-=======
->>>>>>> Update unstable-crate test
-"checksum backtrace 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "72f9b4182546f4b04ebc4ab7f84948953a118bd6021a1b6a6c909e3e94f6be76"
-"checksum backtrace-sys 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "3a0d842ea781ce92be2bf78a9b38883948542749640b8378b3b2f03d1fd9f1ff"
-"checksum bitflags 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4f67931368edf3a9a51d29886d245f1c3db2f1ef0dcc9e35ff70341b78c10d23"
->>>>>>> Add warnings when rustdoc html rendering differs
->>>>>>> Add warnings when rustdoc html rendering differs
-=======
-"checksum backtrace 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "72f9b4182546f4b04ebc4ab7f84948953a118bd6021a1b6a6c909e3e94f6be76"
-"checksum backtrace-sys 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "3a0d842ea781ce92be2bf78a9b38883948542749640b8378b3b2f03d1fd9f1ff"
->>>>>>> Update html-diff-rs dependency
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum bitflags 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1370e9fc2a6ae53aea8b7a5110edbd08836ed87c88736dfabccade1c2b44bff4"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
 "checksum bufstream 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "f2f382711e76b9de6c744cc00d0497baba02fb00a787f088c879f01d09468e32"
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 "checksum cargo 0.22.0 (git+https://github.com/rust-lang/cargo)" = "<none>"
-=======
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> Update unstable-crate test
-"checksum cargo 0.21.0 (git+https://github.com/rust-lang/cargo)" = "<none>"
->>>>>>> Add warnings when rustdoc html rendering differs
 "checksum cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d4c819a1287eb618df47cc647173c5c4c66ba19d888a6e50d605672aed3140de"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 "checksum clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2267a8fdd4dce6956ba6649e130f62fb279026e5e84b92aa939ac8f85ce3f9f0"
@@ -4140,12 +4201,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 =======
 >>>>>>> Update html-diff-rs dependency
 "checksum clap 2.25.0 (registry+https://github.com/rust-lang/crates.io-index)" = "867a885995b4184be051b70a592d4d70e32d7a188db6e8dff626af286a962771"
+=======
+"checksum clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2267a8fdd4dce6956ba6649e130f62fb279026e5e84b92aa939ac8f85ce3f9f0"
+>>>>>>> Update to last master
 "checksum cmake 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)" = "b8ebbb35d3dc9cd09497168f33de1acb79b265d350ab0ac34133b98f8509af1f"
+"checksum conv 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "78ff10625fd0ac447827aa30ea8b861fead473bb60aeb73af6c1c58caf0d1299"
 "checksum crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "0c5ea215664ca264da8a9d9c3be80d2eaf30923c259d03e870388eb927508f97"
 "checksum cssparser 0.13.7 (registry+https://github.com/rust-lang/crates.io-index)" = "ef6124306e5ebc5ab11891d063aeafdd0cdc308079b708c8b566125f3680292b"
 "checksum cssparser-macros 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "079adec4af52bb5275eadd004292028c79eb3c5f5b4ee8086a36d4197032f6df"
-"checksum curl 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "6689276ab61f97c660669a5ecc117c36875dfc1ba301c986b16c653415bdf9d7"
+"checksum curl 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7034c534a1d7d22f7971d6088aa9d281d219ef724026c3428092500f41ae9c2c"
 "checksum curl-sys 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "d5481162dc4f424d088581db2f979fa7d4c238fe9794595de61d8d7522e277de"
+"checksum custom_derive 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "ef8ae57c4978a2acd8b869ce6b9ca1dfe817bff704c220209fdef2c0b75a01b9"
 "checksum dbghelp-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97590ba53bcb8ac28279161ca943a924d1fd4a8fb3fa63302591647c4fc5b850"
 "checksum debug_unreachable 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9a032eac705ca39214d169f83e3d3da290af06d8d1d344d1baad2fd002dca4b3"
 "checksum derive-new 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "41be6ca3b99e0c0483fb2389685448f650459c3ecbe4e18d7705d8010ec4ab8e"
@@ -4162,20 +4228,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum fnv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6cc484842f1e2884faf56f529f960cc12ad8c71ce96cc7abba0a067c98fee344"
 "checksum foreign-types 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3e4056b9bd47f8ac5ba12be771f77a0dae796d1bbaaf5fd0b9c2d38b69b8a29d"
 "checksum fs2 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9ab76cfd2aaa59b7bf6688ad9ba15bbae64bff97f04ea02144cfd3443e5c2866"
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-"checksum futures 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "4b63a4792d4f8f686defe3b39b92127fea6344de5d38202b2ee5a11bbbf29d6a"
-"checksum gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)" = "120d07f202dcc3f72859422563522b66fe6463a4c513df062874daad05f85f0a"
-=======
-"checksum fs2 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "34edaee07555859dc13ca387e6ae05686bb4d0364c95d649b6dab959511f4baf"
-<<<<<<< HEAD
-"checksum gcc 0.3.50 (registry+https://github.com/rust-lang/crates.io-index)" = "5f837c392f2ea61cb1576eac188653df828c861b7137d74ea4a5caa89621f9e6"
-=======
-=======
-"checksum fs2 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9ab76cfd2aaa59b7bf6688ad9ba15bbae64bff97f04ea02144cfd3443e5c2866"
->>>>>>> Make html_diff compiles only after stage0
-=======
->>>>>>> Update unstable-crate test
 "checksum futf 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "51f93f3de6ba1794dcd5810b3546d004600a59a98266487c8407bc4b24e398f3"
+"checksum futures 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "4b63a4792d4f8f686defe3b39b92127fea6344de5d38202b2ee5a11bbbf29d6a"
 "checksum gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)" = "120d07f202dcc3f72859422563522b66fe6463a4c513df062874daad05f85f0a"
 "checksum getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)" = "d9047cfbd08a437050b363d35ef160452c5fe8ea5187ae0a624708c91581d685"
 "checksum git2 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)" = "aa01936ac96555c083c0e8553f672616274408d9d3fc5b8696603fbf63ff43ee"
@@ -4185,43 +4239,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum hamcrest 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bf088f042a467089e9baa4972f57f9247e42a0cc549ba264c7a04fbb8ecb89d4"
 "checksum handlebars 0.26.2 (registry+https://github.com/rust-lang/crates.io-index)" = "fbba80e74e9591a5f6a4ffff6b7f9d645759a896e431cfbdc853e9184370294a"
 "checksum hex 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d6a22814455d41612f41161581c2883c0c6a1c41852729b17d5ed88f01e153aa"
-<<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 "checksum home 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9f25ae61099d8f3fee8b483df0bd4ecccf4b2731897aad40d50eca1b641fe6db"
-"checksum idna 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "014b298351066f1512874135335d62a789ffe78a9974f94b43ed5621951eaf7d"
-"checksum ignore 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b3fcaf2365eb14b28ec7603c98c06cc531f19de9eb283d89a3dff8417c8c99f5"
-=======
-"checksum idna 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2233d4940b1f19f0418c158509cd7396b8d70a5db5705ce410914dc8fa603b37"
-=======
-"checksum html-diff 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d583b05cfbed6c646ff0484e2adf3ecde689e36afae42328844471496f659dc3"
-"checksum html5ever 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d60508177ec4e5774a112efcf4d4d5f123cb00a43476fa5940b7da568371a165"
-"checksum html5ever-atoms 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c626dc6733babf7110d3a5078b1529e9d0eaaacf6c488ef6a7437b7d515844bb"
-"checksum idna 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6ac85ec3f80c8e4e99d9325521337e14ec7555c458a14e377d189659a427f375"
->>>>>>> Add warnings when rustdoc html rendering differs
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
->>>>>>> Add warnings when rustdoc html rendering differs
-=======
-=======
-=======
->>>>>>> Update unstable-crate test
-"checksum hex 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d6a22814455d41612f41161581c2883c0c6a1c41852729b17d5ed88f01e153aa"
-"checksum html-diff 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "8dcd098ed53623fb0f855acab766fced3353a5723314edeb0dad39720f26fed5"
-"checksum html5ever 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d60508177ec4e5774a112efcf4d4d5f123cb00a43476fa5940b7da568371a165"
-"checksum html5ever-atoms 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c626dc6733babf7110d3a5078b1529e9d0eaaacf6c488ef6a7437b7d515844bb"
-=======
 "checksum html-diff 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "17dbc64943cae56925cf9ff22e8c76ccdb8010f6675a1a56660ec7e597ffa7c7"
 "checksum html5ever 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a49d5001dd1bddf042ea41ed4e0a671d50b1bf187e66b349d7ec613bdce4ad90"
->>>>>>> Update html-diff-rs dependency
-"checksum idna 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2233d4940b1f19f0418c158509cd7396b8d70a5db5705ce410914dc8fa603b37"
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
->>>>>>> Make html_diff compiles only after stage0
->>>>>>> Make html_diff compiles only after stage0
-=======
->>>>>>> Update unstable-crate test
+"checksum idna 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "014b298351066f1512874135335d62a789ffe78a9974f94b43ed5621951eaf7d"
+"checksum ignore 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b3fcaf2365eb14b28ec7603c98c06cc531f19de9eb283d89a3dff8417c8c99f5"
 "checksum itoa 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eb2f404fbc66fd9aac13e998248505e7ecb2ad8e44ab6388684c5fb11c6c251c"
 "checksum jobserver 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "443ae8bc0af6c106e6e8b77e04684faecc1a5ce94e058f4c2b0a037b0ea1b133"
 "checksum jsonrpc-core 7.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "903e5eee845f3d83c1436d12848d97b1247cf850ff06a8e1db2f1ce3543af2cf"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
+<<<<<<< HEAD
 <<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
 <<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 "checksum languageserver-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d52e477b23bf52cd3ca0f9fc6c5d14be954eec97e3b9cdfbd962d911bd533caf"
@@ -4281,17 +4308,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 =======
 >>>>>>> Update html-diff-rs dependency
 =======
+=======
+>>>>>>> Update to last master
 "checksum kuchiki 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ef2ea4f2f7883cd7c6772b06c14abca01a2cc1f75c426cebffcf6b3b925ef9fc"
-"checksum languageserver-types 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)" = "680aee78c75504fdcb172635a7b7da0dccaafa4c42d935e19576c14b27942362"
+"checksum languageserver-types 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d52e477b23bf52cd3ca0f9fc6c5d14be954eec97e3b9cdfbd962d911bd533caf"
 "checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
-"checksum libc 0.2.26 (registry+https://github.com/rust-lang/crates.io-index)" = "30885bcb161cf67054244d10d4a7f4835ffd58773bc72e07d35fecf472295503"
->>>>>>> Update html-diff-rs dependency
+"checksum libc 0.2.28 (registry+https://github.com/rust-lang/crates.io-index)" = "bb7b49972ee23d8aa1026c365a5b440ba08e35075f18c459980c7395c221ec48"
 "checksum libgit2-sys 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)" = "df18a822100352d9863b302faf6f8f25c0e77f0e60feb40e5dbe1238b7f13b1d"
 "checksum libssh2-sys 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0db4ec23611747ef772db1c4d650f8bd762f07b461727ec998f953c614024b75"
 "checksum libz-sys 1.0.16 (registry+https://github.com/rust-lang/crates.io-index)" = "3fdd64ef8ee652185674455c1d450b83cbc8ad895625d543b5324d923f82e4d8"
 "checksum log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "880f77541efa6e5cc74e76910c9884d9859683118839d6a1dc3b11e63512565b"
 "checksum lzma-sys 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "013fa6506eb7d26040c46dab9ecb7ccb4e2896b5bf24a9d65932501ea9f67af8"
 "checksum mac 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
+"checksum magenta 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4bf0336886480e671965f794bc9b6fce88503563013d1bfb7a502c81fe3ac527"
+"checksum magenta-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "40d014c7011ac470ae28e2f76a02bfea4a8480f73e701353b49ad7a8d75f4699"
 "checksum markup5ever 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5050cc22c1d567a9b99bcbe9ffbd8f3127b3d146994105480240dc8ba4f4f2ef"
 "checksum matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "100aabe6b8ff4e4a7e32c1c13523379802df0772b82466207ac25b013f193376"
 "checksum mdbook 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)" = "22911d86cde6f80fa9f0fb2a68bbbde85d97af4fe0ce267141c83a4187d28700"
@@ -4300,9 +4330,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum miniz-sys 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "28eaee17666671fa872e567547e8428e83308ebe5808cdf6a0e28397dbe2c726"
 "checksum miow 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f2f3b1cf331de6896aabf6e9d55dca90356cc9960cca7eaaf408a355ae919"
 <<<<<<< HEAD
+<<<<<<< HEAD
 "checksum net2 0.2.31 (registry+https://github.com/rust-lang/crates.io-index)" = "3a80f842784ef6c9a958b68b7516bc7e35883c614004dd94959a4dca1b716c09"
 =======
 <<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
+=======
+>>>>>>> Update to last master
 "checksum net2 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)" = "94101fd932816f97eb9a5116f6c1a11511a1fed7db21c5ccd823b2dc11abf566"
 >>>>>>> Make html_diff compiles only after stage0
 "checksum num 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "a311b77ebdc5dd4cf6449d81e4135d9f0e3b153839ac90e648a8ef538f923525"
@@ -4312,24 +4345,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-iter 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)" = "7485fcc84f85b4ecd0ea527b14189281cf27d60e583ae65ebc9c088b13dffe01"
 "checksum num-rational 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "288629c76fac4b33556f4b7ab57ba21ae202da65ba8b77466e6d598e31990790"
 "checksum num-traits 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "99843c856d68d8b4313b03a17e33c4bb42ae8f6610ea81b28abe076ac721b9b0"
-=======
-"checksum net2 0.2.29 (registry+https://github.com/rust-lang/crates.io-index)" = "bc01404e7568680f1259aa5729539f221cb1e6d047a0d9053cab4be8a73b5d67"
-"checksum num 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "2c3a3dc9f30bf824141521b30c908a859ab190b76e20435fcd89f35eb6583887"
-"checksum num-bigint 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "6361748d02e5291c72a422dc8ed4d8464a80cb1e618971f6fffe6d52d97e3286"
-"checksum num-complex 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)" = "412dfc143c56579aa6a22c574e38ddbf724522f1280ae2b257498cccff3fb6af"
-"checksum num-integer 0.1.34 (registry+https://github.com/rust-lang/crates.io-index)" = "ef1a4bf6f9174aa5783a9b4cc892cacd11aebad6c69ad027a0b65c6ca5f8aa37"
-"checksum num-iter 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)" = "f7d1891bd7b936f12349b7d1403761c8a0b85a18b148e9da4429d5d102c1a41e"
-"checksum num-rational 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)" = "33c881e104a26e1accc09449374c095ff2312c8e0c27fab7bbefe16eac7c776d"
-"checksum num-traits 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "1708c0628602a98b52fad936cf3edb9a107af06e52e49fdf0707e884456a6af6"
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-<<<<<<< HEAD
->>>>>>> Make html_diff compiles only after stage0
-=======
->>>>>>> Update unstable-crate test
 "checksum num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "aec53c34f2d0247c5ca5d32cca1478762f301740468ee9ee6dcb7a0dd7a0c584"
 "checksum open 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3478ed1686bd1300c8a981a940abc92b06fac9cbef747f4c668d4e032ff7b842"
 "checksum openssl 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)" = "085aaedcc89a2fac1eb2bc19cd66f29d4ea99fec60f82a5f3a88a6be7dbd90b5"
 "checksum openssl-probe 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d98df0270d404ccd3c050a41d579c52d1db15375168bb3471e04ec0f5f378daf"
+<<<<<<< HEAD
 <<<<<<< HEAD
 "checksum openssl-sys 0.9.17 (registry+https://github.com/rust-lang/crates.io-index)" = "7e3a9845a4c9fdb321931868aae5549e96bb7b979bf9af7de03603d74691b5f3"
 =======
@@ -4352,6 +4372,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 =======
 >>>>>>> Update unstable-crate test
 >>>>>>> Update unstable-crate test
+=======
+"checksum openssl-sys 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)" = "ad95f8160d1c150c4f44d4c4959732e048ac046c37f597fe362f8bf57561ffb4"
+>>>>>>> Update to last master
 "checksum owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "cdf84f41639e037b484f93433aa3897863b561ed65c6e59c7073d7c561710f37"
 "checksum percent-encoding 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de154f638187706bde41d9b4738748933d64e6b37bdbffc0b47a97d16a6ae356"
 "checksum pest 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0a6dda33d67c26f0aac90d324ab2eb7239c819fc7b2552fe9faa4fe88441edc8"
@@ -4367,6 +4390,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum quick-error 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3c36987d4978eb1be2e422b1e0423a557923a5c3e7e6f31d5699e9aafaefa469"
 "checksum quote 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4c5cf478fe1006dbcc72567121d23dbdae5f1632386068c5c86ff4f645628504"
 "checksum quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e920b65c65f10b2ae65c831a81a073a89edd28c7cce89475bff467ab4167a"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -4392,6 +4416,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum racer 2.0.9 (registry+https://github.com/rust-lang/crates.io-index)" = "9079a128fdb6f0c8850010e1478b215d4c00134654bf995bfda41824951ce9bd"
 >>>>>>> Update unstable-crate test
 "checksum rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "022e0636ec2519ddae48154b028864bdce4eaf7d35226ab8e65c611be97b189d"
+=======
+"checksum racer 2.0.10 (registry+https://github.com/rust-lang/crates.io-index)" = "f120c7510ef7aff254aeb06067fb6fac573ec96a1660e194787cf9dced412bf0"
+"checksum rand 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)" = "eb250fd207a4729c976794d03db689c9be1d634ab5a1c9da9492a13d8fecbcdf"
+>>>>>>> Update to last master
 "checksum regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)" = "4fd4ace6a8cf7860714a2c2280d6c1f7e6a413486c13298bbc86fd3da019402f"
 "checksum regex 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1731164734096285ec2a5ec7fea5248ae2f5485b3feeb0115af4fda2183b2d1b"
 "checksum regex-syntax 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "f9ec002c35e86791825ed294b50008eea9ddfc8def4420124fbc6b08db834957"
@@ -4402,6 +4430,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "ffd34691a510938bb67fe0444fb363103c73ffb31c121d1e16bc92d8945ea8ff"
 "checksum rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "aee45432acc62f7b9a108cc054142dac51f979e69e71ddce7d6fc7adf29e817e"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 "checksum rustfmt-nightly 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6eea0d0590ae793fc4d281df56e01dc7531575c8ed9a72fadf5fdc7305a0d32f"
@@ -4419,10 +4448,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 >>>>>>> Update unstable check test
 >>>>>>> Update unstable check test
 >>>>>>> Update unstable check test
+=======
+"checksum rustfmt-nightly 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "aa1ffc66e1e1786355f22e8a958a57bd67fbf9564f522f87f31de9586715f8f6"
+>>>>>>> Update to last master
 "checksum same-file 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d931a44fdaa43b8637009e7632a02adc4f2b2e0733c08caa4cf00e8da4a117a7"
 "checksum scoped-tls 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f417c22df063e9450888a7561788e9bd46d3bb3c1466435b4eccb903807f147d"
-<<<<<<< 72aaf7b7580c2f6b6e4a12f6d4b1c3a85a30d6c4
 "checksum scopeguard 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "59a076157c1e2dc561d8de585151ee6965d910dd4dcb5dabb7ae3e83981a6c57"
+<<<<<<< HEAD
 "checksum semver 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3fdd61b85a0fa777f7fb7c454b9189b2941b110d1385ce84d7f76efdf1606a85"
 =======
 =======
@@ -4459,6 +4491,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum serde_derive 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)" = "7b707cf0d4cab852084f573058def08879bb467fda89d99052485e7d00edd624"
 >>>>>>> Update html-diff-rs dependency
 >>>>>>> Update html-diff-rs dependency
+=======
+"checksum selectors 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e3c89b1c6a3c029c82263f7dd2d44d0005ee7374eb09e254ab59dede4353a8c0"
+"checksum semver 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3fdd61b85a0fa777f7fb7c454b9189b2941b110d1385ce84d7f76efdf1606a85"
+"checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
+"checksum serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)" = "f7726f29ddf9731b17ff113c461e362c381d9d69433f79de4f3dd572488823e9"
+"checksum serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)" = "cf823e706be268e73e7747b147aa31c8f633ab4ba31f115efb57e5047c3a76dd"
+>>>>>>> Update to last master
 "checksum serde_derive_internals 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)" = "37aee4e0da52d801acfbc0cc219eb1eda7142112339726e427926a6f6ee65d3a"
 "checksum serde_ignored 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c10e798e4405d7dcec3658989e35ee6706f730a9ed7c1184d5ebd84317e82f46"
 "checksum serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "48b04779552e92037212c3615370f6bd57a40ebba7f20e554ff9f55e41a69a7b"
@@ -4498,6 +4537,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum termcolor 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9a5193a56b8d82014662c4b933dea6bec851daf018a2b01722e007daaf5f9dca"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 "checksum textwrap 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f728584ea33b0ad19318e20557cb0a39097751dbb07171419673502f848c7af6"
 =======
 <<<<<<< HEAD
@@ -4532,10 +4572,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 =======
 "checksum textwrap 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f86300c3e7416ee233abd7cda890c492007a3980f941f79185c753a701257167"
 >>>>>>> Update html-diff-rs dependency
+=======
+"checksum textwrap 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f728584ea33b0ad19318e20557cb0a39097751dbb07171419673502f848c7af6"
+>>>>>>> Update to last master
 "checksum thread-id 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a9539db560102d1cef46b8b78ce737ff0bb64e7e18d35b2a5688f7d097d0ff03"
 "checksum thread_local 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "8576dbbfcaef9641452d5cf0df9b0e7eeab7694956dd33bb61515fb8f18cfdd5"
 "checksum thread_local 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "1697c4b57aeeb7a536b647165a2825faddffb1d3bad386d507709bd51a90bb14"
 "checksum toml 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "736b60249cb25337bc196faa43ee12c705e426f3d55c214d73a4e7be06f92cb4"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 "checksum toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "a7540f4ffc193e0d3c94121edb19b055670d369f77d5804db11ae053a45b6e7e"
@@ -4574,6 +4618,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 >>>>>>> Add warnings when rustdoc html rendering differs
 =======
 >>>>>>> Update html-diff-rs dependency
+=======
+"checksum toml 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "3e5e16033aacf7eead46cbcb62d06cf9d1c2aa1b12faa4039072f7ae5921103b"
+"checksum typed-arena 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5934776c3ac1bea4a9d56620d6bf2d483b20d394e49581db40f187e1118ff667"
+"checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
+"checksum unicode-normalization 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "51ccda9ef9efa3f7ef5d91e8f9b83bbe6955f9bf86aec89d5cce2c874625920f"
+"checksum unicode-segmentation 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a8083c594e02b8ae1654ae26f0ade5158b119bd88ad0e8227a5d8fcd72407946"
+>>>>>>> Update to last master
 "checksum unicode-width 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "bf3a113775714a22dcb774d8ea3655c53a32debae63a063acc00a91cc586245f"
 "checksum unicode-xid 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "36dff09cafb4ec7c8cf0023eb0b686cb6ce65499116a12201c9e11840ca01beb"
 "checksum unicode-xid 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f860d7d29cf02cb2f3f359fd35991af3d30bac52c57d265a3c461074cb4dc"
@@ -4581,24 +4632,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
 "checksum url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eeb819346883532a271eb626deb43c4a1bb4c4dd47c519bd78137c3e72a4fe27"
 "checksum url_serde 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "74e7d099f1ee52f823d4bdd60c93c3602043c728f5db3b97bdb548467f7bddea"
-<<<<<<< 4735b1c7edf0c31073b61bd51db919beceb3313f
-<<<<<<< 97bfcb5eb0f5284c03eecdb06a0273272564b82d
-<<<<<<< 4d5150ce19b0eefca97d213249e34f20036613fe
 "checksum userenv-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "71d28ea36bbd9192d75bd9fa9b39f96ddb986eaee824adae5d53b6e51919b2f3"
-=======
-<<<<<<< HEAD
->>>>>>> Add warnings when rustdoc html rendering differs
-"checksum utf8-ranges 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a1ca13c08c41c9c3e04224ed9ff80461d97e121589ff27c753a16cb10830ae0f"
-"checksum utf8-ranges 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "662fab6525a98beff2921d7f61a39e7d59e0b425ebc7d0d9e66d316e55124122"
-"checksum vcpkg 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9e0a7d8bed3178a8fb112199d466eeca9ed09a14ba8ad67718179b4fd5487d0b"
-=======
-"checksum user32-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4ef4711d107b21b410a3a974b1204d9accc8b10dad75d8324b5d755de1617d47"
-=======
->>>>>>> Update unstable-crate test
-"checksum utf-8 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a9aee9ba280438b56d1ebc5329f2094f0ff457f811eeeff0b278d75aa99db400"
-=======
 "checksum utf-8 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b6f923c601c7ac48ef1d66f7d5b5b2d9a7ba9c51333ab75a3ddf8d0309185a56"
->>>>>>> Update html-diff-rs dependency
 "checksum utf8-ranges 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a1ca13c08c41c9c3e04224ed9ff80461d97e121589ff27c753a16cb10830ae0f"
 "checksum utf8-ranges 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "662fab6525a98beff2921d7f61a39e7d59e0b425ebc7d0d9e66d316e55124122"
 "checksum vcpkg 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9e0a7d8bed3178a8fb112199d466eeca9ed09a14ba8ad67718179b4fd5487d0b"
