@@ -852,9 +852,10 @@ impl Step for Assemble {
             let compiler = build_compiler;
             for stage in 0..min(target_compiler.stage, builder.flags.keep_stage.unwrap()) {
                 let target_compiler = builder.compiler(stage, target_compiler.host);
-                builder.ensure(StdLink { compiler, target_compiler, target: target_compiler.host });
-                builder.ensure(TestLink { compiler, target_compiler, target: target_compiler.host });
-                builder.ensure(RustcLink { compiler, target_compiler, target: target_compiler.host });
+                let target = target_compiler.host;
+                builder.ensure(StdLink { compiler, target_compiler, target });
+                builder.ensure(TestLink { compiler, target_compiler, target });
+                builder.ensure(RustcLink { compiler, target_compiler, target });
             }
         } else {
             builder.ensure(Rustc { compiler: build_compiler, target: target_compiler.host });
