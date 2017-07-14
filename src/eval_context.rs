@@ -414,7 +414,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
             match self.memory.get(ptr.alloc_id)?.kind {
-                ::memory::Kind::Static | ::memory::Kind::UninitializedStatic => {},
+                // for a constant like `const FOO: &i32 = &1;` the local containing
+                // the `1` is referred to by the global. We transitively marked everything
+                // the global refers to as static itself, so we don't free it here
+                ::memory::Kind::Static => {}
                 ::memory::Kind::Stack => self.memory.deallocate(ptr, None, ::memory::Kind::Stack)?,
                 other => bug!("local contained non-stack memory: {:?}", other),
             }
