@@ -36,9 +36,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return Ok(false);
         }
 
-        let cur_frame = self.cur_frame();
-        self.memory.set_cur_frame(cur_frame);
-
         let block = self.frame().block;
         let stmt_id = self.frame().stmt;
         let mir = self.mir();
