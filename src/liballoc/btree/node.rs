@@ -140,9 +140,7 @@ struct BoxedNode<K, V> {
 
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        unsafe {
-            BoxedNode { ptr: Unique::new_unchecked(Box::into_raw(node)) }
-        }
+        BoxedNode { ptr: Box::into_unique(node) }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {

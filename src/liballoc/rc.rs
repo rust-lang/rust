@@ -303,18 +303,16 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        unsafe {
-            Rc {
-                // there is an implicit weak pointer owned by all the strong
-                // pointers, which ensures that the weak destructor never frees
-                // the allocation while the strong destructor is running, even
-                // if the weak pointer is stored inside the strong one.
-                ptr: Shared::new_unchecked(Box::into_raw(box RcBox {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value: value,
-                })),
-            }
+        Rc {
+            // there is an implicit weak pointer owned by all the strong
+            // pointers, which ensures that the weak destructor never frees
+            // the allocation while the strong destructor is running, even
+            // if the weak pointer is stored inside the strong one.
+            ptr: Shared::from(Box::into_unique(box RcBox {
+                strong: Cell::new(1),
+                weak: Cell::new(1),
+                value: value,
+            })),
         }
     }
 
@@ -1016,7 +1014,7 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Shared::new_unchecked(Box::into_raw(box RcBox {
+                ptr: Shared::from(Box::into_unique(box RcBox {
                     strong: Cell::new(0),
                     weak: Cell::new(1),
                     value: uninitialized(),

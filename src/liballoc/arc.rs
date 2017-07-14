@@ -280,7 +280,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data: data,
         };
-        Arc { ptr: unsafe { Shared::new_unchecked(Box::into_raw(x)) } }
+        Arc { ptr: Shared::from(Box::into_unique(x)) }
     }
 
     /// Returns the contained value, if the `Arc` has exactly one strong reference.
@@ -842,7 +842,7 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Shared::new_unchecked(Box::into_raw(box ArcInner {
+                ptr: Shared::from(Box::into_unique(box ArcInner {
                     strong: atomic::AtomicUsize::new(0),
                     weak: atomic::AtomicUsize::new(1),
                     data: uninitialized(),
