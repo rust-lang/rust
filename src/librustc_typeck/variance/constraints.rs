@@ -149,11 +149,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         //
         // See README.md for a detailed discussion
         // on dep-graph management.
-                let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-                tcx.dep_graph.with_task(dep_node,
-                                        AssertDepGraphSafe(self),
-                                        def_id,
-                                        visit_item_task);
+        let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
+        tcx.dep_graph.with_task(dep_node,
+                                AssertDepGraphSafe(self),
+                                def_id,
+                                visit_item_task);
 
         fn visit_item_task<'a, 'tcx>(ccx: AssertDepGraphSafe<&mut ConstraintContext<'a, 'tcx>>,
                                      def_id: DefId)
@@ -202,8 +202,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             _ => {
                 span_bug!(tcx.def_span(def_id),
                           "`build_constraints_for_item` unsupported for this item");
+            }
         }
-    }
     }
 
     fn add_constraint(&mut self,
@@ -269,7 +269,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let variance_i = self.invariant(variance);
         for ty in substs.types() {
             self.add_constraints_from_ty(current, ty, variance_i);
-    }
+        }
 
         for region in substs.regions() {
             self.add_constraints_from_region(current, region, variance_i);
@@ -350,7 +350,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyParam(ref data) => {
                 self.add_constraint(current, data.idx, variance);
-                }
+            }
 
             ty::TyFnPtr(sig) => {
                 self.add_constraints_from_sig(current, sig, variance);
@@ -419,7 +419,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_region(current, r, variance_i);
             } else {
                 bug!();
-        }
+            }
         }
     }
 
@@ -445,7 +445,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         match *region {
             ty::ReEarlyBound(ref data) => {
                 self.add_constraint(current, data.index, variance);
-                }
+            }
 
             ty::ReStatic => {}
 
