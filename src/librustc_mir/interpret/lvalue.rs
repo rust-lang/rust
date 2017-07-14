@@ -539,6 +539,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // TODO: Check if these are valid bool/float/UTF-8, respectively (and in particular, not undef).
                 Ok(())
             }
+            TyNever => {
+                Err(EvalError::ValidationFailure(format!("The empty type is never valid.")))
+            }
             TyRef(region, ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
                 let val = self.read_lvalue(lvalue)?;
                 // Sharing restricts our context
@@ -617,6 +620,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
             }
+            TyTuple(ref types, _) => {
+                for (idx, field_ty) in types.iter().enumerate() {
+                    let field_lvalue = self.lvalue_field(lvalue, idx, ty, field_ty)?;
+                    self.validate(field_lvalue, field_ty, vctx)?;
+                }
+                Ok(())
+            }
+            TyClosure(def_id, ref closure_substs) => {
+                for (idx, field_ty) in closure_substs.upvar_tys(def_id, self.tcx).enumerate() {
+                    let field_lvalue = self.lvalue_field(lvalue, idx, ty, field_ty)?;
+                    self.validate(field_lvalue, field_ty, vctx)?;
+                }
+                Ok(())
+            }
+            TyParam(_) | TyInfer(_) => bug!("I got an incomplete type for validation"),
             _ => unimplemented!("Unimplemented type encountered when checking validity.")
         }
     }

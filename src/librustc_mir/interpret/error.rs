@@ -57,6 +57,7 @@ pub enum EvalError<'tcx> {
         access: AccessKind,
         lock: LockInfo,
     },
+    ValidationFailure(String),
     InvalidMemoryLockRelease {
         ptr: MemoryPointer,
         len: u64,
@@ -110,6 +111,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "invalid use of NULL pointer",
             MemoryLockViolation { .. } =>
                 "memory access conflicts with lock",
+            ValidationFailure(..) =>
+                "type validation failed",
             DeallocatedLockedMemory =>
                 "deallocated memory while a lock was held",
             InvalidMemoryLockRelease { .. } =>
@@ -220,6 +223,9 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             InvalidMemoryLockRelease { ptr, len } => {
                 write!(f, "tried to release memory write lock at {:?}, size {}, which was not acquired by this function",
                        ptr, len)
+            }
+            ValidationFailure(ref err) => {
+                write!(f, "type validation failed: {}", err)
             }
             NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             FunctionPointerTyMismatch(sig, got) =>

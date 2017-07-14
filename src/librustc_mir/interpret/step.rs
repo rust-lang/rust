@@ -132,13 +132,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             // Validity checks.
-            Validate(ref op, ref lvalues) => {
+            Validate(op, ref lvalues) => {
                 for operand in lvalues {
                     // We need to monomorphize ty *without* erasing lifetimes
                     let ty = operand.ty.subst(self.tcx, self.substs());
                     // TODO: do we have to self.tcx.normalize_associated_type(&{ty}) ?  That however seems to erase lifetimes.
                     let lvalue = self.eval_lvalue(&operand.lval)?;
-                    self.validate(lvalue, ty, ValidationCtx::new(*op))?;
+                    self.validate(lvalue, ty, ValidationCtx::new(op))?;
                 }
             }
             EndRegion(ce) => {
