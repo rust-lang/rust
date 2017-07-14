@@ -1,0 +1,58 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `A`
+ --> $REPO_PATH/tests/cases/ty_alias/new.rs:1:1
+  |
+1 | pub type A = u16;
+  | ^^^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: Breaking changes in `B`
+ --> $REPO_PATH/tests/cases/ty_alias/new.rs:2:1
+  |
+2 | pub type B<'a, 'b : 'a, T> = (&'a T, &'b T);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (RegionParameterAdded)
+
+warning: Breaking changes in `C`
+ --> $REPO_PATH/tests/cases/ty_alias/new.rs:3:1
+  |
+3 | pub type C<T> = T;
+  | ^^^^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (RegionParameterRemoved)
+
+warning: Breaking changes in `D`
+ --> $REPO_PATH/tests/cases/ty_alias/new.rs:4:1
+  |
+4 | pub type D<'a, T, U=Box<T>> = (&'a T, U);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: NonBreaking (TypeParameterAdded { defaulted: true })
+  = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: &'a T, found: (&'a T, std::boxed::Box<T>) }) })
+
+warning: Breaking changes in `E`
+ --> $REPO_PATH/tests/cases/ty_alias/new.rs:5:1
+  |
+5 | pub type E<'a, T, U> = (&'a T, U);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (TypeParameterAdded { defaulted: false })
+
+warning: Breaking changes in `F`
+ --> $REPO_PATH/tests/cases/ty_alias/new.rs:6:1
+  |
+6 | pub type F<'a> = &'a u8;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (TypeParameterRemoved { defaulted: true })
+
+warning: Breaking changes in `G`
+ --> $REPO_PATH/tests/cases/ty_alias/new.rs:7:1
+  |
+7 | pub type G<'a> = (&'a u8);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (TypeParameterRemoved { defaulted: false })
+

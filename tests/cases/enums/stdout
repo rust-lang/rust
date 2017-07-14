@@ -1,0 +1,106 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `Abc`
+ --> $REPO_PATH/tests/cases/enums/new.rs:1:1
+  |
+1 | / pub enum Abc {
+2 | |     Abc,
+3 | | }
+  | |_^
+  |
+warning: Breaking (VariantAdded)
+ --> $REPO_PATH/tests/cases/enums/new.rs:2:5
+  |
+2 |     Abc,
+  |     ^^^
+
+warning: Breaking changes in `Bcd`
+ --> $REPO_PATH/tests/cases/enums/new.rs:5:1
+  |
+5 | / pub enum Bcd {
+6 | |
+7 | | }
+  | |_^
+  |
+warning: Breaking (VariantRemoved)
+ --> $REPO_PATH/tests/cases/enums/old.rs:6:5
+  |
+6 |     Abc,
+  |     ^^^
+
+warning: Breaking changes in `Cde`
+  --> $REPO_PATH/tests/cases/enums/new.rs:9:1
+   |
+9  | / pub enum Cde {
+10 | |     Abc,
+11 | |     Bcd,
+12 | | }
+   | |_^
+   |
+warning: Breaking (VariantAdded)
+  --> $REPO_PATH/tests/cases/enums/new.rs:11:5
+   |
+11 |     Bcd,
+   |     ^^^
+
+warning: Breaking changes in `Def`
+  --> $REPO_PATH/tests/cases/enums/new.rs:14:1
+   |
+14 | / pub enum Def {
+15 | |     Abc,
+16 | | }
+   | |_^
+   |
+warning: Breaking (VariantRemoved)
+  --> $REPO_PATH/tests/cases/enums/old.rs:15:5
+   |
+15 |     Bcd,
+   |     ^^^
+
+warning: Breaking changes in `Efg`
+  --> $REPO_PATH/tests/cases/enums/new.rs:18:1
+   |
+18 | / pub enum Efg {
+19 | |     Abc(u8),
+20 | |     Bcd,
+21 | |     Cde { f: u8 },
+...  |
+25 | |     Ghi { g: u8 },
+26 | | }
+   | |_^
+   |
+warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
+  --> $REPO_PATH/tests/cases/enums/new.rs:19:5
+   |
+19 |     Abc(u8),
+   |     ^^^^^^^
+warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
+  --> $REPO_PATH/tests/cases/enums/new.rs:20:5
+   |
+20 |     Bcd,
+   |     ^^^
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/cases/enums/new.rs:21:5
+   |
+21 |     Cde { f: u8 },
+   |     ^^^^^^^^^^^^^
+warning: Breaking (VariantStyleChanged { now_struct: false, total_private: true })
+  --> $REPO_PATH/tests/cases/enums/new.rs:22:5
+   |
+22 |     Def,
+   |     ^^^
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/cases/enums/new.rs:23:5
+   |
+23 |     Efg { f: u8 },
+   |     ^^^^^^^^^^^^^
+warning: Breaking (VariantFieldRemoved { public: false, total_public: false })
+  --> $REPO_PATH/tests/cases/enums/old.rs:25:11
+   |
+25 |     Ghi { f: u8 },
+   |           ^^^^^
+warning: Breaking (VariantFieldAdded { public: false, total_public: false })
+  --> $REPO_PATH/tests/cases/enums/new.rs:25:11
+   |
+25 |     Ghi { g: u8 },
+   |           ^^^^^
+

@@ -1,0 +1,81 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: TechnicallyBreaking changes in `Def`
+ --> $REPO_PATH/tests/cases/structs/new.rs:6:1
+  |
+6 | / pub struct Def<A=u8> {
+7 | |     pub field: A,
+8 | | }
+  | |_^
+  |
+  = note: NonBreaking (TypeParameterAdded { defaulted: true })
+note: TechnicallyBreaking (ItemMadePublic)
+ --> $REPO_PATH/tests/cases/structs/new.rs:7:5
+  |
+7 |     pub field: A,
+  |     ^^^^^^^^^^^^
+
+warning: Breaking changes in `Def2`
+  --> $REPO_PATH/tests/cases/structs/new.rs:10:1
+   |
+10 | / pub struct Def2<A=u16> {
+11 | |     pub field: A,
+12 | | }
+   | |_^
+   |
+   = note: NonBreaking (TypeParameterAdded { defaulted: true })
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: Breaking changes in `Efg`
+  --> $REPO_PATH/tests/cases/structs/new.rs:14:1
+   |
+14 | / pub struct Efg {
+15 | |     pub field: u16,
+16 | | }
+   | |_^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: TechnicallyBreaking changes in `Fgh`
+  --> $REPO_PATH/tests/cases/structs/new.rs:18:1
+   |
+18 | / pub struct Fgh {
+19 | |     pub field: u8,
+20 | | }
+   | |_^
+   |
+note: TechnicallyBreaking (ItemMadePublic)
+  --> $REPO_PATH/tests/cases/structs/new.rs:19:5
+   |
+19 |     pub field: u8,
+   |     ^^^^^^^^^^^^^
+
+warning: Breaking changes in `Ghi`
+  --> $REPO_PATH/tests/cases/structs/new.rs:22:1
+   |
+22 | / pub struct Ghi {
+23 | |     field: u8,
+24 | | }
+   | |_^
+   |
+warning: Breaking (ItemMadePrivate)
+  --> $REPO_PATH/tests/cases/structs/new.rs:23:5
+   |
+23 |     field: u8,
+   |     ^^^^^^^^^
+
+warning: Breaking changes in `Hij`
+  --> $REPO_PATH/tests/cases/structs/new.rs:26:1
+   |
+26 | / pub struct Hij {
+27 | |     field: u8,
+28 | | }
+   | |_^
+   |
+warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+  --> $REPO_PATH/tests/cases/structs/new.rs:26:1
+   |
+26 | / pub struct Hij {
+27 | |     field: u8,
+28 | | }
+   | |_^
+

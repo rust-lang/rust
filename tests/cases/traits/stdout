@@ -1,0 +1,62 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `Abc`
+  --> $REPO_PATH/tests/cases/traits/new.rs:1:1
+   |
+1  | / pub trait Abc {
+2  | |     type A;
+3  | |     fn test(&self) -> u8;
+4  | |     fn test3(&self) -> u8;
+...  |
+13 | |     fn test9(&self) -> u8;
+14 | | }
+   | |_^
+   |
+warning: Breaking (TraitItemRemoved { defaulted: false })
+  --> $REPO_PATH/tests/cases/traits/old.rs:4:5
+   |
+4  |     fn test2(&self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+warning: Breaking (TraitItemRemoved { defaulted: true })
+  --> $REPO_PATH/tests/cases/traits/old.rs:8:5
+   |
+8  | /     fn test5() -> u8 {
+9  | |         0
+10 | |     }
+   | |_____^
+warning: Breaking (TraitItemAdded { defaulted: false })
+  --> $REPO_PATH/tests/cases/traits/new.rs:4:5
+   |
+4  |     fn test3(&self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: TechnicallyBreaking (TraitItemAdded { defaulted: true })
+  --> $REPO_PATH/tests/cases/traits/new.rs:8:5
+   |
+8  | /     fn test6() -> u8 {
+9  | |         0
+10 | |     }
+   | |_____^
+
+warning: Breaking changes in `test7`
+  --> $REPO_PATH/tests/cases/traits/new.rs:11:5
+   |
+11 |     fn test7() -> u16;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: Breaking changes in `test8`
+  --> $REPO_PATH/tests/cases/traits/new.rs:12:5
+   |
+12 |     fn test8(_: &Self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (MethodSelfChanged { now_self: false })
+
+warning: TechnicallyBreaking changes in `test9`
+  --> $REPO_PATH/tests/cases/traits/new.rs:13:5
+   |
+13 |     fn test9(&self) -> u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: TechnicallyBreaking (MethodSelfChanged { now_self: true })
+

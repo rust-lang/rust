@@ -1,0 +1,77 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Breaking changes in `bcd`
+ --> $REPO_PATH/tests/cases/func/new.rs:4:1
+  |
+4 | pub fn bcd(_: u8) {}
+  | ^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (TypeChanged { error: ArgCount })
+
+warning: Breaking changes in `cde`
+ --> $REPO_PATH/tests/cases/func/new.rs:6:1
+  |
+6 | / pub fn cde() -> u16 {
+7 | |     0xcde
+8 | | }
+  | |_^
+  |
+  = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: (), found: u16 }) })
+
+warning: Breaking changes in `def`
+  --> $REPO_PATH/tests/cases/func/new.rs:10:1
+   |
+10 | pub fn def() {}
+   | ^^^^^^^^^^^^^^^
+   |
+   = warning: Breaking (TypeChanged { error: ArgCount })
+
+warning: NonBreaking changes in `efg`
+  --> $REPO_PATH/tests/cases/func/new.rs:12:1
+   |
+12 | / pub fn efg<A>(a: A, _: A) -> A {
+13 | |     a
+14 | | }
+   | |_^
+   |
+   = note: NonBreaking (TypeParameterAdded { defaulted: true })
+
+warning: Breaking changes in `fgh`
+  --> $REPO_PATH/tests/cases/func/new.rs:16:1
+   |
+16 | / pub fn fgh(a: u8, _: u16) -> u8 {
+17 | |     a
+18 | | }
+   | |_^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: Breaking changes in `ghi`
+  --> $REPO_PATH/tests/cases/func/new.rs:20:1
+   |
+20 | / pub fn ghi(a: u8, _: u8) -> u16 {
+21 | |     a as u16
+22 | | }
+   | |_^
+   |
+   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+
+warning: NonBreaking changes in `hij`
+  --> $REPO_PATH/tests/cases/func/new.rs:24:1
+   |
+24 | / pub const fn hij() -> u8 {
+25 | |     0
+26 | | }
+   | |_^
+   |
+   = note: NonBreaking (FnConstChanged { now_const: true })
+
+warning: Breaking changes in `ijk`
+  --> $REPO_PATH/tests/cases/func/new.rs:28:1
+   |
+28 | / pub fn ijk() -> u8 {
+29 | |     0
+30 | | }
+   | |_^
+   |
+   = warning: Breaking (FnConstChanged { now_const: false })
+

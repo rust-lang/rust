@@ -1,0 +1,19 @@
+version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
+warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
+ --> $REPO_PATH/tests/cases/addition_path/new.rs:6:13
+  |
+6 |     pub use a::*;
+  |             ^^^^^
+
+warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
+ --> $REPO_PATH/tests/cases/addition_path/new.rs:6:13
+  |
+6 |     pub use a::*;
+  |             ^^^^^
+
+warning: Addition of at least one path to `Abc` (TechnicallyBreaking)
+ --> $REPO_PATH/tests/cases/addition_path/new.rs:6:13
+  |
+6 |     pub use a::*;
+  |             ^^^^^
+

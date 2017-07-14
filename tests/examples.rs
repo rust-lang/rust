@@ -1,45 +1,51 @@
 use std::env;
 use std::fs::File;
-use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-#[test]
-fn examples() {
-    let mut success = true;
+macro_rules! test {
+    ($name:ident, $path:expr) => {
+        #[test]
+        fn $name() {
+            let mut success = true;
 
-    let current_dir = env::current_dir().expect("could not determine current dir");
-    let subst = format!("s#{}#$REPO_PATH#g", current_dir.to_str().unwrap());
+            let current_dir = env::current_dir().expect("could not determine current dir");
+            let subst = format!("s#{}#$REPO_PATH#g", current_dir.to_str().unwrap());
+            let path = Path::new($path);
 
-    for file in std::fs::read_dir("tests/examples")
-            .expect("could not read dir")
-            .map(|f| f.expect("could not get file info").path()) {
-        if file.extension().map_or(false, |e| e == "rs") {
-            let out_file = file.with_extension("out");
-            let output = File::create(&out_file).expect("could not create file");
-            let fd = output.as_raw_fd();
-            let err = unsafe { Stdio::from_raw_fd(fd) };
-            let out = unsafe { Stdio::from_raw_fd(fd) };
+            let out_file = path.join("stdout");
+            let stdout = File::create(&out_file).expect("could not create `stdout` file");
+            let err_file = path.join("stderr");
+            let stderr = File::create(&err_file).expect("could not create `stderr` file");
 
-            let compile_success = Command::new("rustc")
-                .args(&["--crate-type=lib", "-o", "liboldandnew.rlib"])
-                .arg(file)
+            let old_rlib = path.join("libold.rlib");
+            let new_rlib = path.join("libnew.rlib");
+
+            success &= Command::new("rustc")
+                .args(&["--crate-type=lib", "-o", old_rlib.to_str().unwrap()])
+                .arg(path.join("old.rs"))
                 .env("RUST_BACKTRACE", "full")
                 .stdin(Stdio::null())
                 .status()
                 .expect("could not run rustc")
                 .success();
 
-            success &= compile_success;
+            success &= Command::new("rustc")
+                .args(&["--crate-type=lib", "-o", new_rlib.to_str().unwrap()])
+                .arg(path.join("new.rs"))
+                .env("RUST_BACKTRACE", "full")
+                .stdin(Stdio::null())
+                .status()
+                .expect("could not run rustc")
+                .success();
 
-            if compile_success {
+            if success {
                 let mut sed_child = Command::new("sed")
                     .arg(&subst)
                     .stdin(Stdio::piped())
-                    .stdout(out)
-                    .stderr(err)
+                    .stdout(stdout)
+                    .stderr(stderr)
                     .spawn()
                     .expect("could not run sed");
 
@@ -50,82 +56,52 @@ fn examples() {
                     panic!("could not pipe to sed");
                 };
 
-                let mut child = Command::new("./target/debug/rust-semverver")
+                success &= Command::new("./target/debug/rust-semverver")
                     .args(&["--crate-type=lib",
-                            "--extern",
-                            "oldandnew=liboldandnew.rlib",
-                            "-"])
-                    .env("RUST_SEMVERVER_TEST", "1")
+                            "--extern", &format!("old={}", old_rlib.to_str().unwrap()),
+                            "--extern", &format!("new={}", new_rlib.to_str().unwrap()),
+                            "tests/helper/test.rs"])
                     .env("RUST_LOG", "debug")
                     .env("RUST_BACKTRACE", "full")
                     .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
                     .stdin(Stdio::piped())
                     .stdout(out_pipe)
                     .stderr(err_pipe)
-                    .spawn()
-                    .expect("could not run rust-semverver");
+                    .status()
+                    .expect("could not run rust-semverver")
+                    .success();
 
-                if let Some(ref mut stdin) = child.stdin {
-                    stdin
-                        .write_fmt(format_args!("extern crate oldandnew;"))
-                        .expect("could not pipe to rust-semverver");
-                } else {
-                    panic!("could not pipe to rustc");
-                }
-
-                success &= child.wait().expect("could not wait for child").success();
                 success &= sed_child.wait().expect("could not wait for sed child").success();
 
                 success &= Command::new("git")
-                    .args(&["diff", "--exit-code", out_file.to_str().unwrap()])
+                    .args(&["diff", "--quiet",
+                          out_file.to_str().unwrap(), err_file.to_str().unwrap()])
                     .status()
                     .expect("could not run git diff")
                     .success();
             }
+
+            Command::new("rm")
+                .args(&[old_rlib.to_str().unwrap(), new_rlib.to_str().unwrap()])
+                .status()
+                .expect("could not run rm");
+
+            assert!(success, "an error occured");
         }
     }
-
-    Command::new("rm")
-        .arg("liboldandnew.rlib")
-        .status()
-        .expect("could not run rm");
-
-    if let Ok(path) = env::var("LD_LIBRARY_PATH") {
-        let mut dump =
-            File::create(Path::new("tests/debug.sh")).expect("could not create dump file");
-
-        let metadata = dump.metadata().expect("could not access dump file metadata");
-        let mut permissions = metadata.permissions();
-        permissions.set_mode(0o755);
-        let _ = dump.set_permissions(permissions);
-
-        let _ = writeln!(dump, r#"#!/bin/sh
-export PATH=./target/debug:$PATH
-export LD_LIBRARY_PATH={}
-export RUST_BACKTRACE=full
-export RUST_SEMVER_CRATE_VERSION=1.0.0
-
-if [ "$1" = "-s" ]; then
-    shift
-    arg_str="set args --crate-type=lib $(cargo semver "$@") tests/helper/test2.rs"
-    standalone=1
-else
-    rustc --crate-type=lib -o liboldandnew.rlib "$1"
-    export RUST_SEMVERVER_TEST=1
-    arg_str="set args --crate-type=lib --extern oldandnew=liboldandnew.rlib tests/helper/test.rs"
-    standalone=0
-fi
-
-export RUST_LOG=debug
-
-src_str="set substitute-path /checkout $(rustc --print sysroot)/lib/rustlib/src/rust"
-
-rust-gdb ./target/debug/rust-semverver -iex "$arg_str" -iex "$src_str"
-
-if [ $standalone = 0 ]; then
-    rm liboldandnew.rlib
-fi"#, path);
-    }
-
-    assert!(success, "an error occured");
 }
+
+test!(addition, "tests/cases/addition");
+test!(addition_path, "tests/cases/addition_path");
+test!(enums, "tests/cases/enums");
+test!(func, "tests/cases/func");
+test!(infer, "tests/cases/infer");
+test!(kind_change, "tests/cases/kind_change");
+test!(macros, "tests/cases/macros");
+test!(pathologic_paths, "tests/cases/pathologic_paths");
+test!(pub_use, "tests/cases/pub_use");
+test!(removal, "tests/cases/removal");
+test!(removal_path, "tests/cases/removal_path");
+test!(structs, "tests/cases/structs");
+test!(traits, "tests/cases/traits");
+test!(ty_alias, "tests/cases/ty_alias");

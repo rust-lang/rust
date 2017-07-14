@@ -1,0 +1,13 @@
+version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
+warning: Addition of at least one path to `a` (TechnicallyBreaking)
+ --> $REPO_PATH/tests/cases/pathologic_paths/new.rs:5:21
+  |
+5 |         pub mod a { blow!($($rest)*); }
+  |                     ^^^^^^^^^^^^^^^^^^^
+
+warning: Addition of at least one path to `b` (TechnicallyBreaking)
+ --> $REPO_PATH/tests/cases/pathologic_paths/new.rs:6:21
+  |
+6 |         pub mod b { pub use super::a::*; }
+  |                     ^^^^^^^^^^^^^^^^^^^^^^
+

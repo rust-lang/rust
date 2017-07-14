@@ -1,1 +1,2 @@
-extern crate oldandnew;
+extern crate old;
+extern crate new;
