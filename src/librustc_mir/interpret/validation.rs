@@ -1,6 +1,8 @@
 use rustc::hir::Mutability;
 use rustc::mir::{self, ValidationOp};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::traits::Reveal;
+use rustc::infer::TransNormalize;
 use rustc::middle::region::CodeExtent;
 
 use error::{EvalError, EvalResult};
@@ -55,12 +57,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     /// Validate the lvalue at the given type. If `release` is true, just do a release of all write locks
-    pub(super) fn validate(&mut self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>, mut vctx: ValidationCtx) -> EvalResult<'tcx>
+    pub(super) fn validate(&mut self, lvalue: Lvalue<'tcx>, mut ty: Ty<'tcx>, mut vctx: ValidationCtx) -> EvalResult<'tcx>
     {
         use rustc::ty::TypeVariants::*;
         use rustc::ty::RegionKind::*;
         use rustc::ty::AdtKind;
         use self::Mutability::*;
+
+        // This is essentially a copy of normalize_associated_type, but without erasure
+        if ty.has_projection_types() {
+            let param_env = ty::ParamEnv::empty(Reveal::All);
+            ty = self.tcx.infer_ctxt().enter(move |infcx| {
+                ty.trans_normalize(&infcx, param_env)
+            })
+        }
+        let ty = ty; // no more mutation
         trace!("Validating {:?} at type {}, context {:?}", lvalue, ty, vctx);
 
         // Decide whether this type *owns* the memory it covers (like integers), or whether it
