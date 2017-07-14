@@ -155,7 +155,7 @@ impl<K, V> BoxedNode<K, V> {
 
     fn as_ptr(&self) -> NonZero<*const LeafNode<K, V>> {
         unsafe {
-            NonZero::new_unchecked(self.ptr.as_ptr())
+            NonZero::from(self.ptr.as_ref())
         }
     }
 }

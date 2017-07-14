@@ -877,7 +877,7 @@ impl<K, V> RawTable<K, V> {
                 elems_left: elems_left,
                 marker: marker::PhantomData,
             },
-            table: unsafe { Shared::new_unchecked(self) },
+            table: Shared::from(self),
             marker: marker::PhantomData,
         }
     }

@@ -1164,6 +1164,20 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
     }
 }
 
+#[unstable(feature = "unique", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
+    fn from(reference: &'a mut T) -> Self {
+        Unique { pointer: NonZero::from(reference), _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "unique", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
+    fn from(reference: &'a T) -> Self {
+        Unique { pointer: NonZero::from(reference), _marker: PhantomData }
+    }
+}
+
 /// A wrapper around a raw `*mut T` that indicates that the possessor
 /// of this wrapper has shared ownership of the referent. Useful for
 /// building abstractions like `Rc<T>`, `Arc<T>`, or doubly-linked lists, which
@@ -1294,5 +1308,19 @@ impl<T: ?Sized> fmt::Pointer for Shared<T> {
 impl<T: ?Sized> From<Unique<T>> for Shared<T> {
     fn from(unique: Unique<T>) -> Self {
         Shared { pointer: unique.pointer, _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a mut T> for Shared<T> {
+    fn from(reference: &'a mut T) -> Self {
+        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a T> for Shared<T> {
+    fn from(reference: &'a T) -> Self {
+        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
     }
 }

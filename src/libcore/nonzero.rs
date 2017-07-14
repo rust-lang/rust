@@ -90,3 +90,22 @@ impl<T: Zeroable> NonZero<T> {
 }
 
 impl<T: Zeroable+CoerceUnsized<U>, U: Zeroable> CoerceUnsized<NonZero<U>> for NonZero<T> {}
+
+impl<'a, T: ?Sized> From<&'a mut T> for NonZero<*mut T> {
+    fn from(reference: &'a mut T) -> Self {
+        NonZero(reference)
+    }
+}
+
+impl<'a, T: ?Sized> From<&'a mut T> for NonZero<*const T> {
+    fn from(reference: &'a mut T) -> Self {
+        let ptr: *mut T = reference;
+        NonZero(ptr)
+    }
+}
+
+impl<'a, T: ?Sized> From<&'a T> for NonZero<*const T> {
+    fn from(reference: &'a T) -> Self {
+        NonZero(reference)
+    }
+}

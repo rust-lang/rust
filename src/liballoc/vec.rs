@@ -1126,7 +1126,7 @@ impl<T> Vec<T> {
                 tail_start: end,
                 tail_len: len - end,
                 iter: range_slice.iter(),
-                vec: Shared::new_unchecked(self as *mut _),
+                vec: Shared::from(self),
             }
         }
     }
