@@ -40,6 +40,7 @@ use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
 use builder::{Builder, Step};
 use compile;
 use tool::{self, Tool};
+use cache::{INTERNER, Interned};
 
 pub fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
@@ -71,14 +72,13 @@ fn rust_installer(builder: &Builder) -> Command {
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::docs(build, s.stage, s.target));
 
-#[derive(Serialize)]
-pub struct Docs<'a> {
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Docs {
     pub stage: u32,
-    pub target: &'a str,
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Docs<'a> {
-    type Id = Docs<'static>;
+impl Step for Docs {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -87,7 +87,9 @@ impl<'a> Step<'a> for Docs<'a> {
         path.ends_with("src/doc")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>,
+    ) {
         builder.ensure(Docs {
             stage: builder.top_stage,
             target: target,
@@ -165,7 +167,9 @@ fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
     found
 }
 
-fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build: &Build) {
+fn make_win_dist(
+    rust_root: &Path, plat_root: &Path, target_triple: Interned<String>, build: &Build
+) {
     //Ask gcc where it keeps its stuff
     let mut cmd = Command::new(build.cc(target_triple));
     cmd.arg("-print-search-dirs");
@@ -282,13 +286,12 @@ fn make_win_dist(rust_root: &Path, plat_root: &Path, target_triple: &str, build:
 //          }
 //      });
 
-#[derive(Serialize)]
-pub struct Mingw<'a> {
-    target: &'a str,
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Mingw {
+    target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Mingw<'a> {
-    type Id = Mingw<'static>;
+impl Step for Mingw {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -297,7 +300,9 @@ impl<'a> Step<'a> for Mingw<'a> {
         false
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
+    ) {
         builder.ensure(Mingw { target });
     }
 
@@ -350,14 +355,13 @@ impl<'a> Step<'a> for Mingw<'a> {
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::rustc(build, s.stage, s.target));
 
-#[derive(Serialize)]
-pub struct Rustc<'a> {
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Rustc {
     pub stage: u32,
-    pub target: &'a str,
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Rustc<'a> {
-    type Id = Rustc<'static>;
+impl Step for Rustc {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -367,7 +371,9 @@ impl<'a> Step<'a> for Rustc<'a> {
         path.ends_with("src/librustc")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
+    ) {
         builder.ensure(Rustc {
             stage: builder.top_stage,
             target: target,
@@ -381,7 +387,7 @@ impl<'a> Step<'a> for Rustc<'a> {
         let target = self.target;
 
         let compiler = builder.ensure(compile::Assemble {
-            target_compiler: builder.compiler(stage, &build.build),
+            target_compiler: builder.compiler(stage, build.build),
         });
 
         println!("Dist rustc stage{} ({})", stage, target);
@@ -444,10 +450,12 @@ impl<'a> Step<'a> for Rustc<'a> {
 
         return distdir(build).join(format!("{}-{}.tar.gz", name, target));
 
-        fn prepare_image(builder: &Builder, compiler: Compiler, target: &str, image: &Path) {
+        fn prepare_image(
+            builder: &Builder, compiler: Compiler, target: Interned<String>, image: &Path
+        ) {
             let build = builder.build;
             let src = builder.sysroot(compiler);
-            let libdir = libdir(target);
+            let libdir = libdir(&target);
 
             // Copy rustc/rustdoc binaries
             t!(fs::create_dir_all(image.join("bin")));
@@ -471,7 +479,7 @@ impl<'a> Step<'a> for Rustc<'a> {
 
             // Debugger scripts
             builder.ensure(DebuggerScripts {
-                sysroot: &image,
+                sysroot: INTERNER.intern_path(image.to_owned()),
                 target: target,
             });
 
@@ -491,23 +499,24 @@ impl<'a> Step<'a> for Rustc<'a> {
 //     .run(move |s| dist::debugger_scripts(build, &builder.sysroot(&s.compiler()),
 //                                     s.target));
 
-#[derive(Serialize)]
-pub struct DebuggerScripts<'a> {
-    pub sysroot: &'a Path,
-    pub target: &'a str,
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct DebuggerScripts {
+    pub sysroot: Interned<PathBuf>,
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for DebuggerScripts<'a> {
-    type Id = DebuggerScripts<'static>;
+impl Step for DebuggerScripts {
     type Output = ();
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
         path.ends_with("src/etc/lldb_batchmode.py")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, host: Interned<String>, target: Interned<String>
+    ) {
         builder.ensure(DebuggerScripts {
-            sysroot: &builder.sysroot(builder.compiler(builder.top_stage, host)),
+            sysroot: builder.sysroot(builder.compiler(builder.top_stage, host)),
             target: target,
         });
     }
@@ -564,14 +573,13 @@ impl<'a> Step<'a> for DebuggerScripts<'a> {
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::std(build, &s.compiler(), s.target));
 
-#[derive(Serialize)]
-pub struct Std<'a> {
-    pub compiler: Compiler<'a>,
-    pub target: &'a str,
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Std {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Std<'a> {
-    type Id = Std<'static>;
+impl Step for Std {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -580,7 +588,9 @@ impl<'a> Step<'a> for Std<'a> {
         path.ends_with("src/libstd")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, host: Interned<String>, target: Interned<String>
+    ) {
         builder.ensure(Std {
             compiler: builder.compiler(builder.top_stage, host),
             target: target,
@@ -592,7 +602,7 @@ impl<'a> Step<'a> for Std<'a> {
         let compiler = self.compiler;
         let target = self.target;
 
-        println!("Dist std stage{} ({} -> {})", compiler.stage, compiler.host,
+        println!("Dist std stage{} ({} -> {})", compiler.stage, &compiler.host,
                  target);
 
         // The only true set of target libraries came from the build triple, so
@@ -617,7 +627,7 @@ impl<'a> Step<'a> for Std<'a> {
 
         let dst = image.join("lib/rustlib").join(target);
         t!(fs::create_dir_all(&dst));
-        let mut src = builder.sysroot_libdir(compiler, target);
+        let mut src = builder.sysroot_libdir(compiler, target).to_path_buf();
         src.pop(); // Remove the trailing /lib folder from the sysroot_libdir
         cp_r(&src, &dst);
 
@@ -645,14 +655,13 @@ impl<'a> Step<'a> for Std<'a> {
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::analysis(build, &s.compiler(), s.target));
 
-#[derive(Serialize)]
-pub struct Analysis<'a> {
-    pub compiler: Compiler<'a>,
-    pub target: &'a str,
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Analysis {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Analysis<'a> {
-    type Id = Analysis<'static>;
+impl Step for Analysis {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -661,7 +670,12 @@ impl<'a> Step<'a> for Analysis<'a> {
         path.ends_with("analysis")
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder,
+        path: Option<&Path>,
+        host: Interned<String>,
+        target: Interned<String>
+    ) {
         if path.is_none() && !builder.build.config.extended {
             return;
         }
@@ -679,7 +693,7 @@ impl<'a> Step<'a> for Analysis<'a> {
         assert!(build.config.extended);
         println!("Dist analysis");
 
-        if compiler.host != build.build {
+        if &compiler.host != build.build {
             println!("\tskipping, not a build host");
             return None;
         }
@@ -769,11 +783,10 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |_| dist::rust_src(build));
 
-#[derive(Serialize)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Src;
 
-impl<'a> Step<'a> for Src {
-    type Id = Src;
+impl Step for Src {
     /// The output path of the src installer tarball
     type Output = PathBuf;
     const DEFAULT: bool = true;
@@ -785,7 +798,9 @@ impl<'a> Step<'a> for Src {
         path.ends_with("src")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, _target: Interned<String>
+    ) {
         builder.ensure(Src);
     }
 
@@ -867,11 +882,10 @@ const CARGO_VENDOR_VERSION: &str = "0.1.4";
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |_| dist::plain_source_tarball(build));
 
-#[derive(Serialize)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
 
-impl<'a> Step<'a> for PlainSourceTarball {
-    type Id = PlainSourceTarball;
+impl Step for PlainSourceTarball {
     /// Produces the location of the tarball generated
     type Output = PathBuf;
     const DEFAULT: bool = true;
@@ -883,7 +897,9 @@ impl<'a> Step<'a> for PlainSourceTarball {
         path.ends_with("src")
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder, path: Option<&Path>, _host: Interned<String>, _target: Interned<String>
+    ) {
         if path.is_none() && !builder.build.config.rust_dist_src {
             return;
         }
@@ -1019,14 +1035,13 @@ fn write_file(path: &Path, data: &[u8]) {
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::cargo(build, s.stage, s.target));
 
-#[derive(Serialize)]
-pub struct Cargo<'a> {
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Cargo {
     pub stage: u32,
-    pub target: &'a str,
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Cargo<'a> {
-    type Id = Cargo<'static>;
+impl Step for Cargo {
     type Output = PathBuf;
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1035,7 +1050,9 @@ impl<'a> Step<'a> for Cargo<'a> {
         path.ends_with("cargo")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
+    ) {
         builder.ensure(Cargo {
             stage: builder.top_stage,
             target: target,
@@ -1050,7 +1067,7 @@ impl<'a> Step<'a> for Cargo<'a> {
         builder.ensure(tool::Cargo { stage, target });
 
         println!("Dist cargo stage{} ({})", stage, target);
-        let compiler = builder.compiler(stage, &build.build);
+        let compiler = builder.compiler(stage, build.build);
 
         let src = build.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
@@ -1067,7 +1084,7 @@ impl<'a> Step<'a> for Cargo<'a> {
         t!(fs::create_dir_all(image.join("share/zsh/site-functions")));
         t!(fs::create_dir_all(image.join("etc/bash_completion.d")));
         let cargo = build.cargo_out(compiler, Mode::Tool, target)
-                         .join(exe("cargo", target));
+                         .join(exe("cargo", &target));
         install(&cargo, &image.join("bin"), 0o755);
         for man in t!(etc.join("man").read_dir()) {
             let man = t!(man);
@@ -1116,14 +1133,13 @@ impl<'a> Step<'a> for Cargo<'a> {
 //      .dep(|s| s.name("tool-rls"))
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::rls(build, s.stage, s.target));
-#[derive(Serialize)]
-pub struct Rls<'a> {
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Rls {
     pub stage: u32,
-    pub target: &'a str,
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Rls<'a> {
-    type Id = Rls<'static>;
+impl Step for Rls {
     type Output = PathBuf;
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1132,7 +1148,9 @@ impl<'a> Step<'a> for Rls<'a> {
         path.ends_with("rls")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
+    ) {
         builder.ensure(Rls {
             stage: builder.top_stage,
             target: target,
@@ -1148,7 +1166,7 @@ impl<'a> Step<'a> for Rls<'a> {
         builder.ensure(tool::Rls { stage, target });
 
         println!("Dist RLS stage{} ({})", stage, target);
-        let compiler = builder.compiler(stage, &build.build);
+        let compiler = builder.compiler(stage, build.build);
 
         let src = build.src.join("src/tools/rls");
         let release_num = build.release_num("rls");
@@ -1162,7 +1180,7 @@ impl<'a> Step<'a> for Rls<'a> {
 
         // Prepare the image directory
         let rls = build.cargo_out(compiler, Mode::Tool, target)
-                         .join(exe("rls", target));
+                         .join(exe("rls", &target));
         install(&rls, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rls");
         install(&src.join("README.md"), &doc, 0o644);
@@ -1210,14 +1228,13 @@ impl<'a> Step<'a> for Rls<'a> {
 //      .dep(move |s| tool_rust_installer(build, s))
 //      .run(move |s| dist::extended(build, s.stage, s.target));
 
-#[derive(Serialize)]
-pub struct Extended<'a> {
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Extended {
     stage: u32,
-    target: &'a str,
+    target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Extended<'a> {
-    type Id = Extended<'static>;
+impl Step for Extended {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
@@ -1227,7 +1244,9 @@ impl<'a> Step<'a> for Extended<'a> {
         path.ends_with("cargo")
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
+    ) {
         if path.is_none() && !builder.build.config.extended {
             return;
         }
@@ -1242,7 +1261,7 @@ impl<'a> Step<'a> for Extended<'a> {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        let compiler = builder.compiler(stage, &build.build);
+        let compiler = builder.compiler(stage, build.build);
 
         println!("Dist extended stage{} ({})", stage, target);
 
@@ -1583,7 +1602,7 @@ impl<'a> Step<'a> for Extended<'a> {
     }
 }
 
-fn add_env(build: &Build, cmd: &mut Command, target: &str) {
+fn add_env(build: &Build, cmd: &mut Command, target: Interned<String>) {
     let mut parts = channel::CFG_RELEASE_NUM.split('.');
     cmd.env("CFG_RELEASE_INFO", build.rust_version())
        .env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM)
@@ -1620,11 +1639,10 @@ fn add_env(build: &Build, cmd: &mut Command, target: &str) {
 //      .dep(move |s| s.name("tool-build-manifest").target(&build.build).stage(0))
 //      .run(move |_| dist::hash_and_sign(build));
 
-#[derive(Serialize)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct HashSign;
 
-impl<'a> Step<'a> for HashSign {
-    type Id = HashSign;
+impl Step for HashSign {
     type Output = ();
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1634,7 +1652,9 @@ impl<'a> Step<'a> for HashSign {
         path.ends_with("hash-and-sign")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, _target: Interned<String>
+    ) {
         builder.ensure(HashSign);
     }
 

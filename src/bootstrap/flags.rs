@@ -24,15 +24,17 @@ use Build;
 use config::Config;
 use metadata;
 
+use cache::{Interned, INTERNER};
+
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
     pub verbose: usize, // verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
-    pub build: String,
-    pub host: Vec<String>,
-    pub target: Vec<String>,
+    pub build: Interned<String>,
+    pub host: Vec<Interned<String>>,
+    pub target: Vec<Interned<String>>,
     pub config: Option<PathBuf>,
     pub src: PathBuf,
     pub jobs: Option<u32>,
@@ -320,11 +322,13 @@ Arguments:
             stage: stage,
             on_fail: matches.opt_str("on-fail"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
-            build: matches.opt_str("build").unwrap_or_else(|| {
+            build: INTERNER.intern_string(matches.opt_str("build").unwrap_or_else(|| {
                 env::var("BUILD").unwrap()
-            }),
-            host: split(matches.opt_strs("host")),
-            target: split(matches.opt_strs("target")),
+            })),
+            host: split(matches.opt_strs("host"))
+                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
+            target: split(matches.opt_strs("target"))
+                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
             config: cfg_file,
             src: src,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),

@@ -33,6 +33,7 @@ use Build;
 use util;
 use build_helper::up_to_date;
 use builder::{Builder, Step};
+use cache::Interned;
 
 // rules.build("llvm", "src/llvm")
 //      .host(true)
@@ -45,13 +46,12 @@ use builder::{Builder, Step};
 //      })
 //      .run(move |s| native::llvm(build, s.target));
 
-#[derive(Serialize)]
-pub struct Llvm<'a> {
-    pub target: &'a str,
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Llvm {
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Llvm<'a> {
-    type Id = Llvm<'static>;
+impl Step for Llvm {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -61,7 +61,7 @@ impl<'a> Step<'a> for Llvm<'a> {
         let target = self.target;
         // If we're using a custom LLVM bail out here, but we can only use a
         // custom LLVM for the build triple.
-        if let Some(config) = build.config.target_config.get(target) {
+        if let Some(config) = build.config.target_config.get(&target) {
             if let Some(ref s) = config.llvm_config {
                 return check_llvm_version(build, s);
             }
@@ -117,7 +117,7 @@ impl<'a> Step<'a> for Llvm<'a> {
 
         let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
-        cfg.target(target)
+        cfg.target(&target)
            .host(&build.build)
            .out_dir(&out_dir)
            .profile(profile)
@@ -154,11 +154,11 @@ impl<'a> Step<'a> for Llvm<'a> {
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != build.build {
-            builder.ensure(Llvm { target: &build.build });
+            builder.ensure(Llvm { target: build.build });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
-            let host = build.llvm_out(&build.build).join("bin/llvm-tblgen");
+            let host = build.llvm_out(build.build).join("bin/llvm-tblgen");
             cfg.define("CMAKE_CROSSCOMPILING", "True")
                .define("LLVM_TABLEGEN", &host);
         }
@@ -245,20 +245,24 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
 //rules.build("test-helpers", "src/rt/rust_test_helpers.c")
 //     .run(move |s| native::test_helpers(build, s.target));
 
-#[derive(Serialize)]
-pub struct TestHelpers<'a> {
-    pub target: &'a str,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TestHelpers {
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for TestHelpers<'a> {
-    type Id = TestHelpers<'static>;
+impl Step for TestHelpers {
     type Output = ();
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
         path.ends_with("src/rt/rust_test_helpers.c")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        _host: Interned<String>,
+        target: Interned<String>,
+    ) {
         builder.ensure(TestHelpers { target })
     }
 
@@ -290,7 +294,7 @@ impl<'a> Step<'a> for TestHelpers<'a> {
 
         cfg.cargo_metadata(false)
            .out_dir(&dst)
-           .target(target)
+           .target(&target)
            .host(&build.build)
            .opt_level(0)
            .debug(false)
@@ -306,13 +310,12 @@ const OPENSSL_SHA256: &'static str =
 //rules.build("openssl", "path/to/nowhere")
 //     .run(move |s| native::openssl(build, s.target));
 
-#[derive(Serialize)]
-pub struct Openssl<'a> {
-    pub target: &'a str,
+    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Openssl {
+    pub target: Interned<String>,
 }
 
-impl<'a> Step<'a> for Openssl<'a> {
-    type Id = Openssl<'static>;
+impl Step for Openssl {
     type Output = ();
 
     fn should_run(_builder: &Builder, _path: &Path) -> bool {
@@ -385,7 +388,7 @@ impl<'a> Step<'a> for Openssl<'a> {
         configure.arg("no-ssl2");
         configure.arg("no-ssl3");
 
-        let os = match target {
+        let os = match &*target {
             "aarch64-linux-android" => "linux-aarch64",
             "aarch64-unknown-linux-gnu" => "linux-aarch64",
             "arm-linux-androideabi" => "android",

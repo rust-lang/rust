@@ -122,14 +122,14 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
-        cmd_finder.must_have(build.cc(target));
-        if let Some(ar) = build.ar(target) {
+        cmd_finder.must_have(build.cc(*target));
+        if let Some(ar) = build.ar(*target) {
             cmd_finder.must_have(ar);
         }
     }
 
     for host in build.config.host.iter() {
-        cmd_finder.must_have(build.cxx(host).unwrap());
+        cmd_finder.must_have(build.cxx(*host).unwrap());
 
         // The msvc hosts don't use jemalloc, turn it off globally to
         // avoid packaging the dummy liballoc_jemalloc on that platform.
@@ -139,7 +139,7 @@ pub fn check(build: &mut Build) {
     }
 
     // Externally configured LLVM requires FileCheck to exist
-    let filecheck = build.llvm_filecheck(&build.build);
+    let filecheck = build.llvm_filecheck(build.build);
     if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
         panic!("FileCheck executable {:?} does not exist", filecheck);
     }
@@ -153,7 +153,7 @@ pub fn check(build: &mut Build) {
 
         // Make sure musl-root is valid if specified
         if target.contains("musl") && !target.contains("mips") {
-            match build.musl_root(target) {
+            match build.musl_root(*target) {
                 Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
                         panic!("couldn't find libc.a in musl dir: {}",

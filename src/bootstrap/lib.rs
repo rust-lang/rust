@@ -121,6 +121,8 @@
 extern crate build_helper;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate lazy_static;
 extern crate serde;
 extern crate serde_json;
 extern crate cmake;
@@ -186,16 +188,17 @@ mod job {
 
 pub use config::Config;
 pub use flags::{Flags, Subcommand};
+use cache::{Interned, INTERNER};
 
 /// A structure representing a Rust compiler.
 ///
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash, Debug)]
-pub struct Compiler<'a> {
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
+pub struct Compiler {
     stage: u32,
-    host: &'a str,
+    host: Interned<String>,
 }
 
 /// Global configuration for the build system.
@@ -226,9 +229,9 @@ pub struct Build {
     verbosity: usize,
 
     // Targets for which to build.
-    build: String,
-    hosts: Vec<String>,
-    targets: Vec<String>,
+    build: Interned<String>,
+    hosts: Vec<Interned<String>>,
+    targets: Vec<Interned<String>>,
 
     // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
     initial_rustc: PathBuf,
@@ -240,10 +243,10 @@ pub struct Build {
 
     // Runtime state filled in later on
     // target -> (cc, ar)
-    cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
+    cc: HashMap<Interned<String>, (gcc::Tool, Option<PathBuf>)>,
     // host -> (cc, ar)
-    cxx: HashMap<String, gcc::Tool>,
-    crates: HashMap<String, Crate>,
+    cxx: HashMap<Interned<String>, gcc::Tool>,
+    crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
     delayed_failures: Cell<usize>,
@@ -251,9 +254,9 @@ pub struct Build {
 
 #[derive(Debug)]
 struct Crate {
-    name: String,
+    name: Interned<String>,
     version: String,
-    deps: Vec<String>,
+    deps: Vec<Interned<String>>,
     path: PathBuf,
     doc_step: String,
     build_step: String,
@@ -265,7 +268,7 @@ struct Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Serialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Libstd,
@@ -438,7 +441,7 @@ impl Build {
     /// Get the directory for incremental by-products when using the
     /// given compiler.
     fn incremental_dir(&self, compiler: Compiler) -> PathBuf {
-        self.out.join(compiler.host).join(format!("stage{}-incremental", compiler.stage))
+        self.out.join(&*compiler.host).join(format!("stage{}-incremental", compiler.stage))
     }
 
     /// Returns the root directory for all output generated in a particular
@@ -452,7 +455,7 @@ impl Build {
             Mode::Tool => "-tools",
             Mode::Librustc => "-rustc",
         };
-        self.out.join(compiler.host)
+        self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
     }
 
@@ -462,40 +465,40 @@ impl Build {
     fn cargo_out(&self,
                  compiler: Compiler,
                  mode: Mode,
-                 target: &str) -> PathBuf {
-        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
+                 target: Interned<String>) -> PathBuf {
+        self.stage_out(compiler, mode).join(&*target).join(self.cargo_dir())
     }
 
     /// Root output directory for LLVM compiled for `target`
     ///
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
-    fn llvm_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("llvm")
+    fn llvm_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("llvm")
     }
 
     /// Output directory for all documentation for a target
-    fn doc_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("doc")
+    fn doc_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
-    fn md_doc_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("md-doc")
+    fn md_doc_out(&self, target: Interned<String>) -> Interned<PathBuf> {
+        INTERNER.intern_path(self.out.join(&*target).join("md-doc"))
     }
 
     /// Output directory for all crate documentation for a target (temporary)
     ///
     /// The artifacts here are then copied into `doc_out` above.
-    fn crate_doc_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("crate-docs")
+    fn crate_doc_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("crate-docs")
     }
 
     /// Returns true if no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
-    fn is_rust_llvm(&self, target: &str) -> bool {
-        match self.config.target_config.get(target) {
+    fn is_rust_llvm(&self, target: Interned<String>) -> bool {
+        match self.config.target_config.get(&target) {
             Some(ref c) => c.llvm_config.is_none(),
             None => true
         }
@@ -505,25 +508,25 @@ impl Build {
     ///
     /// If a custom `llvm-config` was specified for target then that's returned
     /// instead.
-    fn llvm_config(&self, target: &str) -> PathBuf {
-        let target_config = self.config.target_config.get(target);
+    fn llvm_config(&self, target: Interned<String>) -> PathBuf {
+        let target_config = self.config.target_config.get(&target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             s.clone()
         } else {
-            self.llvm_out(&self.config.build).join("bin")
-                .join(exe("llvm-config", target))
+            self.llvm_out(self.config.build).join("bin")
+                .join(exe("llvm-config", &*target))
         }
     }
 
     /// Returns the path to `FileCheck` binary for the specified target
-    fn llvm_filecheck(&self, target: &str) -> PathBuf {
-        let target_config = self.config.target_config.get(target);
+    fn llvm_filecheck(&self, target: Interned<String>) -> PathBuf {
+        let target_config = self.config.target_config.get(&target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             let llvm_bindir = output(Command::new(s).arg("--bindir"));
-            Path::new(llvm_bindir.trim()).join(exe("FileCheck", target))
+            Path::new(llvm_bindir.trim()).join(exe("FileCheck", &*target))
         } else {
-            let base = self.llvm_out(&self.config.build).join("build");
-            let exe = exe("FileCheck", target);
+            let base = self.llvm_out(self.config.build).join("build");
+            let exe = exe("FileCheck", &*target);
             if !self.config.ninja && self.config.build.contains("msvc") {
                 base.join("Release/bin").join(exe)
             } else {
@@ -533,13 +536,13 @@ impl Build {
     }
 
     /// Directory for libraries built from C/C++ code and shared between stages.
-    fn native_dir(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("native")
+    fn native_dir(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for
     /// `target`
-    fn test_helpers_out(&self, target: &str) -> PathBuf {
+    fn test_helpers_out(&self, target: Interned<String>) -> PathBuf {
         self.native_dir(target).join("rust-test-helpers")
     }
 
@@ -606,16 +609,16 @@ impl Build {
     }
 
     /// Returns the path to the C compiler for the target specified.
-    fn cc(&self, target: &str) -> &Path {
-        self.cc[target].0.path()
+    fn cc(&self, target: Interned<String>) -> &Path {
+        self.cc[&target].0.path()
     }
 
     /// Returns a list of flags to pass to the C compiler for the target
     /// specified.
-    fn cflags(&self, target: &str) -> Vec<String> {
+    fn cflags(&self, target: Interned<String>) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // gcc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[target].0.args().iter()
+        let mut base = self.cc[&target].0.args().iter()
                            .map(|s| s.to_string_lossy().into_owned())
                            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
                            .collect::<Vec<_>>();
@@ -631,20 +634,20 @@ impl Build {
         // Work around an apparently bad MinGW / GCC optimization,
         // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
         // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
-        if target == "i686-pc-windows-gnu" {
+        if &*target == "i686-pc-windows-gnu" {
             base.push("-fno-omit-frame-pointer".into());
         }
         base
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
-    fn ar(&self, target: &str) -> Option<&Path> {
-        self.cc[target].1.as_ref().map(|p| &**p)
+    fn ar(&self, target: Interned<String>) -> Option<&Path> {
+        self.cc[&target].1.as_ref().map(|p| &**p)
     }
 
     /// Returns the path to the C++ compiler for the target specified.
-    fn cxx(&self, target: &str) -> Result<&Path, String> {
-        match self.cxx.get(target) {
+    fn cxx(&self, target: Interned<String>) -> Result<&Path, String> {
+        match self.cxx.get(&target) {
             Some(p) => Ok(p.path()),
             None => Err(format!(
                     "target `{}` is not configured as a host, only as a target",
@@ -653,7 +656,7 @@ impl Build {
     }
 
     /// Returns flags to pass to the compiler to generate code for `target`.
-    fn rustc_flags(&self, target: &str) -> Vec<String> {
+    fn rustc_flags(&self, target: Interned<String>) -> Vec<String> {
         // New flags should be added here with great caution!
         //
         // It's quite unfortunate to **require** flags to generate code for a
@@ -670,8 +673,8 @@ impl Build {
     }
 
     /// Returns the "musl root" for this `target`, if defined
-    fn musl_root(&self, target: &str) -> Option<&Path> {
-        self.config.target_config.get(target)
+    fn musl_root(&self, target: Interned<String>) -> Option<&Path> {
+        self.config.target_config.get(&target)
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
@@ -679,7 +682,7 @@ impl Build {
 
     /// Returns whether the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
-    fn remote_tested(&self, target: &str) -> bool {
+    fn remote_tested(&self, target: Interned<String>) -> bool {
         self.qemu_rootfs(target).is_some() || target.contains("android") ||
         env::var_os("TEST_DEVICE_ADDR").is_some()
     }
@@ -689,8 +692,8 @@ impl Build {
     ///
     /// If `Some` is returned then that means that tests for this target are
     /// emulated with QEMU and binaries will need to be shipped to the emulator.
-    fn qemu_rootfs(&self, target: &str) -> Option<&Path> {
-        self.config.target_config.get(target)
+    fn qemu_rootfs(&self, target: Interned<String>) -> Option<&Path> {
+        self.config.target_config.get(&target)
             .and_then(|t| t.qemu_rootfs.as_ref())
             .map(|p| &**p)
     }
@@ -718,20 +721,20 @@ impl Build {
     ///
     /// When all of these conditions are met the build will lift artifacts from
     /// the previous stage forward.
-    fn force_use_stage1(&self, compiler: Compiler, target: &str) -> bool {
+    fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
-            self.config.host.iter().any(|h| h == target)
+            self.config.host.iter().any(|h| *h == target)
     }
 
     /// Returns the directory that OpenSSL artifacts are compiled into if
     /// configured to do so.
-    fn openssl_dir(&self, target: &str) -> Option<PathBuf> {
+    fn openssl_dir(&self, target: Interned<String>) -> Option<PathBuf> {
         // OpenSSL not used on Windows
         if target.contains("windows") {
             None
         } else if self.config.openssl_static {
-            Some(self.out.join(target).join("openssl"))
+            Some(self.out.join(&*target).join("openssl"))
         } else {
             None
         }
@@ -739,7 +742,7 @@ impl Build {
 
     /// Returns the directory that OpenSSL artifacts are installed into if
     /// configured as such.
-    fn openssl_install_dir(&self, target: &str) -> Option<PathBuf> {
+    fn openssl_install_dir(&self, target: Interned<String>) -> Option<PathBuf> {
         self.openssl_dir(target).map(|p| p.join("install"))
     }
 
@@ -842,18 +845,19 @@ impl Build {
     /// Get a list of crates from a root crate.
     ///
     /// Returns Vec<(crate, path to crate, is_root_crate)>
-    fn crates(&self, root: &str) -> Vec<(&str, &Path)> {
+    fn crates(&self, root: &str) -> Vec<(Interned<String>, &Path)> {
+        let interned = INTERNER.intern_string(root.to_owned());
         let mut ret = Vec::new();
-        let mut list = vec![root];
+        let mut list = vec![interned];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
-            let krate = &self.crates[krate];
+            let krate = &self.crates[&krate];
             // If we can't strip prefix, then out-of-tree path
             let path = krate.path.strip_prefix(&self.src).unwrap_or(&krate.path);
-            ret.push((&*krate.name, path));
+            ret.push((krate.name, path));
             for dep in &krate.deps {
                 if visited.insert(dep) && dep != "build_helper" {
-                    list.push(dep);
+                    list.push(*dep);
                 }
             }
         }
@@ -861,8 +865,8 @@ impl Build {
     }
 }
 
-impl<'a> Compiler<'a> {
-    pub fn with_stage(mut self, stage: u32) -> Compiler<'a> {
+impl<'a> Compiler {
+    pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self
     }

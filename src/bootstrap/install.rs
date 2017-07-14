@@ -21,37 +21,44 @@ use std::process::Command;
 use dist::{self, pkgname, sanitize_sh, tmpdir};
 
 use builder::{Builder, Step};
+use cache::Interned;
 
-pub fn install_docs(builder: &Builder, stage: u32, host: &str) {
+pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "docs", "rust-docs", stage, Some(host));
 }
 
 pub fn install_std(builder: &Builder, stage: u32) {
     for target in builder.build.config.target.iter() {
-        install_sh(builder, "std", "rust-std", stage, Some(target));
+        install_sh(builder, "std", "rust-std", stage, Some(*target));
     }
 }
 
-pub fn install_cargo(builder: &Builder, stage: u32, host: &str) {
+pub fn install_cargo(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "cargo", "cargo", stage, Some(host));
 }
 
-pub fn install_rls(builder: &Builder, stage: u32, host: &str) {
+pub fn install_rls(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "rls", "rls", stage, Some(host));
 }
 
-pub fn install_analysis(builder: &Builder, stage: u32, host: &str) {
+pub fn install_analysis(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "analysis", "rust-analysis", stage, Some(host));
 }
 
 pub fn install_src(builder: &Builder, stage: u32) {
     install_sh(builder, "src", "rust-src", stage, None);
 }
-pub fn install_rustc(builder: &Builder, stage: u32, host: &str) {
+pub fn install_rustc(builder: &Builder, stage: u32, host: Interned<String>) {
     install_sh(builder, "rustc", "rustc", stage, Some(host));
 }
 
-fn install_sh(builder: &Builder, package: &str, name: &str, stage: u32, host: Option<&str>) {
+fn install_sh(
+    builder: &Builder,
+    package: &str,
+    name: &str,
+    stage: u32,
+    host: Option<Interned<String>>
+) {
     let build = builder.build;
     println!("Install {} stage{} ({:?})", package, stage, host);
 
@@ -127,15 +134,15 @@ macro_rules! install {
        $default_cond:expr,
        only_hosts: $only_hosts:expr,
        $run_item:block $(, $c:ident)*;)+) => {
-        $(#[derive(Serialize)]
-        pub struct $name<'a> {
+        $(
+            #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+        pub struct $name {
             pub stage: u32,
-            pub target: &'a str,
-            pub host: &'a str,
+            pub target: Interned<String>,
+            pub host: Interned<String>,
         }
 
-        impl<'a> Step<'a> for $name<'a> {
-            type Id = $name<'static>;
+        impl Step for $name {
             type Output = ();
             const DEFAULT: bool = true;
             const ONLY_BUILD_TARGETS: bool = true;
@@ -146,7 +153,12 @@ macro_rules! install {
                 path.ends_with($path)
             }
 
-            fn make_run($builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+            fn make_run(
+                $builder: &Builder,
+                path: Option<&Path>,
+                host: Interned<String>,
+                target: Interned<String>,
+            ) {
                 if path.is_none() && !($default_cond) {
                     return;
                 }

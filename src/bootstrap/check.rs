@@ -33,11 +33,12 @@ use compile;
 use native;
 use builder::{Kind, Builder, Compiler, Step};
 use tool::{self, Tool};
+use cache::{INTERNER, Interned};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
 /// The two modes of the test runner; tests or benchmarks.
-#[derive(Serialize, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum TestKind {
     /// Run `cargo test`
     Test,
@@ -93,13 +94,12 @@ fn try_run_quiet(build: &Build, cmd: &mut Command) {
 //      .host(true)
 //      .run(move |s| check::linkcheck(build, s.target));
 
-#[derive(Serialize)]
-pub struct Linkcheck<'a> {
-    host: &'a str,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Linkcheck {
+    host: Interned<String>,
 }
 
-impl<'a> Step<'a> for Linkcheck<'a> {
-    type Id = Linkcheck<'static>;
+impl Step for Linkcheck {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
@@ -125,7 +125,12 @@ impl<'a> Step<'a> for Linkcheck<'a> {
         path.ends_with("src/tools/linkchecker")
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder,
+        path: Option<&Path>,
+        host: Interned<String>,
+        _target: Interned<String>,
+    ) {
         if path.is_some() {
             builder.ensure(Linkcheck { host });
         } else {
@@ -142,14 +147,13 @@ impl<'a> Step<'a> for Linkcheck<'a> {
 //      .host(true)
 //      .run(move |s| check::cargotest(build, s.stage, s.target));
 
-#[derive(Serialize)]
-pub struct Cargotest<'a> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Cargotest {
     stage: u32,
-    host: &'a str,
+    host: Interned<String>,
 }
 
-impl<'a> Step<'a> for Cargotest<'a> {
-    type Id = Cargotest<'static>;
+impl Step for Cargotest {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -157,7 +161,12 @@ impl<'a> Step<'a> for Cargotest<'a> {
         path.ends_with("src/tools/cargotest")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        host: Interned<String>,
+        _target: Interned<String>,
+    ) {
         builder.ensure(Cargotest {
             stage: builder.top_stage,
             host: host,
@@ -193,14 +202,13 @@ impl<'a> Step<'a> for Cargotest<'a> {
 //     .host(true)
 //     .run(move |s| check::cargo(build, s.stage, s.target));
 
-#[derive(Serialize)]
-pub struct Cargo<'a> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Cargo {
     stage: u32,
-    host: &'a str,
+    host: Interned<String>,
 }
 
-impl<'a> Step<'a> for Cargo<'a> {
-    type Id = Cargo<'static>;
+impl Step for Cargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -208,7 +216,12 @@ impl<'a> Step<'a> for Cargo<'a> {
         path.ends_with("src/tools/cargo")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        _host: Interned<String>,
+        target: Interned<String>,
+    ) {
         builder.ensure(Cargotest {
             stage: builder.top_stage,
             host: target,
@@ -304,13 +317,12 @@ fn path_for_cargo(build: &Build, compiler: &Compiler) -> OsString {
 //     .only_build(true)
 //     .run(move |s| check::tidy(build, s.target));
 
-#[derive(Serialize)]
-pub struct Tidy<'a> {
-    host: &'a str,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Tidy {
+    host: Interned<String>,
 }
 
-impl<'a> Step<'a> for Tidy<'a> {
-    type Id = Tidy<'static>;
+impl Step for Tidy {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -342,14 +354,19 @@ impl<'a> Step<'a> for Tidy<'a> {
         path.ends_with("src/tools/tidy")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        _host: Interned<String>,
+        _target: Interned<String>,
+    ) {
         builder.ensure(Tidy {
-            host: &builder.build.build,
+            host: builder.build.build,
         });
     }
 }
 
-fn testdir(build: &Build, host: &str) -> PathBuf {
+fn testdir(build: &Build, host: Interned<String>) -> PathBuf {
     build.out.join(host).join("test")
 }
 
@@ -451,15 +468,15 @@ fn testdir(build: &Build, host: &str) -> PathBuf {
 //              "pretty", "run-fail-fulldeps");
 //    }
 
-#[derive(Serialize)]
-pub struct Compiletest<'a> {
-    compiler: Compiler<'a>,
-    target: &'a str,
-    mode: &'a str,
-    suite: &'a str,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Compiletest {
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: &'static str,
+    suite: &'static str,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Test {
     path: &'static str,
     mode: &'static str,
@@ -512,8 +529,7 @@ static COMPILETESTS: &[Test] = &[
     Test { path: "src/test/debuginfo-gdb", mode: "debuginfo-gdb", suite: "debuginfo" },
 ];
 
-impl<'a> Step<'a> for Compiletest<'a> {
-    type Id = Compiletest<'static>;
+impl Step for Compiletest {
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -526,7 +542,12 @@ impl<'a> Step<'a> for Compiletest<'a> {
         })
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder,
+        path: Option<&Path>,
+        host: Interned<String>,
+        target: Interned<String>,
+    ) {
         let compiler = builder.compiler(builder.top_stage, host);
 
         let test = path.map(|path| {
@@ -591,12 +612,12 @@ impl<'a> Step<'a> for Compiletest<'a> {
                     builder.ensure(Compiletest {
                         mode: "debuginfo-lldb",
                         ..self
-                    })
+                    });
                 } else {
                     builder.ensure(Compiletest {
                         mode: "debuginfo-gdb",
                         ..self
-                    })
+                    });
                 };
             }
 
@@ -606,7 +627,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
             }
 
             builder.ensure(dist::DebuggerScripts {
-                sysroot: &builder.sysroot(compiler),
+                sysroot: builder.sysroot(compiler),
                 target: target
             });
 
@@ -630,7 +651,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
 
         let _folder = build.fold_output(|| format!("test_{}", suite));
         println!("Check compiletest suite={} mode={} ({} -> {})",
-                 suite, mode, compiler.host, target);
+                 suite, mode, &compiler.host, target);
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
 
         // compiletest currently has... a lot of arguments, so let's just pass all
@@ -645,8 +666,8 @@ impl<'a> Step<'a> for Compiletest<'a> {
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target);
-        cmd.arg("--host").arg(compiler.host);
-        cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(&build.build));
+        cmd.arg("--host").arg(&*compiler.host);
+        cmd.arg("--llvm-filecheck").arg(build.llvm_filecheck(build.build));
 
         if let Some(ref nodejs) = build.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
@@ -664,7 +685,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
         hostflags.extend(flags.clone());
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
-        let mut targetflags = build.rustc_flags(&target);
+        let mut targetflags = build.rustc_flags(target);
         targetflags.extend(flags);
         targetflags.push(format!("-Lnative={}",
                                  build.test_helpers_out(target).display()));
@@ -735,7 +756,7 @@ impl<'a> Step<'a> for Compiletest<'a> {
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
         if target.contains("msvc") {
-            for &(ref k, ref v) in build.cc[target].0.env() {
+            for &(ref k, ref v) in build.cc[&target].0.env() {
                 if k != "PATH" {
                     cmd.env(k, v);
                 }
@@ -769,9 +790,9 @@ impl<'a> Step<'a> for Compiletest<'a> {
     }
 }
 
-#[derive(Serialize)]
-pub struct Docs<'a> {
-    compiler: Compiler<'a>,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Docs {
+    compiler: Compiler,
 }
 
 // rules.test("check-docs", "src/doc")
@@ -779,8 +800,7 @@ pub struct Docs<'a> {
 //     .default(true)
 //     .host(true)
 //     .run(move |s| check::docs(build, &s.compiler()));
-impl<'a> Step<'a> for Docs<'a> {
-    type Id = Docs<'static>;
+impl Step for Docs {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -789,7 +809,12 @@ impl<'a> Step<'a> for Docs<'a> {
         path.ends_with("src/doc")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        host: Interned<String>,
+        _target: Interned<String>,
+    ) {
         builder.ensure(Docs {
             compiler: builder.compiler(builder.top_stage, host),
         });
@@ -840,13 +865,12 @@ impl<'a> Step<'a> for Docs<'a> {
 //     .host(true)
 //     .run(move |s| check::error_index(build, &s.compiler()));
 
-#[derive(Serialize)]
-pub struct ErrorIndex<'a> {
-    compiler: Compiler<'a>,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ErrorIndex {
+    compiler: Compiler,
 }
 
-impl<'a> Step<'a> for ErrorIndex<'a> {
-    type Id = ErrorIndex<'static>;
+impl Step for ErrorIndex {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -855,7 +879,12 @@ impl<'a> Step<'a> for ErrorIndex<'a> {
         path.ends_with("src/tools/error_index_generator")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        host: Interned<String>,
+        _target: Interned<String>,
+    ) {
         builder.ensure(ErrorIndex {
             compiler: builder.compiler(builder.top_stage, host),
         });
@@ -933,16 +962,15 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
 //         .host(true)
 //         .run(move |s| check::krate(build, &s.compiler(), s.target,
 //                                    Mode::Librustc, TestKind::Test, None));
-#[derive(Serialize)]
-pub struct KrateLibrustc<'a> {
-    compiler: Compiler<'a>,
-    target: &'a str,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct KrateLibrustc {
+    compiler: Compiler,
+    target: Interned<String>,
     test_kind: TestKind,
-    krate: Option<&'a str>,
+    krate: Option<Interned<String>>,
 }
 
-impl<'a> Step<'a> for KrateLibrustc<'a> {
-    type Id = KrateLibrustc<'static>;
+impl Step for KrateLibrustc {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -953,10 +981,15 @@ impl<'a> Step<'a> for KrateLibrustc<'a> {
         })
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder,
+        path: Option<&Path>,
+        host: Interned<String>,
+        target: Interned<String>,
+    ) {
         let compiler = builder.compiler(builder.top_stage, host);
 
-        let run = |name: Option<&str>| {
+        let run = |name: Option<Interned<String>>| {
             let test_kind = if builder.kind == Kind::Test {
                 TestKind::Test
             } else if builder.kind == Kind::Bench {
@@ -1043,17 +1076,16 @@ impl<'a> Step<'a> for KrateLibrustc<'a> {
 //         .run(move |s| check::krate(build, &s.compiler(), s.target,
 //                                    Mode::Libtest, TestKind::Test, None));
 
-#[derive(Serialize)]
-pub struct Krate<'a> {
-    compiler: Compiler<'a>,
-    target: &'a str,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Krate {
+    compiler: Compiler,
+    target: Interned<String>,
     mode: Mode,
     test_kind: TestKind,
-    krate: Option<&'a str>,
+    krate: Option<Interned<String>>,
 }
 
-impl<'a> Step<'a> for Krate<'a> {
-    type Id = Krate<'static>;
+impl Step for Krate {
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -1066,10 +1098,15 @@ impl<'a> Step<'a> for Krate<'a> {
         })
     }
 
-    fn make_run(builder: &Builder, path: Option<&Path>, host: &str, target: &str) {
+    fn make_run(
+        builder: &Builder,
+        path: Option<&Path>,
+        host: Interned<String>,
+        target: Interned<String>,
+    ) {
         let compiler = builder.compiler(builder.top_stage, host);
 
-        let run = |mode: Mode, name: Option<&str>| {
+        let run = |mode: Mode, name: Option<Interned<String>>| {
             let test_kind = if builder.kind == Kind::Test {
                 TestKind::Test
             } else if builder.kind == Kind::Bench {
@@ -1134,11 +1171,12 @@ impl<'a> Step<'a> for Krate<'a> {
             }
             _ => panic!("can only test libraries"),
         };
+        let root = INTERNER.intern_string(String::from(root));
         let _folder = build.fold_output(|| {
             format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, name)
         });
         println!("{} {} stage{} ({} -> {})", test_kind, name, compiler.stage,
-                compiler.host, target);
+                &compiler.host, target);
 
         // If we're not doing a full bootstrap but we're testing a stage2 version of
         // libstd, then what we're actually testing is the libstd produced in
@@ -1180,12 +1218,12 @@ impl<'a> Step<'a> for Krate<'a> {
                     // target during the bootstrap and it's just meant to be a
                     // helper crate, not tested. If it leaks through then it ends up
                     // messing with various mtime calculations and such.
-                    if !name.contains("jemalloc") && name != "build_helper" {
+                    if !name.contains("jemalloc") && *name != *"build_helper" {
                         cargo.arg("-p").arg(&format!("{}:0.0.0", name));
                     }
-                    for dep in build.crates[name].deps.iter() {
+                    for dep in build.crates[&name].deps.iter() {
                         if visited.insert(dep) {
-                            next.push(dep);
+                            next.push(*dep);
                         }
                     }
                 }
@@ -1198,7 +1236,7 @@ impl<'a> Step<'a> for Krate<'a> {
         // Note that to run the compiler we need to run with the *host* libraries,
         // but our wrapper scripts arrange for that to be the case anyway.
         let mut dylib_path = dylib_path();
-        dylib_path.insert(0, builder.sysroot_libdir(compiler, target));
+        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
         if target.contains("emscripten") || build.remote_tested(target) {
@@ -1228,7 +1266,7 @@ impl<'a> Step<'a> for Krate<'a> {
 
 fn krate_emscripten(build: &Build,
                     compiler: Compiler,
-                    target: &str,
+                    target: Interned<String>,
                     mode: Mode) {
     let out_dir = build.cargo_out(compiler, mode, target);
     let tests = find_tests(&out_dir.join("deps"), target);
@@ -1247,7 +1285,7 @@ fn krate_emscripten(build: &Build,
 
 fn krate_remote(builder: &Builder,
                 compiler: Compiler,
-                target: &str,
+                target: Interned<String>,
                 mode: Mode) {
     let build = builder.build;
     let out_dir = build.cargo_out(compiler, mode, target);
@@ -1266,7 +1304,7 @@ fn krate_remote(builder: &Builder,
     }
 }
 
-fn find_tests(dir: &Path, target: &str) -> Vec<PathBuf> {
+fn find_tests(dir: &Path, target: Interned<String>) -> Vec<PathBuf> {
     let mut dst = Vec::new();
     for e in t!(dir.read_dir()).map(|e| t!(e)) {
         let file_type = t!(e.file_type());
@@ -1313,14 +1351,13 @@ fn find_tests(dir: &Path, target: &str) -> Vec<PathBuf> {
 /// QEMU we have to build our own tools so we've got conditional dependencies
 /// on those programs as well. Note that the remote test client is built for
 /// the build target (us) and the server is built for the target.
-#[derive(Serialize)]
-pub struct RemoteCopyLibs<'a> {
-    compiler: Compiler<'a>,
-    target: &'a str,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RemoteCopyLibs {
+    compiler: Compiler,
+    target: Interned<String>,
 }
 
-impl<'a> Step<'a> for RemoteCopyLibs<'a> {
-    type Id = RemoteCopyLibs<'static>;
+impl Step for RemoteCopyLibs {
     type Output = ();
 
     fn run(self, builder: &Builder) {
@@ -1368,18 +1405,17 @@ impl<'a> Step<'a> for RemoteCopyLibs<'a> {
 //     .dep(|s| s.name("dist-src"))
 //     .run(move |_| check::distcheck(build));
 
-#[derive(Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Distcheck;
 
-impl<'a> Step<'a> for Distcheck {
-    type Id = Distcheck;
+impl Step for Distcheck {
     type Output = ();
 
     /// Run "distcheck", a 'make check' from a tarball
     fn run(self, builder: &Builder) {
         let build = builder.build;
 
-        if build.build != "x86_64-unknown-linux-gnu" {
+        if *build.build != *"x86_64-unknown-linux-gnu" {
             return
         }
         if !build.config.host.iter().any(|s| s == "x86_64-unknown-linux-gnu") {
@@ -1436,11 +1472,10 @@ impl<'a> Step<'a> for Distcheck {
 //     .only_build(true)
 //     .run(move |_| check::bootstrap(build));
 
-#[derive(Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Bootstrap;
 
-impl<'a> Step<'a> for Bootstrap {
-    type Id = Bootstrap;
+impl Step for Bootstrap {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1466,7 +1501,12 @@ impl<'a> Step<'a> for Bootstrap {
         path.ends_with("src/bootstrap")
     }
 
-    fn make_run(builder: &Builder, _path: Option<&Path>, _host: &str, _target: &str) {
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        _host: Interned<String>,
+        _target: Interned<String>,
+    ) {
         builder.ensure(Bootstrap);
     }
 }
