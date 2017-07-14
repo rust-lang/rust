@@ -107,6 +107,12 @@ pub struct Rustbook {
 impl Step for Rustbook {
     type Output = ();
 
+    // rustbook is never directly called, and only serves as a shim for the nomicon and the
+    // reference.
+    fn should_run(_builder: &Builder, _path: &Path) -> bool {
+        false
+    }
+
     /// Invoke `rustbook` for `target` for the doc book `name`.
     ///
     /// This will not actually generate any documentation if the documentation has
@@ -181,6 +187,11 @@ pub struct RustbookSrc {
 
 impl Step for RustbookSrc {
     type Output = ();
+
+    fn should_run(_builder: &Builder, _path: &Path) -> bool {
+        // RustbookSrc is also never run directly, only as a helper to other rules
+        false
+    }
 
     /// Invoke `rustbook` for `target` for the doc book `name` from the `src` path.
     ///

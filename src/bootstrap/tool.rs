@@ -55,6 +55,10 @@ pub struct CleanTools {
 impl Step for CleanTools {
     type Output = ();
 
+    fn should_run(_builder: &Builder, _path: &Path) -> bool {
+        false
+    }
+
     /// Build a tool in `src/tools`
     ///
     /// This will build the specified tool with the specified `host` compiler in
@@ -88,6 +92,10 @@ pub struct ToolBuild {
 
 impl Step for ToolBuild {
     type Output = PathBuf;
+
+    fn should_run(_builder: &Builder, _path: &Path) -> bool {
+        false
+    }
 
     /// Build a tool in `src/tools`
     ///

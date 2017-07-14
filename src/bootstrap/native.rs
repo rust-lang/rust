@@ -55,6 +55,10 @@ impl Step for Llvm {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/llvm")
+    }
+
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) {
         let build = builder.build;

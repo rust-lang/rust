@@ -70,7 +70,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// will execute. However, it does not get called in a "default" context
     /// when we are not passed any paths; in that case, make_run is called
     /// directly.
-    fn should_run(_builder: &Builder, _path: &Path) -> bool { false }
+    fn should_run(builder: &Builder, path: &Path) -> bool;
 
     /// Build up a "root" rule, either as a default rule or from a path passed
     /// to us.
@@ -83,7 +83,13 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         _path: Option<&Path>,
         _host: Interned<String>,
         _target: Interned<String>,
-    ) { unimplemented!() }
+    ) {
+        // It is reasonable to not have an implementation of make_run for rules
+        // who do not want to get called from the root context. This means that
+        // they are likely dependencies (e.g., sysroot creation) or similar, and
+        // as such calling them from ./x.py isn't logical.
+        unimplemented!()
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -188,6 +194,11 @@ impl<'a> Builder<'a> {
         }
         impl Step for Libdir {
             type Output = Interned<PathBuf>;
+
+            fn should_run(_builder: &Builder, _path: &Path) -> bool {
+                false
+            }
+
             fn run(self, builder: &Builder) -> Interned<PathBuf> {
                 let compiler = self.compiler;
                 let lib = if compiler.stage >= 2 && builder.build.config.libdir_relative.is_some() {
