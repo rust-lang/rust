@@ -38,11 +38,11 @@ fn main() {
 
     match generator.resume(()) {
         State::Yielded(1) => {}
-        _ => panic!("unexpected return from resume"),
+        _ => panic!("unexpected value from resume"),
     }
     match generator.resume(()) {
         State::Complete("foo") => {}
-        _ => panic!("unexpected return from resume"),
+        _ => panic!("unexpected value from resume"),
     }
 }
 ```
@@ -69,9 +69,9 @@ fn main() {
     };
 
     println!("1");
-    drop(generator.resume(()));
+    generator.resume(());
     println!("3");
-    drop(generator.resume(()));
+    generator.resume(());
     println!("5");
 }
 ```
@@ -175,8 +175,8 @@ fn main() {
         return ret
     };
 
-    drop(generator.resume(()));
-    drop(generator.resume(()));
+    generator.resume(());
+    generator.resume(());
 }
 ```
 
@@ -223,8 +223,8 @@ fn main() {
         __Generator::Start(ret)
     };
 
-    drop(generator.resume(()));
-    drop(generator.resume(()));
+    generator.resume(());
+    generator.resume(());
 }
 ```
 
