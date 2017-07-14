@@ -531,7 +531,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyBool | TyFloat(_) | TyChar | TyStr |
             TyRef(..) => true,
             TyAdt(adt, _) if adt.is_box() => true,
-            TyAdt(_, _) | TyTuple(..) | TyClosure(..) => false,
+            TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) => false,
             TyParam(_) | TyInfer(_) => bug!("I got an incomplete type for validation"),
             _ => return Err(EvalError::Unimplemented(format!("Unimplemented type encountered when checking validity."))),
         };
@@ -618,6 +618,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 for i in 0..len {
                     let inner_lvalue = self.lvalue_index(lvalue, ty, i)?;
+                    self.validate(inner_lvalue, elem_ty, vctx)?;
+                }
+                Ok(())
+            }
+            TyArray(elem_ty, len) => {
+                for i in 0..len {
+                    let inner_lvalue = self.lvalue_index(lvalue, ty, i as u64)?;
                     self.validate(inner_lvalue, elem_ty, vctx)?;
                 }
                 Ok(())
