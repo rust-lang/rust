@@ -16,6 +16,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use convert::From;
 use intrinsics;
 use ops::CoerceUnsized;
 use fmt;
@@ -1286,5 +1287,12 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsiz
 impl<T: ?Sized> fmt::Pointer for Shared<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> From<Unique<T>> for Shared<T> {
+    fn from(unique: Unique<T>) -> Self {
+        Shared { pointer: unique.pointer, _marker: PhantomData }
     }
 }
