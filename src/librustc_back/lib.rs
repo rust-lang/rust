@@ -114,3 +114,30 @@ impl ToJson for PanicStrategy {
         }
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum RelroLevel {
+    Full,
+    Partial,
+    Off,
+}
+
+impl RelroLevel {
+    pub fn desc(&self) -> &str {
+        match *self {
+            RelroLevel::Full => "full",
+            RelroLevel::Partial => "partial",
+            RelroLevel::Off => "off",
+        }
+    }
+}
+
+impl ToJson for RelroLevel {
+    fn to_json(&self) -> Json {
+        match *self {
+            RelroLevel::Full => "full".to_json(),
+            RelroLevel::Partial => "partial".to_json(),
+            RelroLevel::Off => "off".to_json(),
+        }
+    }
+}

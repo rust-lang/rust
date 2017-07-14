@@ -19,7 +19,7 @@ pub use self::DebugInfoLevel::*;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
-use rustc_back::{LinkerFlavor, PanicStrategy};
+use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
 use rustc_back::target::Target;
 use lint;
 use middle::cstore;
@@ -654,6 +654,8 @@ macro_rules! options {
             Some("a number");
         pub const parse_panic_strategy: Option<&'static str> =
             Some("either `panic` or `abort`");
+        pub const parse_relro_level: Option<&'static str> =
+            Some("one of: `full`, `partial`, or `off`");
         pub const parse_sanitizer: Option<&'static str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
         pub const parse_linker_flavor: Option<&'static str> =
@@ -665,7 +667,7 @@ macro_rules! options {
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer};
-        use rustc_back::{LinkerFlavor, PanicStrategy};
+        use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -786,6 +788,16 @@ macro_rules! options {
             true
         }
 
+        fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
+            match v {
+                Some("full") => *slot = Some(RelroLevel::Full),
+                Some("partial") => *slot = Some(RelroLevel::Partial),
+                Some("off") => *slot = Some(RelroLevel::Off),
+                _ => return false
+            }
+            true
+        }
+
         fn parse_sanitizer(slote: &mut Option<Sanitizer>, v: Option<&str>) -> bool {
             match v {
                 Some("address") => *slote = Some(Sanitizer::Address),
@@ -869,6 +881,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "disable the use of the redzone"),
     relocation_model: Option<String> = (None, parse_opt_string, [TRACKED],
          "choose the relocation model to use (rustc --print relocation-models for details)"),
+    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
+        "choose which RELRO level to use"),
     code_model: Option<String> = (None, parse_opt_string, [TRACKED],
          "choose the code model to use (rustc --print code-models for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -1776,7 +1790,7 @@ mod dep_tracking {
     use super::{Passes, CrateType, OptLevel, DebugInfoLevel,
                 OutputTypes, Externs, ErrorOutputType, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
-    use rustc_back::PanicStrategy;
+    use rustc_back::{PanicStrategy, RelroLevel};
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
@@ -1818,11 +1832,13 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<String>);
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
+    impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(Option<cstore::NativeLibraryKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
+    impl_dep_tracking_hash_via_hash!(RelroLevel);
     impl_dep_tracking_hash_via_hash!(Passes);
     impl_dep_tracking_hash_via_hash!(OptLevel);
     impl_dep_tracking_hash_via_hash!(DebugInfoLevel);
@@ -1904,7 +1920,7 @@ mod tests {
     use std::path::PathBuf;
     use std::rc::Rc;
     use super::{OutputType, OutputTypes, Externs};
-    use rustc_back::PanicStrategy;
+    use rustc_back::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
 
     fn optgroups() -> getopts::Options {
@@ -2432,6 +2448,10 @@ mod tests {
 
         opts = reference.clone();
         opts.cg.relocation_model = Some(String::from("relocation model"));
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.cg.relro_level = Some(RelroLevel::Full);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

@@ -27,7 +27,7 @@ use rustc::dep_graph::{DepKind, DepNode};
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
-use rustc_back::PanicStrategy;
+use rustc_back::{PanicStrategy, RelroLevel};
 use rustc_incremental::IncrementalHashesMap;
 use context::get_reloc_model;
 use llvm;
@@ -1029,8 +1029,18 @@ fn link_args(cmd: &mut Linker,
         }
     }
 
-    if t.options.full_relro {
-        cmd.full_relro();
+    let relro_level = match sess.opts.cg.relro_level {
+        Some(level) => level,
+        None => t.options.relro_level,
+    };
+    match relro_level {
+        RelroLevel::Full => {
+            cmd.full_relro();
+        },
+        RelroLevel::Partial => {
+            cmd.partial_relro();
+        },
+        RelroLevel::Off => {},
     }
 
     // Pass optimization flags down to the linker.
