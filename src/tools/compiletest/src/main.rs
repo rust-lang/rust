@@ -10,9 +10,7 @@
 
 #![crate_name = "compiletest"]
 
-#![feature(box_syntax)]
 #![feature(test)]
-#![feature(libc)]
 
 #![deny(warnings)]
 
