@@ -652,8 +652,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let variant = &adt.variants[variant_idx];
 
                         if variant.fields.len() > 0 {
-                            // Downcast to this variant
-                            let lvalue = self.eval_lvalue_projection(lvalue, ty, &mir::ProjectionElem::Downcast(adt, variant_idx))?;
+                            // Downcast to this variant, if needed
+                            let lvalue = if adt.variants.len() > 1 {
+                                self.eval_lvalue_projection(lvalue, ty, &mir::ProjectionElem::Downcast(adt, variant_idx))?
+                            } else {
+                                lvalue
+                            };
 
                             // Recursively validate the fields
                             self.validate_variant(lvalue, ty, variant, subst, vctx)
