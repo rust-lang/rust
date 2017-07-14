@@ -80,11 +80,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let is_owning = match ty.sty {
             TyInt(_) | TyUint(_) | TyRawPtr(_) |
             TyBool | TyFloat(_) | TyChar | TyStr |
-            TyRef(..) | TyFnPtr(..) | TyNever => true,
+            TyRef(..) | TyFnPtr(..) | TyFnDef(..) | TyNever => true,
             TyAdt(adt, _) if adt.is_box() => true,
             TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) | TyDynamic(..) => false,
-            TyParam(_) | TyInfer(_) => bug!("I got an incomplete type for validation"),
-            _ => return Err(EvalError::Unimplemented(format!("Unimplemented type encountered when checking validity."))),
+            TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => bug!("I got an incomplete/unnormalized type for validation"),
         };
         if is_owning {
             match lvalue {
@@ -163,10 +162,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.validate_ptr(val, ty.boxed_ty(), vctx)
             }
             TyFnPtr(_sig) => {
-                // TODO: The function names here could need some improvement.
                 let ptr = self.read_lvalue(lvalue)?.into_ptr(&mut self.memory)?.to_ptr()?;
                 self.memory.get_fn(ptr)?;
                 // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
+                Ok(())
+            }
+            TyFnDef(..) => {
+                // This is a zero-sized type with all relevant data sitting in the type.
+                // There is nothing to validate.
                 Ok(())
             }
 
