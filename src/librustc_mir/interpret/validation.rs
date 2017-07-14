@@ -179,6 +179,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             }
             TyAdt(adt, subst) => {
+                if Some(adt.did) == self.tcx.lang_items.unsafe_cell_type() {
+                    // No locks for unsafe cells.  Also no other validation, the only field is private anyway.
+                    return Ok(());
+                }
+
                 match adt.adt_kind() {
                     AdtKind::Enum => {
                         // TODO: Can we get the discriminant without forcing an allocation?
