@@ -44,10 +44,10 @@ extern crate rustc_const_math;
 extern crate rustc_const_eval;
 extern crate core; // for NonZero
 
-pub(crate) mod diagnostics;
+mod diagnostics;
 
 mod build;
-pub(crate) mod dataflow;
+mod dataflow;
 mod hair;
 mod shim;
 pub mod transform;

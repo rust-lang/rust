@@ -548,14 +548,14 @@ impl<'a> PathSource<'a> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) enum Namespace {
+enum Namespace {
     TypeNS,
     ValueNS,
     MacroNS,
 }
 
 #[derive(Clone, Default, Debug)]
-pub(crate) struct PerNS<T> {
+struct PerNS<T> {
     value_ns: T,
     type_ns: T,
     macro_ns: Option<T>,
@@ -827,7 +827,7 @@ enum ModuleKind {
 }
 
 /// One node in the tree of modules.
-pub(crate) struct ModuleData<'a> {
+struct ModuleData<'a> {
     parent: Option<Module<'a>>,
     kind: ModuleKind,
 
@@ -860,7 +860,7 @@ pub(crate) struct ModuleData<'a> {
     expansion: Mark,
 }
 
-pub(crate) type Module<'a> = &'a ModuleData<'a>;
+type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
     fn new(parent: Option<Module<'a>>,
@@ -935,14 +935,14 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 
 // Records a possibly-private value, type, or module definition.
 #[derive(Clone, Debug)]
-pub(crate) struct NameBinding<'a> {
+struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     expansion: Mark,
     span: Span,
     vis: ty::Visibility,
 }
 
-pub(crate) trait ToNameBinding<'a> {
+trait ToNameBinding<'a> {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a>;
 }
 

@@ -38,8 +38,8 @@ use std::cell::{RefCell, Cell};
 use std::{error, fmt};
 use std::rc::Rc;
 
-pub(crate) mod diagnostic;
-pub(crate) mod diagnostic_builder;
+mod diagnostic;
+mod diagnostic_builder;
 pub mod emitter;
 mod snippet;
 pub mod registry;
@@ -110,7 +110,7 @@ impl CodeSuggestion {
     }
 
     /// Returns the number of substitutions
-    pub(crate) fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
+    fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
         self.substitution_parts.iter().map(|sub| sub.span)
     }
 
@@ -492,7 +492,7 @@ impl Handler {
         self.bug(&format!("unimplemented {}", msg));
     }
 
-    pub(crate) fn bump_err_count(&self) {
+    fn bump_err_count(&self) {
         self.err_count.set(self.err_count.get() + 1);
     }
 
@@ -571,7 +571,7 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    pub(crate) fn color(self) -> term::color::Color {
+    fn color(self) -> term::color::Color {
         match self {
             Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
             Warning => {

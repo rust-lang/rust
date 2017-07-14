@@ -36,7 +36,7 @@
 //! use syntax::tokenstream::TokenTree;
 //!
 //! #[plugin_registrar]
-//! pub(crate) fn plugin_registrar(reg: &mut Registry) {
+//! fn plugin_registrar(reg: &mut Registry) {
 //!     reg.register_macro("mymacro", expand_mymacro);
 //! }
 //!
@@ -80,7 +80,7 @@ extern crate rustc_errors as errors;
 
 pub use self::registry::Registry;
 
-pub(crate) mod diagnostics;
+mod diagnostics;
 pub mod registry;
 pub mod load;
 pub mod build;

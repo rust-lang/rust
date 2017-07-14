@@ -46,10 +46,10 @@ extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
 
-pub(crate) use rustc::lint;
-pub(crate) use rustc::middle;
-pub(crate) use rustc::session;
-pub(crate) use rustc::util;
+use rustc::lint;
+use rustc::middle;
+use rustc::session;
+use rustc::util;
 
 use session::Session;
 use lint::LintId;

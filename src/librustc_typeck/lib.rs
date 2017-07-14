@@ -95,11 +95,11 @@ extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
-pub(crate) use rustc::hir;
-pub(crate) use rustc::lint;
-pub(crate) use rustc::middle;
-pub(crate) use rustc::session;
-pub(crate) use rustc::util;
+use rustc::hir;
+use rustc::lint;
+use rustc::middle;
+use rustc::session;
+use rustc::util;
 
 use hir::map as hir_map;
 use rustc::infer::InferOk;
@@ -117,7 +117,7 @@ use syntax_pos::Span;
 use std::iter;
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
-pub(crate) mod diagnostics;
+mod diagnostics;
 
 mod check;
 mod check_unused;
@@ -128,9 +128,9 @@ mod impl_wf_check;
 mod coherence;
 mod variance;
 
-pub(crate) struct TypeAndSubsts<'tcx> {
-    pub(crate) substs: &'tcx Substs<'tcx>,
-    pub(crate) ty: Ty<'tcx>,
+struct TypeAndSubsts<'tcx> {
+    substs: &'tcx Substs<'tcx>,
+    ty: Ty<'tcx>,
 }
 
 fn require_c_abi_if_variadic(tcx: TyCtxt,
