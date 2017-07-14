@@ -28,10 +28,10 @@ pub(in build) trait EvalInto<'tcx> {
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub(crate) fn into<E>(&mut self,
-                   destination: &Lvalue<'tcx>,
-                   block: BasicBlock,
-                   expr: E)
-                   -> BlockAnd<()>
+                          destination: &Lvalue<'tcx>,
+                          block: BasicBlock,
+                          expr: E)
+                          -> BlockAnd<()>
         where E: EvalInto<'tcx>
     {
         expr.eval_into(self, destination, block)

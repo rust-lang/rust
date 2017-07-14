@@ -39,7 +39,7 @@ use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
 pub(crate) fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
-                                -> &'a Pattern<'tcx>
+                                       -> &'a Pattern<'tcx>
 {
     cx.pattern_arena.alloc(LiteralExpander.fold_pattern(&pat))
 }
@@ -546,10 +546,10 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
 pub(crate) fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                           matrix: &Matrix<'p, 'tcx>,
-                           v: &[&'p Pattern<'tcx>],
-                           witness: WitnessPreference)
-                           -> Usefulness<'tcx> {
+                                              matrix: &Matrix<'p, 'tcx>,
+                                              v: &[&'p Pattern<'tcx>],
+                                              witness: WitnessPreference)
+                                              -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:?}, {:?})", matrix, v);
 

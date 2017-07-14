@@ -37,10 +37,10 @@ pub(crate) fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
 }
 
 pub(crate) fn addr_of_mut(ccx: &CrateContext,
-                   cv: ValueRef,
-                   align: machine::llalign,
-                   kind: &str)
-                    -> ValueRef {
+                          cv: ValueRef,
+                          align: machine::llalign,
+                          kind: &str)
+                          -> ValueRef {
     unsafe {
         let name = ccx.generate_local_symbol_name(kind);
         let gv = declare::define_global(ccx, &name[..], val_ty(cv)).unwrap_or_else(||{
@@ -55,10 +55,10 @@ pub(crate) fn addr_of_mut(ccx: &CrateContext,
 }
 
 pub(crate) fn addr_of(ccx: &CrateContext,
-               cv: ValueRef,
-               align: machine::llalign,
-               kind: &str)
-               -> ValueRef {
+                      cv: ValueRef,
+                      align: machine::llalign,
+                      kind: &str)
+                      -> ValueRef {
     if let Some(&gv) = ccx.const_globals().borrow().get(&cv) {
         unsafe {
             // Upgrade the alignment in cases where the same constant is used with different
@@ -217,10 +217,10 @@ pub(crate) fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 }
 
 pub(crate) fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              m: hir::Mutability,
-                              id: ast::NodeId,
-                              attrs: &[ast::Attribute])
-                              -> Result<ValueRef, ConstEvalErr<'tcx>> {
+                                     m: hir::Mutability,
+                                     id: ast::NodeId,
+                                     attrs: &[ast::Attribute])
+                                     -> Result<ValueRef, ConstEvalErr<'tcx>> {
     unsafe {
         let def_id = ccx.tcx().hir.local_def_id(id);
         let g = get_static(ccx, def_id);

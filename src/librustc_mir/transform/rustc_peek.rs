@@ -93,10 +93,10 @@ impl MirPass for SanityCheck {
 /// expression form above, then that emits an error as well, but those
 /// errors are not intended to be used for unit tests.)
 pub(crate) fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                mir: &Mir<'tcx>,
-                                                id: ast::NodeId,
-                                                _attributes: &[ast::Attribute],
-                                                results: &DataflowResults<O>)
+                                                       mir: &Mir<'tcx>,
+                                                       id: ast::NodeId,
+                                                       _attributes: &[ast::Attribute],
+                                                       results: &DataflowResults<O>)
     where O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     debug!("sanity_check_via_rustc_peek id: {:?}", id);

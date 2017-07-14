@@ -25,8 +25,8 @@ impl From<ty::EarlyBoundRegion> for Parameter {
 
 /// Return the set of parameters constrained by the impl header.
 pub(crate) fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
-                                 impl_trait_ref: Option<ty::TraitRef<'tcx>>)
-                                 -> FxHashSet<Parameter>
+                                        impl_trait_ref: Option<ty::TraitRef<'tcx>>)
+                                        -> FxHashSet<Parameter>
 {
     let vec = match impl_trait_ref {
         Some(tr) => parameters_for(&tr, false),
@@ -41,8 +41,8 @@ pub(crate) fn parameters_for_impl<'tcx>(impl_self_ty: Ty<'tcx>,
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
 pub(crate) fn parameters_for<'tcx, T>(t: &T,
-                               include_nonconstraining: bool)
-                               -> Vec<Parameter>
+                                      include_nonconstraining: bool)
+                                      -> Vec<Parameter>
     where T: TypeFoldable<'tcx>
 {
 
@@ -87,9 +87,9 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
 }
 
 pub(crate) fn identify_constrained_type_params<'tcx>(tcx: ty::TyCtxt,
-                                              predicates: &[ty::Predicate<'tcx>],
-                                              impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                              input_parameters: &mut FxHashSet<Parameter>)
+                                                     predicates: &[ty::Predicate<'tcx>],
+                                                     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+                                                     input_parameters: &mut FxHashSet<Parameter>)
 {
     let mut predicates = predicates.to_owned();
     setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
@@ -137,9 +137,9 @@ pub(crate) fn identify_constrained_type_params<'tcx>(tcx: ty::TyCtxt,
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
 pub(crate) fn setup_constraining_predicates<'tcx>(tcx: ty::TyCtxt,
-                                           predicates: &mut [ty::Predicate<'tcx>],
-                                           impl_trait_ref: Option<ty::TraitRef<'tcx>>,
-                                           input_parameters: &mut FxHashSet<Parameter>)
+                                                  predicates: &mut [ty::Predicate<'tcx>],
+                                                  impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+                                                  input_parameters: &mut FxHashSet<Parameter>)
 {
     // The canonical way of doing the needed topological sort
     // would be a DFS, but getting the graph and its ownership

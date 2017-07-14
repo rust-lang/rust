@@ -36,10 +36,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn literal_operand(&mut self,
-                           span: Span,
-                           ty: Ty<'tcx>,
-                           literal: Literal<'tcx>)
-                           -> Operand<'tcx> {
+                                  span: Span,
+                                  ty: Ty<'tcx>,
+                                  literal: Literal<'tcx>)
+                                  -> Operand<'tcx> {
         let constant = box Constant {
             span: span,
             ty: ty,
@@ -101,10 +101,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn push_usize(&mut self,
-                      block: BasicBlock,
-                      source_info: SourceInfo,
-                      value: u64)
-                      -> Lvalue<'tcx> {
+                             block: BasicBlock,
+                             source_info: SourceInfo,
+                             value: u64)
+                             -> Lvalue<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty, source_info.span);
         self.cfg.push_assign_constant(

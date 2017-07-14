@@ -73,13 +73,13 @@ pub use llvm_util::{init, target_features, print_version, print_passes, print, e
 
 pub mod back {
     mod archive;
-    mod linker;
+    pub(crate) mod linker;
     pub mod link;
     mod lto;
-    mod symbol_export;
-    mod symbol_names;
+    pub(crate) mod symbol_export;
+    pub(crate) mod symbol_names;
     pub mod write;
-    mod rpath;
+    pub(crate) mod rpath;
 }
 
 mod diagnostics;

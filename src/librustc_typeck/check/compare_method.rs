@@ -34,12 +34,12 @@ use astconv::ExplicitSelf;
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
 
 pub(crate) fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     impl_m: &ty::AssociatedItem,
-                                     impl_m_span: Span,
-                                     trait_m: &ty::AssociatedItem,
-                                     impl_trait_ref: ty::TraitRef<'tcx>,
-                                     trait_item_span: Option<Span>,
-                                     old_broken_mode: bool) {
+                                            impl_m: &ty::AssociatedItem,
+                                            impl_m_span: Span,
+                                            trait_m: &ty::AssociatedItem,
+                                            impl_trait_ref: ty::TraitRef<'tcx>,
+                                            trait_item_span: Option<Span>,
+                                            old_broken_mode: bool) {
     debug!("compare_impl_method(impl_trait_ref={:?})",
            impl_trait_ref);
 
@@ -706,10 +706,10 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub(crate) fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    impl_c: &ty::AssociatedItem,
-                                    impl_c_span: Span,
-                                    trait_c: &ty::AssociatedItem,
-                                    impl_trait_ref: ty::TraitRef<'tcx>) {
+                                           impl_c: &ty::AssociatedItem,
+                                           impl_c_span: Span,
+                                           trait_c: &ty::AssociatedItem,
+                                           impl_trait_ref: ty::TraitRef<'tcx>) {
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     tcx.infer_ctxt().enter(|infcx| {

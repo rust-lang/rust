@@ -619,16 +619,16 @@ impl<'a, 'tcx> FnType<'tcx> {
     }
 
     pub(crate) fn new(ccx: &CrateContext<'a, 'tcx>,
-               sig: ty::FnSig<'tcx>,
-               extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+                      sig: ty::FnSig<'tcx>,
+                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
     }
 
     pub(crate) fn new_vtable(ccx: &CrateContext<'a, 'tcx>,
-                      sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+                             sig: ty::FnSig<'tcx>,
+                             extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         // Don't pass the vtable, it's not an argument of the virtual fn.
         fn_ty.args[1].ignore();
@@ -637,8 +637,8 @@ impl<'a, 'tcx> FnType<'tcx> {
     }
 
     pub(crate) fn unadjusted(ccx: &CrateContext<'a, 'tcx>,
-                      sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+                             sig: ty::FnSig<'tcx>,
+                             extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         debug!("FnType::unadjusted({:?}, {:?})", sig, extra_args);
 
         use self::Abi::*;

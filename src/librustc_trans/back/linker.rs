@@ -35,7 +35,7 @@ pub(crate) struct LinkerInfo {
 
 impl<'a, 'tcx> LinkerInfo {
     pub(crate) fn new(scx: &SharedCrateContext<'a, 'tcx>,
-               exports: &ExportedSymbols) -> LinkerInfo {
+                      exports: &ExportedSymbols) -> LinkerInfo {
         LinkerInfo {
             exports: scx.sess().crate_types.borrow().iter().map(|&c| {
                 (c, exported_symbols(scx, exports, c))
@@ -44,8 +44,8 @@ impl<'a, 'tcx> LinkerInfo {
     }
 
     pub(crate) fn to_linker(&'a self,
-                     cmd: Command,
-                     sess: &'a Session) -> Box<Linker+'a> {
+                            cmd: Command,
+                            sess: &'a Session) -> Box<Linker+'a> {
         match sess.linker_flavor() {
             LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker {

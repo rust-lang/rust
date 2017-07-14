@@ -24,10 +24,10 @@ use rustc::hir;
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Check a `a <op>= b`
     pub(crate) fn check_binop_assign(&self,
-                              expr: &'gcx hir::Expr,
-                              op: hir::BinOp,
-                              lhs_expr: &'gcx hir::Expr,
-                              rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
+                                     expr: &'gcx hir::Expr,
+                                     op: hir::BinOp,
+                                     lhs_expr: &'gcx hir::Expr,
+                                     rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
     {
         let lhs_ty = self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
 
@@ -59,10 +59,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Check a potentially overloaded binary operator.
     pub(crate) fn check_binop(&self,
-                       expr: &'gcx hir::Expr,
-                       op: hir::BinOp,
-                       lhs_expr: &'gcx hir::Expr,
-                       rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
+                              expr: &'gcx hir::Expr,
+                              op: hir::BinOp,
+                              lhs_expr: &'gcx hir::Expr,
+                              rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
     {
         let tcx = self.tcx;
 
@@ -332,10 +332,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn check_user_unop(&self,
-                           ex: &'gcx hir::Expr,
-                           operand_ty: Ty<'tcx>,
-                           op: hir::UnOp)
-                           -> Ty<'tcx>
+                                  ex: &'gcx hir::Expr,
+                                  operand_ty: Ty<'tcx>,
+                                  op: hir::UnOp)
+                                  -> Ty<'tcx>
     {
         assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {

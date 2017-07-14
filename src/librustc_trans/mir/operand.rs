@@ -81,7 +81,7 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 
 impl<'a, 'tcx> OperandRef<'tcx> {
     pub(crate) fn new_zst(ccx: &CrateContext<'a, 'tcx>,
-                   ty: Ty<'tcx>) -> OperandRef<'tcx> {
+                          ty: Ty<'tcx>) -> OperandRef<'tcx> {
         assert!(common::type_is_zero_size(ccx, ty));
         let llty = type_of::type_of(ccx, ty);
         let val = if common::type_is_imm_pair(ccx, ty) {
@@ -193,11 +193,11 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub(crate) fn trans_load(&mut self,
-                      bcx: &Builder<'a, 'tcx>,
-                      llval: ValueRef,
-                      align: Alignment,
-                      ty: Ty<'tcx>)
-                      -> OperandRef<'tcx>
+                             bcx: &Builder<'a, 'tcx>,
+                             llval: ValueRef,
+                             align: Alignment,
+                             ty: Ty<'tcx>)
+                             -> OperandRef<'tcx>
     {
         debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
@@ -231,9 +231,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub(crate) fn trans_consume(&mut self,
-                         bcx: &Builder<'a, 'tcx>,
-                         lvalue: &mir::Lvalue<'tcx>)
-                         -> OperandRef<'tcx>
+                                bcx: &Builder<'a, 'tcx>,
+                                lvalue: &mir::Lvalue<'tcx>)
+                                -> OperandRef<'tcx>
     {
         debug!("trans_consume(lvalue={:?})", lvalue);
 
@@ -283,9 +283,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub(crate) fn trans_operand(&mut self,
-                         bcx: &Builder<'a, 'tcx>,
-                         operand: &mir::Operand<'tcx>)
-                         -> OperandRef<'tcx>
+                                bcx: &Builder<'a, 'tcx>,
+                                operand: &mir::Operand<'tcx>)
+                                -> OperandRef<'tcx>
     {
         debug!("trans_operand(operand={:?})", operand);
 
@@ -308,10 +308,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub(crate) fn store_operand(&mut self,
-                         bcx: &Builder<'a, 'tcx>,
-                         lldest: ValueRef,
-                         align: Option<u32>,
-                         operand: OperandRef<'tcx>) {
+                                bcx: &Builder<'a, 'tcx>,
+                                lldest: ValueRef,
+                                align: Option<u32>,
+                                operand: OperandRef<'tcx>) {
         debug!("store_operand: operand={:?}, align={:?}", operand, align);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.

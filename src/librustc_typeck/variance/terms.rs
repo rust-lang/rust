@@ -75,9 +75,11 @@ pub(crate) struct TermsContext<'a, 'tcx: 'a> {
     pub(crate) inferred_terms: Vec<VarianceTermPtr<'a>>,
 }
 
-pub(crate) fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                     arena: &'a mut TypedArena<VarianceTerm<'a>>)
-                                                     -> TermsContext<'a, 'tcx> {
+pub(crate) fn determine_parameters_to_be_inferred<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    arena: &'a mut TypedArena<VarianceTerm<'a>>)
+    -> TermsContext<'a, 'tcx>
+{
     let mut terms_cx = TermsContext {
         tcx: tcx,
         arena: arena,

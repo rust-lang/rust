@@ -247,7 +247,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
     /// Returns the existing move path index for `lp`, if any, and otherwise adds a new index for
     /// `lp` and any of its base paths that do not yet have an index.
     pub(crate) fn move_path(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
+                            lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
         if let Some(&index) = self.path_map.borrow().get(&lp) {
             return index;
         }
@@ -335,9 +335,9 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     /// Adds a new move entry for a move of `lp` that occurs at location `id` with kind `kind`.
     pub(crate) fn add_move(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    orig_lp: Rc<LoanPath<'tcx>>,
-                    id: ast::NodeId,
-                    kind: MoveKind) {
+                           orig_lp: Rc<LoanPath<'tcx>>,
+                           id: ast::NodeId,
+                           kind: MoveKind) {
         // Moving one union field automatically moves all its fields. Also move siblings of
         // all parent union fields, moves do not propagate upwards automatically.
         let mut lp = orig_lp.clone();
@@ -388,11 +388,11 @@ impl<'a, 'tcx> MoveData<'tcx> {
     /// Adds a new record for an assignment to `lp` that occurs at location `id` with the given
     /// `span`.
     pub(crate) fn add_assignment(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          lp: Rc<LoanPath<'tcx>>,
-                          assign_id: ast::NodeId,
-                          span: Span,
-                          assignee_id: ast::NodeId,
-                          mode: euv::MutateMode) {
+                                 lp: Rc<LoanPath<'tcx>>,
+                                 assign_id: ast::NodeId,
+                                 span: Span,
+                                 assignee_id: ast::NodeId,
+                                 mode: euv::MutateMode) {
         // Assigning to one union field automatically assigns to all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
             if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
@@ -590,11 +590,11 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
 impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     pub(crate) fn new(move_data: MoveData<'tcx>,
-               bccx: &BorrowckCtxt<'a, 'tcx>,
-               cfg: &cfg::CFG,
-               id_range: IdRange,
-               body: &hir::Body)
-               -> FlowedMoveData<'a, 'tcx> {
+                      bccx: &BorrowckCtxt<'a, 'tcx>,
+                      cfg: &cfg::CFG,
+                      id_range: IdRange,
+                      body: &hir::Body)
+                      -> FlowedMoveData<'a, 'tcx> {
         let tcx = bccx.tcx;
 
         let mut dfcx_moves =
@@ -632,9 +632,9 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     }
 
     pub(crate) fn kind_of_move_of_path(&self,
-                                id: ast::NodeId,
-                                loan_path: &Rc<LoanPath<'tcx>>)
-                                -> Option<MoveKind> {
+                                       id: ast::NodeId,
+                                       loan_path: &Rc<LoanPath<'tcx>>)
+                                       -> Option<MoveKind> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
         let mut ret = None;
@@ -657,10 +657,10 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     /// have occurred on entry to `id` without an intervening assignment. In other words, any moves
     /// that would invalidate a reference to `loan_path` at location `id`.
     pub(crate) fn each_move_of<F>(&self,
-                           id: ast::NodeId,
-                           loan_path: &Rc<LoanPath<'tcx>>,
-                           mut f: F)
-                           -> bool where
+                                  id: ast::NodeId,
+                                  loan_path: &Rc<LoanPath<'tcx>>,
+                                  mut f: F)
+                                  -> bool where
         F: FnMut(&Move, &LoanPath<'tcx>) -> bool,
     {
         // Bad scenarios:
@@ -714,10 +714,10 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     /// Iterates through every assignment to `loan_path` that may have occurred on entry to `id`.
     /// `loan_path` must be a single variable.
     pub(crate) fn each_assignment_of<F>(&self,
-                                 id: ast::NodeId,
-                                 loan_path: &Rc<LoanPath<'tcx>>,
-                                 mut f: F)
-                                 -> bool where
+                                        id: ast::NodeId,
+                                        loan_path: &Rc<LoanPath<'tcx>>,
+                                        mut f: F)
+                                        -> bool where
         F: FnMut(&Assignment) -> bool,
     {
         let loan_path_index = {

@@ -330,7 +330,7 @@ pub fn filename_for_input(sess: &Session,
 }
 
 pub(crate) fn each_linked_rlib(sess: &Session,
-                        f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
+                               f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)

@@ -370,7 +370,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // subtyping.
     }
 
-    pub(crate) fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::Pat) -> bool {
+    pub(crate) fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::Pat)
+                                       -> bool {
         if let PatKind::Binding(..) = inner.node {
             if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true, ty::NoPreference) {
                 if let ty::TyDynamic(..) = mt.ty.sty {
@@ -389,11 +390,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn check_match(&self,
-                       expr: &'gcx hir::Expr,
-                       discrim: &'gcx hir::Expr,
-                       arms: &'gcx [hir::Arm],
-                       expected: Expectation<'tcx>,
-                       match_src: hir::MatchSource) -> Ty<'tcx> {
+                              expr: &'gcx hir::Expr,
+                              discrim: &'gcx hir::Expr,
+                              arms: &'gcx [hir::Arm],
+                              expected: Expectation<'tcx>,
+                              match_src: hir::MatchSource) -> Ty<'tcx> {
         let tcx = self.tcx;
 
         // Not entirely obvious: if matches may create ref bindings, we

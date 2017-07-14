@@ -30,8 +30,8 @@ use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub(crate) fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      crate_num: CrateNum)
-                                      -> CrateInherentImpls {
+                                             crate_num: CrateNum)
+                                             -> CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
@@ -47,8 +47,8 @@ pub(crate) fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
 pub(crate) fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                ty_def_id: DefId)
-                                -> Rc<Vec<DefId>> {
+                                       ty_def_id: DefId)
+                                       -> Rc<Vec<DefId>> {
     assert!(ty_def_id.is_local());
 
     // NB. Until we adopt the red-green dep-tracking algorithm (see

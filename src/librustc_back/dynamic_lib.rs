@@ -186,8 +186,8 @@ mod dl {
     }
 
     pub(crate) unsafe fn symbol(handle: *mut u8,
-                         symbol: *const libc::c_char)
-                         -> Result<*mut u8, String> {
+                                symbol: *const libc::c_char)
+                                -> Result<*mut u8, String> {
         check_for_errors_in(|| {
             libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8
         })

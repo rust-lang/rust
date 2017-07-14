@@ -61,8 +61,8 @@ use mir::lvalue::Alignment;
 /// `empty_if_no_variants` is a switch to deal with empty enums.
 /// If true, `variant_index` is disregarded and an empty Vec returned in this case.
 pub(crate) fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
-                                variant_index: usize,
-                                empty_if_no_variants: bool) -> Vec<Ty<'tcx>> {
+                                       variant_index: usize,
+                                       empty_if_no_variants: bool) -> Vec<Ty<'tcx>> {
     match t.sty {
         ty::TyAdt(ref def, _) if def.variants.len() == 0 && empty_if_no_variants => {
             Vec::default()
@@ -94,12 +94,12 @@ pub(crate) fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 }
 
 pub(crate) fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                    t: Ty<'tcx>, name: &str) -> Type {
+                                           t: Ty<'tcx>, name: &str) -> Type {
     generic_type_of(cx, t, Some(name))
 }
 
 pub(crate) fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                t: Ty<'tcx>, llty: &mut Type) {
+                                       t: Ty<'tcx>, llty: &mut Type) {
     let l = cx.layout_of(t);
     debug!("finish_type_of: {} with layout {:#?}", t, l);
     match *l {
@@ -254,7 +254,7 @@ pub(crate) fn struct_llfields_index(variant: &layout::Struct, index: usize) -> u
 
 
 pub(crate) fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, field_tys: &Vec<Ty<'tcx>>,
-                             variant: &layout::Struct) -> Vec<Type> {
+                                        variant: &layout::Struct) -> Vec<Type> {
     debug!("struct_llfields: variant: {:?}", variant);
     let mut first_field = true;
     let mut min_offset = 0;
@@ -386,7 +386,8 @@ fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef,
 
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
-pub(crate) fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: u64) {
+pub(crate) fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>,
+                                        val: ValueRef, to: u64) {
     let l = bcx.ccx.layout_of(t);
     match *l {
         layout::CEnum{ discr, min, max, .. } => {
@@ -454,8 +455,8 @@ fn roundup(x: u64, a: u32) -> u64 { let a = a as u64; ((x + (a - 1)) / a) * a }
 /// (Not to be confused with `common::const_get_elt`, which operates on
 /// raw LLVM-level structs and arrays.)
 pub(crate) fn const_get_field<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
-                       val: ValueRef,
-                       ix: usize) -> ValueRef {
+                                        val: ValueRef,
+                                        ix: usize) -> ValueRef {
     let l = ccx.layout_of(t);
     match *l {
         layout::CEnum { .. } => bug!("element access in C-like enum const"),

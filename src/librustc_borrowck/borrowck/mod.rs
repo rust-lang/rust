@@ -302,8 +302,7 @@ pub(crate) enum LoanPathElem<'tcx> {
     LpInterior(Option<DefId>, InteriorKind),
 }
 
-pub(crate) fn closure_to_block(closure_id: ast::NodeId,
-                        tcx: TyCtxt) -> ast::NodeId {
+pub(crate) fn closure_to_block(closure_id: ast::NodeId, tcx: TyCtxt) -> ast::NodeId {
     match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(.., body_id, _) => {
@@ -481,9 +480,9 @@ pub(crate) enum MovedValueUseKind {
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub(crate) fn is_subregion_of(&self,
-                           r_sub: ty::Region<'tcx>,
-                           r_sup: ty::Region<'tcx>)
-                           -> bool
+                                  r_sub: ty::Region<'tcx>,
+                                  r_sup: ty::Region<'tcx>)
+                                  -> bool
     {
         let region_rels = RegionRelations::new(self.tcx,
                                                self.owner_def_id,
@@ -512,12 +511,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn report_use_of_moved_value(&self,
-                                     use_span: Span,
-                                     use_kind: MovedValueUseKind,
-                                     lp: &LoanPath<'tcx>,
-                                     the_move: &move_data::Move,
-                                     moved_lp: &LoanPath<'tcx>,
-                                     _param_env: ty::ParamEnv<'tcx>) {
+                                            use_span: Span,
+                                            use_kind: MovedValueUseKind,
+                                            lp: &LoanPath<'tcx>,
+                                            the_move: &move_data::Move,
+                                            moved_lp: &LoanPath<'tcx>,
+                                            _param_env: ty::ParamEnv<'tcx>) {
         let (verb, verb_participle) = match use_kind {
             MovedInUse => ("use", "used"),
             MovedInCapture => ("capture", "captured"),
@@ -656,10 +655,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn report_reassigned_immutable_variable(&self,
-                                                span: Span,
-                                                lp: &LoanPath<'tcx>,
-                                                assign:
-                                                &move_data::Assignment) {
+                                                       span: Span,
+                                                       lp: &LoanPath<'tcx>,
+                                                       assign:
+                                                       &move_data::Assignment) {
         let mut err = struct_span_err!(
             self.tcx.sess, span, E0384,
             "re-assignment of immutable variable `{}`",
@@ -673,10 +672,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn struct_span_err_with_code<S: Into<MultiSpan>>(&self,
-                                                         s: S,
-                                                         msg: &str,
-                                                         code: &str)
-                                                         -> DiagnosticBuilder<'a> {
+                                                                s: S,
+                                                                msg: &str,
+                                                                code: &str)
+                                                                -> DiagnosticBuilder<'a> {
         self.tcx.sess.struct_span_err_with_code(s, msg, code)
     }
 
@@ -749,10 +748,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn report_aliasability_violation(&self,
-                                         span: Span,
-                                         kind: AliasableViolationKind,
-                                         cause: mc::AliasableReason,
-                                         cmt: mc::cmt<'tcx>) {
+                                                span: Span,
+                                                kind: AliasableViolationKind,
+                                                cause: mc::AliasableReason,
+                                                cmt: mc::cmt<'tcx>) {
         let mut is_closure = false;
         let prefix = match kind {
             MutabilityViolation => {
@@ -1169,8 +1168,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
     pub(crate) fn append_loan_path_to_string(&self,
-                                      loan_path: &LoanPath<'tcx>,
-                                      out: &mut String) {
+                                             loan_path: &LoanPath<'tcx>,
+                                             out: &mut String) {
         match loan_path.kind {
             LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
             LpVar(id) => {
@@ -1212,8 +1211,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn append_autoderefd_loan_path_to_string(&self,
-                                                 loan_path: &LoanPath<'tcx>,
-                                                 out: &mut String) {
+                                                        loan_path: &LoanPath<'tcx>,
+                                                        out: &mut String) {
         match loan_path.kind {
             LpExtend(ref lp_base, _, LpDeref(_)) => {
                 // For a path like `(*x).f` or `(*x)[3]`, autoderef

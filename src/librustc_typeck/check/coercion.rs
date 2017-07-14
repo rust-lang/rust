@@ -738,11 +738,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Adjustments are only recorded if the coercion succeeded.
     /// The expressions *must not* have any pre-existing adjustments.
     pub(crate) fn try_coerce(&self,
-                      expr: &hir::Expr,
-                      expr_ty: Ty<'tcx>,
-                      expr_diverges: Diverges,
-                      target: Ty<'tcx>)
-                      -> RelateResult<'tcx, Ty<'tcx>> {
+                             expr: &hir::Expr,
+                             expr_ty: Ty<'tcx>,
+                             expr_diverges: Diverges,
+                             target: Ty<'tcx>)
+                             -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
@@ -991,7 +991,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// order. This is used with arrays in particular to avoid
     /// needlessly cloning the slice.
     pub(crate) fn with_coercion_sites(expected_ty: Ty<'tcx>,
-                               coercion_sites: &'exprs [E])
+                                      coercion_sites: &'exprs [E])
                       -> Self {
         Self::make(expected_ty, Expressions::UpFront(coercion_sites))
     }
@@ -1031,11 +1031,11 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// calls to `coerce` may come back and add adjustments and things
     /// if necessary.
     pub(crate) fn coerce<'a>(&mut self,
-                      fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                      cause: &ObligationCause<'tcx>,
-                      expression: &'gcx hir::Expr,
-                      expression_ty: Ty<'tcx>,
-                      expression_diverges: Diverges)
+                             fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+                             cause: &ObligationCause<'tcx>,
+                             expression: &'gcx hir::Expr,
+                             expression_ty: Ty<'tcx>,
+                             expression_diverges: Diverges)
     {
         self.coerce_inner(fcx,
                           cause,
@@ -1058,10 +1058,10 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// message, in case any results (e.g., we use this to suggest
     /// removing a `;`).
     pub(crate) fn coerce_forced_unit<'a>(&mut self,
-                                  fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                                  cause: &ObligationCause<'tcx>,
-                                  augment_error: &mut FnMut(&mut DiagnosticBuilder),
-                                  label_unit_as_expected: bool)
+                                         fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+                                         cause: &ObligationCause<'tcx>,
+                                         augment_error: &mut FnMut(&mut DiagnosticBuilder),
+                                         label_unit_as_expected: bool)
     {
         self.coerce_inner(fcx,
                           cause,

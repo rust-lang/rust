@@ -701,7 +701,8 @@ extern "C" {
     pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
     // Operations on functions
-    pub(crate) fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
+    pub(crate) fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef)
+                                  -> ValueRef;
     pub fn LLVMGetNamedFunction(M: ModuleRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMGetFirstFunction(M: ModuleRef) -> ValueRef;
     pub fn LLVMGetNextFunction(Fn: ValueRef) -> ValueRef;
@@ -713,9 +714,9 @@ extern "C" {
     pub fn LLVMRustAddDereferenceableAttr(Fn: ValueRef, index: c_uint, bytes: u64);
     pub(crate) fn LLVMRustAddFunctionAttribute(Fn: ValueRef, index: c_uint, attr: Attribute);
     pub(crate) fn LLVMRustAddFunctionAttrStringValue(Fn: ValueRef,
-                                              index: c_uint,
-                                              Name: *const c_char,
-                                              Value: *const c_char);
+                                                     index: c_uint,
+                                                     Name: *const c_char,
+                                                     Value: *const c_char);
     pub(crate) fn LLVMRustRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: Attribute);
 
     // Operations on parameters
@@ -1616,8 +1617,10 @@ extern "C" {
     pub(crate) fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
     pub(crate) fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
     pub(crate) fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
-    pub(crate) fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
-    pub(crate) fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: *mut size_t) -> *const c_char;
+    pub(crate) fn LLVMRustArchiveChildName(ACR: ArchiveChildRef, size: *mut size_t)
+                                           -> *const c_char;
+    pub(crate) fn LLVMRustArchiveChildData(ACR: ArchiveChildRef, size: *mut size_t)
+                                           -> *const c_char;
     pub(crate) fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
     pub(crate) fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub(crate) fn LLVMRustDestroyArchive(AR: ArchiveRef);
@@ -1631,14 +1634,14 @@ extern "C" {
                                            DiagnosticContext: *mut c_void);
 
     pub(crate) fn LLVMRustUnpackOptimizationDiagnostic(DI: DiagnosticInfoRef,
-                                                pass_name_out: RustStringRef,
-                                                function_out: *mut ValueRef,
-                                                debugloc_out: *mut DebugLocRef,
-                                                message_out: RustStringRef);
+                                                       pass_name_out: RustStringRef,
+                                                       function_out: *mut ValueRef,
+                                                       debugloc_out: *mut DebugLocRef,
+                                                       message_out: RustStringRef);
     pub(crate) fn LLVMRustUnpackInlineAsmDiagnostic(DI: DiagnosticInfoRef,
-                                             cookie_out: *mut c_uint,
-                                             message_out: *mut TwineRef,
-                                             instruction_out: *mut ValueRef);
+                                                    cookie_out: *mut c_uint,
+                                                    message_out: *mut TwineRef,
+                                                    instruction_out: *mut ValueRef);
 
     pub(crate) fn LLVMRustWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
     pub(crate) fn LLVMRustGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
@@ -1667,9 +1670,9 @@ extern "C" {
     pub fn LLVMRustGetModuleDataLayout(M: ModuleRef) -> TargetDataRef;
 
     pub(crate) fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
-                                         Inputs: *const ValueRef,
-                                         NumInputs: c_uint)
-                                         -> OperandBundleDefRef;
+                                                Inputs: *const ValueRef,
+                                                NumInputs: c_uint)
+                                                -> OperandBundleDefRef;
     pub(crate) fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
 
     pub fn LLVMRustPositionBuilderAtStart(B: BuilderRef, BB: BasicBlockRef);

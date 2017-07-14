@@ -59,8 +59,8 @@ const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
 pub(crate) fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               nodes: &IndexVec<DepNodeIndex, DepNode>,
-                                               dirty_inputs: &DirtyNodes) {
+                                                      nodes: &IndexVec<DepNodeIndex, DepNode>,
+                                                      dirty_inputs: &DirtyNodes) {
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.sess.features.borrow().rustc_attrs {
         return;

@@ -414,10 +414,10 @@ pub(crate) fn is_null(val: ValueRef) -> bool {
 }
 
 pub(crate) fn langcall(tcx: TyCtxt,
-                span: Option<Span>,
-                msg: &str,
-                li: LangItem)
-                -> DefId {
+                       span: Option<Span>,
+                       msg: &str,
+                       li: LangItem)
+                       -> DefId {
     match tcx.lang_items.require(li) {
         Ok(id) => id,
         Err(s) => {
@@ -491,8 +491,8 @@ pub(crate) fn shift_mask_val<'a, 'tcx>(
 }
 
 pub(crate) fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                           ty: Ty<'tcx>)
-                           -> ty::PolyFnSig<'tcx>
+                                  ty: Ty<'tcx>)
+                                  -> ty::PolyFnSig<'tcx>
 {
     match ty.sty {
         ty::TyFnDef(..) |
@@ -556,9 +556,9 @@ pub(crate) fn is_inline_instance<'a, 'tcx>(
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
 pub(crate) fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
-                        def_id: DefId,
-                        substs: &'tcx Substs<'tcx>)
-                        -> Ty<'tcx>
+                               def_id: DefId,
+                               substs: &'tcx Substs<'tcx>)
+                               -> Ty<'tcx>
 {
     let ty = shared.tcx().type_of(def_id);
     shared.tcx().trans_apply_param_substs(substs, &ty)
@@ -566,8 +566,8 @@ pub(crate) fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
 
 /// Return the substituted type of an instance.
 pub(crate) fn instance_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
-                             instance: &ty::Instance<'tcx>)
-                             -> Ty<'tcx>
+                                    instance: &ty::Instance<'tcx>)
+                                    -> Ty<'tcx>
 {
     let ty = instance.def.def_ty(shared.tcx());
     shared.tcx().trans_apply_param_substs(instance.substs, &ty)

@@ -36,10 +36,10 @@ use super::lvalue::LvalueRef;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub(crate) fn trans_rvalue(&mut self,
-                        bcx: Builder<'a, 'tcx>,
-                        dest: LvalueRef<'tcx>,
-                        rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'tcx>
+                               bcx: Builder<'a, 'tcx>,
+                               dest: LvalueRef<'tcx>,
+                               rvalue: &mir::Rvalue<'tcx>)
+                               -> Builder<'a, 'tcx>
     {
         debug!("trans_rvalue(dest.llval={:?}, rvalue={:?})",
                Value(dest.llval), rvalue);
@@ -165,9 +165,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub(crate) fn trans_rvalue_operand(&mut self,
-                                bcx: Builder<'a, 'tcx>,
-                                rvalue: &mir::Rvalue<'tcx>)
-                                -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
+                                       bcx: Builder<'a, 'tcx>,
+                                       rvalue: &mir::Rvalue<'tcx>)
+                                       -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
     {
         assert!(self.rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
@@ -483,11 +483,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub(crate) fn trans_scalar_binop(&mut self,
-                              bcx: &Builder<'a, 'tcx>,
-                              op: mir::BinOp,
-                              lhs: ValueRef,
-                              rhs: ValueRef,
-                              input_ty: Ty<'tcx>) -> ValueRef {
+                                     bcx: &Builder<'a, 'tcx>,
+                                     op: mir::BinOp,
+                                     lhs: ValueRef,
+                                     rhs: ValueRef,
+                                     input_ty: Ty<'tcx>) -> ValueRef {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
         let is_nil = input_ty.is_nil();
@@ -559,14 +559,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub(crate) fn trans_fat_ptr_binop(&mut self,
-                               bcx: &Builder<'a, 'tcx>,
-                               op: mir::BinOp,
-                               lhs_addr: ValueRef,
-                               lhs_extra: ValueRef,
-                               rhs_addr: ValueRef,
-                               rhs_extra: ValueRef,
-                               _input_ty: Ty<'tcx>)
-                               -> ValueRef {
+                                      bcx: &Builder<'a, 'tcx>,
+                                      op: mir::BinOp,
+                                      lhs_addr: ValueRef,
+                                      lhs_extra: ValueRef,
+                                      rhs_addr: ValueRef,
+                                      rhs_extra: ValueRef,
+                                      _input_ty: Ty<'tcx>)
+                                      -> ValueRef {
         match op {
             mir::BinOp::Eq => {
                 bcx.and(
@@ -606,11 +606,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub(crate) fn trans_scalar_checked_binop(&mut self,
-                                      bcx: &Builder<'a, 'tcx>,
-                                      op: mir::BinOp,
-                                      lhs: ValueRef,
-                                      rhs: ValueRef,
-                                      input_ty: Ty<'tcx>) -> OperandValue {
+                                             bcx: &Builder<'a, 'tcx>,
+                                             op: mir::BinOp,
+                                             lhs: ValueRef,
+                                             rhs: ValueRef,
+                                             input_ty: Ty<'tcx>) -> OperandValue {
         // This case can currently arise only from functions marked
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),

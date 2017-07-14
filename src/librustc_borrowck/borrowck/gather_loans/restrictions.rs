@@ -28,11 +28,11 @@ pub(crate) enum RestrictionResult<'tcx> {
 }
 
 pub(crate) fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                      span: Span,
-                                      cause: euv::LoanCause,
-                                      cmt: mc::cmt<'tcx>,
-                                      loan_region: ty::Region<'tcx>)
-                                      -> RestrictionResult<'tcx> {
+                                             span: Span,
+                                             cause: euv::LoanCause,
+                                             cmt: mc::cmt<'tcx>,
+                                             loan_region: ty::Region<'tcx>)
+                                             -> RestrictionResult<'tcx> {
     let ctxt = RestrictionsContext {
         bccx: bccx,
         span: span,

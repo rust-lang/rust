@@ -445,11 +445,11 @@ impl<'a> Resolver<'a> {
 
     // Resolve the initial segment of a non-global macro path (e.g. `foo` in `foo::bar!();`)
     pub(crate) fn resolve_lexical_macro_path_segment(&mut self,
-                                              mut ident: Ident,
-                                              ns: Namespace,
-                                              record_used: bool,
-                                              path_span: Span)
-                                              -> Result<MacroBinding<'a>, Determinacy> {
+                                                     mut ident: Ident,
+                                                     ns: Namespace,
+                                                     record_used: bool,
+                                                     path_span: Span)
+                                                     -> Result<MacroBinding<'a>, Determinacy> {
         ident = ident.modern();
         let mut module = Some(self.current_module);
         let mut potential_illegal_shadower = Err(Determinacy::Determined);
@@ -509,10 +509,10 @@ impl<'a> Resolver<'a> {
     }
 
     pub(crate) fn resolve_legacy_scope(&mut self,
-                                mut scope: &'a Cell<LegacyScope<'a>>,
-                                ident: Ident,
-                                record_used: bool)
-                                -> Option<MacroBinding<'a>> {
+                                       mut scope: &'a Cell<LegacyScope<'a>>,
+                                       ident: Ident,
+                                       record_used: bool)
+                                       -> Option<MacroBinding<'a>> {
         let ident = ident.modern();
         let mut possible_time_travel = None;
         let mut relative_depth: u32 = 0;
@@ -701,9 +701,9 @@ impl<'a> Resolver<'a> {
     }
 
     pub(crate) fn define_macro(&mut self,
-                        item: &ast::Item,
-                        expansion: Mark,
-                        legacy_scope: &mut LegacyScope<'a>) {
+                               item: &ast::Item,
+                               expansion: Mark,
+                               legacy_scope: &mut LegacyScope<'a>) {
         self.local_macro_def_scopes.insert(item.id, self.current_module);
         let ident = item.ident;
         if ident.name == "macro_rules" {

@@ -90,9 +90,9 @@ impl<'tcx> Const<'tcx> {
 
     /// Translate ConstVal into a LLVM constant value.
     pub(crate) fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
-                             cv: ConstVal,
-                             ty: Ty<'tcx>)
-                             -> Const<'tcx> {
+                                    cv: ConstVal,
+                                    ty: Ty<'tcx>)
+                                    -> Const<'tcx> {
         let llty = type_of::type_of(ccx, ty);
         let val = match cv {
             ConstVal::Float(F32(v)) => C_floating_f64(v as f64, llty),
@@ -845,9 +845,9 @@ fn to_const_int(value: ValueRef, t: Ty, tcx: TyCtxt) -> Option<ConstInt> {
 }
 
 pub(crate) fn const_scalar_binop(op: mir::BinOp,
-                          lhs: ValueRef,
-                          rhs: ValueRef,
-                          input_ty: Ty) -> ValueRef {
+                                 lhs: ValueRef,
+                                 rhs: ValueRef,
+                                 input_ty: Ty) -> ValueRef {
     assert!(!input_ty.is_simd());
     let is_float = input_ty.is_fp();
     let signed = input_ty.is_signed();
@@ -901,11 +901,11 @@ pub(crate) fn const_scalar_binop(op: mir::BinOp,
 }
 
 pub(crate) fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                            op: mir::BinOp,
-                                            lllhs: ValueRef,
-                                            llrhs: ValueRef,
-                                            input_ty: Ty<'tcx>)
-                                            -> Option<(ValueRef, bool)> {
+                                                   op: mir::BinOp,
+                                                   lllhs: ValueRef,
+                                                   llrhs: ValueRef,
+                                                   input_ty: Ty<'tcx>)
+                                                   -> Option<(ValueRef, bool)> {
     if let (Some(lhs), Some(rhs)) = (to_const_int(lllhs, input_ty, tcx),
                                      to_const_int(llrhs, input_ty, tcx)) {
         let result = match op {
@@ -937,9 +937,9 @@ pub(crate) fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub(crate) fn trans_constant(&mut self,
-                          bcx: &Builder<'a, 'tcx>,
-                          constant: &mir::Constant<'tcx>)
-                          -> Const<'tcx>
+                                 bcx: &Builder<'a, 'tcx>,
+                                 constant: &mir::Constant<'tcx>)
+                                 -> Const<'tcx>
     {
         debug!("trans_constant({:?})", constant);
         let ty = self.monomorphize(&constant.ty);

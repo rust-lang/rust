@@ -207,7 +207,8 @@ impl CleanupKind {
     }
 }
 
-pub(crate) fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub(crate) fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>)
+                                      -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {

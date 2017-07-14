@@ -173,8 +173,8 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub(crate) fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     impl_did: DefId)
-                                     -> CoerceUnsizedInfo {
+                                            impl_did: DefId)
+                                            -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
     let coerce_unsized_trait = tcx.lang_items.coerce_unsized_trait().unwrap();
 

@@ -108,9 +108,9 @@ impl PpMode {
 }
 
 pub(crate) fn parse_pretty(sess: &Session,
-                    name: &str,
-                    extended: bool)
-                    -> (PpMode, Option<UserIdentifiedItem>) {
+                           name: &str,
+                           extended: bool)
+                           -> (PpMode, Option<UserIdentifiedItem>) {
     let mut split = name.splitn(2, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
@@ -808,10 +808,10 @@ fn write_output(out: Vec<u8>, ofile: Option<&Path>) {
 }
 
 pub(crate) fn print_after_parsing(sess: &Session,
-                           input: &Input,
-                           krate: &ast::Crate,
-                           ppm: PpMode,
-                           ofile: Option<&Path>) {
+                                  input: &Input,
+                                  krate: &ast::Crate,
+                                  ppm: PpMode,
+                                  ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
 
@@ -844,17 +844,17 @@ pub(crate) fn print_after_parsing(sess: &Session,
 }
 
 pub(crate) fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                                hir_map: &hir_map::Map<'tcx>,
-                                                analysis: &ty::CrateAnalysis,
-                                                resolutions: &Resolutions,
-                                                input: &Input,
-                                                krate: &ast::Crate,
-                                                crate_name: &str,
-                                                ppm: PpMode,
-                                                arena: &'tcx DroplessArena,
-                                                arenas: &'tcx GlobalArenas<'tcx>,
-                                                opt_uii: Option<UserIdentifiedItem>,
-                                                ofile: Option<&Path>) {
+                                                       hir_map: &hir_map::Map<'tcx>,
+                                                       analysis: &ty::CrateAnalysis,
+                                                       resolutions: &Resolutions,
+                                                       input: &Input,
+                                                       krate: &ast::Crate,
+                                                       crate_name: &str,
+                                                       ppm: PpMode,
+                                                       arena: &'tcx DroplessArena,
+                                                       arenas: &'tcx GlobalArenas<'tcx>,
+                                                       opt_uii: Option<UserIdentifiedItem>,
+                                                       ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
 

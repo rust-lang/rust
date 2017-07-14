@@ -69,12 +69,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn report_method_error(&self,
-                               span: Span,
-                               rcvr_ty: Ty<'tcx>,
-                               item_name: ast::Name,
-                               rcvr_expr: Option<&hir::Expr>,
-                               error: MethodError<'tcx>,
-                               args: Option<&'gcx [hir::Expr]>) {
+                                      span: Span,
+                                      rcvr_ty: Ty<'tcx>,
+                                      item_name: ast::Name,
+                                      rcvr_expr: Option<&hir::Expr>,
+                                      error: MethodError<'tcx>,
+                                      args: Option<&'gcx [hir::Expr]>) {
         // avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return;

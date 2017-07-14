@@ -145,10 +145,10 @@ impl<'a> ArchiveBuilder<'a> {
     /// This ignores adding the bytecode from the rlib, and if LTO is enabled
     /// then the object file also isn't added.
     pub(crate) fn add_rlib(&mut self,
-                    rlib: &Path,
-                    name: &str,
-                    lto: bool,
-                    skip_objects: bool) -> io::Result<()> {
+                           rlib: &Path,
+                           name: &str,
+                           lto: bool,
+                           skip_objects: bool) -> io::Result<()> {
         // Ignoring obj file starting with the crate name
         // as simple comparison is not enough - there
         // might be also an extra name suffix

@@ -114,9 +114,9 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// bits of HIR or other state that would not be trackd by the
     /// content system.
     pub(crate) fn record<'x, DATA>(&'x mut self,
-                            id: DefId,
-                            op: fn(&mut IsolatedEncoder<'x, 'b, 'tcx>, DATA) -> Entry<'tcx>,
-                            data: DATA)
+                                   id: DefId,
+                                   op: fn(&mut IsolatedEncoder<'x, 'b, 'tcx>, DATA) -> Entry<'tcx>,
+                                   data: DATA)
         where DATA: DepGraphRead
     {
         assert!(id.is_local());

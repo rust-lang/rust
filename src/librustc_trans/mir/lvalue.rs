@@ -87,11 +87,12 @@ pub(crate) struct LvalueRef<'tcx> {
 
 impl<'a, 'tcx> LvalueRef<'tcx> {
     pub(crate) fn new_sized(llval: ValueRef, lvalue_ty: LvalueTy<'tcx>,
-                     alignment: Alignment) -> LvalueRef<'tcx> {
+                            alignment: Alignment) -> LvalueRef<'tcx> {
         LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty, alignment: alignment }
     }
 
-    pub(crate) fn new_sized_ty(llval: ValueRef, ty: Ty<'tcx>, alignment: Alignment) -> LvalueRef<'tcx> {
+    pub(crate) fn new_sized_ty(llval: ValueRef, ty: Ty<'tcx>, alignment: Alignment)
+                               -> LvalueRef<'tcx> {
         LvalueRef::new_sized(llval, LvalueTy::from_ty(ty), alignment)
     }
 
@@ -214,7 +215,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     /// Access a field, at a point when the value's case is known.
-    pub(crate) fn trans_field_ptr(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> (ValueRef, Alignment) {
+    pub(crate) fn trans_field_ptr(self, bcx: &Builder<'a, 'tcx>, ix: usize)
+                                  -> (ValueRef, Alignment) {
         let discr = match self.ty {
             LvalueTy::Ty { .. } => 0,
             LvalueTy::Downcast { variant_index, .. } => variant_index,
@@ -284,9 +286,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub(crate) fn trans_lvalue(&mut self,
-                        bcx: &Builder<'a, 'tcx>,
-                        lvalue: &mir::Lvalue<'tcx>)
-                        -> LvalueRef<'tcx> {
+                               bcx: &Builder<'a, 'tcx>,
+                               lvalue: &mir::Lvalue<'tcx>)
+                               -> LvalueRef<'tcx> {
         debug!("trans_lvalue(lvalue={:?})", lvalue);
 
         let ccx = bcx.ccx;

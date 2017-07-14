@@ -365,9 +365,9 @@ pub struct DepthFirstTraversal<'g, N, E>
 
 impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
     pub(crate) fn with_start_node(graph: &'g Graph<N, E>,
-                           start_node: NodeIndex,
-                           direction: Direction)
-                           -> Self {
+                                  start_node: NodeIndex,
+                                  direction: Direction)
+                                  -> Self {
         let mut visited = BitVector::new(graph.len_nodes());
         visited.insert(start_node.node_id());
         DepthFirstTraversal {

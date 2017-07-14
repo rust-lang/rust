@@ -389,9 +389,9 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
     where D: BitDenotation + DataflowOperator
 {
     pub(crate) fn new(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
-               dead_unwinds: &'a IdxSet<mir::BasicBlock>,
-               denotation: D) -> Self {
+                      mir: &'a Mir<'tcx>,
+                      dead_unwinds: &'a IdxSet<mir::BasicBlock>,
+                      denotation: D) -> Self {
         let bits_per_block = denotation.bits_per_block();
         let usize_bits = mem::size_of::<usize>() * 8;
         let words_per_block = (bits_per_block + usize_bits - 1) / usize_bits;

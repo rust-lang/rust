@@ -119,7 +119,7 @@ pub(crate) fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> Valu
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
 pub(crate) fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
-                            fn_type: ty::Ty<'tcx>) -> ValueRef {
+                                   fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
     let sig = common::ty_fn_sig(ccx, fn_type);
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
@@ -163,8 +163,8 @@ pub(crate) fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<
 /// return panic if the name already has a definition associated with it. This
 /// can happen with #[no_mangle] or #[export_name], for example.
 pub(crate) fn define_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                           name: &str,
-                           fn_type: ty::Ty<'tcx>) -> ValueRef {
+                                  name: &str,
+                                  fn_type: ty::Ty<'tcx>) -> ValueRef {
     if get_defined_value(ccx, name).is_some() {
         ccx.sess().fatal(&format!("symbol `{}` already defined", name))
     } else {
@@ -178,8 +178,8 @@ pub(crate) fn define_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 /// return panic if the name already has a definition associated with it. This
 /// can happen with #[no_mangle] or #[export_name], for example.
 pub(crate) fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    name: &str,
-                                    fn_type: ty::Ty<'tcx>) -> ValueRef {
+                                           name: &str,
+                                           fn_type: ty::Ty<'tcx>) -> ValueRef {
     let llfn = define_fn(ccx, name, fn_type);
     unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
     llfn

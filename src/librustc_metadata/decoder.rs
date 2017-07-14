@@ -396,8 +396,7 @@ impl<'a, 'tcx> MetadataBlob {
         Lazy::with_position(pos).decode(self)
     }
 
-    pub(crate) fn list_crate_metadata(&self,
-                               out: &mut io::Write) -> io::Result<()> {
+    pub(crate) fn list_crate_metadata(&self, out: &mut io::Write) -> io::Result<()> {
         write!(out, "=External Dependencies=\n")?;
         let root = self.get_root();
         for (i, dep) in root.crate_deps
@@ -534,9 +533,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn get_adt_def(&self,
-                       item_id: DefIndex,
-                       tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                       -> &'tcx ty::AdtDef {
+                              item_id: DefIndex,
+                              tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                              -> &'tcx ty::AdtDef {
         let item = self.entry(item_id);
         let did = self.local_def_id(item_id);
         let kind = match item.kind {
@@ -566,16 +565,16 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn get_predicates(&self,
-                          item_id: DefIndex,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                          -> ty::GenericPredicates<'tcx> {
+                                 item_id: DefIndex,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                 -> ty::GenericPredicates<'tcx> {
         self.entry(item_id).predicates.unwrap().decode((self, tcx))
     }
 
     pub(crate) fn get_super_predicates(&self,
-                                item_id: DefIndex,
-                                tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                -> ty::GenericPredicates<'tcx> {
+                                       item_id: DefIndex,
+                                       tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                       -> ty::GenericPredicates<'tcx> {
         match self.entry(item_id).kind {
             EntryKind::Trait(data) => data.decode(self).super_predicates.decode((self, tcx)),
             _ => bug!(),
@@ -631,15 +630,15 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn get_coerce_unsized_info(&self,
-                                   id: DefIndex)
-                                   -> Option<ty::adjustment::CoerceUnsizedInfo> {
+                                          id: DefIndex)
+                                          -> Option<ty::adjustment::CoerceUnsizedInfo> {
         self.get_impl_data(id).coerce_unsized_info
     }
 
     pub(crate) fn get_impl_trait(&self,
-                          id: DefIndex,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                          -> Option<ty::TraitRef<'tcx>> {
+                                 id: DefIndex,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                 -> Option<ty::TraitRef<'tcx>> {
         self.get_impl_data(id).trait_ref.map(|tr| tr.decode((self, tcx)))
     }
 
@@ -759,9 +758,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn item_body(&self,
-                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     id: DefIndex)
-                     -> &'tcx hir::Body {
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            id: DefIndex)
+                            -> &'tcx hir::Body {
         assert!(!self.is_proc_macro(id));
         let ast = self.entry(id).ast.unwrap();
         let def_id = self.local_def_id(id);
@@ -770,9 +769,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn item_body_tables(&self,
-                            id: DefIndex,
-                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                            -> &'tcx ty::TypeckTables<'tcx> {
+                                   id: DefIndex,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                   -> &'tcx ty::TypeckTables<'tcx> {
         let ast = self.entry(id).ast.unwrap().decode(self);
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
     }
@@ -794,9 +793,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn maybe_get_optimized_mir(&self,
-                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   id: DefIndex)
-                                   -> Option<Mir<'tcx>> {
+                                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                          id: DefIndex)
+                                          -> Option<Mir<'tcx>> {
         match self.is_proc_macro(id) {
             true => None,
             false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
@@ -868,8 +867,8 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn get_item_attrs(&self,
-                          node_id: DefIndex,
-                          dep_graph: &DepGraph) -> Rc<[ast::Attribute]> {
+                                 node_id: DefIndex,
+                                 dep_graph: &DepGraph) -> Rc<[ast::Attribute]> {
         let (node_as, node_index) =
             (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
@@ -944,9 +943,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn get_implementations_for_trait(&self,
-                                         filter: Option<DefId>,
-                                         dep_graph: &DepGraph,
-                                         result: &mut Vec<DefId>) {
+                                                filter: Option<DefId>,
+                                                dep_graph: &DepGraph,
+                                                result: &mut Vec<DefId>) {
         // Do a reverse lookup beforehand to avoid touching the crate_num
         // hash map in the loop below.
         let filter = match filter.map(|def_id| self.reverse_translate_def_id(def_id)) {
@@ -981,9 +980,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
 
-    pub(crate) fn get_native_libraries(&self,
-                                dep_graph: &DepGraph)
-                                -> Vec<NativeLibrary> {
+    pub(crate) fn get_native_libraries(&self, dep_graph: &DepGraph) -> Vec<NativeLibrary> {
         let dep_node = self.metadata_dep_node(GlobalMetaDataKind::NativeLibraries);
         self.root
             .native_libraries
@@ -993,8 +990,8 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn get_dylib_dependency_formats(&self,
-                                        dep_graph: &DepGraph)
-                                        -> Vec<(CrateNum, LinkagePreference)> {
+                                               dep_graph: &DepGraph)
+                                               -> Vec<(CrateNum, LinkagePreference)> {
         let dep_node =
             self.metadata_dep_node(GlobalMetaDataKind::DylibDependencyFormats);
         self.root
@@ -1085,9 +1082,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub(crate) fn fn_sig(&self,
-                  id: DefIndex,
-                  tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                  -> ty::PolyFnSig<'tcx> {
+                         id: DefIndex,
+                         tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                         -> ty::PolyFnSig<'tcx> {
         let sig = match self.entry(id).kind {
             EntryKind::Fn(data) |
             EntryKind::ForeignFn(data) => data.decode(self).sig,
@@ -1139,8 +1136,8 @@ impl<'a, 'tcx> CrateMetadata {
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
     pub(crate) fn imported_filemaps(&'a self,
-                             local_codemap: &codemap::CodeMap)
-                             -> Ref<'a, Vec<cstore::ImportedFileMap>> {
+                                    local_codemap: &codemap::CodeMap)
+                                    -> Ref<'a, Vec<cstore::ImportedFileMap>> {
         {
             let filemaps = self.codemap_import_info.borrow();
             if !filemaps.is_empty() {

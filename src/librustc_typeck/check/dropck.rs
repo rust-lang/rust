@@ -40,8 +40,8 @@ use syntax_pos::Span;
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
 pub(crate) fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 drop_impl_did: DefId)
-                                 -> Result<(), ErrorReported> {
+                                        drop_impl_did: DefId)
+                                        -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.sty {

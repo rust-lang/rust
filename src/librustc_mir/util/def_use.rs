@@ -63,9 +63,9 @@ impl<'tcx> DefUseAnalysis<'tcx> {
 
     /// FIXME(pcwalton): This should update the def-use chains.
     pub(crate) fn replace_all_defs_and_uses_with(&self,
-                                          local: Local,
-                                          mir: &mut Mir<'tcx>,
-                                          new_lvalue: Lvalue<'tcx>) {
+                                                 local: Local,
+                                                 mir: &mut Mir<'tcx>,
+                                                 new_lvalue: Lvalue<'tcx>) {
         self.mutate_defs_and_uses(local, mir, |lvalue, _, _| *lvalue = new_lvalue.clone())
     }
 }

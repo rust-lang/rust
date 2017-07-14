@@ -186,9 +186,7 @@ impl ExportedSymbols {
         }
     }
 
-    pub(crate) fn for_each_exported_symbol<F>(&self,
-                                       cnum: CrateNum,
-                                       mut f: F)
+    pub(crate) fn for_each_exported_symbol<F>(&self, cnum: CrateNum, mut f: F)
         where F: FnMut(&str, DefId, SymbolExportLevel)
     {
         for &(ref name, def_id, export_level) in self.exported_symbols(cnum) {
@@ -229,8 +227,8 @@ pub(crate) fn crates_export_threshold(crate_types: &[config::CrateType])
 }
 
 pub(crate) fn is_below_threshold(level: SymbolExportLevel,
-                          threshold: SymbolExportLevel)
-                          -> bool {
+                                 threshold: SymbolExportLevel)
+                                 -> bool {
     if threshold == SymbolExportLevel::Rust {
         // We export everything from Rust dylibs
         true

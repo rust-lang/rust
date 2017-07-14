@@ -212,7 +212,8 @@ impl<'a> SpanUtils<'a> {
     // example with Foo<Bar<T,V>, Bar<T,V>>
     // Nesting = 0: all idents outside of angle brackets: [Foo]
     // Nesting = 1: idents within one level of angle brackets: [Bar, Bar]
-    pub(crate) fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize) -> Vec<Span> {
+    pub(crate) fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize)
+                                      -> Vec<Span> {
         let mut result: Vec<Span> = vec![];
 
         let mut toks = self.retokenise_span(span);
@@ -304,7 +305,8 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub(crate) fn sub_span_after_keyword(&self, span: Span, keyword: keywords::Keyword) -> Option<Span> {
+    pub(crate) fn sub_span_after_keyword(&self, span: Span, keyword: keywords::Keyword)
+                                         -> Option<Span> {
         self.sub_span_after(span, |t| t.is_keyword(keyword))
     }
 

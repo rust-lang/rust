@@ -24,7 +24,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// an ExprKind::Scope is passed, so please do *not* return it from
     /// functions to avoid bad miscompiles.
     pub(crate) fn as_local_operand<M>(&mut self, block: BasicBlock, expr: M)
-                             -> BlockAnd<Operand<'tcx>>
+                                      -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let local_scope = self.local_scope();
@@ -38,9 +38,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// The operand is known to be live until the end of `scope`.
     pub(crate) fn as_operand<M>(&mut self,
-                         block: BasicBlock,
-                         scope: Option<CodeExtent>,
-                         expr: M) -> BlockAnd<Operand<'tcx>>
+                                block: BasicBlock,
+                                scope: Option<CodeExtent>,
+                                expr: M) -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);

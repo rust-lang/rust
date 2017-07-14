@@ -1321,8 +1321,8 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
 }
 
 pub(crate) unsafe fn with_llvm_pmb(llmod: ModuleRef,
-                            config: &ModuleConfig,
-                            f: &mut FnMut(llvm::PassManagerBuilderRef)) {
+                                   config: &ModuleConfig,
+                                   f: &mut FnMut(llvm::PassManagerBuilderRef)) {
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.

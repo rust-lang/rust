@@ -371,9 +371,9 @@ impl<'tcx> MovePathLookup<'tcx> {
 
 impl<'a, 'tcx> MoveData<'tcx> {
     pub(crate) fn gather_moves(mir: &Mir<'tcx>,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        param_env: ty::ParamEnv<'tcx>)
-                        -> Self {
+                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               param_env: ty::ParamEnv<'tcx>)
+                               -> Self {
         gather_moves(mir, tcx, param_env)
     }
 }

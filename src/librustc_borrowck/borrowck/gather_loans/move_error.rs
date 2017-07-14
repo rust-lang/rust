@@ -46,8 +46,8 @@ pub(crate) struct MoveError<'tcx> {
 
 impl<'tcx> MoveError<'tcx> {
     pub(crate) fn with_move_info(move_from: mc::cmt<'tcx>,
-                          move_to: Option<MovePlace<'tcx>>)
-                          -> MoveError<'tcx> {
+                                 move_to: Option<MovePlace<'tcx>>)
+                                 -> MoveError<'tcx> {
         MoveError {
             move_from: move_from,
             move_to: move_to,

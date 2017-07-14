@@ -1569,11 +1569,11 @@ pub(crate) enum SizedByDefault { Yes, No, }
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
 pub(crate) fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                        param_ty: ty::Ty<'tcx>,
-                                        ast_bounds: &[hir::TyParamBound],
-                                        sized_by_default: SizedByDefault,
-                                        span: Span)
-                                        -> Bounds<'tcx>
+                                               param_ty: ty::Ty<'tcx>,
+                                               ast_bounds: &[hir::TyParamBound],
+                                               sized_by_default: SizedByDefault,
+                                               span: Span)
+                                               -> Bounds<'tcx>
 {
     let mut region_bounds = vec![];
     let mut trait_bounds = vec![];

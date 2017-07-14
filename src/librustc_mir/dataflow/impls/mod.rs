@@ -70,9 +70,9 @@ pub(crate) struct MaybeInitializedLvals<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> MaybeInitializedLvals<'a, 'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'tcx>)
-               -> Self
+                      mir: &'a Mir<'tcx>,
+                      mdpe: &'a MoveDataParamEnv<'tcx>)
+                      -> Self
     {
         MaybeInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
     }
@@ -125,9 +125,9 @@ pub(crate) struct MaybeUninitializedLvals<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> MaybeUninitializedLvals<'a, 'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'tcx>)
-               -> Self
+                      mir: &'a Mir<'tcx>,
+                      mdpe: &'a MoveDataParamEnv<'tcx>)
+                      -> Self
     {
         MaybeUninitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
     }
@@ -186,9 +186,9 @@ pub(crate) struct DefinitelyInitializedLvals<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> DefinitelyInitializedLvals<'a, 'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'tcx>)
-               -> Self
+                      mir: &'a Mir<'tcx>,
+                      mdpe: &'a MoveDataParamEnv<'tcx>)
+                      -> Self
     {
         DefinitelyInitializedLvals { tcx: tcx, mir: mir, mdpe: mdpe }
     }

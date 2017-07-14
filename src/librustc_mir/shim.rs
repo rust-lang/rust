@@ -402,10 +402,10 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub(crate) fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
-                                      ctor_id: ast::NodeId,
-                                      fields: &[hir::StructField],
-                                      span: Span)
-                                      -> (Mir<'tcx>, MirSource)
+                                             ctor_id: ast::NodeId,
+                                             fields: &[hir::StructField],
+                                             span: Span)
+                                             -> (Mir<'tcx>, MirSource)
 {
     let tcx = infcx.tcx;
     let def_id = tcx.hir.local_def_id(ctor_id);

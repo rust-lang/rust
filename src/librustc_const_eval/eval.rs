@@ -721,7 +721,7 @@ fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
 }
 
 pub(crate) fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
-                          -> Result<Ordering, ErrorReported>
+                                 -> Result<Ordering, ErrorReported>
 {
     let result = match (a, b) {
         (&Integral(a), &Integral(b)) => a.try_cmp(b).ok(),

@@ -98,9 +98,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
     }
 
     pub(crate) fn predefine(&self,
-                     ccx: &CrateContext<'a, 'tcx>,
-                     linkage: llvm::Linkage,
-                     visibility: llvm::Visibility) {
+                            ccx: &CrateContext<'a, 'tcx>,
+                            linkage: llvm::Linkage,
+                            visibility: llvm::Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
                self.to_raw_string(),
@@ -222,8 +222,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
     }
 
     pub(crate) fn instantiation_mode(&self,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                              -> InstantiationMode {
+                                     tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                     -> InstantiationMode {
         match *self {
             TransItem::Fn(ref instance) => {
                 if self.explicit_linkage(tcx).is_none() &&
@@ -380,9 +380,9 @@ pub(crate) struct DefPathBasedNames<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               omit_disambiguators: bool,
-               omit_local_crate_name: bool)
-               -> Self {
+                      omit_disambiguators: bool,
+                      omit_local_crate_name: bool)
+                      -> Self {
         DefPathBasedNames {
             tcx: tcx,
             omit_disambiguators: omit_disambiguators,
@@ -522,8 +522,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     }
 
     pub(crate) fn push_def_path(&self,
-                         def_id: DefId,
-                         output: &mut String) {
+                                def_id: DefId,
+                                output: &mut String) {
         let def_path = self.tcx.def_path(def_id);
 
         // some_crate::
@@ -582,8 +582,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     }
 
     pub(crate) fn push_instance_as_string(&self,
-                                   instance: Instance<'tcx>,
-                                   output: &mut String) {
+                                          instance: Instance<'tcx>,
+                                          output: &mut String) {
         self.push_def_path(instance.def_id(), output);
         self.push_type_params(instance.substs, iter::empty(), output);
     }

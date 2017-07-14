@@ -30,7 +30,7 @@ use syntax_pos::Span;
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// See comment on `as_local_operand`
     pub(crate) fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M)
-                             -> BlockAnd<Rvalue<'tcx>>
+                                     -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let local_scope = self.local_scope();
@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Compile `expr`, yielding an rvalue.
     pub(crate) fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<CodeExtent>, expr: M)
-                        -> BlockAnd<Rvalue<'tcx>>
+                               -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
@@ -257,8 +257,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn build_binary_op(&mut self, mut block: BasicBlock,
-                           op: BinOp, span: Span, ty: ty::Ty<'tcx>,
-                           lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
+                                  op: BinOp, span: Span, ty: ty::Ty<'tcx>,
+                                  lhs: Operand<'tcx>, rhs: Operand<'tcx>)
+                                  -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
         if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {

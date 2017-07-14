@@ -30,8 +30,8 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
 }
 
 pub(crate) fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
-                                                 rpo: &[G::Node])
-                                                 -> Dominators<G::Node> {
+                                                        rpo: &[G::Node])
+                                                        -> Dominators<G::Node> {
     let start_node = graph.start_node();
     assert_eq!(rpo[0], start_node);
 

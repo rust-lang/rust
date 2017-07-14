@@ -117,21 +117,21 @@ impl Diagnostic {
     }
 
     pub(crate) fn note_expected_found(&mut self,
-                               label: &fmt::Display,
-                               expected: DiagnosticStyledString,
-                               found: DiagnosticStyledString)
-                               -> &mut Self
+                                      label: &fmt::Display,
+                                      expected: DiagnosticStyledString,
+                                      found: DiagnosticStyledString)
+                                      -> &mut Self
     {
         self.note_expected_found_extra(label, expected, found, &"", &"")
     }
 
     pub(crate) fn note_expected_found_extra(&mut self,
-                                     label: &fmt::Display,
-                                     expected: DiagnosticStyledString,
-                                     found: DiagnosticStyledString,
-                                     expected_extra: &fmt::Display,
-                                     found_extra: &fmt::Display)
-                                     -> &mut Self
+                                            label: &fmt::Display,
+                                            expected: DiagnosticStyledString,
+                                            found: DiagnosticStyledString,
+                                            expected_extra: &fmt::Display,
+                                            found_extra: &fmt::Display)
+                                            -> &mut Self
     {
         let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
         msg.extend(expected.0.iter()
@@ -185,9 +185,9 @@ impl Diagnostic {
     }
 
     pub(crate) fn span_warn<S: Into<MultiSpan>>(&mut self,
-                                         sp: S,
-                                         msg: &str)
-                                         -> &mut Self {
+                                                sp: S,
+                                                msg: &str)
+                                                -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
@@ -198,9 +198,9 @@ impl Diagnostic {
     }
 
     pub(crate) fn span_help<S: Into<MultiSpan>>(&mut self,
-                                         sp: S,
-                                         msg: &str)
-                                         -> &mut Self {
+                                                sp: S,
+                                                msg: &str)
+                                                -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
         self
     }
@@ -231,7 +231,8 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
+    pub(crate) fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>)
+                                   -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
                 span: sp,

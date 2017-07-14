@@ -63,9 +63,9 @@ impl<'a, 'tcx> VirtualIndex {
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
 pub(crate) fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            ty: ty::Ty<'tcx>,
-                            trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
-                            -> ValueRef
+                                   ty: ty::Ty<'tcx>,
+                                   trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
+                                   -> ValueRef
 {
     let tcx = ccx.tcx();
 

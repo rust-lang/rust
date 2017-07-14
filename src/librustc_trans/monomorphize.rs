@@ -208,9 +208,9 @@ pub(crate) fn resolve_drop_in_place<'a, 'tcx>(
 }
 
 pub(crate) fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,
-                                             source_ty: Ty<'tcx>,
-                                             target_ty: Ty<'tcx>)
-                                             -> CustomCoerceUnsized {
+                                                    source_ty: Ty<'tcx>,
+                                                    target_ty: Ty<'tcx>)
+                                                    -> CustomCoerceUnsized {
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
         substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
@@ -228,9 +228,9 @@ pub(crate) fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'sc
 
 /// Returns the normalized type of a struct field
 pub(crate) fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_substs: &Substs<'tcx>,
-                          f: &'tcx ty::FieldDef)
-                          -> Ty<'tcx>
+                                 param_substs: &Substs<'tcx>,
+                                 f: &'tcx ty::FieldDef)
+                                 -> Ty<'tcx>
 {
     tcx.normalize_associated_type(&f.ty(tcx, param_substs))
 }

@@ -18,8 +18,8 @@ pub(crate) enum Flavor {
 }
 
 pub(crate) fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  fty: &mut FnType<'tcx>,
-                                  flavor: Flavor) {
+                                         fty: &mut FnType<'tcx>,
+                                         flavor: Flavor) {
     if !fty.ret.is_ignore() {
         if fty.ret.layout.is_aggregate() {
             // Returning a structure. Most often, this will use

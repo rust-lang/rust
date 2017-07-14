@@ -149,7 +149,9 @@ impl CStore {
         ordering
     }
 
-    pub(crate) fn push_dependencies_in_postorder(&self, ordering: &mut Vec<CrateNum>, krate: CrateNum) {
+    pub(crate) fn push_dependencies_in_postorder(&self,
+                                                 ordering: &mut Vec<CrateNum>,
+                                                 krate: CrateNum) {
         if ordering.contains(&krate) {
             return;
         }
@@ -174,8 +176,8 @@ impl CStore {
     // topological sort of all crates putting the leaves at the right-most
     // positions.
     pub(crate) fn do_get_used_crates(&self,
-                              prefer: LinkagePreference)
-                              -> Vec<(CrateNum, LibSource)> {
+                                     prefer: LinkagePreference)
+                                     -> Vec<(CrateNum, LibSource)> {
         let mut ordering = Vec::new();
         for (&num, _) in self.metas.borrow().iter() {
             self.push_dependencies_in_postorder(&mut ordering, num);

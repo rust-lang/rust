@@ -163,12 +163,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
     pub(crate) fn probe_for_return_type(&self,
-                                 span: Span,
-                                 mode: Mode,
-                                 return_type: Ty<'tcx>,
-                                 self_ty: Ty<'tcx>,
-                                 scope_expr_id: ast::NodeId)
-                                 -> Vec<ty::AssociatedItem> {
+                                        span: Span,
+                                        mode: Mode,
+                                        return_type: Ty<'tcx>,
+                                        self_ty: Ty<'tcx>,
+                                        scope_expr_id: ast::NodeId)
+                                        -> Vec<ty::AssociatedItem> {
         debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
                self_ty,
                return_type,
@@ -191,13 +191,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn probe_for_name(&self,
-                          span: Span,
-                          mode: Mode,
-                          item_name: ast::Name,
-                          is_suggestion: IsSuggestion,
-                          self_ty: Ty<'tcx>,
-                          scope_expr_id: ast::NodeId)
-                          -> PickResult<'tcx> {
+                                 span: Span,
+                                 mode: Mode,
+                                 item_name: ast::Name,
+                                 is_suggestion: IsSuggestion,
+                                 self_ty: Ty<'tcx>,
+                                 scope_expr_id: ast::NodeId)
+                                 -> PickResult<'tcx> {
         debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
                self_ty,
                item_name,
@@ -670,7 +670,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn matches_return_type(&self, method: &ty::AssociatedItem,
-                               expected: ty::Ty<'tcx>) -> bool {
+                                      expected: ty::Ty<'tcx>) -> bool {
         match method.def() {
             Def::Method(def_id) => {
                 let fty = self.tcx.fn_sig(def_id);

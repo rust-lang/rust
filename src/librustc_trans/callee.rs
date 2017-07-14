@@ -34,8 +34,8 @@ use type_of;
 /// - `ccx`: the crate context
 /// - `instance`: the instance to be instantiated
 pub(crate) fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                        instance: Instance<'tcx>)
-                        -> ValueRef
+                               instance: Instance<'tcx>)
+                               -> ValueRef
 {
     let tcx = ccx.tcx();
 
@@ -140,9 +140,9 @@ pub(crate) fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub(crate) fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    def_id: DefId,
-                                    substs: &'tcx Substs<'tcx>)
-                                    -> ValueRef
+                                           def_id: DefId,
+                                           substs: &'tcx Substs<'tcx>)
+                                           -> ValueRef
 {
     get_fn(ccx, monomorphize::resolve(ccx.shared(), def_id, substs))
 }

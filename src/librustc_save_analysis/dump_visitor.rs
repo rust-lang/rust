@@ -77,8 +77,8 @@ pub(crate) struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
 
 impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     pub(crate) fn new(save_ctxt: SaveContext<'l, 'tcx>,
-               dumper: &'ll mut D)
-               -> DumpVisitor<'l, 'tcx, 'll, D> {
+                      dumper: &'ll mut D)
+                      -> DumpVisitor<'l, 'tcx, 'll, D> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         DumpVisitor {
             sess: &save_ctxt.tcx.sess,

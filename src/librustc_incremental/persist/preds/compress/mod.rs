@@ -30,8 +30,8 @@ use self::dag_id::DagId;
 mod test;
 
 pub(crate) fn reduce_graph<N, I, O>(graph: &Graph<N, ()>,
-                             is_input: I,
-                             is_output: O) -> Reduction<N>
+                                    is_input: I,
+                                    is_output: O) -> Reduction<N>
     where N: Debug + Clone,
           I: Fn(&N) -> bool,
           O: Fn(&N) -> bool,

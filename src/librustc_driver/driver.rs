@@ -1042,10 +1042,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub(crate) fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           analysis: ty::CrateAnalysis,
-                                           incremental_hashes_map: &IncrementalHashesMap,
-                                           output_filenames: &OutputFilenames)
-                                           -> trans::CrateTranslation {
+                                                  analysis: ty::CrateAnalysis,
+                                                  incremental_hashes_map: &IncrementalHashesMap,
+                                                  output_filenames: &OutputFilenames)
+                                                  -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
@@ -1073,8 +1073,8 @@ pub(crate) fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub(crate) fn phase_5_run_llvm_passes(sess: &Session,
-                               trans: &trans::CrateTranslation,
-                               outputs: &OutputFilenames) -> CompileResult {
+                                      trans: &trans::CrateTranslation,
+                                      outputs: &OutputFilenames) -> CompileResult {
     if sess.opts.cg.no_integrated_as ||
         (sess.target.target.options.no_integrated_as &&
          (outputs.outputs.contains_key(&OutputType::Object) ||
@@ -1117,8 +1117,8 @@ pub(crate) fn phase_5_run_llvm_passes(sess: &Session,
 /// Run the linker on any artifacts that resulted from the LLVM run.
 /// This should produce either a finished executable or library.
 pub(crate) fn phase_6_link_output(sess: &Session,
-                           trans: &trans::CrateTranslation,
-                           outputs: &OutputFilenames) {
+                                  trans: &trans::CrateTranslation,
+                                  outputs: &OutputFilenames) {
     time(sess.time_passes(),
          "linking",
          || link::link_binary(sess, trans, outputs, &trans.crate_name.as_str()));
@@ -1188,7 +1188,8 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
     }
 }
 
-pub(crate) fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
+pub(crate) fn collect_crate_types(session: &Session, attrs: &[ast::Attribute])
+                                  -> Vec<config::CrateType> {
     // Unconditionally collect crate types from attributes to make them used
     let attr_types: Vec<config::CrateType> =
         attrs.iter()
@@ -1304,11 +1305,11 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> String {
 }
 
 pub(crate) fn build_output_filenames(input: &Input,
-                              odir: &Option<PathBuf>,
-                              ofile: &Option<PathBuf>,
-                              attrs: &[ast::Attribute],
-                              sess: &Session)
-                              -> OutputFilenames {
+                                     odir: &Option<PathBuf>,
+                                     ofile: &Option<PathBuf>,
+                                     attrs: &[ast::Attribute],
+                                     sess: &Session)
+                                     -> OutputFilenames {
     match *ofile {
         None => {
             // "-" as input file will cause the parser to read from stdin so we

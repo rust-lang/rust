@@ -24,7 +24,8 @@ use syntax::attr;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext, builder: &Builder) {
+pub(crate) fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext,
+                                                                   builder: &Builder) {
     if needs_gdb_debug_scripts_section(ccx) {
         let gdb_debug_scripts_section_global = get_or_insert_gdb_debug_scripts_section_global(ccx);
         // Load just the first byte as that's all that's necessary to force

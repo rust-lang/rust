@@ -35,8 +35,8 @@ pub(crate) struct HashContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               incremental_hashes_map: &'a IncrementalHashesMap)
-               -> Self {
+                      incremental_hashes_map: &'a IncrementalHashesMap)
+                      -> Self {
         HashContext {
             tcx: tcx,
             incremental_hashes_map: incremental_hashes_map,

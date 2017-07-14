@@ -245,10 +245,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     // Encodes something that corresponds to a single DepNode::GlobalMetaData
     // and registers the Fingerprint in the `metadata_hashes` map.
     pub(crate) fn tracked<'x, DATA, R>(&'x mut self,
-                                def_index: DefIndex,
-                                op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
-                                data: DATA)
-                                -> Tracked<R> {
+                                       def_index: DefIndex,
+                                       op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
+                                       data: DATA)
+                                       -> Tracked<R> {
         let mut entry_builder = IsolatedEncoder::new(self);
         let ret = op(&mut entry_builder, data);
         let (fingerprint, this) = entry_builder.finish();
@@ -1636,9 +1636,9 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
 // generated regardless of trailing bytes that end up in it.
 
 pub(crate) fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 exported_symbols: &NodeSet)
-                                 -> EncodedMetadata
+                                        link_meta: &LinkMeta,
+                                        exported_symbols: &NodeSet)
+                                        -> EncodedMetadata
 {
     let mut cursor = Cursor::new(vec![]);
     cursor.write_all(METADATA_HEADER).unwrap();
@@ -1687,7 +1687,8 @@ pub(crate) fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub(crate) fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
+pub(crate) fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId)
+                                               -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.sty {
         ty::TyAdt(ref def, _) => return def.repr,

@@ -20,9 +20,9 @@ use rustc_data_structures::indexed_vec::Idx;
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding an lvalue that we can move from etc.
     pub(crate) fn as_lvalue<M>(&mut self,
-                        block: BasicBlock,
-                        expr: M)
-                        -> BlockAnd<Lvalue<'tcx>>
+                               block: BasicBlock,
+                               expr: M)
+                               -> BlockAnd<Lvalue<'tcx>>
         where M: Mirror<'tcx, Output=Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);

@@ -202,9 +202,9 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub(crate) fn items_in_deterministic_order<'a>(&self,
-                                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                            -> Vec<(TransItem<'tcx>,
-                                                   (llvm::Linkage, llvm::Visibility))> {
+                                                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                                   -> Vec<(TransItem<'tcx>,
+                                                          (llvm::Linkage, llvm::Visibility))> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -235,11 +235,11 @@ impl<'tcx> CodegenUnit<'tcx> {
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
 pub(crate) fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
-                              trans_items: I,
-                              strategy: PartitioningStrategy,
-                              inlining_map: &InliningMap<'tcx>,
-                              exported_symbols: &ExportedSymbols)
-                              -> Vec<CodegenUnit<'tcx>>
+                                     trans_items: I,
+                                     strategy: PartitioningStrategy,
+                                     inlining_map: &InliningMap<'tcx>,
+                                     exported_symbols: &ExportedSymbols)
+                                     -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
     let tcx = scx.tcx();

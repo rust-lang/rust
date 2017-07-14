@@ -222,10 +222,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn try_overloaded_deref(&self,
-                                span: Span,
-                                base_ty: Ty<'tcx>,
-                                pref: LvaluePreference)
-                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+                                       span: Span,
+                                       base_ty: Ty<'tcx>,
+                                       pref: LvaluePreference)
+                                       -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         self.try_overloaded_lvalue_op(span, base_ty, &[], pref, LvalueOp::Deref)
     }
 }

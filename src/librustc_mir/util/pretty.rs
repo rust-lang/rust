@@ -40,11 +40,11 @@ const ALIGN: usize = 40;
 ///   that can appear in the pass-name or the `item_path_str` for the given
 ///   node-id. If any one of the substrings match, the data is dumped out.
 pub(crate) fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          pass_num: Option<(MirSuite, MirPassIndex)>,
-                          pass_name: &str,
-                          disambiguator: &Display,
-                          source: MirSource,
-                          mir: &Mir<'tcx>) {
+                                 pass_num: Option<(MirSuite, MirPassIndex)>,
+                                 pass_name: &str,
+                                 disambiguator: &Display,
+                                 source: MirSource,
+                                 mir: &Mir<'tcx>) {
     if !dump_enabled(tcx, pass_name, source) {
         return;
     }
@@ -62,9 +62,9 @@ pub(crate) fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub(crate) fn dump_enabled<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              pass_name: &str,
-                              source: MirSource)
-                              -> bool {
+                                     pass_name: &str,
+                                     source: MirSource)
+                                     -> bool {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return false,
         Some(ref filters) => filters,
@@ -159,10 +159,10 @@ pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub(crate) fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              src: MirSource,
-                              mir: &Mir<'tcx>,
-                              w: &mut Write)
-                              -> io::Result<()> {
+                                     src: MirSource,
+                                     mir: &Mir<'tcx>,
+                                     w: &mut Write)
+                                     -> io::Result<()> {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
         write_basic_block(tcx, block, mir, w)?;

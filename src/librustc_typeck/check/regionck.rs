@@ -132,9 +132,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Region checking during the WF phase for items. `wf_tys` are the
     /// types from which we should derive implied bounds, if any.
     pub(crate) fn regionck_item(&self,
-                         item_id: ast::NodeId,
-                         span: Span,
-                         wf_tys: &[Ty<'tcx>]) {
+                                item_id: ast::NodeId,
+                                span: Span,
+                                wf_tys: &[Ty<'tcx>]) {
         debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
         let subject = self.tcx.hir.local_def_id(item_id);
         let mut rcx = RegionCtxt::new(self, RepeatingScope(item_id), item_id, Subject(subject));
@@ -146,8 +146,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn regionck_fn(&self,
-                       fn_id: ast::NodeId,
-                       body: &'gcx hir::Body) {
+                              fn_id: ast::NodeId,
+                              body: &'gcx hir::Body) {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir.body_owner_def_id(body.id());
         let node_id = body.value.id;
@@ -227,9 +227,9 @@ pub(crate) struct Subject(DefId);
 
 impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     pub(crate) fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-               RepeatingScope(initial_repeating_scope): RepeatingScope,
-               initial_body_id: ast::NodeId,
-               Subject(subject): Subject) -> RegionCtxt<'a, 'gcx, 'tcx> {
+                      RepeatingScope(initial_repeating_scope): RepeatingScope,
+                      initial_body_id: ast::NodeId,
+                      Subject(subject): Subject) -> RegionCtxt<'a, 'gcx, 'tcx> {
         let region_maps = fcx.tcx.region_maps(subject);
         RegionCtxt {
             fcx: fcx,
@@ -1053,9 +1053,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn mk_subregion_due_to_dereference(&mut self,
-                                           deref_span: Span,
-                                           minimum_lifetime: ty::Region<'tcx>,
-                                           maximum_lifetime: ty::Region<'tcx>) {
+                                                  deref_span: Span,
+                                                  minimum_lifetime: ty::Region<'tcx>,
+                                                  maximum_lifetime: ty::Region<'tcx>) {
         self.sub_regions(infer::DerefPointer(deref_span),
                          minimum_lifetime, maximum_lifetime)
     }
@@ -1483,9 +1483,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// other things) that all borrowed data reachable via `ty` outlives
     /// `region`.
     pub(crate) fn type_must_outlive(&self,
-                             origin: infer::SubregionOrigin<'tcx>,
-                             ty: Ty<'tcx>,
-                             region: ty::Region<'tcx>)
+                                    origin: infer::SubregionOrigin<'tcx>,
+                                    ty: Ty<'tcx>,
+                                    region: ty::Region<'tcx>)
     {
         let ty = self.resolve_type(ty);
 

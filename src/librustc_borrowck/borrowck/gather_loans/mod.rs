@@ -36,8 +36,8 @@ mod gather_moves;
 mod move_error;
 
 pub(crate) fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                    body: hir::BodyId)
-                                    -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
+                                           body: hir::BodyId)
+                                           -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
     let def_id = bccx.tcx.hir.body_owner_def_id(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
@@ -447,9 +447,9 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn compute_gen_scope(&self,
-                             borrow_scope: region::CodeExtent,
-                             loan_scope: region::CodeExtent)
-                             -> region::CodeExtent {
+                                    borrow_scope: region::CodeExtent,
+                                    loan_scope: region::CodeExtent)
+                                    -> region::CodeExtent {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
@@ -463,7 +463,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn compute_kill_scope(&self, loan_scope: region::CodeExtent, lp: &LoanPath<'tcx>)
-                              -> region::CodeExtent {
+                                     -> region::CodeExtent {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,

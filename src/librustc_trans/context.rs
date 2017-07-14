@@ -165,8 +165,8 @@ pub(crate) struct CrateContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     pub(crate) fn new(shared: &'a SharedCrateContext<'a, 'tcx>,
-               local_ccx: &'a LocalCrateContext<'a, 'tcx>)
-               -> Self {
+                      local_ccx: &'a LocalCrateContext<'a, 'tcx>)
+                      -> Self {
         CrateContext { shared, local_ccx }
     }
 }
@@ -204,7 +204,8 @@ pub(crate) fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
-pub(crate) unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
+pub(crate) unsafe fn create_context_and_module(sess: &Session, mod_name: &str)
+                                               -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
@@ -517,7 +518,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().vtables
     }
 
-    pub(crate) fn const_cstr_cache<'a>(&'a self) -> &'a RefCell<FxHashMap<InternedString, ValueRef>> {
+    pub(crate) fn const_cstr_cache<'a>(&'a self)
+                                       -> &'a RefCell<FxHashMap<InternedString, ValueRef>> {
         &self.local().const_cstr_cache
     }
 

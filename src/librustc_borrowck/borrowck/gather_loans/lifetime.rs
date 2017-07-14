@@ -24,13 +24,13 @@ use syntax_pos::Span;
 type R = Result<(),()>;
 
 pub(crate) fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                    item_scope: region::CodeExtent,
-                                    span: Span,
-                                    cause: euv::LoanCause,
-                                    cmt: mc::cmt<'tcx>,
-                                    loan_region: ty::Region<'tcx>,
-                                    _: ty::BorrowKind)
-                                    -> Result<(),()> {
+                                           item_scope: region::CodeExtent,
+                                           span: Span,
+                                           cause: euv::LoanCause,
+                                           cmt: mc::cmt<'tcx>,
+                                           loan_region: ty::Region<'tcx>,
+                                           _: ty::BorrowKind)
+                                           -> Result<(),()> {
     //! Reports error if `loan_region` is larger than S
     //! where S is `item_scope` if `cmt` is an upvar,
     //! and is scope of `cmt` otherwise.

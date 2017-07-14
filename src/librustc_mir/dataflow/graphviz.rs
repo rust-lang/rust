@@ -66,10 +66,10 @@ impl<O: BitDenotation> DataflowState<O> {
     }
 
     pub(crate) fn interpret_set<'c, P>(&self,
-                                o: &'c O,
-                                words: &IdxSet<O::Idx>,
-                                render_idx: &P)
-                                -> Vec<&'c Debug>
+                                       o: &'c O,
+                                       words: &IdxSet<O::Idx>,
+                                       render_idx: &P)
+                                       -> Vec<&'c Debug>
         where P: Fn(&O, O::Idx) -> &Debug
     {
         let mut v = Vec::new();

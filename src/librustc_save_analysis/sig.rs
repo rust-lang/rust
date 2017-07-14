@@ -48,7 +48,8 @@ pub(crate) fn item_signature(item: &ast::Item, scx: &SaveContext) -> Option<Sign
     item.make(0, None, scx).ok()
 }
 
-pub(crate) fn foreign_item_signature(item: &ast::ForeignItem, scx: &SaveContext) -> Option<Signature> {
+pub(crate) fn foreign_item_signature(item: &ast::ForeignItem, scx: &SaveContext)
+                                     -> Option<Signature> {
     item.make(0, None, scx).ok()
 }
 
@@ -64,28 +65,28 @@ pub(crate) fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Op
 }
 
 pub(crate) fn method_signature(id: NodeId,
-                        ident: ast::Ident,
-                        m: &ast::MethodSig,
-                        scx: &SaveContext)
-                        -> Option<Signature> {
+                               ident: ast::Ident,
+                               m: &ast::MethodSig,
+                               scx: &SaveContext)
+                               -> Option<Signature> {
     make_method_signature(id, ident, m, scx).ok()
 }
 
 pub(crate) fn assoc_const_signature(id: NodeId,
-                             ident: ast::Name,
-                             ty: &ast::Ty,
-                             default: Option<&ast::Expr>,
-                             scx: &SaveContext)
-                             -> Option<Signature> {
+                                    ident: ast::Name,
+                                    ty: &ast::Ty,
+                                    default: Option<&ast::Expr>,
+                                    scx: &SaveContext)
+                                    -> Option<Signature> {
     make_assoc_const_signature(id, ident, ty, default, scx).ok()
 }
 
 pub(crate) fn assoc_type_signature(id: NodeId,
-                            ident: ast::Ident,
-                            bounds: Option<&ast::TyParamBounds>,
-                            default: Option<&ast::Ty>,
-                            scx: &SaveContext)
-                            -> Option<Signature> {
+                                   ident: ast::Ident,
+                                   bounds: Option<&ast::TyParamBounds>,
+                                   default: Option<&ast::Ty>,
+                                   scx: &SaveContext)
+                                   -> Option<Signature> {
     make_assoc_type_signature(id, ident, bounds, default, scx).ok()
 }
 

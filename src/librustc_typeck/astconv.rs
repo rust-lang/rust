@@ -835,12 +835,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     // Will fail except for T::A and Self::A; i.e., if ty/ty_path_def are not a type
     // parameter or Self.
     pub(crate) fn associated_path_def_to_ty(&self,
-                                     ref_id: ast::NodeId,
-                                     span: Span,
-                                     ty: Ty<'tcx>,
-                                     ty_path_def: Def,
-                                     item_segment: &hir::PathSegment)
-                                     -> (Ty<'tcx>, Def)
+                                            ref_id: ast::NodeId,
+                                            span: Span,
+                                            ty: Ty<'tcx>,
+                                            ty_path_def: Def,
+                                            item_segment: &hir::PathSegment)
+                                            -> (Ty<'tcx>, Def)
     {
         let tcx = self.tcx();
         let assoc_name = item_segment.name;
@@ -977,7 +977,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub(crate) fn prohibit_parenthesized_params(&self, segment: &hir::PathSegment, emit_error: bool) {
+    pub(crate) fn prohibit_parenthesized_params(&self,
+                                                segment: &hir::PathSegment,
+                                                emit_error: bool) {
         if let hir::ParenthesizedParameters(ref data) = segment.parameters {
             if emit_error {
                 struct_span_err!(self.tcx().sess, data.span, E0214,
@@ -1000,10 +1002,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     // Check a type Path and convert it to a Ty.
     pub(crate) fn def_to_ty(&self,
-                     opt_self_ty: Option<Ty<'tcx>>,
-                     path: &hir::Path,
-                     permit_variants: bool)
-                     -> Ty<'tcx> {
+                            opt_self_ty: Option<Ty<'tcx>>,
+                            path: &hir::Path,
+                            permit_variants: bool)
+                            -> Ty<'tcx> {
         let tcx = self.tcx();
 
         debug!("base_def_to_ty(def={:?}, opt_self_ty={:?}, path_segments={:?})",
@@ -1251,9 +1253,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     pub(crate) fn ty_of_arg(&self,
-                     ty: &hir::Ty,
-                     expected_ty: Option<Ty<'tcx>>)
-                     -> Ty<'tcx>
+                            ty: &hir::Ty,
+                            expected_ty: Option<Ty<'tcx>>)
+                            -> Ty<'tcx>
     {
         match ty.node {
             hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
@@ -1263,10 +1265,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     pub(crate) fn ty_of_fn(&self,
-                    unsafety: hir::Unsafety,
-                    abi: abi::Abi,
-                    decl: &hir::FnDecl)
-                    -> ty::PolyFnSig<'tcx> {
+                           unsafety: hir::Unsafety,
+                           abi: abi::Abi,
+                           decl: &hir::FnDecl)
+                           -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
         let input_tys: Vec<Ty> =
@@ -1572,8 +1574,8 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// type has two, so we end up with
     /// ExplicitSelf::ByReference.
     pub(crate) fn determine(untransformed_self_ty: Ty<'tcx>,
-                     self_arg_ty: Ty<'tcx>)
-                     -> ExplicitSelf<'tcx> {
+                            self_arg_ty: Ty<'tcx>)
+                            -> ExplicitSelf<'tcx> {
         fn count_modifiers(ty: Ty) -> usize {
             match ty.sty {
                 ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,

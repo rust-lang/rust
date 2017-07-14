@@ -128,13 +128,13 @@ fn make_invalid_casting_error<'a, 'gcx, 'tcx>(sess: &'a Session,
 
 impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     pub(crate) fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-               expr: &'tcx hir::Expr,
-               expr_ty: Ty<'tcx>,
-               expr_diverges: Diverges,
-               cast_ty: Ty<'tcx>,
-               cast_span: Span,
-               span: Span)
-               -> Result<CastCheck<'tcx>, ErrorReported> {
+                      expr: &'tcx hir::Expr,
+                      expr_ty: Ty<'tcx>,
+                      expr_diverges: Diverges,
+                      cast_ty: Ty<'tcx>,
+                      cast_span: Span,
+                      span: Span)
+                      -> Result<CastCheck<'tcx>, ErrorReported> {
         let check = CastCheck {
             expr: expr,
             expr_ty: expr_ty,

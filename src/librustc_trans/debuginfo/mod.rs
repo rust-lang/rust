@@ -201,10 +201,10 @@ pub(crate) fn finalize(cx: &CrateContext) {
 /// FunctionDebugContext enum which indicates why no debuginfo should be created
 /// for the function.
 pub(crate) fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                               instance: Instance<'tcx>,
-                                               sig: ty::FnSig<'tcx>,
-                                               llfn: ValueRef,
-                                               mir: &mir::Mir) -> FunctionDebugContext {
+                                                      instance: Instance<'tcx>,
+                                                      sig: ty::FnSig<'tcx>,
+                                                      llfn: ValueRef,
+                                                      mir: &mir::Mir) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext::DebugInfoDisabled;
     }
@@ -458,13 +458,13 @@ pub(crate) fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx
 }
 
 pub(crate) fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                               dbg_context: &FunctionDebugContext,
-                               variable_name: ast::Name,
-                               variable_type: Ty<'tcx>,
-                               scope_metadata: DIScope,
-                               variable_access: VariableAccess,
-                               variable_kind: VariableKind,
-                               span: Span) {
+                                      dbg_context: &FunctionDebugContext,
+                                      variable_name: ast::Name,
+                                      variable_type: Ty<'tcx>,
+                                      scope_metadata: DIScope,
+                                      variable_access: VariableAccess,
+                                      variable_kind: VariableKind,
+                                      span: Span) {
     let cx = bcx.ccx;
 
     let file = span_start(cx, span).file;

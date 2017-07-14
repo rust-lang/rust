@@ -26,7 +26,7 @@
 //! If you define a new `LintPass`, you will also need to add it to the
 //! `add_builtin!` or `add_builtin_with_new!` invocation in `lib.rs`.
 //! Use the former for unit-like structs and the latter for structs with
-//! a `pub(crate) fn new()`.
+//! a `pub fn new()`.
 
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;

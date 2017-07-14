@@ -15,7 +15,7 @@ pub(crate) mod patch;
 mod graphviz;
 mod pretty;
 
-pub use self::pretty::{write_mir_pretty};
-pub(crate) use self::pretty::{dump_enabled, dump_mir/*, write_mir_pretty*/};
-pub use self::graphviz::{write_mir_graphviz};
+pub use self::pretty::write_mir_pretty;
+pub(crate) use self::pretty::{dump_enabled, dump_mir};
+pub use self::graphviz::write_mir_graphviz;
 pub(crate) use self::graphviz::write_node_label as write_graphviz_node_label;

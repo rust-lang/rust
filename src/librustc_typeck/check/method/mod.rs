@@ -71,10 +71,10 @@ pub(crate) struct NoMatchData<'tcx> {
 
 impl<'tcx> NoMatchData<'tcx> {
     pub(crate) fn new(static_candidates: Vec<CandidateSource>,
-               unsatisfied_predicates: Vec<TraitRef<'tcx>>,
-               out_of_scope_traits: Vec<DefId>,
-               mode: probe::Mode)
-               -> Self {
+                      unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+                      out_of_scope_traits: Vec<DefId>,
+                      mode: probe::Mode)
+                      -> Self {
         NoMatchData {
             static_candidates: static_candidates,
             unsatisfied_predicates: unsatisfied_predicates,
@@ -96,12 +96,12 @@ pub(crate) enum CandidateSource {
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
     pub(crate) fn method_exists(&self,
-                         span: Span,
-                         method_name: ast::Name,
-                         self_ty: ty::Ty<'tcx>,
-                         call_expr_id: ast::NodeId,
-                         allow_private: bool)
-                         -> bool {
+                                span: Span,
+                                method_name: ast::Name,
+                                self_ty: ty::Ty<'tcx>,
+                                call_expr_id: ast::NodeId,
+                                allow_private: bool)
+                                -> bool {
         let mode = probe::Mode::MethodCall;
         match self.probe_for_name(span, mode, method_name, IsSuggestion(false),
                                   self_ty, call_expr_id) {
@@ -128,12 +128,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
     /// * `self_expr`:             the self expression (`foo`)
     pub(crate) fn lookup_method(&self,
-                         self_ty: ty::Ty<'tcx>,
-                         segment: &hir::PathSegment,
-                         span: Span,
-                         call_expr: &'gcx hir::Expr,
-                         self_expr: &'gcx hir::Expr)
-                         -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
+                                self_ty: ty::Ty<'tcx>,
+                                segment: &hir::PathSegment,
+                                span: Span,
+                                call_expr: &'gcx hir::Expr,
+                                self_expr: &'gcx hir::Expr)
+                                -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                segment.name,
                self_ty,
@@ -171,12 +171,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// code with the other method-lookup code. In particular, the second half
     /// of this method is basically the same as confirmation.
     pub(crate) fn lookup_method_in_trait(&self,
-                                  span: Span,
-                                  m_name: ast::Name,
-                                  trait_def_id: DefId,
-                                  self_ty: ty::Ty<'tcx>,
-                                  opt_input_types: Option<&[ty::Ty<'tcx>]>)
-                                  -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+                                         span: Span,
+                                         m_name: ast::Name,
+                                         trait_def_id: DefId,
+                                         self_ty: ty::Ty<'tcx>,
+                                         opt_input_types: Option<&[ty::Ty<'tcx>]>)
+                                         -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("lookup_in_trait_adjusted(self_ty={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
@@ -290,11 +290,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn resolve_ufcs(&self,
-                        span: Span,
-                        method_name: ast::Name,
-                        self_ty: ty::Ty<'tcx>,
-                        expr_id: ast::NodeId)
-                        -> Result<Def, MethodError<'tcx>> {
+                               span: Span,
+                               method_name: ast::Name,
+                               self_ty: ty::Ty<'tcx>,
+                               expr_id: ast::NodeId)
+                               -> Result<Def, MethodError<'tcx>> {
         let mode = probe::Mode::Path;
         let pick = self.probe_for_name(span, mode, method_name, IsSuggestion(false),
                                        self_ty, expr_id)?;

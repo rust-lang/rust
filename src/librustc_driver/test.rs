@@ -309,9 +309,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn re_late_bound_with_debruijn(&self,
-                                       id: u32,
-                                       debruijn: ty::DebruijnIndex)
-                                       -> ty::Region<'tcx> {
+                                              id: u32,
+                                              debruijn: ty::DebruijnIndex)
+                                              -> ty::Region<'tcx> {
         self.infcx.tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(id)))
     }
 
@@ -325,9 +325,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn t_rptr_late_bound_with_debruijn(&self,
-                                           id: u32,
-                                           debruijn: ty::DebruijnIndex)
-                                           -> Ty<'tcx> {
+                                                  id: u32,
+                                                  debruijn: ty::DebruijnIndex)
+                                                  -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, debruijn);
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }

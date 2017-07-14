@@ -254,10 +254,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// Returns the might_break attribute of the BreakableScope used.
     pub(crate) fn in_breakable_scope<F, R>(&mut self,
-                                    loop_block: Option<BasicBlock>,
-                                    break_block: BasicBlock,
-                                    break_destination: Lvalue<'tcx>,
-                                    f: F) -> R
+                                           loop_block: Option<BasicBlock>,
+                                           break_block: BasicBlock,
+                                           break_destination: Lvalue<'tcx>,
+                                           f: F) -> R
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
     {
         let extent = self.topmost_scope();
@@ -275,10 +275,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn in_opt_scope<F, R>(&mut self,
-                              opt_extent: Option<(CodeExtent, SourceInfo)>,
-                              mut block: BasicBlock,
-                              f: F)
-                              -> BlockAnd<R>
+                                     opt_extent: Option<(CodeExtent, SourceInfo)>,
+                                     mut block: BasicBlock,
+                                     f: F)
+                                     -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_opt_scope(opt_extent={:?}, block={:?})", opt_extent, block);
@@ -294,10 +294,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub(crate) fn in_scope<F, R>(&mut self,
-                          extent: (CodeExtent, SourceInfo),
-                          mut block: BasicBlock,
-                          f: F)
-                          -> BlockAnd<R>
+                                 extent: (CodeExtent, SourceInfo),
+                                 mut block: BasicBlock,
+                                 f: F)
+                                 -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
@@ -329,9 +329,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// drops onto the end of `block` that are needed.  This must
     /// match 1-to-1 with `push_scope`.
     pub(crate) fn pop_scope(&mut self,
-                     extent: (CodeExtent, SourceInfo),
-                     mut block: BasicBlock)
-                     -> BlockAnd<()> {
+                            extent: (CodeExtent, SourceInfo),
+                            mut block: BasicBlock)
+                            -> BlockAnd<()> {
         debug!("pop_scope({:?}, {:?})", extent, block);
         // We need to have `cached_block`s available for all the drops, so we call diverge_cleanup
         // to make sure all the `cached_block`s are filled in.
@@ -354,10 +354,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// needed, as well as tracking this exit for the SEME region. See
     /// module comment for details.
     pub(crate) fn exit_scope(&mut self,
-                      span: Span,
-                      extent: (CodeExtent, SourceInfo),
-                      mut block: BasicBlock,
-                      target: BasicBlock) {
+                             span: Span,
+                             extent: (CodeExtent, SourceInfo),
+                             mut block: BasicBlock,
+                             target: BasicBlock) {
         debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
         let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent.0)
                                                       .unwrap_or_else(||{
@@ -419,9 +419,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Finds the breakable scope for a given label. This is used for
     /// resolving `break` and `continue`.
     pub(crate) fn find_breakable_scope(&mut self,
-                           span: Span,
-                           label: CodeExtent)
-                           -> &mut BreakableScope<'tcx> {
+                                       span: Span,
+                                       label: CodeExtent)
+                                       -> &mut BreakableScope<'tcx> {
         // find the loop-scope with the correct id
         self.breakable_scopes.iter_mut()
             .rev()
@@ -497,10 +497,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Indicates that `lvalue` should be dropped on exit from
     /// `extent`.
     pub(crate) fn schedule_drop(&mut self,
-                         span: Span,
-                         extent: CodeExtent,
-                         lvalue: &Lvalue<'tcx>,
-                         lvalue_ty: Ty<'tcx>) {
+                                span: Span,
+                                extent: CodeExtent,
+                                lvalue: &Lvalue<'tcx>,
+                                lvalue_ty: Ty<'tcx>) {
         let needs_drop = self.hir.needs_drop(lvalue_ty);
         let drop_kind = if needs_drop {
             DropKind::Value { cached_block: None }
@@ -587,10 +587,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// The extent should be for the `EXPR` inside `box EXPR`.
     /// There may only be one “free” scheduled in any given scope.
     pub(crate) fn schedule_box_free(&mut self,
-                             span: Span,
-                             extent: CodeExtent,
-                             value: &Lvalue<'tcx>,
-                             item_ty: Ty<'tcx>) {
+                                    span: Span,
+                                    extent: CodeExtent,
+                                    value: &Lvalue<'tcx>,
+                                    item_ty: Ty<'tcx>) {
         for scope in self.scopes.iter_mut().rev() {
             // See the comment in schedule_drop above. The primary difference is that we invalidate
             // the unwind blocks unconditionally. That’s because the box free may be considered
@@ -659,10 +659,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Utility function for *non*-scope code to build their own drops
     pub(crate) fn build_drop(&mut self,
-                      block: BasicBlock,
-                      span: Span,
-                      location: Lvalue<'tcx>,
-                      ty: Ty<'tcx>) -> BlockAnd<()> {
+                             block: BasicBlock,
+                             span: Span,
+                             location: Lvalue<'tcx>,
+                             ty: Ty<'tcx>) -> BlockAnd<()> {
         if !self.hir.needs_drop(ty) {
             return block.unit();
         }
@@ -680,10 +680,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Utility function for *non*-scope code to build their own drops
     pub(crate) fn build_drop_and_replace(&mut self,
-                                  block: BasicBlock,
-                                  span: Span,
-                                  location: Lvalue<'tcx>,
-                                  value: Operand<'tcx>) -> BlockAnd<()> {
+                                         block: BasicBlock,
+                                         span: Span,
+                                         location: Lvalue<'tcx>,
+                                         value: Operand<'tcx>) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
         let diverge_target = self.diverge_cleanup(span);
@@ -701,11 +701,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// If the boolean condition operand is not the expected value,
     /// a runtime panic will be caused with the given message.
     pub(crate) fn assert(&mut self, block: BasicBlock,
-                  cond: Operand<'tcx>,
-                  expected: bool,
-                  msg: AssertMessage<'tcx>,
-                  span: Span)
-                  -> BasicBlock {
+                         cond: Operand<'tcx>,
+                         expected: bool,
+                         msg: AssertMessage<'tcx>,
+                         span: Span)
+                         -> BasicBlock {
         let source_info = self.source_info(span);
 
         let success_block = self.cfg.start_new_block();

@@ -21,9 +21,9 @@ use super::super::adt;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub(crate) fn trans_statement(&mut self,
-                           bcx: Builder<'a, 'tcx>,
-                           statement: &mir::Statement<'tcx>)
-                           -> Builder<'a, 'tcx> {
+                                  bcx: Builder<'a, 'tcx>,
+                                  statement: &mir::Statement<'tcx>)
+                                  -> Builder<'a, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
         self.set_debug_loc(&bcx, statement.source_info);

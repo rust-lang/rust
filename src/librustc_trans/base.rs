@@ -125,8 +125,8 @@ pub(crate) fn get_dataptr(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
 }
 
 pub(crate) fn bin_op_to_icmp_predicate(op: hir::BinOp_,
-                                signed: bool)
-                                -> llvm::IntPredicate {
+                                       signed: bool)
+                                       -> llvm::IntPredicate {
     match op {
         hir::BiEq => llvm::IntEQ,
         hir::BiNe => llvm::IntNE,
@@ -191,10 +191,10 @@ pub(crate) fn compare_simd_types<'a, 'tcx>(
 /// in an upcast, where the new vtable for an object will be drived
 /// from the old one.
 pub(crate) fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
-                                source: Ty<'tcx>,
-                                target: Ty<'tcx>,
-                                old_info: Option<ValueRef>)
-                                -> ValueRef {
+                                       source: Ty<'tcx>,
+                                       target: Ty<'tcx>,
+                                       old_info: Option<ValueRef>)
+                                       -> ValueRef {
     let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
@@ -246,8 +246,8 @@ pub(crate) fn unsize_thin_ptr<'a, 'tcx>(
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub(crate) fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                     src: &LvalueRef<'tcx>,
-                                     dst: &LvalueRef<'tcx>) {
+                                            src: &LvalueRef<'tcx>,
+                                            dst: &LvalueRef<'tcx>) {
     let src_ty = src.ty.to_ty(bcx.tcx());
     let dst_ty = dst.ty.to_ty(bcx.tcx());
     let coerce_ptr = || {
@@ -378,7 +378,7 @@ pub(crate) fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
 pub(crate) fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
-                         alignment: Alignment, t: Ty<'tcx>) -> ValueRef {
+                                alignment: Alignment, t: Ty<'tcx>) -> ValueRef {
     let ccx = b.ccx;
     if type_is_zero_size(ccx, t) {
         return C_undef(type_of::type_of(ccx, t));
@@ -416,7 +416,7 @@ pub(crate) fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
 pub(crate) fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef,
-                          dst_align: Alignment, t: Ty<'tcx>) {
+                                 dst_align: Alignment, t: Ty<'tcx>) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.ccx, t) {
@@ -429,11 +429,11 @@ pub(crate) fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: Value
 }
 
 pub(crate) fn store_fat_ptr<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
-                               data: ValueRef,
-                               extra: ValueRef,
-                               dst: ValueRef,
-                               dst_align: Alignment,
-                               _ty: Ty<'tcx>) {
+                                      data: ValueRef,
+                                      extra: ValueRef,
+                                      dst: ValueRef,
+                                      dst_align: Alignment,
+                                      _ty: Ty<'tcx>) {
     // FIXME: emit metadata
     cx.store(data, get_dataptr(cx, dst), dst_align.to_align());
     cx.store(extra, get_meta(cx, dst), dst_align.to_align());
@@ -510,10 +510,10 @@ impl Lifetime {
 }
 
 pub(crate) fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
-                               dst: ValueRef,
-                               src: ValueRef,
-                               n_bytes: ValueRef,
-                               align: u32) {
+                                    dst: ValueRef,
+                                    src: ValueRef,
+                                    n_bytes: ValueRef,
+                                    align: u32) {
     let ccx = b.ccx;
     let ptr_width = &ccx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
@@ -545,11 +545,11 @@ pub(crate) fn memcpy_ty<'a, 'tcx>(
 }
 
 pub(crate) fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
-                             ptr: ValueRef,
-                             fill_byte: ValueRef,
-                             size: ValueRef,
-                             align: ValueRef,
-                             volatile: bool) -> ValueRef {
+                                    ptr: ValueRef,
+                                    fill_byte: ValueRef,
+                                    size: ValueRef,
+                                    align: ValueRef,
+                                    volatile: bool) -> ValueRef {
     let ptr_width = &b.ccx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
@@ -634,8 +634,8 @@ pub(crate) fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
 }
 
 pub(crate) fn set_link_section(ccx: &CrateContext,
-                        llval: ValueRef,
-                        attrs: &[ast::Attribute]) {
+                               llval: ValueRef,
+                               attrs: &[ast::Attribute]) {
     if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
         if contains_null(&sect.as_str()) {
             ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));

@@ -167,9 +167,9 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 }
 
 pub(crate) fn encode_dep_graph(tcx: TyCtxt,
-                        preds: &Predecessors,
-                        encoder: &mut Encoder)
-                        -> io::Result<()> {
+                               preds: &Predecessors,
+                               encoder: &mut Encoder)
+                               -> io::Result<()> {
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
@@ -273,11 +273,11 @@ pub(crate) fn encode_dep_graph(tcx: TyCtxt,
 }
 
 pub(crate) fn encode_metadata_hashes(tcx: TyCtxt,
-                              svh: Svh,
-                              metadata_hashes: &EncodedMetadataHashes,
-                              current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
-                              encoder: &mut Encoder)
-                              -> io::Result<()> {
+                                     svh: Svh,
+                                     metadata_hashes: &EncodedMetadataHashes,
+                                     current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
+                                     encoder: &mut Encoder)
+                                     -> io::Result<()> {
     assert_eq!(metadata_hashes.hashes.len(),
         metadata_hashes.hashes.iter().map(|x| (x.def_index, ())).collect::<FxHashMap<_,_>>().len());
 

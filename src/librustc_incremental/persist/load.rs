@@ -136,10 +136,10 @@ fn does_still_exist(tcx: TyCtxt, dep_node: &DepNode) -> bool {
 /// Decode the dep graph and load the edges/nodes that are still clean
 /// into `tcx.dep_graph`.
 pub(crate) fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  incremental_hashes_map: &IncrementalHashesMap,
-                                  dep_graph_data: &[u8],
-                                  work_products_data: &[u8])
-                                  -> Result<(), String>
+                                         incremental_hashes_map: &IncrementalHashesMap,
+                                         dep_graph_data: &[u8],
+                                         work_products_data: &[u8])
+                                         -> Result<(), String>
 {
     // Decode the list of work_products
     let mut work_product_decoder = Decoder::new(work_products_data, 0);

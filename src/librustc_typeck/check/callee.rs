@@ -43,11 +43,11 @@ enum CallStep<'tcx> {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub(crate) fn check_call(&self,
-                      call_expr: &'gcx hir::Expr,
-                      callee_expr: &'gcx hir::Expr,
-                      arg_exprs: &'gcx [hir::Expr],
-                      expected: Expectation<'tcx>)
-                      -> Ty<'tcx> {
+                             call_expr: &'gcx hir::Expr,
+                             callee_expr: &'gcx hir::Expr,
+                             arg_exprs: &'gcx [hir::Expr],
+                             expected: Expectation<'tcx>)
+                             -> Ty<'tcx> {
         let original_callee_ty = self.check_expr(callee_expr);
         let expr_ty = self.structurally_resolved_type(call_expr.span, original_callee_ty);
 

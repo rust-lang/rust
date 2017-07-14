@@ -185,10 +185,10 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
 }
 
 pub(crate) fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                     dfcx_loans: &LoanDataFlow<'b, 'tcx>,
-                                     move_data: &move_data::FlowedMoveData<'c, 'tcx>,
-                                     all_loans: &[Loan<'tcx>],
-                                     body: &hir::Body) {
+                                            dfcx_loans: &LoanDataFlow<'b, 'tcx>,
+                                            move_data: &move_data::FlowedMoveData<'c, 'tcx>,
+                                            all_loans: &[Loan<'tcx>],
+                                            body: &hir::Body) {
     debug!("check_loans(body id={})", body.value.id);
 
     let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
@@ -369,9 +369,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn report_error_if_loans_conflict(&self,
-                                          old_loan: &Loan<'tcx>,
-                                          new_loan: &Loan<'tcx>)
-                                          -> bool {
+                                                 old_loan: &Loan<'tcx>,
+                                                 new_loan: &Loan<'tcx>)
+                                                 -> bool {
         //! Checks whether `old_loan` and `new_loan` can safely be issued
         //! simultaneously.
 
@@ -390,11 +390,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn report_error_if_loan_conflicts_with_restriction(&self,
-                                                           loan1: &Loan<'tcx>,
-                                                           loan2: &Loan<'tcx>,
-                                                           old_loan: &Loan<'tcx>,
-                                                           new_loan: &Loan<'tcx>)
-                                                           -> bool {
+                                                                  loan1: &Loan<'tcx>,
+                                                                  loan2: &Loan<'tcx>,
+                                                                  old_loan: &Loan<'tcx>,
+                                                                  new_loan: &Loan<'tcx>)
+                                                                  -> bool {
         //! Checks whether the restrictions introduced by `loan1` would
         //! prohibit `loan2`. Returns false if an error is reported.
 
@@ -699,10 +699,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn analyze_restrictions_on_use(&self,
-                                       expr_id: ast::NodeId,
-                                       use_path: &LoanPath<'tcx>,
-                                       borrow_kind: ty::BorrowKind)
-                                       -> UseError<'tcx> {
+                                              expr_id: ast::NodeId,
+                                              use_path: &LoanPath<'tcx>,
+                                              borrow_kind: ty::BorrowKind)
+                                              -> UseError<'tcx> {
         debug!("analyze_restrictions_on_use(expr_id={}, use_path={:?})",
                self.tcx().hir.node_to_string(expr_id),
                use_path);
@@ -857,9 +857,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     pub(crate) fn report_illegal_mutation(&self,
-                                   span: Span,
-                                   loan_path: &LoanPath<'tcx>,
-                                   loan: &Loan) {
+                                          span: Span,
+                                          loan_path: &LoanPath<'tcx>,
+                                          loan: &Loan) {
         struct_span_err!(self.bccx, span, E0506,
                          "cannot assign to `{}` because it is borrowed",
                          self.bccx.loan_path_to_string(loan_path))

@@ -168,10 +168,10 @@ impl<'a> DiagnosticBuilder<'a> {
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
     pub(crate) fn new_with_code(handler: &'a Handler,
-                         level: Level,
-                         code: Option<String>,
-                         message: &str)
-                         -> DiagnosticBuilder<'a> {
+                                level: Level,
+                                code: Option<String>,
+                                message: &str)
+                                -> DiagnosticBuilder<'a> {
         DiagnosticBuilder {
             handler: handler,
             diagnostic: Diagnostic::new_with_code(level, code, message)

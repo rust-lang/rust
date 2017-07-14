@@ -31,12 +31,12 @@ mod util;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub(crate) fn match_expr(&mut self,
-                      destination: &Lvalue<'tcx>,
-                      span: Span,
-                      mut block: BasicBlock,
-                      discriminant: ExprRef<'tcx>,
-                      arms: Vec<Arm<'tcx>>)
-                      -> BlockAnd<()> {
+                             destination: &Lvalue<'tcx>,
+                             span: Span,
+                             mut block: BasicBlock,
+                             discriminant: ExprRef<'tcx>,
+                             arms: Vec<Arm<'tcx>>)
+                             -> BlockAnd<()> {
         let discriminant_lvalue = unpack!(block = self.as_lvalue(block, discriminant));
 
         let mut arm_blocks = ArmBlocks {
@@ -114,10 +114,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn expr_into_pattern(&mut self,
-                             mut block: BasicBlock,
-                             irrefutable_pat: Pattern<'tcx>,
-                             initializer: ExprRef<'tcx>)
-                             -> BlockAnd<()> {
+                                    mut block: BasicBlock,
+                                    irrefutable_pat: Pattern<'tcx>,
+                                    initializer: ExprRef<'tcx>)
+                                    -> BlockAnd<()> {
         // optimize the case of `let x = ...`
         match *irrefutable_pat.kind {
             PatternKind::Binding { mode: BindingMode::ByValue,
@@ -136,10 +136,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn lvalue_into_pattern(&mut self,
-                               mut block: BasicBlock,
-                               irrefutable_pat: Pattern<'tcx>,
-                               initializer: &Lvalue<'tcx>)
-                               -> BlockAnd<()> {
+                                      mut block: BasicBlock,
+                                      irrefutable_pat: Pattern<'tcx>,
+                                      initializer: &Lvalue<'tcx>)
+                                      -> BlockAnd<()> {
         // create a dummy candidate
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
@@ -170,10 +170,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// for the bindings in this patterns, if such a scope had to be created.
     /// NOTE: Declaring the bindings should always be done in their drop scope.
     pub(crate) fn declare_bindings(&mut self,
-                            mut var_scope: Option<VisibilityScope>,
-                            scope_span: Span,
-                            pattern: &Pattern<'tcx>)
-                            -> Option<VisibilityScope> {
+                                   mut var_scope: Option<VisibilityScope>,
+                                   scope_span: Span,
+                                   pattern: &Pattern<'tcx>)
+                                   -> Option<VisibilityScope> {
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
                 var_scope = Some(this.new_visibility_scope(scope_span));
@@ -188,7 +188,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub(crate) fn storage_live_binding(&mut self, block: BasicBlock, var: NodeId, span: Span)
-                            -> Lvalue<'tcx>
+                                       -> Lvalue<'tcx>
     {
         let local_id = self.var_indices[&var];
         let source_info = self.source_info(span);

@@ -141,13 +141,13 @@ impl<'a> Resolver<'a> {
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `record_used` is `Some`, import resolution must be complete.
     pub(crate) fn resolve_ident_in_module_unadjusted(&mut self,
-                                              module: Module<'a>,
-                                              ident: Ident,
-                                              ns: Namespace,
-                                              restricted_shadowing: bool,
-                                              record_used: bool,
-                                              path_span: Span)
-                                              -> Result<&'a NameBinding<'a>, Determinacy> {
+                                                     module: Module<'a>,
+                                                     ident: Ident,
+                                                     ns: Namespace,
+                                                     restricted_shadowing: bool,
+                                                     record_used: bool,
+                                                     path_span: Span)
+                                                     -> Result<&'a NameBinding<'a>, Determinacy> {
         self.populate_module_if_necessary(module);
 
         let resolution = self.resolution(module, ident, ns)
@@ -256,12 +256,12 @@ impl<'a> Resolver<'a> {
 
     // Add an import directive to the current module.
     pub(crate) fn add_import_directive(&mut self,
-                                module_path: Vec<Ident>,
-                                subclass: ImportDirectiveSubclass<'a>,
-                                span: Span,
-                                id: NodeId,
-                                vis: ty::Visibility,
-                                expansion: Mark) {
+                                       module_path: Vec<Ident>,
+                                       subclass: ImportDirectiveSubclass<'a>,
+                                       span: Span,
+                                       id: NodeId,
+                                       vis: ty::Visibility,
+                                       expansion: Mark) {
         let current_module = self.current_module;
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             parent: current_module,
@@ -324,11 +324,11 @@ impl<'a> Resolver<'a> {
 
     // Define the name or return the existing binding if there is a collision.
     pub(crate) fn try_define(&mut self,
-                      module: Module<'a>,
-                      ident: Ident,
-                      ns: Namespace,
-                      binding: &'a NameBinding<'a>)
-                      -> Result<(), &'a NameBinding<'a>> {
+                             module: Module<'a>,
+                             ident: Ident,
+                             ns: Namespace,
+                             binding: &'a NameBinding<'a>)
+                             -> Result<(), &'a NameBinding<'a>> {
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
                 if binding.is_glob_import() {

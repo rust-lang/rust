@@ -20,10 +20,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
     pub(crate) fn as_temp<M>(&mut self,
-                      block: BasicBlock,
-                      temp_lifetime: Option<CodeExtent>,
-                      expr: M)
-                      -> BlockAnd<Lvalue<'tcx>>
+                             block: BasicBlock,
+                             temp_lifetime: Option<CodeExtent>,
+                             expr: M)
+                             -> BlockAnd<Lvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);

@@ -41,10 +41,10 @@ pub(crate) fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
 }
 
 pub(crate) fn run(cgcx: &CodegenContext,
-           llmod: ModuleRef,
-           tm: TargetMachineRef,
-           config: &ModuleConfig,
-           temp_no_opt_bc_filename: &Path) -> Result<(), FatalError> {
+                  llmod: ModuleRef,
+                  tm: TargetMachineRef,
+                  config: &ModuleConfig,
+                  temp_no_opt_bc_filename: &Path) -> Result<(), FatalError> {
     let handler = cgcx.handler;
     if cgcx.opts.cg.prefer_dynamic {
         handler.struct_err("cannot prefer dynamic linking when performing LTO")

@@ -22,9 +22,9 @@ use rustc::hir;
 // the work twice. The `qualified` parameter only affects the first level of the
 // type name, further levels (i.e. type parameters) are always fully qualified.
 pub(crate) fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                             t: Ty<'tcx>,
-                                             qualified: bool)
-                                             -> String {
+                                                    t: Ty<'tcx>,
+                                                    qualified: bool)
+                                                    -> String {
     let mut result = String::with_capacity(64);
     push_debuginfo_type_name(cx, t, qualified, &mut result);
     result
@@ -33,9 +33,9 @@ pub(crate) fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
 pub(crate) fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                          t: Ty<'tcx>,
-                                          qualified: bool,
-                                          output: &mut String) {
+                                                 t: Ty<'tcx>,
+                                                 qualified: bool,
+                                                 output: &mut String) {
     match t.sty {
         ty::TyBool => output.push_str("bool"),
         ty::TyChar => output.push_str("char"),

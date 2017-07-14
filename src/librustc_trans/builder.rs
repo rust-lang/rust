@@ -50,7 +50,8 @@ fn noname() -> *const c_char {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub(crate) fn new_block<'b>(ccx: &'a CrateContext<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
+    pub(crate) fn new_block<'b>(ccx: &'a CrateContext<'a, 'tcx>, llfn: ValueRef, name: &'b str)
+                                -> Self {
         let builder = Builder::with_ccx(ccx);
         let llbb = unsafe {
             let name = CString::new(name).unwrap();
@@ -156,14 +157,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn cond_br(&self, cond: ValueRef, then_llbb: BasicBlockRef, else_llbb: BasicBlockRef) {
+    pub(crate) fn cond_br(&self,
+                          cond: ValueRef,
+                          then_llbb: BasicBlockRef,
+                          else_llbb: BasicBlockRef) {
         self.count_insn("condbr");
         unsafe {
             llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
         }
     }
 
-    pub(crate) fn switch(&self, v: ValueRef, else_llbb: BasicBlockRef, num_cases: usize) -> ValueRef {
+    pub(crate) fn switch(&self, v: ValueRef, else_llbb: BasicBlockRef, num_cases: usize)
+                         -> ValueRef {
         unsafe {
             llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, num_cases as c_uint)
         }
@@ -177,11 +182,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn invoke(&self,
-                  llfn: ValueRef,
-                  args: &[ValueRef],
-                  then: BasicBlockRef,
-                  catch: BasicBlockRef,
-                  bundle: Option<&OperandBundleDef>) -> ValueRef {
+                         llfn: ValueRef,
+                         args: &[ValueRef],
+                         then: BasicBlockRef,
+                         catch: BasicBlockRef,
+                         bundle: Option<&OperandBundleDef>) -> ValueRef {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({})",
@@ -541,8 +546,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 
     pub(crate) fn load_range_assert(&self, ptr: ValueRef, lo: u64,
-                             hi: u64, signed: llvm::Bool,
-                             align: Option<u32>) -> ValueRef {
+                                    hi: u64, signed: llvm::Bool,
+                                    align: Option<u32>) -> ValueRef {
         let value = self.load(ptr, align);
 
         unsafe {
@@ -861,9 +866,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn inline_asm_call(&self, asm: *const c_char, cons: *const c_char,
-                         inputs: &[ValueRef], output: Type,
-                         volatile: bool, alignstack: bool,
-                         dia: AsmDialect) -> ValueRef {
+                                  inputs: &[ValueRef], output: Type,
+                                  volatile: bool, alignstack: bool,
+                                  dia: AsmDialect) -> ValueRef {
         self.count_insn("inlineasm");
 
         let volatile = if volatile { llvm::True }
@@ -886,7 +891,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn call(&self, llfn: ValueRef, args: &[ValueRef],
-                bundle: Option<&OperandBundleDef>) -> ValueRef {
+                       bundle: Option<&OperandBundleDef>) -> ValueRef {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({})",
@@ -905,7 +910,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn select(&self, cond: ValueRef, then_val: ValueRef, else_val: ValueRef) -> ValueRef {
+    pub(crate) fn select(&self, cond: ValueRef, then_val: ValueRef, else_val: ValueRef)
+                         -> ValueRef {
         self.count_insn("select");
         unsafe {
             llvm::LLVMBuildSelect(self.llbuilder, cond, then_val, else_val, noname())
@@ -958,7 +964,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn insert_value(&self, agg_val: ValueRef, elt: ValueRef,
-                       idx: usize) -> ValueRef {
+                               idx: usize) -> ValueRef {
         self.count_insn("insertvalue");
         unsafe {
             llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint,
@@ -1005,8 +1011,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn landing_pad(&self, ty: Type, pers_fn: ValueRef,
-                       num_clauses: usize,
-                       llfn: ValueRef) -> ValueRef {
+                              num_clauses: usize,
+                              llfn: ValueRef) -> ValueRef {
         self.count_insn("landingpad");
         unsafe {
             llvm::LLVMRustBuildLandingPad(self.llbuilder, ty.to_ref(), pers_fn,
@@ -1035,8 +1041,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn cleanup_pad(&self,
-                       parent: Option<ValueRef>,
-                       args: &[ValueRef]) -> ValueRef {
+                              parent: Option<ValueRef>,
+                              args: &[ValueRef]) -> ValueRef {
         self.count_insn("cleanuppad");
         let parent = parent.unwrap_or(ptr::null_mut());
         let name = CString::new("cleanuppad").unwrap();
@@ -1052,7 +1058,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn cleanup_ret(&self, cleanup: ValueRef,
-                       unwind: Option<BasicBlockRef>) -> ValueRef {
+                              unwind: Option<BasicBlockRef>) -> ValueRef {
         self.count_insn("cleanupret");
         let unwind = unwind.unwrap_or(ptr::null_mut());
         let ret = unsafe {
@@ -1063,8 +1069,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn catch_pad(&self,
-                     parent: ValueRef,
-                     args: &[ValueRef]) -> ValueRef {
+                            parent: ValueRef,
+                            args: &[ValueRef]) -> ValueRef {
         self.count_insn("catchpad");
         let name = CString::new("catchpad").unwrap();
         let ret = unsafe {
@@ -1086,9 +1092,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub(crate) fn catch_switch(&self,
-                        parent: Option<ValueRef>,
-                        unwind: Option<BasicBlockRef>,
-                        num_handlers: usize) -> ValueRef {
+                               parent: Option<ValueRef>,
+                               unwind: Option<BasicBlockRef>,
+                               num_handlers: usize) -> ValueRef {
         self.count_insn("catchswitch");
         let parent = parent.unwrap_or(ptr::null_mut());
         let unwind = unwind.unwrap_or(ptr::null_mut());
@@ -1116,18 +1122,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Atomic Operations
     pub(crate) fn atomic_cmpxchg(&self, dst: ValueRef,
-                         cmp: ValueRef, src: ValueRef,
-                         order: AtomicOrdering,
-                         failure_order: AtomicOrdering,
-                         weak: llvm::Bool) -> ValueRef {
+                                 cmp: ValueRef, src: ValueRef,
+                                 order: AtomicOrdering,
+                                 failure_order: AtomicOrdering,
+                                 weak: llvm::Bool) -> ValueRef {
         unsafe {
             llvm::LLVMRustBuildAtomicCmpXchg(self.llbuilder, dst, cmp, src,
                                          order, failure_order, weak)
         }
     }
     pub(crate) fn atomic_rmw(&self, op: AtomicRmwBinOp,
-                     dst: ValueRef, src: ValueRef,
-                     order: AtomicOrdering) -> ValueRef {
+                             dst: ValueRef, src: ValueRef,
+                             order: AtomicOrdering) -> ValueRef {
         unsafe {
             llvm::LLVMBuildAtomicRMW(self.llbuilder, op, dst, src, order, False)
         }

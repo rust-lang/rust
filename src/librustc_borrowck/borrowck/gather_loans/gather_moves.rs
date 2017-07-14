@@ -87,19 +87,19 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
 }
 
 pub(crate) fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                             move_data: &MoveData<'tcx>,
-                             var_id: ast::NodeId,
-                             var_ty: Ty<'tcx>) {
+                                    move_data: &MoveData<'tcx>,
+                                    var_id: ast::NodeId,
+                                    var_ty: Ty<'tcx>) {
     let loan_path = Rc::new(LoanPath::new(LpVar(var_id), var_ty));
     move_data.add_move(bccx.tcx, loan_path, var_id, Declared);
 }
 
 pub(crate) fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                       move_data: &MoveData<'tcx>,
-                                       move_error_collector: &mut MoveErrorCollector<'tcx>,
-                                       move_expr_id: ast::NodeId,
-                                       cmt: mc::cmt<'tcx>,
-                                       move_reason: euv::MoveReason) {
+                                              move_data: &MoveData<'tcx>,
+                                              move_error_collector: &mut MoveErrorCollector<'tcx>,
+                                              move_expr_id: ast::NodeId,
+                                              cmt: mc::cmt<'tcx>,
+                                              move_reason: euv::MoveReason) {
     let kind = match move_reason {
         euv::DirectRefMove | euv::PatBindingMove => MoveExpr,
         euv::CaptureMove => Captured
@@ -114,10 +114,10 @@ pub(crate) fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 pub(crate) fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                      move_data: &MoveData<'tcx>,
-                                      move_error_collector: &mut MoveErrorCollector<'tcx>,
-                                      move_pat: &hir::Pat,
-                                      cmt: mc::cmt<'tcx>) {
+                                             move_data: &MoveData<'tcx>,
+                                             move_error_collector: &mut MoveErrorCollector<'tcx>,
+                                             move_pat: &hir::Pat,
+                                             cmt: mc::cmt<'tcx>) {
     let source = get_pattern_source(bccx.tcx,move_pat);
     let pat_span_path_opt = match move_pat.node {
         PatKind::Binding(_, _, ref path1, _) => {
@@ -172,12 +172,12 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 pub(crate) fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                   move_data: &MoveData<'tcx>,
-                                   assignment_id: ast::NodeId,
-                                   assignment_span: Span,
-                                   assignee_loan_path: Rc<LoanPath<'tcx>>,
-                                   assignee_id: ast::NodeId,
-                                   mode: euv::MutateMode) {
+                                          move_data: &MoveData<'tcx>,
+                                          assignment_id: ast::NodeId,
+                                          assignment_span: Span,
+                                          assignee_loan_path: Rc<LoanPath<'tcx>>,
+                                          assignee_id: ast::NodeId,
+                                          mode: euv::MutateMode) {
     move_data.add_assignment(bccx.tcx,
                              assignee_loan_path,
                              assignment_id,
