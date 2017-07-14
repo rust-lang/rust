@@ -63,9 +63,9 @@ mod range {
             left..right
         }
 
-        pub fn contains(&self, offset: u64, len: u64) -> bool {
+        pub fn contained_in(&self, offset: u64, len: u64) -> bool {
             assert!(len > 0);
-            self.start <= offset && (offset + len) <= self.end
+            offset <= self.start && self.end <= (offset + len)
         }
 
         pub fn overlaps(&self, offset: u64, len: u64) -> bool {
@@ -576,16 +576,15 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
         for (range, locks) in alloc.iter_lock_vecs_mut(ptr.offset, len) {
-            if !range.contains(ptr.offset, len) {
-                return Err(EvalError::Unimplemented(format!("miri does not support release part of a write-locked region")));
-            }
-
             // Check all locks in this region; make sure there are no conflicting write locks of other frames.
             // Also, if we will recover later, perform our release by changing the lock status.
             for lock in locks.iter_mut() {
                 if lock.kind == AccessKind::Read || lock.status != LockStatus::Held { continue; }
                 if lock.lifetime.frame != cur_frame {
                     return Err(EvalError::InvalidMemoryLockRelease { ptr, len });
+                }
+                if !range.contained_in(ptr.offset, len) {
+                    return Err(EvalError::Unimplemented(format!("miri does not support release part of a write-locked region")));
                 }
                 let ptr = MemoryPointer { alloc_id : ptr.alloc_id, offset: range.offset() };
                 trace!("Releasing write lock at {:?}, size {} until {:?}", ptr, range.len(), release_until);
@@ -594,7 +593,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 }
             }
 
-            // If we will not recove, we did not do anything above except for some checks. Now, erase the locks from the list.
+            // If we will not recover, we did not do anything above except for some checks. Now, erase the locks from the list.
             if let None = release_until {
                 // Delete everything that's a held write lock.  We already checked above that these are ours.
                 // Unfortunately, this duplicates the condition from above.  Is there anything we can do about this?
@@ -615,7 +614,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             match ending_region {
                 None => true, // When a function ends, we end *all* its locks. It's okay for a function to still have lifetime-related locks
                               // when it returns, that can happen e.g. with NLL when a lifetime can, but does not have to, extend beyond the
-                              // end of a function.
+                              // end of a function.  Same for a function still having recoveries.
                 Some(ending_region) => lock.lifetime.region == Some(ending_region),
             }
         };
