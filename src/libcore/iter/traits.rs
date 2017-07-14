@@ -732,7 +732,7 @@ macro_rules! float_sum_product {
     )*)
 }
 
-integer_sum_product! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
+integer_sum_product! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 float_sum_product! { f32 f64 }
 
 /// An iterator adapter that produces output as long as the underlying
