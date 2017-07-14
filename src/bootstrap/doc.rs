@@ -229,6 +229,7 @@ pub struct TheBook {
 
 impl Step for TheBook {
     type Output = ();
+    const DEFAULT: bool = true;
 
     fn should_run(_builder: &Builder, path: &Path) -> bool {
         path.ends_with("src/doc/book")
