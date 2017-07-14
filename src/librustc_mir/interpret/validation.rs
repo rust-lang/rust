@@ -106,7 +106,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
                 }
-                Lvalue::Local { ..} | Lvalue::Global(..) => {
+                Lvalue::Local { .. } | Lvalue::Global(..) => {
                     // These are not backed by memory, so we have nothing to do.
                 }
             }
