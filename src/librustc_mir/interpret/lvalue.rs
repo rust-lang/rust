@@ -529,7 +529,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let is_owning = match ty.sty {
             TyInt(_) | TyUint(_) | TyRawPtr(_) |
             TyBool | TyFloat(_) | TyChar | TyStr |
-            TyRef(..) => true,
+            TyRef(..) | TyFnPtr(..) | TyNever => true,
             TyAdt(adt, _) if adt.is_box() => true,
             TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) => false,
             TyParam(_) | TyInfer(_) => bug!("I got an incomplete type for validation"),
@@ -611,6 +611,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let val = self.read_lvalue(lvalue)?;
                 self.validate_ptr(val, ty.boxed_ty(), vctx)
             }
+            TyFnPtr(_sig) => {
+                // TODO: The function names here could need some improvement.
+                let ptr = self.read_lvalue(lvalue)?.into_ptr(&mut self.memory)?.to_ptr()?;
+                self.memory.get_fn(ptr)?;
+                // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
+                Ok(())
+            }
+
+            // Compound types
             TySlice(elem_ty) => {
                 let len = match lvalue {
                     Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
@@ -627,13 +636,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let inner_lvalue = self.lvalue_index(lvalue, ty, i as u64)?;
                     self.validate(inner_lvalue, elem_ty, vctx)?;
                 }
-                Ok(())
-            }
-            TyFnPtr(_sig) => {
-                // TODO: The function names here could need some improvement.
-                let ptr = self.read_lvalue(lvalue)?.into_ptr(&mut self.memory)?.to_ptr()?;
-                self.memory.get_fn(ptr)?;
-                // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
                 Ok(())
             }
             TyAdt(adt, subst) => {
@@ -682,6 +684,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let field_lvalue = self.lvalue_field(lvalue, idx, ty, field_ty)?;
                     self.validate(field_lvalue, field_ty, vctx)?;
                 }
+                // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
+                // Is there other things we can/should check?  Like vtable pointers?
                 Ok(())
             }
             _ => bug!("We already establishd that this is a type we support.")
