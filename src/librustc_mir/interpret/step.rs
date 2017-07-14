@@ -7,9 +7,10 @@ use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir;
 use rustc::traits::Reveal;
-use rustc::ty;
+use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::{Subst, Substs};
+use rustc::infer::TransNormalize;
 
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
@@ -135,8 +136,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Validate(op, ref lvalues) => {
                 for operand in lvalues {
                     // We need to monomorphize ty *without* erasing lifetimes
-                    let ty = operand.ty.subst(self.tcx, self.substs());
-                    // TODO: do we have to self.tcx.normalize_associated_type(&{ty}) ?  That however seems to erase lifetimes.
+                    let mut ty = operand.ty.subst(self.tcx, self.substs());
+                    // This is essentially a copy of normalize_associated_type, but without erasure
+                    if ty.has_projection_types() {
+                        let param_env = ty::ParamEnv::empty(Reveal::All);
+                        ty = self.tcx.infer_ctxt().enter(move |infcx| {
+                            ty.trans_normalize(&infcx, param_env)
+                        })
+                    }
+
+                    // Now we can do validation at this type
                     let lvalue = self.eval_lvalue(&operand.lval)?;
                     self.validate(lvalue, ty, ValidationCtx::new(op))?;
                 }
