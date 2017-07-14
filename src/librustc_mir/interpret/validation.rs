@@ -71,7 +71,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyBool | TyFloat(_) | TyChar | TyStr |
             TyRef(..) | TyFnPtr(..) | TyNever => true,
             TyAdt(adt, _) if adt.is_box() => true,
-            TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) => false,
+            TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) | TyDynamic(..) => false,
             TyParam(_) | TyInfer(_) => bug!("I got an incomplete type for validation"),
             _ => return Err(EvalError::Unimplemented(format!("Unimplemented type encountered when checking validity."))),
         };
@@ -176,6 +176,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let inner_lvalue = self.lvalue_index(lvalue, ty, i as u64)?;
                     self.validate(inner_lvalue, elem_ty, vctx)?;
                 }
+                Ok(())
+            }
+            TyDynamic(_data, _region) => {
+                // Check that this is a valid vtable
+                let vtable = match lvalue {
+                    Lvalue::Ptr { extra: LvalueExtra::Vtable(vtable), .. } => vtable,
+                    _ => bug!("acquire_valid of a TyDynamic given non-trait-object lvalue: {:?}", lvalue),
+                };
+                self.read_size_and_align_from_vtable(vtable)?;
+                // TODO: Check that the vtable contains all the function pointers we expect it to have.
+                // TODO: Is there anything we can/should validate here?  Trait objects cannot have any operations performed
+                // on them directly.  We cannot, in general, even acquire any locks as the trait object *could*
+                // contain an UnsafeCell.  If we call functions to get access to data, we will validate
+                // their return values.  So, it doesn't seem like there's anything to do.
                 Ok(())
             }
             TyAdt(adt, subst) => {
