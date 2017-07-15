@@ -110,12 +110,13 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
     }
 }
 
+#[cfg(not(stage0))]
 /// Declare a new thread local storage key of type [`std::thread::LocalKey`].
 ///
 /// # Syntax
 ///
 /// The macro wraps any number of static declarations and makes them thread local.
-/// Each static may be public or private, and attributes are allowed. Example:
+/// Publicity and attributes for each static are allowed. Example:
 ///
 /// ```
 /// use std::cell::RefCell;
@@ -132,6 +133,60 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// information.
 ///
 /// [`std::thread::LocalKey`]: ../std/thread/struct.LocalKey.html
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
+macro_rules! thread_local {
+    // empty (base case for the recursion)
+    () => {};
+
+    // process multiple declarations
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
+        __thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
+        thread_local!($($rest)*);
+    );
+
+    // handle a single declaration
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr) => (
+        __thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
+    );
+}
+
+#[cfg(not(stage0))]
+#[doc(hidden)]
+#[unstable(feature = "thread_local_internals",
+           reason = "should not be necessary",
+           issue = "0")]
+#[macro_export]
+#[allow_internal_unstable]
+macro_rules! __thread_local_inner {
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
+            fn __init() -> $t { $init }
+
+            fn __getit() -> $crate::option::Option<
+                &'static $crate::cell::UnsafeCell<
+                    $crate::option::Option<$t>>>
+            {
+                #[thread_local]
+                #[cfg(target_thread_local)]
+                static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
+                    $crate::thread::__FastLocalKeyInner::new();
+
+                #[cfg(not(target_thread_local))]
+                static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
+                    $crate::thread::__OsLocalKeyInner::new();
+
+                __KEY.get()
+            }
+
+            $crate::thread::LocalKey::new(__getit, __init)
+        };
+    }
+}
+
+#[cfg(stage0)]
+/// Declare a new thread local storage key of type `std::thread::LocalKey`.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
@@ -164,6 +219,7 @@ macro_rules! thread_local {
     );
 }
 
+#[cfg(stage0)]
 #[doc(hidden)]
 #[unstable(feature = "thread_local_internals",
            reason = "should not be necessary",
