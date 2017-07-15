@@ -1143,7 +1143,7 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     Rc::new(maps)
 }
 
-struct YieldFinder(bool);
+struct YieldFinder(Option<Span>);
 
 impl<'tcx> Visitor<'tcx> for YieldFinder {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
@@ -1156,52 +1156,57 @@ impl<'tcx> Visitor<'tcx> for YieldFinder {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprYield(..) = expr.node {
-            self.0 = true;
+            if self.0.is_none() {
+                self.0 = Some(expr.span);
+            }
         }
 
         intravisit::walk_expr(self, expr);
     }
 }
 
-pub fn extent_has_yield<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                     extent: CodeExtent) -> bool {
-    let mut finder = YieldFinder(false);
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Checks whether the given code extent contains a `yield`. If so,
+    /// returns `Some(span)` with the span of the "first" yield we find.
+    pub fn yield_in_extent(self, extent: CodeExtent) -> Option<Span> {
+        let mut finder = YieldFinder(None);
 
-    match extent {
-        CodeExtent::DestructionScope(node_id) |
-        CodeExtent::Misc(node_id) => {
-            match tcx.hir.get(node_id) {
-                Node::NodeItem(_) |
-                Node::NodeTraitItem(_) |
-                Node::NodeImplItem(_) => {
-                    let body = tcx.hir.body(tcx.hir.body_owned_by(node_id));
-                    intravisit::walk_body(&mut finder, body);
+        match extent {
+            CodeExtent::DestructionScope(node_id) |
+            CodeExtent::Misc(node_id) => {
+                match self.hir.get(node_id) {
+                    Node::NodeItem(_) |
+                    Node::NodeTraitItem(_) |
+                    Node::NodeImplItem(_) => {
+                        let body = self.hir.body(self.hir.body_owned_by(node_id));
+                        intravisit::walk_body(&mut finder, body);
+                    }
+                    Node::NodeExpr(expr) => intravisit::walk_expr(&mut finder, expr),
+                    Node::NodeStmt(stmt) => intravisit::walk_stmt(&mut finder, stmt),
+                    Node::NodeBlock(block) => intravisit::walk_block(&mut finder, block),
+                    _ => bug!(),
                 }
-                Node::NodeExpr(expr) => intravisit::walk_expr(&mut finder, expr),
-                Node::NodeStmt(stmt) => intravisit::walk_stmt(&mut finder, stmt),
-                Node::NodeBlock(block) => intravisit::walk_block(&mut finder, block),
-                _ => bug!(),
+            }
+
+            CodeExtent::CallSiteScope(body_id) |
+            CodeExtent::ParameterScope(body_id) => {
+                intravisit::walk_body(&mut finder, self.hir.body(body_id))
+            }
+
+            CodeExtent::Remainder(r) => {
+                if let Node::NodeBlock(block) = self.hir.get(r.block) {
+                    for stmt in &block.stmts[(r.first_statement_index as usize + 1)..] {
+                        intravisit::walk_stmt(&mut finder, stmt);
+                    }
+                    block.expr.as_ref().map(|e| intravisit::walk_expr(&mut finder, e));
+                } else {
+                    bug!()
+                }
             }
         }
 
-        CodeExtent::CallSiteScope(body_id) |
-        CodeExtent::ParameterScope(body_id) => {
-            intravisit::walk_body(&mut finder, tcx.hir.body(body_id))
-        }
-
-        CodeExtent::Remainder(r) => {
-            if let Node::NodeBlock(block) = tcx.hir.get(r.block) {
-                for stmt in &block.stmts[(r.first_statement_index as usize + 1)..] {
-                    intravisit::walk_stmt(&mut finder, stmt);
-                }
-                block.expr.as_ref().map(|e| intravisit::walk_expr(&mut finder, e));
-            } else {
-                bug!()
-            }
-        }
+        finder.0
     }
-
-    finder.0
 }
 
 pub fn provide(providers: &mut Providers) {

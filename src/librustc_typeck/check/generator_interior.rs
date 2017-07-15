@@ -12,7 +12,7 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Body, Pat, PatKind, Expr};
 use rustc::hir::def_id::DefId;
 use rustc::ty::Ty;
-use rustc::middle::region::{RegionMaps, CodeExtent, extent_has_yield};
+use rustc::middle::region::{RegionMaps, CodeExtent};
 use util::nodemap::FxHashSet;
 use std::rc::Rc;
 use super::FnCtxt;
@@ -27,7 +27,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     fn record(&mut self, ty: Ty<'tcx>, scope: Option<CodeExtent>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
-        if scope.map(|s| extent_has_yield(self.fcx.tcx, s)).unwrap_or(true) {
+        if scope.map(|s| self.fcx.tcx.yield_in_extent(s).is_some()).unwrap_or(true) {
             if self.fcx.tcx.sess.verbose() {
                 if let Some(s) = scope {
                     self.fcx.tcx.sess.span_warn(s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP),

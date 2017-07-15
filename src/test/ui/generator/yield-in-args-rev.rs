@@ -10,11 +10,15 @@
 
 #![feature(generators)]
 
-fn foo(_b: &bool, _a: ()) {}
+fn foo(_a: (), _b: &bool) {}
 
-fn main() {
-    || {
-        let b = true;
-        foo(&b, yield);
-    }; //~ ERROR `b` does not live long enough
+// Some examples that probably *could* be accepted, but which we reject for now.
+
+fn bar() {
+	|| {
+		let b = true;
+		foo(yield, &b); //~ ERROR
+	};
 }
+
+fn main() { }

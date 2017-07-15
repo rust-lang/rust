@@ -98,9 +98,8 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let body_id = tcx.hir.body_owned_by(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_maps = tcx.region_maps(owner_def_id);
-    let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
-
-    let body = bccx.tcx.hir.body(body_id);
+    let body = tcx.hir.body(body_id);
+    let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id, body };
 
     // Eventually, borrowck will always read the MIR, but at the
     // moment we do not. So, for now, we always force MIR to be
@@ -128,10 +127,9 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 {
     // Check the body of fn items.
     let tcx = this.tcx;
-    let body = tcx.hir.body(body_id);
     let id_range = {
         let mut visitor = intravisit::IdRangeComputingVisitor::new(&tcx.hir);
-        visitor.visit_body(body);
+        visitor.visit_body(this.body);
         visitor.result()
     };
     let (all_loans, move_data) =
@@ -140,7 +138,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
                              "borrowck",
-                             Some(body),
+                             Some(this.body),
                              cfg,
                              LoanDataFlowOperator,
                              id_range,
@@ -151,13 +149,13 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                            loan.kill_scope.node_id(), loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
-    loan_dfcx.propagate(cfg, body);
+    loan_dfcx.propagate(cfg, this.body);
 
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
                                                       this,
                                                       cfg,
                                                       id_range,
-                                                      body);
+                                                      this.body);
 
     AnalysisData { all_loans: all_loans,
                    loans: loan_dfcx,
@@ -176,7 +174,8 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let owner_def_id = tcx.hir.local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_maps = tcx.region_maps(owner_def_id);
-    let mut bccx = BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
+    let body = tcx.hir.body(body_id);
+    let mut bccx = BorrowckCtxt { tcx, tables, region_maps, owner_def_id, body };
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body_id);
     (bccx, dataflow_data)
@@ -195,6 +194,8 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     region_maps: Rc<RegionMaps>,
 
     owner_def_id: DefId,
+
+    body: &'tcx hir::Body,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -751,9 +752,85 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         format!("`{}`", self.loan_path_to_string(&lp))
                     }
                 };
-                let mut db = struct_span_err!(self.tcx.sess, error_span, E0597, "{} does not live long enough", msg);
 
-                                let (value_kind, value_msg) = match err.cmt.cat {
+                // When you have a borrow that lives across a yield,
+                // that reference winds up captured in the generator
+                // type. Regionck then constraints it to live as long
+                // as the generator itself. If that borrow is borrowing
+                // data owned by the generator, this winds up resulting in
+                // an `err_out_of_scope` error:
+                //
+                // ```
+                // {
+                //     let g = || {
+                //         let a = &3; // this borrow is forced to ... -+
+                //         yield ();          //                        |
+                //         println!("{}", a); //                        |
+                //     };                     //                        |
+                // } <----------------------... live until here --------+
+                // ```
+                //
+                // To detect this case, we look for cases where the
+                // `super_scope` (lifetime of the value) is within the
+                // body, but the `sub_scope` is not.
+                debug!("err_out_of_scope: self.body.is_generator = {:?}",
+                       self.body.is_generator);
+                let maybe_borrow_across_yield = if self.body.is_generator {
+                    let body_extent = region::CodeExtent::Misc(self.body.id().node_id);
+                    debug!("err_out_of_scope: body_extent = {:?}", body_extent);
+                    debug!("err_out_of_scope: super_scope = {:?}", super_scope);
+                    debug!("err_out_of_scope: sub_scope = {:?}", sub_scope);
+                    match (super_scope, sub_scope) {
+                        (&ty::RegionKind::ReScope(value_extent),
+                         &ty::RegionKind::ReScope(loan_extent)) => {
+                            if {
+                                // value_extent <= body_extent &&
+                                self.region_maps.is_subscope_of(value_extent, body_extent) &&
+                                    // body_extent <= loan_extent
+                                    self.region_maps.is_subscope_of(body_extent, loan_extent)
+                            } {
+                                // We now know that this is a case
+                                // that fits the bill described above:
+                                // a borrow of something whose scope
+                                // is within the generator, but the
+                                // borrow is for a scope outside the
+                                // generator.
+                                //
+                                // Now look within the scope of the of
+                                // the value being borrowed (in the
+                                // example above, that would be the
+                                // block remainder that starts with
+                                // `let a`) for a yield. We can cite
+                                // that for the user.
+                                self.tcx.yield_in_extent(value_extent)
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+
+                if let Some(yield_span) = maybe_borrow_across_yield {
+                    debug!("err_out_of_scope: opt_yield_span = {:?}", yield_span);
+                    struct_span_err!(self.tcx.sess,
+                                     error_span,
+                                     E0624,
+                                     "borrow may still be in use when generator yields")
+                        .span_label(yield_span, "possible yield occurs here")
+                        .emit();
+                    return;
+                }
+
+                let mut db = struct_span_err!(self.tcx.sess,
+                                              error_span,
+                                              E0597,
+                                              "{} does not live long enough",
+                                              msg);
+
+                let (value_kind, value_msg) = match err.cmt.cat {
                     mc::Categorization::Rvalue(..) =>
                         ("temporary value", "temporary value created here"),
                     _ =>

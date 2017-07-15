@@ -1,0 +1,16 @@
+error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
+  --> $DIR/yield-while-ref-reborrowed.rs:45:20
+   |
+40 |     let mut b = || {
+   |                 -- closure construction occurs here
+41 |         let a = &mut *x;
+   |                       - previous borrow occurs due to use of `x` in closure
+...
+45 |     println!("{}", x); //~ ERROR
+   |                    ^ borrow occurs here
+46 |     b.resume();
+47 | }
+   | - borrow from closure ends here
+
+error: aborting due to previous error
+

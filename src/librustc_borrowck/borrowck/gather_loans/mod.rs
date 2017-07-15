@@ -48,9 +48,8 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
-    let body = glcx.bccx.tcx.hir.body(body);
     euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
-        .consume_body(body);
+        .consume_body(bccx.body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
