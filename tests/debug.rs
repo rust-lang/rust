@@ -25,9 +25,15 @@ if [ "$1" = "-s" ]; then
     shift
     arg_str="set args --crate-type=lib $(cargo semver "$@") tests/helper/test.rs"
 else
-    rustc --crate-type=lib -o libold.rlib "$1/old.rs"
-    rustc --crate-type=lib -o libnew.rlib "$1/new.rs"
-    arg_str="set args --crate-type=lib --extern old=libold.rlib --extern new=libnew.rlib tests/helper/test.rs"
+    if [ "$1" != "-S" ]; then
+        rustc --crate-type=lib -o "$1/libold.rlib" "$1/old.rs"
+        rustc --crate-type=lib -o "$1/libnew.rlib" "$1/new.rs"
+        del=1
+    else
+        del=0
+        shift
+    fi
+    arg_str="set args --crate-type=lib --extern old=$1/libold.rlib --extern new=$1/libnew.rlib tests/helper/test.rs"
 fi
 
 export RUST_LOG=debug
@@ -36,7 +42,8 @@ src_str="set substitute-path /checkout $(rustc --print sysroot)/lib/rustlib/src/
 
 rust-gdb ./target/debug/rust-semverver -iex "$arg_str" -iex "$src_str"
 
-rm lib*.rlib
-"#, path);
+if [ $del = 1 ]; then
+    rm "$1/lib*.rlib"
+fi"#, path);
     }
 }
