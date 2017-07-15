@@ -202,21 +202,19 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                 (Some(o), None) => {
                     if old_vis == Public && cstore.visibility(o.def.def_id()) == Public {
                         let o_did = o.def.def_id();
-                        changes.new_unary(o_did,
-                                          o.ident.name,
-                                          tcx.def_span(o_did),
-                                          o.span,
-                                          false);
+                        changes.new_path_removal(o_did,
+                                                 o.ident.name,
+                                                 tcx.def_span(o_did),
+                                                 o.span);
                     }
                 }
                 (None, Some(n)) => {
                     if new_vis == Public && cstore.visibility(n.def.def_id()) == Public {
                         let n_did = n.def.def_id();
-                        changes.new_unary(n_did,
-                                          n.ident.name,
-                                          tcx.def_span(n_did),
-                                          n.span,
-                                          true);
+                        changes.new_path_addition(n_did,
+                                                  n.ident.name,
+                                                  tcx.def_span(n_did),
+                                                  n.span);
                     }
                 }
                 (None, None) => unreachable!(),

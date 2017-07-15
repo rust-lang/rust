@@ -62,7 +62,7 @@ macro_rules! test {
                     .env("RUST_LOG", "debug")
                     .env("RUST_BACKTRACE", "full")
                     .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
-                    .stdin(Stdio::piped())
+                    .stdin(Stdio::null())
                     .stdout(out_pipe)
                     .stderr(err_pipe)
                     .status()
@@ -78,10 +78,12 @@ macro_rules! test {
                     .success();
             }
 
-            Command::new("rm")
-                .args(&[old_rlib.to_str().unwrap(), new_rlib.to_str().unwrap()])
-                .status()
-                .expect("could not run rm");
+            if success {
+                Command::new("rm")
+                    .args(&[old_rlib.to_str().unwrap(), new_rlib.to_str().unwrap()])
+                    .status()
+                    .expect("could not run rm");
+            }
 
             assert!(success, "an error occured");
         }
