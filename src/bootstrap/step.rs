@@ -28,6 +28,7 @@
 
 use std::collections::{BTreeMap, HashSet, HashMap};
 use std::mem;
+use std::path::PathBuf;
 use std::process;
 
 use check::{self, TestKind};
@@ -1209,10 +1210,18 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             if paths.len() == 0 && rule.default {
                 Some((rule, 0))
             } else {
-                paths.iter().position(|path| path.ends_with(rule.path))
+                paths.iter()
+                     .position(|path| path.ends_with(rule.path))
                      .map(|priority| (rule, priority))
             }
         }).collect();
+
+        if rules.is_empty() &&
+           !paths.get(0).unwrap_or(&PathBuf::new())
+                 .ends_with("nonexistent/path/to/trigger/cargo/metadata") {
+            println!("\nNothing to run...\n");
+            process::exit(1);
+        }
 
         rules.sort_by_key(|&(_, priority)| priority);
 
