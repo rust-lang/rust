@@ -516,14 +516,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let value_ty = value.ty(mir, tcx);
                 match mir.yield_ty {
                     None => span_mirbug!(self, term, "yield in non-generator"),
-                    Some(ty) if ty != value_ty => {
-                        span_mirbug!(self,
-                            term,
-                            "type of yield value is ({:?}, but the yield type is ({:?}",
-                            value_ty,
-                            ty);
+                    Some(ty) => {
+                        if let Err(terr) = self.sub_types(value_ty, ty) {
+                            span_mirbug!(self,
+                                term,
+                                "22 - type of yield value is {:?}, but the yield type is {:?}: {:?}",
+                                value_ty,
+                                ty,
+                                terr);
+                        }
                     }
-                    _ => (),
                 }
             }
         }
