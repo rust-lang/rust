@@ -15,10 +15,10 @@ fn foo(_a: (), _b: &bool) {}
 // Some examples that probably *could* be accepted, but which we reject for now.
 
 fn bar() {
-	|| {
-		let b = true;
-		foo(yield, &b); //~ ERROR
-	};
+    || {
+        let b = true;
+        foo(yield, &b); //~ ERROR
+    };
 }
 
 fn main() { }
