@@ -78,7 +78,6 @@ Cargo
   from crates.io][cargo/4032]
 - [The `--features` option now accepts multiple comma or space
   delimited values.][cargo/4084]
-- [Added a GNU make jobserver implementation to Cargo.][cargo/4110]
 - [Added support for custom target specific runners][cargo/3954]
 
 Misc
@@ -179,7 +178,6 @@ Compatibility Notes
 [cargo/4031]: https://github.com/rust-lang/cargo/pull/4031
 [cargo/4032]: https://github.com/rust-lang/cargo/pull/4032
 [cargo/4084]: https://github.com/rust-lang/cargo/pull/4084
-[cargo/4110]: https://github.com/rust-lang/cargo/pull/4110
 [rust-installer/57]: https://github.com/rust-lang/rust-installer/pull/57
 [rustup/1100]: https://github.com/rust-lang-nursery/rustup.rs/pull/1100
 
