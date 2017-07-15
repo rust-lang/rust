@@ -86,7 +86,7 @@ enum TypeVariableValue<'tcx> {
 
 // We will use this to store the required information to recapitulate what happened when
 // an error occurs.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Default<'tcx> {
     pub ty: Ty<'tcx>,
     /// The span where the default was incurred
@@ -120,7 +120,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
         match &self.values.get(vid.index as usize).value {
             &Known { .. } => None,
-            &Bounded { ref default, .. } => default.clone()
+            &Bounded { default, .. } => default,
         }
     }
 
@@ -182,7 +182,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.eq_relations.new_key(());
         self.sub_relations.new_key(());
         let index = self.values.push(TypeVariableData {
-            value: Bounded { default: default },
+            value: Bounded { default },
             origin,
             diverging,
         });
