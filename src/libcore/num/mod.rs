@@ -2504,8 +2504,9 @@ impl fmt::Display for TryFromIntError {
     }
 }
 
+/// TryFrom on an integer type from a wider integer type of the same sign.
 macro_rules! same_sign_try_from_wider_impl {
-    ($target:ty, $($source:ty),*) => {$(
+    ($target:ident from $($source:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
@@ -2526,7 +2527,7 @@ macro_rules! same_sign_try_from_wider_impl {
 
 /// TryFrom on types where the conversion will always succeed.
 macro_rules! trivial_try_from_impl {
-    ($source:ty, $($target:ty),*) => {$(
+    ($source:ident into $($target:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
@@ -2539,39 +2540,18 @@ macro_rules! trivial_try_from_impl {
     )*}
 }
 
-#[cfg(not(any(
-    target_pointer_width = "16", target_pointer_width = "32", target_pointer_width = "64")))]
-compile_error!("The current implementations of try_from on usize/isize assumes that \
-                the pointer width is either 16, 32, or 64");
-// (source, $(target))
-trivial_try_from_impl!(u8, u8, u16, i16, u32, i32, u64, i64, u128, i128, usize);
-trivial_try_from_impl!(u16, u16, u32, i32, u64, i64, u128, i128, usize);
-trivial_try_from_impl!(u32, u32, u64, i64, u128, i128);
-trivial_try_from_impl!(u64, u64, u128, i128);
-trivial_try_from_impl!(u128, u128);
-trivial_try_from_impl!(usize, usize, u128, i128);
-trivial_try_from_impl!(usize, u64);
+/// Groups items that assume the pointer width is either 16/32/64, and has to be altered if
+/// support for larger/smaller pointer widths are added in the future.
+macro_rules! assume_ptr_width {
+    {$($it:item)*} => {#[cfg(not(any(
+        target_pointer_width = "16", target_pointer_width = "32", target_pointer_width = "64")))]
+                       compile_error!("The current tests of try_from on usize/isize assume that \
+                                       the pointer width is either 16, 32, or 64");
+                       $($it)*
+    }
+}
 
-trivial_try_from_impl!(i8, i8, i16, i32, i64, i128, isize);
-trivial_try_from_impl!(i16, i16, i32, i64, i128, isize);
-trivial_try_from_impl!(i32, i32, i64, i128);
-trivial_try_from_impl!(i64, i64, i128);
-trivial_try_from_impl!(i128, i128);
-trivial_try_from_impl!(isize, isize, i128);
-trivial_try_from_impl!(isize, i64);
-
-// (target, $(source))
-same_sign_try_from_wider_impl!(u8, u16, u32, u64, u128, usize);
-same_sign_try_from_wider_impl!(i8, i16, i32, i64, i128, isize);
-same_sign_try_from_wider_impl!(u16, u32, u64, u128);
-same_sign_try_from_wider_impl!(i16, i32, i64, i128);
-same_sign_try_from_wider_impl!(u32, u64, u128);
-same_sign_try_from_wider_impl!(i32, i64, i128);
-same_sign_try_from_wider_impl!(u64, u128);
-same_sign_try_from_wider_impl!(i64, i128);
-same_sign_try_from_wider_impl!(usize, u128);
-same_sign_try_from_wider_impl!(isize, u128);
-
+/// Adds the attribute to all items in the block.
 macro_rules! cfg_block {
     ($(#[$attr:meta]{$($it:item)*})*) => {$($(
         #[$attr]
@@ -2580,63 +2560,118 @@ macro_rules! cfg_block {
 }
 
 
-cfg_block!(
-    // Platform specific impls for conversions with the same sign:
-    // xsize -> x32
-    // xsize -> x16
-    // x32 -> xsize
-    // x64 -> xsize
+trivial_try_from_impl!(u8 into u8, u16, i16, u32, i32, u64, i64, u128, i128, usize);
+trivial_try_from_impl!(u16 into u16, u32, i32, u64, i64, u128, i128);
+trivial_try_from_impl!(u32 into u32, u64, i64, u128, i128);
+trivial_try_from_impl!(u64 into u64, u128, i128);
+trivial_try_from_impl!(u128 into u128);
+trivial_try_from_impl!(usize into usize);
 
-    // 16-bit.
-    #[cfg(target_pointer_width = "16")] {
-        // x32 -> xsize
-        same_sign_try_from_wider_impl!(usize, u32);
-        same_sign_try_from_wider_impl!(isize, i32);
-        // xsize -> x16
-        trivial_try_from_impl!(usize, u16);
-        trivial_try_from_impl!(isize, i16);
-    }
+assume_ptr_width! {
+    trivial_try_from_impl!(usize into u64, u128, i128);
+    trivial_try_from_impl!(u16 into usize);
+}
 
-    // Same for 16 and 32-bit platforms.
-    #[cfg(any(target_pointer_width = "16", target_pointer_width = "32"))] {
+trivial_try_from_impl!(i8 into i8, i16, i32, i64, i128, isize);
+trivial_try_from_impl!(i16 into i16, i32, i64, i128);
+trivial_try_from_impl!(i32 into i32, i64, i128);
+trivial_try_from_impl!(i64 into i64, i128);
+trivial_try_from_impl!(i128 into i128);
+trivial_try_from_impl!(isize into isize);
+assume_ptr_width! {
+    trivial_try_from_impl!(isize into i64, i128);
+    trivial_try_from_impl!(i16 into isize);
+}
+
+same_sign_try_from_wider_impl!(u8 from  u16, u32, u64, u128, usize);
+same_sign_try_from_wider_impl!(i8 from i16, i32, i64, i128, isize);
+same_sign_try_from_wider_impl!(u16 from u32, u64, u128);
+same_sign_try_from_wider_impl!(i16 from i32, i64, i128);
+same_sign_try_from_wider_impl!(u32 from u64, u128);
+same_sign_try_from_wider_impl!(i32 from i64, i128);
+same_sign_try_from_wider_impl!(u64 from u128);
+same_sign_try_from_wider_impl!(i64 from i128);
+
+assume_ptr_width! {
+    same_sign_try_from_wider_impl!(usize from u128);
+    same_sign_try_from_wider_impl!(isize from i128);
+
+    cfg_block!(
+        // Platform specific impls for conversions with the same sign:
         // xsize -> x32
-        trivial_try_from_impl!(usize, u32);
-        trivial_try_from_impl!(isize, i32);
-        // x64 -> xsize
-        same_sign_try_from_wider_impl!(usize, u64);
-        same_sign_try_from_wider_impl!(isize, u64);
-    }
-
-    // Same for 32 and 64-bit platforms.
-    #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))] {
         // xsize -> x16
-        same_sign_try_from_wider_impl!(u16, usize);
-        same_sign_try_from_wider_impl!(i16, isize);
         // x32 -> xsize
-        trivial_try_from_impl!(u32, usize);
-        trivial_try_from_impl!(i32, isize);
-    }
-
-    // 64-bit.
-    #[cfg(target_pointer_width = "64")] {
-        // xsize -> x32
-        same_sign_try_from_wider_impl!(u32, usize);
-        same_sign_try_from_wider_impl!(i32, isize);
         // x64 -> xsize
-        trivial_try_from_impl!(u64, usize);
-        trivial_try_from_impl!(i64, isize);
-    }
-);
+
+        // 16-bit.
+        #[cfg(target_pointer_width = "16")] {
+            // xsize -> x16
+            trivial_try_from_impl!(usize into u16);
+            trivial_try_from_impl!(isize into i16);
+
+            // xsize -> x32
+            trivial_try_from_impl!(usize into u32);
+            trivial_try_from_impl!(isize into i32);
+
+            // x32 -> xsize
+            same_sign_try_from_wider_impl!(usize from u32);
+            same_sign_try_from_wider_impl!(isize from i32);
+
+            // x64 -> xsize
+            same_sign_try_from_wider_impl!(usize from u64);
+            same_sign_try_from_wider_impl!(isize from i64);
+        }
+
+        // Same for 32-bit platforms.
+        #[cfg(target_pointer_width = "32")] {
+            // xsize -> x16
+            same_sign_try_from_wider_impl!(u16 from usize);
+            same_sign_try_from_wider_impl!(i16 from isize);
+
+            // xsize -> x32
+            trivial_try_from_impl!(usize into u32);
+            trivial_try_from_impl!(isize into i32);
+
+            // x32 -> xsize
+            trivial_try_from_impl!(u32 into usize);
+            trivial_try_from_impl!(i32 into isize);
+
+            // x64 -> xsize
+            same_sign_try_from_wider_impl!(usize from u64);
+            same_sign_try_from_wider_impl!(isize from i64);
+        }
+
+        // 64-bit.
+        #[cfg(target_pointer_width = "64")] {
+            // xsize -> x16
+            same_sign_try_from_wider_impl!(u16 from usize);
+            same_sign_try_from_wider_impl!(i16 from isize);
+
+            // xsize -> x32
+            same_sign_try_from_wider_impl!(u32 from usize);
+            same_sign_try_from_wider_impl!(i32 from isize);
+
+            // x32 -> xsize
+            trivial_try_from_impl!(u32 into usize);
+            trivial_try_from_impl!(i32 into isize);
+
+            // x64 -> xsize
+            trivial_try_from_impl!(u64 into usize);
+            trivial_try_from_impl!(i64 into isize);
+        }
+    );
+
+}
 
 macro_rules! unsigned_from_signed_impl {
-    ($unsigned:ty, $($signed:ty, $storage:ty),*) => {$(
+    ($unsigned:ident from $(($signed:ty, $storage:ty)),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$signed> for $unsigned {
             type Error = TryFromIntError;
 
             #[inline]
             fn try_from(u: $signed) -> Result<$unsigned, TryFromIntError> {
-                let max: $storage = <$unsigned>::max_value().into();
+                let max: $storage = <$unsigned>::max_value() as $storage;
                 if u < 0 || u as $storage > max {
                     Err(TryFromIntError(()))
                 } else {
@@ -2648,7 +2683,7 @@ macro_rules! unsigned_from_signed_impl {
 }
 
 macro_rules! signed_from_unsigned_impl {
-    ($signed:ty, $($unsigned:ty, $storage:ty),*) => {$(
+    ($signed:ident from $(($unsigned:ty, $storage:ty)),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$unsigned> for $signed {
             type Error = TryFromIntError;
@@ -2666,20 +2701,38 @@ macro_rules! signed_from_unsigned_impl {
     )*}
 }
 
-// (unsigned type, $(signed type, storage))
-unsigned_from_signed_impl!(u8, i8, u8, i16, i16, i32, i32, i64, i64, i128, i128, isize, u64);
-unsigned_from_signed_impl!(u16, i8, u16, i16, u16, i32, u32, i64, u64, i128, i128, isize, u64);
-unsigned_from_signed_impl!(u32, i8, u32, i16, u32, i32, u32, i64, u64, i128, i128, isize, u64);
-unsigned_from_signed_impl!(u64, i8, u64, i16, u64, i32, u64, i64, u64, i128, i128, isize, u64);
-unsigned_from_signed_impl!(u128, i8, u128, i16, u128, i32, u128, i64, u128, i128, u128, isize,
-                           u128);
+// (unsigned type from $(signed type, storage))
+assume_ptr_width!{
+    unsigned_from_signed_impl!(u8 from (i8, u8), (i16, i16), (i32, i32), (i64, i64),
+                               (i128, i128), (isize, usize));
+    unsigned_from_signed_impl!(u16 from (i8, u16), (i16, u16), (i32, u32), (i64, u64),
+                               (i128, i128), (isize, usize));
+    unsigned_from_signed_impl!(u32 from (i8, u32), (i16, u32), (i32, u32), (i64, u64),
+                               (i128, i128), (isize, u64));
+    unsigned_from_signed_impl!(u64 from (i8, u64), (i16, u64), (i32, u64), (i64, u64),
+                               (i128, i128), (isize, u64));
+    unsigned_from_signed_impl!(usize from (isize, usize), (i8, usize), (i16, u64), (i32, u64),
+                               (i64, u64), (i128, u128));
 
-// (signed type, $(unsigned type, storage))
-signed_from_unsigned_impl!(i8, u8, u8, u16, u16, u32, u32, u64, u64, u128, u128, usize, usize);
-signed_from_unsigned_impl!(i16, u16, u16, u32, u32, u64, u64, u128, u128, usize, usize);
-signed_from_unsigned_impl!(i32, u32, u32, u64, u64, u128, u128, usize, usize);
-signed_from_unsigned_impl!(i64, u64, u64, u128, u128, usize, usize);
-signed_from_unsigned_impl!(i128, u128, u128);
+}
+
+unsigned_from_signed_impl!(u128 from (i8, u128), (i16, u128), (i32, u128), (i64, u128),
+                           (i128, u128), (isize, u128));
+
+// (signed type from $(unsigned type, storage))
+assume_ptr_width! {
+    signed_from_unsigned_impl!(i8 from (u8, u8), (u16, u16), (u32, u32), (u64, u64), (u128, u128),
+                               (usize, usize));
+    signed_from_unsigned_impl!(i16 from (u16, u16), (u32, u32), (u64, u64), (u128, u128),
+                               (usize, usize));
+    signed_from_unsigned_impl!(i32 from (u32, u32), (u64, u64), (u128, u128), (usize, usize));
+    signed_from_unsigned_impl!(i64 from (u64, u64), (u128, u128), (usize, usize));
+    signed_from_unsigned_impl!(isize from (usize, usize), (u8, usize), (u16, usize), (u32, u32),
+                               (u64, u64), (u128, u128));
+
+}
+
+signed_from_unsigned_impl!(i128 from (u128, u128));
 
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
