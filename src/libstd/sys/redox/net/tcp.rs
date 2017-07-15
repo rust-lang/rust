@@ -32,7 +32,7 @@ impl TcpStream {
         Ok(TcpStream(File::open(&Path::new(path.as_str()), &options)?))
     }
 
-    pub fn connect_timeout(_addr: &SocketAddr, _timeout: Duration) -> Result<()> {
+    pub fn connect_timeout(_addr: &SocketAddr, _timeout: Duration) -> Result<TcpStream> {
         Err(Error::new(ErrorKind::Other, "TcpStream::connect_timeout not implemented"))
     }
 
