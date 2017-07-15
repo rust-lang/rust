@@ -106,7 +106,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let sole_field = &variant.fields[0];
                         let sole_field_ty = sole_field.ty(self.tcx, substs);
                         if self.can_coerce(expr_ty, sole_field_ty) {
-                            compatible_variants.push(variant.name);
+                            let mut variant_path = self.tcx.item_path_str(variant.did);
+                            variant_path = variant_path.trim_left_matches("std::prelude::v1::")
+                                .to_string();
+                            compatible_variants.push(variant_path);
                         }
                     }
                 }
@@ -117,7 +120,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.span_suggestions(expr.span,
                                          "perhaps you meant to use a variant of the expected type",
                                          suggestions);
-                    return Some(err);
                 }
             }
 

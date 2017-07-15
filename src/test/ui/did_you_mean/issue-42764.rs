@@ -11,7 +11,7 @@
 enum DoubleOption<T> {
     FirstSome(T),
     AlternativeSome(T),
-    None,
+    Nothing,
 }
 
 fn this_function_expects_a_double_option<T>(d: DoubleOption<T>) {}
