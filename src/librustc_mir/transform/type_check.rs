@@ -520,7 +520,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         if let Err(terr) = self.sub_types(value_ty, ty) {
                             span_mirbug!(self,
                                 term,
-                                "22 - type of yield value is {:?}, but the yield type is {:?}: {:?}",
+                                "type of yield value is {:?}, but the yield type is {:?}: {:?}",
                                 value_ty,
                                 ty,
                                 terr);
