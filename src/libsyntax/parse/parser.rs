@@ -2420,12 +2420,6 @@ impl<'a> Parser<'a> {
             expr.map(|mut expr| {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
-                if if let Some(ref doc) = expr.attrs.iter().find(|x| x.is_sugared_doc) {
-                    self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-                    true
-                } else { false } {
-                    return expr;
-                }
                 match expr.node {
                     ExprKind::If(..) | ExprKind::IfLet(..) => {
                         if !expr.attrs.is_empty() {
@@ -3110,9 +3104,6 @@ impl<'a> Parser<'a> {
 
     // `else` token already eaten
     pub fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
-        if self.prev_token_kind == PrevTokenKind::DocComment {
-            return Err(self.span_fatal_err(self.span, Error::UselessDocComment));
-        }
         if self.eat_keyword(keywords::If) {
             return self.parse_if_expr(ThinVec::new());
         } else {
@@ -3126,9 +3117,6 @@ impl<'a> Parser<'a> {
                           span_lo: Span,
                           mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
-        if let Some(doc) = attrs.iter().find(|x| x.is_sugared_doc) {
-            self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-        }
 
         let pat = self.parse_pat()?;
         self.expect_keyword(keywords::In)?;
@@ -3144,9 +3132,6 @@ impl<'a> Parser<'a> {
     pub fn parse_while_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
                             span_lo: Span,
                             mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
-        if let Some(doc) = attrs.iter().find(|x| x.is_sugared_doc) {
-            self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-        }
         if self.token.is_keyword(keywords::Let) {
             return self.parse_while_let_expr(opt_ident, span_lo, attrs);
         }
@@ -3175,9 +3160,6 @@ impl<'a> Parser<'a> {
     pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::SpannedIdent>,
                            span_lo: Span,
                            mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
-        if let Some(doc) = attrs.iter().find(|x| x.is_sugared_doc) {
-            self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-        }
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
@@ -3188,9 +3170,6 @@ impl<'a> Parser<'a> {
     pub fn parse_catch_expr(&mut self, span_lo: Span, mut attrs: ThinVec<Attribute>)
         -> PResult<'a, P<Expr>>
     {
-        if let Some(doc) = attrs.iter().find(|x| x.is_sugared_doc) {
-            self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-        }
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         Ok(self.mk_expr(span_lo.to(body.span), ExprKind::Catch(body), attrs))
@@ -3198,9 +3177,6 @@ impl<'a> Parser<'a> {
 
     // `match` token already eaten
     fn parse_match_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
-        if let Some(doc) = attrs.iter().find(|x| x.is_sugared_doc) {
-            self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-        }
         let match_span = self.prev_span;
         let lo = self.prev_span;
         let discriminant = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL,
@@ -3238,9 +3214,6 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtArm, |x| x);
 
         let attrs = self.parse_outer_attributes()?;
-        if let Some(doc) = attrs.iter().find(|x| x.is_sugared_doc) {
-            self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-        }
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(keywords::If) {
             Some(self.parse_expr()?)
@@ -3695,9 +3668,6 @@ impl<'a> Parser<'a> {
 
     /// Parse a local variable declaration
     fn parse_local(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Local>> {
-        if let Some(doc) = attrs.iter().find(|x| x.is_sugared_doc) {
-            self.span_fatal_err(doc.span, Error::UselessDocComment).emit();
-        }
         let lo = self.span;
         let pat = self.parse_pat()?;
 
@@ -4187,8 +4157,6 @@ impl<'a> Parser<'a> {
                 stmts.push(stmt);
             } else if self.token == token::Eof {
                 break;
-            } else if let token::DocComment(_) = self.token {
-                return Err(self.span_fatal_err(self.span, Error::UselessDocComment));
             } else {
                 // Found only `;` or `}`.
                 continue;

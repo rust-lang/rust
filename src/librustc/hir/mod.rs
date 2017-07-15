@@ -892,6 +892,13 @@ impl Decl_ {
             DeclItem(_) => &[]
         }
     }
+
+    pub fn is_local(&self) -> bool {
+        match *self {
+            Decl_::DeclLocal(_) => true,
+            _ => false,
+        }
+    }
 }
 
 /// represents one arm of a 'match'

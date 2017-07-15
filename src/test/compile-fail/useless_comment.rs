@@ -8,19 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo3() -> i32 {
-    let mut x = 12;
-    /// z //~ ERROR E0585
-    while x < 1 {
-        /// x //~ ERROR E0585
-        //~^ ERROR attributes on non-item statements and expressions are experimental
-        x += 1;
+#![deny(unused_doc_comment)]
+
+fn foo() {
+    /// a //~ ERROR unused doc comment
+    let x = 12;
+
+    /// b //~ ERROR unused doc comment
+    match x {
+        /// c //~ ERROR unused doc comment
+        1 => {},
+        _ => {}
     }
-    /// d //~ ERROR E0585
-    return x;
+
+    /// foo //~ ERROR unused doc comment
+    unsafe {}
 }
 
 fn main() {
-    /// e //~ ERROR E0585
-    foo3();
+    foo();
 }

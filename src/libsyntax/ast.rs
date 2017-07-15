@@ -718,6 +718,13 @@ impl Stmt {
         };
         self
     }
+
+    pub fn is_item(&self) -> bool {
+        match self.node {
+            StmtKind::Local(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Debug for Stmt {
