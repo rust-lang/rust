@@ -506,9 +506,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             _ => { }
         }
 
-        let mut db = self.bckerr_to_diag(&err);
-        self.note_and_explain_bckerr(&mut db, err);
-        db.emit();
+        self.report_bckerr(&err);
     }
 
     pub fn report_use_of_moved_value(&self,
@@ -693,8 +691,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_err_with_code(s, msg, code);
     }
 
-    fn bckerr_to_diag(&self, err: &BckError<'tcx>) -> DiagnosticBuilder<'a> {
-        let span = err.span.clone();
+    fn report_bckerr(&self, err: &BckError<'tcx>) {
+        let error_span = err.span.clone();
 
         match err.code {
             err_mutbl => {
@@ -718,12 +716,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                 };
 
-                match err.cause {
+                let mut db = match err.cause {
                     MutabilityViolation => {
-                        struct_span_err!(self.tcx.sess, span, E0594, "cannot assign to {}", descr)
+                        struct_span_err!(self.tcx.sess, error_span, E0594, "cannot assign to {}", descr)
                     }
                     BorrowViolation(euv::ClosureCapture(_)) => {
-                        struct_span_err!(self.tcx.sess, span, E0595,
+                        struct_span_err!(self.tcx.sess, error_span, E0595,
                                          "closure cannot assign to {}", descr)
                     }
                     BorrowViolation(euv::OverloadedOperator) |
@@ -733,30 +731,152 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     BorrowViolation(euv::AutoUnsafe) |
                     BorrowViolation(euv::ForLoop) |
                     BorrowViolation(euv::MatchDiscriminant) => {
-                        struct_span_err!(self.tcx.sess, span, E0596,
+                        struct_span_err!(self.tcx.sess, error_span, E0596,
                                          "cannot borrow {} as mutable", descr)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
                         span_bug!(err.span,
                             "err_mutbl with a closure invocation");
                     }
-                }
+                };
+
+                self.note_and_explain_mutbl_error(&mut db, &err, &error_span);
+                self.note_immutability_blame(&mut db, err.cmt.immutability_blame());
+                db.emit();
             }
-            err_out_of_scope(..) => {
+            err_out_of_scope(super_scope, sub_scope, cause) => {
                 let msg = match opt_loan_path(&err.cmt) {
                     None => "borrowed value".to_string(),
                     Some(lp) => {
                         format!("`{}`", self.loan_path_to_string(&lp))
                     }
                 };
-                struct_span_err!(self.tcx.sess, span, E0597, "{} does not live long enough", msg)
+                let mut db = struct_span_err!(self.tcx.sess, error_span, E0597, "{} does not live long enough", msg);
+
+                                let (value_kind, value_msg) = match err.cmt.cat {
+                    mc::Categorization::Rvalue(..) =>
+                        ("temporary value", "temporary value created here"),
+                    _ =>
+                        ("borrowed value", "borrow occurs here")
+                };
+
+                let is_closure = match cause {
+                    euv::ClosureCapture(s) => {
+                        // The primary span starts out as the closure creation point.
+                        // Change the primary span here to highlight the use of the variable
+                        // in the closure, because it seems more natural. Highlight
+                        // closure creation point as a secondary span.
+                        match db.span.primary_span() {
+                            Some(primary) => {
+                                db.span = MultiSpan::from_span(s);
+                                db.span_label(primary, "capture occurs here");
+                                db.span_label(s, "does not live long enough");
+                                true
+                            }
+                            None => false
+                        }
+                    }
+                    _ => {
+                        db.span_label(error_span, "does not live long enough");
+                        false
+                    }
+                };
+
+                let sub_span = self.region_end_span(sub_scope);
+                let super_span = self.region_end_span(super_scope);
+
+                match (sub_span, super_span) {
+                    (Some(s1), Some(s2)) if s1 == s2 => {
+                        if !is_closure {
+                            db.span = MultiSpan::from_span(s1);
+                            db.span_label(error_span, value_msg);
+                            let msg = match opt_loan_path(&err.cmt) {
+                                None => value_kind.to_string(),
+                                Some(lp) => {
+                                    format!("`{}`", self.loan_path_to_string(&lp))
+                                }
+                            };
+                            db.span_label(s1,
+                                          format!("{} dropped here while still borrowed", msg));
+                        } else {
+                            db.span_label(s1, format!("{} dropped before borrower", value_kind));
+                        }
+                        db.note("values in a scope are dropped in the opposite order \
+                                they are created");
+                    }
+                    (Some(s1), Some(s2)) if !is_closure => {
+                        db.span = MultiSpan::from_span(s2);
+                        db.span_label(error_span, value_msg);
+                        let msg = match opt_loan_path(&err.cmt) {
+                            None => value_kind.to_string(),
+                            Some(lp) => {
+                                format!("`{}`", self.loan_path_to_string(&lp))
+                            }
+                        };
+                        db.span_label(s2, format!("{} dropped here while still borrowed", msg));
+                        db.span_label(s1, format!("{} needs to live until here", value_kind));
+                    }
+                    _ => {
+                        match sub_span {
+                            Some(s) => {
+                                db.span_label(s, format!("{} needs to live until here",
+                                                          value_kind));
+                            }
+                            None => {
+                                self.tcx.note_and_explain_region(
+                                    &mut db,
+                                    "borrowed value must be valid for ",
+                                    sub_scope,
+                                    "...");
+                            }
+                        }
+                        match super_span {
+                            Some(s) => {
+                                db.span_label(s, format!("{} only lives until here", value_kind));
+                            }
+                            None => {
+                                self.tcx.note_and_explain_region(
+                                    &mut db,
+                                    "...but borrowed value is only valid for ",
+                                    super_scope,
+                                    "");
+                            }
+                        }
+                    }
+                }
+
+                if let Some(_) = statement_scope_span(self.tcx, super_scope) {
+                    db.note("consider using a `let` binding to increase its lifetime");
+                }
+
+                db.emit();
             }
-            err_borrowed_pointer_too_short(..) => {
+            err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = self.cmt_to_path_or_string(&err.cmt);
-                struct_span_err!(self.tcx.sess, span, E0598,
-                                 "lifetime of {} is too short to guarantee \
-                                  its contents can be safely reborrowed",
-                                 descr)
+                let mut db = struct_span_err!(self.tcx.sess, error_span, E0598,
+                                              "lifetime of {} is too short to guarantee \
+                                               its contents can be safely reborrowed",
+                                              descr);
+
+                let descr = match opt_loan_path(&err.cmt) {
+                    Some(lp) => {
+                        format!("`{}`", self.loan_path_to_string(&lp))
+                    }
+                    None => self.cmt_to_string(&err.cmt),
+                };
+                self.tcx.note_and_explain_region(
+                    &mut db,
+                    &format!("{} would have to be valid for ",
+                            descr),
+                    loan_scope,
+                    "...");
+                self.tcx.note_and_explain_region(
+                    &mut db,
+                    &format!("...but {} is only valid for ", descr),
+                    ptr_scope,
+                    "");
+
+                db.emit();
             }
         }
     }
@@ -1010,133 +1130,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
             }
             _ => None
-        }
-    }
-
-    fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>) {
-        let error_span = err.span.clone();
-        match err.code {
-            err_mutbl => {
-                self.note_and_explain_mutbl_error(db, &err, &error_span);
-                self.note_immutability_blame(db, err.cmt.immutability_blame());
-            }
-            err_out_of_scope(super_scope, sub_scope, cause) => {
-                let (value_kind, value_msg) = match err.cmt.cat {
-                    mc::Categorization::Rvalue(..) =>
-                        ("temporary value", "temporary value created here"),
-                    _ =>
-                        ("borrowed value", "borrow occurs here")
-                };
-
-                let is_closure = match cause {
-                    euv::ClosureCapture(s) => {
-                        // The primary span starts out as the closure creation point.
-                        // Change the primary span here to highlight the use of the variable
-                        // in the closure, because it seems more natural. Highlight
-                        // closure creation point as a secondary span.
-                        match db.span.primary_span() {
-                            Some(primary) => {
-                                db.span = MultiSpan::from_span(s);
-                                db.span_label(primary, "capture occurs here");
-                                db.span_label(s, "does not live long enough");
-                                true
-                            }
-                            None => false
-                        }
-                    }
-                    _ => {
-                        db.span_label(error_span, "does not live long enough");
-                        false
-                    }
-                };
-
-                let sub_span = self.region_end_span(sub_scope);
-                let super_span = self.region_end_span(super_scope);
-
-                match (sub_span, super_span) {
-                    (Some(s1), Some(s2)) if s1 == s2 => {
-                        if !is_closure {
-                            db.span = MultiSpan::from_span(s1);
-                            db.span_label(error_span, value_msg);
-                            let msg = match opt_loan_path(&err.cmt) {
-                                None => value_kind.to_string(),
-                                Some(lp) => {
-                                    format!("`{}`", self.loan_path_to_string(&lp))
-                                }
-                            };
-                            db.span_label(s1,
-                                          format!("{} dropped here while still borrowed", msg));
-                        } else {
-                            db.span_label(s1, format!("{} dropped before borrower", value_kind));
-                        }
-                        db.note("values in a scope are dropped in the opposite order \
-                                they are created");
-                    }
-                    (Some(s1), Some(s2)) if !is_closure => {
-                        db.span = MultiSpan::from_span(s2);
-                        db.span_label(error_span, value_msg);
-                        let msg = match opt_loan_path(&err.cmt) {
-                            None => value_kind.to_string(),
-                            Some(lp) => {
-                                format!("`{}`", self.loan_path_to_string(&lp))
-                            }
-                        };
-                        db.span_label(s2, format!("{} dropped here while still borrowed", msg));
-                        db.span_label(s1, format!("{} needs to live until here", value_kind));
-                    }
-                    _ => {
-                        match sub_span {
-                            Some(s) => {
-                                db.span_label(s, format!("{} needs to live until here",
-                                                          value_kind));
-                            }
-                            None => {
-                                self.tcx.note_and_explain_region(
-                                    db,
-                                    "borrowed value must be valid for ",
-                                    sub_scope,
-                                    "...");
-                            }
-                        }
-                        match super_span {
-                            Some(s) => {
-                                db.span_label(s, format!("{} only lives until here", value_kind));
-                            }
-                            None => {
-                                self.tcx.note_and_explain_region(
-                                    db,
-                                    "...but borrowed value is only valid for ",
-                                    super_scope,
-                                    "");
-                            }
-                        }
-                    }
-                }
-
-                if let Some(_) = statement_scope_span(self.tcx, super_scope) {
-                    db.note("consider using a `let` binding to increase its lifetime");
-                }
-            }
-
-            err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
-                let descr = match opt_loan_path(&err.cmt) {
-                    Some(lp) => {
-                        format!("`{}`", self.loan_path_to_string(&lp))
-                    }
-                    None => self.cmt_to_string(&err.cmt),
-                };
-                self.tcx.note_and_explain_region(
-                    db,
-                    &format!("{} would have to be valid for ",
-                            descr),
-                    loan_scope,
-                    "...");
-                self.tcx.note_and_explain_region(
-                    db,
-                    &format!("...but {} is only valid for ", descr),
-                    ptr_scope,
-                    "");
-            }
         }
     }
 
