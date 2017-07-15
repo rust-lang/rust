@@ -495,7 +495,7 @@ define_dep_nodes!( <'tcx>
     // imprecision in our dep-graph tracking.  The important thing is
     // that for any given trait-ref, we always map to the **same**
     // trait-select node.
-    [] TraitSelect { trait_def_id: DefId, input_def_id: DefId },
+    [anon] TraitSelect,
 
     // For proj. cache, we just keep a list of all def-ids, since it is
     // not a hotspot.

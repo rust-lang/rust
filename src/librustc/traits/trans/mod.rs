@@ -13,9 +13,7 @@
 // seems likely that they should eventually be merged into more
 // general routines.
 
-use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig,
-                DepConstructor};
-use hir::def_id::DefId;
+use dep_graph::{DepGraph, DepKind, DepTrackingMap, DepTrackingMapConfig};
 use infer::TransNormalize;
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -41,7 +39,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         // Remove any references to regions; this helps improve caching.
         let trait_ref = self.erase_regions(&trait_ref);
 
-        self.trans_trait_caches.trait_cache.memoize(self, trait_ref, || {
+        self.trans_trait_caches.trait_cache.memoize(trait_ref, || {
             debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
                    trait_ref, trait_ref.def_id());
 
@@ -139,7 +137,7 @@ impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
         if !ty.has_projection_types() {
             ty
         } else {
-            self.tcx.trans_trait_caches.project_cache.memoize(self.tcx, ty, || {
+            self.tcx.trans_trait_caches.project_cache.memoize(ty, || {
                 debug!("AssociatedTypeNormalizer: ty={:?}", ty);
                 self.tcx.normalize_associated_type(&ty)
             })
@@ -171,8 +169,8 @@ pub struct TraitSelectionCache<'tcx> {
 impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
     type Key = ty::PolyTraitRef<'tcx>;
     type Value = Vtable<'tcx, ()>;
-    fn to_dep_node(tcx: TyCtxt, key: &ty::PolyTraitRef<'tcx>) -> DepNode {
-        key.to_poly_trait_predicate().dep_node(tcx)
+    fn to_dep_kind() -> DepKind {
+        DepKind::TraitSelect
     }
 }
 
@@ -185,31 +183,8 @@ pub struct ProjectionCache<'gcx> {
 impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
     type Key = Ty<'gcx>;
     type Value = Ty<'gcx>;
-    fn to_dep_node(tcx: TyCtxt, key: &Self::Key) -> DepNode {
-        // Ideally, we'd just put `key` into the dep-node, but we
-        // can't put full types in there. So just collect up all the
-        // def-ids of structs/enums as well as any traits that we
-        // project out of. It doesn't matter so much what we do here,
-        // except that if we are too coarse, we'll create overly
-        // coarse edges between impls and the trans. For example, if
-        // we just used the def-id of things we are projecting out of,
-        // then the key for `<Foo as SomeTrait>::T` and `<Bar as
-        // SomeTrait>::T` would both share a dep-node
-        // (`TraitSelect(SomeTrait)`), and hence the impls for both
-        // `Foo` and `Bar` would be considered inputs. So a change to
-        // `Bar` would affect things that just normalized `Foo`.
-        // Anyway, this heuristic is not ideal, but better than
-        // nothing.
-        let def_ids: Vec<DefId> =
-            key.walk()
-               .filter_map(|t| match t.sty {
-                    ty::TyAdt(adt_def, _) => Some(adt_def.did),
-                    ty::TyProjection(ref proj) => Some(proj.item_def_id),
-                    _ => None,
-               })
-               .collect();
-
-        DepNode::new(tcx, DepConstructor::ProjectionCache { def_ids: def_ids })
+    fn to_dep_kind() -> DepKind {
+        DepKind::TraitSelect
     }
 }
 
