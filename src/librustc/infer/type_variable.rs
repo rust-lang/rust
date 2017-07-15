@@ -76,7 +76,9 @@ struct TypeVariableData<'tcx> {
 }
 
 enum TypeVariableValue<'tcx> {
-    Known(Ty<'tcx>),
+    Known {
+        value: Ty<'tcx>
+    },
     Bounded {
         default: Option<Default<'tcx>>
     }
@@ -117,7 +119,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
         match &self.values.get(vid.index as usize).value {
-            &Known(_) => None,
+            &Known { .. } => None,
             &Bounded { ref default, .. } => default.clone()
         }
     }
@@ -158,14 +160,14 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
         let old_value = {
             let vid_data = &mut self.values[vid.index as usize];
-            mem::replace(&mut vid_data.value, TypeVariableValue::Known(ty))
+            mem::replace(&mut vid_data.value, TypeVariableValue::Known { value: ty })
         };
 
         match old_value {
             TypeVariableValue::Bounded { default } => {
                 self.values.record(Instantiate { vid: vid, default: default });
             }
-            TypeVariableValue::Known(old_ty) => {
+            TypeVariableValue::Known { value: old_ty } => {
                 bug!("instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
                      vid, ty, old_ty)
             }
@@ -233,7 +235,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         debug_assert!(self.root_var(vid) == vid);
         match self.values.get(vid.index as usize).value {
             Bounded { .. } => None,
-            Known(t) => Some(t)
+            Known { value } => Some(value)
         }
     }
 
@@ -334,7 +336,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                         // created since the snapshot started or not.
                         let escaping_type = match self.values.get(vid.index as usize).value {
                             Bounded { .. } => bug!(),
-                            Known(ty) => ty,
+                            Known { value } => value,
                         };
                         escaping_types.push(escaping_type);
                     }
