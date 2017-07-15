@@ -66,9 +66,6 @@ pub fn find_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     };
     intravisit::walk_body(&mut visitor, body);
 
-    // FIXME: Drop elaboration can insert bool types in the generator
-    visitor.types.insert(fcx.tcx.types.bool);
-
     // Deduplicate types
     let set: FxHashSet<_> = visitor.types.into_iter()
         .map(|t| fcx.resolve_type_vars_if_possible(&t))

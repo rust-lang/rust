@@ -712,6 +712,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty: var_ty.clone(),
             name: Some(name),
             source_info: source_info,
+            internal: false,
             is_user_variable: true,
         });
         self.var_indices.insert(var_id, var);

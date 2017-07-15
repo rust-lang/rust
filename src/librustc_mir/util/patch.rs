@@ -101,6 +101,13 @@ impl<'tcx> MirPatch<'tcx> {
         Local::new(index as usize)
     }
 
+    pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
+        let index = self.next_local;
+        self.next_local += 1;
+        self.new_locals.push(LocalDecl::new_internal(ty, span));
+        Local::new(index as usize)
+    }
+
     pub fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
         let block = BasicBlock::new(self.patch_map.len());
         debug!("MirPatch: new_block: {:?}: {:?}", block, data);

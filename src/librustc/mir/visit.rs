@@ -654,6 +654,7 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* ty,
                     name: _,
                     ref $($mutability)* source_info,
+                    internal: _,
                     is_user_variable: _,
                 } = *local_decl;
 

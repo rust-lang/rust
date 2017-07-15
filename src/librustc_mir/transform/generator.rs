@@ -263,6 +263,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
         ty: ret_ty,
         name: None,
         source_info,
+        internal: false,
         is_user_variable: false,
     };
     let new_ret_local = Local::new(mir.local_decls.len());
@@ -314,7 +315,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let allowed = tcx.erase_regions(&interior.as_slice());
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
-        if !live_locals.contains(&local) {
+        if !live_locals.contains(&local) || decl.internal {
             continue;
         }
         if !allowed.contains(&decl.ty) {
@@ -340,6 +341,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ty: unit,
             name: None,
             source_info,
+            internal: false,
             is_user_variable: false,
         };
         remap.insert(local, (var.ty, upvar_len + 1 + idx));
@@ -482,6 +484,7 @@ fn generate_drop<'a, 'tcx>(
         ty: tcx.mk_nil(),
         name: None,
         source_info,
+        internal: false,
         is_user_variable: false,
     };
 
@@ -496,6 +499,7 @@ fn generate_drop<'a, 'tcx>(
         }),
         name: None,
         source_info,
+        internal: false,
         is_user_variable: false,
     };
 

@@ -411,6 +411,10 @@ pub struct LocalDecl<'tcx> {
     /// True if this corresponds to a user-declared local variable.
     pub is_user_variable: bool,
 
+    /// True if this an internal local.
+    /// Such locals are not checked against the legal types in a generator.
+    pub internal: bool,
+
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
@@ -436,6 +440,23 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
+            internal: false,
+            is_user_variable: false
+        }
+    }
+
+    /// Create a new `LocalDecl` for a internal temporary.
+    #[inline]
+    pub fn new_internal(ty: Ty<'tcx>, span: Span) -> Self {
+        LocalDecl {
+            mutability: Mutability::Mut,
+            ty,
+            name: None,
+            source_info: SourceInfo {
+                span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
+            internal: true,
             is_user_variable: false
         }
     }
@@ -452,6 +473,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
+            internal: false,
             name: None,     // FIXME maybe we do want some name here?
             is_user_variable: false
         }

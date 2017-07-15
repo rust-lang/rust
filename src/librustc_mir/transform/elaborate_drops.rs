@@ -314,7 +314,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.mir.span);
         self.drop_flags.entry(index).or_insert_with(|| {
-            patch.new_temp(tcx.types.bool, span)
+            patch.new_internal(tcx.types.bool, span)
         });
     }
 

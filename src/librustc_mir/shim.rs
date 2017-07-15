@@ -128,6 +128,7 @@ fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
     LocalDecl {
         mutability, ty, name: None,
         source_info: SourceInfo { scope: ARGUMENT_VISIBILITY_SCOPE, span },
+        internal: false,
         is_user_variable: false
     }
 }

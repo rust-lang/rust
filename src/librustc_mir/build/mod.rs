@@ -521,6 +521,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     span: pattern.map_or(self.fn_span, |pat| pat.span)
                 },
                 name: name,
+                internal: false,
                 is_user_variable: false,
             });
         }
