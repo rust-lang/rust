@@ -1188,7 +1188,7 @@ This error occurs because a borrow in a generator persists across a
 yield point.
 
 ```compile_fail,E0624
-# #![feature(generators)]
+# #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
     let a = &3; // <-- This borrow...
@@ -1206,7 +1206,7 @@ resolve the previous example by removing the borrow and just storing
 the integer by value:
 
 ```
-# #![feature(generators)]
+# #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
     let a = 3;
@@ -1223,7 +1223,7 @@ in those cases, something like the `Rc` or `Arc` types may be useful.
 This error also frequently arises with iteration:
 
 ```compile_fail,E0624
-# #![feature(generators)]
+# #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
   let v = vec![1,2,3];
@@ -1238,7 +1238,7 @@ Such cases can sometimes be resolved by iterating "by value" (or using
 `into_iter()`) to avoid borrowing:
 
 ```
-# #![feature(generators)]
+# #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
   let v = vec![1,2,3];
@@ -1252,7 +1252,7 @@ b.resume();
 If taking ownership is not an option, using indices can work too:
 
 ```
-# #![feature(generators)]
+# #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
   let v = vec![1,2,3];
