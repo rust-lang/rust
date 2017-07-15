@@ -1189,6 +1189,7 @@ yield point.
 
 ```compile_fail,E0624
 # #![feature(generators)]
+# use std::ops::Generator;
 let mut b = || {
     let a = &3; // <-- This borrow...
     yield (); // ...is still in scope here, when the yield occurs.
@@ -1206,6 +1207,7 @@ the integer by value:
 
 ```
 # #![feature(generators)]
+# use std::ops::Generator;
 let mut b = || {
     let a = 3;
     yield ();
@@ -1222,6 +1224,7 @@ This error also frequently arises with iteration:
 
 ```compile_fail,E0624
 # #![feature(generators)]
+# use std::ops::Generator;
 let mut b = || {
   let v = vec![1,2,3];
   for &x in &v { // <-- borrow of `v` is still in scope...
@@ -1236,6 +1239,7 @@ Such cases can sometimes be resolved by iterating "by value" (or using
 
 ```
 # #![feature(generators)]
+# use std::ops::Generator;
 let mut b = || {
   let v = vec![1,2,3];
   for x in v { // <-- Take ownership of the values instead!
@@ -1249,6 +1253,7 @@ If taking ownership is not an option, using indices can work too:
 
 ```
 # #![feature(generators)]
+# use std::ops::Generator;
 let mut b = || {
   let v = vec![1,2,3];
   let len = v.len(); // (*)
