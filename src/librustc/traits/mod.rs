@@ -520,7 +520,8 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            predicates);
 
     let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                           unnormalized_env.reveal);
+                                           unnormalized_env.reveal,
+                                           unnormalized_env.universe);
 
     tcx.infer_ctxt().enter(|infcx| {
         let predicates = match fully_normalize(
@@ -573,7 +574,9 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: resolved predicates={:?}",
                predicates);
 
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal)
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates),
+                          unnormalized_env.reveal,
+                          unnormalized_env.universe)
     })
 }
 

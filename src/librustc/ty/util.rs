@@ -153,14 +153,15 @@ impl<'tcx> ty::ParamEnv<'tcx> {
     /// Construct a trait environment suitable for contexts where
     /// there are no where clauses in scope.
     pub fn empty(reveal: Reveal) -> Self {
-        Self::new(ty::Slice::empty(), reveal)
+        Self::new(ty::Slice::empty(), reveal, ty::UniverseIndex::ROOT)
     }
 
     /// Construct a trait environment with the given set of predicates.
     pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
-               reveal: Reveal)
+               reveal: Reveal,
+               universe: ty::UniverseIndex)
                -> Self {
-        ty::ParamEnv { caller_bounds, reveal }
+        ty::ParamEnv { caller_bounds, reveal, universe }
     }
 
     /// Returns a new parameter environment with the same clauses, but
