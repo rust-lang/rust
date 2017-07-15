@@ -22,7 +22,7 @@ use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
 use mir::tcx::PlaceTy;
-use ty::subst::{Kind, Subst, Substs};
+use ty::subst::Substs;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -1093,26 +1093,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// as the substitutions for the default, `(T, U)`.
     pub fn type_var_for_def(&self,
                             span: Span,
-                            def: &ty::TypeParameterDef,
-                            substs: &[Kind<'tcx>])
+                            def: &ty::TypeParameterDef)
                             -> Ty<'tcx> {
-        let default = if def.has_default {
-            let default = self.tcx.type_of(def.def_id);
-            Some(type_variable::Default {
-                ty: default.subst_spanned(self.tcx, substs, Some(span)),
-                origin_span: span,
-                def_id: def.def_id
-            })
-        } else {
-            None
-        };
-
-
         let ty_var_id = self.type_variables
                             .borrow_mut()
                             .new_var(false,
                                      TypeVariableOrigin::TypeParameterDefinition(span, def.name),
-                                     default);
+                                     None);
 
         self.tcx.mk_var(ty_var_id)
     }
@@ -1125,8 +1112,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                  -> &'tcx Substs<'tcx> {
         Substs::for_item(self.tcx, def_id, |def, _| {
             self.region_var_for_def(span, def)
-        }, |def, substs| {
-            self.type_var_for_def(span, def, substs)
+        }, |def, _| {
+            self.type_var_for_def(span, def)
         })
     }
 

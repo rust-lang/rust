@@ -1304,12 +1304,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     // `impl_self_ty()` for an explanation.
                     self.tcx.types.re_erased
                 }
-            }, |def, cur_substs| {
+            }, |def, _cur_substs| {
                 let i = def.index as usize;
                 if i < substs.len() {
                     substs.type_at(i)
                 } else {
-                    self.type_var_for_def(self.span, def, cur_substs)
+                    self.type_var_for_def(self.span, def)
                 }
             });
             xform_fn_sig.subst(self.tcx, substs)

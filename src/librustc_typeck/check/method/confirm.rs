@@ -325,7 +325,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             } else {
                 self.region_var_for_def(self.span, def)
             }
-        }, |def, cur_substs| {
+        }, |def, _cur_substs| {
             let i = def.index as usize;
             if i < parent_substs.len() {
                 parent_substs.type_at(i)
@@ -336,7 +336,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             {
                 self.to_ty(ast_ty)
             } else {
-                self.type_var_for_def(self.span, def, cur_substs)
+                self.type_var_for_def(self.span, def)
             }
         })
     }
