@@ -14,10 +14,10 @@ fn bar<'a>() {
     let a: &'static str = "hi";
     let b: &'a str = a;
 
-	|| {
-		yield a;
-		yield b;
-	};
+    || {
+        yield a;
+        yield b;
+    };
 }
 
 fn main() {}
