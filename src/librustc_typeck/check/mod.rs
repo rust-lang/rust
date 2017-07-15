@@ -1015,10 +1015,6 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let def_id = fcx.tcx.hir.local_def_id(fn_id);
     let span = body.value.span;
 
-    if fcx.tcx.sess.verbose() {
-        println!("checking body {} {}", fn_id, can_be_generator);
-    }
-
     if let Some(ref impl_arg) = body.impl_arg {
         if can_be_generator {
             let impl_arg_ty = fcx.infcx.type_var_for_impl_arg(span, def_id);
