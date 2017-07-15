@@ -16,6 +16,7 @@
 #![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
 #![feature(const_fn)]
+#![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(iterator_step_by)]
 #![feature(pattern)]
