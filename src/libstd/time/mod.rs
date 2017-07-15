@@ -163,10 +163,7 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// This function will panic if `earlier` is later than `self`, which should
-    /// only be possible if `earlier` was created after `self`. Because
-    /// `Instant` is monotonic, the only time that this should happen should be
-    /// a bug.
+    /// This function will panic if `earlier` is later than `self`.
     ///
     /// # Examples
     ///
