@@ -135,12 +135,12 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 ///            get_path_prefix(r"\\?\pictures\kittens"));
 /// assert_eq!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")),
 ///            get_path_prefix(r"\\?\UNC\server\share"));
-/// assert_eq!(VerbatimDisk('C' as u8), get_path_prefix(r"\\?\c:\"));
+/// assert_eq!(VerbatimDisk(b'C'), get_path_prefix(r"\\?\c:\"));
 /// assert_eq!(DeviceNS(OsStr::new("BrainInterface")),
 ///            get_path_prefix(r"\\.\BrainInterface"));
 /// assert_eq!(UNC(OsStr::new("server"), OsStr::new("share")),
 ///            get_path_prefix(r"\\server\share"));
-/// assert_eq!(Disk('C' as u8), get_path_prefix(r"C:\Users\Rust\Pictures\Ferris"));
+/// assert_eq!(Disk(b'C'), get_path_prefix(r"C:\Users\Rust\Pictures\Ferris"));
 /// # }
 /// ```
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -235,10 +235,10 @@ impl<'a> Prefix<'a> {
     ///
     /// assert!(Verbatim(OsStr::new("pictures")).is_verbatim());
     /// assert!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")).is_verbatim());
-    /// assert!(VerbatimDisk('C' as u8).is_verbatim());
+    /// assert!(VerbatimDisk(b'C').is_verbatim());
     /// assert!(!DeviceNS(OsStr::new("BrainInterface")).is_verbatim());
     /// assert!(!UNC(OsStr::new("server"), OsStr::new("share")).is_verbatim());
-    /// assert!(!Disk('C' as u8).is_verbatim());
+    /// assert!(!Disk(b'C').is_verbatim());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -401,7 +401,7 @@ enum State {
 /// let path = Path::new(r"c:\you\later\");
 /// match path.components().next().unwrap() {
 ///     Component::Prefix(prefix_component) => {
-///         assert_eq!(Prefix::Disk('C' as u8), prefix_component.kind());
+///         assert_eq!(Prefix::Disk(b'C'), prefix_component.kind());
 ///         assert_eq!(OsStr::new("c:"), prefix_component.as_os_str());
 ///     }
 ///     _ => unreachable!(),
@@ -1040,7 +1040,7 @@ impl<'a> cmp::Ord for Components<'a> {
 /// [`Deref`]: ../ops/trait.Deref.html
 ///
 /// More details about the overall approach can be found in
-/// the module documentation.
+/// the [module documentation](index.html).
 ///
 /// # Examples
 ///
@@ -1186,7 +1186,7 @@ impl PathBuf {
         self.inner.push(path);
     }
 
-    /// Truncate `self` to [`self.parent`].
+    /// Truncates `self` to [`self.parent`].
     ///
     /// Returns `false` and does nothing if [`self.file_name`] is [`None`].
     /// Otherwise, returns `true`.
@@ -1512,7 +1512,7 @@ impl AsRef<OsStr> for PathBuf {
 /// [`PathBuf`]: struct.PathBuf.html
 ///
 /// More details about the overall approach can be found in
-/// the module documentation.
+/// the [module documentation](index.html).
 ///
 /// # Examples
 ///
@@ -1689,7 +1689,7 @@ impl Path {
         self.has_root() && (cfg!(unix) || cfg!(target_os = "redox") || self.prefix().is_some())
     }
 
-    /// Return `false` if the `Path` is relative, i.e. not absolute.
+    /// Returns `true` if the `Path` is relative, i.e. not absolute.
     ///
     /// See [`is_absolute`]'s documentation for more details.
     ///
@@ -2019,7 +2019,7 @@ impl Path {
     /// * Repeated separators are ignored, so `a/b` and `a//b` both have
     ///   `a` and `b` as components.
     ///
-    /// * Occurentces of `.` are normalized away, exept if they are at the
+    /// * Occurences of `.` are normalized away, except if they are at the
     ///   beginning of the path. For example, `a/./b`, `a/b/`, `a/b/.` and
     ///   `a/b` all have `a` and `b` as components, but `./a/b` starts with
     ///   an additional [`CurDir`] component.
