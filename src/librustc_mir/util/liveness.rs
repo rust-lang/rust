@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Liveness analysis.
-
-// FIXME: Make sure this analysis uses proper MIR semantics. Also find out what
-//        the MIR semantics are.
+//! Liveness analysis which computes liveness of MIR local variables at the boundary of basic blocks
 
 use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, Visitor};
@@ -47,15 +44,31 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
         if let Lvalue::Local(local) = *lvalue {
             match context {
                 LvalueContext::Store |
+
+                // We let Call defined the result in both the success and unwind cases.
+                // This may not be right.
                 LvalueContext::Call |
+
+                // Storage live and storage dead aren't proper defines, but we can ignore
+                // values that come before them.
                 LvalueContext::StorageLive |
                 LvalueContext::StorageDead => {
                     self.defs.add(&local);
                 }
                 LvalueContext::Projection(..) |
+
+                // Borrows only consider their local used at the point of the borrow.
+                // This won't affect the results since we use this analysis for generators
+                // and we only care about the result at suspension points. Borrows cannot
+                // cross suspension points so this behavoir is unproblematic.
                 LvalueContext::Borrow { .. } |
+
                 LvalueContext::Inspect |
                 LvalueContext::Consume |
+
+                // We consider drops to always be uses of locals.
+                // Drop eloboration should be run before this analysis otherwise
+                // the results might be too pessimistic.
                 LvalueContext::Drop => {
                     // Ignore uses which are already defined in this block
                     if !self.pre_defs.contains(&local) {
@@ -90,6 +103,7 @@ fn block<'tcx>(b: &BasicBlockData<'tcx>, locals: usize) -> BlockInfo {
     }
 }
 
+// This gives the result of the liveness analysis at the boundary of basic blocks
 pub struct LivenessResult {
     pub ins: IndexVec<BasicBlock, LocalSet>,
     pub outs: IndexVec<BasicBlock, LocalSet>,
