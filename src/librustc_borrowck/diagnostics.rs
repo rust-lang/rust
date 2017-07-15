@@ -1188,6 +1188,7 @@ This error occurs because a borrow in a generator persists across a
 yield point.
 
 ```compile_fail,E0624
+# #![feature(generators)]
 let mut b = || {
     let a = &3; // <-- This borrow...
     yield (); // ...is still in scope here, when the yield occurs.
@@ -1204,6 +1205,7 @@ resolve the previous example by removing the borrow and just storing
 the integer by value:
 
 ```
+# #![feature(generators)]
 let mut b = || {
     let a = 3;
     yield ();
@@ -1219,6 +1221,7 @@ in those cases, something like the `Rc` or `Arc` types may be useful.
 This error also frequently arises with iteration:
 
 ```compile_fail,E0624
+# #![feature(generators)]
 let mut b = || {
   let v = vec![1,2,3];
   for &x in &v { // <-- borrow of `v` is still in scope...
@@ -1232,6 +1235,7 @@ Such cases can sometimes be resolved by iterating "by value" (or using
 `into_iter()`) to avoid borrowing:
 
 ```
+# #![feature(generators)]
 let mut b = || {
   let v = vec![1,2,3];
   for x in v { // <-- Take ownership of the values instead!
@@ -1244,6 +1248,7 @@ b.resume();
 If taking ownership is not an option, using indices can work too:
 
 ```
+# #![feature(generators)]
 let mut b = || {
   let v = vec![1,2,3];
   let len = v.len(); // (*)
