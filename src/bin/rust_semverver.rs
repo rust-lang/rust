@@ -31,77 +31,32 @@ fn callback(state: &driver::CompileState, version: &str) {
     let tcx = state.tcx.unwrap();
     let cstore = &tcx.sess.cstore;
 
-    let (old_did, new_did) = if std::env::var("RUST_SEMVERVER_TEST").is_err() {
-        // this is an actual program run
-        let cnums = cstore
-            .crates()
-            .iter()
-            .fold((None, None), |(o, n), crate_num| {
-                let name = cstore.crate_name(*crate_num);
-                if name == "old" {
-                    (Some(*crate_num), n)
-                } else if name == "new" {
-                    (o, Some(*crate_num))
-                } else {
-                    (o, n)
-                }
-            });
-        if let (Some(c0), Some(c1)) = cnums {
-            (DefId {
-                 krate: c0,
-                 index: CRATE_DEF_INDEX,
-             },
-             DefId {
-                 krate: c1,
-                 index: CRATE_DEF_INDEX,
-             })
-        } else {
-            tcx.sess.err("could not find crate `old` and/or `new`");
-            return;
-        }
-    } else {
-        // we are testing, so just fetch the *modules* `old` and `new` from a crate `oldandnew`
-        let cnum = cstore
-            .crates()
-            .iter()
-            .fold(None,
-                  |k, crate_num| if cstore.crate_name(*crate_num) == "oldandnew" {
-                      Some(*crate_num)
-                  } else {
-                      k
-                  });
-
-        let mod_did = if let Some(c) = cnum {
-            DefId {
-                krate: c,
-                index: CRATE_DEF_INDEX,
+    let cnums = cstore
+        .crates()
+        .iter()
+        .fold((None, None), |(o, n), crate_num| {
+            let name = cstore.crate_name(*crate_num);
+            if name == "old" {
+                (Some(*crate_num), n)
+            } else if name == "new" {
+                (o, Some(*crate_num))
+            } else {
+                (o, n)
             }
-        } else {
-            tcx.sess.err("could not find crate `oldandnew`");
-            return;
-        };
+        });
 
-        let mut children = cstore.item_children(mod_did, tcx.sess);
-
-        let dids = children
-            .drain(..)
-            .fold((None, None), |(o, n), child| {
-                let child_name = String::from(&*child.ident.name.as_str());
-                if child_name == "old" {
-                    (Some(child.def.def_id()), n)
-                } else if child_name == "new" {
-                    (o, Some(child.def.def_id()))
-                } else {
-                    (o, n)
-                }
-            });
-
-        if let (Some(o), Some(n)) = dids {
-            (o, n)
-        } else {
-            tcx.sess.err("could not find module `new` and/or `old` in crate `oldandnew`");
-            return;
-        }
+    let (old_did, new_did) = if let (Some(c0), Some(c1)) = cnums {
+        (DefId {
+             krate: c0,
+             index: CRATE_DEF_INDEX,
+         },
+         DefId {
+             krate: c1,
+             index: CRATE_DEF_INDEX,
+         })
+    } else {
+        tcx.sess.err("could not find crate `old` and/or `new`");
+        return;
     };
 
     let changes = run_analysis(tcx, old_did, new_did);
