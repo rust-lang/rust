@@ -13,8 +13,8 @@
 fn foo(_b: &bool, _a: ()) {}
 
 fn main() {
-	|| {
-		let b = true;
-		foo(&b, yield);
-	}; //~ ERROR `b` does not live long enough
+    || {
+        let b = true;
+        foo(&b, yield);
+    }; //~ ERROR `b` does not live long enough
 }
