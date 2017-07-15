@@ -1615,8 +1615,15 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             "target-features" => PrintRequest::TargetFeatures,
             "relocation-models" => PrintRequest::RelocationModels,
             "code-models" => PrintRequest::CodeModels,
-            "target-spec-json" if nightly_options::is_unstable_enabled(matches)
-                => PrintRequest::TargetSpec,
+            "target-spec-json" => {
+                if nightly_options::is_unstable_enabled(matches) {
+                    PrintRequest::TargetSpec
+                } else {
+                    early_error(error_format,
+                                &format!("the `-Z unstable-options` flag must also be passed to \
+                                          enable the target-spec-json print option"));
+                }
+            },
             req => {
                 early_error(error_format, &format!("unknown print request `{}`", req))
             }
