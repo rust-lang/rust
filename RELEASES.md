@@ -29,7 +29,7 @@ Compiler
   `aborting due to N previous errors`][42150] This was previously inaccurate and
   would only count certain kinds of errors.
 - [The compiler now supports Visual Studio 2017][42225]
-- [The compiler is now be built against LLVM 4.0.1 by default][42948]
+- [The compiler is now built against LLVM 4.0.1 by default][42948]
 - [Added a lot][42264] of [new error codes][42302]
 - [Added `target-feature=+crt-static` option][37406] [RFC 1721] Which allows
   libraries with C Run-time Libraries(CRT) to be statically linked.
@@ -103,8 +103,6 @@ Compatibility Notes
   command, which has been available since 1.16.
 - [Ending a float literal with `._` is now a hard error.
   Example: `42._` .][41946]
-- [Publicly reexporting a private enum variant is now a hard error][34537] This was
-  previously a warning.
 - [Any use of a private `extern crate` outside of it's module is now a
   hard error.][36886] This was previously a warning.
 - [`use ::self::foo;` is now a hard error.][36888] `self` paths are always
@@ -125,7 +123,6 @@ Compatibility Notes
   to use it to find the linker, and the build will fail where it did
   not previously][42607]
 
-[34537]: https://github.com/rust-lang/rust/issues/34537
 [36886]: https://github.com/rust-lang/rust/issues/36886
 [36888]: https://github.com/rust-lang/rust/issues/36888
 [36890]: https://github.com/rust-lang/rust/issues/36890
