@@ -2550,8 +2550,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 let is_closure = match arg.node {
-                    // FIXME: Should this be applied for generators?
-                    hir::ExprClosure(.., hir::IsGenerator::No) => true,
+                    hir::ExprClosure(..) => true,
                     _ => false
                 };
 
