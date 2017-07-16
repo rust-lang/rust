@@ -244,10 +244,10 @@ mod std {
 pub enum Bound<T> {
     /// An inclusive bound.
     #[stable(feature = "collections_bound", since = "1.17.0")]
-    Included(T),
+    Included(#[stable(feature = "collections_bound", since = "1.17.0")] T),
     /// An exclusive bound.
     #[stable(feature = "collections_bound", since = "1.17.0")]
-    Excluded(T),
+    Excluded(#[stable(feature = "collections_bound", since = "1.17.0")] T),
     /// An infinite endpoint. Indicates that there is no bound in this direction.
     #[stable(feature = "collections_bound", since = "1.17.0")]
     Unbounded,

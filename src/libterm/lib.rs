@@ -51,7 +51,6 @@
 #![deny(missing_docs)]
 #![deny(warnings)]
 
-#![feature(staged_api)]
 #![cfg_attr(windows, feature(libc))]
 // Handle rustfmt skips
 #![feature(custom_attribute)]
