@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use serde::Deserialize;
-use serde::de::{self, Deserializer, Visitor};
-
 use std::any::{Any, TypeId};
 use std::borrow::Borrow;
 use std::cell::RefCell;
@@ -29,29 +26,6 @@ use builder::Step;
 
 pub struct Interned<T>(usize, PhantomData<*const T>);
 
-impl<'de> Deserialize<'de> for Interned<String> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: Deserializer<'de>
-    {
-        struct StrVisitor;
-
-        impl<'de> Visitor<'de> for StrVisitor {
-            type Value = &'de str;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a str")
-            }
-
-            fn visit_borrowed_str<E>(self, value: &'de str) -> Result<&'de str, E>
-                where E: de::Error
-            {
-                Ok(value)
-            }
-        }
-
-        Ok(INTERNER.intern_str(deserializer.deserialize_str(StrVisitor)?))
-    }
-}
 impl Default for Interned<String> {
     fn default() -> Self {
         INTERNER.intern_string(String::default())

@@ -16,7 +16,7 @@ use build_helper::output;
 use serde_json;
 
 use {Build, Crate};
-use cache::Interned;
+use cache::INTERNER;
 
 #[derive(Deserialize)]
 struct Output {
@@ -27,7 +27,7 @@ struct Output {
 #[derive(Deserialize)]
 struct Package {
     id: String,
-    name: Interned<String>,
+    name: String,
     version: String,
     source: Option<String>,
     manifest_path: String,
@@ -66,15 +66,16 @@ fn build_krate(build: &mut Build, krate: &str) {
     let mut id2name = HashMap::new();
     for package in output.packages {
         if package.source.is_none() {
-            id2name.insert(package.id, package.name);
+            let name = INTERNER.intern_string(package.name);
+            id2name.insert(package.id, name);
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
-            build.crates.insert(package.name, Crate {
-                build_step: format!("build-crate-{}", package.name),
-                doc_step: format!("doc-crate-{}", package.name),
-                test_step: format!("test-crate-{}", package.name),
-                bench_step: format!("bench-crate-{}", package.name),
-                name: package.name,
+            build.crates.insert(name, Crate {
+                build_step: format!("build-crate-{}", name),
+                doc_step: format!("doc-crate-{}", name),
+                test_step: format!("test-crate-{}", name),
+                bench_step: format!("bench-crate-{}", name),
+                name: name,
                 version: package.version,
                 deps: Vec::new(),
                 path: path,
