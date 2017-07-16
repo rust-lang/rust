@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.144
+* Update to *rustc 1.20.0-nightly (086eaa78e 2017-07-15)*
+
 ## 0.0.143
 * Update to *rustc 1.20.0-nightly (d84693b93 2017-07-09)*
 * Fix `cargo clippy` crashing on `dylib` projects
