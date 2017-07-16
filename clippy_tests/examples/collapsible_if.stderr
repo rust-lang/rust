@@ -10,9 +10,11 @@ error: this if statement can be collapsed
    |
    = note: `-D collapsible-if` implied by `-D warnings`
 help: try
-   |     if x == "hello" && y == "world" {
-   |     println!("Hello world!");
-   | }
+   |
+8  |     if x == "hello" && y == "world" {
+9  |     println!("Hello world!");
+10 | }
+   |
 
 error: this if statement can be collapsed
   --> collapsible_if.rs:14:5
@@ -25,9 +27,11 @@ error: this if statement can be collapsed
    | |_____^
    |
 help: try
-   |     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
-   |     println!("Hello world!");
-   | }
+   |
+14 |     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
+15 |     println!("Hello world!");
+16 | }
+   |
 
 error: this if statement can be collapsed
   --> collapsible_if.rs:20:5
@@ -40,9 +44,11 @@ error: this if statement can be collapsed
    | |_____^
    |
 help: try
-   |     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
-   |     println!("Hello world!");
-   | }
+   |
+20 |     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
+21 |     println!("Hello world!");
+22 | }
+   |
 
 error: this if statement can be collapsed
   --> collapsible_if.rs:26:5
@@ -55,9 +61,11 @@ error: this if statement can be collapsed
    | |_____^
    |
 help: try
-   |     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
-   |     println!("Hello world!");
-   | }
+   |
+26 |     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
+27 |     println!("Hello world!");
+28 | }
+   |
 
 error: this if statement can be collapsed
   --> collapsible_if.rs:32:5
@@ -70,9 +78,11 @@ error: this if statement can be collapsed
    | |_____^
    |
 help: try
-   |     if x == "hello" && x == "world" && y == "world" && y == "hello" {
-   |     println!("Hello world!");
-   | }
+   |
+32 |     if x == "hello" && x == "world" && y == "world" && y == "hello" {
+33 |     println!("Hello world!");
+34 | }
+   |
 
 error: this if statement can be collapsed
   --> collapsible_if.rs:38:5
@@ -85,9 +95,11 @@ error: this if statement can be collapsed
    | |_____^
    |
 help: try
-   |     if 42 == 1337 && 'a' != 'A' {
-   |     println!("world!")
-   | }
+   |
+38 |     if 42 == 1337 && 'a' != 'A' {
+39 |     println!("world!")
+40 | }
+   |
 
 error: this `else { if .. }` block can be collapsed
   --> collapsible_if.rs:47:12
@@ -101,9 +113,11 @@ error: this `else { if .. }` block can be collapsed
    | |_____^
    |
 help: try
-   |     } else if y == "world" {
-   |     println!("world!")
-   | }
+   |
+47 |     } else if y == "world" {
+48 |     println!("world!")
+49 | }
+   |
 
 error: this `else { if .. }` block can be collapsed
   --> collapsible_if.rs:55:12
@@ -117,9 +131,11 @@ error: this `else { if .. }` block can be collapsed
    | |_____^
    |
 help: try
-   |     } else if let Some(42) = Some(42) {
-   |     println!("world!")
-   | }
+   |
+55 |     } else if let Some(42) = Some(42) {
+56 |     println!("world!")
+57 | }
+   |
 
 error: this `else { if .. }` block can be collapsed
   --> collapsible_if.rs:63:12
@@ -135,12 +151,14 @@ error: this `else { if .. }` block can be collapsed
    | |_____^
    |
 help: try
-   |     } else if y == "world" {
-   |     println!("world")
-   | }
-   | else {
-   |     println!("!")
-   | }
+   |
+63 |     } else if y == "world" {
+64 |     println!("world")
+65 | }
+66 | else {
+67 |     println!("!")
+68 | }
+   |
 
 error: this `else { if .. }` block can be collapsed
   --> collapsible_if.rs:74:12
@@ -156,12 +174,14 @@ error: this `else { if .. }` block can be collapsed
    | |_____^
    |
 help: try
-   |     } else if let Some(42) = Some(42) {
-   |     println!("world")
-   | }
-   | else {
-   |     println!("!")
-   | }
+   |
+74 |     } else if let Some(42) = Some(42) {
+75 |     println!("world")
+76 | }
+77 | else {
+78 |     println!("!")
+79 | }
+   |
 
 error: this `else { if .. }` block can be collapsed
   --> collapsible_if.rs:85:12
@@ -177,12 +197,14 @@ error: this `else { if .. }` block can be collapsed
    | |_____^
    |
 help: try
-   |     } else if let Some(42) = Some(42) {
-   |     println!("world")
-   | }
-   | else {
-   |     println!("!")
-   | }
+   |
+85 |     } else if let Some(42) = Some(42) {
+86 |     println!("world")
+87 | }
+88 | else {
+89 |     println!("!")
+90 | }
+   |
 
 error: this `else { if .. }` block can be collapsed
    --> collapsible_if.rs:96:12
@@ -198,12 +220,14 @@ error: this `else { if .. }` block can be collapsed
     | |_____^
     |
 help: try
-    |     } else if x == "hello" {
-    |     println!("world")
-    | }
-    | else {
-    |     println!("!")
-    | }
+    |
+96  |     } else if x == "hello" {
+97  |     println!("world")
+98  | }
+99  | else {
+100 |     println!("!")
+101 | }
+    |
 
 error: this `else { if .. }` block can be collapsed
    --> collapsible_if.rs:107:12
@@ -219,12 +243,14 @@ error: this `else { if .. }` block can be collapsed
     | |_____^
     |
 help: try
-    |     } else if let Some(42) = Some(42) {
-    |     println!("world")
-    | }
-    | else {
-    |     println!("!")
-    | }
+    |
+107 |     } else if let Some(42) = Some(42) {
+108 |     println!("world")
+109 | }
+110 | else {
+111 |     println!("!")
+112 | }
+    |
 
 error: aborting due to 13 previous errors
 

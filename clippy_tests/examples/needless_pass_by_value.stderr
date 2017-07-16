@@ -31,8 +31,10 @@ error: this argument is passed by value, but not consumed in the function body
    |                  ^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider taking a reference instead
-   | fn test_match(x: &Option<Option<String>>, y: Option<Option<String>>) {
-   |     match *x {
+   |
+40 | fn test_match(x: &Option<Option<String>>, y: Option<Option<String>>) {
+41 |     match *x {
+   |
 
 error: this argument is passed by value, but not consumed in the function body
   --> needless_pass_by_value.rs:53:24
@@ -47,10 +49,12 @@ error: this argument is passed by value, but not consumed in the function body
    |                                    ^^^^^^^
    |
 help: consider taking a reference instead
-   | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
-   |     let Wrapper(s) = z; // moved
-   |     let Wrapper(ref t) = *y; // not moved
-   |     let Wrapper(_) = *y; // still not moved
+   |
+53 | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
+54 |     let Wrapper(s) = z; // moved
+55 |     let Wrapper(ref t) = *y; // not moved
+56 |     let Wrapper(_) = *y; // still not moved
+   |
 
 error: aborting due to 7 previous errors
 

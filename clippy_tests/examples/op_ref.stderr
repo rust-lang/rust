@@ -6,7 +6,9 @@ error: needlessly taken reference of both operands
    |
    = note: `-D op-ref` implied by `-D warnings`
 help: use the values directly
-   |     let foo = 5 - 6;
+   |
+13 |     let foo = 5 - 6;
+   |               ^
 
 error: aborting due to previous error
 

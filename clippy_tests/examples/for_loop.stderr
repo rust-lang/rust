@@ -80,7 +80,9 @@ error: the loop variable `i` is only used to index `vec`.
    |
    = note: `-D needless-range-loop` implied by `-D warnings`
 help: consider using an iterator
-   |     for <item> in &vec {
+   |
+84 |     for <item> in &vec {
+   |         ^^^^^^
 
 error: unused variable: `i`
   --> for_loop.rs:88:9
@@ -97,7 +99,9 @@ error: the loop variable `i` is only used to index `vec`.
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using an iterator
-   |     for <item> in &vec { let _ = vec[i]; }
+   |
+93 |     for <item> in &vec { let _ = vec[i]; }
+   |         ^^^^^^
 
 error: the loop variable `j` is only used to index `STATIC`.
   --> for_loop.rs:96:5
@@ -108,7 +112,9 @@ error: the loop variable `j` is only used to index `STATIC`.
    | |_____^
    |
 help: consider using an iterator
-   |     for <item> in STATIC.iter().take(4) {
+   |
+96 |     for <item> in STATIC.iter().take(4) {
+   |         ^^^^^^
 
 error: the loop variable `j` is only used to index `CONST`.
    --> for_loop.rs:100:5
@@ -119,7 +125,9 @@ error: the loop variable `j` is only used to index `CONST`.
     | |_____^
     |
 help: consider using an iterator
-    |     for <item> in CONST.iter().take(4) {
+    |
+100 |     for <item> in CONST.iter().take(4) {
+    |         ^^^^^^
 
 error: the loop variable `i` is used to index `vec`
    --> for_loop.rs:104:5
@@ -130,7 +138,9 @@ error: the loop variable `i` is used to index `vec`
     | |_____^
     |
 help: consider using an iterator
-    |     for (i, <item>) in vec.iter().enumerate() {
+    |
+104 |     for (i, <item>) in vec.iter().enumerate() {
+    |         ^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `vec2`.
    --> for_loop.rs:111:5
@@ -141,7 +151,9 @@ error: the loop variable `i` is only used to index `vec2`.
     | |_____^
     |
 help: consider using an iterator
-    |     for <item> in vec2.iter().take(vec.len()) {
+    |
+111 |     for <item> in vec2.iter().take(vec.len()) {
+    |         ^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
    --> for_loop.rs:115:5
@@ -152,7 +164,9 @@ error: the loop variable `i` is only used to index `vec`.
     | |_____^
     |
 help: consider using an iterator
-    |     for <item> in vec.iter().skip(5) {
+    |
+115 |     for <item> in vec.iter().skip(5) {
+    |         ^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
    --> for_loop.rs:119:5
@@ -163,7 +177,9 @@ error: the loop variable `i` is only used to index `vec`.
     | |_____^
     |
 help: consider using an iterator
-    |     for <item> in vec.iter().take(MAX_LEN) {
+    |
+119 |     for <item> in vec.iter().take(MAX_LEN) {
+    |         ^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
    --> for_loop.rs:123:5
@@ -174,7 +190,9 @@ error: the loop variable `i` is only used to index `vec`.
     | |_____^
     |
 help: consider using an iterator
-    |     for <item> in vec.iter().take(MAX_LEN + 1) {
+    |
+123 |     for <item> in vec.iter().take(MAX_LEN + 1) {
+    |         ^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
    --> for_loop.rs:127:5
@@ -185,7 +203,9 @@ error: the loop variable `i` is only used to index `vec`.
     | |_____^
     |
 help: consider using an iterator
-    |     for <item> in vec.iter().take(10).skip(5) {
+    |
+127 |     for <item> in vec.iter().take(10).skip(5) {
+    |         ^^^^^^
 
 error: the loop variable `i` is only used to index `vec`.
    --> for_loop.rs:131:5
@@ -196,7 +216,9 @@ error: the loop variable `i` is only used to index `vec`.
     | |_____^
     |
 help: consider using an iterator
-    |     for <item> in vec.iter().take(10 + 1).skip(5) {
+    |
+131 |     for <item> in vec.iter().take(10 + 1).skip(5) {
+    |         ^^^^^^
 
 error: the loop variable `i` is used to index `vec`
    --> for_loop.rs:135:5
@@ -207,7 +229,9 @@ error: the loop variable `i` is used to index `vec`
     | |_____^
     |
 help: consider using an iterator
-    |     for (i, <item>) in vec.iter().enumerate().skip(5) {
+    |
+135 |     for (i, <item>) in vec.iter().enumerate().skip(5) {
+    |         ^^^^^^^^^^^
 
 error: the loop variable `i` is used to index `vec`
    --> for_loop.rs:139:5
@@ -218,7 +242,9 @@ error: the loop variable `i` is used to index `vec`
     | |_____^
     |
 help: consider using an iterator
-    |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
+    |
+139 |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
+    |         ^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
    --> for_loop.rs:143:5
@@ -230,7 +256,9 @@ error: this range is empty so this for loop will never run
     |
     = note: `-D reverse-range-loop` implied by `-D warnings`
 help: consider using the following if you are attempting to iterate over this range in reverse
-    |     for i in (0..10).rev() {
+    |
+143 |     for i in (0..10).rev() {
+    |              ^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
    --> for_loop.rs:147:5
@@ -241,7 +269,9 @@ error: this range is empty so this for loop will never run
     | |_____^
     |
 help: consider using the following if you are attempting to iterate over this range in reverse
-    |     for i in (0...10).rev() {
+    |
+147 |     for i in (0...10).rev() {
+    |              ^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
    --> for_loop.rs:151:5
@@ -252,7 +282,9 @@ error: this range is empty so this for loop will never run
     | |_____^
     |
 help: consider using the following if you are attempting to iterate over this range in reverse
-    |     for i in (0..MAX_LEN).rev() {
+    |
+151 |     for i in (0..MAX_LEN).rev() {
+    |              ^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
    --> for_loop.rs:155:5
@@ -271,7 +303,9 @@ error: this range is empty so this for loop will never run
     | |_____^
     |
 help: consider using the following if you are attempting to iterate over this range in reverse
-    |     for i in (5+4..10).rev() {
+    |
+176 |     for i in (5+4..10).rev() {
+    |              ^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
    --> for_loop.rs:180:5
@@ -282,7 +316,9 @@ error: this range is empty so this for loop will never run
     | |_____^
     |
 help: consider using the following if you are attempting to iterate over this range in reverse
-    |     for i in ((3-1)..(5+2)).rev() {
+    |
+180 |     for i in ((3-1)..(5+2)).rev() {
+    |              ^^^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
    --> for_loop.rs:184:5
@@ -383,8 +419,8 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
 error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
    --> for_loop.rs:252:5
     |
-252 |     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+252 |     vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D unused-collect` implied by `-D warnings`
 
@@ -412,7 +448,9 @@ error: you seem to want to iterate on a map's values
     |
     = note: `-D for-kv-map` implied by `-D warnings`
 help: use the corresponding method
-    |     for v in m.values() {
+    |
+321 |     for v in m.values() {
+    |         ^
 
 error: you seem to want to iterate on a map's values
    --> for_loop.rs:326:5
@@ -425,7 +463,9 @@ error: you seem to want to iterate on a map's values
     | |_____^
     |
 help: use the corresponding method
-    |     for v in (*m).values() {
+    |
+326 |     for v in (*m).values() {
+    |         ^
 
 error: you seem to want to iterate on a map's values
    --> for_loop.rs:333:5
@@ -436,7 +476,9 @@ error: you seem to want to iterate on a map's values
     | |_____^
     |
 help: use the corresponding method
-    |     for v in m.values_mut() {
+    |
+333 |     for v in m.values_mut() {
+    |         ^
 
 error: you seem to want to iterate on a map's values
    --> for_loop.rs:338:5
@@ -447,7 +489,9 @@ error: you seem to want to iterate on a map's values
     | |_____^
     |
 help: use the corresponding method
-    |     for v in (*m).values_mut() {
+    |
+338 |     for v in (*m).values_mut() {
+    |         ^
 
 error: you seem to want to iterate on a map's keys
    --> for_loop.rs:344:5
@@ -458,7 +502,9 @@ error: you seem to want to iterate on a map's keys
     | |_____^
     |
 help: use the corresponding method
-    |     for k in rm.keys() {
+    |
+344 |     for k in rm.keys() {
+    |         ^
 
 error: aborting due to 51 previous errors
 

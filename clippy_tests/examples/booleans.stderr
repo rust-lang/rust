@@ -74,8 +74,11 @@ error: this boolean expression can be simplified
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: try
-   |     let _ = a == b && c == 5;
-   |     let _ = !(c != 5 || a != b);
+   |
+34 |     let _ = a == b && c == 5;
+   |             ^^^^^^^^^^^^^^^^
+34 |     let _ = !(c != 5 || a != b);
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error: this boolean expression can be simplified
   --> booleans.rs:35:13
@@ -84,8 +87,11 @@ error: this boolean expression can be simplified
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: try
-   |     let _ = a == b && c == 5;
-   |     let _ = !(c != 5 || a != b);
+   |
+35 |     let _ = a == b && c == 5;
+   |             ^^^^^^^^^^^^^^^^
+35 |     let _ = !(c != 5 || a != b);
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error: this boolean expression contains a logic bug
   --> booleans.rs:36:13
@@ -118,8 +124,11 @@ error: this boolean expression can be simplified
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: try
-   |     let _ = c != d || a != b;
-   |     let _ = !(a == b && c == d);
+   |
+39 |     let _ = c != d || a != b;
+   |             ^^^^^^^^^^^^^^^^
+39 |     let _ = !(a == b && c == d);
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 13 previous errors
 

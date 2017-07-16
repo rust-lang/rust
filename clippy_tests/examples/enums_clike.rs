@@ -1,5 +1,5 @@
 // ignore-x86
-#![feature(plugin, associated_consts)]
+#![feature(plugin)]
 #![plugin(clippy)]
 #![warn(clippy)]
 

@@ -34,9 +34,13 @@ error: this is a decimal constant
    |
    = note: `-D zero-prefixed-literal` implied by `-D warnings`
 help: if you mean to use a decimal constant, remove the `0` to remove confusion:
-   |     let fail_multi_zero = 123usize;
+   |
+17 |     let fail_multi_zero = 123usize;
+   |                           ^^^^^^^^
 help: if you mean to use an octal constant, use `0o`:
-   |     let fail_multi_zero = 0o123usize;
+   |
+17 |     let fail_multi_zero = 0o123usize;
+   |                           ^^^^^^^^^^
 
 error: integer type suffix should be separated by an underscore
   --> literals.rs:22:17
@@ -75,9 +79,13 @@ error: this is a decimal constant
    |                 ^^^^
    |
 help: if you mean to use a decimal constant, remove the `0` to remove confusion:
-   |     let fail8 = 123;
+   |
+30 |     let fail8 = 123;
+   |                 ^^^
 help: if you mean to use an octal constant, use `0o`:
-   |     let fail8 = 0o123;
+   |
+30 |     let fail8 = 0o123;
+   |                 ^^^^^
 
 error: aborting due to 11 previous errors
 

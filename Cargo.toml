@@ -28,6 +28,7 @@ test = false
 [[bin]]
 name = "cargo-clippy"
 test = false
+path = "src/main.rs"
 
 [dependencies]
 # begin automatic update
