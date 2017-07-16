@@ -40,6 +40,7 @@ pub mod deaggregator;
 pub mod instcombine;
 pub mod copy_prop;
 pub mod inline;
+pub mod nll;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);
