@@ -75,10 +75,26 @@ struct TypeVariableData {
     diverging: bool
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum TypeVariableValue<'tcx> {
+#[derive(Copy, Clone, Debug)]
+pub enum TypeVariableValue<'tcx> {
     Known { value: Ty<'tcx> },
     Unknown,
+}
+
+impl<'tcx> TypeVariableValue<'tcx> {
+    pub fn known(&self) -> Option<Ty<'tcx>> {
+        match *self {
+            TypeVariableValue::Unknown { .. } => None,
+            TypeVariableValue::Known { value } => Some(value),
+        }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        match *self {
+            TypeVariableValue::Unknown { .. } => true,
+            TypeVariableValue::Known { .. } => false,
+        }
+    }
 }
 
 pub struct Snapshot<'tcx> {
@@ -121,8 +137,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///
     /// Precondition: neither `a` nor `b` are known.
     pub fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
-        debug_assert!(self.probe(a).is_none());
-        debug_assert!(self.probe(b).is_none());
+        debug_assert!(self.probe(a).is_unknown());
+        debug_assert!(self.probe(b).is_unknown());
         self.eq_relations.union(a, b);
         self.sub_relations.union(a, b);
     }
@@ -131,8 +147,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///
     /// Precondition: neither `a` nor `b` are known.
     pub fn sub(&mut self, a: ty::TyVid, b: ty::TyVid) {
-        debug_assert!(self.probe(a).is_none());
-        debug_assert!(self.probe(b).is_none());
+        debug_assert!(self.probe(a).is_unknown());
+        debug_assert!(self.probe(b).is_unknown());
         self.sub_relations.union(a, b);
     }
 
@@ -141,8 +157,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// Precondition: `vid` must not have been previously instantiated.
     pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
         let vid = self.root_var(vid);
-        debug_assert!(self.probe(vid).is_none());
-        debug_assert!(self.eq_relations.probe_value(vid) == TypeVariableValue::Unknown,
+        debug_assert!(self.probe(vid).is_unknown());
+        debug_assert!(self.eq_relations.probe_value(vid).is_unknown(),
                       "instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
                       vid, ty, self.eq_relations.probe_value(vid));
         self.eq_relations.union_value(vid, TypeVariableValue::Known { value: ty });
@@ -208,12 +224,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     /// Retrieves the type to which `vid` has been instantiated, if
     /// any.
-    pub fn probe(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
-        let vid = self.root_var(vid);
-        match self.eq_relations.probe_value(vid) {
-            TypeVariableValue::Unknown => None,
-            TypeVariableValue::Known { value } => Some(value)
-        }
+    pub fn probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
+        self.eq_relations.probe_value(vid)
     }
 
     /// If `t` is a type-inference variable, and it has been
@@ -223,8 +235,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
         match t.sty {
             ty::TyInfer(ty::TyVar(v)) => {
                 match self.probe(v) {
-                    None => t,
-                    Some(u) => u
+                    TypeVariableValue::Unknown { .. } => t,
+                    TypeVariableValue::Known { value } => value,
                 }
             }
             _ => t,
@@ -310,12 +322,9 @@ impl<'tcx> TypeVariableTable<'tcx> {
         // use the less efficient algorithm for now.
         let mut escaping_types = Vec::with_capacity(snapshot.num_vars);
         escaping_types.extend(
-            (0..snapshot.num_vars) // for all variables that pre-exist the snapshot...
+            (0..snapshot.num_vars) // for all variables that pre-exist the snapshot, collect..
                 .map(|i| ty::TyVid { index: i as u32 })
-                .filter_map(|vid| match self.eq_relations.probe_value(vid) {
-                    TypeVariableValue::Unknown => None,
-                    TypeVariableValue::Known { value } => Some(value),
-                })); // ...collect what types they've been instantiated with.
+                .filter_map(|vid| self.probe(vid).known())); // ..types they are instantiated with.
         debug!("types_escaping_snapshot = {:?}", escaping_types);
         escaping_types
     }
@@ -326,10 +335,9 @@ impl<'tcx> TypeVariableTable<'tcx> {
         (0..self.var_data.len())
             .filter_map(|i| {
                 let vid = ty::TyVid { index: i as u32 };
-                if self.probe(vid).is_some() {
-                    None
-                } else {
-                    Some(vid)
+                match self.probe(vid) {
+                    TypeVariableValue::Unknown { .. } => Some(vid),
+                    TypeVariableValue::Known { .. } => None,
                 }
             })
             .collect()

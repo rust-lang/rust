@@ -34,10 +34,10 @@
 
 use super::equate::Equate;
 use super::glb::Glb;
+use super::{InferCtxt, MiscVariable, TypeTrace};
 use super::lub::Lub;
 use super::sub::Sub;
-use super::InferCtxt;
-use super::{MiscVariable, TypeTrace};
+use super::type_variable::TypeVariableValue;
 
 use hir::def_id::DefId;
 use ty::{IntType, UintType};
@@ -194,7 +194,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         use self::RelationDir::*;
 
         // Get the actual variable that b_vid has been inferred to
-        debug_assert!(self.infcx.type_variables.borrow_mut().probe(b_vid).is_none());
+        debug_assert!(self.infcx.type_variables.borrow_mut().probe(b_vid).is_unknown());
 
         debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})", a_ty, dir, b_vid);
 
@@ -389,11 +389,11 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                     return Err(TypeError::CyclicTy);
                 } else {
                     match variables.probe(vid) {
-                        Some(u) => {
+                        TypeVariableValue::Known { value: u } => {
                             drop(variables);
                             self.relate(&u, &u)
                         }
-                        None => {
+                        TypeVariableValue::Unknown { .. } => {
                             match self.ambient_variance {
                                 // Invariant: no need to make a fresh type variable.
                                 ty::Invariant => return Ok(t),
