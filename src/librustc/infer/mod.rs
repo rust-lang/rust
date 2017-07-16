@@ -1259,9 +1259,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // so this recursion should always be of very limited
                 // depth.
                 self.type_variables.borrow_mut()
-                    .probe(v)
-                    .map(|t| self.shallow_resolve(t))
-                    .unwrap_or(typ)
+                                   .probe(v)
+                                   .known()
+                                   .map(|t| self.shallow_resolve(t))
+                                   .unwrap_or(typ)
             }
 
             ty::TyInfer(ty::IntVar(v)) => {

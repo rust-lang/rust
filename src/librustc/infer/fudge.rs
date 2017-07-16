@@ -131,7 +131,9 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         // variables to their binding anyhow, we know
                         // that it is unbound, so we can just return
                         // it.
-                        debug_assert!(self.infcx.type_variables.borrow_mut().probe(vid).is_none());
+                        debug_assert!(self.infcx.type_variables.borrow_mut()
+                                      .probe(vid)
+                                      .is_unknown());
                         ty
                     }
 

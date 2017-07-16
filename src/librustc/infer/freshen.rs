@@ -133,7 +133,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
 
         match t.sty {
             ty::TyInfer(ty::TyVar(v)) => {
-                let opt_ty = self.infcx.type_variables.borrow_mut().probe(v);
+                let opt_ty = self.infcx.type_variables.borrow_mut().probe(v).known();
                 self.freshen(
                     opt_ty,
                     ty::TyVar(v),
