@@ -1,10 +1,9 @@
 //! Change representation.
 //!
 //! This module provides data types to represent, store and record changes found in various
-//! analysis passes. We distinguish between "unary" and "binary" changes, depending on whether
-//! there is a single item affected in one crate version or a matching item in the other crate
-//! version as well. The ordering of changes and output generation is performed using these data
-//! structures, too.
+//! analysis passes. We distinguish between path changes and regular changes, which represent
+//! changes to the export structure of the crate and to specific items, respectively. The
+//! ordering of changes and output generation is performed using these data structures, too.
 
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
@@ -14,6 +13,7 @@ use semver::Version;
 
 use std::collections::{BTreeSet, BTreeMap, HashMap};
 use std::cmp::Ordering;
+use std::fmt;
 
 use syntax::symbol::Symbol;
 
@@ -43,6 +43,19 @@ pub use self::ChangeCategory::*;
 impl<'a> Default for ChangeCategory {
     fn default() -> ChangeCategory {
         Patch
+    }
+}
+
+impl<'a> fmt::Display for ChangeCategory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let desc = match *self {
+            Patch => "patch",
+            NonBreaking => "non-breaking",
+            TechnicallyBreaking => "technically breaking",
+            Breaking => "breaking",
+        };
+
+        write!(f, "{}", desc)
     }
 }
 
@@ -103,15 +116,15 @@ impl PathChange {
             return;
         }
 
-        let msg = format!("Path changes to `{}`", self.name);
+        let msg = format!("path changes to `{}`", self.name);
         let mut builder = session.struct_span_warn(self.def_span, &msg);
 
         for removed_span in &self.removals {
-            builder.span_warn(*removed_span, "Breaking: removed path");
+            builder.span_warn(*removed_span, "removed path (breaking)");
         }
 
         for added_span in &self.additions {
-            builder.span_note(*added_span, "TechnicallyBreaking: added path");
+            builder.span_note(*added_span, "added path (technically breaking)");
         }
 
         builder.emit();
@@ -213,6 +226,61 @@ impl<'tcx> ChangeType<'tcx> {
     }
 }
 
+impl<'a> fmt::Display for ChangeType<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let desc = match *self {
+            ItemMadePublic => "item made public",
+            ItemMadePrivate => "item made private",
+            KindDifference => "item kind changed",
+            RegionParameterAdded => "region parameter added",
+            RegionParameterRemoved => "region parameter removed",
+            TypeParameterAdded { defaulted: true } => "defaulted type parameter added",
+            TypeParameterAdded { defaulted: false } => "type parameter added",
+            TypeParameterRemoved { defaulted: true } => "defaulted type parameter removed",
+            TypeParameterRemoved { defaulted: false } => "type parameter removed",
+            VariantAdded => "enum variant added",
+            VariantRemoved => "enum variant removed",
+            VariantFieldAdded { public: true, total_public: true } =>
+                "public variant field added to variant with no private fields",
+            VariantFieldAdded { public: true, total_public: false } =>
+                "public variant field added to variant with private fields",
+            VariantFieldAdded { public: false, total_public: true } =>
+                "variant field added to variant with no private fields",
+            VariantFieldAdded { public: false, total_public: false } =>
+                "variant field added to variant with private fields",
+            VariantFieldRemoved { public: true, total_public: true } =>
+                "public variant field removed from variant with no private fields",
+            VariantFieldRemoved { public: true, total_public: false } =>
+                "public variant field removed from variant with private fields",
+            VariantFieldRemoved { public: false, total_public: true } =>
+                "variant field removed from variant with no private fields",
+            VariantFieldRemoved { public: false, total_public: false } =>
+                "variant field removed from variant with private fields",
+            VariantStyleChanged { now_struct: true, total_private: true } =>
+                "variant with no public fields changed to a struct variant",
+            VariantStyleChanged { now_struct: true, total_private: false } =>
+                "variant changed to a struct variant",
+            VariantStyleChanged { now_struct: false, total_private: true } =>
+                "variant with no public fields changed to a tuple variant",
+            VariantStyleChanged { now_struct: false, total_private: false } =>
+                "variant changed to a tuple variant",
+            FnConstChanged { now_const: true } => "fn item made const",
+            FnConstChanged { now_const: false } => "fn item made non-const",
+            MethodSelfChanged { now_self: true } => "added self-argument to method",
+            MethodSelfChanged { now_self: false } => "removed self-argument from method",
+            TraitItemAdded { defaulted: true } => "added defaulted item to trait",
+            TraitItemAdded { defaulted: false } => "added item to trait",
+            TraitItemRemoved { defaulted: true } => "removed defaulted item from trait",
+            TraitItemRemoved { defaulted: false } => "removed item from trait",
+            TraitUnsafetyChanged { now_unsafe: true } => "trait made unsafe",
+            TraitUnsafetyChanged { now_unsafe: false } => "trait no longer unsafe",
+            TypeChanged { ref error } => return write!(f, "type error: {}", error),
+            Unknown => "unknown change",
+        };
+        write!(f, "{}", desc)
+    }
+}
+
 /// A change record of an item kept between versions.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
@@ -275,12 +343,12 @@ impl<'tcx> Change<'tcx> {
             return;
         }
 
-        let msg = format!("{:?} changes in `{}`", self.max, self.ident());
+        let msg = format!("{} changes in `{}`", self.max, self.ident());
         let mut builder = session.struct_span_warn(self.new_span, &msg);
 
         for change in &self.changes {
             let cat = change.0.to_category();
-            let sub_msg = format!("{:?} ({:?})", cat, change.0);
+            let sub_msg = format!("{} ({})", change.0, cat);
             if let Some(span) = change.1 {
                 if cat == Breaking {
                     builder.span_warn(span, &sub_msg);
@@ -334,18 +402,20 @@ pub struct ChangeSet<'tcx> {
 impl<'tcx> ChangeSet<'tcx> {
     /// Add a new path change entry for the given item.
     pub fn new_path(&mut self, old: DefId, name: Symbol, def_span: Span) {
-        if !self.spans.contains_key(&def_span) {
-            self.spans.insert(def_span, old);
-            self.path_changes
-                .entry(old)
-                .or_insert_with(|| PathChange::new(name, def_span));
-        }
+        self.spans
+            .entry(def_span)
+            .or_insert_with(|| old);
+        self.path_changes
+            .entry(old)
+            .or_insert_with(|| PathChange::new(name, def_span));
     }
 
+    /// Add a new path addition to an already existing entry.
     pub fn add_path_addition(&mut self, old: DefId, span: Span) {
         self.add_path(old, span, true);
     }
 
+    /// Add a new path removal to an already existing entry.
     pub fn add_path_removal(&mut self, old: DefId, span: Span) {
         self.add_path(old, span, false);
     }
@@ -361,8 +431,8 @@ impl<'tcx> ChangeSet<'tcx> {
         self.path_changes.get_mut(&old).unwrap().insert(span, add);
     }
 
-    /// Add a new binary change entry for the given items.
-    pub fn new_binary(&mut self,
+    /// Add a new change entry for the given items.
+    pub fn new_change(&mut self,
                       old_did: DefId,
                       new_did: DefId,
                       name: Symbol,
@@ -376,8 +446,8 @@ impl<'tcx> ChangeSet<'tcx> {
         self.changes.insert(old_did, change);
     }
 
-    /// Add a new binary change to an already existing entry.
-    pub fn add_binary(&mut self, type_: ChangeType<'tcx>, old: DefId, span: Option<Span>) {
+    /// Add a new change to an already existing entry.
+    pub fn add_change(&mut self, type_: ChangeType<'tcx>, old: DefId, span: Option<Span>) {
         let cat = type_.to_category();
 
         if cat > self.max {
@@ -407,9 +477,9 @@ impl<'tcx> ChangeSet<'tcx> {
                 Breaking => new_version.increment_major(),
             }
 
-            println!("version bump: {} -> ({:?}) -> {}", version, self.max, new_version);
+            println!("version bump: {} -> ({}) -> {}", version, self.max, new_version);
         } else {
-            println!("max change: {} (could not parse) -> {:?}", version, self.max);
+            println!("max change: {}, could not parse {}", self.max, version);
         }
 
         for key in self.spans.values() {

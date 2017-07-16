@@ -3,4 +3,8 @@ pub mod a {
     pub struct Def;
 }
 
+pub mod b {
+    pub use a::Abc;
+}
+
 pub use self::a::Def;

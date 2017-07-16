@@ -3,4 +3,8 @@ pub mod a {
     pub enum Def {}
 }
 
+pub mod b {
+
+}
+
 pub use self::a::Abc;

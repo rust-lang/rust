@@ -1,58 +1,58 @@
-version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Breaking changes in `A`
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: breaking changes in `A`
  --> $REPO_PATH/tests/cases/ty_alias/new.rs:1:1
   |
 1 | pub type A = u16;
   | ^^^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+  = warning: type error: expected u8, found u16 (breaking)
 
-warning: Breaking changes in `B`
+warning: breaking changes in `B`
  --> $REPO_PATH/tests/cases/ty_alias/new.rs:2:1
   |
 2 | pub type B<'a, 'b : 'a, T> = (&'a T, &'b T);
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (RegionParameterAdded)
+  = warning: region parameter added (breaking)
 
-warning: Breaking changes in `C`
+warning: breaking changes in `C`
  --> $REPO_PATH/tests/cases/ty_alias/new.rs:3:1
   |
 3 | pub type C<T> = T;
   | ^^^^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (RegionParameterRemoved)
+  = warning: region parameter removed (breaking)
 
-warning: Breaking changes in `D`
+warning: breaking changes in `D`
  --> $REPO_PATH/tests/cases/ty_alias/new.rs:4:1
   |
 4 | pub type D<'a, T, U=Box<T>> = (&'a T, U);
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: NonBreaking (TypeParameterAdded { defaulted: true })
-  = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: &'a T, found: (&'a T, std::boxed::Box<T>) }) })
+  = note: defaulted type parameter added (non-breaking)
+  = warning: type error: expected reference, found tuple (breaking)
 
-warning: Breaking changes in `E`
+warning: breaking changes in `E`
  --> $REPO_PATH/tests/cases/ty_alias/new.rs:5:1
   |
 5 | pub type E<'a, T, U> = (&'a T, U);
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (TypeParameterAdded { defaulted: false })
+  = warning: type parameter added (breaking)
 
-warning: Breaking changes in `F`
+warning: breaking changes in `F`
  --> $REPO_PATH/tests/cases/ty_alias/new.rs:6:1
   |
 6 | pub type F<'a> = &'a u8;
   | ^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (TypeParameterRemoved { defaulted: true })
+  = warning: defaulted type parameter removed (breaking)
 
-warning: Breaking changes in `G`
+warning: breaking changes in `G`
  --> $REPO_PATH/tests/cases/ty_alias/new.rs:7:1
   |
 7 | pub type G<'a> = (&'a u8);
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (TypeParameterRemoved { defaulted: false })
+  = warning: type parameter removed (breaking)
 

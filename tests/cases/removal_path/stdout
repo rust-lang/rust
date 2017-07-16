@@ -1,21 +1,21 @@
-version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Path changes to `Abc`
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: path changes to `Abc`
  --> $REPO_PATH/tests/cases/removal_path/old.rs:2:5
   |
 2 |     pub struct Abc;
   |     ^^^^^^^^^^^^^^^
   |
-warning: Breaking: removed path
+warning: removed path (breaking)
  --> $REPO_PATH/tests/cases/removal_path/old.rs:6:13
   |
 6 |     pub use a::*;
   |             ^^^^^
-warning: Breaking: removed path
+warning: removed path (breaking)
  --> $REPO_PATH/tests/cases/removal_path/old.rs:10:13
   |
 10|     pub use a::Abc;
   |             ^^^^^^
-warning: Breaking: removed path
+warning: removed path (breaking)
  --> $REPO_PATH/tests/cases/removal_path/old.rs:13:9
   |
 13| pub use self::a::Abc;

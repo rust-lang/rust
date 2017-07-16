@@ -1,5 +1,5 @@
-version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: TechnicallyBreaking changes in `Def`
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: technically breaking changes in `Def`
  --> $REPO_PATH/tests/cases/structs/new.rs:6:1
   |
 6 | / pub struct Def<A=u8> {
@@ -7,14 +7,14 @@ warning: TechnicallyBreaking changes in `Def`
 8 | | }
   | |_^
   |
-  = note: NonBreaking (TypeParameterAdded { defaulted: true })
-note: TechnicallyBreaking (ItemMadePublic)
+  = note: defaulted type parameter added (non-breaking)
+note: item made public (technically breaking)
  --> $REPO_PATH/tests/cases/structs/new.rs:7:5
   |
 7 |     pub field: A,
   |     ^^^^^^^^^^^^
 
-warning: Breaking changes in `Def2`
+warning: breaking changes in `Def2`
   --> $REPO_PATH/tests/cases/structs/new.rs:10:1
    |
 10 | / pub struct Def2<A=u16> {
@@ -22,10 +22,10 @@ warning: Breaking changes in `Def2`
 12 | | }
    | |_^
    |
-   = note: NonBreaking (TypeParameterAdded { defaulted: true })
-   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+   = note: defaulted type parameter added (non-breaking)
+   = warning: type error: expected u8, found u16 (breaking)
 
-warning: Breaking changes in `Efg`
+warning: breaking changes in `Efg`
   --> $REPO_PATH/tests/cases/structs/new.rs:14:1
    |
 14 | / pub struct Efg {
@@ -33,9 +33,9 @@ warning: Breaking changes in `Efg`
 16 | | }
    | |_^
    |
-   = warning: Breaking (TypeChanged { error: Sorts(ExpectedFound { expected: u8, found: u16 }) })
+   = warning: type error: expected u8, found u16 (breaking)
 
-warning: TechnicallyBreaking changes in `Fgh`
+warning: technically breaking changes in `Fgh`
   --> $REPO_PATH/tests/cases/structs/new.rs:18:1
    |
 18 | / pub struct Fgh {
@@ -43,13 +43,13 @@ warning: TechnicallyBreaking changes in `Fgh`
 20 | | }
    | |_^
    |
-note: TechnicallyBreaking (ItemMadePublic)
+note: item made public (technically breaking)
   --> $REPO_PATH/tests/cases/structs/new.rs:19:5
    |
 19 |     pub field: u8,
    |     ^^^^^^^^^^^^^
 
-warning: Breaking changes in `Ghi`
+warning: breaking changes in `Ghi`
   --> $REPO_PATH/tests/cases/structs/new.rs:22:1
    |
 22 | / pub struct Ghi {
@@ -57,13 +57,13 @@ warning: Breaking changes in `Ghi`
 24 | | }
    | |_^
    |
-warning: Breaking (ItemMadePrivate)
+warning: item made private (breaking)
   --> $REPO_PATH/tests/cases/structs/new.rs:23:5
    |
 23 |     field: u8,
    |     ^^^^^^^^^
 
-warning: Breaking changes in `Hij`
+warning: breaking changes in `Hij`
   --> $REPO_PATH/tests/cases/structs/new.rs:26:1
    |
 26 | / pub struct Hij {
@@ -71,7 +71,7 @@ warning: Breaking changes in `Hij`
 28 | | }
    | |_^
    |
-warning: Breaking (VariantStyleChanged { now_struct: true, total_private: true })
+warning: variant with no public fields changed to a struct variant (breaking)
   --> $REPO_PATH/tests/cases/structs/new.rs:26:1
    |
 26 | / pub struct Hij {

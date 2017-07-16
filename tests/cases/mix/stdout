@@ -1,41 +1,53 @@
-version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Path changes to `Abc`
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: path changes to `Abc`
  --> $REPO_PATH/tests/cases/mix/old.rs:2:5
   |
 2 |     pub struct Abc;
   |     ^^^^^^^^^^^^^^^
   |
-warning: Breaking: removed path
- --> $REPO_PATH/tests/cases/mix/old.rs:6:9
+warning: removed path (breaking)
+ --> $REPO_PATH/tests/cases/mix/old.rs:10:9
   |
-6 | pub use self::a::Abc;
+10| pub use self::a::Abc;
   |         ^^^^^^^^^^^^
 
-warning: Breaking changes in `Abc`
+warning: breaking changes in `Abc`
  --> $REPO_PATH/tests/cases/mix/new.rs:2:5
   |
 2 |     pub enum Abc {}
   |     ^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (KindDifference)
+  = warning: item kind changed (breaking)
 
-warning: Breaking changes in `Def`
+warning: breaking changes in `Def`
  --> $REPO_PATH/tests/cases/mix/new.rs:3:5
   |
 3 |     pub struct Def;
   |     ^^^^^^^^^^^^^^^
   |
-  = warning: Breaking (KindDifference)
+  = warning: item kind changed (breaking)
 
-warning: Path changes to `Def`
+warning: path changes to `Abc`
+ --> $REPO_PATH/tests/cases/mix/new.rs:2:5
+  |
+2 |     pub enum Abc {}
+  |     ^^^^^^^^^^^^^^^
+  |
+note: added path (technically breaking)
+ --> $REPO_PATH/tests/cases/mix/new.rs:7:13
+  |
+7 |     pub use a::Abc;
+  |             ^^^^^^
+
+warning: path changes to `Def`
  --> $REPO_PATH/tests/cases/mix/new.rs:3:5
   |
 3 |     pub struct Def;
   |     ^^^^^^^^^^^^^^^
   |
-note: TechnicallyBreaking: added path
- --> $REPO_PATH/tests/cases/mix/new.rs:6:9
+note: added path (technically breaking)
+ --> $REPO_PATH/tests/cases/mix/new.rs:10:9
   |
-6 | pub use self::a::Def;
+10| pub use self::a::Def;
   |         ^^^^^^^^^^^^
 

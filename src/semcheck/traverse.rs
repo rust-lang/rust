@@ -98,7 +98,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             };
 
                             if o_vis != n_vis {
-                                changes.new_binary(o_did,
+                                changes.new_change(o_did,
                                                    n_did,
                                                    o.ident.name,
                                                    tcx.def_span(o_did),
@@ -106,9 +106,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                                    true);
 
                                 if o_vis == Public && n_vis != Public {
-                                    changes.add_binary(ItemMadePrivate, o_did, None);
+                                    changes.add_change(ItemMadePrivate, o_did, None);
                                 } else if o_vis != Public && n_vis == Public {
-                                    changes.add_binary(ItemMadePublic, o_did, None);
+                                    changes.add_change(ItemMadePublic, o_did, None);
                                 }
                             }
 
@@ -134,7 +134,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         };
 
                         let output = o_vis == Public || n_vis == Public;
-                        changes.new_binary(o.def.def_id(),
+                        changes.new_change(o.def.def_id(),
                                            n.def.def_id(),
                                            o.ident.name,
                                            tcx.def_span(o.def.def_id()),
@@ -142,9 +142,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                            output);
 
                         if o_vis == Public && n_vis != Public {
-                            changes.add_binary(ItemMadePrivate, o_def_id, None);
+                            changes.add_change(ItemMadePrivate, o_def_id, None);
                         } else if o_vis != Public && n_vis == Public {
-                            changes.add_binary(ItemMadePublic, o_def_id, None);
+                            changes.add_change(ItemMadePublic, o_def_id, None);
                         }
 
                         match (o.def, n.def) {
@@ -206,7 +206,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             },
                             // non-matching item pair - register the difference and abort
                             _ => {
-                                changes.add_binary(KindDifference, o_def_id, None);
+                                changes.add_change(KindDifference, o_def_id, None);
                             },
                         }
                     }
@@ -250,14 +250,14 @@ fn diff_fn(changes: &mut ChangeSet, tcx: TyCtxt, old: Def, new: Def) {
     let new_const = tcx.is_const_fn(new_def_id);
 
     if old_const != new_const {
-        changes.add_binary(FnConstChanged { now_const: new_const }, old_def_id, None);
+        changes.add_change(FnConstChanged { now_const: new_const }, old_def_id, None);
     }
 }
 
 /// Given two method items, perform structural checks.
 fn diff_method(changes: &mut ChangeSet, tcx: TyCtxt, old: AssociatedItem, new: AssociatedItem) {
     if old.method_has_self_argument != new.method_has_self_argument {
-        changes.add_binary(MethodSelfChanged { now_self: new.method_has_self_argument },
+        changes.add_change(MethodSelfChanged { now_self: new.method_has_self_argument },
                            old.def_id,
                            None);
     }
@@ -326,7 +326,7 @@ fn diff_adts(changes: &mut ChangeSet,
                         now_struct: new.ctor_kind == CtorKind::Fictive,
                         total_private: total_private,
                     };
-                    changes.add_binary(c, old_def_id, Some(tcx.def_span(new.did)));
+                    changes.add_change(c, old_def_id, Some(tcx.def_span(new.did)));
 
                     continue;
                 }
@@ -337,11 +337,11 @@ fn diff_adts(changes: &mut ChangeSet,
                             id_mapping.add_subitem(old_def_id, o.did, n.did);
 
                             if o.vis != Public && n.vis == Public {
-                                changes.add_binary(ItemMadePublic,
+                                changes.add_change(ItemMadePublic,
                                                    old_def_id,
                                                    Some(tcx.def_span(n.did)));
                             } else if o.vis == Public && n.vis != Public {
-                                changes.add_binary(ItemMadePrivate,
+                                changes.add_change(ItemMadePrivate,
                                                    old_def_id,
                                                    Some(tcx.def_span(n.did)));
                             }
@@ -351,14 +351,14 @@ fn diff_adts(changes: &mut ChangeSet,
                                 public: o.vis == Public,
                                 total_public: total_public
                             };
-                            changes.add_binary(c, old_def_id, Some(tcx.def_span(o.did)));
+                            changes.add_change(c, old_def_id, Some(tcx.def_span(o.did)));
                         },
                         (None, Some(n)) => {
                             let c = VariantFieldAdded {
                                 public: n.vis == Public,
                                 total_public: total_public
                             };
-                            changes.add_binary(c, old_def_id, Some(tcx.def_span(n.did)));
+                            changes.add_change(c, old_def_id, Some(tcx.def_span(n.did)));
                         },
                         (None, None) => unreachable!(),
                     }
@@ -367,10 +367,10 @@ fn diff_adts(changes: &mut ChangeSet,
                 fields.clear();
             },
             (Some(old), None) => {
-                changes.add_binary(VariantRemoved, old_def_id, Some(tcx.def_span(old.did)));
+                changes.add_change(VariantRemoved, old_def_id, Some(tcx.def_span(old.did)));
             },
             (None, Some(new)) => {
-                changes.add_binary(VariantAdded, old_def_id, Some(tcx.def_span(new.did)));
+                changes.add_change(VariantAdded, old_def_id, Some(tcx.def_span(new.did)));
             },
             (None, None) => unreachable!(),
         }
@@ -396,7 +396,7 @@ fn diff_traits(changes: &mut ChangeSet,
             now_unsafe: new_unsafety == Unsafe,
         };
 
-        changes.add_binary(change_type, old, None);
+        changes.add_change(change_type, old, None);
     }
 
     let mut items = BTreeMap::new();
@@ -417,7 +417,7 @@ fn diff_traits(changes: &mut ChangeSet,
         match *item_pair {
             (Some((old_def, old_item)), Some((new_def, new_item))) => {
                 id_mapping.add_trait_item(old_def, new_def);
-                changes.new_binary(old_def.def_id(),
+                changes.new_change(old_def.def_id(),
                                    new_def.def_id(),
                                    *name,
                                    tcx.def_span(old_def.def_id()),
@@ -429,13 +429,13 @@ fn diff_traits(changes: &mut ChangeSet,
                 let change_type = TraitItemRemoved {
                     defaulted: old_item.defaultness.has_value(),
                 };
-                changes.add_binary(change_type, old, Some(tcx.def_span(old_item.def_id)));
+                changes.add_change(change_type, old, Some(tcx.def_span(old_item.def_id)));
             },
             (None, Some((_, new_item))) => {
                 let change_type = TraitItemAdded {
                     defaulted: new_item.defaultness.has_value(),
                 };
-                changes.add_binary(change_type, old, Some(tcx.def_span(new_item.def_id)));
+                changes.add_change(change_type, old, Some(tcx.def_span(new_item.def_id)));
             },
             (None, None) => unreachable!(),
         }
@@ -496,7 +496,7 @@ fn diff_generics(changes: &mut ChangeSet,
     }
 
     for change_type in found.drain(..) {
-        changes.add_binary(change_type, old, None);
+        changes.add_change(change_type, old, None);
     }
 }
 
@@ -610,7 +610,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 Err(err) => panic!("err: {:?}", err),
             };
 
-            changes.add_binary(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
+            changes.add_change(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
         }

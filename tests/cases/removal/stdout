@@ -1,51 +1,51 @@
-version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Path changes to `Abc`
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: path changes to `Abc`
  --> $REPO_PATH/tests/cases/removal/old.rs:1:1
   |
 1 | pub struct Abc;
   | ^^^^^^^^^^^^^^^
   |
-warning: Breaking: removed path
+warning: removed path (breaking)
  --> $REPO_PATH/tests/cases/removal/old.rs:1:1
   |
 1 | pub struct Abc;
   | ^^^^^^^^^^^^^^^
 
-warning: Breaking changes in `Bcd`
+warning: breaking changes in `Bcd`
  --> $REPO_PATH/tests/cases/removal/new.rs:2:1
   |
 2 | struct Bcd;
   | ^^^^^^^^^^^
   |
-  = warning: Breaking (ItemMadePrivate)
+  = warning: item made private (breaking)
 
-warning: Path changes to `a`
+warning: path changes to `a`
  --> $REPO_PATH/tests/cases/removal/old.rs:7:1
   |
 7 | }
   | ^
   |
-warning: Breaking: removed path
+warning: removed path (breaking)
  --> $REPO_PATH/tests/cases/removal/old.rs:7:1
   |
 7 | }
   | ^
 
-warning: Breaking changes in `b`
+warning: breaking changes in `b`
  --> $REPO_PATH/tests/cases/removal/new.rs:6:1
   |
 6 | }
   | ^
   |
-  = warning: Breaking (ItemMadePrivate)
+  = warning: item made private (breaking)
 
-warning: Path changes to `Cde`
+warning: path changes to `Cde`
   --> $REPO_PATH/tests/cases/removal/old.rs:11:5
    |
 11 |     pub struct Cde;
    |     ^^^^^^^^^^^^^^^
    |
-warning: Breaking: removed path
+warning: removed path (breaking)
   --> $REPO_PATH/tests/cases/removal/old.rs:11:5
    |
 11 |     pub struct Cde;
