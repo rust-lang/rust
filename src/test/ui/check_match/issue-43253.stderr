@@ -1,0 +1,20 @@
+warning: unreachable pattern
+  --> $DIR/issue-43253.rs:36:9
+   |
+36 |         9 => {},
+   |         ^
+   |
+   = note: #[warn(unreachable_patterns)] on by default
+
+warning: unreachable pattern
+  --> $DIR/issue-43253.rs:42:9
+   |
+42 |         8...9 => {},
+   |         ^^^^^
+
+warning: unreachable pattern
+  --> $DIR/issue-43253.rs:48:9
+   |
+48 |         9...9 => {},
+   |         ^^^^^
+

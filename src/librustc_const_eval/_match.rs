@@ -845,14 +845,14 @@ fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
     match *ctor {
         ConstantValue(ref value) => {
             let to = cmp_to(value)?;
-            let end = (to != Ordering::Greater) ||
-                      (end == RangeEnd::Excluded && to == Ordering::Equal);
+            let end = (to == Ordering::Less) ||
+                      (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(value)? && end)
         },
         ConstantRange(ref from, ref to, RangeEnd::Included) => {
             let to = cmp_to(to)?;
-            let end = (to != Ordering::Greater) ||
-                      (end == RangeEnd::Excluded && to == Ordering::Equal);
+            let end = (to == Ordering::Less) ||
+                      (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(from)? && end)
         },
         ConstantRange(ref from, ref to, RangeEnd::Excluded) => {
