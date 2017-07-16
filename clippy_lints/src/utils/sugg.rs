@@ -8,7 +8,8 @@ use std::borrow::Cow;
 use std::fmt::Display;
 use std;
 use syntax::codemap::{CharPos, Span};
-use syntax::print::pprust::binop_to_string;
+use syntax::parse::token;
+use syntax::print::pprust::token_to_string;
 use syntax::util::parser::AssocOp;
 use syntax::ast;
 use utils::{higher, snippet, snippet_opt};
@@ -287,7 +288,7 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
         },
         AssocOp::Inplace => format!("in ({}) {}", lhs, rhs),
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
-        AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, binop_to_string(op), rhs),
+        AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_to_string(&token::BinOp(op)), rhs),
         AssocOp::As => format!("{} as {}", lhs, rhs),
         AssocOp::DotDot => format!("{}..{}", lhs, rhs),
         AssocOp::DotDotDot => format!("{}...{}", lhs, rhs),
