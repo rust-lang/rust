@@ -132,7 +132,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     {
         self.int_unification_table
             .borrow_mut()
-            .unify_var_value(vid, val)
+            .unify_var_value(vid, Some(val))
             .map_err(|e| int_unification_error(vid_is_expected, e))?;
         match val {
             IntType(v) => Ok(self.tcx.mk_mach_int(v)),
@@ -148,7 +148,7 @@ impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
     {
         self.float_unification_table
             .borrow_mut()
-            .unify_var_value(vid, val)
+            .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
         Ok(self.tcx.mk_mach_float(val))
     }
@@ -496,9 +496,9 @@ fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::Int
 }
 
 fn float_unification_error<'tcx>(a_is_expected: bool,
-                                 v: (ast::FloatTy, ast::FloatTy))
+                                 v: (ty::FloatVarValue, ty::FloatVarValue))
                                  -> TypeError<'tcx>
 {
-    let (a, b) = v;
+    let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
     TypeError::FloatMismatch(ty::relate::expected_found_bool(a_is_expected, &a, &b))
 }

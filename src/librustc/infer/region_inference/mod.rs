@@ -21,7 +21,7 @@ use super::unify_key;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
-use rustc_data_structures::unify::{self, UnificationTable};
+use rustc_data_structures::unify as ut;
 use middle::free_region::RegionRelations;
 use ty::{self, Ty, TyCtxt};
 use ty::{Region, RegionVid};
@@ -230,7 +230,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// back.
     undo_log: RefCell<Vec<UndoLogEntry<'tcx>>>,
 
-    unification_table: RefCell<UnificationTable<ty::RegionVid>>,
+    unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::RegionVid>>>,
 
     /// This contains the results of inference.  It begins as an empty
     /// option and only acquires a value after inference is complete.
@@ -239,7 +239,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 pub struct RegionSnapshot {
     length: usize,
-    region_snapshot: unify::Snapshot<ty::RegionVid>,
+    region_snapshot: ut::Snapshot<ut::InPlace<ty::RegionVid>>,
     skolemization_count: u32,
 }
 
@@ -365,7 +365,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             skolemization_count: Cell::new(0),
             bound_count: Cell::new(0),
             undo_log: RefCell::new(Vec::new()),
-            unification_table: RefCell::new(UnificationTable::new()),
+            unification_table: RefCell::new(ut::UnificationTable::new()),
         }
     }
 
@@ -808,7 +808,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 
     pub fn opportunistic_resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
-        let vid = self.unification_table.borrow_mut().find_value(rid).min_vid;
+        let vid = self.unification_table.borrow_mut().probe_value(rid).min_vid;
         self.tcx.mk_region(ty::ReVar(vid))
     }
 
