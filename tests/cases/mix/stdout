@@ -1,0 +1,41 @@
+version bump: 1.0.0 -> (Breaking) -> 2.0.0
+warning: Path changes to `Abc`
+ --> $REPO_PATH/tests/cases/mix/old.rs:2:5
+  |
+2 |     pub struct Abc;
+  |     ^^^^^^^^^^^^^^^
+  |
+warning: Breaking: removed path
+ --> $REPO_PATH/tests/cases/mix/old.rs:6:9
+  |
+6 | pub use self::a::Abc;
+  |         ^^^^^^^^^^^^
+
+warning: Breaking changes in `Abc`
+ --> $REPO_PATH/tests/cases/mix/new.rs:2:5
+  |
+2 |     pub enum Abc {}
+  |     ^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (KindDifference)
+
+warning: Breaking changes in `Def`
+ --> $REPO_PATH/tests/cases/mix/new.rs:3:5
+  |
+3 |     pub struct Def;
+  |     ^^^^^^^^^^^^^^^
+  |
+  = warning: Breaking (KindDifference)
+
+warning: Path changes to `Def`
+ --> $REPO_PATH/tests/cases/mix/new.rs:3:5
+  |
+3 |     pub struct Def;
+  |     ^^^^^^^^^^^^^^^
+  |
+note: TechnicallyBreaking: added path
+ --> $REPO_PATH/tests/cases/mix/new.rs:6:9
+  |
+6 | pub use self::a::Def;
+  |         ^^^^^^^^^^^^
+

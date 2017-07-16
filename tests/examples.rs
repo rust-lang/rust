@@ -101,6 +101,7 @@ test!(func, "tests/cases/func");
 test!(infer, "tests/cases/infer");
 test!(kind_change, "tests/cases/kind_change");
 test!(macros, "tests/cases/macros");
+test!(mix, "tests/cases/mix");
 test!(pathologic_paths, "tests/cases/pathologic_paths");
 test!(pub_use, "tests/cases/pub_use");
 test!(removal, "tests/cases/removal");
