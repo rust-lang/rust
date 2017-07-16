@@ -29,7 +29,7 @@ use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::relate::RelateResult;
 use traits::{self, ObligationCause, PredicateObligations, Reveal};
-use rustc_data_structures::unify::{self, UnificationTable};
+use rustc_data_structures::unify as ut;
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -99,10 +99,10 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
     // Map from integral variable to the kind of integer it represents
-    int_unification_table: RefCell<UnificationTable<ty::IntVid>>,
+    int_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::IntVid>>>,
 
     // Map from floating variable to the kind of float it represents
-    float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
+    float_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::FloatVid>>>,
 
     // Tracks the set of region variables and the constraints between
     // them.  This is initially `Some(_)` but when
@@ -441,8 +441,8 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             in_progress_tables,
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
-            int_unification_table: RefCell::new(UnificationTable::new()),
-            float_unification_table: RefCell::new(UnificationTable::new()),
+            int_unification_table: RefCell::new(ut::UnificationTable::new()),
+            float_unification_table: RefCell::new(ut::UnificationTable::new()),
             region_constraints: RefCell::new(Some(RegionConstraintCollector::new())),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: traits::SelectionCache::new(),
@@ -476,8 +476,8 @@ impl<'tcx, T> InferOk<'tcx, T> {
 pub struct CombinedSnapshot<'a, 'tcx:'a> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
     type_snapshot: type_variable::Snapshot,
-    int_snapshot: unify::Snapshot<ty::IntVid>,
-    float_snapshot: unify::Snapshot<ty::FloatVid>,
+    int_snapshot: ut::Snapshot<ut::InPlace<ty::IntVid>>,
+    float_snapshot: ut::Snapshot<ut::InPlace<ty::FloatVid>>,
     region_constraints_snapshot: RegionSnapshot,
     region_obligations_snapshot: usize,
     was_in_snapshot: bool,
@@ -678,14 +678,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         use ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
         match ty.sty {
             ty::TyInfer(ty::IntVar(vid)) => {
-                if self.int_unification_table.borrow_mut().has_value(vid) {
+                if self.int_unification_table.borrow_mut().probe_value(vid).is_some() {
                     Neither
                 } else {
                     UnconstrainedInt
                 }
             },
             ty::TyInfer(ty::FloatVar(vid)) => {
-                if self.float_unification_table.borrow_mut().has_value(vid) {
+                if self.float_unification_table.borrow_mut().probe_value(vid).is_some() {
                     Neither
                 } else {
                     UnconstrainedFloat
@@ -698,27 +698,32 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
         let mut variables = Vec::new();
 
-        let unbound_ty_vars = self.type_variables
-                                  .borrow_mut()
-                                  .unsolved_variables()
-                                  .into_iter()
-                                  .map(|t| self.tcx.mk_var(t));
+        {
+            let mut type_variables = self.type_variables.borrow_mut();
+            variables.extend(
+                type_variables
+                    .unsolved_variables()
+                    .into_iter()
+                    .map(|t| self.tcx.mk_var(t)));
+        }
 
-        let unbound_int_vars = self.int_unification_table
-                                   .borrow_mut()
-                                   .unsolved_variables()
-                                   .into_iter()
-                                   .map(|v| self.tcx.mk_int_var(v));
+        {
+            let mut int_unification_table = self.int_unification_table.borrow_mut();
+            variables.extend(
+                (0..int_unification_table.len())
+                    .map(|i| ty::IntVid { index: i as u32 })
+                    .filter(|&vid| int_unification_table.probe_value(vid).is_none())
+                    .map(|v| self.tcx.mk_int_var(v)));
+        }
 
-        let unbound_float_vars = self.float_unification_table
-                                     .borrow_mut()
-                                     .unsolved_variables()
-                                     .into_iter()
-                                     .map(|v| self.tcx.mk_float_var(v));
-
-        variables.extend(unbound_ty_vars);
-        variables.extend(unbound_int_vars);
-        variables.extend(unbound_float_vars);
+        {
+            let mut float_unification_table = self.float_unification_table.borrow_mut();
+            variables.extend(
+                (0..float_unification_table.len())
+                    .map(|i| ty::FloatVid { index: i as u32 })
+                    .filter(|&vid| float_unification_table.probe_value(vid).is_none())
+                    .map(|v| self.tcx.mk_float_var(v)));
+        }
 
         return variables;
     }
@@ -1262,7 +1267,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::TyInfer(ty::IntVar(v)) => {
                 self.int_unification_table
                     .borrow_mut()
-                    .probe(v)
+                    .probe_value(v)
                     .map(|v| v.to_type(self.tcx))
                     .unwrap_or(typ)
             }
@@ -1270,7 +1275,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::TyInfer(ty::FloatVar(v)) => {
                 self.float_unification_table
                     .borrow_mut()
-                    .probe(v)
+                    .probe_value(v)
                     .map(|v| v.to_type(self.tcx))
                     .unwrap_or(typ)
             }

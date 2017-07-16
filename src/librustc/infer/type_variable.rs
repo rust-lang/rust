@@ -26,7 +26,7 @@ pub struct TypeVariableTable<'tcx> {
 
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X == ?Y`.
-    eq_relations: ut::UnificationTable<ty::TyVid>,
+    eq_relations: ut::UnificationTable<ut::InPlace<ty::TyVid>>,
 
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
@@ -45,7 +45,7 @@ pub struct TypeVariableTable<'tcx> {
     /// This is reasonable because, in Rust, subtypes have the same
     /// "skeleton" and hence there is no possible type such that
     /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
-    sub_relations: ut::UnificationTable<ty::TyVid>,
+    sub_relations: ut::UnificationTable<ut::InPlace<ty::TyVid>>,
 }
 
 /// Reasons to create a type inference variable
@@ -86,8 +86,8 @@ enum TypeVariableValue<'tcx> {
 
 pub struct Snapshot {
     snapshot: sv::Snapshot,
-    eq_snapshot: ut::Snapshot<ty::TyVid>,
-    sub_snapshot: ut::Snapshot<ty::TyVid>,
+    eq_snapshot: ut::Snapshot<ut::InPlace<ty::TyVid>>,
+    sub_snapshot: ut::Snapshot<ut::InPlace<ty::TyVid>>,
 }
 
 struct Instantiate {
@@ -353,4 +353,11 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
         let Instantiate { vid } = action;
         values[vid.index as usize].value = Unknown;
     }
+}
+
+impl ut::UnifyKey for ty::TyVid {
+    type Value = ();
+    fn index(&self) -> u32 { self.index }
+    fn from_index(i: u32) -> ty::TyVid { ty::TyVid { index: i } }
+    fn tag() -> &'static str { "TyVid" }
 }

@@ -916,6 +916,12 @@ impl fmt::Debug for ty::IntVarValue {
     }
 }
 
+impl fmt::Debug for ty::FloatVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 // The generic impl doesn't work yet because projections are not
 // normalized under HRTB.
 /*impl<T> fmt::Display for ty::Binder<T>
