@@ -1,9 +1,9 @@
-rustc (1.20.0-dev-20170706-1) UNRELEASED; urgency=low
+rustc (1.20.0-dev-20170709-1) unstable; urgency=low
 
   * Rename dh_override_auto_test rule to test.
   * Add MSVC target platforms for Windows builds.
 
- -- Onur Aslan <onur@onur.im>  Thu, 01 Jun 2017 11:12:20 +0300
+ -- Onur Aslan <onur@onur.im>  Thu, 16 Jun 2017 19:48:28 +0300
 
 rustc (1.19.0-dev-20170531-1) unstable; urgency=low
 
