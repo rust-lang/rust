@@ -475,7 +475,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx:'a> {
     projection_cache_snapshot: traits::ProjectionCacheSnapshot,
-    type_snapshot: type_variable::Snapshot,
+    type_snapshot: type_variable::Snapshot<'tcx>,
     int_snapshot: ut::Snapshot<ut::InPlace<ty::IntVid>>,
     float_snapshot: ut::Snapshot<ut::InPlace<ty::FloatVid>>,
     region_constraints_snapshot: RegionSnapshot,
@@ -765,7 +765,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    fn start_snapshot<'b>(&'b self) -> CombinedSnapshot<'b, 'tcx> {
+    fn start_snapshot(&self) -> CombinedSnapshot<'a, 'tcx> {
         debug!("start_snapshot()");
 
         let in_snapshot = self.in_snapshot.get();
@@ -787,7 +787,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot) {
+    fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("rollback_to(cause={})", cause);
         let CombinedSnapshot { projection_cache_snapshot,
                                type_snapshot,
@@ -819,7 +819,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .rollback_to(region_constraints_snapshot);
     }
 
-    fn commit_from(&self, snapshot: CombinedSnapshot) {
+    fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("commit_from()");
         let CombinedSnapshot { projection_cache_snapshot,
                                type_snapshot,
@@ -861,7 +861,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
-        F: FnOnce(&CombinedSnapshot) -> Result<T, E>
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> Result<T, E>
     {
         debug!("commit_if_ok()");
         let snapshot = self.start_snapshot();
@@ -876,7 +876,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     // Execute `f` in a snapshot, and commit the bindings it creates
     pub fn in_snapshot<T, F>(&self, f: F) -> T where
-        F: FnOnce(&CombinedSnapshot) -> T
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T
     {
         debug!("in_snapshot()");
         let snapshot = self.start_snapshot();
@@ -887,7 +887,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Execute `f` then unroll any bindings it creates
     pub fn probe<R, F>(&self, f: F) -> R where
-        F: FnOnce(&CombinedSnapshot) -> R,
+        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
     {
         debug!("probe()");
         let snapshot = self.start_snapshot();
