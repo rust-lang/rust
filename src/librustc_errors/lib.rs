@@ -84,6 +84,7 @@ pub struct CodeSuggestion {
     /// ```
     pub substitution_parts: Vec<Substitution>,
     pub msg: String,
+    pub show_code_when_inline: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]

@@ -2,7 +2,7 @@ error: expected type, found `0`
   --> $DIR/type-ascription-instead-of-statement-end.rs:15:5
    |
 14 |     println!("test"):
-   |                     - help: did you mean to end the statement here instead? `;`
+   |                     - help: did you mean to use `;` here?
 15 |     0;
    |     ^ expecting a type here because of type ascription
 

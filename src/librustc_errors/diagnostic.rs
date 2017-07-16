@@ -209,6 +209,22 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message with a suggested edit of the code. If the suggestion is presented
+    /// inline it will only show the text message and not the text.
+    ///
+    /// See `diagnostic::CodeSuggestion` for more information.
+    pub fn span_suggestion_short(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: vec![suggestion],
+            }],
+            msg: msg.to_owned(),
+            show_code_when_inline: false,
+        });
+        self
+    }
+
     /// Prints out a message with a suggested edit of the code.
     ///
     /// See `diagnostic::CodeSuggestion` for more information.
@@ -219,6 +235,7 @@ impl Diagnostic {
                 substitutions: vec![suggestion],
             }],
             msg: msg.to_owned(),
+            show_code_when_inline: true,
         });
         self
     }
@@ -230,6 +247,7 @@ impl Diagnostic {
                 substitutions: suggestions,
             }],
             msg: msg.to_owned(),
+            show_code_when_inline: true,
         });
         self
     }

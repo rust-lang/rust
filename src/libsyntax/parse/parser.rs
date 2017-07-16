@@ -2807,9 +2807,9 @@ impl<'a> Parser<'a> {
                         let cur_pos = cm.lookup_char_pos(self.span.lo);
                         let op_pos = cm.lookup_char_pos(cur_op_span.hi);
                         if cur_pos.line != op_pos.line {
-                            err.span_suggestion(cur_op_span,
-                                                "did you mean to end the statement here instead?",
-                                                ";".to_string());
+                            err.span_suggestion_short(cur_op_span,
+                                                      "did you mean to use `;` here?",
+                                                      ";".to_string());
                         }
                         return Err(err);
                     }

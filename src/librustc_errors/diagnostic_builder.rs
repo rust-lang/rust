@@ -146,6 +146,11 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   sp: S,
                                                   msg: &str)
                                                   -> &mut Self);
+    forward!(pub fn span_suggestion_short(&mut self,
+                                          sp: Span,
+                                          msg: &str,
+                                          suggestion: String)
+                                          -> &mut Self);
     forward!(pub fn span_suggestion(&mut self,
                                     sp: Span,
                                     msg: &str,

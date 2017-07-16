@@ -100,5 +100,5 @@ error: expected type, found `4`
   --> $DIR/issue-22644.rs:38:28
    |
 38 |     println!("{}", a: &mut 4);
-   |                            ^
+   |                            ^ expecting a type here because of type ascription
 
