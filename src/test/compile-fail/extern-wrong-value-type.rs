@@ -18,5 +18,4 @@ fn main() {
     let _x: extern "C" fn() = f; // OK
     is_fn(f);
     //~^ ERROR `extern "C" fn() {f}: std::ops::Fn<()>` is not satisfied
-    //~| ERROR `extern "C" fn() {f}: std::ops::FnOnce<()>` is not satisfied
 }

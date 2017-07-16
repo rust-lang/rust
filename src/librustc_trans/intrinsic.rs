@@ -95,11 +95,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let ccx = bcx.ccx;
     let tcx = ccx.tcx();
 
-    let (def_id, substs, sig) = match callee_ty.sty {
-        ty::TyFnDef(def_id, substs, sig) => (def_id, substs, sig),
+    let (def_id, substs) = match callee_ty.sty {
+        ty::TyFnDef(def_id, substs) => (def_id, substs),
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
 
+    let sig = callee_ty.fn_sig(tcx);
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let arg_tys = sig.inputs();
     let ret_ty = sig.output();
@@ -255,8 +256,19 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             }
             C_nil(ccx)
         },
-
-        "ctlz" | "cttz" | "ctpop" | "bswap" |
+        "prefetch_read_data" | "prefetch_write_data" |
+        "prefetch_read_instruction" | "prefetch_write_instruction" => {
+            let expect = ccx.get_intrinsic(&("llvm.prefetch"));
+            let (rw, cache_type) = match name {
+                "prefetch_read_data" => (0, 1),
+                "prefetch_write_data" => (1, 1),
+                "prefetch_read_instruction" => (0, 0),
+                "prefetch_write_instruction" => (1, 0),
+                _ => bug!()
+            };
+            bcx.call(expect, &[llargs[0], C_i32(ccx, rw), llargs[1], C_i32(ccx, cache_type)], None)
+        },
+        "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
         "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
@@ -267,6 +279,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         "ctlz" | "cttz" => {
                             let y = C_bool(bcx.ccx, false);
                             let llfn = ccx.get_intrinsic(&format!("llvm.{}.i{}", name, width));
+                            bcx.call(llfn, &[llargs[0], y], None)
+                        }
+                        "ctlz_nonzero" | "cttz_nonzero" => {
+                            let y = C_bool(bcx.ccx, true);
+                            let llvm_name = &format!("llvm.{}.i{}", &name[..4], width);
+                            let llfn = ccx.get_intrinsic(llvm_name);
                             bcx.call(llfn, &[llargs[0], y], None)
                         }
                         "ctpop" => bcx.call(ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
@@ -969,7 +987,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
 
     let tcx = bcx.tcx();
-    let sig = tcx.erase_late_bound_regions_and_normalize(&callee_ty.fn_sig());
+    let sig = tcx.erase_late_bound_regions_and_normalize(&callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
 
     // every intrinsic takes a SIMD vector as its first argument

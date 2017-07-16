@@ -73,17 +73,14 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
+#![feature(advanced_slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
 #![feature(never_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-#![cfg_attr(stage0, feature(loop_break_value))]
+#![feature(slice_patterns)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -111,7 +108,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::traits::{FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
-use session::config;
+use session::{CompileIncomplete, config};
 use util::common::time;
 
 use syntax::ast;
@@ -153,9 +150,10 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
-    tcx.infer_ctxt((), Reveal::UserFacing).enter(|ref infcx| {
+    tcx.infer_ctxt().enter(|ref infcx| {
+        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
         let mut fulfill_cx = FulfillmentContext::new();
-        match infcx.eq_types(false, &cause, expected, actual) {
+        match infcx.at(&cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 fulfill_cx.register_predicate_obligations(infcx, obligations);
             }
@@ -168,7 +166,7 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match fulfill_cx.select_all_or_error(infcx) {
             Ok(()) => true,
             Err(errors) => {
-                infcx.report_fulfillment_errors(&errors);
+                infcx.report_fulfillment_errors(&errors, None);
                 false
             }
         }
@@ -200,22 +198,21 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 _ => ()
             }
-            let substs = tcx.intern_substs(&[]);
-            let se_ty = tcx.mk_fn_def(main_def_id, substs,
-                ty::Binder(tcx.mk_fn_sig(
+            let se_ty = tcx.mk_fn_ptr(ty::Binder(
+                tcx.mk_fn_sig(
                     iter::empty(),
                     tcx.mk_nil(),
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust
-                ))
-            );
+                )
+            ));
 
             require_same_types(
                 tcx,
                 &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
                 se_ty,
-                main_t);
+                tcx.mk_fn_ptr(tcx.fn_sig(main_def_id)));
         }
         _ => {
             span_bug!(main_span,
@@ -250,9 +247,8 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _ => ()
             }
 
-            let substs = tcx.intern_substs(&[]);
-            let se_ty = tcx.mk_fn_def(start_def_id, substs,
-                ty::Binder(tcx.mk_fn_sig(
+            let se_ty = tcx.mk_fn_ptr(ty::Binder(
+                tcx.mk_fn_sig(
                     [
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
@@ -261,14 +257,14 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust
-                ))
-            );
+                )
+            ));
 
             require_same_types(
                 tcx,
                 &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
                 se_ty,
-                start_t);
+                tcx.mk_fn_ptr(tcx.fn_sig(start_def_id)));
         }
         _ => {
             span_bug!(start_span,
@@ -297,7 +293,8 @@ pub fn provide(providers: &mut Providers) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                             -> Result<(), usize> {
+                             -> Result<(), CompileIncomplete>
+{
     let time_passes = tcx.sess.time_passes();
 
     // this ensures that later parts of type checking can assume that items
@@ -332,12 +329,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    let err_count = tcx.sess.err_count();
-    if err_count == 0 {
-        Ok(())
-    } else {
-        Err(err_count)
-    }
+    tcx.sess.compile_status()
 }
 
 /// A quasi-deprecated helper used in rustdoc and save-analysis to get

@@ -13,9 +13,9 @@ use self::MapEntry::*;
 use self::collector::NodeCollector;
 pub use self::def_collector::{DefCollector, MacroInvocationData};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
-                            DisambiguatedDefPathData};
+                            DisambiguatedDefPathData, DefPathHash};
 
-use dep_graph::{DepGraph, DepNode};
+use dep_graph::{DepGraph, DepNode, DepKind};
 
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex, DefIndexAddressSpace};
 
@@ -228,14 +228,14 @@ pub struct Forest {
 impl Forest {
     pub fn new(krate: Crate, dep_graph: &DepGraph) -> Forest {
         Forest {
-            krate: krate,
+            krate,
             dep_graph: dep_graph.clone(),
             inlined_bodies: TypedArena::new()
         }
     }
 
     pub fn krate<'hir>(&'hir self) -> &'hir Crate {
-        self.dep_graph.read(DepNode::Krate);
+        self.dep_graph.read(DepNode::new_no_params(DepKind::Krate));
         &self.krate
     }
 }
@@ -280,7 +280,7 @@ impl<'hir> Map<'hir> {
         self.dep_graph.read(self.dep_node(id));
     }
 
-    fn dep_node(&self, id0: NodeId) -> DepNode<DefId> {
+    fn dep_node(&self, id0: NodeId) -> DepNode {
         let mut id = id0;
         let mut last_expr = None;
         loop {
@@ -289,14 +289,16 @@ impl<'hir> Map<'hir> {
                 EntryItem(..) |
                 EntryTraitItem(..) |
                 EntryImplItem(..) => {
+                    let def_index = self.definitions.opt_def_index(id).unwrap();
+                    let def_path_hash = self.definitions.def_path_hash(def_index);
+
                     if let Some(last_id) = last_expr {
                         // The body may have a separate dep node
                         if entry.is_body_owner(last_id) {
-                            let def_id = self.local_def_id(id);
-                            return DepNode::HirBody(def_id);
+                            return def_path_hash.to_dep_node(DepKind::HirBody);
                         }
                     }
-                    return DepNode::Hir(self.local_def_id(id));
+                    return def_path_hash.to_dep_node(DepKind::Hir);
                 }
 
                 EntryVariant(p, v) => {
@@ -305,8 +307,9 @@ impl<'hir> Map<'hir> {
                     if last_expr.is_some() {
                         if v.node.disr_expr.map(|e| e.node_id) == last_expr {
                             // The enum parent holds both Hir and HirBody nodes.
-                            let def_id = self.local_def_id(id);
-                            return DepNode::HirBody(def_id);
+                            let def_index = self.definitions.opt_def_index(id).unwrap();
+                            let def_path_hash = self.definitions.def_path_hash(def_index);
+                            return def_path_hash.to_dep_node(DepKind::HirBody);
                         }
                     }
                 }
@@ -331,7 +334,8 @@ impl<'hir> Map<'hir> {
                 }
 
                 RootCrate => {
-                    return DepNode::Hir(DefId::local(CRATE_DEF_INDEX));
+                    let def_path_hash = self.definitions.def_path_hash(CRATE_DEF_INDEX);
+                    return def_path_hash.to_dep_node(DepKind::Hir);
                 }
 
                 NotPresent =>
@@ -339,8 +343,11 @@ impl<'hir> Map<'hir> {
                     // present in the map for whatever reason, but
                     // they *do* have def-ids. So if we encounter an
                     // empty hole, check for that case.
-                    return self.opt_local_def_id(id)
-                               .map(|def_id| DepNode::Hir(def_id))
+                    return self.definitions.opt_def_index(id)
+                               .map(|def_index| {
+                                    let def_path_hash = self.definitions.def_path_hash(def_index);
+                                    def_path_hash.to_dep_node(DepKind::Hir)
+                                })
                                .unwrap_or_else(|| {
                                    bug!("Walking parents from `{}` \
                                          led to `NotPresent` at `{}`",
@@ -497,7 +504,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_impls(&self, trait_did: DefId) -> &'hir [NodeId] {
-        self.dep_graph.read(DepNode::AllLocalTraitImpls);
+        self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -505,7 +512,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_default_impl(&self, trait_did: DefId) -> Option<NodeId> {
-        self.dep_graph.read(DepNode::AllLocalTraitImpls);
+        self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -520,8 +527,9 @@ impl<'hir> Map<'hir> {
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
-        let crate_root_def_id = DefId::local(CRATE_DEF_INDEX);
-        self.dep_graph.read(DepNode::Hir(crate_root_def_id));
+        let def_path_hash = self.definitions.def_path_hash(CRATE_DEF_INDEX);
+
+        self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
         &self.forest.krate.attrs
     }
 
@@ -586,8 +594,12 @@ impl<'hir> Map<'hir> {
     /// last good node id we found. Note that reaching the crate root (id == 0),
     /// is not an error, since items in the crate module have the crate root as
     /// parent.
-    fn walk_parent_nodes<F>(&self, start_id: NodeId, found: F) -> Result<NodeId, NodeId>
-        where F: Fn(&Node<'hir>) -> bool
+    fn walk_parent_nodes<F, F2>(&self,
+                                start_id: NodeId,
+                                found: F,
+                                bail_early: F2)
+        -> Result<NodeId, NodeId>
+        where F: Fn(&Node<'hir>) -> bool, F2: Fn(&Node<'hir>) -> bool
     {
         let mut id = start_id;
         loop {
@@ -608,6 +620,8 @@ impl<'hir> Map<'hir> {
                 Some(ref node) => {
                     if found(node) {
                         return Ok(parent_node);
+                    } else if bail_early(node) {
+                        return Err(parent_node);
                     }
                 }
                 None => {
@@ -615,6 +629,56 @@ impl<'hir> Map<'hir> {
                 }
             }
             id = parent_node;
+        }
+    }
+
+    /// Retrieve the NodeId for `id`'s enclosing method, unless there's a
+    /// `while` or `loop` before reacing it, as block tail returns are not
+    /// available in them.
+    ///
+    /// ```
+    /// fn foo(x: usize) -> bool {
+    ///     if x == 1 {
+    ///         true  // `get_return_block` gets passed the `id` corresponding
+    ///     } else {  // to this, it will return `foo`'s `NodeId`.
+    ///         false
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```
+    /// fn foo(x: usize) -> bool {
+    ///     loop {
+    ///         true  // `get_return_block` gets passed the `id` corresponding
+    ///     }         // to this, it will return `None`.
+    ///     false
+    /// }
+    /// ```
+    pub fn get_return_block(&self, id: NodeId) -> Option<NodeId> {
+        let match_fn = |node: &Node| {
+            match *node {
+                NodeItem(_) |
+                NodeForeignItem(_) |
+                NodeTraitItem(_) |
+                NodeImplItem(_) => true,
+                _ => false,
+            }
+        };
+        let match_non_returning_block = |node: &Node| {
+            match *node {
+                NodeExpr(ref expr) => {
+                    match expr.node {
+                        ExprWhile(..) | ExprLoop(..) => true,
+                        _ => false,
+                    }
+                }
+                _ => false,
+            }
+        };
+
+        match self.walk_parent_nodes(id, match_fn, match_non_returning_block) {
+            Ok(id) => Some(id),
+            Err(_) => None,
         }
     }
 
@@ -629,7 +693,7 @@ impl<'hir> Map<'hir> {
             NodeTraitItem(_) |
             NodeImplItem(_) => true,
             _ => false,
-        }) {
+        }, |_| false) {
             Ok(id) => id,
             Err(id) => id,
         }
@@ -641,7 +705,7 @@ impl<'hir> Map<'hir> {
         let id = match self.walk_parent_nodes(id, |node| match *node {
             NodeItem(&Item { node: Item_::ItemMod(_), .. }) => true,
             _ => false,
-        }) {
+        }, |_| false) {
             Ok(id) => id,
             Err(id) => id,
         };
@@ -660,7 +724,7 @@ impl<'hir> Map<'hir> {
             NodeImplItem(_) |
             NodeBlock(_) => true,
             _ => false,
-        }) {
+        }, |_| false) {
             Ok(id) => Some(id),
             Err(_) => None,
         }
@@ -754,11 +818,8 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn get_inlined_body(&self, def_id: DefId) -> Option<&'hir Body> {
-        self.inlined_bodies.borrow().get(&def_id).map(|&body| {
-            self.dep_graph.read(DepNode::MetaData(def_id));
-            body
-        })
+    pub fn get_inlined_body_untracked(&self, def_id: DefId) -> Option<&'hir Body> {
+        self.inlined_bodies.borrow().get(&def_id).cloned()
     }
 
     pub fn intern_inlined_body(&self, def_id: DefId, body: Body) -> &'hir Body {
@@ -996,10 +1057,10 @@ pub fn map_crate<'hir>(forest: &'hir mut Forest,
     }
 
     let map = Map {
-        forest: forest,
+        forest,
         dep_graph: forest.dep_graph.clone(),
-        map: map,
-        definitions: definitions,
+        map,
+        definitions,
         inlined_bodies: RefCell::new(DefIdMap()),
     };
 

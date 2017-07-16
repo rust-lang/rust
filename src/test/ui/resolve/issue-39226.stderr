@@ -7,5 +7,5 @@ error[E0423]: expected value, found struct `Handle`
    |                 did you mean `handle`?
    |                 did you mean `Handle { /* fields */ }`?
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

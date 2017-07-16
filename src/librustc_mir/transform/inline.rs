@@ -18,7 +18,6 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Subst,Substs};
 
@@ -88,7 +87,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let terminator = bb_data.terminator();
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
-                    if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
+                    if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
                         callsites.push_back(CallSite {
                             callee: callee_def_id,
                             substs: substs,
@@ -132,7 +131,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let terminator = bb_data.terminator();
                     if let TerminatorKind::Call {
                         func: Operand::Constant(ref f), .. } = terminator.kind {
-                        if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
+                        if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
                             // Don't inline the same function multiple times.
                             if callsite.callee != callee_def_id {
                                 callsites.push_back(CallSite {
@@ -271,8 +270,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 }
 
                 TerminatorKind::Call {func: Operand::Constant(ref f), .. } => {
-                    if let ty::TyFnDef(.., f) = f.ty.sty {
+                    if let ty::TyFnDef(def_id, _) = f.ty.sty {
                         // Don't give intrinsics the extra penalty for calls
+                        let f = tcx.fn_sig(def_id);
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
                             cost += INSTR_COST;
                         } else {
@@ -545,12 +545,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>,
+fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
-    tcx.infer_ctxt(param_env, traits::Reveal::All).enter(|infcx| {
-        ty.layout(&infcx).ok().map(|layout| {
-            layout.size(&tcx.data_layout).bytes()
-        })
+    ty.layout(tcx, param_env).ok().map(|layout| {
+        layout.size(&tcx.data_layout).bytes()
     })
 }
 

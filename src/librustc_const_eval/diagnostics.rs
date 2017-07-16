@@ -436,28 +436,32 @@ that happens.
 Qualified names are good practice, and most code works well with them. But if
 you prefer them unqualified, you can import the variants into scope:
 
-```ignore
+```
 use Method::*;
 enum Method { GET, POST }
+# fn main() {}
 ```
 
 If you want others to be able to import variants from your module directly, use
 `pub use`:
 
-```ignore
+```
 pub use Method::*;
-enum Method { GET, POST }
+pub enum Method { GET, POST }
+# fn main() {}
 ```
 "##,
 
 
 E0297: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Patterns used to bind names must be irrefutable. That is, they must guarantee
 that a name will be extracted in all cases. Instead of pattern matching the
 loop variable, consider using a `match` or `if let` inside the loop body. For
 instance:
 
-```compile_fail,E0297
+```compile_fail,E0005
 let xs : Vec<Option<i32>> = vec![Some(1), None];
 
 // This fails because `None` is not covered.

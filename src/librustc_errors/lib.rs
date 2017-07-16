@@ -22,10 +22,6 @@
 #![feature(libc)]
 #![feature(conservative_impl_trait)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-
 extern crate term;
 extern crate libc;
 extern crate serialize as rustc_serialize;
@@ -37,6 +33,7 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
+use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
 use std::{error, fmt};
 use std::rc::Rc;
@@ -44,12 +41,12 @@ use std::rc::Rc;
 pub mod diagnostic;
 pub mod diagnostic_builder;
 pub mod emitter;
-pub mod snippet;
+mod snippet;
 pub mod registry;
-pub mod styled_buffer;
+mod styled_buffer;
 mod lock;
 
-use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum RenderSpan {
@@ -102,6 +99,8 @@ pub trait CodeMapper {
     fn span_to_string(&self, sp: Span) -> String;
     fn span_to_filename(&self, sp: Span) -> FileName;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
+    fn call_span_if_macro(&self, sp: Span) -> Span;
+    fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool;
 }
 
 impl CodeSuggestion {
@@ -115,12 +114,12 @@ impl CodeSuggestion {
         self.substitution_parts.iter().map(|sub| sub.span)
     }
 
-    /// Returns the assembled code suggestions.
-    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<String> {
+    /// Returns the assembled code suggestions and wether they should be shown with an underline.
+    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<(String, bool)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
-                         line_opt: Option<&str>,
+                         line_opt: Option<&Cow<str>>,
                          lo: &Loc,
                          hi_opt: Option<&Loc>) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
@@ -139,7 +138,7 @@ impl CodeSuggestion {
         }
 
         if self.substitution_parts.is_empty() {
-            return vec![String::new()];
+            return vec![(String::new(), false)];
         }
 
         let mut primary_spans: Vec<_> = self.substitution_parts
@@ -176,19 +175,30 @@ impl CodeSuggestion {
         prev_hi.col = CharPos::from_usize(0);
 
         let mut prev_line = fm.get_line(lines.lines[0].line_index);
-        let mut bufs = vec![String::new(); self.substitutions()];
+        let mut bufs = vec![(String::new(), false); self.substitutions()];
 
         for (sp, substitutes) in primary_spans {
             let cur_lo = cm.lookup_char_pos(sp.lo);
-            for (buf, substitute) in bufs.iter_mut().zip(substitutes) {
+            for (&mut (ref mut buf, ref mut underline), substitute) in bufs.iter_mut()
+                                                                           .zip(substitutes) {
                 if prev_hi.line == cur_lo.line {
-                    push_trailing(buf, prev_line, &prev_hi, Some(&cur_lo));
+                    push_trailing(buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
+
+                    // Only show an underline in the suggestions if the suggestion is not the
+                    // entirety of the code being shown and the displayed code is not multiline.
+                    if prev_line.as_ref().unwrap().trim().len() > 0
+                        && !substitute.ends_with('\n')
+                        && substitute.lines().count() == 1
+                    {
+                        *underline = true;
+                    }
                 } else {
-                    push_trailing(buf, prev_line, &prev_hi, None);
+                    *underline = false;
+                    push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
                     // push lines between the previous and current span (if any)
                     for idx in prev_hi.line..(cur_lo.line - 1) {
                         if let Some(line) = fm.get_line(idx) {
-                            buf.push_str(line);
+                            buf.push_str(line.as_ref());
                             buf.push('\n');
                         }
                     }
@@ -201,10 +211,10 @@ impl CodeSuggestion {
             prev_hi = cm.lookup_char_pos(sp.hi);
             prev_line = fm.get_line(prev_hi.line - 1);
         }
-        for buf in &mut bufs {
+        for &mut (ref mut buf, _) in &mut bufs {
             // if the replacement already ends with a newline, don't print the next line
             if !buf.ends_with('\n') {
-                push_trailing(buf, prev_line, &prev_hi, None);
+                push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
             }
             // remove trailing newline
             buf.pop();
@@ -345,8 +355,14 @@ impl Handler {
         result.code(code.to_owned());
         result
     }
+    // FIXME: This method should be removed (every error should have an associated error code).
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new(self, Level::Error, msg)
+    }
+    pub fn struct_err_with_code<'a>(&'a self, msg: &str, code: &str) -> DiagnosticBuilder<'a> {
+        let mut result = DiagnosticBuilder::new(self, Level::Error, msg);
+        result.code(code.to_owned());
+        result
     }
     pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(&'a self,
                                                      sp: S,
@@ -501,7 +517,10 @@ impl Handler {
 
                 return;
             }
-            _ => s = "aborting due to previous error(s)".to_string(),
+            1 => s = "aborting due to previous error".to_string(),
+            _ => {
+                s = format!("aborting due to {} previous errors", self.err_count.get());
+            }
         }
 
         panic!(self.fatal(&s));

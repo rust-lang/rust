@@ -36,7 +36,7 @@
 //! Arrays are enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).
 //! A simple JSON document encoding a person, their age, address and phone numbers could look like
 //!
-//! ```ignore
+//! ```json
 //! {
 //!     "FirstName": "John",
 //!     "LastName": "Doe",

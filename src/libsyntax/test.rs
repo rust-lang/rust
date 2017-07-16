@@ -25,7 +25,6 @@ use std::rc::Rc;
 
 use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned};
 use errors;
-use errors::snippet::{SnippetData};
 use config;
 use entry::{self, EntryPointType};
 use ext::base::{ExtCtxt, Resolver};
@@ -52,7 +51,8 @@ struct Test {
     path: Vec<Ident> ,
     bench: bool,
     ignore: bool,
-    should_panic: ShouldPanic
+    should_panic: ShouldPanic,
+    allow_fail: bool,
 }
 
 struct TestCtxt<'a> {
@@ -133,7 +133,8 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         path: self.cx.path.clone(),
                         bench: is_bench_fn(&self.cx, &i),
                         ignore: is_ignored(&i),
-                        should_panic: should_panic(&i, &self.cx)
+                        should_panic: should_panic(&i, &self.cx),
+                        allow_fail: is_allowed_fail(&i),
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
@@ -231,20 +232,12 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
                    -> (P<ast::Item>, Ident) {
     let super_ = Ident::from_str("super");
 
-    // Generate imports with `#[allow(private_in_public)]` to work around issue #36768.
-    let allow_private_in_public = cx.ext_cx.attribute(DUMMY_SP, cx.ext_cx.meta_list(
-        DUMMY_SP,
-        Symbol::intern("allow"),
-        vec![cx.ext_cx.meta_list_item_word(DUMMY_SP, Symbol::intern("private_in_public"))],
-    ));
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, ast::Visibility::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
-            .map_attrs(|_| vec![allow_private_in_public.clone()])
     }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
         cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Visibility::Public, r, path)
-            .map_attrs(|_| vec![allow_private_in_public.clone()])
     })).collect();
 
     let reexport_mod = ast::Mod {
@@ -389,6 +382,10 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
 fn is_ignored(i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| attr.check_name("ignore"))
+}
+
+fn is_allowed_fail(i: &ast::Item) -> bool {
+    i.attrs.iter().any(|attr| attr.check_name("allow_fail"))
 }
 
 fn should_panic(i: &ast::Item, cx: &TestCtxt) -> ShouldPanic {
@@ -676,6 +673,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
             }
         }
     };
+    let allow_fail_expr = ecx.expr_bool(span, test.allow_fail);
 
     // self::test::TestDesc { ... }
     let desc_expr = ecx.expr_struct(
@@ -683,7 +681,8 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
         test_path("TestDesc"),
         vec![field("name", name_expr),
              field("ignore", ignore_expr),
-             field("should_panic", fail_expr)]);
+             field("should_panic", fail_expr),
+             field("allow_fail", allow_fail_expr)]);
 
 
     let mut visible_path = match cx.toplevel_reexport {

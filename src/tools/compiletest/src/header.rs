@@ -80,13 +80,12 @@ impl EarlyProps {
                 return false;
             }
 
-            if !line.contains("ignore-gdb-version") &&
-               config.parse_name_directive(line, "ignore-gdb") {
+            if config.parse_name_directive(line, "ignore-gdb") {
                 return true;
             }
 
             if let Some(actual_version) = config.gdb_version {
-                if line.contains("min-gdb-version") {
+                if line.starts_with("min-gdb-version") {
                     let (start_ver, end_ver) = extract_gdb_version_range(line);
 
                     if start_ver != end_ver {
@@ -95,7 +94,7 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     actual_version < start_ver
-                } else if line.contains("ignore-gdb-version") {
+                } else if line.starts_with("ignore-gdb-version") {
                     let (min_version, max_version) = extract_gdb_version_range(line);
 
                     if max_version < min_version {
@@ -119,20 +118,21 @@ impl EarlyProps {
         fn extract_gdb_version_range(line: &str) -> (u32, u32) {
             const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
 
-            let range_components = line.split(' ')
-                                       .flat_map(|word| word.split('-'))
-                                       .filter(|word| word.len() > 0)
-                                       .skip_while(|word| extract_gdb_version(word).is_none())
-                                       .collect::<Vec<&str>>();
+            let range_components = line.split(&[' ', '-'][..])
+                                       .filter(|word| !word.is_empty())
+                                       .map(extract_gdb_version)
+                                       .skip_while(Option::is_none)
+                                       .take(3) // 3 or more = invalid, so take at most 3.
+                                       .collect::<Vec<Option<u32>>>();
 
             match range_components.len() {
                 1 => {
-                    let v = extract_gdb_version(range_components[0]).unwrap();
+                    let v = range_components[0].unwrap();
                     (v, v)
                 }
                 2 => {
-                    let v_min = extract_gdb_version(range_components[0]).unwrap();
-                    let v_max = extract_gdb_version(range_components[1]).expect(ERROR_MESSAGE);
+                    let v_min = range_components[0].unwrap();
+                    let v_max = range_components[1].expect(ERROR_MESSAGE);
                     (v_min, v_max)
                 }
                 _ => panic!(ERROR_MESSAGE),
@@ -149,10 +149,10 @@ impl EarlyProps {
             }
 
             if let Some(ref actual_version) = config.lldb_version {
-                if line.contains("min-lldb-version") {
-                    let min_version = line.trim()
-                        .split(' ')
-                        .last()
+                if line.starts_with("min-lldb-version") {
+                    let min_version = line.trim_right()
+                        .rsplit(' ')
+                        .next()
                         .expect("Malformed lldb version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
@@ -166,11 +166,14 @@ impl EarlyProps {
         }
 
         fn ignore_llvm(config: &Config, line: &str) -> bool {
+            if config.system_llvm && line.starts_with("no-system-llvm") {
+                    return true;
+            }
             if let Some(ref actual_version) = config.llvm_version {
-                if line.contains("min-llvm-version") {
-                    let min_version = line.trim()
-                        .split(' ')
-                        .last()
+                if line.starts_with("min-llvm-version") {
+                    let min_version = line.trim_right()
+                        .rsplit(' ')
+                        .next()
                         .expect("Malformed llvm version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
@@ -233,6 +236,9 @@ pub struct TestProps {
     pub must_compile_successfully: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
+    // The test must be compiled and run successfully. Only used in UI tests for
+    // now.
+    pub run_pass: bool,
 }
 
 impl TestProps {
@@ -252,12 +258,13 @@ impl TestProps {
             check_stdout: false,
             no_prefer_dynamic: false,
             pretty_expanded: false,
-            pretty_mode: format!("normal"),
+            pretty_mode: "normal".to_string(),
             pretty_compare_only: false,
             forbid_output: vec![],
             incremental_dir: None,
             must_compile_successfully: false,
             check_test_line_numbers_match: false,
+            run_pass: false,
         }
     }
 
@@ -368,16 +375,17 @@ impl TestProps {
             if !self.check_test_line_numbers_match {
                 self.check_test_line_numbers_match = config.parse_check_test_line_numbers_match(ln);
             }
+
+            if !self.run_pass {
+                self.run_pass = config.parse_run_pass(ln);
+            }
         });
 
-        for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
-            match env::var(key) {
-                Ok(val) => {
-                    if self.exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
-                        self.exec_env.push((key.to_owned(), val))
-                    }
+        for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
+            if let Ok(val) = env::var(key) {
+                if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
+                    self.exec_env.push(((*key).to_owned(), val))
                 }
-                Err(..) => {}
             }
         }
     }
@@ -398,21 +406,21 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
             return;
         } else if ln.starts_with("//[") {
             // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find("]") {
+            if let Some(close_brace) = ln.find(']') {
                 let lncfg = &ln[3..close_brace];
                 let matches = match cfg {
                     Some(s) => s == &lncfg[..],
                     None => false,
                 };
                 if matches {
-                    it(&ln[close_brace + 1..]);
+                    it(ln[(close_brace + 1) ..].trim_left());
                 }
             } else {
                 panic!("malformed condition directive: expected `//[foo]`, found `{}`",
                        ln)
             }
         } else if ln.starts_with("//") {
-            it(&ln[2..]);
+            it(ln[2..].trim_left());
         }
     }
     return;
@@ -485,6 +493,10 @@ impl Config {
         self.parse_name_directive(line, "check-test-line-numbers-match")
     }
 
+    fn parse_run_pass(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "run-pass")
+    }
+
     fn parse_env(&self, line: &str, name: &str) -> Option<(String, String)> {
         self.parse_name_value_directive(line, name).map(|nv| {
             // nv is either FOO or FOO=BAR
@@ -506,25 +518,26 @@ impl Config {
     fn parse_pp_exact(&self, line: &str, testfile: &Path) -> Option<PathBuf> {
         if let Some(s) = self.parse_name_value_directive(line, "pp-exact") {
             Some(PathBuf::from(&s))
+        } else if self.parse_name_directive(line, "pp-exact") {
+            testfile.file_name().map(PathBuf::from)
         } else {
-            if self.parse_name_directive(line, "pp-exact") {
-                testfile.file_name().map(PathBuf::from)
-            } else {
-                None
-            }
+            None
         }
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
-        // This 'no-' rule is a quick hack to allow pretty-expanded and
-        // no-pretty-expanded to coexist
-        line.contains(directive) && !line.contains(&("no-".to_owned() + directive))
+        // Ensure the directive is a whole word. Do not match "ignore-x86" when
+        // the line says "ignore-x86_64".
+        line.starts_with(directive) && match line.as_bytes().get(directive.len()) {
+            None | Some(&b' ') | Some(&b':') => true,
+            _ => false
+        }
     }
 
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
-        let keycolon = format!("{}:", directive);
-        if let Some(colon) = line.find(&keycolon) {
-            let value = line[(colon + keycolon.len())..line.len()].to_owned();
+        let colon = directive.len();
+        if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
+            let value = line[(colon + 1) ..].to_owned();
             debug!("{}: {}", directive, value);
             Some(expand_variables(value, self))
         } else {
@@ -536,9 +549,7 @@ impl Config {
 pub fn lldb_version_to_int(version_string: &str) -> isize {
     let error_string = format!("Encountered LLDB version string with unexpected format: {}",
                                version_string);
-    let error_string = error_string;
-    let major: isize = version_string.parse().ok().expect(&error_string);
-    return major;
+    version_string.parse().expect(&error_string)
 }
 
 fn expand_variables(mut value: String, config: &Config) -> String {

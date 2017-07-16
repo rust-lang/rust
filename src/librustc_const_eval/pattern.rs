@@ -10,10 +10,9 @@
 
 use eval;
 
-use rustc::lint;
 use rustc::middle::const_val::{ConstEvalErr, ConstVal};
 use rustc::mir::{Field, BorrowKind, Mutability};
-use rustc::ty::{self, TyCtxt, AdtDef, Ty, TypeVariants, Region};
+use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
@@ -550,8 +549,8 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
                     let substs = match ty.sty {
-                        TypeVariants::TyAdt(_, substs) => substs,
-                        TypeVariants::TyFnDef(_, substs, _) => substs,
+                        ty::TyAdt(_, substs) |
+                        ty::TyFnDef(_, substs) => substs,
                         _ => bug!("inappropriate type for def: {:?}", ty.sty),
                     };
                     PatternKind::Variant {
@@ -585,8 +584,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let tcx = self.tcx.global_tcx();
-                let substs = self.tables.node_id_item_substs(id)
-                    .unwrap_or_else(|| tcx.intern_substs(&[]));
+                let substs = self.tables.node_substs(id);
                 match eval::lookup_const_by_id(tcx, def_id, substs) {
                     Some((def_id, _substs)) => {
                         // Enter the inlined constant's tables temporarily.
@@ -644,11 +642,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
         match pat_ty.sty {
             ty::TyFloat(_) => {
-                self.tcx.sess.add_lint(
-                    lint::builtin::ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
-                    pat_id,
-                    span,
-                    format!("floating point constants cannot be used in patterns"));
+                self.tcx.sess.span_err(span, "floating point constants cannot be used in patterns");
             }
             ty::TyAdt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
@@ -656,15 +650,11 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
             ty::TyAdt(adt_def, _) => {
                 if !self.tcx.has_attr(adt_def.did, "structural_match") {
-                    self.tcx.sess.add_lint(
-                        lint::builtin::ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
-                        pat_id,
-                        span,
-                        format!("to use a constant of type `{}` \
-                                 in a pattern, \
-                                 `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                self.tcx.item_path_str(adt_def.did),
-                                self.tcx.item_path_str(adt_def.did)));
+                    let msg = format!("to use a constant of type `{}` in a pattern, \
+                                       `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                                      self.tcx.item_path_str(adt_def.did),
+                                      self.tcx.item_path_str(adt_def.did));
+                    self.tcx.sess.span_err(span, &msg);
                 }
             }
             _ => { }

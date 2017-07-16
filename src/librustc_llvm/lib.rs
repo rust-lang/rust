@@ -21,16 +21,13 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
 #![feature(box_syntax)]
 #![feature(concat_idents)]
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(static_nobundle)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
+#![cfg_attr(stage0, feature(associated_consts))]
 
 extern crate libc;
 #[macro_use]
@@ -389,6 +386,11 @@ pub fn initialize_available_targets() {
                  LLVMInitializeHexagonTargetMC,
                  LLVMInitializeHexagonAsmPrinter,
                  LLVMInitializeHexagonAsmParser);
+    init_target!(llvm_component = "webassembly",
+                 LLVMInitializeWebAssemblyTargetInfo,
+                 LLVMInitializeWebAssemblyTarget,
+                 LLVMInitializeWebAssemblyTargetMC,
+                 LLVMInitializeWebAssemblyAsmPrinter);
 }
 
 pub fn last_error() -> Option<String> {

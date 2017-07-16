@@ -64,5 +64,5 @@ error[E0038]: the trait `X` cannot be made into an object
    |
    = note: method `xxx` has no receiver
 
-error: aborting due to previous error(s)
+error: aborting due to 9 previous errors
 

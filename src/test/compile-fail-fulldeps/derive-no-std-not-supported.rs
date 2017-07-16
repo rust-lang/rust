@@ -10,7 +10,6 @@
 
 #![no_std]
 
-extern crate rand;
 extern crate serialize as rustc_serialize;
 
 #[derive(RustcEncodable)]  //~ ERROR this trait cannot be derived

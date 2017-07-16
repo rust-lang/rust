@@ -944,10 +944,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_list!(visitor, visit_expr, arguments);
             visitor.visit_expr(callee_expression)
         }
-        ExprMethodCall(ref name, ref types, ref arguments) => {
-            visitor.visit_name(name.span, name.node);
+        ExprMethodCall(ref segment, _, ref arguments) => {
+            visitor.visit_path_segment(expression.span, segment);
             walk_list!(visitor, visit_expr, arguments);
-            walk_list!(visitor, visit_ty, types);
         }
         ExprBinary(_, ref left_expression, ref right_expression) => {
             visitor.visit_expr(left_expression);

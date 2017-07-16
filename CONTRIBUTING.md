@@ -232,6 +232,7 @@ Some common invocations of `x.py` are:
   guidelines as of yet, but basic rules like 4 spaces for indentation and no
   more than 99 characters in a single line should be kept in mind when writing
   code.
+- `rustup toolchain link <name> build/<host-triple>/<stage>` - Use the custom compiler build via [rustup](https://github.com/rust-lang-nursery/rustup.rs#working-with-custom-toolchains-and-local-builds).
 
 ## Pull Requests
 

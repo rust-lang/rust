@@ -12,13 +12,13 @@ fn main() {
     let tup = (0, 1, 2);
     // the case where we show a suggestion
     let _ = tup[0];
-    //~^ ERROR cannot index a value of type
+    //~^ ERROR cannot index into a value of type
     //~| HELP to access tuple elements, use
     //~| SUGGESTION let _ = tup.0
 
     // the case where we show just a general hint
     let i = 0_usize;
     let _ = tup[i];
-    //~^ ERROR cannot index a value of type
+    //~^ ERROR cannot index into a value of type
     //~| HELP to access tuple elements, use tuple indexing syntax (e.g. `tuple.0`)
 }

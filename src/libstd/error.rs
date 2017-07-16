@@ -51,6 +51,7 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
+use alloc::allocator;
 use any::TypeId;
 use cell;
 use char;
@@ -221,6 +222,24 @@ impl Error for ! {
     fn description(&self) -> &str { *self }
 }
 
+#[unstable(feature = "allocator_api",
+           reason = "the precise API and guarantees it provides may be tweaked.",
+           issue = "32838")]
+impl Error for allocator::AllocErr {
+    fn description(&self) -> &str {
+        allocator::AllocErr::description(self)
+    }
+}
+
+#[unstable(feature = "allocator_api",
+           reason = "the precise API and guarantees it provides may be tweaked.",
+           issue = "32838")]
+impl Error for allocator::CannotReallocInPlace {
+    fn description(&self) -> &str {
+        allocator::CannotReallocInPlace::description(self)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
     fn description(&self) -> &str { "failed to parse bool" }
@@ -320,6 +339,14 @@ impl Error for char::CharTryFromError {
         "converted integer out of range for `char`"
     }
 }
+
+#[stable(feature = "char_from_str", since = "1.19.0")]
+impl Error for char::ParseCharError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 
 // copied from any.rs
 impl Error + 'static {

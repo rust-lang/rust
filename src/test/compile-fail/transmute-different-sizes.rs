@@ -17,12 +17,12 @@ use std::mem::transmute;
 
 unsafe fn f() {
     let _: i8 = transmute(16i16);
-    //~^ ERROR transmute called with differently sized types
+    //~^ ERROR transmute called with types of different sizes
 }
 
 unsafe fn g<T>(x: &T) {
     let _: i8 = transmute(x);
-    //~^ ERROR transmute called with differently sized types
+    //~^ ERROR transmute called with types of different sizes
 }
 
 trait Specializable { type Output; }
@@ -33,7 +33,7 @@ impl<T> Specializable for T {
 
 unsafe fn specializable<T>(x: u16) -> <T as Specializable>::Output {
     transmute(x)
-    //~^ ERROR transmute called with differently sized types
+    //~^ ERROR transmute called with types of different sizes
 }
 
 fn main() {}

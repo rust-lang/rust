@@ -11,7 +11,7 @@
 use std::slice::Iter;
 
 struct Iter;
-//~^ ERROR a type named `Iter` has already been imported in this module
+//~^ ERROR the name `Iter` is defined multiple times
 
 fn main() {
 }

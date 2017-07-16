@@ -124,6 +124,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             let mut r = cx.renderinfo.borrow_mut();
             r.deref_trait_did = cx.tcx.lang_items.deref_trait();
             r.deref_mut_trait_did = cx.tcx.lang_items.deref_mut_trait();
+            r.owned_box_did = cx.tcx.lang_items.owned_box();
         }
 
         let mut externs = Vec::new();
@@ -240,7 +241,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 }
             }).collect()
         } else {
-            cx.tcx.sess.cstore.item_children(root).iter().map(|item| item.def)
+            cx.tcx.sess.cstore.item_children(root, cx.tcx.sess).iter().map(|item| item.def)
               .filter_map(as_primitive).collect()
         };
 
@@ -309,6 +310,9 @@ impl Item {
     }
     pub fn is_ty_method(&self) -> bool {
         self.type_() == ItemType::TyMethod
+    }
+    pub fn is_typedef(&self) -> bool {
+        self.type_() == ItemType::Typedef
     }
     pub fn is_primitive(&self) -> bool {
         self.type_() == ItemType::Primitive
@@ -955,7 +959,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
             }
         };
         Type::QPath {
-            name: self.item_name.clean(cx),
+            name: self.item_name(cx.tcx).clean(cx),
             self_type: box self.trait_ref.self_ty().clean(cx),
             trait_: box trait_
         }
@@ -1363,7 +1367,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
             ty::AssociatedKind::Method => {
                 let generics = (cx.tcx.generics_of(self.def_id),
                                 &cx.tcx.predicates_of(self.def_id)).clean(cx);
-                let sig = cx.tcx.type_of(self.def_id).fn_sig();
+                let sig = cx.tcx.fn_sig(self.def_id);
                 let mut decl = (self.def_id, sig).clean(cx);
 
                 if self.method_has_self_argument {
@@ -1487,7 +1491,7 @@ pub struct PolyTrait {
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
 /// type out of the AST/TyCtxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Type {
     /// structs/enums/traits (most that'd be an hir::TyPath)
     ResolvedPath {
@@ -1506,8 +1510,8 @@ pub enum Type {
     /// extern "ABI" fn
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
-    Vector(Box<Type>),
-    FixedVector(Box<Type>, String),
+    Slice(Box<Type>),
+    Array(Box<Type>, usize),
     Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
@@ -1573,10 +1577,8 @@ impl Type {
     pub fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
             Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
-            Vector(..) | BorrowedRef{ type_: box Vector(..), ..  } => Some(PrimitiveType::Slice),
-            FixedVector(..) | BorrowedRef { type_: box FixedVector(..), .. } => {
-                Some(PrimitiveType::Array)
-            }
+            Slice(..) | BorrowedRef { type_: box Slice(..), .. } => Some(PrimitiveType::Slice),
+            Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
             Tuple(..) => Some(PrimitiveType::Tuple),
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             _ => None,
@@ -1717,11 +1719,11 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: lifetime, mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)}
             }
-            TySlice(ref ty) => Vector(box ty.clean(cx)),
+            TySlice(ref ty) => Slice(box ty.clean(cx)),
             TyArray(ref ty, length) => {
                 use rustc::middle::const_val::eval_length;
                 let n = eval_length(cx.tcx, length, "array length").unwrap();
-                FixedVector(box ty.clean(cx), n.to_string())
+                Array(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(hir::QPath::Resolved(None, ref path)) => {
@@ -1832,26 +1834,29 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyUint(uint_ty) => Primitive(uint_ty.into()),
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
-            ty::TySlice(ty) => Vector(box ty.clean(cx)),
-            ty::TyArray(ty, i) => FixedVector(box ty.clean(cx),
-                                              format!("{}", i)),
+            ty::TySlice(ty) => Slice(box ty.clean(cx)),
+            ty::TyArray(ty, n) => Array(box ty.clean(cx), n),
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),
                 mutability: mt.mutbl.clean(cx),
                 type_: box mt.ty.clean(cx),
             },
-            ty::TyFnDef(.., sig) |
-            ty::TyFnPtr(sig) => BareFunction(box BareFunctionDecl {
-                unsafety: sig.unsafety(),
-                generics: Generics {
-                    lifetimes: Vec::new(),
-                    type_params: Vec::new(),
-                    where_predicates: Vec::new()
-                },
-                decl: (cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID), sig).clean(cx),
-                abi: sig.abi(),
-            }),
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(_) => {
+                let ty = cx.tcx.lift(self).unwrap();
+                let sig = ty.fn_sig(cx.tcx);
+                BareFunction(box BareFunctionDecl {
+                    unsafety: sig.unsafety(),
+                    generics: Generics {
+                        lifetimes: Vec::new(),
+                        type_params: Vec::new(),
+                        where_predicates: Vec::new()
+                    },
+                    decl: (cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID), sig).clean(cx),
+                    abi: sig.abi(),
+                })
+            }
             ty::TyAdt(def, substs) => {
                 let did = def.did;
                 let kind = match def.adt_kind() {

@@ -12,7 +12,7 @@
 
 use cmp;
 use io::{self, Read};
-use libc::{c_int, c_void, c_ulong};
+use libc::{c_int, c_void, c_ulong, c_long};
 use mem;
 use net::{SocketAddr, Shutdown};
 use ptr;
@@ -20,7 +20,6 @@ use sync::Once;
 use sys::c;
 use sys;
 use sys_common::{self, AsInner, FromInner, IntoInner};
-use sys_common::io::read_to_end_uninitialized;
 use sys_common::net;
 use time::Duration;
 
@@ -116,6 +115,60 @@ impl Socket {
         Ok(socket)
     }
 
+    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
+        self.set_nonblocking(true)?;
+        let r = unsafe {
+            let (addrp, len) = addr.into_inner();
+            cvt(c::connect(self.0, addrp, len))
+        };
+        self.set_nonblocking(false)?;
+
+        match r {
+            Ok(_) => return Ok(()),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {}
+            Err(e) => return Err(e),
+        }
+
+        if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                      "cannot set a 0 duration timeout"));
+        }
+
+        let mut timeout = c::timeval {
+            tv_sec: timeout.as_secs() as c_long,
+            tv_usec: (timeout.subsec_nanos() / 1000) as c_long,
+        };
+        if timeout.tv_sec == 0 && timeout.tv_usec == 0 {
+            timeout.tv_usec = 1;
+        }
+
+        let fds = unsafe {
+            let mut fds = mem::zeroed::<c::fd_set>();
+            fds.fd_count = 1;
+            fds.fd_array[0] = self.0;
+            fds
+        };
+
+        let mut writefds = fds;
+        let mut errorfds = fds;
+
+        let n = unsafe {
+            cvt(c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout))?
+        };
+
+        match n {
+            0 => Err(io::Error::new(io::ErrorKind::TimedOut, "connection timed out")),
+            _ => {
+                if writefds.fd_count != 1 {
+                    if let Some(e) = self.take_error()? {
+                        return Err(e);
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
+
     pub fn accept(&self, storage: *mut c::SOCKADDR,
                   len: *mut c_int) -> io::Result<Socket> {
         let socket = unsafe {
@@ -200,11 +253,6 @@ impl Socket {
         self.recv_from_with_flags(buf, c::MSG_PEEK)
     }
 
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let mut me = self;
-        (&mut me).read_to_end(buf)
-    }
-
     pub fn set_timeout(&self, dur: Option<Duration>,
                        kind: c_int) -> io::Result<()> {
         let timeout = match dur {
@@ -282,10 +330,6 @@ impl Socket {
 impl<'a> Read for &'a Socket {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
-    }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 

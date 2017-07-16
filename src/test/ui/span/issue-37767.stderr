@@ -55,5 +55,5 @@ note: candidate #2 is defined in the trait `F`
    |     ^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `F::foo(a)` instead
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

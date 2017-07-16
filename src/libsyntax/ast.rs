@@ -97,10 +97,9 @@ impl Path {
     }
 
     pub fn default_to_global(mut self) -> Path {
-        let name = self.segments[0].identifier.name;
-        if !self.is_global() && name != "$crate" &&
-           name != keywords::SelfValue.name() && name != keywords::Super.name() {
-            self.segments.insert(0, PathSegment::crate_root());
+        if !self.is_global() &&
+           !::parse::token::Ident(self.segments[0].identifier).is_path_segment_keyword() {
+            self.segments.insert(0, PathSegment::crate_root(self.span));
         }
         self
     }
@@ -134,10 +133,10 @@ impl PathSegment {
     pub fn from_ident(ident: Ident, span: Span) -> Self {
         PathSegment { identifier: ident, span: span, parameters: None }
     }
-    pub fn crate_root() -> Self {
+    pub fn crate_root(span: Span) -> Self {
         PathSegment {
-            identifier: keywords::CrateRoot.ident(),
-            span: DUMMY_SP,
+            identifier: Ident { ctxt: span.ctxt, ..keywords::CrateRoot.ident() },
+            span: span,
             parameters: None,
         }
     }
@@ -775,10 +774,10 @@ pub struct Local {
 ///
 /// E.g. `0...10 => { println!("match!") }` as in
 ///
-/// ```rust,ignore
-/// match n {
+/// ```
+/// match 123 {
 ///     0...10 => { println!("match!") },
-///     // ..
+///     _ => { println!("no match!") },
 /// }
 /// ```
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -849,19 +848,16 @@ pub enum ExprKind {
     /// The first field resolves to the function itself,
     /// and the second field is the list of arguments
     Call(P<Expr>, Vec<P<Expr>>),
-    /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
+    /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
-    /// The `SpannedIdent` is the identifier for the method name.
-    /// The vector of `Ty`s are the ascripted type parameters for the method
+    /// The `PathSegment` represents the method name and its generic arguments
     /// (within the angle brackets).
-    ///
     /// The first element of the vector of `Expr`s is the expression that evaluates
     /// to the object on which the method is being called on (the receiver),
     /// and the remaining elements are the rest of the arguments.
-    ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    MethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    MethodCall(PathSegment, Vec<P<Expr>>),
     /// A tuple (`(a, b, c ,d)`)
     Tup(Vec<P<Expr>>),
     /// A binary operation (For example: `a + b`, `a * b`)
@@ -977,7 +973,7 @@ pub enum ExprKind {
 /// separately. `position` represents the index of the associated
 /// item qualified with this Self type.
 ///
-/// ```rust,ignore
+/// ```ignore (only-for-syntax-highlight)
 /// <Vec<T> as a::b::Trait>::AssociatedItem
 ///  ^~~~~     ~~~~~~~~~~~~~~^
 ///  ty        position = 3

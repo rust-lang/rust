@@ -893,6 +893,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          DB_OPTIONS, db_type_desc, dbsetters,
     verbose: bool = (false, parse_bool, [UNTRACKED],
         "in general, enable more debug printouts"),
+    span_free_formats: bool = (false, parse_bool, [UNTRACKED],
+        "when debug-printing compiler state, do not include spans"), // o/w tests have closure@path
+    identify_regions: bool = (false, parse_bool, [UNTRACKED],
+        "make unnamed regions display as '# (where # is some non-ident unique id)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass"),
     count_llvm_insns: bool = (false, parse_bool,
@@ -935,8 +939,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
-    save_analysis_csv: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis (in CSV format) information, in addition to normal output"),
     save_analysis_api: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis information for opaque libraries (in JSON format), \
          in addition to normal output"),
@@ -1033,6 +1035,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Option<Vec<String>> = (None, parse_opt_list, [UNTRACKED],
         "extra arguments to prepend to the linker invocation (space separated)"),
+    profile: bool = (false, parse_bool, [TRACKED],
+                     "insert profiling code"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1118,9 +1122,9 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
     };
 
     Config {
-        target: target,
-        int_type: int_type,
-        uint_type: uint_type,
+        target,
+        int_type,
+        uint_type,
     }
 }
 
@@ -1131,9 +1135,9 @@ pub enum OptionStability {
     Unstable,
 }
 
-#[derive(Clone, PartialEq, Eq)]
 pub struct RustcOptGroup {
-    pub opt_group: getopts::OptGroup,
+    pub apply: Box<Fn(&mut getopts::Options) -> &mut getopts::Options>,
+    pub name: &'static str,
     pub stability: OptionStability,
 }
 
@@ -1142,12 +1146,24 @@ impl RustcOptGroup {
         self.stability == OptionStability::Stable
     }
 
-    pub fn stable(g: getopts::OptGroup) -> RustcOptGroup {
-        RustcOptGroup { opt_group: g, stability: OptionStability::Stable }
+    pub fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
+        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
+    {
+        RustcOptGroup {
+            name,
+            apply: Box::new(f),
+            stability: OptionStability::Stable,
+        }
     }
 
-    pub fn unstable(g: getopts::OptGroup) -> RustcOptGroup {
-        RustcOptGroup { opt_group: g, stability: OptionStability::Unstable }
+    pub fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
+        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
+    {
+        RustcOptGroup {
+            name,
+            apply: Box::new(f),
+            stability: OptionStability::Unstable,
+        }
     }
 }
 
@@ -1166,41 +1182,58 @@ mod opt {
     use super::RustcOptGroup;
 
     pub type R = RustcOptGroup;
-    pub type S<'a> = &'a str;
+    pub type S = &'static str;
 
-    fn stable(g: getopts::OptGroup) -> R { RustcOptGroup::stable(g) }
-    fn unstable(g: getopts::OptGroup) -> R { RustcOptGroup::unstable(g) }
+    fn stable<F>(name: S, f: F) -> R
+        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static
+    {
+        RustcOptGroup::stable(name, f)
+    }
+
+    fn unstable<F>(name: S, f: F) -> R
+        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static
+    {
+        RustcOptGroup::unstable(name, f)
+    }
+
+    fn longer(a: S, b: S) -> S {
+        if a.len() > b.len() {
+            a
+        } else {
+            b
+        }
+    }
 
     pub fn opt_s(a: S, b: S, c: S, d: S) -> R {
-        stable(getopts::optopt(a, b, c, d))
+        stable(longer(a, b), move |opts| opts.optopt(a, b, c, d))
     }
     pub fn multi_s(a: S, b: S, c: S, d: S) -> R {
-        stable(getopts::optmulti(a, b, c, d))
+        stable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
     }
     pub fn flag_s(a: S, b: S, c: S) -> R {
-        stable(getopts::optflag(a, b, c))
+        stable(longer(a, b), move |opts| opts.optflag(a, b, c))
     }
     pub fn flagopt_s(a: S, b: S, c: S, d: S) -> R {
-        stable(getopts::optflagopt(a, b, c, d))
+        stable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
     }
     pub fn flagmulti_s(a: S, b: S, c: S) -> R {
-        stable(getopts::optflagmulti(a, b, c))
+        stable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
 
     pub fn opt(a: S, b: S, c: S, d: S) -> R {
-        unstable(getopts::optopt(a, b, c, d))
+        unstable(longer(a, b), move |opts| opts.optopt(a, b, c, d))
     }
     pub fn multi(a: S, b: S, c: S, d: S) -> R {
-        unstable(getopts::optmulti(a, b, c, d))
+        unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
     }
     pub fn flag(a: S, b: S, c: S) -> R {
-        unstable(getopts::optflag(a, b, c))
+        unstable(longer(a, b), move |opts| opts.optflag(a, b, c))
     }
     pub fn flagopt(a: S, b: S, c: S, d: S) -> R {
-        unstable(getopts::optflagopt(a, b, c, d))
+        unstable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
     }
     pub fn flagmulti(a: S, b: S, c: S) -> R {
-        unstable(getopts::optflagmulti(a, b, c))
+        unstable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
 }
 
@@ -1208,13 +1241,6 @@ mod opt {
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
 pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
-    let mut print_opts = vec!["crate-name", "file-names", "sysroot", "cfg",
-                              "target-list", "target-cpus", "target-features",
-                              "relocation-models", "code-models"];
-    if nightly_options::is_nightly_build() {
-        print_opts.push("target-spec-json");
-    }
-
     vec![
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment", "SPEC"),
@@ -1234,8 +1260,10 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                               the compiler to emit",
                  "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
-                               print on stdout", &format!("[{}]",
-                               &print_opts.join("|"))),
+                               print on stdout",
+                     "[crate-name|file-names|sysroot|cfg|target-list|\
+                       target-cpus|target-features|relocation-models|\
+                       code-models|target-spec-json]"),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
@@ -1263,7 +1291,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
 /// long-term interface for rustc.
 pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     let mut opts = rustc_short_optgroups();
-    opts.extend_from_slice(&[
+    opts.extend(vec![
         opt::multi_s("", "extern", "Specify where an external rust library is located",
                      "NAME=PATH"),
         opt::multi_s("", "extern-version", "", "NAME=CRATE_NAME,VERSION"),
@@ -1355,7 +1383,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
-    let (crate_types, emit_metadata) = parse_crate_types_from_list(unparsed_crate_types)
+    let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
     let mut lint_opts = vec![];
@@ -1403,9 +1431,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             }
         }
     };
-    if emit_metadata {
-        output_types.insert(OutputType::Metadata, None);
-    } else if output_types.is_empty() {
+    if output_types.is_empty() {
         output_types.insert(OutputType::Exe, None);
     }
 
@@ -1602,37 +1628,36 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let incremental = debugging_opts.incremental.as_ref().map(|m| PathBuf::from(m));
 
     (Options {
-        crate_types: crate_types,
+        crate_types,
         optimize: opt_level,
-        debuginfo: debuginfo,
-        lint_opts: lint_opts,
-        lint_cap: lint_cap,
-        describe_lints: describe_lints,
+        debuginfo,
+        lint_opts,
+        lint_cap,
+        describe_lints,
         output_types: OutputTypes(output_types),
-        search_paths: search_paths,
+        search_paths,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
-        test: test,
-        incremental: incremental,
-        debugging_opts: debugging_opts,
-        prints: prints,
-        cg: cg,
-        error_format: error_format,
+        test,
+        incremental,
+        debugging_opts,
+        prints,
+        cg,
+        error_format,
         externs: Externs(externs),
-        crate_name: crate_name,
+        crate_name,
         alt_std_name: None,
-        libs: libs,
+        libs,
         unstable_features: UnstableFeatures::from_environment(),
-        debug_assertions: debug_assertions,
+        debug_assertions,
         actually_rustdoc: false,
     },
     cfg)
 }
 
 pub fn parse_crate_types_from_list(list_list: Vec<String>)
-                                   -> Result<(Vec<CrateType>, bool), String> {
+                                   -> Result<Vec<CrateType>, String> {
     let mut crate_types: Vec<CrateType> = Vec::new();
-    let mut emit_metadata = false;
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
@@ -1643,13 +1668,6 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>)
                 "cdylib"    => CrateTypeCdylib,
                 "bin"       => CrateTypeExecutable,
                 "proc-macro" => CrateTypeProcMacro,
-                // FIXME(#38640) remove this when Cargo is fixed.
-                "metadata"  => {
-                    early_warn(ErrorOutputType::default(), "--crate-type=metadata is deprecated, \
-                                                            prefer --emit=metadata");
-                    emit_metadata = true;
-                    CrateTypeRlib
-                }
                 _ => {
                     return Err(format!("unknown crate type: `{}`",
                                        part));
@@ -1661,7 +1679,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>)
         }
     }
 
-    return Ok((crate_types, emit_metadata));
+    Ok(crate_types)
 }
 
 pub mod nightly_options {
@@ -1687,19 +1705,14 @@ pub mod nightly_options {
             if opt.stability == OptionStability::Stable {
                 continue
             }
-            let opt_name = if opt.opt_group.long_name.is_empty() {
-                &opt.opt_group.short_name
-            } else {
-                &opt.opt_group.long_name
-            };
-            if !matches.opt_present(opt_name) {
+            if !matches.opt_present(opt.name) {
                 continue
             }
-            if opt_name != "Z" && !has_z_unstable_option {
+            if opt.name != "Z" && !has_z_unstable_option {
                 early_error(ErrorOutputType::default(),
                             &format!("the `-Z unstable-options` flag must also be passed to enable \
                                       the flag `{}`",
-                                     opt_name));
+                                     opt.name));
             }
             if really_allows_unstable_options {
                 continue
@@ -1707,7 +1720,7 @@ pub mod nightly_options {
             match opt.stability {
                 OptionStability::Unstable => {
                     let msg = format!("the option `{}` is only accepted on the \
-                                       nightly compiler", opt_name);
+                                       nightly compiler", opt.name);
                     early_error(ErrorOutputType::default(), &msg);
                 }
                 OptionStability::Stable => {}
@@ -1876,7 +1889,7 @@ mod dep_tracking {
 mod tests {
     use dep_graph::DepGraph;
     use errors;
-    use getopts::{getopts, OptGroup};
+    use getopts;
     use lint;
     use middle::cstore::{self, DummyCrateStore};
     use session::config::{build_configuration, build_session_options_and_crate_config};
@@ -1889,10 +1902,12 @@ mod tests {
     use rustc_back::PanicStrategy;
     use syntax::symbol::Symbol;
 
-    fn optgroups() -> Vec<OptGroup> {
-        super::rustc_optgroups().into_iter()
-                                .map(|a| a.opt_group)
-                                .collect()
+    fn optgroups() -> getopts::Options {
+        let mut opts = getopts::Options::new();
+        for group in super::rustc_optgroups() {
+            (group.apply)(&mut opts);
+        }
+        return opts
     }
 
     fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V> {
@@ -1908,7 +1923,7 @@ mod tests {
     fn test_switch_implies_cfg_test() {
         let dep_graph = DepGraph::new(false);
         let matches =
-            &match getopts(&["--test".to_string()], &optgroups()) {
+            &match optgroups().parse(&["--test".to_string()]) {
               Ok(m) => m,
               Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
             };
@@ -1925,8 +1940,7 @@ mod tests {
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let dep_graph = DepGraph::new(false);
         let matches =
-            &match getopts(&["--test".to_string(), "--cfg=test".to_string()],
-                           &optgroups()) {
+            &match optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]) {
               Ok(m) => m,
               Err(f) => {
                 panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
@@ -1946,9 +1960,9 @@ mod tests {
     fn test_can_print_warnings() {
         let dep_graph = DepGraph::new(false);
         {
-            let matches = getopts(&[
+            let matches = optgroups().parse(&[
                 "-Awarnings".to_string()
-            ], &optgroups()).unwrap();
+            ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, &dep_graph, None, registry,
@@ -1957,10 +1971,10 @@ mod tests {
         }
 
         {
-            let matches = getopts(&[
+            let matches = optgroups().parse(&[
                 "-Awarnings".to_string(),
                 "-Dwarnings".to_string()
-            ], &optgroups()).unwrap();
+            ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, &dep_graph, None, registry,
@@ -1969,9 +1983,9 @@ mod tests {
         }
 
         {
-            let matches = getopts(&[
+            let matches = optgroups().parse(&[
                 "-Adead_code".to_string()
-            ], &optgroups()).unwrap();
+            ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, &dep_graph, None, registry,
@@ -2479,8 +2493,6 @@ mod tests {
         opts.debugging_opts.ls = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.save_analysis = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.save_analysis_csv = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.save_analysis_api = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());

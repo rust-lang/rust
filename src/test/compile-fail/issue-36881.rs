@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rand)]
+// aux-build:issue-36881-aux.rs
 
 fn main() {
-    extern crate rand;
-    use rand::Rng; //~ ERROR unresolved import
+    extern crate issue_36881_aux;
+    use issue_36881_aux::Foo; //~ ERROR unresolved import
 }

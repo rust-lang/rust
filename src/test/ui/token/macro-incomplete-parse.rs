@@ -32,7 +32,7 @@ macro_rules! ignored_pat {
 ignored_item!(); //~ NOTE caused by the macro expansion here
 
 fn main() {
-    ignored_expr!();
+    ignored_expr!(); //~ NOTE in this expansion
     match 1 {
         ignored_pat!() => (), //~ NOTE caused by the macro expansion here
         _ => (),

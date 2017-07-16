@@ -30,7 +30,6 @@
 #![crate_type="rlib"]
 #![feature(associated_type_defaults)]
 #![feature(intrinsics)]
-#![feature(associated_consts)]
 
 
 // Change trait visibility --------------------------------------------------------

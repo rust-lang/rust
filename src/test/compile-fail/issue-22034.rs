@@ -17,6 +17,5 @@ fn main() {
     let _: &mut Fn() = unsafe {
         &mut *(ptr as *mut Fn())
         //~^ ERROR `(): std::ops::Fn<()>` is not satisfied
-        //~| ERROR `(): std::ops::FnOnce<()>` is not satisfied
     };
 }

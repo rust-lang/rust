@@ -218,7 +218,7 @@ impl PathSegment {
     /// Convert an identifier to the corresponding segment.
     pub fn from_name(name: Name) -> PathSegment {
         PathSegment {
-            name: name,
+            name,
             parameters: PathParameters::none()
         }
     }
@@ -872,6 +872,7 @@ pub struct Local {
     pub id: NodeId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
+    pub source: LocalSource,
 }
 
 pub type Decl = Spanned<Decl_>;
@@ -971,19 +972,16 @@ pub enum Expr_ {
     /// The first field resolves to the function itself (usually an `ExprPath`),
     /// and the second field is the list of arguments
     ExprCall(P<Expr>, HirVec<Expr>),
-    /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
+    /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
-    /// The `Spanned<Name>` is the identifier for the method name.
-    /// The vector of `Ty`s are the ascripted type parameters for the method
+    /// The `PathSegment`/`Span` represent the method name and its generic arguments
     /// (within the angle brackets).
-    ///
-    /// The first element of the vector of `Expr`s is the expression that
-    /// evaluates to the object on which the method is being called on (the
-    /// receiver), and the remaining elements are the rest of the arguments.
-    ///
+    /// The first element of the vector of `Expr`s is the expression that evaluates
+    /// to the object on which the method is being called on (the receiver),
+    /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(Spanned<Name>, HirVec<P<Ty>>, HirVec<Expr>),
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    ExprMethodCall(PathSegment, Span, HirVec<Expr>),
     /// A tuple (`(a, b, c ,d)`)
     ExprTup(HirVec<Expr>),
     /// A binary operation (For example: `a + b`, `a * b`)
@@ -1078,6 +1076,15 @@ pub enum QPath {
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
     /// the `X` and `Y` nodes each being a `TyPath(QPath::TypeRelative(..))`.
     TypeRelative(P<Ty>, P<PathSegment>)
+}
+
+/// Hints at the original code for a let statement
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum LocalSource {
+    /// A `match _ { .. }`
+    Normal,
+    /// A desugared `for _ in _ { .. }` loop
+    ForLoopDesugar,
 }
 
 /// Hints at the original code for a `match _ { .. }`

@@ -13,7 +13,7 @@
 mod foo {
     use baz::bar;
     mod bar {}
-    //~^ ERROR a module named `bar` has already been imported
+    //~^ ERROR the name `bar` is defined multiple times
 }
 mod baz { pub mod bar {} }
 

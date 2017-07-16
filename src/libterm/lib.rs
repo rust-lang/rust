@@ -57,9 +57,6 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(staged_api))]
-
 use std::io::prelude::*;
 
 pub use terminfo::TerminfoTerminal;

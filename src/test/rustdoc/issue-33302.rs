@@ -11,7 +11,6 @@
 // Ensure constant and array length values are not taken from source
 // code, which wreaks havoc with macros.
 
-#![feature(associated_consts)]
 
 macro_rules! make {
     ($n:expr) => {

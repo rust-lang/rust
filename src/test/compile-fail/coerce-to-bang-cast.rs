@@ -17,7 +17,7 @@ fn cast_a() {
 }
 
 fn cast_b() {
-    let y = 22 as !; //~ ERROR non-scalar cast
+    let y = 22 as !; //~ ERROR non-primitive cast
 }
 
 fn main() { }

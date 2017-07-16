@@ -1,4 +1,4 @@
-language: minimal
+language: generic
 sudo: required
 dist: trusty
 services:
@@ -33,12 +33,13 @@ matrix:
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
     - env: IMAGE=dist-s390x-linux DEPLOY=1
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
-    - env: IMAGE=dist-x86_64-linux DEPLOY=1
+    - env: IMAGE=dist-x86_64-linux DEPLOY=1 ALLOW_TRY=1
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
-    - env: IMAGE=emscripten
+    - env: IMAGE=asmjs
     - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
+    # - env: IMAGE=wasm32 issue 42646
     - env: IMAGE=x86_64-gnu
     - env: IMAGE=x86_64-gnu-full-bootstrap
     - env: IMAGE=x86_64-gnu-aux
@@ -54,7 +55,7 @@ matrix:
     # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers"
+        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
@@ -87,7 +88,7 @@ matrix:
     # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -101,7 +102,7 @@ matrix:
         - *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers"
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -152,19 +153,40 @@ before_script:
       echo "#### Disk usage before running script:";
       df -h;
       du . | sort -nr | head -n100
-
-script:
+  # If we are building a pull request, do the build if $ALLOW_PR == 1
+  # Otherwise, do the build if we are on the auto branch, or the try branch and $ALLOW_TRY == 1
   - >
-      if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
-          echo skipping, not a full build
-      else
-          stamp src/ci/init_repo.sh . "$HOME/rustsrc" &&
-          if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-              stamp src/ci/run.sh;
+      if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+          if [[ "$ALLOW_PR" == "1" ]]; then
+              SKIP_BUILD=false;
           else
-              stamp src/ci/docker/run.sh $IMAGE;
+              SKIP_BUILD=true;
+          fi
+      elif [[ "$TRAVIS_BRANCH" == "auto" || ( "$ALLOW_TRY" == "1" && "$TRAVIS_BRANCH" == "try" ) ]]; then
+          SKIP_BUILD=false;
+      else
+          SKIP_BUILD=true;
+      fi
+
+      if [[ "$SKIP_BUILD" == true ]]; then
+          export RUN_SCRIPT="echo 'skipping, not a full build'";
+      else
+          RUN_SCRIPT="src/ci/init_repo.sh . $HOME/rustsrc";
+          if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+              export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
+          else
+              export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
           fi
       fi
+
+# Log time information from this machine and an external machine for insight into possible
+# clock drift. Timezones don't matter since relative deltas give all the necessary info.
+script:
+  - >
+      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
+  - stamp sh -x -c "$RUN_SCRIPT"
+  - >
+      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
 
 after_success:
   - >
@@ -237,6 +259,20 @@ deploy:
     on:
       branch: auto
       condition: $DEPLOY = 1
+
+  - provider: s3
+    bucket: rust-lang-ci
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds-try
+    acl: public_read
+    region: us-east-1
+    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    secret_access_key:
+      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+    on:
+      branch: try
+      condition: $DEPLOY = 1 && $ALLOW_TRY = 1
 
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger

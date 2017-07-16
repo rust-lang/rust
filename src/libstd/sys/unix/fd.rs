@@ -17,7 +17,6 @@ use mem;
 use sync::atomic::{AtomicBool, Ordering};
 use sys::cvt;
 use sys_common::AsInner;
-use sys_common::io::read_to_end_uninitialized;
 
 #[derive(Debug)]
 pub struct FileDesc {
@@ -231,10 +230,6 @@ impl FileDesc {
 impl<'a> Read for &'a FileDesc {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
-    }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 

@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-20862.rs:12:5
+   |
+11 | fn foo(x: i32) {
+   |                - possibly return type missing here?
+12 |     |y| x + y
+   |     ^^^^^^^^^ expected (), found closure
+   |
+   = note: expected type `()`
+              found type `[closure@$DIR/issue-20862.rs:12:5: 12:14 x:_]`
+
+error[E0618]: expected function, found `()`
+  --> $DIR/issue-20862.rs:17:13
+   |
+17 |     let x = foo(5)(2);
+   |             ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

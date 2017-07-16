@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-pub trait bomb { fn boom(&self, Ident); }
+pub trait bomb { fn boom(&self, _: Ident); }
 pub struct S;
 impl bomb for S { fn boom(&self, _: Ident) { } }
 

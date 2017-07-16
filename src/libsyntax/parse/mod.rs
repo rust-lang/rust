@@ -141,9 +141,10 @@ pub fn parse_stmt_from_source_str(name: String, source: String, sess: &ParseSess
     new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
-pub fn parse_stream_from_source_str(name: String, source: String, sess: &ParseSess)
-                                        -> TokenStream {
-    filemap_to_stream(sess, sess.codemap().new_filemap(name, source))
+pub fn parse_stream_from_source_str(name: String, source: String, sess: &ParseSess,
+                                    override_span: Option<Span>)
+                                    -> TokenStream {
+    filemap_to_stream(sess, sess.codemap().new_filemap(name, source), override_span)
 }
 
 // Create a new parser from a source string
@@ -177,7 +178,7 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 /// Given a filemap and config, return a parser
 pub fn filemap_to_parser(sess: & ParseSess, filemap: Rc<FileMap>, ) -> Parser {
     let end_pos = filemap.end_pos;
-    let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap));
+    let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
 
     if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
         parser.span = Span { lo: end_pos, hi: end_pos, ctxt: NO_EXPANSION };
@@ -212,8 +213,10 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>) -> TokenStream {
+pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>, override_span: Option<Span>)
+                         -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, filemap);
+    srdr.override_span = override_span;
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
 }
@@ -684,7 +687,7 @@ mod tests {
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 6),
-                        segments: vec![ast::PathSegment::crate_root(),
+                        segments: vec![ast::PathSegment::crate_root(sp(0, 2)),
                                        str2seg("a", 2, 3),
                                        str2seg("b", 5, 6)]
                     }),

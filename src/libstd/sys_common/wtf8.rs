@@ -39,7 +39,7 @@ use slice;
 use str;
 use sys_common::AsInner;
 
-const UTF8_REPLACEMENT_CHARACTER: &'static [u8] = b"\xEF\xBF\xBD";
+const UTF8_REPLACEMENT_CHARACTER: &'static str = "\u{FFFD}";
 
 /// A Unicode code point: from U+0000 to U+10FFFF.
 ///
@@ -339,7 +339,7 @@ impl Wtf8Buf {
                 Some((surrogate_pos, _)) => {
                     pos = surrogate_pos + 3;
                     self.bytes[surrogate_pos..pos]
-                        .copy_from_slice(UTF8_REPLACEMENT_CHARACTER);
+                        .copy_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
                 },
                 None => return unsafe { String::from_utf8_unchecked(self.bytes) }
             }
@@ -438,6 +438,30 @@ impl fmt::Debug for Wtf8 {
     }
 }
 
+impl fmt::Display for Wtf8 {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let wtf8_bytes = &self.bytes;
+        let mut pos = 0;
+        loop {
+            match self.next_surrogate(pos) {
+                Some((surrogate_pos, _)) => {
+                    formatter.write_str(unsafe {
+                        str::from_utf8_unchecked(&wtf8_bytes[pos .. surrogate_pos])
+                    })?;
+                    formatter.write_str(UTF8_REPLACEMENT_CHARACTER)?;
+                    pos = surrogate_pos + 3;
+                },
+                None => {
+                    formatter.write_str(unsafe {
+                        str::from_utf8_unchecked(&wtf8_bytes[pos..])
+                    })?;
+                    return Ok(());
+                }
+            }
+        }
+    }
+}
+
 impl Wtf8 {
     /// Creates a WTF-8 slice from a UTF-8 `&str` slice.
     ///
@@ -516,13 +540,13 @@ impl Wtf8 {
         let wtf8_bytes = &self.bytes;
         let mut utf8_bytes = Vec::with_capacity(self.len());
         utf8_bytes.extend_from_slice(&wtf8_bytes[..surrogate_pos]);
-        utf8_bytes.extend_from_slice(UTF8_REPLACEMENT_CHARACTER);
+        utf8_bytes.extend_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
         let mut pos = surrogate_pos + 3;
         loop {
             match self.next_surrogate(pos) {
                 Some((surrogate_pos, _)) => {
                     utf8_bytes.extend_from_slice(&wtf8_bytes[pos .. surrogate_pos]);
-                    utf8_bytes.extend_from_slice(UTF8_REPLACEMENT_CHARACTER);
+                    utf8_bytes.extend_from_slice(UTF8_REPLACEMENT_CHARACTER.as_bytes());
                     pos = surrogate_pos + 3;
                 },
                 None => {
@@ -1198,6 +1222,20 @@ mod tests {
         string.push(CodePoint::from_u32(0xD800).unwrap());
         let expected: Cow<str> = Cow::Owned(String::from("aé 💩�"));
         assert_eq!(string.to_string_lossy(), expected);
+    }
+
+    #[test]
+    fn wtf8_display() {
+        fn d(b: &[u8]) -> String {
+            format!("{}", &unsafe { Wtf8::from_bytes_unchecked(b) })
+        }
+
+        assert_eq!("", d("".as_bytes()));
+        assert_eq!("aé 💩", d("aé 💩".as_bytes()));
+
+        let mut string = Wtf8Buf::from_str("aé 💩");
+        string.push(CodePoint::from_u32(0xD800).unwrap());
+        assert_eq!("aé 💩�", d(string.as_inner()));
     }
 
     #[test]

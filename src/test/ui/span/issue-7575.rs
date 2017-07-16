@@ -12,12 +12,12 @@
 // ignore-tidy-linelength
 
 trait CtxtFn {
-    fn f8(self, usize) -> usize;
-    fn f9(usize) -> usize; //~ NOTE candidate
+    fn f8(self, _: usize) -> usize;
+    fn f9(_: usize) -> usize; //~ NOTE candidate
 }
 
 trait OtherTrait {
-    fn f9(usize) -> usize; //~ NOTE candidate
+    fn f9(_: usize) -> usize; //~ NOTE candidate
 }
 
 // Note: this trait is not implemented, but we can't really tell
@@ -26,7 +26,7 @@ trait OtherTrait {
 // candidate. This seems not unreasonable -- perhaps the user meant to
 // implement it, after all.
 trait UnusedTrait {
-    fn f9(usize) -> usize; //~ NOTE candidate
+    fn f9(_: usize) -> usize; //~ NOTE candidate
 }
 
 impl CtxtFn for usize {

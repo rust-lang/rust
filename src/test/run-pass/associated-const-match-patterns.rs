@@ -10,7 +10,6 @@
 
 // aux-build:empty-struct.rs
 
-#![feature(associated_consts)]
 
 extern crate empty_struct;
 use empty_struct::XEmpty2 as XFoo;

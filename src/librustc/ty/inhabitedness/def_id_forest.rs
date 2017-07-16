@@ -52,7 +52,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         let mut root_ids = SmallVec::new();
         root_ids.push(id);
         DefIdForest {
-            root_ids: root_ids,
+            root_ids,
         }
     }
 

@@ -157,6 +157,14 @@ impl Diagnostic {
         self
     }
 
+    pub fn note_trait_signature(&mut self, name: String, signature: String) -> &mut Self {
+        self.highlighted_note(vec![
+            (format!("`{}` from trait: `", name), Style::NoStyle),
+            (signature, Style::Highlight),
+            ("`".to_string(), Style::NoStyle)]);
+        self
+    }
+
     pub fn note(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
         self
@@ -238,6 +246,10 @@ impl Diagnostic {
 
     pub fn message(&self) -> String {
         self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
+    }
+
+    pub fn set_message(&mut self, message: &str) {
+        self.message = vec![(message.to_owned(), Style::NoStyle)];
     }
 
     pub fn styled_message(&self) -> &Vec<(String, Style)> {

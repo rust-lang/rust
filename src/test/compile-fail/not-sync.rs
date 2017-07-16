@@ -10,7 +10,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
-use std::sync::mpsc::{Receiver, Sender, SyncSender};
+use std::sync::mpsc::{Receiver, Sender};
 
 fn test<T: Sync>() {}
 
@@ -29,6 +29,4 @@ fn main() {
     //~^ ERROR `std::sync::mpsc::Receiver<i32>: std::marker::Sync` is not satisfied
     test::<Sender<i32>>();
     //~^ ERROR `std::sync::mpsc::Sender<i32>: std::marker::Sync` is not satisfied
-    test::<SyncSender<i32>>();
-    //~^ ERROR `std::sync::mpsc::SyncSender<i32>: std::marker::Sync` is not satisfied
 }

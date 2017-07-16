@@ -298,6 +298,8 @@ pub const PIPE_TYPE_BYTE: DWORD = 0x00000000;
 pub const PIPE_REJECT_REMOTE_CLIENTS: DWORD = 0x00000008;
 pub const PIPE_READMODE_BYTE: DWORD = 0x00000000;
 
+pub const FD_SETSIZE: usize = 64;
+
 #[repr(C)]
 #[cfg(target_arch = "x86")]
 pub struct WSADATA {
@@ -837,6 +839,26 @@ pub struct CONSOLE_READCONSOLE_CONTROL {
 }
 pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
 
+#[repr(C)]
+#[derive(Copy)]
+pub struct fd_set {
+    pub fd_count: c_uint,
+    pub fd_array: [SOCKET; FD_SETSIZE],
+}
+
+impl Clone for fd_set {
+    fn clone(&self) -> fd_set {
+        *self
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct timeval {
+    pub tv_sec: c_long,
+    pub tv_usec: c_long,
+}
+
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD,
                       lpWSAData: LPWSADATA) -> c_int;
@@ -1125,6 +1147,11 @@ extern "system" {
                                lpOverlapped: LPOVERLAPPED,
                                lpNumberOfBytesTransferred: LPDWORD,
                                bWait: BOOL) -> BOOL;
+    pub fn select(nfds: c_int,
+                  readfds: *mut fd_set,
+                  writefds: *mut fd_set,
+                  exceptfds: *mut fd_set,
+                  timeout: *const timeval) -> c_int;
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just

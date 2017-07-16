@@ -133,7 +133,6 @@ enum Node {
     Region(ty::RegionKind),
 }
 
-// type Edge = Constraint;
 #[derive(Clone, PartialEq, Eq, Debug, Copy)]
 enum Edge<'tcx> {
     Constraint(Constraint<'tcx>),

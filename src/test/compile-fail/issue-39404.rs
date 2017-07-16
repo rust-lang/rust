@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(missing_fragment_specifier)] //~ NOTE lint level defined here
-#![allow(unused_macros)]
+#![allow(unused)]
 
 macro_rules! m { ($i) => {} }
 //~^ ERROR missing fragment specifier
 //~| WARN previously accepted
-//~| NOTE issue #40107
 
 fn main() {}

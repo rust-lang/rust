@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern: non-scalar cast
-
 enum non_nullary {
     nullary,
     other(isize),
@@ -17,5 +15,5 @@ enum non_nullary {
 
 fn main() {
     let v = non_nullary::nullary;
-    let val = v as isize;
+    let val = v as isize; //~ ERROR non-primitive cast: `non_nullary` as `isize` [E0605]
 }

@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
-use std::sync::Arc;
 
 use super::dep_node::{DepNode, WorkProductId};
 use super::query::DepGraphQuery;
@@ -35,10 +33,12 @@ struct DepGraphData {
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
-    previous_work_products: RefCell<FxHashMap<Arc<WorkProductId>, WorkProduct>>,
+    previous_work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
 
     /// Work-products that we generate in this run.
-    work_products: RefCell<FxHashMap<Arc<WorkProductId>, WorkProduct>>,
+    work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
+
+    dep_node_debug: RefCell<FxHashMap<DepNode, String>>,
 }
 
 impl DepGraph {
@@ -48,6 +48,7 @@ impl DepGraph {
                 thread: DepGraphThreadData::new(enabled),
                 previous_work_products: RefCell::new(FxHashMap()),
                 work_products: RefCell::new(FxHashMap()),
+                dep_node_debug: RefCell::new(FxHashMap()),
             })
         }
     }
@@ -58,7 +59,7 @@ impl DepGraph {
         self.data.thread.is_fully_enabled()
     }
 
-    pub fn query(&self) -> DepGraphQuery<DefId> {
+    pub fn query(&self) -> DepGraphQuery {
         self.data.thread.query()
     }
 
@@ -66,7 +67,7 @@ impl DepGraph {
         raii::IgnoreTask::new(&self.data.thread)
     }
 
-    pub fn in_task<'graph>(&'graph self, key: DepNode<DefId>) -> Option<raii::DepTask<'graph>> {
+    pub fn in_task<'graph>(&'graph self, key: DepNode) -> Option<raii::DepTask<'graph>> {
         raii::DepTask::new(&self.data.thread, key)
     }
 
@@ -104,14 +105,14 @@ impl DepGraph {
     ///   `arg` parameter.
     ///
     /// [README]: README.md
-    pub fn with_task<C, A, R>(&self, key: DepNode<DefId>, cx: C, arg: A, task: fn(C, A) -> R) -> R
+    pub fn with_task<C, A, R>(&self, key: DepNode, cx: C, arg: A, task: fn(C, A) -> R) -> R
         where C: DepGraphSafe, A: DepGraphSafe
     {
         let _task = self.in_task(key);
         task(cx, arg)
     }
 
-    pub fn read(&self, v: DepNode<DefId>) {
+    pub fn read(&self, v: DepNode) {
         if self.data.thread.is_enqueue_enabled() {
             self.data.thread.enqueue(DepMessage::Read(v));
         }
@@ -120,7 +121,7 @@ impl DepGraph {
     /// Indicates that a previous work product exists for `v`. This is
     /// invoked during initial start-up based on what nodes are clean
     /// (and what files exist in the incr. directory).
-    pub fn insert_previous_work_product(&self, v: &Arc<WorkProductId>, data: WorkProduct) {
+    pub fn insert_previous_work_product(&self, v: &WorkProductId, data: WorkProduct) {
         debug!("insert_previous_work_product({:?}, {:?})", v, data);
         self.data.previous_work_products.borrow_mut()
                                         .insert(v.clone(), data);
@@ -129,7 +130,7 @@ impl DepGraph {
     /// Indicates that we created the given work-product in this run
     /// for `v`. This record will be preserved and loaded in the next
     /// run.
-    pub fn insert_work_product(&self, v: &Arc<WorkProductId>, data: WorkProduct) {
+    pub fn insert_work_product(&self, v: &WorkProductId, data: WorkProduct) {
         debug!("insert_work_product({:?}, {:?})", v, data);
         self.data.work_products.borrow_mut()
                                .insert(v.clone(), data);
@@ -137,7 +138,7 @@ impl DepGraph {
 
     /// Check whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
-    pub fn previous_work_product(&self, v: &Arc<WorkProductId>) -> Option<WorkProduct> {
+    pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {
         self.data.previous_work_products.borrow()
                                         .get(v)
                                         .cloned()
@@ -145,14 +146,30 @@ impl DepGraph {
 
     /// Access the map of work-products created during this run. Only
     /// used during saving of the dep-graph.
-    pub fn work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
+    pub fn work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
         self.data.work_products.borrow()
     }
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> Ref<FxHashMap<Arc<WorkProductId>, WorkProduct>> {
+    pub fn previous_work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
         self.data.previous_work_products.borrow()
+    }
+
+    #[inline(always)]
+    pub(super) fn register_dep_node_debug_str<F>(&self,
+                                                 dep_node: DepNode,
+                                                 debug_str_gen: F)
+        where F: FnOnce() -> String
+    {
+        let mut dep_node_debug = self.data.dep_node_debug.borrow_mut();
+
+        dep_node_debug.entry(dep_node)
+                      .or_insert_with(debug_str_gen);
+    }
+
+    pub(super) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
+        self.data.dep_node_debug.borrow().get(&dep_node).cloned()
     }
 }
 

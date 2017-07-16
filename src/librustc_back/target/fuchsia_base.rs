@@ -37,7 +37,6 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         pre_link_args: args,
         position_independent_executables: true,
-        exe_allocation_crate: "alloc_system".to_string(),
         has_elf_tls: true,
         .. Default::default()
     }

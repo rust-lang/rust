@@ -7,5 +7,5 @@ error[E0493]: constants are not allowed to have destructors
 27 | const F : Foo = Foo { a : 0 };
    |                 ^^^^^^^^^^^^^ constants cannot have destructors
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

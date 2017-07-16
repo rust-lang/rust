@@ -12,7 +12,7 @@
 // type parameters on a trait correctly.
 
 trait Tr<T> : Sized {
-    fn op(T) -> Self;
+    fn op(_: T) -> Self;
 }
 
 trait A:    Tr<Self> {

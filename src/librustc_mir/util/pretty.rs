@@ -111,6 +111,7 @@ fn dump_matched_mir_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let p = Path::new(file_dir);
         file_path.push(p);
     };
+    let _ = fs::create_dir_all(&file_path);
     let file_name = format!("rustc.node{}{}{}.{}.{}.mir",
                             source.item_id(), promotion_id, pass_num, pass_name, disambiguator);
     file_path.push(&file_name);

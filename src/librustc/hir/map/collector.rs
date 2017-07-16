@@ -28,7 +28,7 @@ pub struct NodeCollector<'hir> {
 impl<'hir> NodeCollector<'hir> {
     pub fn root(krate: &'hir Crate) -> NodeCollector<'hir> {
         let mut collector = NodeCollector {
-            krate: krate,
+            krate,
             map: vec![],
             parent_node: CRATE_NODE_ID,
         };

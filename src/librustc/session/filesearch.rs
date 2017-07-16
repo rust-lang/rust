@@ -104,10 +104,10 @@ impl<'a> FileSearch<'a> {
                kind: PathKind) -> FileSearch<'a> {
         debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch {
-            sysroot: sysroot,
-            search_paths: search_paths,
-            triple: triple,
-            kind: kind,
+            sysroot,
+            search_paths,
+            triple,
+            kind,
         }
     }
 

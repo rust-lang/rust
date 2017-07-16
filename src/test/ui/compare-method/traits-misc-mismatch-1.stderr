@@ -61,5 +61,5 @@ error[E0276]: impl has stricter requirements than trait
 76 |     fn method<G: Getter<usize>>(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `G: Getter<usize>`
 
-error: aborting due to previous error(s)
+error: aborting due to 7 previous errors
 

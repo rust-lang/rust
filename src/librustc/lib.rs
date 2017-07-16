@@ -22,7 +22,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
@@ -39,15 +38,12 @@
 #![feature(specialization)]
 #![feature(unboxed_closures)]
 #![feature(discriminant_value)]
-#![feature(sort_unstable)]
 #![feature(trace_macros)]
+#![feature(test)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
-#![cfg_attr(stage0, feature(loop_break_value))]
+#![cfg_attr(stage0, feature(associated_consts))]
 
-#![recursion_limit="192"]
+#![recursion_limit="256"]
 
 extern crate arena;
 extern crate core;
@@ -65,8 +61,14 @@ extern crate rustc_errors as errors;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
+extern crate jobserver;
 
 extern crate serialize as rustc_serialize; // used by deriving
+
+// Note that librustc doesn't actually depend on these crates, see the note in
+// `Cargo.toml` for this crate about why these are here.
+extern crate flate2;
+extern crate test;
 
 #[macro_use]
 mod macros;
@@ -83,6 +85,7 @@ pub mod infer;
 pub mod lint;
 
 pub mod middle {
+    pub mod allocator;
     pub mod expr_use_visitor;
     pub mod const_val;
     pub mod cstore;

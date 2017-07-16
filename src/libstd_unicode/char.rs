@@ -38,6 +38,8 @@ use tables::{conversions, derived_property, general_category, property};
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{EscapeDebug, EscapeDefault, EscapeUnicode};
+#[stable(feature = "char_from_str", since = "1.19.0")]
+pub use core::char::ParseCharError;
 
 // unstable reexports
 #[unstable(feature = "try_from", issue = "33417")]
@@ -599,9 +601,9 @@ impl char {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to `ID_Start` but modified for closure under `NFKx`.
-    #[unstable(feature = "unicode",
+    #[unstable(feature = "rustc_private",
                reason = "mainly needed for compiler internals",
-               issue = "0")]
+               issue = "27812")]
     #[inline]
     pub fn is_xid_start(self) -> bool {
         derived_property::XID_Start(self)
@@ -613,9 +615,9 @@ impl char {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[unstable(feature = "unicode",
+    #[unstable(feature = "rustc_private",
                reason = "mainly needed for compiler internals",
-               issue = "0")]
+               issue = "27812")]
     #[inline]
     pub fn is_xid_continue(self) -> bool {
         derived_property::XID_Continue(self)

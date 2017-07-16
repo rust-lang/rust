@@ -35,6 +35,12 @@ pub struct Args {
     _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
+impl Args {
+    pub fn inner_debug(&self) -> &[OsString] {
+        self.iter.as_slice()
+    }
+}
+
 impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.iter.next() }

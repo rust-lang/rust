@@ -9,17 +9,13 @@
 // except according to those terms.
 
 
-#![allow(unknown_features)]
-#![feature(box_syntax, collections)]
-
-extern crate collections;
+#![feature(box_syntax)]
 
 use std::collections::HashMap;
 
 trait Graph<Node, Edge> {
-    fn f(&self, Edge);
-    fn g(&self, Node);
-
+    fn f(&self, _: Edge);
+    fn g(&self, _: Node);
 }
 
 impl<E> Graph<isize, E> for HashMap<isize, isize> {

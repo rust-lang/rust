@@ -26,7 +26,7 @@ pub trait Subscriber {
 
 pub trait Publisher<'a> {
     type Output;
-    fn subscribe(&mut self, Box<Subscriber<Input=Self::Output> + 'a>);
+    fn subscribe(&mut self, _: Box<Subscriber<Input=Self::Output> + 'a>);
 }
 
 pub trait Processor<'a> : Subscriber + Publisher<'a> { }

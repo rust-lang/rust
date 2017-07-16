@@ -236,4 +236,4 @@ yet, that's what we're trying to find!  In our code, we opt to unify
 
 We make use of a trait-like implementation strategy to consolidate
 duplicated code between subtypes, GLB, and LUB computations.  See the
-section on "Type Combining" below for details.
+section on "Type Combining" in combine.rs for more details.

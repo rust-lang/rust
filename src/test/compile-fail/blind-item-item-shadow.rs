@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo { pub mod foo {  } } //~ NOTE previous definition of `foo` here
+mod foo { pub mod foo {  } } //~ NOTE previous definition of the module `foo` here
 
 use foo::foo;
-//~^ ERROR a module named `foo` has already been defined in this module
-//~| `foo` already defined
+//~^ ERROR the name `foo` is defined multiple times
+//~| `foo` reimported here
+//~| NOTE `foo` must be defined only once in the type namespace of this module
 
 fn main() {}

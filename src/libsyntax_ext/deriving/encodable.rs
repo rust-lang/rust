@@ -14,14 +14,15 @@
 //!
 //! For example, a type like:
 //!
-//! ```ignore
+//! ```
 //! #[derive(Encodable, Decodable)]
 //! struct Node { id: usize }
 //! ```
 //!
 //! would generate two implementations like:
 //!
-//! ```ignore
+//! ```
+//! # struct Node { id: usize }
 //! impl<S: Encoder<E>, E> Encodable<S, E> for Node {
 //!     fn encode(&self, s: &mut S) -> Result<(), E> {
 //!         s.emit_struct("Node", 1, |this| {
@@ -48,14 +49,17 @@
 //! Other interesting scenarios are when the item has type parameters or
 //! references other non-built-in types.  A type definition like:
 //!
-//! ```ignore
+//! ```
+//! # #[derive(Encodable, Decodable)] struct Span;
 //! #[derive(Encodable, Decodable)]
 //! struct Spanned<T> { node: T, span: Span }
 //! ```
 //!
 //! would yield functions like:
 //!
-//! ```ignore
+//! ```
+//! # #[derive(Encodable, Decodable)] struct Span;
+//! # struct Spanned<T> { node: T, span: Span }
 //! impl<
 //!     S: Encoder<E>,
 //!     E,
@@ -233,7 +237,7 @@ fn encodable_substructure(cx: &mut ExtCtxt,
                                      blk])
         }
 
-        EnumMatching(idx, variant, ref fields) => {
+        EnumMatching(idx, _, variant, ref fields) => {
             // We're not generating an AST that the borrow checker is expecting,
             // so we need to generate a unique local variable to take the
             // mutable loan out on, otherwise we get conflicts which don't

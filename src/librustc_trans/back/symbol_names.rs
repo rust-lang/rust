@@ -154,6 +154,13 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         assert!(!item_type.has_erasable_regions());
         hasher.visit_ty(item_type);
 
+        // If this is a function, we hash the signature as well.
+        // This is not *strictly* needed, but it may help in some
+        // situations, see the `run-make/a-b-a-linker-guard` test.
+        if let ty::TyFnDef(..) = item_type.sty {
+            item_type.fn_sig(tcx).visit_with(&mut hasher);
+        }
+
         // also include any type parameters (for generic items)
         if let Some(substs) = substs {
             assert!(!substs.has_erasable_regions());

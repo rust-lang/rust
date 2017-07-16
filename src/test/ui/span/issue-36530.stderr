@@ -14,5 +14,5 @@ error: The attribute `foo` is currently unknown to the compiler and may have mea
    |
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

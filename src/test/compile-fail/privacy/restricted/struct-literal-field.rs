@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(private_in_public)]
 #![allow(warnings)]
 
 mod foo {

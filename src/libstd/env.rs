@@ -367,7 +367,7 @@ fn _remove_var(k: &OsStr) {
 /// An iterator that splits an environment variable into paths according to
 /// platform-specific conventions.
 ///
-/// This structure is created by the [`std::env::split_paths`] function See its
+/// This structure is created by the [`std::env::split_paths`] function. See its
 /// documentation for more.
 ///
 /// [`std::env::split_paths`]: fn.split_paths.html
@@ -437,6 +437,35 @@ pub struct JoinPathsError {
 /// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
+///
+/// Joining paths on a Unix-like platform:
+///
+/// ```
+/// # if cfg!(unix) {
+/// use std::env;
+/// use std::ffi::OsString;
+/// use std::path::Path;
+///
+/// let paths = [Path::new("/bin"), Path::new("/usr/bin")];
+/// let path_os_string = env::join_paths(paths.iter()).unwrap();
+/// assert_eq!(path_os_string, OsString::from("/bin:/usr/bin"));
+/// # }
+/// ```
+///
+/// Joining a path containing a colon on a Unix-like platform results in an error:
+///
+/// ```
+/// # if cfg!(unix) {
+/// use std::env;
+/// use std::path::Path;
+///
+/// let paths = [Path::new("/bin"), Path::new("/usr/bi:n")];
+/// assert!(env::join_paths(paths.iter()).is_err());
+/// # }
+/// ```
+///
+/// Using `env::join_paths` with `env::spit_paths` to append an item to the `PATH` environment
+/// variable:
 ///
 /// ```
 /// use std::env;
@@ -605,14 +634,15 @@ pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
 }
 
-/// An iterator over the arguments of a process, yielding a [`String`] value
-/// for each argument.
+/// An iterator over the arguments of a process, yielding a [`String`] value for
+/// each argument.
 ///
-/// This structure is created through the [`std::env::args`] function.
+/// This struct is created by the [`std::env::args`] function. See its
+/// documentation for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and may not even exist. This means this property should
-/// not be relied upon for security purposes.
+/// set to arbitrary text, and may not even exist. This means this property
+/// should not be relied upon for security purposes.
 ///
 /// [`String`]: ../string/struct.String.html
 /// [`std::env::args`]: ./fn.args.html
@@ -622,11 +652,12 @@ pub struct Args { inner: ArgsOs }
 /// An iterator over the arguments of a process, yielding an [`OsString`] value
 /// for each argument.
 ///
-/// This structure is created through the [`std::env::args_os`] function.
+/// This struct is created by the [`std::env::args_os`] function. See its
+/// documentation for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and may not even exist. This means this property should
-/// not be relied upon for security purposes.
+/// set to arbitrary text, and may not even exist. This means this property
+/// should not be relied upon for security purposes.
 ///
 /// [`OsString`]: ../ffi/struct.OsString.html
 /// [`std::env::args_os`]: ./fn.args_os.html
@@ -710,7 +741,9 @@ impl DoubleEndedIterator for Args {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Args { .. }")
+        f.debug_struct("Args")
+            .field("inner", &self.inner.inner.inner_debug())
+            .finish()
     }
 }
 
@@ -735,7 +768,9 @@ impl DoubleEndedIterator for ArgsOs {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("ArgsOs { .. }")
+        f.debug_struct("ArgsOs")
+            .field("inner", &self.inner.inner_debug())
+            .finish()
     }
 }
 
@@ -914,62 +949,8 @@ mod arch {
 mod tests {
     use super::*;
 
-    use iter::repeat;
-    use rand::{self, Rng};
-    use ffi::{OsString, OsStr};
+    use ffi::OsStr;
     use path::{Path, PathBuf};
-
-    fn make_rand_name() -> OsString {
-        let mut rng = rand::thread_rng();
-        let n = format!("TEST{}", rng.gen_ascii_chars().take(10)
-                                     .collect::<String>());
-        let n = OsString::from(n);
-        assert!(var_os(&n).is_none());
-        n
-    }
-
-    fn eq(a: Option<OsString>, b: Option<&str>) {
-        assert_eq!(a.as_ref().map(|s| &**s), b.map(OsStr::new).map(|s| &*s));
-    }
-
-    #[test]
-    fn test_set_var() {
-        let n = make_rand_name();
-        set_var(&n, "VALUE");
-        eq(var_os(&n), Some("VALUE"));
-    }
-
-    #[test]
-    fn test_remove_var() {
-        let n = make_rand_name();
-        set_var(&n, "VALUE");
-        remove_var(&n);
-        eq(var_os(&n), None);
-    }
-
-    #[test]
-    fn test_set_var_overwrite() {
-        let n = make_rand_name();
-        set_var(&n, "1");
-        set_var(&n, "2");
-        eq(var_os(&n), Some("2"));
-        set_var(&n, "");
-        eq(var_os(&n), Some(""));
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
-    fn test_var_big() {
-        let mut s = "".to_string();
-        let mut i = 0;
-        while i < 100 {
-            s.push_str("aaaaaaaaaa");
-            i += 1;
-        }
-        let n = make_rand_name();
-        set_var(&n, &s);
-        eq(var_os(&n), Some(&s));
-    }
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -980,32 +961,6 @@ mod tests {
 
         // Hard to test this function
         assert!(path.is_absolute());
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
-    fn test_env_set_get_huge() {
-        let n = make_rand_name();
-        let s = repeat("x").take(10000).collect::<String>();
-        set_var(&n, &s);
-        eq(var_os(&n), Some(&s));
-        remove_var(&n);
-        eq(var_os(&n), None);
-    }
-
-    #[test]
-    fn test_env_set_var() {
-        let n = make_rand_name();
-
-        let mut e = vars_os();
-        set_var(&n, "VALUE");
-        assert!(!e.any(|(k, v)| {
-            &*k == &*n && &*v == "VALUE"
-        }));
-
-        assert!(vars_os().any(|(k, v)| {
-            &*k == &*n && &*v == "VALUE"
-        }));
     }
 
     #[test]
@@ -1083,4 +1038,14 @@ mod tests {
                         r#""c:\te;st";c:\"#));
         assert!(join_paths([r#"c:\te"st"#].iter().cloned()).is_err());
     }
+
+    #[test]
+    fn args_debug() {
+        assert_eq!(
+            format!("Args {{ inner: {:?} }}", args().collect::<Vec<_>>()),
+            format!("{:?}", args()));
+        assert_eq!(
+            format!("ArgsOs {{ inner: {:?} }}", args_os().collect::<Vec<_>>()),
+            format!("{:?}", args_os()));
     }
+}

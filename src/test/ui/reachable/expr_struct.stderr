@@ -28,5 +28,5 @@ error: unreachable expression
 40 |     let x = Foo { a: 22, b: return };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 

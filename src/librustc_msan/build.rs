@@ -32,4 +32,5 @@ fn main() {
             .build_target("msan")
             .build();
     }
+    println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
 }

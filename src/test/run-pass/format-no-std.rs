@@ -10,14 +10,14 @@
 
 // ignore-emscripten missing rust_begin_unwind
 
-#![feature(lang_items, start, collections)]
+#![feature(lang_items, start, alloc)]
 #![no_std]
 
 extern crate std as other;
 
-#[macro_use] extern crate collections;
+#[macro_use] extern crate alloc;
 
-use collections::string::ToString;
+use alloc::string::ToString;
 
 #[start]
 fn start(_argc: isize, _argv: *const *const u8) -> isize {

@@ -51,7 +51,6 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
-use std::mem;
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -102,7 +101,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 fn_like.constness() == hir::Constness::Const
             })
         } else {
-            self.tcx.sess.cstore.is_const_fn(def_id)
+            self.tcx.is_const_fn(def_id)
         };
     }
 }
@@ -138,13 +137,14 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             self.check_const_eval(&body.value);
         }
 
-        let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
-            let param_env = infcx.param_env.clone();
-            let outer_penv = mem::replace(&mut self.param_env, param_env);
-            let region_maps = &self.tcx.region_maps(item_def_id);
-            euv::ExprUseVisitor::new(self, region_maps, &infcx).consume_body(body);
-            outer_penv
-        });
+        let outer_penv = self.param_env;
+        self.param_env = self.tcx.param_env(item_def_id);
+
+        let tcx = self.tcx;
+        let param_env = self.param_env;
+        let region_maps = self.tcx.region_maps(item_def_id);
+        euv::ExprUseVisitor::new(self, tcx, param_env, &region_maps, self.tables)
+            .consume_body(body);
 
         self.visit_body(body);
 
@@ -280,11 +280,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         _ => {}
     }
 
-    let method_call = ty::MethodCall::expr(e.id);
     match e.node {
         hir::ExprUnary(..) |
         hir::ExprBinary(..) |
-        hir::ExprIndex(..) if v.tables.method_map.contains_key(&method_call) => {
+        hir::ExprIndex(..) if v.tables.is_method_call(e) => {
             v.promotable = false;
         }
         hir::ExprBox(_) => {
@@ -381,9 +380,9 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            let method = v.tables.method_map[&method_call];
-            match v.tcx.associated_item(method.def_id).container {
-                ty::ImplContainer(_) => v.handle_const_fn_call(method.def_id, node_ty),
+            let def_id = v.tables.type_dependent_defs[&e.id].def_id();
+            match v.tcx.associated_item(def_id).container {
+                ty::ImplContainer(_) => v.handle_const_fn_call(def_id, node_ty),
                 ty::TraitContainer(_) => v.promotable = false
             }
         }
@@ -442,18 +441,21 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr) {
     use rustc::ty::adjustment::*;
 
-    match v.tables.adjustments.get(&e.id).map(|adj| adj.kind) {
-        None |
-        Some(Adjust::NeverToAny) |
-        Some(Adjust::ReifyFnPointer) |
-        Some(Adjust::UnsafeFnPointer) |
-        Some(Adjust::ClosureFnPointer) |
-        Some(Adjust::MutToConstPointer) => {}
+    for adjustment in v.tables.expr_adjustments(e) {
+        match adjustment.kind {
+            Adjust::NeverToAny |
+            Adjust::ReifyFnPointer |
+            Adjust::UnsafeFnPointer |
+            Adjust::ClosureFnPointer |
+            Adjust::MutToConstPointer |
+            Adjust::Borrow(_) |
+            Adjust::Unsize => {}
 
-        Some(Adjust::DerefRef { autoderefs, .. }) => {
-            if (0..autoderefs as u32)
-                .any(|autoderef| v.tables.is_overloaded_autoderef(e.id, autoderef)) {
-                v.promotable = false;
+            Adjust::Deref(ref overloaded) => {
+                if overloaded.is_some() {
+                    v.promotable = false;
+                    break;
+                }
             }
         }
     }
@@ -466,7 +468,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         in_fn: false,
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
-        param_env: ty::ParamEnv::empty(),
+        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
     }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
@@ -512,7 +514,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
                 Categorization::StaticItem => {
                     break;
                 }
-                Categorization::Deref(ref cmt, ..) |
+                Categorization::Deref(ref cmt, _) |
                 Categorization::Downcast(ref cmt, _) |
                 Categorization::Interior(ref cmt, _) => {
                     cur = cmt;

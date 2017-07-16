@@ -63,7 +63,7 @@ fn make_val<T:MakerTrait>() -> T {
 }
 
 trait RefMakerTrait<'q> {
-    fn mk(Self) -> &'q Self;
+    fn mk(_: Self) -> &'q Self;
 }
 
 fn make_ref<'r, T:RefMakerTrait<'r>>(t:T) -> &'r T {

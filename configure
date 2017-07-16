@@ -452,6 +452,7 @@ opt vendor 0 "enable usage of vendored Rust crates"
 opt sanitizers 0 "build the sanitizer runtimes (asan, lsan, msan, tsan)"
 opt dist-src 1 "when building tarballs enables building a source tarball"
 opt cargo-openssl-static 0 "static openssl in cargo"
+opt profiler 0 "build the profiler runtime"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
@@ -489,6 +490,7 @@ valopt musl-root-armhf "" "arm-unknown-linux-musleabihf install directory"
 valopt musl-root-armv7 "" "armv7-unknown-linux-musleabihf install directory"
 valopt extra-filename "" "Additional data that is hashed and passed to the -C extra-filename flag"
 valopt qemu-armhf-rootfs "" "rootfs in qemu testing, you probably don't want to use this"
+valopt experimental-targets "" "experimental LLVM targets to build"
 
 if [ -e ${CFG_SRC_DIR}.git ]
 then

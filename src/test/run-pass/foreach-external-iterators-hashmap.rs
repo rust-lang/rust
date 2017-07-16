@@ -9,10 +9,6 @@
 // except according to those terms.
 
 
-#![feature(collections)]
-
-extern crate collections;
-
 use std::collections::HashMap;
 
 pub fn main() {

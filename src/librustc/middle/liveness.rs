@@ -269,7 +269,7 @@ struct IrMaps<'a, 'tcx: 'a> {
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> IrMaps<'a, 'tcx> {
         IrMaps {
-            tcx: tcx,
+            tcx,
             num_live_nodes: 0,
             num_vars: 0,
             live_node_map: NodeMap(),
@@ -385,7 +385,7 @@ fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
         ir.add_variable(Local(LocalInfo {
           id: p_id,
-          name: name
+          name,
         }));
     });
     intravisit::walk_local(ir, local);
@@ -400,7 +400,7 @@ fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
-                name: name
+                name,
             }));
         })
     }
@@ -534,8 +534,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let num_vars = ir.num_vars;
 
         Liveness {
-            ir: ir,
-            tables: tables,
+            ir,
+            tables,
             s: specials,
             successors: vec![invalid_node(); num_live_nodes],
             users: vec![invalid_users(); num_live_nodes * num_vars],
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAssignOp(_, ref l, ref r) => {
             // an overloaded assign op is like a method call
-            if self.tables.is_method_call(expr.id) {
+            if self.tables.is_method_call(expr) {
                 let succ = self.propagate_through_expr(&l, succ);
                 self.propagate_through_expr(&r, succ)
             } else {
@@ -1072,9 +1072,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprCall(ref f, ref args) => {
             // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let diverges = !self.tables.is_method_call(expr.id) &&
-                self.tables.expr_ty_adjusted(&f).fn_ret().0.is_never();
-            let succ = if diverges {
+            let succ = if self.tables.expr_ty(expr).is_never() {
                 self.s.exit_ln
             } else {
                 succ
@@ -1084,10 +1082,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprMethodCall(.., ref args) => {
-            let method_call = ty::MethodCall::expr(expr.id);
-            let method_ty = self.tables.method_map[&method_call].ty;
             // FIXME(canndrew): This is_never should really be an is_uninhabited
-            let succ = if method_ty.fn_ret().0.is_never() {
+            let succ = if self.tables.expr_ty(expr).is_never() {
                 self.s.exit_ln
             } else {
                 succ
@@ -1370,7 +1366,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        if !this.tables.is_method_call(expr.id) {
+        if !this.tables.is_method_call(expr) {
             this.check_lvalue(&l);
         }
 

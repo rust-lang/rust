@@ -45,8 +45,8 @@ impl<'a> Hasher for FakeHasher<'a> {
     }
 }
 
-fn fake_hash(v: &mut Vec<u8>, e: E) {
-    e.hash(&mut FakeHasher(v));
+fn fake_hash<A: Hash>(v: &mut Vec<u8>, a: A) {
+    a.hash(&mut FakeHasher(v));
 }
 
 fn main() {
@@ -69,4 +69,13 @@ fn main() {
     fake_hash(&mut va, E::A);
     fake_hash(&mut vb, E::B);
     assert!(va != vb);
+
+    // issue #39137: single variant enum hash should not hash discriminant
+    #[derive(Hash)]
+    enum SingleVariantEnum {
+        A(u8),
+    }
+    let mut v = vec![];
+    fake_hash(&mut v, SingleVariantEnum::A(17));
+    assert_eq!(vec![17], v);
 }

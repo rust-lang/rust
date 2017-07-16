@@ -10,7 +10,6 @@
 
 // Regression test for issue #31267
 
-#![feature(associated_consts)]
 
 struct Foo;
 

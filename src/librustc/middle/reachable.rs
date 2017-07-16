@@ -110,9 +110,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
                 Some(self.tables.qpath_def(qpath, expr.id))
             }
             hir::ExprMethodCall(..) => {
-                let method_call = ty::MethodCall::expr(expr.id);
-                let def_id = self.tables.method_map[&method_call].def_id;
-                Some(Def::Method(def_id))
+                Some(self.tables.type_dependent_defs[&expr.id])
             }
             _ => None
         };
@@ -376,11 +374,11 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
         *ty == config::CrateTypeProcMacro
     });
     let mut reachable_context = ReachableContext {
-        tcx: tcx,
+        tcx,
         tables: &ty::TypeckTables::empty(),
         reachable_symbols: NodeSet(),
         worklist: Vec::new(),
-        any_library: any_library,
+        any_library,
     };
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
@@ -400,8 +398,8 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     }
     {
         let mut collect_private_impl_items = CollectPrivateImplItemsVisitor {
-            tcx: tcx,
-            access_levels: access_levels,
+            tcx,
+            access_levels,
             worklist: &mut reachable_context.worklist,
         };
         tcx.hir.krate().visit_all_item_likes(&mut collect_private_impl_items);

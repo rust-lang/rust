@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(collections)]
+#![feature(alloc)]
 
-extern crate collections;
-//~^ NOTE previous import of `collections` here
+extern crate alloc;
+//~^ NOTE previous import of the extern crate `alloc` here
 
 mod foo {
-    pub trait collections {
+    pub trait alloc {
         fn do_something();
     }
 }
 
-use foo::collections;
+use foo::alloc;
 //~^ ERROR E0254
-//~| NOTE already imported
+//~| NOTE `alloc` reimported here
+//~| NOTE `alloc` must be defined only once in the type namespace of this module
 
 fn main() {}

@@ -591,7 +591,9 @@ extern "C" {
     pub fn LLVMIsUndef(Val: ValueRef) -> Bool;
 
     // Operations on metadata
+    pub fn LLVMMDStringInContext(C: ContextRef, Str: *const c_char, SLen: c_uint) -> ValueRef;
     pub fn LLVMMDNodeInContext(C: ContextRef, Vals: *const ValueRef, Count: c_uint) -> ValueRef;
+    pub fn LLVMAddNamedMetadataOperand(M: ModuleRef, Name: *const c_char, Val: ValueRef);
 
     // Operations on scalar constants
     pub fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool) -> ValueRef;
@@ -696,6 +698,7 @@ extern "C" {
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
     pub fn LLVMRustGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
     // Operations on functions
     pub fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
@@ -1332,6 +1335,8 @@ extern "C" {
 
     pub fn LLVMRustAddModuleFlag(M: ModuleRef, name: *const c_char, value: u32);
 
+    pub fn LLVMRustMetadataAsValue(C: ContextRef, MD: MetadataRef) -> ValueRef;
+
     pub fn LLVMRustDIBuilderCreate(M: ModuleRef) -> DIBuilderRef;
 
     pub fn LLVMRustDIBuilderDispose(Builder: DIBuilderRef);
@@ -1593,7 +1598,13 @@ extern "C" {
                                    Output: *const c_char,
                                    FileType: FileType)
                                    -> LLVMRustResult;
-    pub fn LLVMRustPrintModule(PM: PassManagerRef, M: ModuleRef, Output: *const c_char);
+    pub fn LLVMRustPrintModule(PM: PassManagerRef,
+                               M: ModuleRef,
+                               Output: *const c_char,
+                               Demangle: extern fn(*const c_char,
+                                                   size_t,
+                                                   *mut c_char,
+                                                   size_t) -> size_t);
     pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub fn LLVMRustPrintPasses();
     pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *const c_char);

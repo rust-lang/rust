@@ -242,6 +242,7 @@
 
 use fmt;
 use iter::{FromIterator, FusedIterator, TrustedLen};
+use ops;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
@@ -1059,12 +1060,9 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// checking for overflow:
     ///
     /// ```
-    /// use std::u32;
-    ///
     /// let v = vec![1, 2];
-    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|&x: &u32|
-    ///     if x == u32::MAX { Err("Overflow!") }
-    ///     else { Ok(x + 1) }
+    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|x: &u32|
+    ///     x.checked_add(1).ok_or("Overflow!")
     /// ).collect();
     /// assert!(res == Ok(vec![2, 3]));
     /// ```
@@ -1106,5 +1104,23 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             Some(err) => Err(err),
             None => Ok(v),
         }
+    }
+}
+
+#[unstable(feature = "try_trait", issue = "42327")]
+impl<T,E> ops::Try for Result<T, E> {
+    type Ok = T;
+    type Error = E;
+
+    fn into_result(self) -> Self {
+        self
+    }
+
+    fn from_ok(v: T) -> Self {
+        Ok(v)
+    }
+
+    fn from_error(v: E) -> Self {
+        Err(v)
     }
 }

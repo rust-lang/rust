@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::fmt::self; //~ ERROR E0429
-                    //~^ ERROR E0432
 
 fn main () {
 }

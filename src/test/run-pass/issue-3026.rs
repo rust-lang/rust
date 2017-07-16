@@ -10,10 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(unknown_features)]
-#![feature(box_syntax, collections)]
-
-extern crate collections;
+#![feature(box_syntax)]
 
 use std::collections::HashMap;
 

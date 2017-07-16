@@ -17,6 +17,7 @@ trait Tr {
                      //~^ WARN was previously accepted
     fn g1(arg: u8); // OK
     fn g2(_: u8); // OK
+    #[allow(anonymous_parameters)]
     fn g3(u8); // OK
 }
 

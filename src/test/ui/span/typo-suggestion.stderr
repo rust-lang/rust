@@ -10,5 +10,5 @@ error[E0425]: cannot find value `fob` in this scope
 18 |     println!("Hello {}", fob);
    |                          ^^^ did you mean `foo`?
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

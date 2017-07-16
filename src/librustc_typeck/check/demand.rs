@@ -18,7 +18,7 @@ use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::ty::{self, Ty, AssociatedItem};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, CodeMapper};
 
 use super::method::probe;
 
@@ -26,13 +26,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Requires that the two types unify, and prints an error message if
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        let cause = self.misc(sp);
-        match self.sub_types(false, &cause, actual, expected) {
+        self.demand_suptype_diag(sp, expected, actual).map(|mut e| e.emit());
+    }
+
+    pub fn demand_suptype_diag(&self,
+                               sp: Span,
+                               expected: Ty<'tcx>,
+                               actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
+        let cause = &self.misc(sp);
+        match self.at(cause, self.param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
+                None
             },
             Err(e) => {
-                self.report_mismatched_types(&cause, expected, actual, e).emit();
+                Some(self.report_mismatched_types(&cause, expected, actual, e))
             }
         }
     }
@@ -54,7 +62,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                      cause: &ObligationCause<'tcx>,
                                      expected: Ty<'tcx>,
                                      actual: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
-        match self.eq_types(false, cause, actual, expected) {
+        match self.at(cause, self.param_env).eq(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
@@ -65,15 +73,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn demand_coerce(&self, expr: &hir::Expr, checked_ty: Ty<'tcx>, expected: Ty<'tcx>) {
+        if let Some(mut err) = self.demand_coerce_diag(expr, checked_ty, expected) {
+            err.emit();
+        }
+    }
+
     // Checks that the type of `expr` can be coerced to `expected`.
     //
     // NB: This code relies on `self.diverges` to be accurate.  In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
-    pub fn demand_coerce(&self,
-                         expr: &hir::Expr,
-                         checked_ty: Ty<'tcx>,
-                         expected: Ty<'tcx>) {
+    pub fn demand_coerce_diag(&self,
+                              expr: &hir::Expr,
+                              checked_ty: Ty<'tcx>,
+                              expected: Ty<'tcx>) -> Option<DiagnosticBuilder<'tcx>> {
         let expected = self.resolve_type_vars_with_obligations(expected);
 
         if let Err(e) = self.try_coerce(expr, checked_ty, self.diverges.get(), expected) {
@@ -97,8 +111,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       self.get_best_match(&suggestions).join("\n")));
                 }
             }
-            err.emit();
+            return Some(err);
         }
+        None
     }
 
     fn format_method_suggestion(&self, method: &AssociatedItem) -> String {
@@ -135,12 +150,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn has_no_input_arg(&self, method: &AssociatedItem) -> bool {
         match method.def() {
             Def::Method(def_id) => {
-                match self.tcx.type_of(def_id).sty {
-                    ty::TypeVariants::TyFnDef(_, _, sig) => {
-                        sig.inputs().skip_binder().len() == 1
-                    }
-                    _ => false,
-                }
+                self.tcx.fn_sig(def_id).inputs().skip_binder().len() == 1
             }
             _ => false,
         }
@@ -187,7 +197,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                        checked_ty),
                 };
                 if self.can_coerce(ref_ty, expected) {
-                    if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                    // Use the callsite's span if this is a macro call. #41858
+                    let sp = self.sess().codemap().call_span_if_macro(expr.span);
+                    if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
                         return Some(format!("try with `{}{}`",
                                             match mutability.mutbl {
                                                 hir::Mutability::MutMutable => "&mut ",

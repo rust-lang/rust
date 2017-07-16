@@ -10,7 +10,6 @@
 
 // Can't use constants as tuple struct patterns
 
-#![feature(associated_consts)]
 
 const C1: i32 = 0;
 

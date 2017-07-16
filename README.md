@@ -7,9 +7,9 @@ standard library, and documentation.
 
 ## Quick Start
 
-Read ["Installing Rust"] from [The Book].
+Read ["Installation"] from [The Book].
 
-["Installing Rust"]: https://doc.rust-lang.org/book/getting-started.html#installing-rust
+["Installation"]: https://doc.rust-lang.org/book/second-edition/ch01-01-installation.html
 [The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Building from Source
@@ -40,8 +40,9 @@ Read ["Installing Rust"] from [The Book].
 
     > ***Note:*** Install locations can be adjusted by copying the config file
     > from `./src/bootstrap/config.toml.example` to `./config.toml`, and
-    > adjusting the `prefix` option under `[install]`. Various other options are
-    > also supported, and are documented in the config file.
+    > adjusting the `prefix` option under `[install]`. Various other options, such
+    > as enabling debug information, are also supported, and are documented in
+    > the config file.
 
     When complete, `sudo ./x.py install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the

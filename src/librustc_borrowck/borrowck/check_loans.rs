@@ -90,7 +90,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: &'a move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
-    param_env: &'a ty::ParamEnv<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
@@ -191,15 +191,17 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      body: &hir::Body) {
     debug!("check_loans(body id={})", body.value.id);
 
-    let infcx = bccx.tcx.borrowck_fake_infer_ctxt(body.id());
+    let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
+    let param_env = bccx.tcx.param_env(def_id);
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,
         dfcx_loans: dfcx_loans,
         move_data: move_data,
         all_loans: all_loans,
-        param_env: &infcx.param_env
+        param_env,
     };
-    euv::ExprUseVisitor::new(&mut clcx, &bccx.region_maps, &infcx).consume_body(body);
+    euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
+        .consume_body(body);
 }
 
 #[derive(PartialEq)]
@@ -753,15 +755,20 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     ///
     /// For example:
     ///
-    /// ```ignore
+    /// ```
     /// let a: i32;
     /// a = 10; // ok, even though a is uninitialized
+    /// ```
     ///
+    /// ```
     /// struct Point { x: u32, y: u32 }
-    /// let p: Point;
+    /// let mut p: Point;
     /// p.x = 22; // ok, even though `p` is uninitialized
+    /// ```
     ///
-    /// let p: Box<Point>;
+    /// ```compile_fail,E0381
+    /// # struct Point { x: u32, y: u32 }
+    /// let mut p: Box<Point>;
     /// (*p).x = 22; // not ok, p is uninitialized, can't deref
     /// ```
     fn check_if_assigned_path_is_moved(&self,
@@ -805,7 +812,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
             }
-            LpExtend(ref lp_base, _, LpInterior(_, InteriorElement(..))) |
+            LpExtend(ref lp_base, _, LpInterior(_, InteriorElement)) |
             LpExtend(ref lp_base, _, LpDeref(_)) => {
                 // assigning to `P[i]` requires `P` is initialized
                 // assigning to `(*P)` requires `P` is initialized

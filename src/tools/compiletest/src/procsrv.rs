@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::env;
-use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
@@ -31,7 +30,7 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // Need to be sure to put both the lib_path and the aux path in the dylib
     // search path for the child.
     let var = dylib_env_var();
-    let mut path = env::split_paths(&env::var_os(var).unwrap_or(OsString::new()))
+    let mut path = env::split_paths(&env::var_os(var).unwrap_or_default())
         .collect::<Vec<_>>();
     if let Some(p) = aux_path {
         path.insert(0, PathBuf::from(p))

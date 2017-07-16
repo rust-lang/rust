@@ -15,5 +15,5 @@ error[E0124]: field `bar` is already declared
 17 |     pub(crate) bar: u8,
    |     ^^^^^^^^^^^^^^^^^^ field already declared
 
-error: aborting due to previous error(s)
+error: aborting due to 2 previous errors
 

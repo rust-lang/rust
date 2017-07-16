@@ -22,5 +22,7 @@ extern {
 }
 
 fn main() {
-    assert_eq!(FOO, 3);
+    unsafe {
+        assert_eq!(FOO, 3);
+    }
 }

@@ -130,9 +130,10 @@ pub trait Iterator {
     ///
     /// ```
     /// // an infinite iterator has no upper bound
+    /// // and the maximum possible lower bound
     /// let iter = 0..;
     ///
-    /// assert_eq!((0, None), iter.size_hint());
+    /// assert_eq!((usize::max_value(), None), iter.size_hint());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -261,7 +262,7 @@ pub trait Iterator {
     /// Creates an iterator starting at the same point, but stepping by
     /// the given amount at each iteration.
     ///
-    /// Note that it will always return the first element of the range,
+    /// Note that it will always return the first element of the iterator,
     /// regardless of the step given.
     ///
     /// # Panics
@@ -479,6 +480,53 @@ pub trait Iterator {
         Self: Sized, F: FnMut(Self::Item) -> B,
     {
         Map{iter: self, f: f}
+    }
+
+    /// Calls a closure on each element of an iterator.
+    ///
+    /// This is equivalent to using a [`for`] loop on the iterator, although
+    /// `break` and `continue` are not possible from a closure.  It's generally
+    /// more idiomatic to use a `for` loop, but `for_each` may be more legible
+    /// when processing items at the end of longer iterator chains.  In some
+    /// cases `for_each` may also be faster than a loop, because it will use
+    /// internal iteration on adaptors like `Chain`.
+    ///
+    /// [`for`]: ../../book/first-edition/loops.html#for
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_for_each)]
+    ///
+    /// use std::sync::mpsc::channel;
+    ///
+    /// let (tx, rx) = channel();
+    /// (0..5).map(|x| x * 2 + 1)
+    ///       .for_each(move |x| tx.send(x).unwrap());
+    ///
+    /// let v: Vec<_> =  rx.iter().collect();
+    /// assert_eq!(v, vec![1, 3, 5, 7, 9]);
+    /// ```
+    ///
+    /// For such a small example, a `for` loop may be cleaner, but `for_each`
+    /// might be preferable to keep a functional style with longer iterators:
+    ///
+    /// ```
+    /// #![feature(iterator_for_each)]
+    ///
+    /// (0..5).flat_map(|x| x * 100 .. x * 110)
+    ///       .enumerate()
+    ///       .filter(|&(i, x)| (i + x) % 3 == 0)
+    ///       .for_each(|(i, x)| println!("{}:{}", i, x));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_for_each", issue = "42986")]
+    fn for_each<F>(self, mut f: F) where
+        Self: Sized, F: FnMut(Self::Item),
+    {
+        self.fold((), move |(), item| f(item));
     }
 
     /// Creates an iterator which uses a closure to determine if an element

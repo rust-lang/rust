@@ -12,8 +12,7 @@
 //! `unsafe`.
 use self::RootUnsafeContext::*;
 
-use ty::{self, Ty, TyCtxt};
-use ty::MethodCall;
+use ty::{self, TyCtxt};
 use lint;
 
 use syntax::ast;
@@ -39,14 +38,6 @@ enum RootUnsafeContext {
     SafeContext,
     UnsafeFn,
     UnsafeBlock(ast::NodeId),
-}
-
-fn type_is_unsafe_function(ty: Ty) -> bool {
-    match ty.sty {
-        ty::TyFnDef(.., f) |
-        ty::TyFnPtr(f) => f.unsafety() == hir::Unsafety::Unsafe,
-        _ => false,
-    }
 }
 
 struct EffectCheckVisitor<'a, 'tcx: 'a> {
@@ -174,11 +165,12 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprMethodCall(..) => {
-                let method_call = MethodCall::expr(expr.id);
-                let base_type = self.tables.method_map[&method_call].ty;
-                debug!("effect: method call case, base type is {:?}",
-                        base_type);
-                if type_is_unsafe_function(base_type) {
+                let def_id = self.tables.type_dependent_defs[&expr.id].def_id();
+                let sig = self.tcx.fn_sig(def_id);
+                debug!("effect: method call case, signature is {:?}",
+                        sig);
+
+                if sig.0.unsafety == hir::Unsafety::Unsafe {
                     self.require_unsafe(expr.span,
                                         "invocation of unsafe method")
                 }
@@ -187,8 +179,13 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
                 let base_type = self.tables.expr_ty_adjusted(base);
                 debug!("effect: call case, base type is {:?}",
                         base_type);
-                if type_is_unsafe_function(base_type) {
-                    self.require_unsafe(expr.span, "call to unsafe function")
+                match base_type.sty {
+                    ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                        if base_type.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
+                            self.require_unsafe(expr.span, "call to unsafe function")
+                        }
+                    }
+                    _ => {}
                 }
             }
             hir::ExprUnary(hir::UnDeref, ref base) => {
@@ -264,7 +261,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = EffectCheckVisitor {
-        tcx: tcx,
+        tcx,
         tables: &ty::TypeckTables::empty(),
         body_id: hir::BodyId { node_id: ast::CRATE_NODE_ID },
         unsafe_context: UnsafeContext::new(SafeContext),

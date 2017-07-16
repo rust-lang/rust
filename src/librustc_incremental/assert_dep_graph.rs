@@ -44,7 +44,7 @@
 //! ```
 
 use graphviz as dot;
-use rustc::dep_graph::{DepGraphQuery, DepNode};
+use rustc::dep_graph::{DepGraphQuery, DepNode, DepKind};
 use rustc::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
@@ -95,8 +95,8 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     check_paths(tcx, &if_this_changed, &then_this_would_need);
 }
 
-type Sources = Vec<(Span, DefId, DepNode<DefId>)>;
-type Targets = Vec<(Span, ast::Name, ast::NodeId, DepNode<DefId>)>;
+type Sources = Vec<(Span, DefId, DepNode)>;
+type Targets = Vec<(Span, ast::Name, ast::NodeId, DepNode)>;
 
 struct IfThisChanged<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -121,13 +121,14 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
 
     fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
         let def_id = self.tcx.hir.local_def_id(node_id);
+        let def_path_hash = self.tcx.def_path_hash(def_id);
         for attr in attrs {
             if attr.check_name(ATTR_IF_THIS_CHANGED) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
-                    None => DepNode::Hir(def_id),
+                    None => def_path_hash.to_dep_node(DepKind::Hir),
                     Some(n) => {
-                        match DepNode::from_label_string(&n.as_str(), def_id) {
+                        match DepNode::from_label_string(&n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => {
                                 self.tcx.sess.span_fatal(
@@ -142,7 +143,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     Some(n) => {
-                        match DepNode::from_label_string(&n.as_str(), def_id) {
+                        match DepNode::from_label_string(&n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => {
                                 self.tcx.sess.span_fatal(
@@ -263,34 +264,34 @@ fn dump_graph(tcx: TyCtxt) {
     }
 }
 
-pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode<DefId>>,
-                                Vec<(&'q DepNode<DefId>, &'q DepNode<DefId>)>);
+pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>,
+                                Vec<(&'q DepNode, &'q DepNode)>);
 
 impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
-    type Node = &'q DepNode<DefId>;
-    type Edge = (&'q DepNode<DefId>, &'q DepNode<DefId>);
-    fn nodes(&self) -> dot::Nodes<&'q DepNode<DefId>> {
+    type Node = &'q DepNode;
+    type Edge = (&'q DepNode, &'q DepNode);
+    fn nodes(&self) -> dot::Nodes<&'q DepNode> {
         let nodes: Vec<_> = self.0.iter().cloned().collect();
         nodes.into_cow()
     }
-    fn edges(&self) -> dot::Edges<(&'q DepNode<DefId>, &'q DepNode<DefId>)> {
+    fn edges(&self) -> dot::Edges<(&'q DepNode, &'q DepNode)> {
         self.1[..].into_cow()
     }
-    fn source(&self, edge: &(&'q DepNode<DefId>, &'q DepNode<DefId>)) -> &'q DepNode<DefId> {
+    fn source(&self, edge: &(&'q DepNode, &'q DepNode)) -> &'q DepNode {
         edge.0
     }
-    fn target(&self, edge: &(&'q DepNode<DefId>, &'q DepNode<DefId>)) -> &'q DepNode<DefId> {
+    fn target(&self, edge: &(&'q DepNode, &'q DepNode)) -> &'q DepNode {
         edge.1
     }
 }
 
 impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
-    type Node = &'q DepNode<DefId>;
-    type Edge = (&'q DepNode<DefId>, &'q DepNode<DefId>);
+    type Node = &'q DepNode;
+    type Edge = (&'q DepNode, &'q DepNode);
     fn graph_id(&self) -> dot::Id {
         dot::Id::new("DependencyGraph").unwrap()
     }
-    fn node_id(&self, n: &&'q DepNode<DefId>) -> dot::Id {
+    fn node_id(&self, n: &&'q DepNode) -> dot::Id {
         let s: String =
             format!("{:?}", n).chars()
                               .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
@@ -298,7 +299,7 @@ impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
         debug!("n={:?} s={:?}", n, s);
         dot::Id::new(s).unwrap()
     }
-    fn node_label(&self, n: &&'q DepNode<DefId>) -> dot::LabelText {
+    fn node_label(&self, n: &&'q DepNode) -> dot::LabelText {
         dot::LabelText::label(format!("{:?}", n))
     }
 }
@@ -306,8 +307,8 @@ impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
 // Given an optional filter like `"x,y,z"`, returns either `None` (no
 // filter) or the set of nodes whose labels contain all of those
 // substrings.
-fn node_set<'q>(query: &'q DepGraphQuery<DefId>, filter: &DepNodeFilter)
-                -> Option<FxHashSet<&'q DepNode<DefId>>>
+fn node_set<'q>(query: &'q DepGraphQuery, filter: &DepNodeFilter)
+                -> Option<FxHashSet<&'q DepNode>>
 {
     debug!("node_set(filter={:?})", filter);
 
@@ -318,10 +319,10 @@ fn node_set<'q>(query: &'q DepGraphQuery<DefId>, filter: &DepNodeFilter)
     Some(query.nodes().into_iter().filter(|n| filter.test(n)).collect())
 }
 
-fn filter_nodes<'q>(query: &'q DepGraphQuery<DefId>,
-                    sources: &Option<FxHashSet<&'q DepNode<DefId>>>,
-                    targets: &Option<FxHashSet<&'q DepNode<DefId>>>)
-                    -> FxHashSet<&'q DepNode<DefId>>
+fn filter_nodes<'q>(query: &'q DepGraphQuery,
+                    sources: &Option<FxHashSet<&'q DepNode>>,
+                    targets: &Option<FxHashSet<&'q DepNode>>)
+                    -> FxHashSet<&'q DepNode>
 {
     if let &Some(ref sources) = sources {
         if let &Some(ref targets) = targets {
@@ -336,10 +337,10 @@ fn filter_nodes<'q>(query: &'q DepGraphQuery<DefId>,
     }
 }
 
-fn walk_nodes<'q>(query: &'q DepGraphQuery<DefId>,
-                  starts: &FxHashSet<&'q DepNode<DefId>>,
+fn walk_nodes<'q>(query: &'q DepGraphQuery,
+                  starts: &FxHashSet<&'q DepNode>,
                   direction: Direction)
-                  -> FxHashSet<&'q DepNode<DefId>>
+                  -> FxHashSet<&'q DepNode>
 {
     let mut set = FxHashSet();
     for &start in starts {
@@ -360,10 +361,10 @@ fn walk_nodes<'q>(query: &'q DepGraphQuery<DefId>,
     set
 }
 
-fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
-                    sources: &FxHashSet<&'q DepNode<DefId>>,
-                    targets: &FxHashSet<&'q DepNode<DefId>>)
-                    -> FxHashSet<&'q DepNode<DefId>>
+fn walk_between<'q>(query: &'q DepGraphQuery,
+                    sources: &FxHashSet<&'q DepNode>,
+                    targets: &FxHashSet<&'q DepNode>)
+                    -> FxHashSet<&'q DepNode>
 {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
@@ -391,7 +392,7 @@ fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
                 })
                 .collect();
 
-    fn recurse(query: &DepGraphQuery<DefId>,
+    fn recurse(query: &DepGraphQuery,
                node_states: &mut [State],
                node: NodeIndex)
                -> bool
@@ -428,9 +429,9 @@ fn walk_between<'q>(query: &'q DepGraphQuery<DefId>,
     }
 }
 
-fn filter_edges<'q>(query: &'q DepGraphQuery<DefId>,
-                    nodes: &FxHashSet<&'q DepNode<DefId>>)
-                    -> Vec<(&'q DepNode<DefId>, &'q DepNode<DefId>)>
+fn filter_edges<'q>(query: &'q DepGraphQuery,
+                    nodes: &FxHashSet<&'q DepNode>)
+                    -> Vec<(&'q DepNode, &'q DepNode)>
 {
     query.edges()
          .into_iter()

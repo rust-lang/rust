@@ -21,7 +21,7 @@ A link name was given with an empty name. Erroneous code example:
 The rust compiler cannot link to an external library if you don't give it its
 name. Example:
 
-```ignore
+```no_run
 #[link(name = "some_lib")] extern {} // ok!
 ```
 "##,
@@ -32,7 +32,7 @@ as frameworks are specific to that operating system.
 
 Erroneous code example:
 
-```ignore
+```ignore (should-compile_fail-but-cannot-doctest-conditionally-without-macos)
 #[link(name = "FooCoreServices", kind = "framework")] extern {}
 // OS used to compile is Linux for example
 ```
@@ -44,7 +44,8 @@ To solve this error you can use conditional compilation:
 extern {}
 ```
 
-See more: https://doc.rust-lang.org/book/conditional-compilation.html
+See more:
+https://doc.rust-lang.org/book/first-edition/conditional-compilation.html
 "##,
 
 E0458: r##"
@@ -74,7 +75,7 @@ A link was used without a name parameter. Erroneous code example:
 Please add the name parameter to allow the rust compiler to find the library
 you want. Example:
 
-```ignore
+```no_run
 #[link(kind = "dylib", name = "some_lib")] extern {} // ok!
 ```
 "##,

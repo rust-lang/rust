@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
 #![feature(associated_type_defaults)]
 
 struct S;
@@ -86,8 +85,10 @@ fn check_method() {
 
     // Methods, UFCS
     // a, b, c are resolved as trait items, their traits need to be in scope
-    S::a(&S); //~ ERROR no associated item named `a` found for type `S` in the current scope
-    S::b(&S); //~ ERROR no associated item named `b` found for type `S` in the current scope
+    S::a(&S);
+    //~^ ERROR no function or associated item named `a` found for type `S`
+    S::b(&S);
+    //~^ ERROR no function or associated item named `b` found for type `S`
     S::c(&S); // OK
     // a, b, c are resolved as inherent items, their traits don't need to be in scope
     C::a(&S); //~ ERROR method `a` is private

@@ -222,9 +222,9 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                cmt: &mc::cmt<'tcx>)
                                                -> Option<mc::cmt<'tcx>> {
     match cmt.cat {
-        Categorization::Deref(.., mc::BorrowedPtr(..)) |
-        Categorization::Deref(.., mc::Implicit(..)) |
-        Categorization::Deref(.., mc::UnsafePtr(..)) |
+        Categorization::Deref(_, mc::BorrowedPtr(..)) |
+        Categorization::Deref(_, mc::Implicit(..)) |
+        Categorization::Deref(_, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             Some(cmt.clone())
         }
@@ -237,7 +237,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) |
-        Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
+        Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern)) => {
             match b.ty.sty {
                 ty::TyAdt(def, _) => {
                     if def.has_dtor(bccx.tcx) {
@@ -253,12 +253,12 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             }
         }
 
-        Categorization::Interior(_, mc::InteriorElement(Kind::Index, _)) => {
+        Categorization::Interior(_, mc::InteriorElement(Kind::Index)) => {
             // Forbid move of arr[i] for arr: [T; 3]; see RFC 533.
             Some(cmt.clone())
         }
 
-        Categorization::Deref(ref b, _, mc::Unique) => {
+        Categorization::Deref(ref b, mc::Unique) => {
             check_and_get_illegal_move_origin(bccx, b)
         }
     }

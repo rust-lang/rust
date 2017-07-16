@@ -39,5 +39,5 @@ error[E0277]: the trait bound `bool: Foo<i32>` is not satisfied
            and 2 others
    = note: required by `Foo::bar`
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

@@ -118,15 +118,15 @@ fn check(cache: &mut Cache,
         return None;
     }
     // FIXME(#32553)
-    if file.ends_with("collections/string/struct.String.html") {
+    if file.ends_with("string/struct.String.html") {
         return None;
     }
     // FIXME(#32130)
     if file.ends_with("btree_set/struct.BTreeSet.html") ||
-       file.ends_with("collections/struct.BTreeSet.html") ||
-       file.ends_with("collections/btree_map/struct.BTreeMap.html") ||
-       file.ends_with("collections/hash_map/struct.HashMap.html") ||
-       file.ends_with("collections/hash_set/struct.HashSet.html") {
+       file.ends_with("struct.BTreeSet.html") ||
+       file.ends_with("btree_map/struct.BTreeMap.html") ||
+       file.ends_with("hash_map/struct.HashMap.html") ||
+       file.ends_with("hash_set/struct.HashSet.html") {
         return None;
     }
 

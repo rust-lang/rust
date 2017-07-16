@@ -223,7 +223,6 @@ impl<'a> StripUnconfigured<'a> {
             ast::ExprKind::Struct(path, fields, base) => {
                 let fields = fields.into_iter()
                     .filter_map(|field| {
-                        self.visit_struct_field_attrs(field.attrs());
                         self.configure(field)
                     })
                     .collect();
@@ -256,17 +255,6 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     pub fn configure_struct_expr_field(&mut self, field: ast::Field) -> Option<ast::Field> {
-        if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
-            if !field.attrs.is_empty() {
-                let mut err = feature_err(self.sess,
-                                          "struct_field_attributes",
-                                          field.span,
-                                          GateIssue::Language,
-                                          "attributes on struct literal fields are unstable");
-                err.emit();
-            }
-        }
-
         self.configure(field)
     }
 
@@ -275,7 +263,6 @@ impl<'a> StripUnconfigured<'a> {
             if let ast::PatKind::Struct(path, fields, etc) = pattern.node {
                 let fields = fields.into_iter()
                     .filter_map(|field| {
-                        self.visit_struct_field_attrs(field.attrs());
                         self.configure(field)
                     })
                     .collect();
@@ -283,21 +270,6 @@ impl<'a> StripUnconfigured<'a> {
             }
             pattern
         })
-    }
-
-    fn visit_struct_field_attrs(&mut self, attrs: &[ast::Attribute]) {
-        // flag the offending attributes
-        for attr in attrs.iter() {
-            if !self.features.map(|features| features.struct_field_attributes).unwrap_or(true) {
-                let mut err = feature_err(
-                    self.sess,
-                    "struct_field_attributes",
-                    attr.span,
-                    GateIssue::Language,
-                    "attributes on struct pattern or literal fields are unstable");
-                err.emit();
-            }
-        }
     }
 }
 

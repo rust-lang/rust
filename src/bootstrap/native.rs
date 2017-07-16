@@ -63,6 +63,7 @@ pub fn llvm(build: &Build, target: &str) {
         drop(fs::remove_dir_all(&out_dir));
     }
 
+    let _folder = build.fold_output(|| "llvm");
     println!("Building LLVM for {}", target);
     let _time = util::timeit();
     t!(fs::create_dir_all(&out_dir));
@@ -85,14 +86,20 @@ pub fn llvm(build: &Build, target: &str) {
         None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
     };
 
+    let llvm_exp_targets = match build.config.llvm_experimental_targets {
+        Some(ref s) => s,
+        None => "",
+    };
+
     let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
     cfg.target(target)
-       .host(&build.config.build)
+       .host(&build.build)
        .out_dir(&out_dir)
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
        .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
+       .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
        .define("LLVM_INCLUDE_EXAMPLES", "OFF")
        .define("LLVM_INCLUDE_TESTS", "OFF")
        .define("LLVM_INCLUDE_DOCS", "OFF")
@@ -122,11 +129,11 @@ pub fn llvm(build: &Build, target: &str) {
     }
 
     // http://llvm.org/docs/HowToCrossCompileLLVM.html
-    if target != build.config.build {
+    if target != build.build {
         // FIXME: if the llvm root for the build triple is overridden then we
         //        should use llvm-tblgen from there, also should verify that it
         //        actually exists most of the time in normal installs of LLVM.
-        let host = build.llvm_out(&build.config.build).join("bin/llvm-tblgen");
+        let host = build.llvm_out(&build.build).join("bin/llvm-tblgen");
         cfg.define("CMAKE_CROSSCOMPILING", "True")
            .define("LLVM_TABLEGEN", &host);
     }
@@ -148,7 +155,7 @@ pub fn llvm(build: &Build, target: &str) {
         }
 
         let cc = build.cc(target);
-        let cxx = build.cxx(target);
+        let cxx = build.cxx(target).unwrap();
 
         // Handle msvc + ninja + ccache specially (this is what the bots use)
         if target.contains("msvc") &&
@@ -183,7 +190,7 @@ pub fn llvm(build: &Build, target: &str) {
     configure_compilers(&mut cfg);
 
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
-        cfg.env("RUST_LOG", "sccache=info");
+        cfg.env("RUST_LOG", "sccache=warn");
     }
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
@@ -218,6 +225,7 @@ pub fn test_helpers(build: &Build, target: &str) {
         return
     }
 
+    let _folder = build.fold_output(|| "build_test_helpers");
     println!("Building test helpers");
     t!(fs::create_dir_all(&dst));
     let mut cfg = gcc::Config::new();
@@ -235,7 +243,7 @@ pub fn test_helpers(build: &Build, target: &str) {
     cfg.cargo_metadata(false)
        .out_dir(&dst)
        .target(target)
-       .host(&build.config.build)
+       .host(&build.build)
        .opt_level(0)
        .debug(false)
        .file(build.src.join("src/rt/rust_test_helpers.c"))

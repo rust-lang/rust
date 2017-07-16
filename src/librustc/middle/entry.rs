@@ -71,7 +71,7 @@ pub fn find_entry_point(session: &Session, hir_map: &hir_map::Map) {
     }
 
     let mut ctxt = EntryContext {
-        session: session,
+        session,
         map: hir_map,
         main_fn: None,
         attr_main_fn: None,
@@ -162,7 +162,7 @@ fn configure_main(this: &mut EntryContext) {
         this.session.entry_type.set(Some(config::EntryMain));
     } else {
         // No main function
-        let mut err = this.session.struct_err("main function not found");
+        let mut err = struct_err!(this.session, E0601, "main function not found");
         if !this.non_main_fns.is_empty() {
             // There were some functions named 'main' though. Try to give the user a hint.
             err.note("the main function must be defined at the crate level \

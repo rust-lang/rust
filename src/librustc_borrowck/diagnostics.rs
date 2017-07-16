@@ -144,7 +144,7 @@ that at most one writer or multiple readers can access the data at any one time.
 If you wish to learn more about ownership in Rust, start with the chapter in the
 Book:
 
-https://doc.rust-lang.org/book/ownership.html
+https://doc.rust-lang.org/book/first-edition/ownership.html
 "##,
 
 E0383: r##"
@@ -153,9 +153,12 @@ structure that is currently uninitialized.
 
 For example, this can happen when a drop has taken place:
 
-```ignore
+```compile_fail,E0383
 struct Foo {
     a: u32,
+}
+impl Drop for Foo {
+    fn drop(&mut self) { /* ... */ }
 }
 
 let mut x = Foo { a: 1 };
@@ -168,6 +171,9 @@ This error can be fixed by fully reinitializing the structure in question:
 ```
 struct Foo {
     a: u32,
+}
+impl Drop for Foo {
+    fn drop(&mut self) { /* ... */ }
 }
 
 let mut x = Foo { a: 1 };
@@ -366,8 +372,8 @@ let mut a = &mut i;
 
 Please note that in rust, you can either have many immutable references, or one
 mutable reference. Take a look at
-https://doc.rust-lang.org/stable/book/references-and-borrowing.html for more
-information. Example:
+https://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
+for more information. Example:
 
 
 ```
@@ -533,7 +539,7 @@ fn foo(a: &mut i32) {
 ```
 
 For more information on the rust ownership system, take a look at
-https://doc.rust-lang.org/stable/book/references-and-borrowing.html.
+https://doc.rust-lang.org/book/first-edition/references-and-borrowing.html.
 "##,
 
 E0503: r##"
@@ -589,7 +595,7 @@ fn main() {
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
 "##,
 
 E0504: r##"
@@ -773,7 +779,7 @@ fn main() {
 ```
 
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
 "##,
 
 E0506: r##"
@@ -944,10 +950,9 @@ fn main() {
 }
 ```
 
-Moving out of a member of a mutably borrowed struct is fine if you put something
-back. `mem::replace` can be used for that:
+Moving a member out of a mutably borrowed struct will also cause E0507 error:
 
-```ignore
+```compile_fail,E0507
 struct TheDarkKnight;
 
 impl TheDarkKnight {
@@ -959,20 +964,33 @@ struct Batcave {
 }
 
 fn main() {
-    use std::mem;
-
     let mut cave = Batcave {
         knight: TheDarkKnight
     };
     let borrowed = &mut cave;
 
     borrowed.knight.nothing_is_true(); // E0507
-    mem::replace(&mut borrowed.knight, TheDarkKnight).nothing_is_true(); // ok!
 }
 ```
 
+It is fine only if you put something back. `mem::replace` can be used for that:
+
+```
+# struct TheDarkKnight;
+# impl TheDarkKnight { fn nothing_is_true(self) {} }
+# struct Batcave { knight: TheDarkKnight }
+use std::mem;
+
+let mut cave = Batcave {
+    knight: TheDarkKnight
+};
+let borrowed = &mut cave;
+
+mem::replace(&mut borrowed.knight, TheDarkKnight).nothing_is_true(); // ok!
+```
+
 You can find more information about borrowing in the rust-book:
-http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+http://doc.rust-lang.org/book/first-edition/references-and-borrowing.html
 "##,
 
 E0508: r##"

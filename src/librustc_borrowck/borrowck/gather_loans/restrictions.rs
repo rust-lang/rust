@@ -133,7 +133,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 RestrictionResult::Safe
             }
 
-            Categorization::Deref(cmt_base, _, pk) => {
+            Categorization::Deref(cmt_base, pk) => {
                 match pk {
                     mc::Unique => {
                         // R-Deref-Send-Pointer

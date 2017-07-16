@@ -215,6 +215,14 @@ impl TcpStream {
         Ok(TcpStream { inner: sock })
     }
 
+    pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
+        init();
+
+        let sock = Socket::new(addr, c::SOCK_STREAM)?;
+        sock.connect_timeout(addr, timeout)?;
+        Ok(TcpStream { inner: sock })
+    }
+
     pub fn socket(&self) -> &Socket { &self.inner }
 
     pub fn into_socket(self) -> Socket { self.inner }
@@ -241,10 +249,6 @@ impl TcpStream {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
-    }
-
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        self.inner.read_to_end(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {

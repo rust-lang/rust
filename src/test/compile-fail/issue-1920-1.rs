@@ -11,7 +11,7 @@
 //! Test that absolute path names are correct when a crate is not linked into the root namespace
 
 mod foo {
-    extern crate core;
+    pub extern crate core;
 }
 
 fn assert_clone<T>() where T : Clone { }

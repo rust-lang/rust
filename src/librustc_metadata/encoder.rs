@@ -14,10 +14,11 @@ use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
-                            EncodedMetadata, EncodedMetadataHashes};
+                            EncodedMetadata, EncodedMetadataHashes,
+                            EncodedMetadataHash};
+use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
-use rustc::hir::map::definitions::DefPathTable;
-use rustc::dep_graph::{DepNode, GlobalMetaDataKind};
+use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
@@ -244,7 +245,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     // Encodes something that corresponds to a single DepNode::GlobalMetaData
     // and registers the Fingerprint in the `metadata_hashes` map.
     pub fn tracked<'x, DATA, R>(&'x mut self,
-                                dep_node: DepNode<()>,
+                                def_index: DefIndex,
                                 op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
                                 data: DATA)
                                 -> Tracked<R> {
@@ -253,7 +254,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let (fingerprint, this) = entry_builder.finish();
 
         if let Some(fingerprint) = fingerprint {
-            this.metadata_hashes.global_hashes.push((dep_node, fingerprint));
+            this.metadata_hashes.hashes.push(EncodedMetadataHash {
+                def_index,
+                hash: fingerprint,
+            })
         }
 
         Tracked::new(ret)
@@ -322,12 +326,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot> {
         let mut i = self.position();
 
+        let tcx = self.tcx;
+        let global_metadata_def_index = move |kind: GlobalMetaDataKind| {
+            kind.def_index(tcx.hir.definitions().def_path_table())
+        };
+
         let crate_deps = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::CrateDeps),
+            global_metadata_def_index(GlobalMetaDataKind::CrateDeps),
             IsolatedEncoder::encode_crate_deps,
             ());
         let dylib_dependency_formats = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::DylibDependencyFormats),
+            global_metadata_def_index(GlobalMetaDataKind::DylibDependencyFormats),
             IsolatedEncoder::encode_dylib_dependency_formats,
             ());
         let dep_bytes = self.position() - i;
@@ -335,12 +344,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the language items.
         i = self.position();
         let lang_items = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::LangItems),
+            global_metadata_def_index(GlobalMetaDataKind::LangItems),
             IsolatedEncoder::encode_lang_items,
             ());
 
         let lang_items_missing = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::LangItemsMissing),
+            global_metadata_def_index(GlobalMetaDataKind::LangItemsMissing),
             IsolatedEncoder::encode_lang_items_missing,
             ());
         let lang_item_bytes = self.position() - i;
@@ -348,7 +357,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the native libraries used
         i = self.position();
         let native_libraries = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::NativeLibraries),
+            global_metadata_def_index(GlobalMetaDataKind::NativeLibraries),
             IsolatedEncoder::encode_native_libraries,
             ());
         let native_lib_bytes = self.position() - i;
@@ -366,7 +375,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the def IDs of impls, for coherence checking.
         i = self.position();
         let impls = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::Impls),
+            global_metadata_def_index(GlobalMetaDataKind::Impls),
             IsolatedEncoder::encode_impls,
             ());
         let impl_bytes = self.position() - i;
@@ -374,7 +383,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode exported symbols info.
         i = self.position();
         let exported_symbols = self.tracked(
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::ExportedSymbols),
+            global_metadata_def_index(GlobalMetaDataKind::ExportedSymbols),
             IsolatedEncoder::encode_exported_symbols,
             self.exported_symbols);
         let exported_symbols_bytes = self.position() - i;
@@ -391,12 +400,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let link_meta = self.link_meta;
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
+        let has_default_lib_allocator =
+            attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
+        let has_global_allocator = tcx.sess.has_global_allocator.get();
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
             panic_strategy: Tracked::new(tcx.sess.panic_strategy()),
+            has_global_allocator: Tracked::new(has_global_allocator),
+            has_default_lib_allocator: Tracked::new(has_default_lib_allocator),
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn
                 .get()
@@ -422,10 +436,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let total_bytes = self.position();
 
-        self.metadata_hashes.global_hashes.push((
-            DepNode::GlobalMetaData((), GlobalMetaDataKind::Krate),
-            Fingerprint::from_smaller_hash(link_meta.crate_hash.as_u64())
-        ));
+        self.metadata_hashes.hashes.push(EncodedMetadataHash {
+            def_index: global_metadata_def_index(GlobalMetaDataKind::Krate),
+            hash: Fingerprint::from_smaller_hash(link_meta.crate_hash.as_u64())
+        });
 
         if self.tcx.sess.meta_stats() {
             let mut zero_bytes = 0;
@@ -491,6 +505,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             struct_ctor: None,
+            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
+                Some(self.lazy(&tcx.fn_sig(def_id)))
+            } else {
+                None
+            }
         };
 
         let enum_id = tcx.hir.as_local_node_id(enum_did).unwrap();
@@ -510,7 +529,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if variant.ctor_kind == CtorKind::Fn {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -609,6 +632,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             struct_ctor: Some(def_id.index),
+            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
+                Some(self.lazy(&tcx.fn_sig(def_id)))
+            } else {
+                None
+            }
         };
 
         let struct_id = tcx.hir.as_local_node_id(adt_def_id).unwrap();
@@ -633,7 +661,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if variant.ctor_kind == CtorKind::Fn {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -687,7 +719,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     };
                     FnData {
                         constness: hir::Constness::NotConst,
-                        arg_names: arg_names
+                        arg_names: arg_names,
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -724,7 +757,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }
             },
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if trait_item.kind == ty::AssociatedKind::Method {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -739,6 +776,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_info_for_impl_item({:?})", def_id);
+        let tcx = self.tcx;
+
         let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
         let ast_item = self.tcx.hir.expect_impl_item(node_id);
         let impl_item = self.tcx.associated_item(def_id);
@@ -760,6 +799,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     FnData {
                         constness: sig.constness,
                         arg_names: self.encode_fn_arg_names_for_body(body),
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -798,7 +838,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: if impl_item.kind == ty::AssociatedKind::Method {
+                self.encode_variances_of(def_id)
+            } else {
+                LazySeq::empty()
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 
@@ -873,6 +917,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = FnData {
                     constness: constness,
                     arg_names: self.encode_fn_arg_names_for_body(body),
+                    sig: self.lazy(&tcx.fn_sig(def_id)),
                 };
 
                 EntryKind::Fn(self.lazy(&data))
@@ -902,6 +947,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     struct_ctor: struct_ctor,
+                    ctor_sig: None,
                 }), repr_options)
             }
             hir::ItemUnion(..) => {
@@ -912,6 +958,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     struct_ctor: None,
+                    ctor_sig: None,
                 }), repr_options)
             }
             hir::ItemDefaultImpl(..) => {
@@ -1029,7 +1076,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
-                hir::ItemTrait(..) => self.encode_variances_of(def_id),
+                hir::ItemFn(..) => self.encode_variances_of(def_id),
                 _ => LazySeq::empty(),
             },
             generics: match item.node {
@@ -1087,6 +1134,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
         use syntax::print::pprust;
+        let def_id = self.tcx.hir.local_def_id(macro_def.id);
         Entry {
             kind: EntryKind::MacroDef(self.lazy(&MacroDef {
                 body: pprust::tts_to_string(&macro_def.body.trees().collect::<Vec<_>>()),
@@ -1094,11 +1142,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             })),
             visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&macro_def.span),
-
             attributes: self.encode_attributes(&macro_def.attrs),
+            stability: self.encode_stability(def_id),
+            deprecation: self.encode_deprecation(def_id),
+
             children: LazySeq::empty(),
-            stability: None,
-            deprecation: None,
             ty: None,
             inherent_impls: LazySeq::empty(),
             variances: LazySeq::empty(),
@@ -1167,7 +1215,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         let data = ClosureData {
             kind: tcx.closure_kind(def_id),
-            ty: self.lazy(&tcx.closure_type(def_id)),
+            sig: self.lazy(&tcx.fn_sig(def_id)),
         };
 
         Entry {
@@ -1355,6 +1403,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
                     arg_names: self.encode_fn_arg_names(names),
+                    sig: self.lazy(&tcx.fn_sig(def_id)),
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }
@@ -1373,7 +1422,10 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: Some(self.encode_item_type(def_id)),
             inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
+            variances: match nitem.node {
+                hir::ForeignItemFn(..) => self.encode_variances_of(def_id),
+                _ => LazySeq::empty(),
+            },
             generics: Some(self.encode_generics(def_id)),
             predicates: Some(self.encode_predicates(def_id)),
 

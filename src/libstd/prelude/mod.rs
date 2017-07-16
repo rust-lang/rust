@@ -22,13 +22,14 @@
 //!
 //! On a technical level, Rust inserts
 //!
-//! ```ignore
+//! ```
 //! extern crate std;
 //! ```
 //!
 //! into the crate root of every crate, and
 //!
-//! ```ignore
+//! ```
+//! # #[allow(unused_imports)]
 //! use std::prelude::v1::*;
 //! ```
 //!
@@ -136,10 +137,10 @@
 //! [`std::string`]: ../string/index.html
 //! [`std::vec`]: ../vec/index.html
 //! [`to_owned`]: ../borrow/trait.ToOwned.html#tymethod.to_owned
-//! [book-closures]: ../../book/closures.html
-//! [book-dtor]: ../../book/drop.html
-//! [book-enums]: ../../book/enums.html
-//! [book-iter]: ../../book/iterators.html
+//! [book-closures]: ../../book/first-edition/closures.html
+//! [book-dtor]: ../../book/first-edition/drop.html
+//! [book-enums]: ../../book/first-edition/enums.html
+//! [book-iter]: ../../book/first-edition/iterators.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

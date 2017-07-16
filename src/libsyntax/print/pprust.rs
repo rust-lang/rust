@@ -270,13 +270,12 @@ pub fn token_to_string(tok: &Token) -> String {
 
         /* Other */
         token::DocComment(s)        => s.to_string(),
-        token::SubstNt(s)           => format!("${}", s),
         token::Eof                  => "<eof>".to_string(),
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
-        token::Interpolated(ref nt) => match **nt {
+        token::Interpolated(ref nt) => match nt.0 {
             token::NtExpr(ref e)        => expr_to_string(e),
             token::NtMeta(ref e)        => meta_item_to_string(e),
             token::NtTy(ref e)          => ty_to_string(e),
@@ -368,6 +367,10 @@ pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
 
 pub fn path_to_string(p: &ast::Path) -> String {
     to_string(|s| s.print_path(p, false, 0, false))
+}
+
+pub fn path_segment_to_string(p: &ast::PathSegment) -> String {
+    to_string(|s| s.print_path_segment(p, false))
 }
 
 pub fn ident_to_string(id: ast::Ident) -> String {
@@ -757,7 +760,7 @@ pub trait PrintState<'a> {
                         word(self.writer(), "::")?
                     }
                     if segment.identifier.name != keywords::CrateRoot.name() &&
-                       segment.identifier.name != "$crate" {
+                       segment.identifier.name != keywords::DollarCrate.name() {
                         word(self.writer(), &segment.identifier.name.as_str())?;
                     }
                 }
@@ -1948,18 +1951,14 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_method_call(&mut self,
-                              ident: ast::SpannedIdent,
-                              tys: &[P<ast::Ty>],
+                              segment: &ast::PathSegment,
                               args: &[P<ast::Expr>]) -> io::Result<()> {
         let base_args = &args[1..];
         self.print_expr(&args[0])?;
         word(&mut self.s, ".")?;
-        self.print_ident(ident.node)?;
-        if !tys.is_empty() {
-            word(&mut self.s, "::<")?;
-            self.commasep(Inconsistent, tys,
-                          |s, ty| s.print_type(ty))?;
-            word(&mut self.s, ">")?;
+        self.print_ident(segment.identifier)?;
+        if let Some(ref parameters) = segment.parameters {
+            self.print_path_parameters(parameters, true)?;
         }
         self.print_call_post(base_args)
     }
@@ -2038,8 +2037,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args[..])?;
             }
-            ast::ExprKind::MethodCall(ident, ref tys, ref args) => {
-                self.print_expr_method_call(ident, &tys[..], &args[..])?;
+            ast::ExprKind::MethodCall(ref segment, ref args) => {
+                self.print_expr_method_call(segment, &args[..])?;
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, lhs, rhs)?;
@@ -2359,15 +2358,24 @@ impl<'a> State<'a> {
             if i > 0 {
                 word(&mut self.s, "::")?
             }
-            if segment.identifier.name != keywords::CrateRoot.name() &&
-               segment.identifier.name != "$crate" {
-                self.print_ident(segment.identifier)?;
-                if let Some(ref parameters) = segment.parameters {
-                    self.print_path_parameters(parameters, colons_before_params)?;
-                }
-            }
+            self.print_path_segment(segment, colons_before_params)?;
         }
 
+        Ok(())
+    }
+
+    fn print_path_segment(&mut self,
+                          segment: &ast::PathSegment,
+                          colons_before_params: bool)
+                          -> io::Result<()>
+    {
+        if segment.identifier.name != keywords::CrateRoot.name() &&
+           segment.identifier.name != keywords::DollarCrate.name() {
+            self.print_ident(segment.identifier)?;
+            if let Some(ref parameters) = segment.parameters {
+                self.print_path_parameters(parameters, colons_before_params)?;
+            }
+        }
         Ok(())
     }
 

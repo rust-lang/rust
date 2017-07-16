@@ -19,17 +19,15 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![crate_type = "dylib"]
 #![deny(warnings)]
 
-#![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(i128_type)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(placement_in_syntax)]
 #![feature(collection_placement)]
+#![feature(nonzero)]
 
-#![cfg_attr(stage0, unstable(feature = "rustc_private", issue = "27812"))]
-#![cfg_attr(stage0, feature(rustc_private))]
-#![cfg_attr(stage0, feature(staged_api))]
+#![cfg_attr(stage0, feature(associated_consts))]
 
 #[macro_use] extern crate log;
 extern crate graphviz as dot;
@@ -44,10 +42,12 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
+extern crate core; // for NonZero
 
 pub mod diagnostics;
 
 mod build;
+pub mod dataflow;
 mod hair;
 mod shim;
 pub mod transform;

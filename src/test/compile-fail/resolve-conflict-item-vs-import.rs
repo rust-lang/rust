@@ -9,10 +9,11 @@
 // except according to those terms.
 
 use std::mem::transmute;
-//~^ NOTE previous import of `transmute` here
+//~^ NOTE previous import of the value `transmute` here
 
 fn transmute() {}
-//~^ ERROR a value named `transmute` has already been imported in this module
-//~| `transmute` already imported
+//~^ ERROR the name `transmute` is defined multiple times
+//~| `transmute` redefined here
+//~| `transmute` must be defined only once in the value namespace of this module
 fn main() {
 }

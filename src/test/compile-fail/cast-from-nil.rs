@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: non-scalar cast: `()` as `u32`
+// error-pattern: non-primitive cast: `()` as `u32`
 fn main() { let u = (assert!(true) as u32); }

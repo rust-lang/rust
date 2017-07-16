@@ -14,6 +14,10 @@ fn plus_one(x: i32) -> i32 {
     x + 1;
 }
 
+fn foo() -> Result<u8, u64> {
+    Ok(1);
+}
+
 fn main() {
     let x = plus_one(5);
     println!("X = {}", x);

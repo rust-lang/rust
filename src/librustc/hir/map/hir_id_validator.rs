@@ -16,7 +16,7 @@ use rustc_data_structures::fx::FxHashMap;
 
 pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
     let mut outer_visitor = OuterVisitor {
-        hir_map: hir_map,
+        hir_map,
         errors: vec![],
     };
 
@@ -49,7 +49,7 @@ impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
                          hir_map: &'a hir::map::Map<'hir>)
                          -> HirIdValidator<'a, 'hir> {
         HirIdValidator {
-            hir_map: hir_map,
+            hir_map,
             owner_def_index: None,
             hir_ids_seen: FxHashMap(),
             errors: Vec::new(),

@@ -32,5 +32,5 @@ error[E0529]: expected an array or slice, found `u32`
 34 | fn ugh(&[bar]: &u32) {
    |         ^^^^^ pattern cannot match with input type `u32`
 
-error: aborting due to previous error(s)
+error: aborting due to 4 previous errors
 

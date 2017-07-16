@@ -1617,12 +1617,7 @@ mod traits {
 
         #[inline]
         fn index(&self, index: ops::RangeTo<usize>) -> &str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.end) {
-                unsafe { self.slice_unchecked(0, index.end) }
-            } else {
-                super::slice_error_fail(self, 0, index.end)
-            }
+            index.index(self)
         }
     }
 
@@ -1636,12 +1631,7 @@ mod traits {
     impl ops::IndexMut<ops::RangeTo<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.end) {
-                unsafe { self.slice_mut_unchecked(0, index.end) }
-            } else {
-                super::slice_error_fail(self, 0, index.end)
-            }
+            index.index_mut(self)
         }
     }
 
@@ -1657,12 +1647,7 @@ mod traits {
 
         #[inline]
         fn index(&self, index: ops::RangeFrom<usize>) -> &str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.start) {
-                unsafe { self.slice_unchecked(index.start, self.len()) }
-            } else {
-                super::slice_error_fail(self, index.start, self.len())
-            }
+            index.index(self)
         }
     }
 
@@ -1676,13 +1661,7 @@ mod traits {
     impl ops::IndexMut<ops::RangeFrom<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.start) {
-                let len = self.len();
-                unsafe { self.slice_mut_unchecked(index.start, len) }
-            } else {
-                super::slice_error_fail(self, index.start, self.len())
-            }
+            index.index_mut(self)
         }
     }
 
@@ -1724,9 +1703,7 @@ mod traits {
 
         #[inline]
         fn index(&self, index: ops::RangeInclusive<usize>) -> &str {
-            assert!(index.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
-            self.index(index.start .. index.end+1)
+            index.index(self)
         }
     }
 
@@ -1738,9 +1715,7 @@ mod traits {
 
         #[inline]
         fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
-            assert!(index.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
-            self.index(.. index.end+1)
+            index.index(self)
         }
     }
 
@@ -1750,9 +1725,7 @@ mod traits {
     impl ops::IndexMut<ops::RangeInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
-            assert!(index.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
-            self.index_mut(index.start .. index.end+1)
+            index.index_mut(self)
         }
     }
     #[unstable(feature = "inclusive_range",
@@ -1761,9 +1734,7 @@ mod traits {
     impl ops::IndexMut<ops::RangeToInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
-            assert!(index.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
-            self.index_mut(.. index.end+1)
+            index.index_mut(self)
         }
     }
 
@@ -1886,6 +1857,7 @@ mod traits {
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            // is_char_boundary checks that the index is in [0, .len()]
             if slice.is_char_boundary(self.end) {
                 unsafe { self.get_unchecked_mut(slice) }
             } else {
@@ -1932,6 +1904,7 @@ mod traits {
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            // is_char_boundary checks that the index is in [0, .len()]
             if slice.is_char_boundary(self.start) {
                 unsafe { self.get_unchecked_mut(slice) }
             } else {
@@ -1945,11 +1918,19 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            (self.start..self.end+1).get(slice)
+            if let Some(end) = self.end.checked_add(1) {
+                (self.start..end).get(slice)
+            } else {
+                None
+            }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            (self.start..self.end+1).get_mut(slice)
+            if let Some(end) = self.end.checked_add(1) {
+                (self.start..end).get_mut(slice)
+            } else {
+                None
+            }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
@@ -1961,10 +1942,14 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
+            assert!(self.end != usize::max_value(),
+                "attempted to index str up to maximum usize");
             (self.start..self.end+1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            assert!(self.end != usize::max_value(),
+                "attempted to index str up to maximum usize");
             (self.start..self.end+1).index_mut(slice)
         }
     }
@@ -1976,7 +1961,7 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if slice.is_char_boundary(self.end + 1) {
+            if self.end < usize::max_value() && slice.is_char_boundary(self.end + 1) {
                 Some(unsafe { self.get_unchecked(slice) })
             } else {
                 None
@@ -1984,7 +1969,7 @@ mod traits {
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if slice.is_char_boundary(self.end + 1) {
+            if self.end < usize::max_value() && slice.is_char_boundary(self.end + 1) {
                 Some(unsafe { self.get_unchecked_mut(slice) })
             } else {
                 None
@@ -2002,11 +1987,15 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
+            assert!(self.end != usize::max_value(),
+                "attempted to index str up to maximum usize");
             let end = self.end + 1;
             self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, 0, end))
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            assert!(self.end != usize::max_value(),
+                "attempted to index str up to maximum usize");
             if slice.is_char_boundary(self.end) {
                 unsafe { self.get_unchecked_mut(slice) }
             } else {
@@ -2026,7 +2015,7 @@ mod traits {
            issue = "32110")]
 pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
-    // libcollections, not here.
+    // liballoc, not here.
 
     #[stable(feature = "core", since = "1.6.0")]
     fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
@@ -2096,7 +2085,7 @@ pub trait StrExt {
     fn is_char_boundary(&self, index: usize) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_bytes(&self) -> &[u8];
-    #[unstable(feature = "str_mut_extras", issue = "0")]
+    #[unstable(feature = "str_mut_extras", issue = "41119")]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8];
     #[stable(feature = "core", since = "1.6.0")]
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;

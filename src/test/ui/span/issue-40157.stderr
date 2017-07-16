@@ -10,5 +10,5 @@ error[E0597]: `foo` does not live long enough
    |
    = note: this error originates in a macro outside of the current crate
 
-error: aborting due to previous error(s)
+error: aborting due to previous error
 

@@ -22,7 +22,7 @@ use ast::*;
 use ast;
 use syntax_pos::Span;
 use codemap::{Spanned, respan};
-use parse::token;
+use parse::token::{self, Token};
 use ptr::P;
 use symbol::keywords;
 use tokenstream::*;
@@ -573,7 +573,7 @@ pub fn noop_fold_tt<T: Folder>(tt: TokenTree, fld: &mut T) -> TokenTree {
 }
 
 pub fn noop_fold_tts<T: Folder>(tts: TokenStream, fld: &mut T) -> TokenStream {
-    tts.trees().map(|tt| fld.fold_tt(tt)).collect()
+    tts.map(|tt| fld.fold_tt(tt))
 }
 
 // apply ident folder if it's an ident, apply other folds to interpolated nodes
@@ -586,9 +586,8 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
                 Ok(nt) => nt,
                 Err(nt) => (*nt).clone(),
             };
-            token::Interpolated(Rc::new(fld.fold_interpolated(nt)))
+            Token::interpolated(fld.fold_interpolated(nt.0))
         }
-        token::SubstNt(ident) => token::SubstNt(fld.fold_ident(ident)),
         _ => t
     }
 }
@@ -1152,10 +1151,15 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::Call(folder.fold_expr(f),
                          folder.fold_exprs(args))
             }
-            ExprKind::MethodCall(i, tps, args) => {
+            ExprKind::MethodCall(seg, args) => {
                 ExprKind::MethodCall(
-                    respan(folder.new_span(i.span), folder.fold_ident(i.node)),
-                    tps.move_map(|x| folder.fold_ty(x)),
+                    PathSegment {
+                        identifier: folder.fold_ident(seg.identifier),
+                        span: folder.new_span(seg.span),
+                        parameters: seg.parameters.map(|ps| {
+                            ps.map(|ps| folder.fold_path_parameters(ps))
+                        }),
+                    },
                     folder.fold_exprs(args))
             }
             ExprKind::Binary(binop, lhs, rhs) => {

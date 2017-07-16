@@ -10,12 +10,3 @@ path = "lib.rs"
 [dependencies]
 alloc = { path = "../liballoc" }
 core = { path = "../libcore" }
-std_unicode = { path = "../libstd_unicode" }
-
-[[test]]
-name = "collectionstests"
-path = "../libcollections/tests/lib.rs"
-
-[[bench]]
-name = "collectionsbenches"
-path = "../libcollections/benches/lib.rs"

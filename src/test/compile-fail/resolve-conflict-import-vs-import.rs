@@ -10,7 +10,7 @@
 
 use std::mem::transmute;
 use std::mem::transmute;
-//~^ ERROR a value named `transmute` has already been imported
+//~^ ERROR the name `transmute` is defined multiple times
 
 fn main() {
 }

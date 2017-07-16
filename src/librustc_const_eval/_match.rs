@@ -774,21 +774,26 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
         },
         ty::TyRef(_, ref ty_and_mut) => vec![ty_and_mut.ty],
         ty::TyAdt(adt, substs) => {
-            adt.variants[ctor.variant_index_for_adt(adt)].fields.iter().map(|field| {
-                let is_visible = adt.is_enum()
-                    || field.vis.is_accessible_from(cx.module, cx.tcx);
-                if is_visible {
-                    field.ty(cx.tcx, substs)
-                } else {
-                    // Treat all non-visible fields as nil. They
-                    // can't appear in any other pattern from
-                    // this match (because they are private),
-                    // so their type does not matter - but
-                    // we don't want to know they are
-                    // uninhabited.
-                    cx.tcx.mk_nil()
-                }
-            }).collect()
+            if adt.is_box() {
+                // Use T as the sub pattern type of Box<T>.
+                vec![substs[0].as_type().unwrap()]
+            } else {
+                adt.variants[ctor.variant_index_for_adt(adt)].fields.iter().map(|field| {
+                    let is_visible = adt.is_enum()
+                        || field.vis.is_accessible_from(cx.module, cx.tcx);
+                    if is_visible {
+                        field.ty(cx.tcx, substs)
+                    } else {
+                        // Treat all non-visible fields as nil. They
+                        // can't appear in any other pattern from
+                        // this match (because they are private),
+                        // so their type does not matter - but
+                        // we don't want to know they are
+                        // uninhabited.
+                        cx.tcx.mk_nil()
+                    }
+                }).collect()
+            }
         }
         _ => vec![],
     }

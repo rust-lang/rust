@@ -4,20 +4,18 @@ error: variable `theTwo` should have a snake case name such as `the_two`
 19 |     let theTwo = 2;
    |         ^^^^^^
    |
-   = note: #[deny(non_snake_case)] implied by #[deny(warnings)]
 note: lint level defined here
   --> $DIR/issue-24690.rs:16:9
    |
 16 | #![deny(warnings)]
    |         ^^^^^^^^
+   = note: #[deny(non_snake_case)] implied by #[deny(warnings)]
 
 error: variable `theOtherTwo` should have a snake case name such as `the_other_two`
   --> $DIR/issue-24690.rs:20:9
    |
 20 |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^
-   |
-   = note: #[deny(non_snake_case)] implied by #[deny(warnings)]
 
 error: unused variable: `theOtherTwo`
   --> $DIR/issue-24690.rs:20:9
@@ -25,12 +23,12 @@ error: unused variable: `theOtherTwo`
 20 |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^
    |
-   = note: #[deny(unused_variables)] implied by #[deny(warnings)]
 note: lint level defined here
   --> $DIR/issue-24690.rs:16:9
    |
 16 | #![deny(warnings)]
    |         ^^^^^^^^
+   = note: #[deny(unused_variables)] implied by #[deny(warnings)]
 
-error: aborting due to previous error(s)
+error: aborting due to 3 previous errors
 

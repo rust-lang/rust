@@ -10,7 +10,6 @@
 
 // aux-build:m1.rs
 
-#![feature(associated_consts)]
 
 extern crate m1;
 

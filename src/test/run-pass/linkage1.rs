@@ -32,7 +32,9 @@ fn main() {
     // discarded. By adding and calling `other::bar`, we get around this problem.
     other::bar();
 
-    assert!(!foo.is_null());
-    assert_eq!(unsafe { *foo }, 3);
-    assert!(something_that_should_never_exist.is_null());
+    unsafe {
+        assert!(!foo.is_null());
+        assert_eq!(*foo, 3);
+        assert!(something_that_should_never_exist.is_null());
+    }
 }

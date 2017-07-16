@@ -95,9 +95,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
-        let method_call = ty::MethodCall::expr(id);
-        let method = self.tables.method_map[&method_call];
-        self.check_def_id(method.def_id);
+        self.check_def_id(self.tables.type_dependent_defs[&id].def_id());
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
@@ -289,6 +287,11 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
         return true;
     }
 
+    // Don't lint about global allocators
+    if attr::contains_name(attrs, "global_allocator") {
+        return true;
+    }
+
     let dead_code = lint::builtin::DEAD_CODE.name_lower();
     for attr in lint::gather_attrs(attrs) {
         match attr {
@@ -380,8 +383,8 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Seed implemented trait items
     let mut life_seeder = LifeSeeder {
-        worklist: worklist,
-        krate: krate,
+        worklist,
+        krate,
     };
     krate.visit_all_item_likes(&mut life_seeder);
 
@@ -394,8 +397,8 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        -> Box<FxHashSet<ast::NodeId>> {
     let worklist = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor {
-        worklist: worklist,
-        tcx: tcx,
+        worklist,
+        tcx,
         tables: &ty::TypeckTables::empty(),
         live_symbols: box FxHashSet(),
         struct_has_extern_repr: false,

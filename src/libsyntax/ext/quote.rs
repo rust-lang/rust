@@ -30,9 +30,9 @@ pub mod rt {
     use ast;
     use codemap::Spanned;
     use ext::base::ExtCtxt;
-    use parse::{self, token, classify};
+    use parse::{self, classify};
+    use parse::token::{self, Token};
     use ptr::P;
-    use std::rc::Rc;
     use symbol::Symbol;
 
     use tokenstream::{self, TokenTree, TokenStream};
@@ -82,70 +82,70 @@ pub mod rt {
     impl ToTokens for ast::Path {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtPath(self.clone());
-            vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(DUMMY_SP, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::Ty {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtTy(P(self.clone()));
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::Block {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtBlock(P(self.clone()));
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::Generics {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtGenerics(self.clone());
-            vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(DUMMY_SP, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::WhereClause {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtWhereClause(self.clone());
-            vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(DUMMY_SP, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for P<ast::Item> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtItem(self.clone());
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::ImplItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtImplItem(self.clone());
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for P<ast::ImplItem> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtImplItem((**self).clone());
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::TraitItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtTraitItem(self.clone());
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::Stmt {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtStmt(self.clone());
-            let mut tts = vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))];
+            let mut tts = vec![TokenTree::Token(self.span, Token::interpolated(nt))];
 
             // Some statements require a trailing semicolon.
             if classify::stmt_ends_with_semi(&self.node) {
@@ -159,35 +159,35 @@ pub mod rt {
     impl ToTokens for P<ast::Expr> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtExpr(self.clone());
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for P<ast::Pat> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtPat(self.clone());
-            vec![TokenTree::Token(self.span, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(self.span, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::Arm {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtArm(self.clone());
-            vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(DUMMY_SP, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for ast::Arg {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtArg(self.clone());
-            vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(DUMMY_SP, Token::interpolated(nt))]
         }
     }
 
     impl ToTokens for P<ast::Block> {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtBlock(self.clone());
-            vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(DUMMY_SP, Token::interpolated(nt))]
         }
     }
 
@@ -215,7 +215,7 @@ pub mod rt {
     impl ToTokens for ast::MetaItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let nt = token::NtMeta(self.clone());
-            vec![TokenTree::Token(DUMMY_SP, token::Interpolated(Rc::new(nt)))]
+            vec![TokenTree::Token(DUMMY_SP, Token::interpolated(nt))]
         }
     }
 
@@ -364,7 +364,7 @@ pub mod rt {
 
         fn parse_tts(&self, s: String) -> Vec<TokenTree> {
             let source_name = "<quote expansion>".to_owned();
-            parse::parse_stream_from_source_str(source_name, s, self.parse_sess())
+            parse::parse_stream_from_source_str(source_name, s, self.parse_sess(), None)
                 .into_trees().collect()
         }
     }
@@ -700,7 +700,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Underscore   => "Underscore",
         token::Eof          => "Eof",
 
-        token::Whitespace | token::SubstNt(_) | token::Comment | token::Shebang(_) => {
+        token::Whitespace | token::Comment | token::Shebang(_) => {
             panic!("unhandled token in quote!");
         }
     };

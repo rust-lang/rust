@@ -24,7 +24,6 @@ pub fn main() {
     //~| NOTE implements
     let z = call_it(3, f);
     //~^ ERROR type mismatch
-    //~| ERROR type mismatch
     //~| NOTE expected isize, found usize
     //~| NOTE expected isize, found usize
     //~| NOTE requires

@@ -35,20 +35,10 @@ pub struct Flags {
     pub host: Vec<String>,
     pub target: Vec<String>,
     pub config: Option<PathBuf>,
-    pub src: Option<PathBuf>,
+    pub src: PathBuf,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
-}
-
-impl Flags {
-    pub fn verbose(&self) -> bool {
-        self.verbose > 0
-    }
-
-    pub fn very_verbose(&self) -> bool {
-        self.verbose > 1
-    }
 }
 
 pub enum Subcommand {
@@ -61,6 +51,7 @@ pub enum Subcommand {
     Test {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
+        fail_fast: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -121,16 +112,15 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         // the subcommand. Therefore we must manually identify the subcommand first, so that we can
         // complete the definition of the options.  Then we can use the getopt::Matches object from
         // there on out.
-        let mut possible_subcommands = args.iter().collect::<Vec<_>>();
-        possible_subcommands.retain(|&s|
-                                           (s == "build")
-                                        || (s == "test")
-                                        || (s == "bench")
-                                        || (s == "doc")
-                                        || (s == "clean")
-                                        || (s == "dist")
-                                        || (s == "install"));
-        let subcommand = match possible_subcommands.first() {
+        let subcommand = args.iter().find(|&s|
+            (s == "build")
+            || (s == "test")
+            || (s == "bench")
+            || (s == "doc")
+            || (s == "clean")
+            || (s == "dist")
+            || (s == "install"));
+        let subcommand = match subcommand {
             Some(s) => s,
             None => {
                 // No subcommand -- show the general usage and subcommand help
@@ -141,7 +131,10 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
 
         // Some subcommands get extra options
         match subcommand.as_str() {
-            "test"  => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
+            "test"  => {
+                opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
+                opts.optmulti("", "test-args", "extra arguments", "ARGS");
+            },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             _ => { },
         };
@@ -160,7 +153,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         let mut pass_sanity_check = true;
         match matches.free.get(0) {
             Some(check_subcommand) => {
-                if &check_subcommand != subcommand {
+                if check_subcommand != subcommand {
                     pass_sanity_check = false;
                 }
             },
@@ -192,9 +185,14 @@ Arguments:
         ./x.py build
         ./x.py build --stage 1
 
-    For a quick build with a usable compile, you can pass:
+    For a quick build of a usable compiler, you can pass:
 
-        ./x.py build --stage 1 src/libtest");
+        ./x.py build --stage 1 src/libtest
+
+    This will first build everything once (like --stage 0 without further
+    arguments would), and then use the compiler built in stage 0 to build
+    src/libtest and its dependencies.
+    Once this is done, build/$ARCH/stage1 contains a usable compiler.");
             }
             "test" => {
                 subcommand_help.push_str("\n
@@ -233,11 +231,18 @@ Arguments:
         let cwd = t!(env::current_dir());
         let paths = matches.free[1..].iter().map(|p| cwd.join(p)).collect::<Vec<_>>();
 
+        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
+            if fs::metadata("config.toml").is_ok() {
+                Some(PathBuf::from("config.toml"))
+            } else {
+                None
+            }
+        });
 
         // All subcommands can have an optional "Available paths" section
         if matches.opt_present("verbose") {
             let flags = Flags::parse(&["build".to_string()]);
-            let mut config = Config::default();
+            let mut config = Config::parse(&flags.build, cfg_file.clone());
             config.build = flags.build.clone();
             let mut build = Build::new(flags, config);
             metadata::build(&mut build);
@@ -263,6 +268,7 @@ Arguments:
                 Subcommand::Test {
                     paths: paths,
                     test_args: matches.opt_strs("test-args"),
+                    fail_fast: !matches.opt_present("no-fail-fast"),
                 }
             }
             "bench" => {
@@ -297,21 +303,16 @@ Arguments:
         };
 
 
-        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
-            if fs::metadata("config.toml").is_ok() {
-                Some(PathBuf::from("config.toml"))
-            } else {
-                None
-            }
-        });
-
         let mut stage = matches.opt_str("stage").map(|j| j.parse().unwrap());
 
-        if matches.opt_present("incremental") {
-            if stage.is_none() {
-                stage = Some(1);
-            }
+        if matches.opt_present("incremental") && stage.is_none() {
+            stage = Some(1);
         }
+
+        let cwd = t!(env::current_dir());
+        let src = matches.opt_str("src").map(PathBuf::from)
+            .or_else(|| env::var_os("SRC").map(PathBuf::from))
+            .unwrap_or(cwd);
 
         Flags {
             verbose: matches.opt_count("verbose"),
@@ -324,7 +325,7 @@ Arguments:
             host: split(matches.opt_strs("host")),
             target: split(matches.opt_strs("target")),
             config: cfg_file,
-            src: matches.opt_str("src").map(PathBuf::from),
+            src: src,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd: cmd,
             incremental: matches.opt_present("incremental"),
@@ -340,6 +341,13 @@ impl Subcommand {
                 test_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
             _ => Vec::new(),
+        }
+    }
+
+    pub fn fail_fast(&self) -> bool {
+        match *self {
+            Subcommand::Test { fail_fast, .. } => fail_fast,
+            _ => false,
         }
     }
 }

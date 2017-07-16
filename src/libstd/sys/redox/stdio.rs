@@ -25,13 +25,6 @@ impl Stdin {
         fd.into_raw();
         ret
     }
-
-    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        let fd = FileDesc::new(0);
-        let ret = fd.read_to_end(buf);
-        fd.into_raw();
-        ret
-    }
 }
 
 impl Stdout {

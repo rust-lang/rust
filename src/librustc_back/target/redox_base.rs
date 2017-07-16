@@ -36,8 +36,6 @@ pub fn opts() -> TargetOptions {
         eliminate_frame_pointer: false,
         target_family: None,
         linker_is_gnu: true,
-        lib_allocation_crate: "alloc_system".to_string(),
-        exe_allocation_crate: "alloc_system".to_string(),
         has_elf_tls: true,
         panic_strategy: PanicStrategy::Abort,
         .. Default::default()

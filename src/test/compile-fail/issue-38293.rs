@@ -11,7 +11,6 @@
 // Test that `fn foo::bar::{self}` only imports `bar` in the type namespace.
 
 #![allow(unused)]
-#![deny(legacy_imports)]
 
 mod foo {
     pub fn f() { }

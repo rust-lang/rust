@@ -21,7 +21,7 @@ struct Bar<U: Foo> {
 
 fn foo<U: Foo>(x: [usize; 2]) -> Bar<U> {
     unsafe { mem::transmute(x) }
-    //~^ ERROR transmute called with differently sized types
+    //~^ ERROR transmute called with types of different sizes
 }
 
 fn main() {}

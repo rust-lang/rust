@@ -11,23 +11,36 @@
 #![crate_name = "alloc_jemalloc"]
 #![crate_type = "rlib"]
 #![no_std]
-#![allocator]
 #![unstable(feature = "alloc_jemalloc",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
 #![deny(warnings)]
-#![feature(allocator)]
 #![feature(libc)]
 #![feature(staged_api)]
+#![feature(linkage)]
+#![cfg_attr(stage0, allocator)]
+#![cfg_attr(stage0, feature(allocator))]
+#![cfg_attr(not(stage0), feature(global_allocator))]
+#![cfg_attr(all(not(stage0), not(dummy_jemalloc)), feature(allocator_api))]
+#![cfg_attr(not(stage0), feature(alloc))]
+#![cfg_attr(not(stage0), feature(alloc_system))]
+#![cfg_attr(dummy_jemalloc, allow(dead_code))]
 
+#[cfg(not(stage0))]
+extern crate alloc;
+#[cfg(not(stage0))]
+extern crate alloc_system;
 extern crate libc;
 
-pub use imp::*;
+#[cfg(all(not(stage0), not(dummy_jemalloc)))]
+pub use contents::*;
+#[cfg(all(not(stage0), not(dummy_jemalloc)))]
+mod contents {
+    use core::ptr;
 
-// See comments in build.rs for why we sometimes build a crate that does nothing
-#[cfg(not(dummy_jemalloc))]
-mod imp {
+    use alloc::heap::{Alloc, AllocErr, Layout};
+    use alloc_system::System;
     use libc::{c_int, c_void, size_t};
 
     // Note that the symbols here are prefixed by default on macOS and Windows (we
@@ -91,96 +104,152 @@ mod imp {
         }
     }
 
+    // for symbol names src/librustc/middle/allocator.rs
+    // for signatures src/librustc_allocator/lib.rs
+
+    // linkage directives are provided as part of the current compiler allocator
+    // ABI
+
     #[no_mangle]
-    pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_alloc(size: usize,
+                                     align: usize,
+                                     err: *mut u8) -> *mut u8 {
         let flags = align_to_flags(align);
-        unsafe { mallocx(size as size_t, flags) as *mut u8 }
+        let ptr = mallocx(size as size_t, flags) as *mut u8;
+        if ptr.is_null() {
+            let layout = Layout::from_size_align_unchecked(size, align);
+            ptr::write(err as *mut AllocErr,
+                       AllocErr::Exhausted { request: layout });
+        }
+        ptr
     }
 
     #[no_mangle]
-    pub extern "C" fn __rust_allocate_zeroed(size: usize, align: usize) -> *mut u8 {
-        if align <= MIN_ALIGN {
-            unsafe { calloc(size as size_t, 1) as *mut u8 }
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_oom(err: *const u8) -> ! {
+        System.oom((*(err as *const AllocErr)).clone())
+    }
+
+    #[no_mangle]
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_dealloc(ptr: *mut u8,
+                                       size: usize,
+                                       align: usize) {
+        let flags = align_to_flags(align);
+        sdallocx(ptr as *mut c_void, size, flags);
+    }
+
+    #[no_mangle]
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_usable_size(layout: *const u8,
+                                           min: *mut usize,
+                                           max: *mut usize) {
+        let layout = &*(layout as *const Layout);
+        let flags = align_to_flags(layout.align());
+        let size = nallocx(layout.size(), flags) as usize;
+        *min = layout.size();
+        if size > 0 {
+            *max = size;
         } else {
-            let flags = align_to_flags(align) | MALLOCX_ZERO;
-            unsafe { mallocx(size as size_t, flags) as *mut u8 }
+            *max = layout.size();
         }
     }
 
     #[no_mangle]
-    pub extern "C" fn __rust_reallocate(ptr: *mut u8,
-                                        _old_size: usize,
-                                        size: usize,
-                                        align: usize)
-                                        -> *mut u8 {
-        let flags = align_to_flags(align);
-        unsafe { rallocx(ptr as *mut c_void, size as size_t, flags) as *mut u8 }
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_realloc(ptr: *mut u8,
+                                       _old_size: usize,
+                                       old_align: usize,
+                                       new_size: usize,
+                                       new_align: usize,
+                                       err: *mut u8) -> *mut u8 {
+        if new_align != old_align {
+            ptr::write(err as *mut AllocErr,
+                       AllocErr::Unsupported { details: "can't change alignments" });
+            return 0 as *mut u8
+        }
+
+        let flags = align_to_flags(new_align);
+        let ptr = rallocx(ptr as *mut c_void, new_size, flags) as *mut u8;
+        if ptr.is_null() {
+            let layout = Layout::from_size_align_unchecked(new_size, new_align);
+            ptr::write(err as *mut AllocErr,
+                       AllocErr::Exhausted { request: layout });
+        }
+        ptr
     }
 
     #[no_mangle]
-    pub extern "C" fn __rust_reallocate_inplace(ptr: *mut u8,
-                                                _old_size: usize,
-                                                size: usize,
-                                                align: usize)
-                                                -> usize {
-        let flags = align_to_flags(align);
-        unsafe { xallocx(ptr as *mut c_void, size as size_t, 0, flags) as usize }
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_alloc_zeroed(size: usize,
+                                            align: usize,
+                                            err: *mut u8) -> *mut u8 {
+        let ptr = if align <= MIN_ALIGN {
+            calloc(size as size_t, 1) as *mut u8
+        } else {
+            let flags = align_to_flags(align) | MALLOCX_ZERO;
+            mallocx(size as size_t, flags) as *mut u8
+        };
+        if ptr.is_null() {
+            let layout = Layout::from_size_align_unchecked(size, align);
+            ptr::write(err as *mut AllocErr,
+                       AllocErr::Exhausted { request: layout });
+        }
+        ptr
     }
 
     #[no_mangle]
-    pub extern "C" fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
-        let flags = align_to_flags(align);
-        unsafe { sdallocx(ptr as *mut c_void, old_size as size_t, flags) }
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_alloc_excess(size: usize,
+                                            align: usize,
+                                            excess: *mut usize,
+                                            err: *mut u8) -> *mut u8 {
+        let p = __rde_alloc(size, align, err);
+        if !p.is_null() {
+            *excess = size;
+        }
+        return p
     }
 
     #[no_mangle]
-    pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
-        let flags = align_to_flags(align);
-        unsafe { nallocx(size as size_t, flags) as usize }
-    }
-}
-
-#[cfg(dummy_jemalloc)]
-mod imp {
-    fn bogus() -> ! {
-        panic!("jemalloc is not implemented for this platform");
-    }
-
-    #[no_mangle]
-    pub extern "C" fn __rust_allocate(_size: usize, _align: usize) -> *mut u8 {
-        bogus()
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_realloc_excess(ptr: *mut u8,
+                                              old_size: usize,
+                                              old_align: usize,
+                                              new_size: usize,
+                                              new_align: usize,
+                                              excess: *mut usize,
+                                              err: *mut u8) -> *mut u8 {
+        let p = __rde_realloc(ptr, old_size, old_align, new_size, new_align, err);
+        if !p.is_null() {
+            *excess = new_size;
+        }
+        return p
     }
 
     #[no_mangle]
-    pub extern "C" fn __rust_allocate_zeroed(_size: usize, _align: usize) -> *mut u8 {
-        bogus()
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_grow_in_place(ptr: *mut u8,
+                                             old_size: usize,
+                                             old_align: usize,
+                                             new_size: usize,
+                                             new_align: usize) -> u8 {
+        __rde_shrink_in_place(ptr, old_size, old_align, new_size, new_align)
     }
 
     #[no_mangle]
-    pub extern "C" fn __rust_reallocate(_ptr: *mut u8,
-                                        _old_size: usize,
-                                        _size: usize,
-                                        _align: usize)
-                                        -> *mut u8 {
-        bogus()
-    }
-
-    #[no_mangle]
-    pub extern "C" fn __rust_reallocate_inplace(_ptr: *mut u8,
-                                                _old_size: usize,
-                                                _size: usize,
-                                                _align: usize)
-                                                -> usize {
-        bogus()
-    }
-
-    #[no_mangle]
-    pub extern "C" fn __rust_deallocate(_ptr: *mut u8, _old_size: usize, _align: usize) {
-        bogus()
-    }
-
-    #[no_mangle]
-    pub extern "C" fn __rust_usable_size(_size: usize, _align: usize) -> usize {
-        bogus()
+    #[linkage = "external"]
+    pub unsafe extern fn __rde_shrink_in_place(ptr: *mut u8,
+                                               _old_size: usize,
+                                               old_align: usize,
+                                               new_size: usize,
+                                               new_align: usize) -> u8 {
+        if old_align == new_align {
+            let flags = align_to_flags(new_align);
+            (xallocx(ptr as *mut c_void, new_size, 0, flags) == new_size) as u8
+        } else {
+            0
+        }
     }
 }

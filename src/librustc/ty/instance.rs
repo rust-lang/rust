@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::DepNode;
+use dep_graph::DepConstructor;
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs};
 use util::ppaux;
@@ -60,7 +60,8 @@ impl<'tcx> InstanceDef<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
-    pub(crate) fn dep_node(&self) -> DepNode<DefId> {
+    pub //(crate)
+     fn dep_node(&self) -> DepConstructor {
         // HACK: def-id binning, project-style; someone replace this with
         // real on-demand.
         let ty = match self {
@@ -69,7 +70,7 @@ impl<'tcx> InstanceDef<'tcx> {
             _ => None
         }.into_iter();
 
-        DepNode::MirShim(
+        DepConstructor::MirShim(
             Some(self.def_id()).into_iter().chain(
                 ty.flat_map(|t| t.walk()).flat_map(|t| match t.sty {
                    ty::TyAdt(adt_def, _) => Some(adt_def.did),

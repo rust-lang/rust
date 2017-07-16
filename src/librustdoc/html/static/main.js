@@ -1,12 +1,14 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+/*!
+ * Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+ * file at the top-level directory of this distribution and at
+ * http://rust-lang.org/COPYRIGHT.
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
 
 /*jslint browser: true, es5: true */
 /*globals $: true, rootPath: true */
@@ -1231,21 +1233,24 @@
         onEach(e.getElementsByClassName('associatedconstant'), func);
     });
 
-    var span = document.createElement('span');
-    span.className = 'toggle-label';
-    span.style.display = 'none';
-    span.innerHTML = '&nbsp;Expand&nbsp;description';
+    function createToggle() {
+        var span = document.createElement('span');
+        span.className = 'toggle-label';
+        span.style.display = 'none';
+        span.innerHTML = '&nbsp;Expand&nbsp;description';
 
-    var mainToggle = toggle.cloneNode(true);
-    mainToggle.appendChild(span);
+        var mainToggle = toggle.cloneNode(true);
+        mainToggle.appendChild(span);
 
-    var wrapper = document.createElement('div');
-    wrapper.className = 'toggle-wrapper';
-    wrapper.appendChild(mainToggle);
+        var wrapper = document.createElement('div');
+        wrapper.className = 'toggle-wrapper';
+        wrapper.appendChild(mainToggle);
+        return wrapper;
+    }
 
     onEach(document.getElementById('main').getElementsByClassName('docblock'), function(e) {
         if (e.parentNode.id === "main") {
-            e.parentNode.insertBefore(wrapper, e);
+            e.parentNode.insertBefore(createToggle(), e);
         }
     });
 
@@ -1271,18 +1276,22 @@
         }
     })
 
-    var span = document.createElement('span');
-    span.className = 'toggle-label';
-    span.style.display = 'none';
-    span.innerHTML = '&nbsp;Expand&nbsp;attributes';
-    toggle.appendChild(span);
+    function createToggleWrapper() {
+        var span = document.createElement('span');
+        span.className = 'toggle-label';
+        span.style.display = 'none';
+        span.innerHTML = '&nbsp;Expand&nbsp;attributes';
+        toggle.appendChild(span);
 
-    var wrapper = document.createElement('div');
-    wrapper.className = 'toggle-wrapper toggle-attributes';
-    wrapper.appendChild(toggle);
+        var wrapper = document.createElement('div');
+        wrapper.className = 'toggle-wrapper toggle-attributes';
+        wrapper.appendChild(toggle);
+        return wrapper;
+    }
+
     onEach(document.getElementById('main').getElementsByTagName('pre'), function(e) {
         onEach(e.getElementsByClassName('attributes'), function(i_e) {
-            i_e.parentNode.insertBefore(wrapper, i_e);
+            i_e.parentNode.insertBefore(createToggleWrapper(), i_e);
             collapseDocs(i_e.previousSibling.childNodes[0]);
         });
     });
