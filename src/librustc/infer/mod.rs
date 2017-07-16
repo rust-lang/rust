@@ -628,22 +628,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns a type variable's default fallback if any exists. A default
-    /// must be attached to the variable when created, if it is created
-    /// without a default, this will return None.
-    ///
-    /// This code does not apply to integral or floating point variables,
-    /// only to use declared defaults.
-    ///
-    /// See `new_ty_var_with_default` to create a type variable with a default.
-    /// See `type_variable::Default` for details about what a default entails.
-    pub fn default(&self, ty: Ty<'tcx>) -> Option<type_variable::Default<'tcx>> {
-        match ty.sty {
-            ty::TyInfer(ty::TyVar(vid)) => self.type_variables.borrow().default(vid),
-            _ => None
-        }
-    }
-
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
         let mut variables = Vec::new();
 
@@ -956,7 +940,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(diverging, origin, None)
+            .new_var(diverging, origin)
     }
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
@@ -1008,8 +992,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let ty_var_id = self.type_variables
                             .borrow_mut()
                             .new_var(false,
-                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name),
-                                     None);
+                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name));
 
         self.tcx.mk_var(ty_var_id)
     }
@@ -1218,28 +1201,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                    -> DiagnosticBuilder<'tcx> {
         let trace = TypeTrace::types(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
-    }
-
-    pub fn report_conflicting_default_types(&self,
-                                            span: Span,
-                                            body_id: ast::NodeId,
-                                            expected: type_variable::Default<'tcx>,
-                                            actual: type_variable::Default<'tcx>) {
-        let trace = TypeTrace {
-            cause: ObligationCause::misc(span, body_id),
-            values: Types(ExpectedFound {
-                expected: expected.ty,
-                found: actual.ty
-            })
-        };
-
-        self.report_and_explain_type_error(
-            trace,
-            &TypeError::TyParamDefaultMismatch(ExpectedFound {
-                expected,
-                found: actual
-            }))
-            .emit();
     }
 
     pub fn replace_late_bound_regions_with_fresh_var<T>(

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use self::TypeVariableValue::*;
-use hir::def_id::{DefId};
 use syntax::ast;
 use syntax_pos::Span;
 use ty::{self, Ty};
@@ -79,20 +78,7 @@ enum TypeVariableValue<'tcx> {
     Known {
         value: Ty<'tcx>
     },
-    Bounded {
-        default: Option<Default<'tcx>>
-    }
-}
-
-// We will use this to store the required information to recapitulate what happened when
-// an error occurs.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Default<'tcx> {
-    pub ty: Ty<'tcx>,
-    /// The span where the default was incurred
-    pub origin_span: Span,
-    /// The definition that the default originates from
-    pub def_id: DefId
+    Unknown,
 }
 
 pub struct Snapshot {
@@ -101,9 +87,8 @@ pub struct Snapshot {
     sub_snapshot: ut::Snapshot<ty::TyVid>,
 }
 
-struct Instantiate<'tcx> {
+struct Instantiate {
     vid: ty::TyVid,
-    default: Option<Default<'tcx>>,
 }
 
 struct Delegate<'tcx>(PhantomData<&'tcx ()>);
@@ -114,13 +99,6 @@ impl<'tcx> TypeVariableTable<'tcx> {
             values: sv::SnapshotVec::new(),
             eq_relations: ut::UnificationTable::new(),
             sub_relations: ut::UnificationTable::new(),
-        }
-    }
-
-    pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
-        match &self.values.get(vid.index as usize).value {
-            &Known { .. } => None,
-            &Bounded { default, .. } => default,
         }
     }
 
@@ -164,8 +142,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
         };
 
         match old_value {
-            TypeVariableValue::Bounded { default } => {
-                self.values.record(Instantiate { vid: vid, default: default });
+            TypeVariableValue::Unknown => {
+                self.values.record(Instantiate { vid: vid });
             }
             TypeVariableValue::Known { value: old_ty } => {
                 bug!("instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
@@ -176,13 +154,13 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     pub fn new_var(&mut self,
                    diverging: bool,
-                   origin: TypeVariableOrigin,
-                   default: Option<Default<'tcx>>,) -> ty::TyVid {
+                   origin: TypeVariableOrigin)
+                   -> ty::TyVid {
         debug!("new_var(diverging={:?}, origin={:?})", diverging, origin);
         self.eq_relations.new_key(());
         self.sub_relations.new_key(());
         let index = self.values.push(TypeVariableData {
-            value: Bounded { default },
+            value: Unknown,
             origin,
             diverging,
         });
@@ -234,7 +212,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn probe_root(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         debug_assert!(self.root_var(vid) == vid);
         match self.values.get(vid.index as usize).value {
-            Bounded { .. } => None,
+            Unknown => None,
             Known { value } => Some(value)
         }
     }
@@ -335,7 +313,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
                         let escaping_type = match self.values.get(vid.index as usize).value {
-                            Bounded { .. } => bug!(),
+                            Unknown => bug!(),
                             Known { value } => value,
                         };
                         escaping_types.push(escaping_type);
@@ -366,12 +344,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
-    type Undo = Instantiate<'tcx>;
+    type Undo = Instantiate;
 
-    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate<'tcx>) {
-        let Instantiate { vid, default } = action;
-        values[vid.index as usize].value = Bounded {
-            default,
-        };
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate) {
+        let Instantiate { vid } = action;
+        values[vid.index as usize].value = Unknown;
     }
 }

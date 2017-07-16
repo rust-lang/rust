@@ -410,7 +410,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                             }
 
                             let origin = variables.origin(vid);
-                            let new_var_id = variables.new_var(false, origin, None);
+                            let new_var_id = variables.new_var(false, origin);
                             let u = self.tcx().mk_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",
                                    vid, u);
