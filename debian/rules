@@ -18,8 +18,10 @@ override_dh_auto_clean:
 	$(RM) -rfv rust-std-${RUST_VER}-x86_64-unknown-linux-gnu
 	$(RM) -rfv rust-std-${RUST_VER}-i686-unknown-linux-gnu
 	$(RM) -rfv rust-std-${RUST_VER}-i686-pc-windows-gnu
+	$(RM) -rfv rust-std-${RUST_VER}-i686-pc-windows-msvc
 	$(RM) -rfv rust-std-${RUST_VER}-i686-apple-darwin-gnu
 	$(RM) -rfv rust-std-${RUST_VER}-x86_64-pc-windows-gnu
+	$(RM) -rfv rust-std-${RUST_VER}-x86_64-pc-windows-msvc
 	$(RM) -rfv rust-std-${RUST_VER}-x86_64-apple-darwin-gnu
 
 override_dh_auto_build:
@@ -27,8 +29,10 @@ override_dh_auto_build:
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-x86_64-unknown-linux-gnu.tar.xz
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-i686-unknown-linux-gnu.tar.xz
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-i686-pc-windows-gnu.tar.xz
+	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-i686-pc-windows-msvc.tar.xz
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-i686-apple-darwin.tar.xz
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-x86_64-pc-windows-gnu.tar.xz
+	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-x86_64-pc-windows-msvc.tar.xz
 	tar -xvf ${BUILD_DIR}/rust-std-${RUST_VER}-x86_64-apple-darwin.tar.xz
 
 test:
@@ -38,6 +42,7 @@ test:
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=i686-apple-darwin
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=x86_64-unknown-linux-gnu
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=x86_64-pc-windows-gnu
+	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=x86_64-pc-windows-msvc
 	debian/rustc/usr/bin/rustc --crate-type lib debian/test.rs -o debian/test --target=x86_64-apple-darwin
 
 build-linux:
