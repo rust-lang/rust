@@ -13,7 +13,6 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
-use infer::type_variable;
 use middle::const_val::{self, ConstVal, ConstAggregate, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -548,13 +547,6 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::error::ExpectedFound<T> {
     }
 }
 
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for type_variable::Default<'a> {
-        type Lifted = type_variable::Default<'tcx>;
-        ty, origin_span, def_id
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
     type Lifted = ty::error::TypeError<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -586,11 +578,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
 
             Sorts(ref x) => return tcx.lift(x).map(Sorts),
-            TyParamDefaultMismatch(ref x) => {
-                return tcx.lift(x).map(TyParamDefaultMismatch)
-            }
-            ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
             OldStyleLUB(ref x) => return tcx.lift(x).map(OldStyleLUB),
+            ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch)
         })
     }
 }
@@ -1199,20 +1188,6 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::error::ExpectedFoun
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for type_variable::Default<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        type_variable::Default {
-            ty: self.ty.fold_with(folder),
-            origin_span: self.origin_span,
-            def_id: self.def_id
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor)
-    }
-}
-
 impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         self.iter().map(|x| x.fold_with(folder)).collect()
@@ -1252,7 +1227,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             ProjectionMismatched(x) => ProjectionMismatched(x),
             ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
             Sorts(x) => Sorts(x.fold_with(folder)),
-            TyParamDefaultMismatch(ref x) => TyParamDefaultMismatch(x.fold_with(folder)),
             ExistentialMismatch(x) => ExistentialMismatch(x.fold_with(folder)),
             OldStyleLUB(ref x) => OldStyleLUB(x.fold_with(folder)),
         }
@@ -1273,7 +1247,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             },
             Sorts(x) => x.visit_with(visitor),
             OldStyleLUB(ref x) => x.visit_with(visitor),
-            TyParamDefaultMismatch(ref x) => x.visit_with(visitor),
             ExistentialMismatch(x) => x.visit_with(visitor),
             CyclicTy(t) => t.visit_with(visitor),
             Mismatch |
