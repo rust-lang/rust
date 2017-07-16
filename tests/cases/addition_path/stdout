@@ -21,3 +21,15 @@ note: TechnicallyBreaking: added path
 13| pub use self::a::Abc;
   |         ^^^^^^^^^^^^
 
+warning: Path changes to `d`
+  --> $REPO_PATH/tests/cases/addition_path/new.rs:17:1
+   |
+17 | }
+   | ^
+   |
+note: TechnicallyBreaking: added path
+  --> $REPO_PATH/tests/cases/addition_path/new.rs:17:1
+   |
+17 | }
+   | ^
+

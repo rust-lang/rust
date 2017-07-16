@@ -1,11 +1,21 @@
 version bump: 1.0.0 -> (TechnicallyBreaking) -> 1.1.0
-warning: TechnicallyBreaking changes in `b`
- --> $REPO_PATH/tests/cases/addition/old.rs:6:1
+warning: TechnicallyBreaking changes in `Bcd`
+ --> $REPO_PATH/tests/cases/addition/new.rs:3:1
   |
-6 | }
-  | ^
+3 | pub struct Bcd;
+  | ^^^^^^^^^^^^^^^
   |
   = note: TechnicallyBreaking (ItemMadePublic)
+
+warning: TechnicallyBreaking changes in `b`
+  --> $REPO_PATH/tests/cases/addition/new.rs:10:5
+   |
+10 | /     #[allow(dead_code)]
+11 | |     pub struct Cde;
+12 | | }
+   | |_^
+   |
+   = note: TechnicallyBreaking (ItemMadePublic)
 
 warning: Path changes to `Abc`
  --> $REPO_PATH/tests/cases/addition/new.rs:1:1
@@ -18,14 +28,6 @@ note: TechnicallyBreaking: added path
   |
 1 | pub struct Abc;
   | ^^^^^^^^^^^^^^^
-
-warning: TechnicallyBreaking changes in `Bcd`
- --> $REPO_PATH/tests/cases/addition/new.rs:3:1
-  |
-3 | pub struct Bcd;
-  | ^^^^^^^^^^^^^^^
-  |
-  = note: TechnicallyBreaking (ItemMadePublic)
 
 warning: Path changes to `a`
  --> $REPO_PATH/tests/cases/addition/new.rs:7:1

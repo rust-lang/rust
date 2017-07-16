@@ -11,3 +11,11 @@ pub mod c {
 }
 
 pub use self::a::Abc;
+
+pub mod d {
+
+}
+
+mod e {
+
+}

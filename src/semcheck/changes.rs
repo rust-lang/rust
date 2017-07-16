@@ -332,39 +332,48 @@ pub struct ChangeSet<'tcx> {
 }
 
 impl<'tcx> ChangeSet<'tcx> {
-    /// Add a new path addition for the given item.
-    pub fn new_path_addition(&mut self, old: DefId, name: Symbol, def_span: Span, span: Span) {
-        self.new_path(old, name, def_span, span, true);
-    }
-
-    /// Add a new path removal for the given item.
-    pub fn new_path_removal(&mut self, old: DefId, name: Symbol, def_span: Span, span: Span) {
-        self.new_path(old, name, def_span, span, false);
-    }
-
     /// Add a new path change entry for the given item.
-    fn new_path(&mut self, old: DefId, name: Symbol, def_span: Span, span: Span, add: bool) {
-        self.spans.insert(def_span, old);
+    pub fn new_path(&mut self, old: DefId, name: Symbol, def_span: Span) {
+        if !self.spans.contains_key(&def_span) {
+            self.spans.insert(def_span, old);
+            self.path_changes
+                .entry(old)
+                .or_insert_with(|| PathChange::new(name, def_span));
+        }
+    }
 
-        let change = self.path_changes
-            .entry(old)
-            .or_insert_with(|| PathChange::new(name, def_span));
+    pub fn add_path_addition(&mut self, old: DefId, span: Span) {
+        self.add_path(old, span, true);
+    }
 
-        change.insert(span, add);
+    pub fn add_path_removal(&mut self, old: DefId, span: Span) {
+        self.add_path(old, span, false);
+    }
 
-        let cat = change.to_category();
+    /// Add a new path change to an already existing entry.
+    fn add_path(&mut self, old: DefId, span: Span, add: bool) {
+        let cat = if add { TechnicallyBreaking } else { Breaking };
 
         if cat > self.max {
             self.max = cat.clone();
         }
+
+        self.path_changes.get_mut(&old).unwrap().insert(span, add);
     }
 
     /// Add a new binary change entry for the given items.
-    pub fn new_binary(&mut self, old: DefId, name: Symbol, span: Span, output: bool) {
-        let change = Change::new(name, span, output);
+    pub fn new_binary(&mut self,
+                      old_did: DefId,
+                      new_did: DefId,
+                      name: Symbol,
+                      old_span: Span,
+                      new_span: Span,
+                      output: bool) {
+        let change = Change::new(name, new_span, output);
 
-        self.spans.insert(*change.new_span(), old);
-        self.changes.insert(old, change);
+        self.spans.insert(old_span, old_did);
+        self.spans.insert(new_span, new_did);
+        self.changes.insert(old_did, change);
     }
 
     /// Add a new binary change to an already existing entry.

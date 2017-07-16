@@ -11,6 +11,14 @@ warning: Breaking: removed path
 1 | pub struct Abc;
   | ^^^^^^^^^^^^^^^
 
+warning: Breaking changes in `Bcd`
+ --> $REPO_PATH/tests/cases/removal/new.rs:2:1
+  |
+2 | struct Bcd;
+  | ^^^^^^^^^^^
+  |
+  = warning: Breaking (ItemMadePrivate)
+
 warning: Path changes to `a`
  --> $REPO_PATH/tests/cases/removal/old.rs:7:1
   |
@@ -24,14 +32,12 @@ warning: Breaking: removed path
   | ^
 
 warning: Breaking changes in `b`
-  --> $REPO_PATH/tests/cases/removal/old.rs:10:5
-   |
-10 | /     #[allow(dead_code)]
-11 | |     pub struct Cde;
-12 | | }
-   | |_^
-   |
-   = warning: Breaking (ItemMadePrivate)
+ --> $REPO_PATH/tests/cases/removal/new.rs:6:1
+  |
+6 | }
+  | ^
+  |
+  = warning: Breaking (ItemMadePrivate)
 
 warning: Path changes to `Cde`
   --> $REPO_PATH/tests/cases/removal/old.rs:11:5
@@ -44,12 +50,4 @@ warning: Breaking: removed path
    |
 11 |     pub struct Cde;
    |     ^^^^^^^^^^^^^^^
-
-warning: Breaking changes in `Bcd`
- --> $REPO_PATH/tests/cases/removal/new.rs:2:1
-  |
-2 | struct Bcd;
-  | ^^^^^^^^^^^
-  |
-  = warning: Breaking (ItemMadePrivate)
 

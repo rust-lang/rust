@@ -1,16 +1,4 @@
 version bump: 1.0.0 -> (Breaking) -> 2.0.0
-warning: Path changes to `Abc`
- --> $REPO_PATH/tests/cases/kind_change/old.rs:1:1
-  |
-1 | pub struct Abc;
-  | ^^^^^^^^^^^^^^^
-  |
-warning: Breaking: removed path
- --> $REPO_PATH/tests/cases/kind_change/old.rs:1:1
-  |
-1 | pub struct Abc;
-  | ^^^^^^^^^^^^^^^
-
 warning: Breaking changes in `Abc`
  --> $REPO_PATH/tests/cases/kind_change/new.rs:1:1
   |

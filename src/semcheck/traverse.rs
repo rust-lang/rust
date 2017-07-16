@@ -99,8 +99,10 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
                             if o_vis != n_vis {
                                 changes.new_binary(o_did,
+                                                   n_did,
                                                    o.ident.name,
                                                    tcx.def_span(o_did),
+                                                   tcx.def_span(n_did),
                                                    true);
 
                                 if o_vis == Public && n_vis != Public {
@@ -113,6 +115,11 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             mod_queue.push_back((o_did, n_did, o_vis, n_vis));
                         }
                     } else if id_mapping.add_export(o.def, n.def) {
+                        // struct constructors are weird/hard - let's go shopping!
+                        if let (StructCtor(_, _), StructCtor(_, _)) = (o.def, n.def) {
+                            continue;
+                        }
+
                         let o_def_id = o.def.def_id();
                         let n_def_id = n.def.def_id();
                         let o_vis = if old_vis == Public {
@@ -127,7 +134,12 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         };
 
                         let output = o_vis == Public || n_vis == Public;
-                        changes.new_binary(o.def.def_id(), o.ident.name, n.span, output);
+                        changes.new_binary(o.def.def_id(),
+                                           n.def.def_id(),
+                                           o.ident.name,
+                                           tcx.def_span(o.def.def_id()),
+                                           tcx.def_span(n.def.def_id()),
+                                           output);
 
                         if o_vis == Public && n_vis != Public {
                             changes.add_binary(ItemMadePrivate, o_def_id, None);
@@ -200,21 +212,27 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                     }
                 }
                 (Some(o), None) => {
+                    // struct constructors are weird/hard - let's go shopping!
+                    if let StructCtor(_, _) = o.def {
+                        continue;
+                    }
+
                     if old_vis == Public && cstore.visibility(o.def.def_id()) == Public {
                         let o_did = o.def.def_id();
-                        changes.new_path_removal(o_did,
-                                                 o.ident.name,
-                                                 tcx.def_span(o_did),
-                                                 o.span);
+                        changes.new_path(o_did, o.ident.name, tcx.def_span(o_did));
+                        changes.add_path_removal(o_did, o.span);
                     }
                 }
                 (None, Some(n)) => {
+                    // struct constructors are weird/hard - let's go shopping!
+                    if let StructCtor(_, _) = n.def {
+                        continue;
+                    }
+
                     if new_vis == Public && cstore.visibility(n.def.def_id()) == Public {
                         let n_did = n.def.def_id();
-                        changes.new_path_addition(n_did,
-                                                  n.ident.name,
-                                                  tcx.def_span(n_did),
-                                                  n.span);
+                        changes.new_path(n_did, n.ident.name, tcx.def_span(n_did));
+                        changes.add_path_addition(n_did, n.span);
                     }
                 }
                 (None, None) => unreachable!(),
@@ -400,7 +418,9 @@ fn diff_traits(changes: &mut ChangeSet,
             (Some((old_def, old_item)), Some((new_def, new_item))) => {
                 id_mapping.add_trait_item(old_def, new_def);
                 changes.new_binary(old_def.def_id(),
+                                   new_def.def_id(),
                                    *name,
+                                   tcx.def_span(old_def.def_id()),
                                    tcx.def_span(new_def.def_id()),
                                    true);
                 diff_method(changes, tcx, old_item, new_item);

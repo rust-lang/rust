@@ -6,45 +6,15 @@ warning: Path changes to `Abc`
   |     ^^^^^^^^^^^^^^^
   |
 warning: Breaking: removed path
- --> $REPO_PATH/tests/cases/removal_path/old.rs:13:9
+ --> $REPO_PATH/tests/cases/removal_path/old.rs:6:13
   |
-13| pub use self::a::Abc;
-  |         ^^^^^^^^^^^^
-
-warning: Path changes to `b`
- --> $REPO_PATH/tests/cases/removal_path/old.rs:6:5
-  |
-6 | /     pub use a::*;
-7 | | }
-  | |_^
-  |
+6 |     pub use a::*;
+  |             ^^^^^
 warning: Breaking: removed path
- --> $REPO_PATH/tests/cases/removal_path/old.rs:6:5
+ --> $REPO_PATH/tests/cases/removal_path/old.rs:10:13
   |
-6 | /     pub use a::*;
-7 | | }
-  | |_^
-
-warning: Path changes to `c`
-  --> $REPO_PATH/tests/cases/removal_path/old.rs:10:5
-   |
-10 | /     pub use a::Abc;
-11 | | }
-   | |_^
-   |
-warning: Breaking: removed path
-  --> $REPO_PATH/tests/cases/removal_path/old.rs:10:5
-   |
-10 | /     pub use a::Abc;
-11 | | }
-   | |_^
-
-warning: Path changes to `Abc`
- --> $REPO_PATH/tests/cases/removal_path/old.rs:2:5
-  |
-2 |     pub struct Abc;
-  |     ^^^^^^^^^^^^^^^
-  |
+10|     pub use a::Abc;
+  |             ^^^^^^
 warning: Breaking: removed path
  --> $REPO_PATH/tests/cases/removal_path/old.rs:13:9
   |
