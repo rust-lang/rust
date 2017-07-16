@@ -388,7 +388,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                     // `vid` are related via subtyping.
                     return Err(TypeError::CyclicTy);
                 } else {
-                    match variables.probe_root(vid) {
+                    match variables.probe(vid) {
                         Some(u) => {
                             drop(variables);
                             self.relate(&u, &u)
@@ -409,7 +409,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                                 ty::Covariant | ty::Contravariant => (),
                             }
 
-                            let origin = variables.origin(vid);
+                            let origin = *variables.var_origin(vid);
                             let new_var_id = variables.new_var(false, origin);
                             let u = self.tcx().mk_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",

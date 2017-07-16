@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              span: Span,
-                                             snapshot: &CombinedSnapshot,
+                                             snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
                                              a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
@@ -338,7 +338,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                              span: Span,
-                                             snapshot: &CombinedSnapshot,
+                                             snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
                                              a_map: &FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
@@ -477,7 +477,7 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn tainted_regions(&self,
-                       snapshot: &CombinedSnapshot,
+                       snapshot: &CombinedSnapshot<'a, 'tcx>,
                        r: ty::Region<'tcx>,
                        directions: TaintDirections)
                        -> FxHashSet<ty::Region<'tcx>> {
@@ -485,7 +485,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn region_vars_confined_to_snapshot(&self,
-                                        snapshot: &CombinedSnapshot)
+                                        snapshot: &CombinedSnapshot<'a, 'tcx>)
                                         -> Vec<ty::RegionVid>
     {
         /*!
@@ -576,7 +576,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// See `README.md` for more details.
     pub fn skolemize_late_bound_regions<T>(&self,
                                            binder: &ty::Binder<T>,
-                                           snapshot: &CombinedSnapshot)
+                                           snapshot: &CombinedSnapshot<'a, 'tcx>)
                                            -> (T, SkolemizationMap<'tcx>)
         where T : TypeFoldable<'tcx>
     {
@@ -601,7 +601,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                       overly_polymorphic: bool,
                       _span: Span,
                       skol_map: &SkolemizationMap<'tcx>,
-                      snapshot: &CombinedSnapshot)
+                      snapshot: &CombinedSnapshot<'a, 'tcx>)
                       -> RelateResult<'tcx, ()>
     {
         debug!("leak_check: skol_map={:?}",
@@ -676,7 +676,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// predicate is `for<'a> &'a int : Clone`.
     pub fn plug_leaks<T>(&self,
                          skol_map: SkolemizationMap<'tcx>,
-                         snapshot: &CombinedSnapshot,
+                         snapshot: &CombinedSnapshot<'a, 'tcx>,
                          value: T) -> T
         where T : TypeFoldable<'tcx>
     {
@@ -762,8 +762,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Note: popping also occurs implicitly as part of `leak_check`.
     pub fn pop_skolemized(&self,
                           skol_map: SkolemizationMap<'tcx>,
-                          snapshot: &CombinedSnapshot)
-    {
+                          snapshot: &CombinedSnapshot<'a, 'tcx>) {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FxHashSet<_> = skol_map.values().cloned().collect();
         self.region_vars.pop_skolemized(&skol_regions, &snapshot.region_vars_snapshot);
