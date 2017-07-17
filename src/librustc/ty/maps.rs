@@ -580,8 +580,13 @@ macro_rules! define_maps {
                        key,
                        span);
 
+                profq_msg!(tcx,
+                    ProfileQueriesMsg::QueryBegin(span.clone(),
+                                                  QueryMsg::$name(format!("{:?}", key))));
+
                 if let Some(&(ref result, dep_node_index)) = tcx.maps.$name.borrow().map.get(&key) {
                     tcx.dep_graph.read_index(dep_node_index);
+                    profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                     return Ok(f(result));
                 }
 
