@@ -1,7 +1,7 @@
 - Feature Name: none?
 - Start Date: 2015-02-18
-- RFC PR: [rust-lang/rfcs#886](https://github.com/rust-lang/rfcs/pull/886)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1940
+- Rust Issue: https://github.com/rust-lang/rust/issues/43302
 
 # Summary
 
