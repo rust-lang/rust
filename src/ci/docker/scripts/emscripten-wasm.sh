@@ -28,14 +28,14 @@ exit 1
 }
 
 # Download last known good emscripten from WebAssembly waterfall
-BUILD=$(curl -L https://storage.googleapis.com/wasm-llvm/builds/linux/lkgr.json | \
+BUILD=$(curl -sL https://storage.googleapis.com/wasm-llvm/builds/linux/lkgr.json | \
     jq '.build | tonumber')
-curl -L https://storage.googleapis.com/wasm-llvm/builds/linux/$BUILD/wasm-binaries.tbz2 | \
+curl -sL https://storage.googleapis.com/wasm-llvm/builds/linux/$BUILD/wasm-binaries.tbz2 | \
     hide_output tar xvkj
 
 # node 8 is required to run wasm
 cd /
-curl -L https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
+curl -sL https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
     tar -xJ
 
 # Make emscripten use wasm-ready node and LLVM tools
