@@ -586,12 +586,29 @@ pub mod tests {
         change
     }
 
+    pub type PathChange_ = (Span_, Vec<(bool, Span_)>);
+
+    fn build_path_change(s1: Span, mut spans: Vec<(bool, Span)>) -> PathChange {
+        let mut interner = Interner::new();
+        let mut change = PathChange::new(interner.intern("test"), s1);
+
+        for (add, span) in spans.drain(..) {
+            change.insert(span, add);
+        }
+
+        change
+    }
+
     quickcheck! {
-        /* /// The `Ord` instance of `Change` is transitive.
-        fn ord_uchange_transitive(c1: UnaryChange_, c2: UnaryChange_, c3: UnaryChange_) -> bool {
-            let ch1 = build_unary_change(c1.0, c1.1.inner());
-            let ch2 = build_unary_change(c2.0, c2.1.inner());
-            let ch3 = build_unary_change(c3.0, c3.1.inner());
+        /// The `Ord` instance of `Change` is transitive.
+        fn ord_pchange_transitive(c1: PathChange_, c2: PathChange_, c3: PathChange_) -> bool {
+            let s1 = c1.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let s2 = c2.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let s3 = c3.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+
+            let ch1 = build_path_change(c1.0.inner(), s1);
+            let ch2 = build_path_change(c2.0.inner(), s2);
+            let ch3 = build_path_change(c3.0.inner(), s3);
 
             let mut res = true;
 
@@ -608,7 +625,7 @@ pub mod tests {
             }
 
             res
-        } */
+        }
 
         fn ord_change_transitive(c1: Change_, c2: Change_, c3: Change_) -> bool {
             let ch1 = build_change(Unknown, c1.0.inner(), c1.1.inner());
@@ -665,20 +682,20 @@ pub mod tests {
             set.max == max
         } */
 
-        /* /// Difference in spans implies difference in `Change`s.
-        fn uchange_span_neq(c1: UnaryChange_, c2: UnaryChange_) -> bool {
-            let s1 = c1.1.inner();
-            let s2 = c2.1.inner();
+        /// Difference in spans implies difference in `Change`s.
+        fn pchange_span_neq(c1: PathChange_, c2: PathChange_) -> bool {
+            let s1 = c1.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let s2 = c2.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
 
             if s1 != s2 {
-                let ch1 = build_unary_change(c1.0, s1);
-                let ch2 = build_unary_change(c2.0, s2);
+                let ch1 = build_path_change(c1.0.inner(), s1);
+                let ch2 = build_path_change(c2.0.inner(), s2);
 
                 ch1 != ch2
             } else {
                 true
             }
-        } */
+        }
 
         /// Difference in spans implies difference in `Change`s.
         fn bchange_span_neq(c1: Change_, c2: Change_) -> bool {
