@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern {
+    fn overflow();
+}
+
 fn main() {
-    let xs = [0, 1, 2, 3];
-    let _y = unsafe { *xs.as_ptr().offset(4) };
+    unsafe { overflow() }
 }
