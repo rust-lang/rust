@@ -835,7 +835,7 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
     Ok(true)
 }
 
-fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
+fn constructor_covered_by_range(tcx: TyCtxt, span: Span,
                                 ctor: &Constructor,
                                 from: &ConstVal, to: &ConstVal,
                                 end: RangeEnd)
@@ -845,14 +845,14 @@ fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
     match *ctor {
         ConstantValue(ref value) => {
             let to = cmp_to(value)?;
-            let end = (to != Ordering::Greater) ||
-                      (end == RangeEnd::Excluded && to == Ordering::Equal);
+            let end = (to == Ordering::Less) ||
+                      (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(value)? && end)
         },
         ConstantRange(ref from, ref to, RangeEnd::Included) => {
             let to = cmp_to(to)?;
-            let end = (to != Ordering::Greater) ||
-                      (end == RangeEnd::Excluded && to == Ordering::Equal);
+            let end = (to == Ordering::Less) ||
+                      (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(from)? && end)
         },
         ConstantRange(ref from, ref to, RangeEnd::Excluded) => {
@@ -933,7 +933,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         "unexpected const-val {:?} with ctor {:?}", value, constructor)
                 },
                 _ => {
-                    match range_covered_by_constructor(
+                    match constructor_covered_by_range(
                         cx.tcx, pat.span, constructor, value, value, RangeEnd::Included
                             ) {
                         Ok(true) => Some(vec![]),
@@ -945,7 +945,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         }
 
         PatternKind::Range { ref lo, ref hi, ref end } => {
-            match range_covered_by_constructor(
+            match constructor_covered_by_range(
                 cx.tcx, pat.span, constructor, lo, hi, end.clone()
             ) {
                 Ok(true) => Some(vec![]),
