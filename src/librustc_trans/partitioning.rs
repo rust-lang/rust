@@ -576,7 +576,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
             cgu_name: cgu.name.clone()
         };
 
-        for (accessee, &mut (ref mut linkage, _)) in &mut cgu.items {
+        for (accessee, linkage_and_visibility) in &mut cgu.items {
             if !partitioning.internalization_candidates.contains(accessee) {
                 // This item is no candidate for internalizing, so skip it.
                 continue
@@ -599,7 +599,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // If we got here, we did not find any accesses from other CGUs,
             // so it's fine to make this translation item internal.
-            *linkage = llvm::InternalLinkage;
+            *linkage_and_visibility = (llvm::InternalLinkage, llvm::Visibility::Default);
         }
     }
 }
