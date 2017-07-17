@@ -15,6 +15,7 @@
 
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsString;
 use std::iter;
 use std::fmt;
 use std::fs::{self, File};
@@ -117,14 +118,7 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
 
 /// Runs `cargo test` for `cargo` packaged with Rust.
 pub fn cargo(build: &Build, stage: u32, host: &str) {
-    let ref compiler = Compiler::new(stage, host);
-
-    // Configure PATH to find the right rustc. NB. we have to use PATH
-    // and not RUSTC because the Cargo test suite has tests that will
-    // fail if rustc is not spelled `rustc`.
-    let path = build.sysroot(compiler).join("bin");
-    let old_path = env::var_os("PATH").unwrap_or_default();
-    let newpath = env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("");
+    let compiler = &Compiler::new(stage, host);
 
     let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
     cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
@@ -139,7 +133,31 @@ pub fn cargo(build: &Build, stage: u32, host: &str) {
     // available.
     cargo.env("CFG_DISABLE_CROSS_TESTS", "1");
 
-    try_run(build, cargo.env("PATH", newpath));
+    try_run(build, cargo.env("PATH", &path_for_cargo(build, compiler)));
+}
+
+/// Runs `cargo test` for the rls.
+pub fn rls(build: &Build, stage: u32, host: &str) {
+    let compiler = &Compiler::new(stage, host);
+
+    let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
+    cargo.arg("--manifest-path").arg(build.src.join("src/tools/rls/Cargo.toml"));
+
+    // Don't build tests dynamically, just a pain to work with
+    cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+    build.add_rustc_lib_path(compiler, &mut cargo);
+
+    try_run(build, &mut cargo);
+}
+
+fn path_for_cargo(build: &Build, compiler: &Compiler) -> OsString {
+    // Configure PATH to find the right rustc. NB. we have to use PATH
+    // and not RUSTC because the Cargo test suite has tests that will
+    // fail if rustc is not spelled `rustc`.
+    let path = build.sysroot(compiler).join("bin");
+    let old_path = env::var_os("PATH").unwrap_or_default();
+    env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
 }
 
 /// Runs the `tidy` tool as compiled in `stage` by the `host` compiler.
