@@ -222,7 +222,7 @@ impl Step for Cargo {
         _host: Interned<String>,
         target: Interned<String>,
     ) {
-        builder.ensure(Cargotest {
+        builder.ensure(Cargo {
             stage: builder.top_stage,
             host: target,
         });
@@ -233,24 +233,7 @@ impl Step for Cargo {
         let build = builder.build;
         let compiler = builder.compiler(self.stage, self.host);
 
-        // Configure PATH to find the right rustc. NB. we have to use PATH
-        // and not RUSTC because the Cargo test suite has tests that will
-        // fail if rustc is not spelled `rustc`.
-        let path = builder.sysroot(compiler).join("bin");
-        let old_path = env::var_os("PATH").unwrap_or_default();
-        let newpath = env::join_paths(
-            iter::once(path).chain(env::split_paths(&old_path))
-        ).expect("");
-
         let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
-        if !build.fail_fast {
-            cargo.arg("--no-fail-fast");
-        }
-
-        let compiler = &Compiler::new(stage, host);
-
-        let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
         if !build.fail_fast {
             cargo.arg("--no-fail-fast");
@@ -263,51 +246,66 @@ impl Step for Cargo {
         // available.
         cargo.env("CFG_DISABLE_CROSS_TESTS", "1");
 
-        try_run(build, cargo.env("PATH", &path_for_cargo(build, compiler)));
+        try_run(build, cargo.env("PATH", &path_for_cargo(builder, compiler)));
     }
 }
 
-#[derive(Serialize)]
-pub struct Rls<'a> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Rls {
     stage: u32,
-    host: &'a str,
+    host: Interned<String>,
 }
 
-impl<'a> Step<'a> for Rls<'a> {
+//    rules.test("check-rls", "src/tools/rls")
+//         .dep(|s| s.name("tool-rls"))
+//         .host(true)
+//         .run(move |s| check::rls(build, s.stage, s.target));
+impl Step for Rls {
     type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(_builder: &Builder, path: &Path) -> bool {
+        path.ends_with("src/tools/rls")
+    }
+
+    fn make_run(
+        builder: &Builder,
+        _path: Option<&Path>,
+        _host: Interned<String>,
+        target: Interned<String>,
+    ) {
+        builder.ensure(Rls {
+            stage: builder.top_stage,
+            host: target,
+        });
+    }
 
     /// Runs `cargo test` for the rls.
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let stage = self.stage;
         let host = self.host;
-        let compiler = &Compiler::new(stage, host);
+        let compiler = builder.compiler(stage, host);
 
-        let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
+        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/rls/Cargo.toml"));
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
-        build.add_rustc_lib_path(compiler, &mut cargo);
+        builder.add_rustc_lib_path(compiler, &mut cargo);
 
         try_run(build, &mut cargo);
     }
 }
 
-fn path_for_cargo(build: &Build, compiler: &Compiler) -> OsString {
+fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     // Configure PATH to find the right rustc. NB. we have to use PATH
     // and not RUSTC because the Cargo test suite has tests that will
     // fail if rustc is not spelled `rustc`.
-    let path = build.sysroot(compiler).join("bin");
+    let path = builder.sysroot(compiler).join("bin");
     let old_path = env::var_os("PATH").unwrap_or_default();
     env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
-||||||| parent of adabe3889e... Move code into Step trait implementations.
-    try_run(build, cargo.env("PATH", newpath));
-=======
-        try_run(build, cargo.env("PATH", newpath));
-    }
->>>>>>> adabe3889e... Move code into Step trait implementations.
 }
 
 //rules.test("check-tidy", "src/tools/tidy")
