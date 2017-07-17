@@ -42,7 +42,7 @@ impl Default for EmbeddedDiscr {
 }
 
 #[derive(Default)]
-pub struct IndirectNonZero<T: Zeroable> {
+pub struct IndirectNonZero<T: Zeroable + One> {
     pre: u8,
     nested: NestedNonZero<T>,
     post: u16,
@@ -54,12 +54,20 @@ pub struct NestedNonZero<T: Zeroable> {
     post: u16,
 }
 
-impl<T: Zeroable+Default> Default for NestedNonZero<T> {
+impl<T: Zeroable+One> Default for NestedNonZero<T> {
     fn default() -> Self {
         unsafe {
-            NestedNonZero { pre: 0, val: NonZero::new_unchecked(Default::default()), post: 0 }
+            NestedNonZero { pre: 0, val: NonZero::new_unchecked(T::one()), post: 0 }
         }
     }
+}
+
+pub trait One {
+    fn one() -> Self;
+}
+
+impl One for u32 {
+    fn one() -> Self { 1 }
 }
 
 pub fn main() {
