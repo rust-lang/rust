@@ -141,7 +141,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         // This variable was created during the
                         // fudging. Recreate it with a fresh variable
                         // here.
-                        self.infcx.next_ty_var(origin)
+                        //
+                        // The ROOT universe is fine because we only
+                        // ever invoke this routine at the
+                        // "item-level" of inference.
+                        self.infcx.next_ty_var(ty::UniverseIndex::ROOT, origin)
                     }
                 }
             }

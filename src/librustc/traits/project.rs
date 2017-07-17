@@ -469,6 +469,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             let tcx = selcx.infcx().tcx;
             let def_id = projection_ty.item_def_id;
             let ty_var = selcx.infcx().next_ty_var(
+                param_env.universe,
                 TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
             let projection = ty::Binder(ty::ProjectionPredicate {
                 projection_ty,
@@ -789,6 +790,7 @@ fn normalize_to_error<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tc
     let tcx = selcx.infcx().tcx;
     let def_id = projection_ty.item_def_id;
     let new_value = selcx.infcx().next_ty_var(
+        param_env.universe,
         TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
     Normalized {
         value: new_value,
