@@ -22,3 +22,6 @@ semver = "^0.7.0"
 
 [dev-dependencies]
 quickcheck = "^0.4.1"
+
+[replace]
+"openssl-sys:0.9.13" = { git = "https://github.com/ibabushkin/rust-openssl", branch = "libressl-tmp" }

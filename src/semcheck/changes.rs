@@ -499,14 +499,13 @@ pub mod tests {
     use quickcheck::*;
     pub use super::*;
 
-    use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-    use rustc::hir::def::Def;
+    use rustc::hir::def_id::DefId;
 
     use std::cmp::{max, min};
 
     use syntax_pos::BytePos;
     use syntax_pos::hygiene::SyntaxContext;
-    use syntax_pos::symbol::{Ident, Interner};
+    use syntax_pos::symbol::Interner;
 
     #[derive(Clone, Debug)]
     pub struct Span_(Span);
@@ -529,32 +528,130 @@ pub mod tests {
         }
     }
 
-    /*
-    // we don't need this type elsewhere, so we define it here.
     #[derive(Clone, Debug)]
-    pub enum UnaryChangeType {
-        Removal,
-        Addition,
-    }
+    pub struct DefId_(DefId);
 
-    impl Arbitrary for UnaryChangeType {
-        fn arbitrary<G: Gen>(g: &mut G) -> UnaryChangeType {
-            g.choose(&[UnaryChangeType::Removal, UnaryChangeType::Addition]).unwrap().clone()
+    impl DefId_ {
+        pub fn inner(self) -> DefId {
+            self.0
         }
     }
-    */
 
-    pub type Change_ = (Span_, Span_);
+    impl Arbitrary for DefId_ {
+        fn arbitrary<G: Gen>(g: &mut G) -> DefId_ {
+            use rustc::hir::def_id::{DefId, CrateNum, DefIndex};
 
-    fn build_change(t: ChangeType, s1: Span, s2: Span) -> Change {
+            let a: u32 = Arbitrary::arbitrary(g);
+            let b: u32 = Arbitrary::arbitrary(g);
+            DefId_(DefId {
+                krate: CrateNum::new(a as usize),
+                index: DefIndex::new(b as usize),
+            })
+        }
+    }
+
+    // a rip-off of the real `ChangeType` - but this one can be generated.
+    #[derive(Clone, Debug)]
+    pub enum ChangeType_ {
+        ItemMadePublic,
+        ItemMadePrivate,
+        KindDifference,
+        RegionParameterAdded,
+        RegionParameterRemoved,
+        TypeParameterAdded { defaulted: bool },
+        TypeParameterRemoved { defaulted: bool },
+        VariantAdded,
+        VariantRemoved,
+        VariantFieldAdded { public: bool, total_public: bool },
+        VariantFieldRemoved { public: bool, total_public: bool },
+        VariantStyleChanged { now_struct: bool, total_private: bool },
+        FnConstChanged { now_const: bool },
+        MethodSelfChanged { now_self: bool },
+        TraitItemAdded { defaulted: bool },
+        TraitItemRemoved { defaulted: bool },
+        TraitUnsafetyChanged { now_unsafe: bool },
+        Unknown,
+    }
+
+    impl ChangeType_ {
+        fn inner<'a>(&self) -> ChangeType<'a> {
+            match *self {
+                ChangeType_::ItemMadePublic => ItemMadePublic,
+                ChangeType_::ItemMadePrivate => ItemMadePrivate,
+                ChangeType_::KindDifference => KindDifference,
+                ChangeType_::RegionParameterAdded => RegionParameterAdded,
+                ChangeType_::RegionParameterRemoved => RegionParameterRemoved,
+                ChangeType_::TypeParameterAdded { defaulted } =>
+                    TypeParameterAdded { defaulted },
+                ChangeType_::TypeParameterRemoved { defaulted } =>
+                    TypeParameterRemoved { defaulted },
+                ChangeType_::VariantAdded => VariantAdded,
+                ChangeType_::VariantRemoved => VariantRemoved,
+                ChangeType_::VariantFieldAdded { public, total_public } =>
+                    VariantFieldAdded { public, total_public },
+                ChangeType_::VariantFieldRemoved { public, total_public } =>
+                    VariantFieldRemoved { public, total_public },
+                ChangeType_::VariantStyleChanged { now_struct, total_private } =>
+                    VariantStyleChanged { now_struct, total_private },
+                ChangeType_::FnConstChanged { now_const } =>
+                    FnConstChanged { now_const },
+                ChangeType_::MethodSelfChanged { now_self } =>
+                    MethodSelfChanged { now_self },
+                ChangeType_::TraitItemAdded { defaulted } =>
+                    TraitItemAdded { defaulted },
+                ChangeType_::TraitItemRemoved { defaulted } =>
+                    TraitItemRemoved { defaulted },
+                ChangeType_::TraitUnsafetyChanged { now_unsafe } =>
+                    TraitUnsafetyChanged { now_unsafe },
+                ChangeType_::Unknown => Unknown,
+            }
+        }
+    }
+
+    impl Arbitrary for ChangeType_ {
+        fn arbitrary<G: Gen>(g: &mut G) -> ChangeType_ {
+            use self::ChangeType_::*;
+
+            let b1 = Arbitrary::arbitrary(g);
+            let b2 = Arbitrary::arbitrary(g);
+
+            g.choose(&[ItemMadePublic,
+                       ItemMadePrivate,
+                       KindDifference,
+                       RegionParameterAdded,
+                       RegionParameterRemoved,
+                       TypeParameterAdded { defaulted: b1 },
+                       TypeParameterRemoved { defaulted: b1 },
+                       VariantAdded,
+                       VariantRemoved,
+                       VariantFieldAdded { public: b1, total_public: b2 },
+                       VariantFieldRemoved { public: b1, total_public: b2 },
+                       VariantStyleChanged { now_struct: b1, total_private: b2 },
+                       FnConstChanged { now_const: b1 },
+                       MethodSelfChanged { now_self: b1 },
+                       TraitItemAdded { defaulted: b1 },
+                       TraitItemRemoved { defaulted: b1 },
+                       TraitUnsafetyChanged { now_unsafe: b1 },
+                       Unknown]).unwrap().clone()
+        }
+    }
+
+    pub type Change_ = (DefId_, DefId_, Span_, Span_, bool, Vec<(ChangeType_, Option<Span_>)>);
+
+    fn build_change<'a>(s1: Span, output: bool, mut changes: Vec<(ChangeType_, Option<Span_>)>)
+        -> Change<'a>
+    {
         let mut interner = Interner::new();
-        let mut change = Change::new(interner.intern("test"), s2, true);
-        change.add(t, Some(s1));
+        let mut change = Change::new(interner.intern("test"), s1, output);
+
+        for (type_, span) in changes.drain(..) {
+            change.add(type_.inner(), span.map(|s| s.inner()));
+        }
 
         change
     }
 
-    pub type PathChange_ = (Span_, Vec<(bool, Span_)>);
+    pub type PathChange_ = (DefId_, Span_, Vec<(bool, Span_)>);
 
     fn build_path_change(s1: Span, mut spans: Vec<(bool, Span)>) -> PathChange {
         let mut interner = Interner::new();
@@ -568,15 +665,15 @@ pub mod tests {
     }
 
     quickcheck! {
-        /// The `Ord` instance of `Change` is transitive.
+        /// The `Ord` instance of `PathChange` is transitive.
         fn ord_pchange_transitive(c1: PathChange_, c2: PathChange_, c3: PathChange_) -> bool {
-            let s1 = c1.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
-            let s2 = c2.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
-            let s3 = c3.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let s1 = c1.2.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let s2 = c2.2.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let s3 = c3.2.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
 
-            let ch1 = build_path_change(c1.0.inner(), s1);
-            let ch2 = build_path_change(c2.0.inner(), s2);
-            let ch3 = build_path_change(c3.0.inner(), s3);
+            let ch1 = build_path_change(c1.1.inner(), s1);
+            let ch2 = build_path_change(c2.1.inner(), s2);
+            let ch3 = build_path_change(c3.1.inner(), s3);
 
             let mut res = true;
 
@@ -595,10 +692,11 @@ pub mod tests {
             res
         }
 
+        /// The `Ord` instance of `Change` is transitive.
         fn ord_change_transitive(c1: Change_, c2: Change_, c3: Change_) -> bool {
-            let ch1 = build_change(Unknown, c1.0.inner(), c1.1.inner());
-            let ch2 = build_change(Unknown, c2.0.inner(), c2.1.inner());
-            let ch3 = build_change(Unknown, c3.0.inner(), c3.1.inner());
+            let ch1 = build_change(c1.3.inner(), c1.4, c1.5);
+            let ch2 = build_change(c2.3.inner(), c2.4, c2.5);
+            let ch3 = build_change(c3.3.inner(), c3.4, c3.5);
 
             let mut res = true;
 
@@ -617,47 +715,80 @@ pub mod tests {
             res
         }
 
-        /* /// The maximal change category for a change set gets computed correctly.
-        fn max_uchange(changes: Vec<UnaryChange_>) -> bool {
+        /// The maximal change category for a change set gets computed correctly.
+        fn max_pchange(changes: Vec<PathChange_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let max = changes.iter().map(|c| From::from(&c.0)).max().unwrap_or(Patch);
+            let mut interner = Interner::new();
+            let name = interner.intern("test");
 
-            for &(ref change, ref span) in changes.iter() {
-                let change = build_unary_change(change.clone(), span.clone().inner());
-                let key = ChangeKey::NewKey(change.export().def.def_id());
-                set.new_unary_change(Change::Unary(change), key);
+            let max = changes
+                .iter()
+                .flat_map(|change| change.2.iter())
+                .map(|&(c, _)| if c { TechnicallyBreaking } else { Breaking })
+                .max()
+                .unwrap_or(Patch);
+
+            for &(ref did, ref span, ref spans) in &changes {
+                let def_id = did.clone().inner();
+                set.new_path(def_id, name, span.clone().inner());
+
+                for &(add, ref span) in spans {
+                    if add {
+                        set.add_path_addition(def_id, span.clone().inner());
+                    } else {
+                        set.add_path_removal(def_id, span.clone().inner());
+                    }
+                }
             }
 
             set.max == max
-        } */
+        }
 
-        /* /// The maximal change category for a change set gets computed correctly.
+        /// The maximal change category for a change set gets computed correctly.
         fn max_change(changes: Vec<Change_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let max = changes.iter().map(|_| Unknown.to_category()).max().unwrap_or(Patch);
+            let mut interner = Interner::new();
+            let name = interner.intern("test");
 
-            for &(ref span1, ref span2) in changes.iter() {
-                let change = build_change(Unknown, span1.clone().inner(), span2.clone().inner());
-                let did = DefId {
-                    krate: LOCAL_CRATE,
-                    index: CRATE_DEF_INDEX,
-                };
-                // set.new_binary(change, did);
+            let max = changes
+                .iter()
+                .flat_map(|change| change.5.iter())
+                .map(|&(ref type_, _)| type_.inner().to_category())
+                .max()
+                .unwrap_or(Patch);
+
+            for &(ref o_did, ref n_did, ref o_span, ref n_span, out, ref sub) in &changes {
+                let old_did = o_did.clone().inner();
+                set.new_change(old_did,
+                               n_did.clone().inner(),
+                               name,
+                               o_span.clone().inner(),
+                               n_span.clone().inner(),
+                               out);
+
+                for &(ref type_, ref span_) in sub {
+                    set.add_change(type_.clone().inner(),
+                                   old_did,
+                                   span_.clone().map(|s| s.inner()));
+                }
             }
 
             set.max == max
-        } */
+        }
 
-        /// Difference in spans implies difference in `Change`s.
+        /// Difference in spans implies difference in `PathChange`s.
         fn pchange_span_neq(c1: PathChange_, c2: PathChange_) -> bool {
-            let s1 = c1.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
-            let s2 = c2.1.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let v1 = c1.2.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+            let v2 = c2.2.iter().map(|&(add, ref s)| (add, s.clone().inner())).collect();
+
+            let s1 = c1.1.clone().inner();
+            let s2 = c2.1.clone().inner();
 
             if s1 != s2 {
-                let ch1 = build_path_change(c1.0.inner(), s1);
-                let ch2 = build_path_change(c2.0.inner(), s2);
+                let ch1 = build_path_change(s1, v1);
+                let ch2 = build_path_change(s2, v2);
 
                 ch1 != ch2
             } else {
@@ -667,12 +798,12 @@ pub mod tests {
 
         /// Difference in spans implies difference in `Change`s.
         fn bchange_span_neq(c1: Change_, c2: Change_) -> bool {
-            let s1 = c1.0.inner();
-            let s2 = c2.0.inner();
+            let s1 = c1.3.clone().inner();
+            let s2 = c2.3.clone().inner();
 
             if s1 != s2 {
-                let ch1 = build_change(Unknown, c1.1.inner(), s1);
-                let ch2 = build_change(Unknown, c2.1.inner(), s2);
+                let ch1 = build_change(c1.3.inner(), c1.4, c1.5);
+                let ch2 = build_change(c2.3.inner(), c2.4, c2.5);
 
                 ch1 != ch2
             } else {
