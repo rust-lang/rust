@@ -317,7 +317,6 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![cfg_attr(test, feature(update_panic_count))]
-#![cfg_attr(test, feature(float_bits_conv))]
 
 #![cfg_attr(not(stage0), default_lib_allocator)]
 #![cfg_attr(stage0, feature(associated_consts))]

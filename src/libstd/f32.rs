@@ -1090,12 +1090,11 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_bits_conv)]
     /// assert_ne!((1f32).to_bits(), 1f32 as u32); // to_bits() is not casting!
     /// assert_eq!((12.5f32).to_bits(), 0x41480000);
     ///
     /// ```
-    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
+    #[stable(feature = "float_bits_conv", since = "1.21.0")]
     #[inline]
     pub fn to_bits(self) -> u32 {
         unsafe { ::mem::transmute(self) }
@@ -1118,7 +1117,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(float_bits_conv)]
     /// use std::f32;
     /// let v = f32::from_bits(0x41480000);
     /// let difference = (v - 12.5).abs();
@@ -1127,7 +1125,7 @@ impl f32 {
     /// let snan = 0x7F800001;
     /// assert_ne!(f32::from_bits(snan).to_bits(), snan);
     /// ```
-    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
+    #[stable(feature = "float_bits_conv", since = "1.21.0")]
     #[inline]
     pub fn from_bits(mut v: u32) -> Self {
         const EXP_MASK: u32   = 0x7F800000;
