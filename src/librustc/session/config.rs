@@ -881,8 +881,6 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "disable the use of the redzone"),
     relocation_model: Option<String> = (None, parse_opt_string, [TRACKED],
          "choose the relocation model to use (rustc --print relocation-models for details)"),
-    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
-        "choose which RELRO level to use"),
     code_model: Option<String> = (None, parse_opt_string, [TRACKED],
          "choose the code model to use (rustc --print code-models for details)"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -1057,6 +1055,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "extra arguments to prepend to the linker invocation (space separated)"),
     profile: bool = (false, parse_bool, [TRACKED],
                      "insert profiling code"),
+    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
+        "choose which RELRO level to use"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -2451,10 +2451,6 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.cg.relro_level = Some(RelroLevel::Full);
-        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-        opts = reference.clone();
         opts.cg.code_model = Some(String::from("code model"));
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
@@ -2601,6 +2597,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.mir_opt_level = 3;
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.relro_level = Some(RelroLevel::Full);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 }
