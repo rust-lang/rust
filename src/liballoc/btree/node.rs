@@ -382,21 +382,19 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         >,
         Self
     > {
-        if self.as_leaf().parent.is_null() {
-            Err(self)
-        } else {
+        if let Some(non_zero) = NonZero::new(self.as_leaf().parent as *const LeafNode<K, V>) {
             Ok(Handle {
                 node: NodeRef {
                     height: self.height + 1,
-                    node: unsafe {
-                        NonZero::new_unchecked(self.as_leaf().parent as *mut LeafNode<K, V>)
-                    },
+                    node: non_zero,
                     root: self.root,
                     _marker: PhantomData
                 },
                 idx: self.as_leaf().parent_idx as usize,
                 _marker: PhantomData
             })
+        } else {
+            Err(self)
         }
     }
 
