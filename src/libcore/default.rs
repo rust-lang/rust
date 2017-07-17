@@ -126,7 +126,7 @@ pub trait Default: Sized {
 }
 
 macro_rules! default_impl {
-    ($t:ty, $v:expr, $doc:expr) => {
+    ($t:ty, $v:expr, $doc:tt) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Default for $t {
             #[inline]
