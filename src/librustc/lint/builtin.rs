@@ -206,7 +206,7 @@ declare_lint! {
 
 declare_lint! {
     pub LATE_BOUND_LIFETIME_ARGUMENTS,
-    Deny,
+    Warn,
     "detects generic lifetime arguments in path segments with late bound lifetime parameters"
 }
 
