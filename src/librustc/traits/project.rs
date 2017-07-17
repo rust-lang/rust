@@ -38,28 +38,9 @@ use util::common::FN_OUTPUT_NAME;
 /// more or less conservative.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Reveal {
-    /// At type-checking time, we refuse to project any associated
-    /// type that is marked `default`. Non-`default` ("final") types
-    /// are always projected. This is necessary in general for
-    /// soundness of specialization. However, we *could* allow
-    /// projections in fully-monomorphic cases. We choose not to,
-    /// because we prefer for `default type` to force the type
-    /// definition to be treated abstractly by any consumers of the
-    /// impl. Concretely, that means that the following example will
-    /// fail to compile:
-    ///
-    /// ```
-    /// trait Assoc {
-    ///     type Output;
-    /// }
-    ///
-    /// impl<T> Assoc for T {
-    ///     default type Output = bool;
-    /// }
-    ///
-    /// fn main() {
-    ///     let <() as Assoc>::Output = true;
-    /// }
+    /// At type-checking time, we avoid projecting the concrete type of
+    /// `impl Trait`. We do allow other monomorphic projections, such as
+    /// `default type` in the fully monomorphic case.
     UserFacing,
 
     /// At trans time, all monomorphic projections will succeed.
@@ -945,15 +926,13 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // get a result which isn't correct for all monomorphizations.
                 let new_candidate = if !is_default {
                     Some(ProjectionTyCandidate::Select)
-                } else if obligation.param_env.reveal == Reveal::All {
+                } else {
                     assert!(!poly_trait_ref.needs_infer());
                     if !poly_trait_ref.needs_subst() {
                         Some(ProjectionTyCandidate::Select)
                     } else {
                         None
                     }
-                } else {
-                    None
                 };
 
                 candidate_set.vec.extend(new_candidate);

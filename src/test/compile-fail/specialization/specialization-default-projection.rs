@@ -32,10 +32,10 @@ fn generic<T>() -> <T as Foo>::Assoc {
 }
 
 fn monomorphic() -> () {
-    // Even though we know that `()` is not specialized in a
-    // downstream crate, typeck refuses to project here.
+    // Since we know that `()` is not specialized in a
+    // downstream crate, typeck allows projection here.
 
-    generic::<()>() //~ ERROR mismatched types
+    generic::<()>()
 }
 
 fn main() {
