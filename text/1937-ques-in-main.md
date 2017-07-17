@@ -1,7 +1,7 @@
 - Feature Name: ques_in_main
 - Start Date: 2017-02-22
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1937
+- Rust Issue: https://github.com/rust-lang/rust/issues/43301
 
 # Summary
 [summary]: #summary
