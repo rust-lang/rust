@@ -375,6 +375,7 @@ impl Literal {
 }
 
 /// An iterator over `TokenTree`s.
+#[derive(Clone)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct TokenTreeIter {
     cursor: tokenstream::Cursor,
