@@ -522,10 +522,10 @@ pub mod tests {
             let a: u32 = Arbitrary::arbitrary(g);
             let b: u32 = Arbitrary::arbitrary(g);
             Span_(Span {
-                      lo: BytePos(min(a, b)),
-                      hi: BytePos(max(a, b)),
-                      ctxt: SyntaxContext::empty(),
-                  })
+                lo: BytePos(min(a, b)),
+                hi: BytePos(max(a, b)),
+                ctxt: SyntaxContext::empty(),
+            })
         }
     }
 
@@ -542,39 +542,7 @@ pub mod tests {
             g.choose(&[UnaryChangeType::Removal, UnaryChangeType::Addition]).unwrap().clone()
         }
     }
-
-    impl<'a> From<&'a UnaryChangeType> for ChangeCategory {
-        fn from(change: &UnaryChangeType) -> ChangeCategory {
-            match *change {
-                UnaryChangeType::Addition => TechnicallyBreaking,
-                UnaryChangeType::Removal => Breaking,
-            }
-        }
-    }
-
-    pub type UnaryChange_ = (UnaryChangeType, Span_);
-
-    /// We build these by hand, because symbols can't be sent between threads.
-    fn build_unary_change(t: UnaryChangeType, s: Span) -> UnaryChange {
-        let mut interner = Interner::new();
-        let ident = Ident {
-            name: interner.intern("test"),
-            ctxt: SyntaxContext::empty(),
-        };
-        let export = Export {
-            ident: ident,
-            def: Def::Mod(DefId {
-                krate: LOCAL_CRATE,
-                index: CRATE_DEF_INDEX,
-            }),
-            span: s,
-        };
-
-        match t {
-            UnaryChangeType::Addition => UnaryChange::Addition(export),
-            UnaryChangeType::Removal => UnaryChange::Removal(export),
-        }
-    } */
+    */
 
     pub type Change_ = (Span_, Span_);
 
