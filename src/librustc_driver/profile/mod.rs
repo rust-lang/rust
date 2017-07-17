@@ -4,6 +4,7 @@ use std::io::{Write};
 
 pub mod trace;
 
+// begin a thread, if not already running
 pub fn begin() {
     use std::thread;
     use std::sync::mpsc::{channel};
@@ -13,6 +14,7 @@ pub fn begin() {
     }
 }
 
+// profiling thread; retains state (in local variables) and dump traces, upon request.
 fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
     use self::trace::*;
     use std::fs::File;
