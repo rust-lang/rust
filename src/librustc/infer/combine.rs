@@ -393,7 +393,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                             drop(variables);
                             self.relate(&u, &u)
                         }
-                        TypeVariableValue::Unknown { .. } => {
+                        TypeVariableValue::Unknown { universe } => {
                             match self.ambient_variance {
                                 // Invariant: no need to make a fresh type variable.
                                 ty::Invariant => return Ok(t),
@@ -410,7 +410,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                             }
 
                             let origin = *variables.var_origin(vid);
-                            let new_var_id = variables.new_var(false, origin);
+                            let new_var_id = variables.new_var(universe, false, origin);
                             let u = self.tcx().mk_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",
                                    vid, u);

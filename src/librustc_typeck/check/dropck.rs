@@ -88,7 +88,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
         let drop_impl_span = tcx.def_span(drop_impl_did);
         let fresh_impl_substs =
-            infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did);
+            infcx.fresh_substs_for_item(ty::UniverseIndex::ROOT, drop_impl_span, drop_impl_did);
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);
 
         let cause = &ObligationCause::misc(drop_impl_span, drop_impl_node_id);

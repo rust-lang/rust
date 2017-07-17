@@ -12,6 +12,7 @@ use syntax::ast;
 use syntax_pos::Span;
 use ty::{self, Ty};
 
+use std::cmp;
 use std::marker::PhantomData;
 use std::u32;
 use rustc_data_structures::fx::FxHashMap;
@@ -78,14 +79,30 @@ struct TypeVariableData {
 #[derive(Copy, Clone, Debug)]
 pub enum TypeVariableValue<'tcx> {
     Known { value: Ty<'tcx> },
-    Unknown,
+    Unknown { universe: ty::UniverseIndex },
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ProbeTyValue<'tcx> {
+    Ty(Ty<'tcx>),
+    Vid(ty::TyVid),
 }
 
 impl<'tcx> TypeVariableValue<'tcx> {
+    /// If this value is known, returns the type it is known to be.
+    /// Otherwise, `None`.
     pub fn known(&self) -> Option<Ty<'tcx>> {
         match *self {
             TypeVariableValue::Unknown { .. } => None,
             TypeVariableValue::Known { value } => Some(value),
+        }
+    }
+
+    /// If this value is unknown, returns the universe, otherwise `None`.
+    pub fn universe(&self) -> Option<ty::UniverseIndex> {
+        match *self {
+            TypeVariableValue::Unknown { universe } => Some(universe),
+            TypeVariableValue::Known { .. } => None,
         }
     }
 
@@ -175,10 +192,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///   The code in this module doesn't care, but it can be useful
     ///   for improving error messages.
     pub fn new_var(&mut self,
+                   universe: ty::UniverseIndex,
                    diverging: bool,
                    origin: TypeVariableOrigin)
                    -> ty::TyVid {
-        let eq_key = self.eq_relations.new_key(TypeVariableValue::Unknown);
+        let eq_key = self.eq_relations.new_key(TypeVariableValue::Unknown { universe });
 
         let sub_key = self.sub_relations.new_key(());
         assert_eq!(eq_key.vid, sub_key);
@@ -385,8 +403,12 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
             (&TypeVariableValue::Known { .. }, &TypeVariableValue::Unknown { .. }) => Ok(*value1),
             (&TypeVariableValue::Unknown { .. }, &TypeVariableValue::Known { .. }) => Ok(*value2),
 
-            // If both sides are *unknown*, it hardly matters, does it?
-            (&TypeVariableValue::Unknown, &TypeVariableValue::Unknown) => Ok(*value1),
+            // If both sides are unknown, we need to pick the most restrictive universe.
+            (&TypeVariableValue::Unknown { universe: universe1 },
+             &TypeVariableValue::Unknown { universe: universe2 }) => {
+                let universe = cmp::min(universe1, universe2);
+                Ok(TypeVariableValue::Unknown { universe })
+            }
         }
     }
 }

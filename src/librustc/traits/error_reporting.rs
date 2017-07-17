@@ -285,7 +285,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.for_each_relevant_impl(
             trait_ref.def_id, trait_self_ty, |def_id| {
-                let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
+                let impl_substs = self.fresh_substs_for_item(param_env.universe,
+                                                             obligation.cause.span,
+                                                             def_id);
                 let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
                     .unwrap()
@@ -1134,6 +1136,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                            -> bool {
         struct ParamToVarFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
             infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+            param_env: ty::ParamEnv<'tcx>,
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>
         }
 
@@ -1143,9 +1146,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
                 if let ty::TyParam(ty::ParamTy {name, ..}) = ty.sty {
                     let infcx = self.infcx;
-                    self.var_map.entry(ty).or_insert_with(||
-                        infcx.next_ty_var(
-                            TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP, name)))
+                    let param_env = self.param_env;
+                    self.var_map
+                        .entry(ty)
+                        .or_insert_with(|| {
+                            let origin = TypeVariableOrigin::TypeParameterDefinition(DUMMY_SP,
+                                                                                     name);
+                            infcx.next_ty_var(param_env.universe, origin)
+                        })
                 } else {
                     ty.super_fold_with(self)
                 }
@@ -1157,6 +1165,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             let cleaned_pred = pred.fold_with(&mut ParamToVarFolder {
                 infcx: self,
+                param_env,
                 var_map: FxHashMap()
             });
 
