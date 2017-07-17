@@ -1144,14 +1144,14 @@ impl<T: ?Sized> Unique<T> {
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Clone for Unique<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Copy for Unique<T> { }
 
 #[unstable(feature = "unique", issue = "27730")]
