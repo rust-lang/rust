@@ -1076,7 +1076,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               translation.link.crate_hash));
 
     if tcx.sess.opts.debugging_opts.profile_queries {
-        profq_msg(ProfileQueriesMsg::Dump("profile_queries".to_string()))
+        use std::sync::mpsc::{channel};
+        let (tx, rx) = channel();
+        profq_msg(ProfileQueriesMsg::Dump("profile_queries".to_string(), tx));
+        let _ = rx.recv().unwrap();
     }
 
     translation

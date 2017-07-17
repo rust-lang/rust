@@ -49,7 +49,7 @@ pub enum ProfileQueriesMsg {
     /// query is satisfied by a provider terminating with a value
     ProviderEnd,
     /// dump a record of the queries to the given path
-    Dump(String),
+    Dump(String, Sender<()>),
     /// stop the profilequeriesmsg service
     Halt
 }

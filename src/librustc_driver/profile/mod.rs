@@ -33,10 +33,19 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
         // Meta-level versus _actual_ queries messages
         match msg {
             ProfileQueriesMsg::Halt => return,
-            ProfileQueriesMsg::Dump(path) => {
+            ProfileQueriesMsg::Dump(path, ack) => {
                 assert!(stack.len() == 0);
                 assert!(frame.parse_st == trace::ParseState::NoQuery);
-                { // write HTML file
+                {
+                    // write log
+                    if false {
+                        let mut queries_file = File::create(format!("{}.log.txt", path)).unwrap();
+                        for q in queries.iter() {
+                            writeln!(&mut queries_file, "{:?}", q).unwrap()
+                        };
+                    }
+
+                    // write HTML file, and counts file
                     let html_path = format!("{}.html", path);
                     let mut html_file = File::create(&html_path).unwrap();
 
@@ -55,10 +64,7 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
                     write!(html_file, "</body>\n</html>\n").unwrap();
 
-                    let mut queries_file = File::create(format!("{}.log.txt", path)).unwrap();
-                    for q in queries.iter() { 
-                        writeln!(&mut queries_file, "{:?}", q).unwrap()
-                    };
+                    ack.send(()).unwrap();
                 }
                 continue
             }
@@ -67,7 +73,7 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                 queries.push(msg.clone());
                 match (frame.parse_st.clone(), msg) {
                     (_,ProfileQueriesMsg::Halt) => unreachable!(),
-                    (_,ProfileQueriesMsg::Dump(_)) => unreachable!(),
+                    (_,ProfileQueriesMsg::Dump(_,_)) => unreachable!(),
 
                     // Parse State: NoQuery
                     (ParseState::NoQuery,
