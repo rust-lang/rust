@@ -6,15 +6,17 @@
 # Summary
 [summary]: #summary
 
-Add an intrinsic (`fn alignto(ptr: *const (), align: usize) -> usize`)
+Add an intrinsic (`fn align_offset(ptr: *const (), align: usize) -> usize`)
 which returns the number of bytes that need to be skipped in order to correctly align the
 pointer `ptr` to `align`.
+
+The intrinsic is reexported as a method on `*const T` and `*mut T`.
 
 Also add an `unsafe fn alignto<T, U>(&[U]) -> (&[U], &[T], &[U])` library function
 under `core::mem` and `std::mem` that simplifies the common use case, returning
 the unaligned prefix, the aligned center part and the unaligned trailing elements.
-The function is unsafe because it essentially contains a `transmute<[U; N], T>`
-if one reads from the aligned slice.
+The function is unsafe because it produces a `&T` to the memory location of a `U`,
+which might expose padding bytes or violate invariants of `T` or `U`.
 
 # Motivation
 [motivation]: #motivation
@@ -43,7 +45,7 @@ be able to convert a `[u8]` into a `str`.
 Add a new intrinsic
 
 ```rust
-fn alignto(ptr: *const (), align: usize) -> usize;
+fn align_offset(ptr: *const (), align: usize) -> usize;
 ```
 
 which takes an arbitrary pointer it never reads from and a desired alignment
@@ -55,18 +57,30 @@ would be in-bounds of the allocation that the pointer points into, returning
 `usize::max_value()` will never be in-bounds of the allocation and therefor
 the caller cannot act upon the returned offset.
 
+It might be expected that the maximum offset returned is `align - 1`, but as
+the motivation of the rfc states, `miri` cannot guarantee that a pointer can
+be aligned irrelevant of the operations done on it.
+
 Most implementations will expand this intrinsic to
 
 ```rust
-fn alignto(ptr: *const (), align: usize) -> usize {
-    align - (ptr as usize % align)
+fn align_offset(ptr: *const (), align: usize) -> usize {
+    let offset = ptr as usize % align;
+    if offset == 0 {
+        0
+    } else {
+        align - offset
+    }
 }
 ```
 
+The `align` parameter must be a power of two and smaller than `2^32`.
+Usually one should pass in the result of an `align_of` call.
+
 ## standard library functions
 
-Add a new method `alignto` to `*const T` and `*mut T`, which forwards to the
-`alignto`
+Add a new method `align_offset` to `*const T` and `*mut T`, which forwards to the
+`align_offset` intrinsic.
 
 Add two new functions `alignto` and `alignto_mut` to `core::mem` and `std::mem`
 with the following signature:
@@ -76,16 +90,18 @@ unsafe fn alignto<T, U>(&[U]) -> (&[U], &[T], &[U]) { /**/ }
 unsafe fn alignto_mut<T, U>(&mut [U]) -> (&mut [U], &mut [T], &mut [U]) { /**/ }
 ```
 
-Calls to `alignto` are expanded to
+`alignto` can be implemented as
 
 ```rust
 unsafe fn alignto<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
+    use core::mem::{size_of, align_of};
+    assert!(size_of::<T>() != 0 && size_of::<U>() != 0, "don't use `alignto` with zsts");
     if size_of::<T>() % size_of::<U>() == 0 {
-        let align = core::mem::align_of::<T>();
-        let size = core::mem::size_of::<T>();
-        let source_size = core::mem::size_of::<U>();
+        let align = align_of::<T>();
+        let size = size_of::<T>();
+        let source_size = size_of::<U>();
         // number of bytes that need to be skipped until the pointer is aligned
-        let offset = core::intrinsics::alignto(slice.as_ptr(), align);
+        let offset = slice.as_ptr().align_offset(align);
         // if `align_of::<T>() <= align_of::<U>()`, or if pointer is accidentally aligned, then `offset == 0`
         //
         // due to `size_of::<T>() % size_of::<U>() == 0`,
@@ -98,7 +114,7 @@ unsafe fn alignto<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
         // might be zero if not enough elements
         let mid_count = tail.len() * source_size / size;
         let mid = core::slice::from_raw_parts::<T>(tail.as_ptr() as *const _, mid_count);
-        let tail = &tail[mid_count * core::mem::size_of::<T>()..];
+        let tail = &tail[mid_count * size_of::<T>()..];
         (head, mid, tail)
     } else {
         // can't properly fit a T into a sequence of `U`
@@ -110,21 +126,10 @@ unsafe fn alignto<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
 
 on all current platforms. `alignto_mut` is expanded accordingly.
 
-Any backend may choose to always produce the following implementation, no matter
-the given arguments, since the intrinsic is purely an optimization aid.
-
-```rust
-unsafe fn alignto<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
-    (slice, &[], &[])
-}
-```
-
 Users of the functions must process all the returned slices and
 cannot rely on any behaviour except that the `&[T]`'s elements are correctly
 aligned and that all bytes of the original slice are present in the resulting
 three slices.
-The memory behind the reference must be treated as if created by
-`transmute<[U; N], T>` with all the dangers that brings.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -134,6 +139,15 @@ The memory behind the reference must be treated as if created by
 On most platforms alignment is a well known concept independent of Rust.
 Currently unsafe Rust code doing alignment checks needs to reproduce the known
 patterns from C, which are hard to read and prone to errors when modified later.
+
+Thus, whenever pointers need to be manually aligned, the developer is given a
+choice:
+
+1. In the case where processing the initial unaligned bits might abort the entire
+   process, use `align_offset`
+2. If it is likely that all bytes are going to get processed, use `alignto`
+    * `alignto` has a slight overhead for creating the slices in case not all
+        slices are used
 
 ### Example 1 (pointers)
 
@@ -150,22 +164,20 @@ let align = (ptr as usize + index) & (usize_bytes - 1);
 
 ```
 
-One can clearly see the alignment check and the three slice parts.
-The first part is the `else` branch of the outer `if align == 0`.
-The (aligned) second part is the large `while` loop, and the third
-art is the small `while` loop.
-
-With the `alignto` method the code can be changed to
+With the `align_offset` method the code can be changed to
 
 ```rust
 let ptr = v.as_ptr();
-let align = ptr.offset(index).alignto(usize_bytes);
+let align = unsafe {
+    // the offset is safe, because `index` is guaranteed inbounds
+    ptr.offset(index).align_offset(usize_bytes);
+};
 ```
 
 ## Example 2 (slices)
 
 The `memchr` impl in the standard library explicitly uses the three phases of
-the `align_to` functions:
+the `alignto` functions:
 
 ```rust
 // Split `text` in three parts
@@ -222,13 +234,8 @@ With the `alignto` function this could be written as
 // - the last remaining part, < 2 word size
 let len = text.len();
 let ptr = text.as_ptr();
-let two_word_bytes = mem::size_of::<TwoWord>();
 
-// choose alignment depending on platform
-#[repr(align = 64)]
-struct TwoWord([usize; 2]);
-
-let (head, mid, tail) = std::mem::align_to<TwoWord>(text);
+let (head, mid, tail) = std::mem::alignto::<(usize, usize)>(text);
 
 // search up to an aligned boundary
 if let Some(index) = head.iter().position(|elt| *elt == x) {
@@ -240,8 +247,8 @@ let repeated_x = repeat_byte(x);
 
 let position = mid.iter().position(|two| {
     // break if there is a matching byte
-    let zu = contains_zero_byte(two.0[0] ^ repeated_x);
-    let zv = contains_zero_byte(two.0[1] ^ repeated_x);
+    let zu = contains_zero_byte(two.0 ^ repeated_x);
+    let zv = contains_zero_byte(two.1 ^ repeated_x);
     zu || zv
 });
 
