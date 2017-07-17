@@ -54,6 +54,11 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     write!(html_file, "<body>\n").unwrap();
                     trace::write_traces(&mut html_file, &mut counts_file, &frame.traces);
                     write!(html_file, "</body>\n</html>\n").unwrap();
+
+                    let mut queries_file = File::create(format!("{}.log.txt", path)).unwrap();
+                    for q in queries.iter() { 
+                        writeln!(&mut queries_file, "{:?}", q).unwrap()
+                    };
                 }
                 continue
             }
