@@ -790,9 +790,12 @@ macro_rules! options {
 
         fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
             match v {
-                Some("full") => *slot = Some(RelroLevel::Full),
-                Some("partial") => *slot = Some(RelroLevel::Partial),
-                Some("off") => *slot = Some(RelroLevel::Off),
+                Some(s) => {
+                    match s.parse::<RelroLevel>() {
+                        Ok(level) => *slot = Some(level),
+                        _ => return false
+                    }
+                },
                 _ => return false
             }
             true

@@ -588,10 +588,8 @@ impl Target {
             ($key_name:ident, RelroLevel) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
-                    match s {
-                        "full" => base.options.$key_name = RelroLevel::Full,
-                        "partial" => base.options.$key_name = RelroLevel::Partial,
-                        "off" => base.options.$key_name = RelroLevel::Off,
+                    match s.parse::<RelroLevel>() {
+                        Ok(level) => base.options.$key_name = level,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       relro-level. Use 'full', 'partial, or 'off'.",
                                                       s))),

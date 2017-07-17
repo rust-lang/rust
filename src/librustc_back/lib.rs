@@ -47,6 +47,8 @@ pub mod target;
 pub mod slice;
 pub mod dynamic_lib;
 
+use std::str::FromStr;
+
 use serialize::json::{Json, ToJson};
 
 macro_rules! linker_flavor {
@@ -128,6 +130,19 @@ impl RelroLevel {
             RelroLevel::Full => "full",
             RelroLevel::Partial => "partial",
             RelroLevel::Off => "off",
+        }
+    }
+}
+
+impl FromStr for RelroLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<RelroLevel, ()> {
+        match s {
+            "full" => Ok(RelroLevel::Full),
+            "partial" => Ok(RelroLevel::Partial),
+            "off" => Ok(RelroLevel::Off),
+            _ => Err(()),
         }
     }
 }
