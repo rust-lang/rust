@@ -560,8 +560,8 @@ case "$CFG_RELEASE_CHANNEL" in
           *-pc-windows-gnu)
             ;;
           *)
-            CFG_ENABLE_DEBUGINFO_LINES=1
-            CFG_ENABLE_DEBUGINFO_ONLY_STD=1
+            enable_if_not_disabled debuginfo-lines
+            enable_if_not_disabled debuginfo-only-std
             ;;
         esac
 
@@ -572,8 +572,8 @@ case "$CFG_RELEASE_CHANNEL" in
           *-pc-windows-gnu)
             ;;
           *)
-            CFG_ENABLE_DEBUGINFO_LINES=1
-            CFG_ENABLE_DEBUGINFO_ONLY_STD=1
+            enable_if_not_disabled debuginfo-lines
+            enable_if_not_disabled debuginfo-only-std
             ;;
         esac
 	;;
