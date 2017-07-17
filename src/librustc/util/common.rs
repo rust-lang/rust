@@ -61,13 +61,13 @@ pub fn profq_msg(msg: ProfileQueriesMsg) {
             s.send(msg).unwrap()
         } else {
             panic!("no channel on which to send profq_msg: {:?}", msg)
-        }                                  
+        }
     })
 }
 
 pub fn profq_set_chan(s: Sender<ProfileQueriesMsg>) -> bool {
-    PROFQ_CHAN.with(|chan|{                    
-        let is_none = 
+    PROFQ_CHAN.with(|chan|{
+        let is_none =
             if let None = chan.borrow().as_ref() {
                 true
             } else { false }
