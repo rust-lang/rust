@@ -35,7 +35,7 @@ error[E0308]: mismatched types
   --> $DIR/token-error-correct-3.rs:25:13
    |
 25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: did you mean to add a semicolon here? `;`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: did you mean to add a semicolon here?: `;`
    |             |
    |             expected (), found enum `std::result::Result`
    |

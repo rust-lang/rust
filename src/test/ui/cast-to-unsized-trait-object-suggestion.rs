@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test macro_undefined issue
-
-mod m {
-    #[macro_export]
-    macro_rules! kl {
-        () => ()
-    }
-}
-
 fn main() {
-    k!();
-    //~^ ERROR cannot find macro `k!` in this scope
-    //~^^ HELP did you mean `kl!`?
-    kl!();
-    //~^ ERROR cannot find macro `kl!` in this scope
-    //~^^ HELP have you added the `#[macro_use]` on the module/import?
+    &1 as Send;
+    Box::new(1) as Send;
 }

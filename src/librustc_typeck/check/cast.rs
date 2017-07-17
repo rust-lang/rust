@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     match fcx.tcx.sess.codemap().span_to_snippet(self.cast_span) {
                         Ok(s) => {
                             err.span_suggestion(self.cast_span,
-                                                "try casting to a reference instead:",
+                                                "try casting to a reference instead",
                                                 format!("&{}{}", mtstr, s));
                         }
                         Err(_) => {
@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                 match fcx.tcx.sess.codemap().span_to_snippet(self.cast_span) {
                     Ok(s) => {
                         err.span_suggestion(self.cast_span,
-                                            "try casting to a `Box` instead:",
+                                            "try casting to a `Box` instead",
                                             format!("Box<{}>", s));
                     }
                     Err(_) => span_help!(err, self.cast_span, "did you mean `Box<{}>`?", tstr),
