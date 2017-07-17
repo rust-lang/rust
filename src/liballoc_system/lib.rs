@@ -16,13 +16,10 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
-#![cfg_attr(stage0, allocator)]
-#![cfg_attr(stage0, feature(allocator))]
-#![cfg_attr(stage0, feature(core_intrinsics))]
-#![cfg_attr(not(stage0), feature(global_allocator))]
-#![cfg_attr(not(stage0), feature(allocator_api))]
-#![cfg_attr(not(stage0), feature(alloc))]
-#![cfg_attr(not(stage0), feature(core_intrinsics))]
+#![feature(global_allocator)]
+#![feature(allocator_api)]
+#![feature(alloc)]
+#![feature(core_intrinsics)]
 #![feature(staged_api)]
 #![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
 
@@ -44,90 +41,80 @@ const MIN_ALIGN: usize = 8;
               target_arch = "sparc64")))]
 const MIN_ALIGN: usize = 16;
 
-#[cfg(stage0)]
-pub use old::*;
-#[cfg(stage0)]
-mod old;
+extern crate alloc;
 
-#[cfg(not(stage0))]
-pub use new::System;
-#[cfg(not(stage0))]
-mod new {
-    pub extern crate alloc;
+use self::alloc::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
 
-    use self::alloc::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub struct System;
 
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub struct System;
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl Alloc for System {
+    #[inline]
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        (&*self).alloc(layout)
+    }
 
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    unsafe impl Alloc for System {
-        #[inline]
-        unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            (&*self).alloc(layout)
-        }
+    #[inline]
+    unsafe fn alloc_zeroed(&mut self, layout: Layout)
+        -> Result<*mut u8, AllocErr>
+    {
+        (&*self).alloc_zeroed(layout)
+    }
 
-        #[inline]
-        unsafe fn alloc_zeroed(&mut self, layout: Layout)
-            -> Result<*mut u8, AllocErr>
-        {
-            (&*self).alloc_zeroed(layout)
-        }
+    #[inline]
+    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+        (&*self).dealloc(ptr, layout)
+    }
 
-        #[inline]
-        unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-            (&*self).dealloc(ptr, layout)
-        }
+    #[inline]
+    unsafe fn realloc(&mut self,
+                      ptr: *mut u8,
+                      old_layout: Layout,
+                      new_layout: Layout) -> Result<*mut u8, AllocErr> {
+        (&*self).realloc(ptr, old_layout, new_layout)
+    }
 
-        #[inline]
-        unsafe fn realloc(&mut self,
-                          ptr: *mut u8,
-                          old_layout: Layout,
-                          new_layout: Layout) -> Result<*mut u8, AllocErr> {
-            (&*self).realloc(ptr, old_layout, new_layout)
-        }
+    fn oom(&mut self, err: AllocErr) -> ! {
+        (&*self).oom(err)
+    }
 
-        fn oom(&mut self, err: AllocErr) -> ! {
-            (&*self).oom(err)
-        }
+    #[inline]
+    fn usable_size(&self, layout: &Layout) -> (usize, usize) {
+        (&self).usable_size(layout)
+    }
 
-        #[inline]
-        fn usable_size(&self, layout: &Layout) -> (usize, usize) {
-            (&self).usable_size(layout)
-        }
+    #[inline]
+    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
+        (&*self).alloc_excess(layout)
+    }
 
-        #[inline]
-        unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
-            (&*self).alloc_excess(layout)
-        }
+    #[inline]
+    unsafe fn realloc_excess(&mut self,
+                             ptr: *mut u8,
+                             layout: Layout,
+                             new_layout: Layout) -> Result<Excess, AllocErr> {
+        (&*self).realloc_excess(ptr, layout, new_layout)
+    }
 
-        #[inline]
-        unsafe fn realloc_excess(&mut self,
-                                 ptr: *mut u8,
-                                 layout: Layout,
-                                 new_layout: Layout) -> Result<Excess, AllocErr> {
-            (&*self).realloc_excess(ptr, layout, new_layout)
-        }
+    #[inline]
+    unsafe fn grow_in_place(&mut self,
+                            ptr: *mut u8,
+                            layout: Layout,
+                            new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        (&*self).grow_in_place(ptr, layout, new_layout)
+    }
 
-        #[inline]
-        unsafe fn grow_in_place(&mut self,
-                                ptr: *mut u8,
-                                layout: Layout,
-                                new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-            (&*self).grow_in_place(ptr, layout, new_layout)
-        }
-
-        #[inline]
-        unsafe fn shrink_in_place(&mut self,
-                                  ptr: *mut u8,
-                                  layout: Layout,
-                                  new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-            (&*self).shrink_in_place(ptr, layout, new_layout)
-        }
+    #[inline]
+    unsafe fn shrink_in_place(&mut self,
+                              ptr: *mut u8,
+                              layout: Layout,
+                              new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        (&*self).shrink_in_place(ptr, layout, new_layout)
     }
 }
 
-#[cfg(all(not(stage0), any(unix, target_os = "redox")))]
+#[cfg(any(unix, target_os = "redox"))]
 mod platform {
     extern crate libc;
 
@@ -135,8 +122,8 @@ mod platform {
     use core::ptr;
 
     use MIN_ALIGN;
-    use new::System;
-    use new::alloc::heap::{Alloc, AllocErr, Layout};
+    use System;
+    use alloc::heap::{Alloc, AllocErr, Layout};
 
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl<'a> Alloc for &'a System {
@@ -272,15 +259,15 @@ mod platform {
     }
 }
 
-#[cfg(all(windows, not(stage0)))]
+#[cfg(windows)]
 #[allow(bad_style)]
 mod platform {
     use core::cmp;
     use core::ptr;
 
     use MIN_ALIGN;
-    use new::System;
-    use new::alloc::heap::{Alloc, AllocErr, Layout, CannotReallocInPlace};
+    use System;
+    use alloc::heap::{Alloc, AllocErr, Layout, CannotReallocInPlace};
 
     type LPVOID = *mut u8;
     type HANDLE = LPVOID;

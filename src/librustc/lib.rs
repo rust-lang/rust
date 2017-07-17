@@ -41,8 +41,6 @@
 #![feature(trace_macros)]
 #![feature(test)]
 
-#![cfg_attr(stage0, feature(associated_consts))]
-
 #![recursion_limit="256"]
 
 extern crate arena;

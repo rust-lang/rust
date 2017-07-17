@@ -51,4 +51,4 @@ debug = false
 debug-assertions = false
 
 [replace]
-"https://github.com/rust-lang/cargo#0.21.0" = { path = "tools/cargo" }
+"https://github.com/rust-lang/cargo#0.22.0" = { path = "tools/cargo" }

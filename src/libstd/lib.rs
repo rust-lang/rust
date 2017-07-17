@@ -318,8 +318,7 @@
 #![feature(vec_push_all)]
 #![cfg_attr(test, feature(update_panic_count))]
 
-#![cfg_attr(not(stage0), default_lib_allocator)]
-#![cfg_attr(stage0, feature(associated_consts))]
+#![default_lib_allocator]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.

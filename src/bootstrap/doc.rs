@@ -442,9 +442,7 @@ impl Step for Std {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "doc");
-        cargo.arg("--manifest-path")
-             .arg(build.src.join("src/libstd/Cargo.toml"))
-             .arg("--features").arg(build.std_features());
+        compile::std_cargo(build, &compiler, target, &mut cargo);
 
         // We don't want to build docs for internal std dependencies unless
         // in compiler-docs mode. When not in that mode, we whitelist the crates
@@ -520,8 +518,7 @@ impl Step for Test {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "doc");
-        cargo.arg("--manifest-path")
-             .arg(build.src.join("src/libtest/Cargo.toml"));
+        compile::test_cargo(build, &compiler, target, &mut cargo);
         build.run(&mut cargo);
         cp_r(&my_out, &out);
     }
@@ -582,9 +579,7 @@ impl Step for Rustc {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
-        cargo.arg("--manifest-path")
-             .arg(build.src.join("src/rustc/Cargo.toml"))
-             .arg("--features").arg(build.rustc_features());
+        compile::rustc_cargo(build, &compiler, target, &mut cargo);
 
         if build.config.compiler_docs {
             // src/rustc/Cargo.toml contains bin crates called rustc and rustdoc

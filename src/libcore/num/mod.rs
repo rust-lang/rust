@@ -2238,17 +2238,12 @@ macro_rules! uint_impl {
     }
 }
 
-#[cfg(stage0)]
-unsafe fn ctlz_nonzero<T>(x: T) -> T { intrinsics::ctlz(x) }
-#[cfg(not(stage0))]
-unsafe fn ctlz_nonzero<T>(x: T) -> T { intrinsics::ctlz_nonzero(x) }
-
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2261,7 +2256,7 @@ impl u16 {
     uint_impl! { u16, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2274,7 +2269,7 @@ impl u32 {
     uint_impl! { u32, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2287,7 +2282,7 @@ impl u64 {
     uint_impl! { u64, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2300,7 +2295,7 @@ impl u128 {
     uint_impl! { u128, u128, 128,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2314,7 +2309,7 @@ impl usize {
     uint_impl! { usize, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2327,7 +2322,7 @@ impl usize {
     uint_impl! { usize, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
@@ -2341,7 +2336,7 @@ impl usize {
     uint_impl! { usize, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
-        ctlz_nonzero,
+        intrinsics::ctlz_nonzero,
         intrinsics::cttz,
         intrinsics::bswap,
         intrinsics::add_with_overflow,
