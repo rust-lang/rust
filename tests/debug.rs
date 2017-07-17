@@ -38,7 +38,11 @@ fi
 
 export RUST_LOG=debug
 
-src_str="set substitute-path /checkout $(rustc --print sysroot)/lib/rustlib/src/rust"
+if [ -n "$RUST_SRC_PATH" ]; then
+    src_str="set substitute-path /checkout $RUST_SRC_PATH"
+else
+    src_str="set substitute-path /checkout $(rustc --print sysroot)/lib/rustlib/src/rust"
+fi
 
 rust-gdb ./target/debug/rust-semverver -iex "$arg_str" -iex "$src_str"
 
