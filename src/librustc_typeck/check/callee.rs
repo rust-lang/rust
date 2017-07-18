@@ -231,6 +231,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             err.span_note(span, "defined here");
                         }
                     }
+                    if let Def::Local(_) = def {
+                        err.help("it's better to pick different names between variables and \
+                                  functions");
+                    }
                 }
 
                 err.emit();
