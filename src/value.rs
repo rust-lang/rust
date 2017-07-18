@@ -1,26 +1,25 @@
 #![allow(unknown_lints)]
 #![allow(float_cmp)]
 
-use std::mem::transmute;
 use rustc::ty::layout::TargetDataLayout;
 
 use error::{EvalError, EvalResult};
 use memory::{Memory, MemoryPointer, HasMemory};
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
-    unsafe { transmute::<u32, f32>(bytes as u32) }
+    f32::from_bits(bytes as u32)
 }
 
 pub(super) fn bytes_to_f64(bytes: u128) -> f64 {
-    unsafe { transmute::<u64, f64>(bytes as u64) }
+    f64::from_bits(bytes as u64)
 }
 
 pub(super) fn f32_to_bytes(f: f32) -> u128 {
-    unsafe { transmute::<f32, u32>(f) as u128 }
+    f.to_bits() as u128
 }
 
 pub(super) fn f64_to_bytes(f: f64) -> u128 {
-    unsafe { transmute::<f64, u64>(f) as u128 }
+    f.to_bits() as u128
 }
 
 /// A `Value` represents a single self-contained Rust value.
