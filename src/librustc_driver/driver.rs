@@ -24,7 +24,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::traits;
-use rustc::util::common::{ErrorReported, time};
+use rustc::util::common::{ErrorReported, time, ProfileQueriesMsg, profq_msg};
 use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
 use rustc_allocator as allocator;
@@ -52,6 +52,7 @@ use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
@@ -63,6 +64,8 @@ use syntax_ext;
 use arena::DroplessArena;
 
 use derive_registrar;
+
+use profile;
 
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
@@ -85,6 +88,10 @@ pub fn compile_input(sess: &Session,
                 return $tsess.compile_status();
             }
         }}
+    }
+
+    if sess.opts.debugging_opts.profile_queries {
+        profile::begin();
     }
 
     // We need nested scopes here, because the intermediate results can keep
@@ -502,6 +509,10 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
 pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     let continue_after_error = sess.opts.debugging_opts.continue_parse_after_error;
     sess.diagnostic().set_continue_after_error(continue_after_error);
+
+    if sess.opts.debugging_opts.profile_queries {
+        profile::begin();
+    }
 
     let krate = time(sess.time_passes(), "parsing", || {
         match *input {
@@ -972,6 +983,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              index,
                              name,
                              |tcx| {
+
         let incremental_hashes_map =
             time(time_passes,
                  "compute_incremental_hashes_map",
@@ -1078,6 +1090,14 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               &incremental_hashes_map,
                                               &translation.metadata.hashes,
                                               translation.link.crate_hash));
+
+    if tcx.sess.opts.debugging_opts.profile_queries {
+        use std::sync::mpsc::{channel};
+        let (tx, rx) = channel();
+        profq_msg(ProfileQueriesMsg::Dump("profile_queries".to_string(), tx));
+        let _ = rx.recv().unwrap();
+    }
+
     translation
 }
 

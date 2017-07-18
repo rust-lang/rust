@@ -41,6 +41,7 @@ use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
 use util::nodemap::{NodeMap, NodeSet, DefIdSet};
+
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
@@ -54,6 +55,7 @@ use std::mem;
 use std::ops::Deref;
 use std::iter;
 use std::rc::Rc;
+
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;

@@ -19,6 +19,10 @@ use std::iter::repeat;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use std::sync::mpsc::{Sender};
+use syntax_pos::{Span};
+use ty::maps::{QueryMsg};
+
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
 
