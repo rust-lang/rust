@@ -675,18 +675,6 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             TyFnDef(did, substs) => {
                 tcx.mk_fn_def(id_mapping.get_new_id(did), substs)
             },
-            TyProjection(proj) => {
-                let new_did = if id_mapping.contains_id(proj.item_def_id) {
-                    id_mapping.get_new_id(proj.item_def_id)
-                } else {
-                    proj.item_def_id
-                };
-
-                tcx.mk_projection(new_did, proj.substs)
-            },
-            TyAnon(did, substs) => {
-                tcx.mk_anon(id_mapping.get_new_id(did), substs)
-            },
             TyDynamic(preds, region) => {
                 let new_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
                     match *p.skip_binder() {
@@ -727,6 +715,21 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 tcx.mk_dynamic(Binder(new_preds), region)
             },
+            TyProjection(proj) => {
+                let new_did = if id_mapping.contains_id(proj.item_def_id) {
+                    id_mapping.get_new_id(proj.item_def_id)
+                } else {
+                    proj.item_def_id
+                };
+
+                tcx.mk_projection(new_did, proj.substs)
+            },
+            TyAnon(did, substs) => {
+                tcx.mk_anon(id_mapping.get_new_id(did), substs)
+            },
+            /* TODO: TyParam(param) => {
+
+            }, */
             _ => ty,
         }
     }})

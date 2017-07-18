@@ -9,6 +9,7 @@ use rustc::ty;
 use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc::ty::subst::Substs;
 
 use semcheck::mapping::IdMapping;
 
@@ -58,6 +59,18 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
             let _ = self.relate(&old_ty, &new_ty);
         }
     }
+
+    fn check_substs(&self, a_substs: &'tcx Substs<'tcx>, b_substs: &'tcx Substs<'tcx>)
+        -> bool
+    {
+        for (a, b) in a_substs.iter().zip(b_substs) {
+            if a.as_type().is_some() != b.as_type().is_some() {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
@@ -88,81 +101,92 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use rustc::ty::TypeVariants::*;
 
-        // TODO: maybe fetch def ids from TyFnDef, TyClosure, TyAnon, TyProjection
+        // TODO: maybe fetch def ids from TyFnDef, TyClosure, TyAnon
         let matching = match (&a.sty, &b.sty) {
-            (&TyInfer(_), _) | (_, &TyInfer(_)) => {
-                // As the original function this is ripped off of, we don't handle these cases.
-                panic!("var types encountered in Mismatch::tys")
-            },
             (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) => {
-                let _ = self.relate_item_substs(a_def.did, a_substs, b_substs)?;
-                let a_adt = self.tcx.adt_def(a_def.did);
-                let b_adt = self.tcx.adt_def(b_def.did);
+                if self.check_substs(a_substs, b_substs) {
+                    let _ = self.relate_item_substs(a_def.did, a_substs, b_substs)?;
+                    let a_adt = self.tcx.adt_def(a_def.did);
+                    let b_adt = self.tcx.adt_def(b_def.did);
 
-                let b_fields: HashMap<_, _> =
-                    b_adt
-                        .all_fields()
-                        .map(|f| (f.did, f))
-                        .collect();
+                    let b_fields: HashMap<_, _> =
+                        b_adt
+                            .all_fields()
+                            .map(|f| (f.did, f))
+                            .collect();
 
-                for field in a_adt.all_fields().filter(|f| f.vis == Public) {
-                    if self.id_mapping.contains_id(field.did) {
-                        let a_field_ty = field.ty(self.tcx, a_substs);
-                        let b_field_ty =
-                            b_fields[&self.id_mapping.get_new_id(field.did)]
-                                .ty(self.tcx, b_substs);
+                    for field in a_adt.all_fields().filter(|f| f.vis == Public) {
+                        if self.id_mapping.contains_id(field.did) {
+                            let a_field_ty = field.ty(self.tcx, a_substs);
+                            let b_field_ty =
+                                b_fields[&self.id_mapping.get_new_id(field.did)]
+                                    .ty(self.tcx, b_substs);
 
-                        let _ = self.relate(&a_field_ty, &b_field_ty);
+                            let _ = self.relate(&a_field_ty, &b_field_ty)?;
+                        }
                     }
+
+                    Some((a_def.did, b_def.did))
+                } else {
+                    None
+                }
+            },
+            (&TyArray(a_t, _), &TyArray(b_t, _)) |
+            (&TySlice(a_t), &TySlice(b_t)) => {
+                let _ = self.relate(&a_t, &b_t)?;
+                None
+            },
+            (&TyRawPtr(a_mt), &TyRawPtr(b_mt)) => {
+                let _ = self.relate(&a_mt, &b_mt)?;
+                None
+            },
+            (&TyRef(a_r, a_mt), &TyRef(b_r, b_mt)) => {
+                let _ = self.relate(&a_r, &b_r)?;
+                let _ = self.relate(&a_mt, &b_mt)?;
+                None
+            },
+            (&TyFnDef(a_def_id, a_substs), &TyFnDef(_, b_substs)) => {
+                if self.check_substs(a_substs, b_substs) {
+                    let a_sig = a.fn_sig(self.tcx);
+                    let b_sig = b.fn_sig(self.tcx);
+                    let _ = self.relate_item_substs(a_def_id, a_substs, b_substs)?;
+                    let _ = self.relate(a_sig.skip_binder(), b_sig.skip_binder())?;
                 }
 
-                Some((a_def.did, b_def.did))
+                None
+            },
+            (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
+                let _ = self.relate(&a_fty, &b_fty)?;
+                None
             },
             (&TyDynamic(a_obj, a_r), &TyDynamic(b_obj, b_r)) => {
-                let _ = self.relate(&a_r, &b_r);
+                // TODO
+                let _ = self.relate(&a_r, &b_r)?;
                 if let (Some(a), Some(b)) = (a_obj.principal(), b_obj.principal()) {
-                    let _ = self.relate(&a, &b);
+                    let _ = self.relate(&a, &b); // TODO: kill this?
                     Some((a.skip_binder().def_id, b.skip_binder().def_id))
                 } else {
                     None
                 }
             },
-            (&TyRawPtr(a_mt), &TyRawPtr(b_mt)) => {
-                let _ = self.relate(&a_mt, &b_mt);
-                None
-            },
-            (&TyRef(a_r, a_mt), &TyRef(b_r, b_mt)) => {
-                let _ = self.relate(&a_r, &b_r);
-                let _ = self.relate(&a_mt, &b_mt);
-                None
-            },
-            (&TyArray(a_t, _), &TyArray(b_t, _)) |
-            (&TySlice(a_t), &TySlice(b_t)) => {
-                let _ = self.relate(&a_t, &b_t);
-                None
-            },
             (&TyTuple(as_, _), &TyTuple(bs, _)) => {
                 let _ = as_.iter().zip(bs).map(|(a, b)| self.relate(a, b));
                 None
             },
-            (&TyFnDef(a_def_id, a_substs), &TyFnDef(_, b_substs)) => {
-                let a_sig = a.fn_sig(self.tcx);
-                let b_sig = b.fn_sig(self.tcx);
-                let _ = self.relate_item_substs(a_def_id, a_substs, b_substs);
-                let _ = self.relate(a_sig.skip_binder(), b_sig.skip_binder());
-                None
-            },
-            (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
-                let _ = self.relate(&a_fty, &b_fty);
-                None
-            },
             (&TyProjection(a_data), &TyProjection(b_data)) => {
-                let _ = self.relate(&a_data, &b_data);
-                None
+                let _ = self.relate(&a_data, &b_data)?;
+                Some((a_data.item_def_id, b_data.item_def_id))
             },
             (&TyAnon(_, a_substs), &TyAnon(_, b_substs)) => {
-                let _ = ty::relate::relate_substs(self, None, a_substs, b_substs);
+                // TODO: kill this part? or do something with the result
+                if self.check_substs(a_substs, b_substs) {
+                    let _ = ty::relate::relate_substs(self, None, a_substs, b_substs)?;
+                }
                 None
+            },
+            (&TyInfer(_), _) | (_, &TyInfer(_)) => {
+                // As the original function this is ripped off of, we don't handle these cases.
+                panic!("var types encountered in Mismatch::tys")
             },
             _ => None,
         };
