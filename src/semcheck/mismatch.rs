@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use rustc::ty::TypeVariants::*;
 
-        // TODO: maybe fetch def ids from TyFnDef, TyClosure, TyAnon
+        // TODO: maybe fetch def ids from TyClosure
         let matching = match (&a.sty, &b.sty) {
             (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
                 let _ = self.relate(&a_mt, &b_mt)?;
                 None
             },
-            (&TyFnDef(a_def_id, a_substs), &TyFnDef(_, b_substs)) => {
+            (&TyFnDef(a_def_id, a_substs), &TyFnDef(b_def_id, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
                     let a_sig = a.fn_sig(self.tcx);
                     let b_sig = b.fn_sig(self.tcx);
@@ -153,7 +153,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
                     let _ = self.relate(a_sig.skip_binder(), b_sig.skip_binder())?;
                 }
 
-                None
+                Some((a_def_id, b_def_id))
             },
             (&TyFnPtr(a_fty), &TyFnPtr(b_fty)) => {
                 let _ = self.relate(&a_fty, &b_fty)?;
@@ -177,12 +177,12 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
                 let _ = self.relate(&a_data, &b_data)?;
                 Some((a_data.item_def_id, b_data.item_def_id))
             },
-            (&TyAnon(_, a_substs), &TyAnon(_, b_substs)) => {
-                // TODO: kill this part? or do something with the result
+            (&TyAnon(a_def_id, a_substs), &TyAnon(b_def_id, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
                     let _ = ty::relate::relate_substs(self, None, a_substs, b_substs)?;
                 }
-                None
+
+                Some((a_def_id, b_def_id))
             },
             (&TyInfer(_), _) | (_, &TyInfer(_)) => {
                 // As the original function this is ripped off of, we don't handle these cases.
