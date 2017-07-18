@@ -64,9 +64,9 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+        travis_retry curl -fo /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/sccache &&
-        travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
+        travis_retry curl -fo /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/stamp
     - env: >
         RUST_CHECK_TARGET=check
@@ -144,7 +144,7 @@ env:
 
 # Note that this is overridden on OSX builders
 install: >
-  travis_retry curl -o $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
+  travis_retry curl -fo $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
     chmod +x $HOME/stamp &&
     export PATH=$PATH:$HOME
 
@@ -183,10 +183,10 @@ before_script:
 # clock drift. Timezones don't matter since relative deltas give all the necessary info.
 script:
   - >
-      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
+      date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
   - stamp sh -x -c "$RUN_SCRIPT"
   - >
-      date && curl -s --head https://google.com | grep ^Date: | sed 's/Date: //g'
+      date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
 
 after_success:
   - >
