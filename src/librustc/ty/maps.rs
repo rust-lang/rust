@@ -27,7 +27,7 @@ use ty::steal::Steal;
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
 
-use util::common::{profq_msg,ProfileQueriesMsg};
+use util::common::{profq_msg, ProfileQueriesMsg};
 use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
