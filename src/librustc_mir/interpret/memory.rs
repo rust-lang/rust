@@ -96,7 +96,7 @@ enum LockStatus {
 }
 
 /// Information about a lock that is or will be held.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct LockInfo {
     kind: AccessKind,
     lifetime: DynamicLifetime,
@@ -168,7 +168,7 @@ impl Allocation {
         for lock in self.iter_locks(offset, len) {
             // Check if the lock is active, and is in conflict with the access.
             if lock.status == LockStatus::Held && !lock.access_permitted(frame, access) {
-                return Err(*lock);
+                return Err(lock.clone());
             }
         }
         Ok(())

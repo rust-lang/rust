@@ -219,7 +219,7 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                        if access { "memory access" } else { "pointer computed" },
                        ptr.offset, ptr.alloc_id, allocation_size)
             },
-            MemoryLockViolation { ptr, len, access, lock } => {
+            MemoryLockViolation { ptr, len, access, ref lock } => {
                 write!(f, "{:?} access at {:?}, size {}, is in conflict with lock {:?}",
                        access, ptr, len, lock)
             }
@@ -227,7 +227,7 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "tried to release memory write lock at {:?}, size {}, but the write lock is held by someone else",
                        ptr, len)
             }
-            DeallocatedLockedMemory { ptr, lock } => {
+            DeallocatedLockedMemory { ptr, ref lock } => {
                 write!(f, "tried to deallocate memory at {:?} in conflict with lock {:?}",
                        ptr, lock)
             }
