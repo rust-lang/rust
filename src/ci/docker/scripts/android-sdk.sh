@@ -15,7 +15,7 @@ URL=https://dl.google.com/android/repository
 download_sdk() {
     mkdir -p /android/sdk
     cd /android/sdk
-    curl -sO $URL/$1
+    curl -fO $URL/$1
     unzip -q $1
     rm -rf $1
 }
