@@ -15,7 +15,7 @@ URL=https://dl.google.com/android/repository
 download_ndk() {
     mkdir -p /android/ndk
     cd /android/ndk
-    curl -sO $URL/$1
+    curl -fO $URL/$1
     unzip -q $1
     rm $1
     mv android-ndk-* ndk

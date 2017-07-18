@@ -973,7 +973,7 @@ impl<T> From<T> for Rc<T> {
 /// A `Weak` pointer is useful for keeping a temporary reference to the value
 /// within [`Rc`] without extending its lifetime. It is also used to prevent
 /// circular references between [`Rc`] pointers, since mutual owning references
-/// would never allow either [`Arc`] to be dropped. For example, a tree could
+/// would never allow either [`Rc`] to be dropped. For example, a tree could
 /// have strong [`Rc`] pointers from parent nodes to children, and `Weak`
 /// pointers from children back to their parents.
 ///

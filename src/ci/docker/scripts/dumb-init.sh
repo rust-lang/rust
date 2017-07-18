@@ -10,6 +10,6 @@
 
 set -ex
 
-curl -sOL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb
+curl -fOL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb
 dpkg -i dumb-init_*.deb
 rm dumb-init_*.deb

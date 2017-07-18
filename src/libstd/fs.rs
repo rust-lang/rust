@@ -2346,17 +2346,17 @@ mod tests {
 
     #[test]
     fn recursive_mkdir_slash() {
-        check!(fs::create_dir_all(&Path::new("/")));
+        check!(fs::create_dir_all(Path::new("/")));
     }
 
     #[test]
     fn recursive_mkdir_dot() {
-        check!(fs::create_dir_all(&Path::new(".")));
+        check!(fs::create_dir_all(Path::new(".")));
     }
 
     #[test]
     fn recursive_mkdir_empty() {
-        check!(fs::create_dir_all(&Path::new("")));
+        check!(fs::create_dir_all(Path::new("")));
     }
 
     #[test]

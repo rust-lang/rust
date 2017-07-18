@@ -11,7 +11,82 @@ git:
 matrix:
   fast_finish: true
   include:
-    # Linux builders, all docker images
+    # Images used in testing PR and try-build should be run first.
+    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
+    - env: IMAGE=dist-x86_64-linux DEPLOY=1 ALLOW_TRY=1
+
+    # "alternate" deployments, these are "nightlies" but don't have assertions
+    # turned on, they're deployed to a different location primarily for projects
+    # which are stuck on nightly and don't want llvm assertions in the artifacts
+    # that they use.
+    - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
+    - env: >
+        RUST_CHECK_TARGET=dist
+        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
+        SRC=.
+        DEPLOY_ALT=1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        MACOSX_DEPLOYMENT_TARGET=10.7
+      os: osx
+      osx_image: xcode7
+
+    # macOS builders. These are placed near the beginning because they are very
+    # slow to run.
+
+    # OSX builders running tests, these run the full test suite.
+    #
+    # Note that the compiler is compiled to target 10.8 here because the Xcode
+    # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
+    - env: >
+        RUST_CHECK_TARGET=check
+        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
+        SRC=.
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_STD_DEPLOYMENT_TARGET=10.7
+      os: osx
+      osx_image: xcode8.2
+    - env: >
+        RUST_CHECK_TARGET=check
+        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
+        SRC=.
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_STD_DEPLOYMENT_TARGET=10.7
+      os: osx
+      osx_image: xcode8.2
+
+    # OSX builders producing releases. These do not run the full test suite and
+    # just produce a bunch of artifacts.
+    #
+    # Note that these are running in the `xcode7` image instead of the
+    # `xcode8.2` image as above. That's because we want to build releases for
+    # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
+    - env: >
+        RUST_CHECK_TARGET=dist
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler"
+        SRC=.
+        DEPLOY=1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        MACOSX_DEPLOYMENT_TARGET=10.7
+      os: osx
+      osx_image: xcode7
+    - env: >
+        RUST_CHECK_TARGET=dist
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler"
+        SRC=.
+        DEPLOY=1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        MACOSX_DEPLOYMENT_TARGET=10.7
+      os: osx
+      osx_image: xcode7
+
+    # Linux builders, remaining docker images
     - env: IMAGE=arm-android
     - env: IMAGE=armhf-gnu
     - env: IMAGE=cross DEPLOY=1
@@ -33,7 +108,6 @@ matrix:
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
     - env: IMAGE=dist-s390x-linux DEPLOY=1
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
-    - env: IMAGE=dist-x86_64-linux DEPLOY=1 ALLOW_TRY=1
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
     - env: IMAGE=asmjs
@@ -45,95 +119,8 @@ matrix:
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
-    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-gnu-distcheck
     - env: IMAGE=x86_64-gnu-incremental
-
-    # OSX builders running tests, these run the full test suite.
-    #
-    # Note that the compiler is compiled to target 10.8 here because the Xcode
-    # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
-    - env: >
-        RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
-        SRC=.
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode8.2
-      install: &osx_install_sccache >
-        travis_retry curl -fo /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/sccache &&
-        travis_retry curl -fo /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/stamp
-    - env: >
-        RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
-        SRC=.
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode8.2
-      install: *osx_install_sccache
-
-    # OSX builders producing releases. These do not run the full test suite and
-    # just produce a bunch of artifacts.
-    #
-    # Note that these are running in the `xcode7` image instead of the
-    # `xcode8.2` image as above. That's because we want to build releases for
-    # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler"
-        SRC=.
-        DEPLOY=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode7
-      install:
-        - travis_retry brew update
-        - travis_retry brew install xz
-        - *osx_install_sccache
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler"
-        SRC=.
-        DEPLOY=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode7
-      install:
-        - travis_retry brew update
-        - travis_retry brew install xz
-        - *osx_install_sccache
-
-    # "alternate" deployments, these are "nightlies" but don't have assertions
-    # turned on, they're deployed to a different location primarily for projects
-    # which are stuck on nightly and don't want llvm assertions in the artifacts
-    # that they use.
-    - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
-        SRC=.
-        DEPLOY_ALT=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode7
-      install:
-        - travis_retry brew update
-        - travis_retry brew install xz
-        - *osx_install_sccache
 
 env:
   global:
@@ -142,41 +129,64 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
 
-# Note that this is overridden on OSX builders
-install: >
-  travis_retry curl -fo $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
-    chmod +x $HOME/stamp &&
-    export PATH=$PATH:$HOME
+before_install:
+  # If we are building a pull request, do the build if $ALLOW_PR == 1
+  # Otherwise, do the build if we are on the auto branch, or the try branch and $ALLOW_TRY == 1
+  - >
+    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+        if [[ "$ALLOW_PR" == "1" ]]; then
+            export SKIP_BUILD=false;
+        else
+            export SKIP_BUILD=true;
+        fi;
+    elif [[ "$TRAVIS_BRANCH" == "auto" || ( "$ALLOW_TRY" == "1" && "$TRAVIS_BRANCH" == "try" ) ]]; then
+        export SKIP_BUILD=false;
+    else
+        export SKIP_BUILD=true;
+    fi
+  - >
+    if [[ "$SKIP_BUILD" == false ]]; then
+      zcat $HOME/docker/rust-ci.tar.gz | docker load || true
+    fi
+  - mkdir -p $HOME/rustsrc
+
+install:
+  - >
+    if [[ "$SKIP_BUILD" == true ]]; then
+      echo echo skipping, not a full build > $HOME/stamp &&
+        chmod +x $HOME/stamp &&
+        export PATH=$PATH:$HOME;
+    else
+      case "$TRAVIS_OS_NAME" in
+        linux)
+          travis_retry curl -fo $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
+            chmod +x $HOME/stamp &&
+            export PATH=$PATH:$HOME
+          ;;
+        osx)
+          if [[ "$RUST_CHECK_TARGET" == dist ]]; then
+            travis_retry brew update &&
+            travis_retry brew install xz;
+          fi &&
+          travis_retry curl -fo /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+            chmod +x /usr/local/bin/sccache &&
+          travis_retry curl -fo /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
+            chmod +x /usr/local/bin/stamp
+          ;;
+      esac
+    fi
 
 before_script:
   - >
       echo "#### Disk usage before running script:";
       df -h;
       du . | sort -nr | head -n100
-  # If we are building a pull request, do the build if $ALLOW_PR == 1
-  # Otherwise, do the build if we are on the auto branch, or the try branch and $ALLOW_TRY == 1
   - >
-      if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-          if [[ "$ALLOW_PR" == "1" ]]; then
-              SKIP_BUILD=false;
-          else
-              SKIP_BUILD=true;
-          fi
-      elif [[ "$TRAVIS_BRANCH" == "auto" || ( "$ALLOW_TRY" == "1" && "$TRAVIS_BRANCH" == "try" ) ]]; then
-          SKIP_BUILD=false;
+      RUN_SCRIPT="src/ci/init_repo.sh . $HOME/rustsrc";
+      if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+          export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
       else
-          SKIP_BUILD=true;
-      fi
-
-      if [[ "$SKIP_BUILD" == true ]]; then
-          export RUN_SCRIPT="echo 'skipping, not a full build'";
-      else
-          RUN_SCRIPT="src/ci/init_repo.sh . $HOME/rustsrc";
-          if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-              export RUN_SCRIPT="$RUN_SCRIPT && src/ci/run.sh";
-          else
-              export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
-          fi
+          export RUN_SCRIPT="$RUN_SCRIPT && src/ci/docker/run.sh $IMAGE";
       fi
 
 # Log time information from this machine and an external machine for insight into possible
@@ -223,9 +233,6 @@ before_cache:
     grep -v missing |
     xargs docker save |
     gzip > $HOME/docker/rust-ci.tar.gz
-before_install:
-  - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
-  - mkdir -p $HOME/rustsrc
 
 notifications:
   email: false

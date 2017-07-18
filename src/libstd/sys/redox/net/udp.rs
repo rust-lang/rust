@@ -30,7 +30,7 @@ impl UdpSocket {
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);
-        Ok(UdpSocket(File::open(&Path::new(path.as_str()), &options)?, UnsafeCell::new(None)))
+        Ok(UdpSocket(File::open(Path::new(path.as_str()), &options)?, UnsafeCell::new(None)))
     }
 
     fn get_conn(&self) -> &mut Option<SocketAddr> {
