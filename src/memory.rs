@@ -230,7 +230,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn reallocate(&mut self, ptr: MemoryPointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64, kind: Kind) -> EvalResult<'tcx, MemoryPointer> {
         use std::cmp::min;
 
-        if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
+        if ptr.offset != 0 {
             return Err(EvalError::ReallocateNonBasePtr);
         }
         if let Ok(alloc) = self.get(ptr.alloc_id) {
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub fn deallocate(&mut self, ptr: MemoryPointer, size_and_align: Option<(u64, u64)>, kind: Kind) -> EvalResult<'tcx> {
-        if ptr.offset != 0 || self.get(ptr.alloc_id).is_err() {
+        if ptr.offset != 0 {
             return Err(EvalError::DeallocateNonBasePtr);
         }
 
