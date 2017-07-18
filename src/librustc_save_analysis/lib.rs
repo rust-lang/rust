@@ -43,10 +43,10 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::map::{Node, NodeItem};
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
 
+use std::default::Default;
 use std::env;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -68,6 +68,7 @@ use span_utils::SpanUtils;
 
 use rls_data::{Ref, RefKind, SpanData, MacroRef, Def, DefKind, Relation, RelationKind,
                ExternalCrateData, Import, CratePreludeData};
+use rls_data::config::Config;
 
 
 pub struct SaveContext<'l, 'tcx: 'l> {
@@ -75,6 +76,7 @@ pub struct SaveContext<'l, 'tcx: 'l> {
     tables: &'l ty::TypeckTables<'tcx>,
     analysis: &'l ty::CrateAnalysis,
     span_utils: SpanUtils<'tcx>,
+    config: Config,
 }
 
 #[derive(Debug)]
@@ -900,39 +902,41 @@ impl<'a> DumpHandler<'a> {
         }
     }
 
-    fn output_file(&self, sess: &Session) -> File {
-        let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
-            Some(val) => PathBuf::from(val),
-            None => match self.odir {
-                Some(val) => val.join("save-analysis"),
-                None => PathBuf::from("save-analysis-temp"),
-            },
+    fn output_file(&self, ctx: &SaveContext) -> File {
+        let sess = &ctx.tcx.sess;
+        let file_name = match ctx.config.output_file {
+            Some(ref s) => PathBuf::from(s),
+            None => {
+                let mut root_path = match self.odir {
+                    Some(val) => val.join("save-analysis"),
+                    None => PathBuf::from("save-analysis-temp"),
+                };
+
+                if let Err(e) = std::fs::create_dir_all(&root_path) {
+                    error!("Could not create directory {}: {}", root_path.display(), e);
+                }
+
+                let executable = sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
+                let mut out_name = if executable {
+                    "".to_owned()
+                } else {
+                    "lib".to_owned()
+                };
+                out_name.push_str(&self.cratename);
+                out_name.push_str(&sess.opts.cg.extra_filename);
+                out_name.push_str(self.format.extension());
+                root_path.push(&out_name);
+
+                root_path
+            }
         };
 
-        if let Err(e) = std::fs::create_dir_all(&root_path) {
-            error!("Could not create directory {}: {}", root_path.display(), e);
-        }
+        info!("Writing output to {}", file_name.display());
 
-        {
-            let disp = root_path.display();
-            info!("Writing output to {}", disp);
-        }
-
-        let executable = sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
-        let mut out_name = if executable {
-            "".to_owned()
-        } else {
-            "lib".to_owned()
-        };
-        out_name.push_str(&self.cratename);
-        out_name.push_str(&sess.opts.cg.extra_filename);
-        out_name.push_str(self.format.extension());
-        root_path.push(&out_name);
-        let output_file = File::create(&root_path).unwrap_or_else(|e| {
-            let disp = root_path.display();
-            sess.fatal(&format!("Could not open {}: {}", disp, e));
+        let output_file = File::create(&file_name).unwrap_or_else(|e| {
+            sess.fatal(&format!("Could not open {}: {}", file_name.display(), e))
         });
-        root_path.pop();
+
         output_file
     }
 }
@@ -952,7 +956,7 @@ impl<'a> SaveHandler for DumpHandler<'a> {
             }}
         }
 
-        let output = &mut self.output_file(&save_ctxt.tcx.sess);
+        let output = &mut self.output_file(&save_ctxt);
 
         match self.format {
             Format::Json => dump!(JsonDumper::new(output)),
@@ -994,6 +998,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                                                krate: &ast::Crate,
                                                analysis: &'l ty::CrateAnalysis,
                                                cratename: &str,
+                                               config: Option<Config>,
                                                mut handler: H) {
     let _ignore = tcx.dep_graph.in_ignore();
 
@@ -1006,9 +1011,23 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         tables: &ty::TypeckTables::empty(),
         analysis: analysis,
         span_utils: SpanUtils::new(&tcx.sess),
+        config: find_config(config),
     };
 
     handler.save(save_ctxt, krate, cratename)
+}
+
+fn find_config(supplied: Option<Config>) -> Config {
+    if let Some(config) = supplied {
+        return config;
+    }
+    match env::var_os("RUST_SAVE_ANALYSIS_CONFIG") {
+        Some(config_string) => {
+            rustc_serialize::json::decode(config_string.to_str().unwrap())
+                .expect("Could not deserialize save-analysis config")
+        },
+        None => Config::default(),
+    }
 }
 
 // Utility functions for the module.

@@ -578,6 +578,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
+                                        None,
                                         DumpHandler::new(save_analysis_format(state.session),
                                                          state.out_dir,
                                                          state.crate_name.unwrap()))
