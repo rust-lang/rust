@@ -31,7 +31,6 @@ extern crate rls_data;
 extern crate rls_span;
 
 
-mod json_api_dumper;
 mod json_dumper;
 mod dump_visitor;
 #[macro_use]
@@ -61,13 +60,12 @@ use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
 use syntax_pos::*;
 
-pub use json_api_dumper::JsonApiDumper;
-pub use json_dumper::JsonDumper;
+use json_dumper::JsonDumper;
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Ref, RefKind, SpanData, MacroRef, Def, DefKind, Relation, RelationKind,
-               ExternalCrateData, Import, CratePreludeData};
+               ExternalCrateData};
 use rls_data::config::Config;
 
 
@@ -86,15 +84,6 @@ pub enum Data {
     RefData(Ref),
     DefData(Def),
     RelationData(Relation),
-}
-
-pub trait Dump {
-    fn crate_prelude(&mut self, _: CratePreludeData);
-    fn macro_use(&mut self, _: MacroRef) {}
-    fn import(&mut self, _: bool, _: Import);
-    fn dump_ref(&mut self, _: Ref) {}
-    fn dump_def(&mut self, _: bool, _: Def);
-    fn dump_relation(&mut self, data: Relation);
 }
 
 macro_rules! option_try(
@@ -872,18 +861,6 @@ impl<'a> Visitor<'a> for PathCollector {
     }
 }
 
-#[derive(Clone, Copy, Debug, RustcEncodable)]
-pub enum Format {
-    Json,
-    JsonApi,
-}
-
-impl Format {
-    fn extension(&self) -> &'static str {
-        ".json"
-    }
-}
-
 /// Defines what to do with the results of saving the analysis.
 pub trait SaveHandler {
     fn save<'l, 'tcx>(&mut self,
@@ -894,15 +871,13 @@ pub trait SaveHandler {
 
 /// Dump the save-analysis results to a file.
 pub struct DumpHandler<'a> {
-    format: Format,
     odir: Option<&'a Path>,
     cratename: String
 }
 
 impl<'a> DumpHandler<'a> {
-    pub fn new(format: Format, odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
+    pub fn new(odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
         DumpHandler {
-            format: format,
             odir: odir,
             cratename: cratename.to_owned()
         }
@@ -930,7 +905,7 @@ impl<'a> DumpHandler<'a> {
                 };
                 out_name.push_str(&self.cratename);
                 out_name.push_str(&sess.opts.cg.extra_filename);
-                out_name.push_str(self.format.extension());
+                out_name.push_str(".json");
                 root_path.push(&out_name);
 
                 root_path
@@ -952,22 +927,12 @@ impl<'a> SaveHandler for DumpHandler<'a> {
                       save_ctxt: SaveContext<'l, 'tcx>,
                       krate: &ast::Crate,
                       cratename: &str) {
-        macro_rules! dump {
-            ($new_dumper: expr) => {{
-                let mut dumper = $new_dumper;
-                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
-
-                visitor.dump_crate_info(cratename, krate);
-                visit::walk_crate(&mut visitor, krate);
-            }}
-        }
-
         let output = &mut self.output_file(&save_ctxt);
+        let mut dumper = JsonDumper::new(output, save_ctxt.config.clone());
+        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
-        match self.format {
-            Format::Json => dump!(JsonDumper::new(output)),
-            Format::JsonApi => dump!(JsonApiDumper::new(output)),
-        }
+        visitor.dump_crate_info(cratename, krate);
+        visit::walk_crate(&mut visitor, krate);
     }
 }
 
@@ -981,22 +946,16 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
                       save_ctxt: SaveContext<'l, 'tcx>,
                       krate: &ast::Crate,
                       cratename: &str) {
-        macro_rules! dump {
-            ($new_dumper: expr) => {{
-                let mut dumper = $new_dumper;
-                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
-
-                visitor.dump_crate_info(cratename, krate);
-                visit::walk_crate(&mut visitor, krate);
-            }}
-        }
-
         // We're using the JsonDumper here because it has the format of the
         // save-analysis results that we will pass to the callback. IOW, we are
         // using the JsonDumper to collect the save-analysis results, but not
         // actually to dump them to a file. This is all a bit convoluted and
         // there is certainly a simpler design here trying to get out (FIXME).
-        dump!(JsonDumper::with_callback(self.callback))
+        let mut dumper = JsonDumper::with_callback(self.callback, save_ctxt.config.clone());
+        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+
+        visitor.dump_crate_info(cratename, krate);
+        visit::walk_crate(&mut visitor, krate);
     }
 }
 

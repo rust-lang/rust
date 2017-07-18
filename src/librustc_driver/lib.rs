@@ -579,8 +579,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
                                         None,
-                                        DumpHandler::new(save_analysis_format(state.session),
-                                                         state.out_dir,
+                                        DumpHandler::new(state.out_dir,
                                                          state.crate_name.unwrap()))
                 });
             };
@@ -603,18 +602,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 }
 
 fn save_analysis(sess: &Session) -> bool {
-    sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_api
-}
-
-fn save_analysis_format(sess: &Session) -> save::Format {
-    if sess.opts.debugging_opts.save_analysis {
-        save::Format::Json
-    } else if sess.opts.debugging_opts.save_analysis_api {
-        save::Format::JsonApi
-    } else {
-        unreachable!();
-    }
+    sess.opts.debugging_opts.save_analysis
 }
 
 impl RustcDefaultCalls {

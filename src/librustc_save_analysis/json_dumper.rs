@@ -14,12 +14,12 @@ use rustc_serialize::json::as_json;
 
 use rls_data::{self, Analysis, Import, Def, DefKind, Ref, RefKind, MacroRef,
                Relation, CratePreludeData};
+use rls_data::config::Config;
 use rls_span::{Column, Row};
-
-use Dump;
 
 pub struct JsonDumper<O: DumpOutput> {
     result: Analysis,
+    config: Config,
     output: O,
 }
 
@@ -50,14 +50,14 @@ impl<'b> DumpOutput for CallbackOutput<'b> {
 }
 
 impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
-    pub fn new(writer: &'b mut W) -> JsonDumper<WriteOutput<'b, W>> {
-        JsonDumper { output: WriteOutput { output: writer }, result: Analysis::new() }
+    pub fn new(writer: &'b mut W, config: Config) -> JsonDumper<WriteOutput<'b, W>> {
+        JsonDumper { output: WriteOutput { output: writer }, config, result: Analysis::new() }
     }
 }
 
 impl<'b> JsonDumper<CallbackOutput<'b>> {
-    pub fn with_callback(callback: &'b mut FnMut(&Analysis)) -> JsonDumper<CallbackOutput<'b>> {
-        JsonDumper { output: CallbackOutput { callback: callback }, result: Analysis::new() }
+    pub fn with_callback(callback: &'b mut FnMut(&Analysis), config: Config) -> JsonDumper<CallbackOutput<'b>> {
+        JsonDumper { output: CallbackOutput { callback: callback }, config, result: Analysis::new() }
     }
 }
 
@@ -67,23 +67,36 @@ impl<O: DumpOutput> Drop for JsonDumper<O> {
     }
 }
 
-impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
-    fn crate_prelude(&mut self, data: CratePreludeData) {
+impl<'b, O: DumpOutput + 'b> JsonDumper<O> {
+    pub fn crate_prelude(&mut self, data: CratePreludeData) {
         self.result.prelude = Some(data)
     }
 
-    fn macro_use(&mut self, data: MacroRef) {
+    pub fn macro_use(&mut self, data: MacroRef) {
+        if self.config.pub_only {
+            return;
+        }
         self.result.macro_refs.push(data);
     }
 
-    fn import(&mut self, _: bool, import: Import) {
+    pub fn import(&mut self, public: bool, import: Import) {
+        if !public && self.config.pub_only {
+            return;
+        }
         self.result.imports.push(import);
     }
 
-    fn dump_ref(&mut self, data: Ref) {
+    pub fn dump_ref(&mut self, data: Ref) {
+        if self.config.pub_only {
+            return;
+        }
         self.result.refs.push(data);
     }
-    fn dump_def(&mut self, _: bool, mut data: Def) {
+
+    pub fn dump_def(&mut self, public: bool, mut data: Def) {
+        if !public && self.config.pub_only {
+            return;
+        }
         if data.kind == DefKind::Mod && data.span.file_name.to_str().unwrap() != data.value {
             // If the module is an out-of-line defintion, then we'll make the
             // defintion the first character in the module's file and turn the
@@ -107,7 +120,7 @@ impl<'b, O: DumpOutput + 'b> Dump for JsonDumper<O> {
         self.result.defs.push(data);
     }
 
-    fn dump_relation(&mut self, data: Relation) {
+    pub fn dump_relation(&mut self, data: Relation) {
         self.result.relations.push(data);
     }
 }
