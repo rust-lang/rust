@@ -961,14 +961,14 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
 //         .run(move |s| check::krate(build, &s.compiler(), s.target,
 //                                    Mode::Librustc, TestKind::Test, None));
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct KrateLibrustc {
+pub struct CrateLibrustc {
     compiler: Compiler,
     target: Interned<String>,
     test_kind: TestKind,
     krate: Option<Interned<String>>,
 }
 
-impl Step for KrateLibrustc {
+impl Step for CrateLibrustc {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -993,10 +993,10 @@ impl Step for KrateLibrustc {
             } else if builder.kind == Kind::Bench {
                 TestKind::Bench
             } else {
-                panic!("unexpected builder.kind in Krate: {:?}", builder.kind);
+                panic!("unexpected builder.kind in crate: {:?}", builder.kind);
             };
 
-            builder.ensure(KrateLibrustc {
+            builder.ensure(CrateLibrustc {
                 compiler,
                 target,
                 test_kind: test_kind,
@@ -1017,7 +1017,7 @@ impl Step for KrateLibrustc {
 
 
     fn run(self, builder: &Builder) {
-        builder.ensure(Krate {
+        builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
             mode: Mode::Librustc,
@@ -1075,7 +1075,7 @@ impl Step for KrateLibrustc {
 //                                    Mode::Libtest, TestKind::Test, None));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Krate {
+pub struct Crate {
     compiler: Compiler,
     target: Interned<String>,
     mode: Mode,
@@ -1083,7 +1083,7 @@ pub struct Krate {
     krate: Option<Interned<String>>,
 }
 
-impl Step for Krate {
+impl Step for Crate {
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -1110,10 +1110,10 @@ impl Step for Krate {
             } else if builder.kind == Kind::Bench {
                 TestKind::Bench
             } else {
-                panic!("unexpected builder.kind in Krate: {:?}", builder.kind);
+                panic!("unexpected builder.kind in crate: {:?}", builder.kind);
             };
 
-            builder.ensure(Krate {
+            builder.ensure(Crate {
                 compiler, target,
                 mode: mode,
                 test_kind: test_kind,
