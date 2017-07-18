@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use collections::hash_map::HashMap;
-use env;
+use env::{self, split_paths};
 use ffi::OsStr;
+use os::unix::ffi::OsStrExt;
 use fmt;
 use io::{self, Error, ErrorKind};
-use path::Path;
+use path::{Path, PathBuf};
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::{self, AnonPipe};
@@ -313,23 +314,29 @@ impl Command {
         }
 
         let program = if self.program.contains(':') || self.program.contains('/') {
-            self.program.to_owned()
-        } else {
-            let mut path_env = ::env::var("PATH").unwrap_or(".".to_string());
-
-            if ! path_env.ends_with('/') {
-                path_env.push('/');
+            Some(PathBuf::from(&self.program))
+        } else if let Ok(path_env) = ::env::var("PATH") {
+            let mut program = None;
+            for mut path in split_paths(&path_env) {
+                path.push(&self.program);
+                if path.exists() {
+                    program = Some(path);
+                    break;
+                }
             }
-
-            path_env.push_str(&self.program);
-
-            path_env
+            program
+        } else {
+            None
         };
 
-        if let Err(err) = syscall::execve(&program, &args) {
-            io::Error::from_raw_os_error(err.errno as i32)
+        if let Some(program) = program {
+            if let Err(err) = syscall::execve(program.as_os_str().as_bytes(), &args) {
+                io::Error::from_raw_os_error(err.errno as i32)
+            } else {
+                panic!("return from exec without err");
+            }
         } else {
-            panic!("return from exec without err");
+            io::Error::new(io::ErrorKind::NotFound, "")
         }
     }
 
