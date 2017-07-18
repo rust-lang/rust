@@ -393,7 +393,7 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let fd = File::open(&Path::new("null:"), &opts)?;
+                let fd = File::open(Path::new("null:"), &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
             }
         }
