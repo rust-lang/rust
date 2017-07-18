@@ -160,7 +160,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::foreign_item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -183,7 +183,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::foreign_item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -207,7 +207,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -236,7 +236,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -259,7 +259,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -283,7 +283,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: m.items.iter().map(|i| id_from_node_id(i.id, self)).collect(),
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -311,7 +311,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                  .map(|v| id_from_node_id(v.node.data.id(), self))
                                  .collect(),
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.to_owned(), self),
                 }))
@@ -372,7 +372,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 parent: Some(id_from_node_id(scope, self)),
                 children: vec![],
                 decl_id: None,
-                docs: docs_for_attrs(&field.attrs),
+                docs: self.docs_for_attrs(&field.attrs),
                 sig: sig::field_signature(field, self),
                 attributes: lower_attributes(field.attrs.clone(), self),
             })
@@ -417,7 +417,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             result.push_str(">");
 
                             (result, trait_id, decl_id,
-                             docs_for_attrs(&item.attrs),
+                             self.docs_for_attrs(&item.attrs),
                              item.attrs.to_vec())
                         }
                         _ => {
@@ -442,7 +442,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         Some(Node::NodeItem(item)) => {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
                              Some(def_id), None,
-                             docs_for_attrs(&item.attrs),
+                             self.docs_for_attrs(&item.attrs),
                              item.attrs.to_vec())
                         }
                         r => {
@@ -771,6 +771,31 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
         self.tcx.hir.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
+
+    fn docs_for_attrs(&self, attrs: &[Attribute]) -> String {
+        let mut result = String::new();
+
+        for attr in attrs {
+            if attr.check_name("doc") {
+                if let Some(val) = attr.value_str() {
+                    if attr.is_sugared_doc {
+                        result.push_str(&strip_doc_comment_decoration(&val.as_str()));
+                    } else {
+                        result.push_str(&val.as_str());
+                    }
+                    result.push('\n');
+                }
+            }
+        }
+
+        if !self.config.full_docs {
+            if let Some(index) = result.find("\n\n") {
+                result.truncate(index);
+            }
+        }
+
+        result
+    }
 }
 
 fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
@@ -845,25 +870,6 @@ impl<'a> Visitor<'a> for PathCollector {
         }
         visit::walk_pat(self, p);
     }
-}
-
-fn docs_for_attrs(attrs: &[Attribute]) -> String {
-    let mut result = String::new();
-
-    for attr in attrs {
-        if attr.check_name("doc") {
-            if let Some(val) = attr.value_str() {
-                if attr.is_sugared_doc {
-                    result.push_str(&strip_doc_comment_decoration(&val.as_str()));
-                } else {
-                    result.push_str(&val.as_str());
-                }
-                result.push('\n');
-            }
-        }
-    }
-
-    result
 }
 
 #[derive(Clone, Copy, Debug, RustcEncodable)]

@@ -41,7 +41,7 @@ use syntax::ptr::P;
 use syntax::codemap::Spanned;
 use syntax_pos::*;
 
-use {escape, generated_code, SaveContext, PathCollector, docs_for_attrs, lower_attributes, Dump};
+use {escape, generated_code, SaveContext, PathCollector, lower_attributes, Dump};
 use span_utils::SpanUtils;
 use sig;
 
@@ -531,7 +531,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: Some(::id_from_def_id(parent_id)),
                 children: vec![],
                 decl_id: None,
-                docs: docs_for_attrs(attrs),
+                docs: self.save_ctxt.docs_for_attrs(attrs),
                 sig,
                 attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
             });
@@ -580,7 +580,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: None,
                 children: fields,
                 decl_id: None,
-                docs: docs_for_attrs(&item.attrs),
+                docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                 sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
             });
@@ -637,7 +637,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent,
                             children: vec![],
                             decl_id: None,
-                            docs: docs_for_attrs(&variant.node.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(&variant.node.attrs),
                             sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: lower_attributes(variant.node.attrs.clone(),
                                                          &self.save_ctxt),
@@ -671,7 +671,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent,
                             children: vec![],
                             decl_id: None,
-                            docs: docs_for_attrs(&variant.node.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(&variant.node.attrs),
                             sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: lower_attributes(variant.node.attrs.clone(),
                                                          &self.save_ctxt),
@@ -742,7 +742,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: None,
                 children,
                 decl_id: None,
-                docs: docs_for_attrs(&item.attrs),
+                docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                 sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
             });
@@ -1039,7 +1039,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         parent: Some(::id_from_def_id(trait_id)),
                         children: vec![],
                         decl_id: None,
-                        docs: docs_for_attrs(&trait_item.attrs),
+                        docs: self.save_ctxt.docs_for_attrs(&trait_item.attrs),
                         sig: sig::assoc_type_signature(trait_item.id,
                                                        trait_item.ident,
                                                        Some(bounds),
@@ -1113,7 +1113,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             children,
             parent: None,
             decl_id: None,
-            docs: docs_for_attrs(attrs),
+            docs: self.save_ctxt.docs_for_attrs(attrs),
             sig: None,
             attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
         });
@@ -1250,7 +1250,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         parent: None,
                         children: vec![],
                         decl_id: None,
-                        docs: docs_for_attrs(&item.attrs),
+                        docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                         sig: sig::item_signature(item, &self.save_ctxt),
                         attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
                     });
