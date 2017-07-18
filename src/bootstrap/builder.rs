@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs;
 use std::ops::Deref;
-use std::any::{TypeId, Any};
+use std::any::Any;
 
 use compile;
 use install;
@@ -35,7 +35,7 @@ pub struct Builder<'a> {
     pub top_stage: u32,
     pub kind: Kind,
     cache: Cache,
-    stack: RefCell<Vec<(TypeId, Box<Any>)>>,
+    stack: RefCell<Vec<Box<Any>>>,
 }
 
 impl<'a> Deref for Builder<'a> {
@@ -477,12 +477,12 @@ impl<'a> Builder<'a> {
     /// cache the step, so it is safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are built.
     pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
-        let type_id = TypeId::of::<S>();
         {
             let mut stack = self.stack.borrow_mut();
-            for &(stack_type_id, ref stack_step) in stack.iter() {
-                if !(type_id == stack_type_id && step == *stack_step.downcast_ref().unwrap()) {
-                    continue
+            for stack_step in stack.iter() {
+                // should skip
+                if stack_step.downcast_ref::<S>().map_or(true, |stack_step| *stack_step != step) {
+                    continue;
                 }
                 let mut out = String::new();
                 out += &format!("\n\nCycle in build detected when adding {:?}\n", step);
@@ -497,13 +497,13 @@ impl<'a> Builder<'a> {
                 return out;
             }
             self.build.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
-            stack.push((type_id, Box::new(step.clone())));
+            stack.push(Box::new(step.clone()));
         }
         let out = step.clone().run(self);
         {
             let mut stack = self.stack.borrow_mut();
-            let (cur_type_id, cur_step) = stack.pop().expect("step stack empty");
-            assert_eq!((cur_type_id, cur_step.downcast_ref()), (type_id, Some(&step)));
+            let cur_step = stack.pop().expect("step stack empty");
+            assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
         self.build.verbose(&format!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
