@@ -16,21 +16,6 @@ members = [
   "tools/remote-test-server",
   "tools/rust-installer",
   "tools/cargo",
-  "tools/rls",
-  # FIXME(https://github.com/rust-lang/cargo/issues/4089): move these to exclude
-  "tools/rls/test_data/borrow_error",
-  "tools/rls/test_data/completion",
-  "tools/rls/test_data/find_all_refs",
-  "tools/rls/test_data/find_all_refs_no_cfg_test",
-  "tools/rls/test_data/goto_def",
-  "tools/rls/test_data/highlight",
-  "tools/rls/test_data/hover",
-  "tools/rls/test_data/rename",
-  "tools/rls/test_data/reformat",
-  "tools/rls/test_data/bin_lib_no_cfg_test",
-  "tools/rls/test_data/multiple_bins",
-  "tools/rls/test_data/bin_lib",
-  "tools/rls/test_data/reformat_with_range",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit
@@ -49,6 +34,3 @@ debug-assertions = false
 [profile.test]
 debug = false
 debug-assertions = false
-
-[replace]
-"https://github.com/rust-lang/cargo#0.21.0" = { path = "tools/cargo" }

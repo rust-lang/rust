@@ -605,7 +605,6 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
     rules.build("tool-rls", "src/tools/rls")
          .host(true)
-         .default(build.config.extended)
          .dep(|s| s.name("librustc-tool"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
          .dep(move |s| {
@@ -807,7 +806,6 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|d| d.name("dist-mingw"))
          .dep(|d| d.name("dist-docs"))
          .dep(|d| d.name("dist-cargo"))
-         .dep(|d| d.name("dist-rls"))
          .dep(|d| d.name("dist-analysis"))
          .dep(move |s| tool_rust_installer(build, s))
          .run(move |s| dist::extended(build, s.stage, s.target));
@@ -836,7 +834,6 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("dist-cargo"))
          .run(move |s| install::Installer::new(build).install_cargo(s.stage, s.target));
     rules.install("install-rls", "rls")
-         .default(build.config.extended)
          .host(true)
          .only_host_build(true)
          .dep(|s| s.name("dist-rls"))
