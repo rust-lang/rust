@@ -599,19 +599,24 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &'tcx Ty) {
-        if let TyKind::Path(ref qself, ref path) = ty.node {
-            self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
-        } else if let TyKind::ImplicitSelf = ty.node {
-            let self_ty = keywords::SelfType.ident();
-            let def = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, true, ty.span)
-                          .map_or(Def::Err, |d| d.def());
-            self.record_def(ty.id, PathResolution::new(def));
-        } else if let TyKind::Array(ref element, ref length) = ty.node {
-            self.visit_ty(element);
-            self.with_constant_rib(|this| {
-                this.visit_expr(length);
-            });
-            return;
+        match ty.node {
+            TyKind::Path(ref qself, ref path) => {
+                self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
+            }
+            TyKind::ImplicitSelf => {
+                let self_ty = keywords::SelfType.ident();
+                let def = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, true, ty.span)
+                              .map_or(Def::Err, |d| d.def());
+                self.record_def(ty.id, PathResolution::new(def));
+            }
+            TyKind::Array(ref element, ref length) => {
+                self.visit_ty(element);
+                self.with_constant_rib(|this| {
+                    this.visit_expr(length);
+                });
+                return;
+            }
+            _ => (),
         }
         visit::walk_ty(self, ty);
     }
@@ -1221,6 +1226,9 @@ pub struct Resolver<'a> {
     // This table maps struct IDs into struct constructor IDs,
     // it's not used during normal resolution, only for better error reporting.
     struct_constructors: DefIdMap<(Def, ty::Visibility)>,
+
+    // Only used for better errors on `fn(): fn()`
+    current_type_ascription: Vec<Span>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1411,6 +1419,7 @@ impl<'a> Resolver<'a> {
             struct_constructors: DefIdMap(),
             found_unresolved_macro: false,
             unused_macros: FxHashSet(),
+            current_type_ascription: Vec::new(),
         }
     }
 
@@ -2495,6 +2504,7 @@ impl<'a> Resolver<'a> {
             // Fallback label.
             if !levenshtein_worked {
                 err.span_label(base_span, fallback_label);
+                this.type_ascription_suggestion(&mut err, base_span);
             }
             err
         };
@@ -2548,6 +2558,41 @@ impl<'a> Resolver<'a> {
             self.record_def(id, resolution);
         }
         resolution
+    }
+
+    fn type_ascription_suggestion(&self,
+                                  err: &mut DiagnosticBuilder,
+                                  base_span: Span) {
+        debug!("type_ascription_suggetion {:?}", base_span);
+        let cm = self.session.codemap();
+        debug!("self.current_type_ascription {:?}", self.current_type_ascription);
+        if let Some(sp) = self.current_type_ascription.last() {
+            let mut sp = *sp;
+            loop {  // try to find the `:`, bail on first non-':'/non-whitespace
+                sp = sp.next_point();
+                if let Ok(snippet) = cm.span_to_snippet(sp.to(sp.next_point())) {
+                    debug!("snippet {:?}", snippet);
+                    let line_sp = cm.lookup_char_pos(sp.hi).line;
+                    let line_base_sp = cm.lookup_char_pos(base_span.lo).line;
+                    debug!("{:?} {:?}", line_sp, line_base_sp);
+                    if snippet == ":" {
+                        err.span_label(base_span,
+                                       "expecting a type here because of type ascription");
+                        if line_sp != line_base_sp {
+                            err.span_suggestion_short(sp,
+                                                      "did you mean to use `;` here instead?",
+                                                      ";".to_string());
+                        }
+                        break;
+                    } else if snippet.trim().len() != 0  {
+                        debug!("tried to find type ascription `:` token, couldn't find it");
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
     }
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
@@ -3166,7 +3211,11 @@ impl<'a> Resolver<'a> {
                     self.resolve_expr(argument, None);
                 }
             }
-
+            ExprKind::Type(ref type_expr, _) => {
+                self.current_type_ascription.push(type_expr.span);
+                visit::walk_expr(self, expr);
+                self.current_type_ascription.pop();
+            }
             _ => {
                 visit::walk_expr(self, expr);
             }
