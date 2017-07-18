@@ -139,8 +139,7 @@ pub struct Target {
 /// file into this format, and then this is traversed and written into the above
 /// `Config` structure.
 #[derive(Deserialize, Default)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlConfig {
     build: Option<Build>,
     install: Option<Install>,
@@ -152,8 +151,7 @@ struct TomlConfig {
 
 /// TOML representation of various global build decisions.
 #[derive(Deserialize, Default, Clone)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Build {
     build: Option<String>,
     #[serde(default)]
@@ -181,8 +179,7 @@ struct Build {
 
 /// TOML representation of various global install decisions.
 #[derive(Deserialize, Default, Clone)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Install {
     prefix: Option<String>,
     sysconfdir: Option<String>,
@@ -194,8 +191,7 @@ struct Install {
 
 /// TOML representation of how the LLVM build is configured.
 #[derive(Deserialize, Default)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
     ccache: Option<StringOrBool>,
     ninja: Option<bool>,
@@ -211,8 +207,7 @@ struct Llvm {
 }
 
 #[derive(Deserialize, Default, Clone)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Dist {
     sign_folder: Option<String>,
     gpg_password_file: Option<String>,
@@ -235,8 +230,7 @@ impl Default for StringOrBool {
 
 /// TOML representation of how the Rust build is configured.
 #[derive(Deserialize, Default)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Rust {
     optimize: Option<bool>,
     codegen_units: Option<u32>,
@@ -259,8 +253,7 @@ struct Rust {
 
 /// TOML representation of how each build target is configured.
 #[derive(Deserialize, Default)]
-#[serde(deny_unknown_fields)]
-#[serde(rename_all = "kebab-case")]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct TomlTarget {
     llvm_config: Option<String>,
     jemalloc: Option<String>,
