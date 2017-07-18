@@ -15,6 +15,7 @@ use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
 use syntax::codemap::Span;
+use syntax::ast::Mutability;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
@@ -162,7 +163,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         def_id: DefId,
         substs: &'tcx subst::Substs<'tcx>,
         span: Span,
-        shared: bool,
+        mutability: Mutability,
     ) {
         let instance = self.ecx.resolve_associated_const(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
@@ -171,18 +172,22 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         }
         if self.ecx.tcx.has_attr(def_id, "linkage") {
             trace!("Initializing an extern global with NULL");
-            self.ecx.globals.insert(cid, Global::initialized(self.ecx.tcx.type_of(def_id), Value::ByVal(PrimVal::Bytes(0)), !shared));
+            self.ecx.globals.insert(cid, Global::initialized(self.ecx.tcx.type_of(def_id), Value::ByVal(PrimVal::Bytes(0)), mutability));
             return;
         }
         self.try(|this| {
             let mir = this.ecx.load_mir(instance.def)?;
             this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
-            let mutable = !shared ||
-                !mir.return_ty.is_freeze(
+            let internally_mutable = !mir.return_ty.is_freeze(
                     this.ecx.tcx,
                     ty::ParamEnv::empty(Reveal::All),
                     span);
-            let cleanup = StackPopCleanup::MarkStatic(mutable);
+            let mutability = if mutability == Mutability::Mutable || internally_mutable {
+                Mutability::Mutable
+            } else {
+                Mutability::Immutable
+            };
+            let cleanup = StackPopCleanup::MarkStatic(mutability);
             let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
             trace!("pushing stack frame for global: {}", name);
             this.ecx.push_stack_frame(
@@ -214,7 +219,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             // already computed by rustc
             mir::Literal::Value { .. } => {}
             mir::Literal::Item { def_id, substs } => {
-                self.global_item(def_id, substs, constant.span, true);
+                self.global_item(def_id, substs, constant.span, Mutability::Immutable);
             },
             mir::Literal::Promoted { index } => {
                 let cid = GlobalId {
@@ -233,7 +238,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                                               constant.span,
                                               mir,
                                               Lvalue::Global(cid),
-                                              StackPopCleanup::MarkStatic(false),
+                                              StackPopCleanup::MarkStatic(Mutability::Immutable),
                     )
                 });
             }
@@ -254,7 +259,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             if let Some(node_item) = self.ecx.tcx.hir.get_if_local(def_id) {
                 if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {
                     if let hir::ItemStatic(_, m, _) = *node {
-                        self.global_item(def_id, substs, span, m == hir::MutImmutable);
+                        self.global_item(def_id, substs, span, if m == hir::MutMutable { Mutability::Mutable } else { Mutability::Immutable });
                         return;
                     } else {
                         bug!("static def id doesn't point to static");
@@ -265,7 +270,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             } else {
                 let def = self.ecx.tcx.describe_def(def_id).expect("static not found");
                 if let hir::def::Def::Static(_, mutable) = def {
-                    self.global_item(def_id, substs, span, !mutable);
+                    self.global_item(def_id, substs, span, if mutable { Mutability::Mutable } else { Mutability::Immutable });
                 } else {
                     bug!("static found but isn't a static: {:?}", def);
                 }

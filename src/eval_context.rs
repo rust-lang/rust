@@ -12,7 +12,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
 use rustc::traits;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP, Span};
-use syntax::ast;
+use syntax::ast::{self, Mutability};
 use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
@@ -98,8 +98,7 @@ pub enum StackPopCleanup {
     /// isn't modifyable afterwards in case of constants.
     /// In case of `static mut`, mark the memory to ensure it's never marked as immutable through
     /// references or deallocated
-    /// The bool decides whether the value is mutable (true) or not (false)
-    MarkStatic(bool),
+    MarkStatic(Mutability),
     /// A regular stackframe added due to a function call will need to get forwarded to the next
     /// block
     Goto(mir::BasicBlock),
@@ -154,7 +153,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, MemoryPointer> {
         let size = self.type_size_with_substs(ty, substs)?.expect("cannot alloc memory for unsized type");
         let align = self.type_align_with_substs(ty, substs)?;
-        self.memory.allocate(size, align)
+        self.memory.allocate(size, align, ::memory::Kind::Stack)
     }
 
     pub fn memory(&self) -> &Memory<'a, 'tcx> {
@@ -370,7 +369,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // see comment on `initialized` field
                 assert!(!global_value.initialized);
                 global_value.initialized = true;
-                assert!(global_value.mutable);
+                assert_eq!(global_value.mutable, Mutability::Mutable);
                 global_value.mutable = mutable;
             } else {
                 bug!("StackPopCleanup::MarkStatic on: {:?}", frame.return_lvalue);
@@ -414,11 +413,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
-            match self.memory.deallocate(ptr, None) {
-                // We could alternatively check whether the alloc_id is static before calling
-                // deallocate, but this is much simpler and is probably the rare case.
-                Ok(()) | Err(EvalError::DeallocatedStaticMemory) => {},
-                other => return other,
+            match self.memory.get(ptr.alloc_id)?.kind {
+                // for a constant like `const FOO: &i32 = &1;` the local containing
+                // the `1` is referred to by the global. We transitively marked everything
+                // the global refers to as static itself, so we don't free it here
+                ::memory::Kind::Static => {}
+                ::memory::Kind::Stack => self.memory.deallocate(ptr, None, ::memory::Kind::Stack)?,
+                other => bug!("local contained non-stack memory: {:?}", other),
             }
         };
         Ok(())
@@ -693,11 +694,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return Err(EvalError::NeedsRfc("\"heap\" allocations".to_string()));
                 }
                 // FIXME: call the `exchange_malloc` lang item if available
-                if self.type_size(ty)?.expect("box only works with sized types") == 0 {
+                let size = self.type_size(ty)?.expect("box only works with sized types");
+                if size == 0 {
                     let align = self.type_align(ty)?;
                     self.write_primval(dest, PrimVal::Bytes(align.into()), dest_ty)?;
                 } else {
-                    let ptr = self.alloc_ptr(ty)?;
+                    let align = self.type_align(ty)?;
+                    let ptr = self.memory.allocate(size, align, ::memory::Kind::Rust)?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -1022,7 +1025,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
             Lvalue::Ptr { .. } => lvalue,
             Lvalue::Global(cid) => {
-                let global_val = *self.globals.get(&cid).expect("global not cached");
+                let global_val = self.globals.get(&cid).expect("global not cached").clone();
                 match global_val.value {
                     Value::ByRef(ptr, aligned) =>
                         Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None },
@@ -1108,8 +1111,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match dest {
             Lvalue::Global(cid) => {
-                let dest = *self.globals.get_mut(&cid).expect("global should be cached");
-                if !dest.mutable {
+                let dest = self.globals.get_mut(&cid).expect("global should be cached").clone();
+                if dest.mutable == Mutability::Immutable {
                     return Err(EvalError::ModifiedConstantMemory);
                 }
                 let write_dest = |this: &mut Self, val| {
@@ -1594,8 +1597,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn modify_global<F>(&mut self, cid: GlobalId<'tcx>, f: F) -> EvalResult<'tcx>
         where F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
     {
-        let mut val = *self.globals.get(&cid).expect("global not cached");
-        if !val.mutable {
+        let mut val = self.globals.get(&cid).expect("global not cached").clone();
+        if val.mutable == Mutability::Immutable {
             return Err(EvalError::ModifiedConstantMemory);
         }
         val.value = f(self, val.value)?;
@@ -1686,7 +1689,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
 
             // Return value
-            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi())?;
+            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi(), ::memory::Kind::Stack)?;
             cleanup_ptr = Some(ret_ptr);
 
             // Push our stack frame
@@ -1728,7 +1731,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
         while ecx.step()? {}
         if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory.deallocate(cleanup_ptr, None)?;
+            ecx.memory.deallocate(cleanup_ptr, None, ::memory::Kind::Stack)?;
         }
         return Ok(());
     }

@@ -1,14 +1,14 @@
 use rustc::traits::{self, Reveal};
 
 use eval_context::EvalContext;
-use memory::MemoryPointer;
+use memory::{MemoryPointer, Kind};
 use value::{Value, PrimVal};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use syntax::codemap::DUMMY_SP;
-use syntax::ast;
+use syntax::ast::{self, Mutability};
 
 use error::{EvalResult, EvalError};
 
@@ -51,7 +51,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         let ptr_size = self.memory.pointer_size();
         let methods = ::rustc::traits::get_vtable_methods(self.tcx, trait_ref);
-        let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size)?;
+        let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size, Kind::UninitializedStatic)?;
 
         let drop = ::eval_context::resolve_drop_in_place(self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
@@ -68,7 +68,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
 
-        self.memory.mark_static_initalized(vtable.alloc_id, false)?;
+        self.memory.mark_static_initalized(vtable.alloc_id, Mutability::Mutable)?;
 
         Ok(vtable)
     }
