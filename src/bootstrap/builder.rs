@@ -399,19 +399,6 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
-        // When being built Cargo will at some point call `nmake.exe` on Windows
-        // MSVC. Unfortunately `nmake` will read these two environment variables
-        // below and try to intepret them. We're likely being run, however, from
-        // MSYS `make` which uses the same variables.
-        //
-        // As a result, to prevent confusion and errors, we remove these
-        // variables from our environment to prevent passing MSYS make flags to
-        // nmake, causing it to blow up.
-        if cfg!(target_env = "msvc") {
-            cargo.env_remove("MAKE");
-            cargo.env_remove("MAKEFLAGS");
-        }
-
         // Environment variables *required* throughout the build
         //
         // FIXME: should update code to not require this env var
