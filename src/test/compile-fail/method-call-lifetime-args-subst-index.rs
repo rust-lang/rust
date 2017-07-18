@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Test;
+#![feature(rustc_attrs)]
+#![allow(unused)]
 
-impl Test {
-    fn method<T>(&self, v: &[T]) -> usize {
-        v.len()
-    }
+struct S;
+
+impl S {
+    fn early_and_type<'a, T>(self) -> &'a T { loop {} }
 }
 
-fn main() {
-    let x = Test;
-    let v = &[0];
-    x.method::<i32, i32>(v); //~ ERROR E0036
-                             //~| NOTE Passed 2 type arguments, expected 1
+fn test() {
+    S.early_and_type::<u16>();
 }
+
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

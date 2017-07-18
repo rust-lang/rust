@@ -346,6 +346,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Ge
             // `def_id.index` (`def_id.krate` is the same as the item's).
             type_param_to_index: _, // Don't hash this
             has_self,
+            has_late_bound_regions,
         } = *self;
 
         parent.hash_stable(hcx, hasher);
@@ -354,6 +355,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Ge
         regions.hash_stable(hcx, hasher);
         types.hash_stable(hcx, hasher);
         has_self.hash_stable(hcx, hasher);
+        has_late_bound_regions.hash_stable(hcx, hasher);
     }
 }
 

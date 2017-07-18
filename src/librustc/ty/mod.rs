@@ -719,6 +719,7 @@ pub struct Generics {
     pub type_param_to_index: BTreeMap<DefIndex, u32>,
 
     pub has_self: bool,
+    pub has_late_bound_regions: bool,
 }
 
 impl Generics {
