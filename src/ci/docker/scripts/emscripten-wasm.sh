@@ -28,7 +28,7 @@ exit 1
 }
 
 # Download last known good emscripten from WebAssembly waterfall
-BUILD=$(curl -sL https://storage.googleapis.com/wasm-llvm/builds/linux/lkgr.json | \
+BUILD=$(curl -fL https://storage.googleapis.com/wasm-llvm/builds/linux/lkgr.json | \
     jq '.build | tonumber')
 curl -sL https://storage.googleapis.com/wasm-llvm/builds/linux/$BUILD/wasm-binaries.tbz2 | \
     hide_output tar xvkj
