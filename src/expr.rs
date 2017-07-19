@@ -2401,8 +2401,13 @@ fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
 
 fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) -> Option<String> {
     debug!("rewrite_paren, shape: {:?}", shape);
-    let paren_overhead = paren_overhead(context);
-    let sub_shape = try_opt!(shape.sub_width(paren_overhead / 2)).visual_indent(paren_overhead / 2);
+    let total_paren_overhead = paren_overhead(context);
+    let paren_overhead = total_paren_overhead / 2;
+    let sub_shape = try_opt!(
+        shape
+            .offset_left(paren_overhead)
+            .and_then(|s| s.sub_width(paren_overhead))
+    );
 
     let paren_wrapper = |s: &str| if context.config.spaces_within_parens() && s.len() > 0 {
         format!("( {} )", s)
@@ -2413,16 +2418,12 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) ->
     let subexpr_str = try_opt!(subexpr.rewrite(context, sub_shape));
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
 
-    if subexpr_str.contains('\n') {
+    if subexpr_str.contains('\n') ||
+        first_line_width(&subexpr_str) + total_paren_overhead <= shape.width
+    {
         Some(paren_wrapper(&subexpr_str))
     } else {
-        if subexpr_str.len() + paren_overhead <= shape.width {
-            Some(paren_wrapper(&subexpr_str))
-        } else {
-            let sub_shape = try_opt!(shape.offset_left(2));
-            let subexpr_str = try_opt!(subexpr.rewrite(context, sub_shape));
-            Some(paren_wrapper(&subexpr_str))
-        }
+        None
     }
 }
 
