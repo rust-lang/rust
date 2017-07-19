@@ -18,7 +18,7 @@ fn main() {
     let x: Foo<Struct> = Foo(Struct(42));
     let y: &Foo<Trait> = &x;
     y.0.method();
-    /*
+
     let x: Box<Fn(i32) -> i32> = Box::new(|x| x * 2);
     assert_eq!(x(21), 42);
     let mut i = 5;
@@ -27,5 +27,4 @@ fn main() {
         x(); x();
     }
     assert_eq!(i, 20);
-    */
 }
