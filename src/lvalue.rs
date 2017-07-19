@@ -193,7 +193,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.read_lvalue(lvalue, ty)
     }
 
-    fn read_lvalue(&self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn read_lvalue(&self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if ty.is_never() {
             return Err(EvalError::Unreachable);
         }
