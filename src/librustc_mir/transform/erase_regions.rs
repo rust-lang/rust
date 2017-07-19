@@ -15,7 +15,7 @@
 use rustc::ty::subst::Substs;
 use rustc::ty::{Ty, TyCtxt, ClosureSubsts};
 use rustc::mir::*;
-use rustc::mir::visit::MutVisitor;
+use rustc::mir::visit::{MutVisitor, PositionalInfo};
 use rustc::mir::transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
@@ -31,12 +31,12 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>) {
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: PositionalInfo) {
         let old_ty = *ty;
         *ty = self.tcx.erase_regions(&old_ty);
     }
 
-    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
+    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, _: Location) {
         *substs = self.tcx.erase_regions(&{*substs});
     }
 
@@ -62,7 +62,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_closure_substs(&mut self,
-                            substs: &mut ClosureSubsts<'tcx>) {
+                            substs: &mut ClosureSubsts<'tcx>,
+                            _: Location) {
         *substs = self.tcx.erase_regions(substs);
     }
 
