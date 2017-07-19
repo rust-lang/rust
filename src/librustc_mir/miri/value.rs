@@ -3,8 +3,8 @@
 
 use rustc::ty::layout::TargetDataLayout;
 
-use error::{EvalError, EvalResult};
-use memory::{Memory, MemoryPointer, HasMemory};
+use super::error::{EvalError, EvalResult};
+use super::memory::{Memory, MemoryPointer, HasMemory};
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     f32::from_bits(bytes as u32)

@@ -1,8 +1,10 @@
 use rustc::traits::{self, Reveal};
 
-use eval_context::EvalContext;
-use memory::{MemoryPointer, Kind};
-use value::{Value, PrimVal};
+use super::eval_context::{
+    EvalContext, resolve, resolve_drop_in_place,
+};
+use super::memory::{MemoryPointer, Kind};
+use super::value::{Value, PrimVal};
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
@@ -10,7 +12,7 @@ use rustc::ty::{self, Ty};
 use syntax::codemap::DUMMY_SP;
 use syntax::ast::{self, Mutability};
 
-use error::{EvalResult, EvalError};
+use super::error::{EvalResult, EvalError};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
@@ -53,7 +55,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let methods = ::rustc::traits::get_vtable_methods(self.tcx, trait_ref);
         let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size, Kind::UninitializedStatic)?;
 
-        let drop = ::eval_context::resolve_drop_in_place(self.tcx, ty);
+        let drop = resolve_drop_in_place(self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
         self.memory.write_ptr(vtable, drop)?;
 
@@ -62,7 +64,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         for (i, method) in ::rustc::traits::get_vtable_methods(self.tcx, trait_ref).enumerate() {
             if let Some((def_id, substs)) = method {
-                let instance = ::eval_context::resolve(self.tcx, def_id, substs);
+                let instance = resolve(self.tcx, def_id, substs);
                 let fn_ptr = self.memory.create_fn_alloc(instance);
                 self.memory.write_ptr(vtable.offset(ptr_size * (3 + i as u64), self.memory.layout)?, fn_ptr)?;
             }

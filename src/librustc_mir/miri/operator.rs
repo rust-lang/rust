@@ -1,11 +1,11 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
 
-use error::{EvalError, EvalResult};
-use eval_context::EvalContext;
-use memory::MemoryPointer;
-use lvalue::Lvalue;
-use value::{
+use super::error::{EvalError, EvalResult};
+use super::eval_context::EvalContext;
+use super::memory::MemoryPointer;
+use super::lvalue::Lvalue;
+use super::value::{
     PrimVal,
     PrimValKind,
     Value,
@@ -72,7 +72,7 @@ macro_rules! int_arithmetic {
     ($kind:expr, $int_op:ident, $l:expr, $r:expr) => ({
         let l = $l;
         let r = $r;
-        use value::PrimValKind::*;
+        use super::value::PrimValKind::*;
         match $kind {
             I8  => overflow!($int_op, l as i8,  r as i8),
             I16 => overflow!($int_op, l as i16, r as i16),
@@ -142,7 +142,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
         use rustc::mir::BinOp::*;
-        use value::PrimValKind::*;
+        use super::value::PrimValKind::*;
 
         let left_kind  = self.ty_to_primval_kind(left_ty)?;
         let right_kind = self.ty_to_primval_kind(right_ty)?;
@@ -344,7 +344,7 @@ pub fn unary_op<'tcx>(
     val_kind: PrimValKind,
 ) -> EvalResult<'tcx, PrimVal> {
     use rustc::mir::UnOp::*;
-    use value::PrimValKind::*;
+    use super::value::PrimValKind::*;
 
     let bytes = val.to_bytes()?;
 

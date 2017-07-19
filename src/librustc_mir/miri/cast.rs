@@ -1,9 +1,9 @@
 use rustc::ty::{self, Ty};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
-use error::{EvalResult, EvalError};
-use eval_context::EvalContext;
-use value::PrimVal;
+use super::error::{EvalResult, EvalError};
+use super::eval_context::EvalContext;
+use super::value::PrimVal;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn cast_primval(
@@ -14,7 +14,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, PrimVal> {
         let kind = self.ty_to_primval_kind(src_ty)?;
 
-        use value::PrimValKind::*;
+        use super::value::PrimValKind::*;
         match kind {
             F32 => self.cast_float(val.to_f32()? as f64, dest_ty),
             F64 => self.cast_float(val.to_f64()?, dest_ty),

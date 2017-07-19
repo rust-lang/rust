@@ -4,11 +4,11 @@ use rustc::ty::layout::{Layout, Size, Align};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 
-use error::{EvalError, EvalResult};
-use eval_context::EvalContext;
-use lvalue::{Lvalue, LvalueExtra};
-use value::{PrimVal, PrimValKind, Value, Pointer};
-use memory::HasMemory;
+use miri::error::{EvalError, EvalResult};
+use miri::eval_context::EvalContext;
+use miri::lvalue::{Lvalue, LvalueExtra};
+use miri::value::{PrimVal, PrimValKind, Value, Pointer};
+use miri::memory::HasMemory;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
@@ -581,7 +581,7 @@ fn numeric_intrinsic<'tcx>(
 ) -> EvalResult<'tcx, PrimVal> {
     macro_rules! integer_intrinsic {
         ($method:ident) => ({
-            use value::PrimValKind::*;
+            use miri::value::PrimValKind::*;
             let result_bytes = match kind {
                 I8 => (bytes as i8).$method() as u128,
                 U8 => (bytes as u8).$method() as u128,

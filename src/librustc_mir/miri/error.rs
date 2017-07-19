@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
-use memory::{MemoryPointer, Kind};
+use super::memory::{MemoryPointer, Kind};
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
@@ -77,7 +77,7 @@ pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
 impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
-        use EvalError::*;
+        use self::EvalError::*;
         match *self {
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
@@ -189,7 +189,7 @@ impl<'tcx> Error for EvalError<'tcx> {
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use EvalError::*;
+        use self::EvalError::*;
         match *self {
             PointerOutOfBounds { ptr, access, allocation_size } => {
                 write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",

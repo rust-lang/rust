@@ -30,6 +30,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![cfg_attr(stage0, feature(associated_consts))]
 
 #[macro_use] extern crate log;
+extern crate log_settings;
 extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
@@ -44,6 +45,9 @@ extern crate rustc_const_math;
 extern crate rustc_const_eval;
 extern crate core; // for NonZero
 
+extern crate byteorder;
+
+
 pub mod diagnostics;
 
 mod build;
@@ -52,6 +56,7 @@ mod hair;
 mod shim;
 pub mod transform;
 pub mod util;
+pub mod miri;
 
 use rustc::ty::maps::Providers;
 

@@ -10,10 +10,11 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::Layout;
 use rustc::ty::{subst, self};
 
-use error::{EvalResult, EvalError};
-use eval_context::{EvalContext, StackPopCleanup};
-use lvalue::{Global, GlobalId, Lvalue};
-use value::{Value, PrimVal};
+use super::error::{EvalResult, EvalError};
+use super::eval_context::{EvalContext, StackPopCleanup};
+use super::lvalue::{Global, GlobalId, Lvalue};
+use super::value::{Value, PrimVal};
+
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 

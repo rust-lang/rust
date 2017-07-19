@@ -2,17 +2,18 @@ use rustc::traits::Reveal;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use syntax::ast::Mutability;
 
-use error::{EvalError, EvalResult};
-use lvalue::{Global, GlobalId, Lvalue};
-use value::PrimVal;
+use super::error::{EvalError, EvalResult};
+use super::lvalue::{Global, GlobalId, Lvalue};
+use super::value::PrimVal;
 use rustc_const_math::ConstInt;
-use eval_context::{EvalContext, StackPopCleanup};
+use super::eval_context::{EvalContext, StackPopCleanup};
+use super::ResourceLimits;
 
 pub fn eval_body_as_primval<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
 ) -> EvalResult<'tcx, (PrimVal, Ty<'tcx>)> {
-    let limits = ::ResourceLimits::default();
+    let limits = ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, limits);
     let cid = GlobalId { instance, promoted: None };
     if ecx.tcx.has_attr(instance.def_id(), "linkage") {
