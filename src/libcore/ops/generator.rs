@@ -16,7 +16,7 @@
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[cfg_attr(not(stage0), lang = "generator_state")]
 #[unstable(feature = "generator_trait", issue = "43122")]
-pub enum State<Y, R> {
+pub enum GeneratorState<Y, R> {
     /// The generator suspended with a value.
     ///
     /// This state indicates that a generator has been suspended, and typically
@@ -116,7 +116,7 @@ pub trait Generator {
     /// been returned previously. While generator literals in the language are
     /// guaranteed to panic on resuming after `Complete`, this is not guaranteed
     /// for all implementations of the `Generator` trait.
-    fn resume(&mut self) -> State<Self::Yield, Self::Return>;
+    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return>;
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
@@ -125,7 +125,7 @@ impl<'a, T> Generator for &'a mut T
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self) -> State<Self::Yield, Self::Return> {
+    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
         (**self).resume()
     }
 }

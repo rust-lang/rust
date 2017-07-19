@@ -191,7 +191,7 @@ pub use self::range::{RangeInclusive, RangeToInclusive};
 pub use self::try::Try;
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-pub use self::generator::{Generator, State};
+pub use self::generator::{Generator, GeneratorState};
 
 #[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub use self::place::{Place, Placer, InPlace, Boxed, BoxPlace};

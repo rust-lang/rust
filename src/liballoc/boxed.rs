@@ -66,7 +66,7 @@ use core::hash::{self, Hash};
 use core::iter::FusedIterator;
 use core::marker::{self, Unsize};
 use core::mem;
-use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, State};
+use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, Unique};
 use core::convert::From;
@@ -791,7 +791,7 @@ impl<T> Generator for Box<T>
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self) -> State<Self::Yield, Self::Return> {
+    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
         (**self).resume()
     }
 }
