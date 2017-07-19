@@ -53,7 +53,7 @@ However these static functions are fairly cumbersome in the common case, where y
 
 ## Signed Offset
 
-The cast in `ptr.offset(idx as isize)` is unnecessarily annoying. Idiomatic Rust code uses unsigned offsets, but the low level code has to constantly cast those offsets. To understand why this interface is designed as it is, some background is neeeded.
+The cast in `ptr.offset(idx as isize)` is unnecessarily annoying. Idiomatic Rust code uses unsigned offsets, but low level code is forced to constantly cast those offsets. To understand why this interface is designed as it is, some background is neeeded.
 
 `offset` is directly exposing LLVM's `getelementptr` instruction, with the `inbounds` keyword. `wrapping_offset` removes the `inbounds` keyword. `offset` takes a signed integer, because that's what GEP exposes. It's understandable that we've been conservative here; GEP is so confusing that it has an [entire FAQ](http://llvm.org/docs/GetElementPtr.html).
 
@@ -69,20 +69,20 @@ That said, LLVM is pretty candid that it models pointers as two's complement int
 >
 > As such, there are some ramifications of this for inbounds GEPs: scales implied by array/vector/pointer indices are always known to be “nsw” since they are signed values that are scaled by the element size. These values are also allowed to be negative (e.g. “`gep i32 *%P, i32 -1`”) but the pointer itself is logically treated as an unsigned value. This means that GEPs have an asymmetric relation between the pointer base (which is treated as unsigned) and the offset applied to it (which is treated as signed). The result of the additions within the offset calculation cannot have signed overflow, but when applied to the base pointer, there can be signed overflow.
 
-This is written in a bit of a confusing way, so here's a simplified summary of what we care about: 
+This is written in a bit of a confusing way, so here's a simplified summary of what we care about:
 
-* The pointer is treated as an unsigned number, and the offset as signed. 
-* While computing the offset in bytes (`idx * size_of::<T>()`), we aren't allowed to do signed overflow (nsw). 
+* The pointer is treated as an unsigned number, and the offset as signed.
+* While computing the offset in bytes (`idx * size_of::<T>()`), we aren't allowed to do signed overflow (nsw).
 * While applying the offset to the pointer (`ptr + offset`), we aren't allowed to do unsigned overflow (nuw).
 
-Part of the historical argument for signed offset in Rust has been a *warning* against these overflow concerns, but upon inspection that doesn't really make sense. 
+Part of the historical argument for signed offset in Rust has been a *warning* against these overflow concerns, but upon inspection that doesn't really make sense.
 
-* If you offset a `*const i16` by `isize::MAX / 3 * 2` (which fits into a signed integer), then you'll still overflow a signed integer in the implicit `offset` computation. 
+* If you offset a `*const i16` by `isize::MAX / 3 * 2` (which fits into a signed integer), then you'll still overflow a signed integer in the implicit `offset` computation.
 * There's no indication that unsigned overflow should be a concern at all.
 * The location of the offset *isn't even* the place to handle this issue. The ultimate consequence of `offset` being signed is that LLVM can't support allocations larger than `isize::MAX` bytes. Therefore this issue should be handled at the level of memory allocation code.
 * The fact that `offset` is `unsafe` is already surprising to anyone with the "it's just addition" mental model, pushing them to read the documentation and learn the actual rules.
 
-In conclusion: `as isize` doesn't actually help our developers write better code.
+In conclusion: `as isize` doesn't help developers write better code.
 
 
 
@@ -95,16 +95,18 @@ In conclusion: `as isize` doesn't actually help our developers write better code
 
 Add the following method equivalents for the static `ptr` functions on `*const T` and `*mut T`:
 
+(Note that this proposal doesn't deprecate the static functions, as they still make some code more ergonomic than methods, and we'd like to avoid regressing the ergonomics of any usecase. More discussion can be found in the alternatives.)
+
 ```rust
 impl<T> *(const|mut) T {
   unsafe fn read(self) -> T;
   unsafe fn read_volatile(self) -> T;
   unsafe fn read_unaligned(self) -> T;
 
-  // NOTE: name changed from the original static fn to make it 
+  // NOTE: name changed from the original static fn to make it
   // easier to remember argument order
   unsafe fn copy_to(self, dest: *mut T, count: usize);
-  unsafe fn copy_to_nonoverlapping(self, src: *mut T, count: usize);
+  unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize);
 }
 ```
 
@@ -113,7 +115,7 @@ And these only on `*mut T`:
 ```rust
 impl<T> *mut T {
   // note that I've moved these from both to just `*mut T`, to go along with `copy_from`
-  unsafe fn drop_in_place(self);
+  unsafe fn drop_in_place(self) where T: ?Sized;
   unsafe fn write(self, val: T);
   unsafe fn write_bytes(self, val: u8, count: usize);
   unsafe fn write_volatile(self, val: T);
@@ -123,14 +125,12 @@ impl<T> *mut T {
 }
 ```
 
-Note that this proposal doesn't deprecate the static functions, as they still make some code more ergonomic than methods, and we'd like to avoid regressing the ergonomics of any usecase. (More discussion can be found in the alternatives.)
-
 
 
 
 ## Unsigned Offset
 
-Add the following conveniences to both `*const T` and `*mut T`: 
+Add the following conveniences to both `*const T` and `*mut T`:
 
 ```rust
 impl<T> *(const|mut) T {
@@ -141,7 +141,7 @@ impl<T> *(const|mut) T {
 }
 ```
 
-I expect `ptr.add` to replace ~95% of all uses of `ptr.offset`, and `ptr.sub` to replace ~95% of the remaining 5%. It's just very rare to have an offset that you don't know the sign of, and don't need special handling for.
+I expect `ptr.add` to replace ~95% of all uses of `ptr.offset`, and `ptr.sub` to replace ~95% of the remaining 5%. It's very rare to have an offset that you don't know the sign of, and *also* don't need special handling for.
 
 
 
@@ -174,23 +174,23 @@ The only drawback I can think of is that this introduces a "what is idiomatic" s
 
 ## Overload operators for more ergonomic offsets
 
-Rust doesn't support "unsafe operators", and `offset` is an unsafe function because of the semantics of GetElementPointer. We could make `wrapping_add` be the implementation of `+`, but almost no code should actually be using wrapping offsets, so we shouldn't do anything to make it seem "preferred" over non-wrapping offsets. 
+Rust doesn't support "unsafe operators", and `offset` is an unsafe function because of the semantics of GetElementPointer. We could make `wrapping_add` be the implementation of `+`, but almost no code should actually be using wrapping offsets, so we shouldn't do anything to make it seem "preferred" over non-wrapping offsets.
 
 Beyond that, `(ptr + idx).read_volatile()` is a bit wonky to write -- methods chain better than operators.
 
 
 
 
-## Make `offset` generic 
+## Make `offset` generic
 
-You could make `offset` generic so it accepts `usize` and `isize`. However you would still want the `sub` method, and at that point you might as well have `add` for symmetry. Also `add` is shorter which is a nice carrot for users to migrate to it.
+We could make `offset` generic so it accepts `usize` and `isize`. However we would still want the `sub` method, and at that point we might as well have `add` for symmetry. Also `add` is shorter which is a nice carrot for users to migrate to it.
 
 
 
 
 ## `copy_from`
 
-`copy` is the only mutating `ptr` operation that doesn't write to the *first* argument. In fact, it's clearly backwards compared to C's memcpy. Instead it's ordered in analogy to `fs::copy`. 
+`copy` is the only mutating `ptr` operation that doesn't write to the *first* argument. In fact, it's clearly backwards compared to C's memcpy. Instead it's ordered in analogy to `fs::copy`.
 
 Methodization could be an opportunity to "fix" this, and reorder the arguments. I don't have any strong feelings for which order is better, but I am concerned that doing this reordering will lead to developer errors. Either in translating to the new methods, or in using the method order when deciding to use the old functions.
 
@@ -208,9 +208,9 @@ To avoid any issues with the methods and static functions coexisting, we could d
 <*mut _>::foo(ptr);
 ```
 
-I personally consider this a minor ergonomic and readability regression from `ptr::foo(ptr)`, and so would rather not do this. 
+I personally consider this a minor ergonomic and readability regression from `ptr::foo(ptr)`, and so would rather not do this.
 
-More importantly, this would cause needless churn for old code which is still perfectly *fine*, if a bit less ergonomic than it could be. More ergonomic interfaces should be adopted based on their own merits; not because This Is The New Way, And Everyone Should Do It The New Way. 
+More importantly, this would cause needless churn for old code which is still perfectly *fine*, if a bit less ergonomic than it could be. More ergonomic interfaces should be adopted based on their own merits; not because This Is The New Way, And Everyone Should Do It The New Way.
 
 In fact, even if we decide we should deprecate these functions, we should still stagger the deprecation out several releases to minimize ecosystem churn. When a deprecation occurs, users of the latest compiler will be pressured by diagnostics to update their code to the new APIs. If those APIs were introduced in the same release, then they'll be making their library only compile on the latest release, effectively breaking the library for anyone who hasn't had a chance to upgrade yet. If the deprecation were instead done several releases later, then by the time users are pressured to use the new APIs there will be a buffer of several stable releases that can compile code using the new APIs.
 
