@@ -13,7 +13,7 @@
 /// This enum is returned from the `Generator::resume` method and indicates the
 /// possible return values of a generator. Currently this corresponds to either
 /// a suspension point (`Yielded`) or a termination point (`Complete`).
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[cfg_attr(not(stage0), lang = "generator_state")]
 #[unstable(feature = "generator_trait", issue = "43122")]
 pub enum State<Y, R> {
