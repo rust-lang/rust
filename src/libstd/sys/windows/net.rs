@@ -282,7 +282,7 @@ impl Socket {
 
     fn set_no_inherit(&self) -> io::Result<()> {
         sys::cvt(unsafe {
-            c::SetHandleInformation(self.0 as c::HANDLE,
+            c::SetHandleInformation(self.0 as usize as c::HANDLE,
                                     c::HANDLE_FLAG_INHERIT, 0)
         }).map(|_| ())
     }
