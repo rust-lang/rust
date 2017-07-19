@@ -28,6 +28,7 @@ use ty::steal::Steal;
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
 use util::nodemap::{DefIdSet, NodeSet};
+use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
@@ -510,6 +511,16 @@ impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
 impl<'tcx> QueryDescription for queries::lint_levels<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("computing the lint levels for items in this crate")
+}
+
+// If enabled, send a message to the profile-queries thread
+macro_rules! profq_msg {
+    ($tcx:expr, $msg:expr) => {
+        if cfg!(debug_assertions) {
+            if $tcx.sess.opts.debugging_opts.profile_queries {
+                profq_msg($msg)
+            }
+        }
     }
 }
 
@@ -537,6 +548,12 @@ macro_rules! define_maps {
         #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
+        }
+
+        #[allow(bad_style)]
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub enum QueryMsg {
+            $($name(String)),*
         }
 
         impl<$tcx> Query<$tcx> {
@@ -581,10 +598,17 @@ macro_rules! define_maps {
                        key,
                        span);
 
+                profq_msg!(tcx,
+                    ProfileQueriesMsg::QueryBegin(span.clone(),
+                                                  QueryMsg::$name(format!("{:?}", key))));
+
                 if let Some(&(ref result, dep_node_index)) = tcx.maps.$name.borrow().map.get(&key) {
                     tcx.dep_graph.read_index(dep_node_index);
+                    profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                     return Ok(f(result));
                 }
+                // else, we are going to run the provider:
+                profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
 
                 // FIXME(eddyb) Get more valid Span's on queries.
                 // def_span guard is necessary to prevent a recursive loop,
@@ -612,6 +636,7 @@ macro_rules! define_maps {
                         tcx.dep_graph.with_task(dep_node, tcx, key, run_provider)
                     }
                 })?;
+                profq_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
 
                 tcx.dep_graph.read_index(dep_node_index);
 

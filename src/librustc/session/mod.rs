@@ -389,6 +389,7 @@ impl Session {
     }
     pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
     pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
+    pub fn profile_queries(&self) -> bool { self.opts.debugging_opts.profile_queries }
     pub fn count_llvm_insns(&self) -> bool {
         self.opts.debugging_opts.count_llvm_insns
     }
