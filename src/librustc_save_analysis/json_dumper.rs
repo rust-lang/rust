@@ -56,8 +56,14 @@ impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
 }
 
 impl<'b> JsonDumper<CallbackOutput<'b>> {
-    pub fn with_callback(callback: &'b mut FnMut(&Analysis), config: Config) -> JsonDumper<CallbackOutput<'b>> {
-        JsonDumper { output: CallbackOutput { callback: callback }, config, result: Analysis::new() }
+    pub fn with_callback(callback: &'b mut FnMut(&Analysis),
+                         config: Config)
+                         -> JsonDumper<CallbackOutput<'b>> {
+        JsonDumper {
+            output: CallbackOutput { callback: callback },
+            config,
+            result: Analysis::new(),
+        }
     }
 }
 

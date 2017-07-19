@@ -897,7 +897,8 @@ impl<'a> DumpHandler<'a> {
                     error!("Could not create directory {}: {}", root_path.display(), e);
                 }
 
-                let executable = sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
+                let executable =
+                    sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
                 let mut out_name = if executable {
                     "".to_owned()
                 } else {
