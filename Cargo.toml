@@ -1,0 +1,31 @@
+[package]
+authors = ["Scott Olson <scott@solson.me>"]
+description = "An experimental interpreter for Rust MIR."
+license = "MIT/Apache-2.0"
+name = "miri"
+repository = "https://github.com/solson/miri"
+version = "0.1.0"
+
+[[bin]]
+doc = false
+name = "miri"
+test = false
+
+[[bin]]
+doc = false
+name = "cargo-miri"
+test = false
+
+[lib]
+test = false
+
+[dependencies]
+#byteorder = "0.4.2"
+byteorder = { git = "https://github.com/BurntSushi/byteorder", features = ["i128"]}
+env_logger = "0.3.3"
+log = "0.3.6"
+log_settings = "0.1.1"
+cargo_metadata = "0.2"
+
+[dev-dependencies]
+compiletest_rs = "0.2.6"
