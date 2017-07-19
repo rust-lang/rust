@@ -46,9 +46,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     fn cast_int(&self, v: u128, ty: ty::Ty<'tcx>, negative: bool) -> EvalResult<'tcx, PrimVal> {
         use rustc::ty::TypeVariants::*;
         match ty.sty {
-            TyBool if v == 0 => Ok(PrimVal::from_bool(false)),
-            TyBool if v == 1 => Ok(PrimVal::from_bool(true)),
-            TyBool => Err(EvalError::InvalidBool),
+            // Casts to bool are not permitted by rustc, no need to handle them here.
 
             TyInt(IntTy::I8)  => Ok(PrimVal::Bytes(v as i128 as i8  as u128)),
             TyInt(IntTy::I16) => Ok(PrimVal::Bytes(v as i128 as i16 as u128)),
