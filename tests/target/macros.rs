@@ -72,10 +72,10 @@ fn main() {
     vec![
         a;
         (|x| {
-             let y = x + 1;
-             let z = y + 1;
-             z
-         })(2)
+            let y = x + 1;
+            let z = y + 1;
+            z
+        })(2)
     ];
     vec![
         a;

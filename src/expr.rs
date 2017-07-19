@@ -1428,7 +1428,7 @@ fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
 // the expression.
 pub fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
     (block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0]) &&
-         !block_contains_comment(block, codemap))
+        !block_contains_comment(block, codemap))
 }
 
 /// Checks whether a block contains at most one statement or expression, and no comments.
@@ -1770,7 +1770,7 @@ fn rewrite_match_body(
             Some(ref body_str)
                 if !forbid_same_line &&
                     (is_block ||
-                         (!body_str.contains('\n') && body_str.len() <= body_shape.width)) =>
+                        (!body_str.contains('\n') && body_str.len() <= body_shape.width)) =>
             {
                 return combine_orig_body(body_str);
             }
@@ -2375,7 +2375,7 @@ pub fn wrap_args_with_parens(
 ) -> String {
     if !context.use_block_indent() ||
         (context.inside_macro && !args_str.contains('\n') &&
-             args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
+            args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
     {
         if context.config.spaces_within_parens() && args_str.len() > 0 {
             format!("( {} )", args_str)
@@ -2605,8 +2605,8 @@ pub fn wrap_struct_field(
 ) -> String {
     if context.config.struct_lit_style() == IndentStyle::Block &&
         (fields_str.contains('\n') ||
-             context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti ||
-             fields_str.len() > one_line_width)
+            context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti ||
+            fields_str.len() > one_line_width)
     {
         format!(
             "\n{}{}\n{}",

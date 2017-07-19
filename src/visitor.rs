@@ -632,12 +632,12 @@ impl<'a> FmtVisitor<'a> {
                     .take_while(|ppi| {
                         is_use_item(&***ppi) &&
                             (!reorder_imports_in_group ||
-                                 {
-                                     let current = self.codemap.lookup_line_range(item_bound(&ppi));
-                                     let in_same_group = current.lo < last.hi + 2;
-                                     last = current;
-                                     in_same_group
-                                 })
+                                {
+                                    let current = self.codemap.lookup_line_range(item_bound(&ppi));
+                                    let in_same_group = current.lo < last.hi + 2;
+                                    last = current;
+                                    in_same_group
+                                })
                     })
                     .count();
                 let (use_items, rest) = items_left.split_at(use_item_length);
