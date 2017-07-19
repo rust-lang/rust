@@ -16,6 +16,7 @@ use rustc::traits::ObligationCause;
 use syntax::ast;
 use syntax_pos::{self, Span};
 use rustc::hir;
+use rustc::hir::print;
 use rustc::hir::def::Def;
 use rustc::ty::{self, Ty, AssociatedItem};
 use errors::{DiagnosticBuilder, CodeMapper};
@@ -94,6 +95,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
             let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
+
+            // If the expected type is an enum with any variants whose sole
+            // field is of the found type, suggest such variants. See Issue
+            // #42764.
+            if let ty::TyAdt(expected_adt, substs) = expected.sty {
+                let mut compatible_variants = vec![];
+                for variant in &expected_adt.variants {
+                    if variant.fields.len() == 1 {
+                        let sole_field = &variant.fields[0];
+                        let sole_field_ty = sole_field.ty(self.tcx, substs);
+                        if self.can_coerce(expr_ty, sole_field_ty) {
+                            let mut variant_path = self.tcx.item_path_str(variant.did);
+                            variant_path = variant_path.trim_left_matches("std::prelude::v1::")
+                                .to_string();
+                            compatible_variants.push(variant_path);
+                        }
+                    }
+                }
+                if !compatible_variants.is_empty() {
+                    let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
+                    let suggestions = compatible_variants.iter()
+                        .map(|v| format!("{}({})", v, expr_text)).collect::<Vec<_>>();
+                    err.span_suggestions(expr.span,
+                                         "perhaps you meant to use a variant of the expected type",
+                                         suggestions);
+                }
+            }
+
             if let Some(suggestion) = self.check_ref(expr,
                                                      checked_ty,
                                                      expected) {
