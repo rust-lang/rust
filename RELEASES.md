@@ -102,7 +102,7 @@ Compatibility Notes
   command, which has been available since 1.16.
 - [Ending a float literal with `._` is now a hard error.
   Example: `42._` .][41946]
-- [Any use of a private `extern crate` outside of it's module is now a
+- [Any use of a private `extern crate` outside of its module is now a
   hard error.][36886] This was previously a warning.
 - [`use ::self::foo;` is now a hard error.][36888] `self` paths are always
   relative while the `::` prefix makes a path absolute, but was ignored and the
