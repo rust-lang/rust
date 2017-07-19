@@ -56,6 +56,7 @@ pub use value::{
     PrimVal,
     PrimValKind,
     Value,
+    Pointer,
 };
 
 pub use const_eval::{
