@@ -670,9 +670,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Ref(_, _, ref lvalue) => {
                 let src = self.eval_lvalue(lvalue)?;
-                // We ignore the alignment of the lvalue here -- this rvalue produces sth. of type &, which must always be aligned.
+                // We ignore the alignment of the lvalue here -- special handling for packed structs ends
+                // at the `&` operator.
                 let (ptr, extra, _aligned) = self.force_allocation(src)?.to_ptr_extra_aligned();
-                let ty = self.lvalue_ty(lvalue);
 
                 let val = match extra {
                     LvalueExtra::None => ptr.to_value(),
