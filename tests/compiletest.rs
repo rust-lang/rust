@@ -83,8 +83,7 @@ fn for_all_targets<F: FnMut(String)>(sysroot: &Path, mut f: F) {
     }
 }
 
-#[test]
-fn compile_test() {
+fn get_sysroot() -> PathBuf {
     let sysroot = std::env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
         let sysroot = std::process::Command::new("rustc")
             .arg("--print")
@@ -94,7 +93,10 @@ fn compile_test() {
             .stdout;
         String::from_utf8(sysroot).expect("sysroot is not utf8")
     });
-    let sysroot = &Path::new(sysroot.trim());
+    PathBuf::from(sysroot.trim())
+}
+
+fn get_host() -> String {
     let host = std::process::Command::new("rustc")
         .arg("-vV")
         .output()
@@ -103,8 +105,15 @@ fn compile_test() {
     let host = std::str::from_utf8(&host).expect("sysroot is not utf8");
     let host = host.split("\nhost: ").nth(1).expect("no host: part in rustc -vV");
     let host = host.split('\n').next().expect("no \n after host");
+    String::from(host)
+}
 
+#[test]
+fn rustc_test() {
     if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
+        let sysroot = get_sysroot();
+        let host = get_host();
+
         let mut mir_not_found = Vec::new();
         let mut crate_not_found = Vec::new();
         let mut success = 0;
@@ -215,16 +224,47 @@ fn compile_test() {
         print_vec(&mut stderr, crate_not_found);
 
         panic!("ran miri on rustc test suite. Test failing for convenience");
-    } else {
-        run_pass("tests/run-pass");
-        run_pass("tests/run-pass-fullmir");
-        for_all_targets(sysroot, |target| {
-            miri_pass("tests/run-pass", &target, host, false);
-            compile_fail(sysroot, "tests/compile-fail", &target, host, false);
-        });
-        miri_pass("tests/run-pass-fullmir", host, host, true);
-        compile_fail(sysroot, "tests/compile-fail-fullmir", host, host, true);
     }
+}
+
+#[test]
+fn run_pass_miri() {
+    if let Ok(_) = std::env::var("MIRI_RUSTC_TEST") {
+        return;
+    }
+
+    let sysroot = get_sysroot();
+    let host = get_host();
+
+    for_all_targets(&sysroot, |target| {
+        miri_pass("tests/run-pass", &target, &host, false);
+    });
+    miri_pass("tests/run-pass-fullmir", &host, &host, true);
+}
+
+#[test]
+fn run_pass_rustc() {
+    if let Ok(_) = std::env::var("MIRI_RUSTC_TEST") {
+        return;
+    }
+
+    run_pass("tests/run-pass");
+    run_pass("tests/run-pass-fullmir");
+}
+
+#[test]
+fn compile_fail_miri() {
+    if let Ok(_) = std::env::var("MIRI_RUSTC_TEST") {
+        return;
+    }
+
+    let sysroot = get_sysroot();
+    let host = get_host();
+
+    for_all_targets(&sysroot, |target| {
+        compile_fail(&sysroot, "tests/compile-fail", &target, &host, false);
+    });
+    compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
 }
 
 fn print_vec<W: std::io::Write>(stderr: &mut W, v: Vec<String>) {
