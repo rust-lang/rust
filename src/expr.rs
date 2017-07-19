@@ -876,14 +876,7 @@ fn rewrite_block_with_visitor(
     }
 
     visitor.visit_block(block);
-    if visitor.failed && shape.indent.alignment != 0 {
-        block.rewrite(
-            context,
-            Shape::indented(shape.indent.block_only(), context.config),
-        )
-    } else {
-        Some(format!("{}{}", prefix, visitor.buffer))
-    }
+    Some(format!("{}{}", prefix, visitor.buffer))
 }
 
 impl Rewrite for ast::Block {
@@ -2075,23 +2068,7 @@ where
         one_line_width,
         args_max_width,
         force_trailing_comma,
-    ).or_else(|| if context.use_block_indent() {
-        rewrite_call_args(
-            context,
-            args,
-            args_span,
-            Shape::indented(
-                shape.block().indent.block_indent(context.config),
-                context.config,
-            ),
-            0,
-            0,
-            force_trailing_comma,
-        )
-    } else {
-        None
-    })
-        .ok_or(Ordering::Less)?;
+    ).ok_or(Ordering::Less)?;
 
     if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
         let mut new_context = context.clone();
