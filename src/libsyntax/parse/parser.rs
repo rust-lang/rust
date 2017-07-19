@@ -3209,8 +3209,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::FatArrow)?;
         let expr = self.parse_expr_res(RESTRICTION_STMT_EXPR, None)?;
 
-        let require_comma =
-            !classify::expr_is_simple_block(&expr)
+        let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
             && self.token != token::CloseDelim(token::Brace);
 
         if require_comma {
