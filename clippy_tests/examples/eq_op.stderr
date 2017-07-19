@@ -2,7 +2,7 @@ error: this boolean expression can be simplified
   --> eq_op.rs:37:5
    |
 37 |     true && true;
-   |     ^^^^^^^^^^^^ help: try `true`
+   |     ^^^^^^^^^^^^ help: try: `true`
    |
    = note: `-D nonminimal-bool` implied by `-D warnings`
 
@@ -10,31 +10,31 @@ error: this boolean expression can be simplified
   --> eq_op.rs:39:5
    |
 39 |     true || true;
-   |     ^^^^^^^^^^^^ help: try `true`
+   |     ^^^^^^^^^^^^ help: try: `true`
 
 error: this boolean expression can be simplified
   --> eq_op.rs:45:5
    |
 45 |     a == b && b == a;
-   |     ^^^^^^^^^^^^^^^^ help: try `a == b`
+   |     ^^^^^^^^^^^^^^^^ help: try: `a == b`
 
 error: this boolean expression can be simplified
   --> eq_op.rs:46:5
    |
 46 |     a != b && b != a;
-   |     ^^^^^^^^^^^^^^^^ help: try `a != b`
+   |     ^^^^^^^^^^^^^^^^ help: try: `a != b`
 
 error: this boolean expression can be simplified
   --> eq_op.rs:47:5
    |
 47 |     a < b && b > a;
-   |     ^^^^^^^^^^^^^^ help: try `a < b`
+   |     ^^^^^^^^^^^^^^ help: try: `a < b`
 
 error: this boolean expression can be simplified
   --> eq_op.rs:48:5
    |
 48 |     a <= b && b >= a;
-   |     ^^^^^^^^^^^^^^^^ help: try `a <= b`
+   |     ^^^^^^^^^^^^^^^^ help: try: `a <= b`
 
 error: equal expressions as operands to `==`
   --> eq_op.rs:10:5
@@ -200,7 +200,7 @@ error: taken reference of right operand
 89 |     let z = x & &y;
    |             ^^^^--
    |                 |
-   |                 help: use the right value directly `y`
+   |                 help: use the right value directly: `y`
    |
    = note: `-D op-ref` implied by `-D warnings`
 

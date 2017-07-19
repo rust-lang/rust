@@ -8,7 +8,7 @@ error: this loop could be written as a `while let` loop
 13 | |             break
 14 | |         }
 15 | |     }
-   | |_____^ help: try `while let Some(_x) = y { .. }`
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
    |
    = note: `-D while-let-loop` implied by `-D warnings`
 
@@ -21,7 +21,7 @@ error: this loop could be written as a `while let` loop
 25 | |             None => break
 26 | |         };
 27 | |     }
-   | |_____^ help: try `while let Some(_x) = y { .. }`
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> while_loop.rs:28:5
@@ -33,7 +33,7 @@ error: this loop could be written as a `while let` loop
 ...  |
 34 | |         let _str = "foo";
 35 | |     }
-   | |_____^ help: try `while let Some(x) = y { .. }`
+   | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> while_loop.rs:36:5
@@ -45,7 +45,7 @@ error: this loop could be written as a `while let` loop
 ...  |
 42 | |         { let _b = "foobar"; }
 43 | |     }
-   | |_____^ help: try `while let Some(x) = y { .. }`
+   | |_____^ help: try: `while let Some(x) = y { .. }`
 
 error: this loop could be written as a `while let` loop
   --> while_loop.rs:58:5
@@ -57,7 +57,7 @@ error: this loop could be written as a `while let` loop
 ...  |
 64 | |         let _ = (e, l);
 65 | |     }
-   | |_____^ help: try `while let Some(word) = "".split_whitespace().next() { .. }`
+   | |_____^ help: try: `while let Some(word) = "".split_whitespace().next() { .. }`
 
 error: this loop could be written as a `for` loop
   --> while_loop.rs:68:5
@@ -65,7 +65,7 @@ error: this loop could be written as a `for` loop
 68 | /     while let Option::Some(x) = iter.next() {
 69 | |         println!("{}", x);
 70 | |     }
-   | |_____^ help: try `for x in iter { .. }`
+   | |_____^ help: try: `for x in iter { .. }`
    |
    = note: `-D while-let-on-iterator` implied by `-D warnings`
 
@@ -75,13 +75,13 @@ error: this loop could be written as a `for` loop
 73 | /     while let Some(x) = iter.next() {
 74 | |         println!("{}", x);
 75 | |     }
-   | |_____^ help: try `for x in iter { .. }`
+   | |_____^ help: try: `for x in iter { .. }`
 
 error: this loop could be written as a `for` loop
   --> while_loop.rs:78:5
    |
 78 |     while let Some(_) = iter.next() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `for _ in iter { .. }`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in iter { .. }`
 
 error: this loop could be written as a `while let` loop
    --> while_loop.rs:118:5
@@ -93,7 +93,7 @@ error: this loop could be written as a `while let` loop
 122 | |         };
 123 | |         loop {}
 124 | |     }
-    | |_____^ help: try `while let Some(ele) = iter.next() { .. }`
+    | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
 
 error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
    --> while_loop.rs:123:9

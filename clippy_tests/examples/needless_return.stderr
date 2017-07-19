@@ -2,7 +2,7 @@ error: unneeded return statement
   --> needless_return.rs:11:5
    |
 11 |     return true;
-   |     ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |     ^^^^^^^^^^^^ help: remove `return` as shown:: `true`
    |
    = note: `-D needless-return` implied by `-D warnings`
 
@@ -10,43 +10,43 @@ error: unneeded return statement
   --> needless_return.rs:15:5
    |
 15 |     return true
-   |     ^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |     ^^^^^^^^^^^ help: remove `return` as shown:: `true`
 
 error: unneeded return statement
   --> needless_return.rs:20:9
    |
 20 |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |         ^^^^^^^^^^^^ help: remove `return` as shown:: `true`
 
 error: unneeded return statement
   --> needless_return.rs:22:9
    |
 22 |         return false;
-   |         ^^^^^^^^^^^^^ help: remove `return` as shown: `false`
+   |         ^^^^^^^^^^^^^ help: remove `return` as shown:: `false`
 
 error: unneeded return statement
   --> needless_return.rs:28:17
    |
 28 |         true => return false,
-   |                 ^^^^^^^^^^^^ help: remove `return` as shown: `false`
+   |                 ^^^^^^^^^^^^ help: remove `return` as shown:: `false`
 
 error: unneeded return statement
   --> needless_return.rs:30:13
    |
 30 |             return true;
-   |             ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |             ^^^^^^^^^^^^ help: remove `return` as shown:: `true`
 
 error: unneeded return statement
   --> needless_return.rs:37:9
    |
 37 |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |         ^^^^^^^^^^^^ help: remove `return` as shown:: `true`
 
 error: unneeded return statement
   --> needless_return.rs:39:16
    |
 39 |     let _ = || return true;
-   |                ^^^^^^^^^^^ help: remove `return` as shown: `true`
+   |                ^^^^^^^^^^^ help: remove `return` as shown:: `true`
 
 error: aborting due to 8 previous errors
 

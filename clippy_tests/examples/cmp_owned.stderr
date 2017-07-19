@@ -2,7 +2,7 @@ error: this creates an owned instance just for comparison
  --> cmp_owned.rs:8:14
   |
 8 |         x != "foo".to_string();
-  |              ^^^^^^^^^^^^^^^^^ help: try `"foo"`
+  |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
   |
   = note: `-D cmp-owned` implied by `-D warnings`
 
@@ -10,25 +10,25 @@ error: this creates an owned instance just for comparison
   --> cmp_owned.rs:10:9
    |
 10 |         "foo".to_string() != x;
-   |         ^^^^^^^^^^^^^^^^^ help: try `"foo"`
+   |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:17:10
    |
 17 |     x != "foo".to_owned();
-   |          ^^^^^^^^^^^^^^^^ help: try `"foo"`
+   |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:19:10
    |
 19 |     x != String::from("foo");
-   |          ^^^^^^^^^^^^^^^^^^^ help: try `"foo"`
+   |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:23:5
    |
 23 |     Foo.to_owned() == Foo;
-   |     ^^^^^^^^^^^^^^ help: try `Foo`
+   |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
   --> cmp_owned.rs:30:9
