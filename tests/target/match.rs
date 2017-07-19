@@ -29,7 +29,10 @@ fn foo() {
         }
 
         Patternnnnnnnnnnnnnnnnnnnnnnnnn | Patternnnnnnnnnnnnnnnnnnnnnnnnn
-            if looooooooooooooooooooooooooooooooooooooooong_guard => meh,
+            if looooooooooooooooooooooooooooooooooooooooong_guard =>
+        {
+            meh
+        }
 
         // Test that earlier patterns can take the guard space
         (aaaa, bbbbb, ccccccc, aaaaa, bbbbbbbb, cccccc, aaaa, bbbbbbbb, cccccc, dddddd) |

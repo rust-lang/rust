@@ -1686,7 +1686,8 @@ fn rewrite_match_body(
 ) -> Option<String> {
     let (extend, body) = match body.node {
         ast::ExprKind::Block(ref block)
-            if !is_unsafe_block(block) && is_simple_block(block, context.codemap) => {
+            if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
+        {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (expr.can_be_overflowed(context, 1), &**expr)
             } else {

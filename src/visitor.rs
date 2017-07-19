@@ -563,7 +563,10 @@ impl<'a> FmtVisitor<'a> {
                 if s.rewrite(
                     &self.get_context(),
                     Shape::indented(self.block_indent, self.config),
-                ).is_none() => true,
+                ).is_none() =>
+            {
+                true
+            }
             None => true,
             _ => self.failed,
         };
