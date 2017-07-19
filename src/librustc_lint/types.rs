@@ -173,18 +173,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         }
                     }
                     ty::TyFloat(t) => {
-                        let (min, max) = float_ty_range(t);
-                        let lit_val: f64 = match lit.node {
+                        let is_infinite = match lit.node {
                             ast::LitKind::Float(v, _) |
                             ast::LitKind::FloatUnsuffixed(v) => {
-                                match v.as_str().parse() {
-                                    Ok(f) => f,
-                                    Err(_) => return,
+                                match t {
+                                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
+                                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
                                 }
                             }
                             _ => bug!(),
                         };
-                        if lit_val < min || lit_val > max {
+                        if is_infinite == Ok(true) {
                             cx.span_lint(OVERFLOWING_LITERALS,
                                          e.span,
                                          &format!("literal out of range for {:?}", t));
@@ -239,13 +238,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ast::UintTy::U32 => (u32::min_value() as u128, u32::max_value() as u128),
                 ast::UintTy::U64 => (u64::min_value() as u128, u64::max_value() as u128),
                 ast::UintTy::U128 => (u128::min_value(), u128::max_value()),
-            }
-        }
-
-        fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
-            match float_ty {
-                ast::FloatTy::F32 => (f32::MIN as f64, f32::MAX as f64),
-                ast::FloatTy::F64 => (f64::MIN, f64::MAX),
             }
         }
 
