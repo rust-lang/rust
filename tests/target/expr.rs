@@ -351,7 +351,7 @@ fn complex_if_else() {
     {
         ha();
     } else if xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx +
-               xxxxxxxxx
+        xxxxxxxxx
     {
         yo();
     }

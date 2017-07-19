@@ -124,7 +124,7 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
             CommentStyle::DoubleSlash
         }
     } else if (orig.starts_with("///") && orig.chars().nth(3).map_or(true, |c| c != '/')) ||
-               (orig.starts_with("/**") && !orig.starts_with("/**/"))
+        (orig.starts_with("/**") && !orig.starts_with("/**/"))
     {
         CommentStyle::TripleSlash
     } else if orig.starts_with("//!") || orig.starts_with("/*!") {
@@ -314,13 +314,13 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
             &line[opener.trim_right().len()..]
         }
     } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!") ||
-               line.starts_with("///") ||
-               line.starts_with("** ") || line.starts_with("/*!") ||
-               (line.starts_with("/**") && !line.starts_with("/**/"))
+        line.starts_with("///") ||
+        line.starts_with("** ") || line.starts_with("/*!") ||
+        (line.starts_with("/**") && !line.starts_with("/**/"))
     {
         &line[3..]
     } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") ||
-               line.starts_with("**")
+        line.starts_with("**")
     {
         &line[2..]
     } else if line.starts_with('*') {
@@ -795,7 +795,7 @@ fn remove_comment_header(comment: &str) -> &str {
     } else if comment.starts_with("//") {
         &comment[2..]
     } else if (comment.starts_with("/**") && !comment.starts_with("/**/")) ||
-               comment.starts_with("/*!")
+        comment.starts_with("/*!")
     {
         &comment[3..comment.len() - 2]
     } else {

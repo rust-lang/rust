@@ -4,8 +4,8 @@ fn foo() {
         condition__uses_alignment_for_first_if__2
     {
     } else if condition__no_alignment_for_later_else__0 ||
-               condition__no_alignment_for_later_else__1 ||
-               condition__no_alignment_for_later_else__2
+        condition__no_alignment_for_later_else__1 ||
+        condition__no_alignment_for_later_else__2
     {
     };
 }

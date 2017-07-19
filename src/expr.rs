@@ -375,7 +375,7 @@ where
                 }
 
                 // Try rewriting the rhs into the remaining space.
-                let rhs_shape = shape.shrink_left(last_line_width(&result) + suffix.len());
+                let rhs_shape = shape.offset_left(last_line_width(&result) + suffix.len());
                 if let Some(rhs_shape) = rhs_shape {
                     if let Some(rhs_result) = rhs.rewrite(context, rhs_shape) {
                         // FIXME this should always hold.
@@ -572,7 +572,7 @@ fn rewrite_closure_fn_decl(
 
     // 1 = |
     let argument_offset = nested_shape.indent + 1;
-    let arg_shape = try_opt!(nested_shape.shrink_left(1)).visual_indent(0);
+    let arg_shape = try_opt!(nested_shape.offset_left(1)).visual_indent(0);
     let ret_str = try_opt!(fn_decl.output.rewrite(context, arg_shape));
 
     let arg_items = itemize_list(
@@ -1168,7 +1168,7 @@ impl<'a> ControlFlow<'a> {
         let constr_shape = if self.nested_if {
             // We are part of an if-elseif-else chain. Our constraints are tightened.
             // 7 = "} else " .len()
-            try_opt!(shape.shrink_left(7))
+            try_opt!(shape.offset_left(7))
         } else {
             shape
         };
@@ -1243,7 +1243,7 @@ impl<'a> ControlFlow<'a> {
         let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
             ""
         } else if context.config.control_brace_style() == ControlBraceStyle::AlwaysNextLine ||
-                   force_newline_brace
+            force_newline_brace
         {
             alt_block_sep
         } else {
@@ -2573,7 +2573,7 @@ fn rewrite_struct_lit<'a>(
             }
             StructLitField::Base(expr) => {
                 // 2 = ..
-                expr.rewrite(context, try_opt!(v_shape.shrink_left(2)))
+                expr.rewrite(context, try_opt!(v_shape.offset_left(2)))
                     .map(|s| format!("..{}", s))
             }
         };

@@ -561,7 +561,7 @@ fn choose_first_connector<'a>(
     if subexpr_list.is_empty() {
         ""
     } else if extend || subexpr_list.last().map_or(false, is_try) ||
-               is_extendable_parent(context, parent_str)
+        is_extendable_parent(context, parent_str)
     {
         // 1 = ";", being conservative here.
         if last_line_width(parent_str) + first_line_width(first_child_str) + 1 <=

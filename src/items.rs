@@ -280,7 +280,7 @@ impl<'a> FmtVisitor<'a> {
         if force_newline_brace {
             newline_brace = true;
         } else if self.config.fn_brace_style() != BraceStyle::AlwaysNextLine &&
-                   !result.contains('\n')
+            !result.contains('\n')
         {
             newline_brace = false;
         }
