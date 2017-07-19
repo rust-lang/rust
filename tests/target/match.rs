@@ -29,7 +29,10 @@ fn foo() {
         }
 
         Patternnnnnnnnnnnnnnnnnnnnnnnnn | Patternnnnnnnnnnnnnnnnnnnnnnnnn
-            if looooooooooooooooooooooooooooooooooooooooong_guard => meh,
+            if looooooooooooooooooooooooooooooooooooooooong_guard =>
+        {
+            meh
+        }
 
         // Test that earlier patterns can take the guard space
         (aaaa, bbbbb, ccccccc, aaaaa, bbbbbbbb, cccccc, aaaa, bbbbbbbb, cccccc, dddddd) |
@@ -387,7 +390,8 @@ fn issue1395() {
 fn issue1456() {
     Ok(Recording {
         artists: match reader
-            .evaluate(".//mb:recording/mb:artist-credit/mb:name-credit")? {
+            .evaluate(".//mb:recording/mb:artist-credit/mb:name-credit")?
+        {
             Nodeset(nodeset) => {
                 let res: Result<Vec<ArtistRef>, ReadError> = nodeset
                     .iter()

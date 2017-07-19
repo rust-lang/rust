@@ -280,7 +280,7 @@ impl<'a> FmtVisitor<'a> {
         if force_newline_brace {
             newline_brace = true;
         } else if self.config.fn_brace_style() != BraceStyle::AlwaysNextLine &&
-                   !result.contains('\n')
+            !result.contains('\n')
         {
             newline_brace = false;
         }
@@ -942,11 +942,10 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let has_body = !trait_items.is_empty();
 
         let where_density = if (context.config.where_density() == Density::Compressed &&
-                                    (!result.contains('\n') ||
-                                         context.config.fn_args_layout() == IndentStyle::Block)) ||
+            (!result.contains('\n') || context.config.fn_args_layout() == IndentStyle::Block)) ||
             (context.config.fn_args_layout() == IndentStyle::Block && result.is_empty()) ||
             (context.config.where_density() == Density::CompressedIfEmpty && !has_body &&
-                 !result.contains('\n'))
+                !result.contains('\n'))
         {
             Density::Compressed
         } else {
@@ -1079,7 +1078,7 @@ pub fn format_struct_struct(
             // 3 = ` {}`, 2 = ` {`.
             let overhead = if fields.is_empty() { 3 } else { 2 };
             if (context.config.item_brace_style() == BraceStyle::AlwaysNextLine &&
-                    !fields.is_empty()) ||
+                !fields.is_empty()) ||
                 context
                     .config
                     .max_width()
@@ -1247,8 +1246,8 @@ fn format_tuple_struct(
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
         (result.contains('\n') ||
-             offset.block_indent + result.len() + where_clause_str.len() + 1 >
-                 context.config.max_width())
+            offset.block_indent + result.len() + where_clause_str.len() + 1 >
+                context.config.max_width())
     {
         // We need to put the where clause on a new line, but we didn't
         // know that earlier, so the where clause will not be indented properly.

@@ -368,7 +368,7 @@ where
         let inner_item_width = item.inner_as_ref().len();
         if !first &&
             (item.is_multiline() || !item.post_comment.is_some() ||
-                 inner_item_width + overhead > max_budget)
+                inner_item_width + overhead > max_budget)
         {
             return max_width;
         }

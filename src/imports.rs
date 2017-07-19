@@ -501,7 +501,8 @@ fn rewrite_use_list(
 fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
     match items
         .iter()
-        .position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self")) {
+        .position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self"))
+    {
         Some(pos) => {
             items[0] = items.remove(pos);
             true

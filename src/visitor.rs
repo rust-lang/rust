@@ -56,7 +56,6 @@ pub struct FmtVisitor<'a> {
     // FIXME: use an RAII util or closure for indenting
     pub block_indent: Indent,
     pub config: &'a Config,
-    pub failed: bool,
     pub is_if_else_block: bool,
 }
 
@@ -558,15 +557,6 @@ impl<'a> FmtVisitor<'a> {
 
     fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo);
-        self.failed = match rewrite {
-            Some(ref s)
-                if s.rewrite(
-                    &self.get_context(),
-                    Shape::indented(self.block_indent, self.config),
-                ).is_none() => true,
-            None => true,
-            _ => self.failed,
-        };
         let result = rewrite.unwrap_or_else(|| self.snippet(span));
         self.buffer.push_str(&result);
         self.last_pos = source!(self, span).hi;
@@ -580,7 +570,6 @@ impl<'a> FmtVisitor<'a> {
             last_pos: BytePos(0),
             block_indent: Indent::empty(),
             config: config,
-            failed: false,
             is_if_else_block: false,
         }
     }
@@ -643,12 +632,12 @@ impl<'a> FmtVisitor<'a> {
                     .take_while(|ppi| {
                         is_use_item(&***ppi) &&
                             (!reorder_imports_in_group ||
-                                 {
-                                     let current = self.codemap.lookup_line_range(item_bound(&ppi));
-                                     let in_same_group = current.lo < last.hi + 2;
-                                     last = current;
-                                     in_same_group
-                                 })
+                                {
+                                    let current = self.codemap.lookup_line_range(item_bound(&ppi));
+                                    let in_same_group = current.lo < last.hi + 2;
+                                    last = current;
+                                    in_same_group
+                                })
                     })
                     .count();
                 let (use_items, rest) = items_left.split_at(use_item_length);

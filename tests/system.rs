@@ -240,15 +240,9 @@ fn read_config(filename: &str) -> Config {
 
 fn format_file<P: Into<PathBuf>>(filepath: P, config: &Config) -> (FileMap, FormatReport) {
     let filepath = filepath.into();
-    let display_path = filepath.display().to_string();
     let input = Input::File(filepath);
-    let (error_summary, file_map, report) =
+    let (_error_summary, file_map, report) =
         format_input::<io::Stdout>(input, &config, None).unwrap();
-    assert!(
-        error_summary.has_no_errors(),
-        "Encountered errors formatting {}",
-        display_path
-    );
     return (file_map, report);
 }
 

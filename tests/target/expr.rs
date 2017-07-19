@@ -21,9 +21,9 @@ fn foo() -> bool {
         trivial_value,
     );
     (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-                 a +
-                 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-                 aaaaa)))))))));
+        a +
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+        aaaaa)))))))));
 
     {
         for _ in 0..10 {}
@@ -263,9 +263,9 @@ fn returns() {
 
 fn addrof() {
     &mut (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-              bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
     &(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-          bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
 }
 
 fn casts() {
@@ -351,7 +351,7 @@ fn complex_if_else() {
     {
         ha();
     } else if xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx +
-               xxxxxxxxx
+        xxxxxxxxx
     {
         yo();
     }
