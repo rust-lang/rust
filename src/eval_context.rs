@@ -682,10 +682,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
 
-                // Check alignment and non-NULLness.
-                let (_, align) = self.size_and_align_of_dst(ty, val)?;
-                self.memory.check_align(ptr, align)?;
-
                 self.write_value(val, dest, dest_ty)?;
             }
 
