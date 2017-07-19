@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi::{self, Abi};
-use ast::{AngleBracketedParameterData, AttrStyle, BareFnTy};
+use ast::{AngleBracketedParameterData, ParenthesizedParameterData, AttrStyle, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
@@ -72,19 +72,27 @@ bitflags! {
 
 type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute> >);
 
-/// How to parse a path. There are three different kinds of paths, all of which
-/// are parsed somewhat differently.
+/// How to parse a path.
 #[derive(Copy, Clone, PartialEq)]
 pub enum PathStyle {
-    /// A path with no type parameters, e.g. `foo::bar::Baz`, used in imports or visibilities.
-    Mod,
-    /// A path with a lifetime and type parameters, with no double colons
-    /// before the type parameters; e.g. `foo::bar<'a>::Baz<T>`, used in types.
-    /// Paths using this style can be passed into macros expecting `path` nonterminals.
-    Type,
-    /// A path with a lifetime and type parameters with double colons before
-    /// the type parameters; e.g. `foo::bar::<'a>::Baz::<T>`, used in expressions or patterns.
+    /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
+    /// with something else. For example, in expressions `segment < ....` can be interpreted
+    /// as a comparison and `segment ( ....` can be interpreted as a function call.
+    /// In all such contexts the non-path interpretation is preferred by default for practical
+    /// reasons, but the path interpretation can be forced by the disambiguator `::`, e.g.
+    /// `x<y>` - comparisons, `x::<y>` - unambiguously a path.
     Expr,
+    /// In other contexts, notably in types, no ambiguity exists and paths can be written
+    /// without the disambiguator, e.g. `x<y>` - unambiguously a path.
+    /// Paths with disambiguators are rejected for now, but may be allowed in the future.
+    Type,
+    /// A path with generic arguments disallowed, e.g. `foo::bar::Baz`, used in imports,
+    /// visibilities or attributes.
+    /// Technically, this variant is unnecessary and e.g. `Expr` can be used instead
+    /// (paths in "mod" contexts have to be checked later for absence of generic arguments
+    /// anyway, due to macros), but it is used to avoid weird suggestions about expected
+    /// tokens when something goes wrong.
+    Mod,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1397,7 +1405,7 @@ impl<'a> Parser<'a> {
             TyKind::Infer
         } else if self.eat_lt() {
             // Qualified path
-            let (qself, path) = self.parse_qualified_path(PathStyle::Type)?;
+            let (qself, path) = self.parse_qpath(PathStyle::Type)?;
             TyKind::Path(Some(qself), path)
         } else if self.token.is_path_start() {
             // Simple path
@@ -1683,108 +1691,58 @@ impl<'a> Parser<'a> {
      }
 
     /// Parses qualified path.
-    ///
     /// Assumes that the leading `<` has been parsed already.
-    ///
-    /// Qualifed paths are a part of the universal function call
-    /// syntax (UFCS).
     ///
     /// `qualified_path = <type [as trait_ref]>::path`
     ///
-    /// See `parse_path` for `mode` meaning.
-    ///
-    /// # Examples:
-    ///
+    /// # Examples
     /// `<T as U>::a`
-    /// `<T as U>::F::a::<S>`
-    pub fn parse_qualified_path(&mut self, mode: PathStyle)
-                                -> PResult<'a, (QSelf, ast::Path)> {
-        let span = self.prev_span;
-        let self_type = self.parse_ty()?;
+    /// `<T as U>::F::a<S>` (without disambiguator)
+    /// `<T as U>::F::a::<S>` (with disambiguator)
+    fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (QSelf, ast::Path)> {
+        let lo = self.prev_span;
+        let ty = self.parse_ty()?;
         let mut path = if self.eat_keyword(keywords::As) {
             self.parse_path(PathStyle::Type)?
         } else {
-            ast::Path {
-                span: span,
-                segments: vec![]
-            }
+            ast::Path { segments: Vec::new(), span: syntax_pos::DUMMY_SP }
         };
-
-        let qself = QSelf {
-            ty: self_type,
-            position: path.segments.len()
-        };
-
         self.expect(&token::Gt)?;
         self.expect(&token::ModSep)?;
 
-        let segments = match mode {
-            PathStyle::Type => {
-                self.parse_path_segments_without_colons(true)?
-            }
-            PathStyle::Expr => {
-                self.parse_path_segments_with_colons()?
-            }
-            PathStyle::Mod => {
-                self.parse_path_segments_without_types()?
-            }
-        };
-        path.segments.extend(segments);
+        let qself = QSelf { ty, position: path.segments.len() };
+        self.parse_path_segments(&mut path.segments, style)?;
 
-        path.span.hi = self.prev_span.hi;
-
-        Ok((qself, path))
+        Ok((qself, ast::Path { segments: path.segments, span: lo.to(self.prev_span) }))
     }
 
-    /// Parses a path and optional type parameter bounds, depending on the
-    /// mode. The `mode` parameter determines whether lifetimes, types, and/or
-    /// bounds are permitted and whether `::` must precede type parameter
-    /// groups.
-    pub fn parse_path(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
-        self.parse_path_common(mode, true)
-    }
-
-    pub fn parse_path_without_generics(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
-        self.parse_path_common(mode, false)
-    }
-
-    fn parse_path_common(&mut self, mode: PathStyle, parse_generics: bool)
-        -> PResult<'a, ast::Path>
+    /// Parses simple paths.
+    ///
+    /// `path = [::] segment+`
+    /// `segment = ident | ident[::]<args> | ident[::](args) [-> type]`
+    ///
+    /// # Examples
+    /// `a::b::C<D>` (without disambiguator)
+    /// `a::b::C::<D>` (with disambiguator)
+    /// `Fn(Args)` (without disambiguator)
+    /// `Fn::(Args)` (with disambiguator)
+    pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, ast::Path>
     {
         maybe_whole!(self, NtPath, |x| x);
 
         let lo = self.meta_var_span.unwrap_or(self.span);
-        let is_global = self.eat(&token::ModSep);
-
-        // Parse any number of segments and bound sets. A segment is an
-        // identifier followed by an optional lifetime and a set of types.
-        // A bound set is a set of type parameter bounds.
-        let mut segments = match mode {
-            PathStyle::Type => {
-                self.parse_path_segments_without_colons(parse_generics)?
-            }
-            PathStyle::Expr => {
-                self.parse_path_segments_with_colons()?
-            }
-            PathStyle::Mod => {
-                self.parse_path_segments_without_types()?
-            }
-        };
-
-        if is_global {
-            segments.insert(0, PathSegment::crate_root(lo));
+        let mut segments = Vec::new();
+        if self.eat(&token::ModSep) {
+            segments.push(PathSegment::crate_root(lo));
         }
+        self.parse_path_segments(&mut segments, style)?;
 
-        // Assemble the result.
-        Ok(ast::Path {
-            span: lo.to(self.prev_span),
-            segments: segments,
-        })
+        Ok(ast::Path { segments, span: lo.to(self.prev_span) })
     }
 
     /// Like `parse_path`, but also supports parsing `Word` meta items into paths for back-compat.
     /// This is used when parsing derive macro paths in `#[derive]` attributes.
-    pub fn parse_path_allowing_meta(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
+    pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
         let meta_ident = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
@@ -1799,134 +1757,79 @@ impl<'a> Parser<'a> {
             self.bump();
             return Ok(ast::Path::from_ident(self.prev_span, ident));
         }
-        self.parse_path(mode)
+        self.parse_path(style)
     }
 
-    /// Examples:
-    /// - `a::b<T,U>::c<V,W>`
-    /// - `a::b<T,U>::c(V) -> W`
-    /// - `a::b<T,U>::c(V)`
-    pub fn parse_path_segments_without_colons(&mut self, parse_generics: bool)
-        -> PResult<'a, Vec<PathSegment>>
-    {
-        let mut segments = Vec::new();
+    fn parse_path_segments(&mut self, segments: &mut Vec<PathSegment>, style: PathStyle)
+                           -> PResult<'a, ()> {
         loop {
-            // First, parse an identifier.
-            let ident_span = self.span;
-            let identifier = self.parse_path_segment_ident()?;
+            segments.push(self.parse_path_segment(style)?);
 
-            if self.check(&token::ModSep) && self.look_ahead(1, |t| *t == token::Lt) {
-                self.bump();
-                let prev_span = self.prev_span;
+            if self.is_import_coupler() || !self.eat(&token::ModSep) {
+                return Ok(());
+            }
+        }
+    }
 
-                let mut err = self.diagnostic().struct_span_err(prev_span,
-                    "unexpected token: `::`");
-                err.help(
-                    "use `<...>` instead of `::<...>` if you meant to specify type arguments");
-                err.emit();
+    fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
+        let ident_span = self.span;
+        let ident = self.parse_path_segment_ident()?;
+
+        let is_args_start = |token: &token::Token| match *token {
+            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren) => true,
+            _ => false,
+        };
+        let check_args_start = |this: &mut Self| {
+            this.expected_tokens.extend_from_slice(
+                &[TokenType::Token(token::Lt), TokenType::Token(token::OpenDelim(token::Paren))]
+            );
+            is_args_start(&this.token)
+        };
+
+        Ok(if style == PathStyle::Type && check_args_start(self) ||
+              style != PathStyle::Mod && self.check(&token::ModSep)
+                                      && self.look_ahead(1, |t| is_args_start(t)) {
+            // Generic arguments are found - `<`, `(`, `::<` or `::(`.
+            let lo = self.span;
+            if self.eat(&token::ModSep) {
+                // These errors are not strictly necessary and may be removed in the future.
+                if style == PathStyle::Type {
+                    let mut err = self.diagnostic().struct_span_err(self.prev_span,
+                        "unnecessary path disambiguator");
+                    err.span_label(self.prev_span, "try removing `::`");
+                    err.emit();
+                } else if self.token == token::OpenDelim(token::Paren) {
+                    self.diagnostic().span_err(self.prev_span,
+                        "`::` is not supported before parenthesized generic arguments")
+                }
             }
 
-            // Parse types, optionally.
-            let parameters = if parse_generics && self.eat_lt() {
+            let parameters = if self.eat_lt() {
+                // `<'a, T, A = U>`
                 let (lifetimes, types, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
+                let _span = lo.to(self.prev_span);
                 AngleBracketedParameterData { lifetimes, types, bindings }.into()
-            } else if self.eat(&token::OpenDelim(token::Paren)) {
-                let lo = self.prev_span;
-
-                let inputs = self.parse_seq_to_end(
-                    &token::CloseDelim(token::Paren),
-                    SeqSep::trailing_allowed(token::Comma),
-                    |p| p.parse_ty())?;
-
-                let output_ty = if self.eat(&token::RArrow) {
+            } else {
+                // `(T, U) -> R`
+                self.bump(); // `(`
+                let inputs = self.parse_seq_to_end(&token::CloseDelim(token::Paren),
+                                                   SeqSep::trailing_allowed(token::Comma),
+                                                   |p| p.parse_ty())?;
+                let output = if self.eat(&token::RArrow) {
                     Some(self.parse_ty_no_plus()?)
                 } else {
                     None
                 };
-
-                let hi = self.prev_span;
-
-                Some(P(ast::PathParameters::Parenthesized(ast::ParenthesizedParameterData {
-                    span: lo.to(hi),
-                    inputs: inputs,
-                    output: output_ty,
-                })))
-            } else {
-                None
+                let span = lo.to(self.prev_span);
+                ParenthesizedParameterData { inputs, output, span }.into()
             };
 
-            // Assemble and push the result.
-            segments.push(PathSegment {
-                identifier: identifier,
-                span: ident_span,
-                parameters: parameters
-            });
-
-            // Continue only if we see a `::`
-            if !self.eat(&token::ModSep) {
-                return Ok(segments);
-            }
-        }
-    }
-
-    /// Examples:
-    /// - `a::b::<T,U>::c`
-    pub fn parse_path_segments_with_colons(&mut self) -> PResult<'a, Vec<PathSegment>> {
-        let mut segments = Vec::new();
-        loop {
-            // First, parse an identifier.
-            let ident_span = self.span;
-            let identifier = self.parse_path_segment_ident()?;
-
-            // If we do not see a `::`, stop.
-            if !self.eat(&token::ModSep) {
-                segments.push(PathSegment::from_ident(identifier, ident_span));
-                return Ok(segments);
-            }
-
-            // Check for a type segment.
-            if self.eat_lt() {
-                // Consumed `a::b::<`, go look for types
-                let (lifetimes, types, bindings) = self.parse_generic_args()?;
-                self.expect_gt()?;
-                segments.push(PathSegment {
-                    identifier: identifier,
-                    span: ident_span,
-                    parameters: AngleBracketedParameterData { lifetimes, types, bindings }.into(),
-                });
-
-                // Consumed `a::b::<T,U>`, check for `::` before proceeding
-                if !self.eat(&token::ModSep) {
-                    return Ok(segments);
-                }
-            } else {
-                // Consumed `a::`, go look for `b`
-                segments.push(PathSegment::from_ident(identifier, ident_span));
-            }
-        }
-    }
-
-    /// Examples:
-    /// - `a::b::c`
-    pub fn parse_path_segments_without_types(&mut self)
-                                             -> PResult<'a, Vec<PathSegment>> {
-        let mut segments = Vec::new();
-        loop {
-            // First, parse an identifier.
-            let ident_span = self.span;
-            let identifier = self.parse_path_segment_ident()?;
-
-            // Assemble and push the result.
-            segments.push(PathSegment::from_ident(identifier, ident_span));
-
-            // If we do not see a `::` or see `::{`/`::*`, stop.
-            if !self.check(&token::ModSep) || self.is_import_coupler() {
-                return Ok(segments);
-            } else {
-                self.bump();
-            }
-        }
+            PathSegment { identifier: ident, span: ident_span, parameters }
+        } else {
+            // Generic arguments are not found.
+            PathSegment::from_ident(ident, ident_span)
+        })
     }
 
     fn check_lifetime(&mut self) -> bool {
@@ -2028,10 +1931,6 @@ impl<'a> Parser<'a> {
         } else {
             Ok(ExprKind::Range(start, end, limits))
         }
-    }
-
-    pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::ExprKind {
-        ExprKind::Field(expr, ident)
     }
 
     pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<usize>) -> ast::ExprKind {
@@ -2178,8 +2077,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 if self.eat_lt() {
-                    let (qself, path) =
-                        self.parse_qualified_path(PathStyle::Expr)?;
+                    let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
@@ -2439,50 +2337,33 @@ impl<'a> Parser<'a> {
         )
     }
 
-    // Assuming we have just parsed `.foo` (i.e., a dot and an ident), continue
-    // parsing into an expression.
-    fn parse_dot_suffix(&mut self, ident: Ident, ident_span: Span, self_value: P<Expr>, lo: Span)
-                        -> PResult<'a, P<Expr>> {
-        let (lifetimes, types, bindings) = if self.eat(&token::ModSep) {
-            self.expect_lt()?;
-            let args = self.parse_generic_args()?;
-            self.expect_gt()?;
-            args
-        } else {
-            (Vec::new(), Vec::new(), Vec::new())
-        };
-
+    // Assuming we have just parsed `.`, continue parsing into an expression.
+    fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
+        let segment = self.parse_path_segment(PathStyle::Expr)?;
         Ok(match self.token {
-            // expr.f() method call.
             token::OpenDelim(token::Paren) => {
-                let mut es = self.parse_unspanned_seq(
+                // Method call `expr.f()`
+                let mut args = self.parse_unspanned_seq(
                     &token::OpenDelim(token::Paren),
                     &token::CloseDelim(token::Paren),
                     SeqSep::trailing_allowed(token::Comma),
                     |p| Ok(p.parse_expr()?)
                 )?;
-                let hi = self.prev_span;
+                args.insert(0, self_arg);
 
-                es.insert(0, self_value);
-                let seg = PathSegment {
-                    identifier: ident,
-                    span: ident_span.to(ident_span),
-                    parameters: AngleBracketedParameterData { lifetimes, types, bindings }.into(),
-                };
-                self.mk_expr(lo.to(hi), ExprKind::MethodCall(seg, es), ThinVec::new())
+                let span = lo.to(self.prev_span);
+                self.mk_expr(span, ExprKind::MethodCall(segment, args), ThinVec::new())
             }
-            // Field access.
             _ => {
-                if let Some(generic_arg_span) = lifetimes.get(0).map(|x| x.span).or_else(||
-                                                types.get(0).map(|x| x.span)).or_else(||
-                                                bindings.get(0).map(|x| x.span)) {
-                    self.span_err(generic_arg_span,
+                // Field access `expr.f`
+                if let Some(parameters) = segment.parameters {
+                    self.span_err(parameters.span(segment.span),
                                   "field expressions may not have generic arguments");
                 }
 
-                let id = respan(ident_span.to(ident_span), ident);
-                let field = self.mk_field(self_value, id);
-                self.mk_expr(lo.to(ident_span), field, ThinVec::new())
+                let span = lo.to(self.prev_span);
+                let ident = respan(segment.span, segment.identifier);
+                self.mk_expr(span, ExprKind::Field(self_arg, ident), ThinVec::new())
             }
         })
     }
@@ -2500,10 +2381,8 @@ impl<'a> Parser<'a> {
             // expr.f
             if self.eat(&token::Dot) {
                 match self.token {
-                  token::Ident(i) => {
-                    let ident_span = self.span;
-                    self.bump();
-                    e = self.parse_dot_suffix(i, ident_span, e, lo)?;
+                  token::Ident(..) => {
+                    e = self.parse_dot_suffix(e, lo)?;
                   }
                   token::Literal(token::Integer(n), suf) => {
                     let sp = self.span;
@@ -2561,9 +2440,6 @@ impl<'a> Parser<'a> {
                     // FIXME Could factor this out into non_fatal_unexpected or something.
                     let actual = self.this_token_to_string();
                     self.span_err(self.span, &format!("unexpected token: `{}`", actual));
-
-                    let dot_span = self.prev_span;
-                    e = self.parse_dot_suffix(keywords::Invalid.ident(), dot_span, e, lo)?;
                   }
                 }
                 continue;
@@ -2928,7 +2804,7 @@ impl<'a> Parser<'a> {
                 let parser_snapshot_after_type = self.clone();
                 mem::replace(self, parser_snapshot_before_type);
 
-                match self.parse_path_without_generics(PathStyle::Type) {
+                match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
                         // Successfully parsed the type path leaving a `<` yet to parse.
                         type_err.cancel();
@@ -3455,8 +3331,7 @@ impl<'a> Parser<'a> {
             let lo = self.span;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
-                let (qself, path) =
-                    self.parse_qualified_path(PathStyle::Expr)?;
+                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
@@ -3554,7 +3429,7 @@ impl<'a> Parser<'a> {
                 // Parse pattern starting with a path
                 let (qself, path) = if self.eat_lt() {
                     // Parse a qualified path
-                    let (qself, path) = self.parse_qualified_path(PathStyle::Expr)?;
+                    let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
                     (Some(qself), path)
                 } else {
                     // Parse an unqualified path

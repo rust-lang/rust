@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// compile-flags: -Z parse-only -Z continue-parse-after-error
 
 struct Foo {
     x: isize,
@@ -21,5 +21,7 @@ fn main() {
         y: 2,
     };
     f.x::<isize>;
+    //~^ ERROR field expressions may not have generic arguments
+    f.x::<>;
     //~^ ERROR field expressions may not have generic arguments
 }

@@ -153,6 +153,19 @@ pub enum PathParameters {
     Parenthesized(ParenthesizedParameterData),
 }
 
+impl PathParameters {
+    pub fn span(&self, fallback: Span) -> Span {
+        match *self {
+            AngleBracketed(ref data) => {
+                data.lifetimes.get(0).map(|x| x.span).or_else(||
+                data.types.get(0).map(|x| x.span)).or_else(||
+                data.bindings.get(0).map(|x| x.span)).unwrap_or(fallback)
+            }
+            Parenthesized(ref data) => data.span
+        }
+    }
+}
+
 /// A path like `Foo<'a, T>`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Default)]
 pub struct AngleBracketedParameterData {
@@ -170,6 +183,12 @@ impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
     fn into(self) -> Option<P<PathParameters>> {
         let empty = self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty();
         if empty { None } else { Some(P(PathParameters::AngleBracketed(self))) }
+    }
+}
+
+impl Into<Option<P<PathParameters>>> for ParenthesizedParameterData {
+    fn into(self) -> Option<P<PathParameters>> {
+        Some(P(PathParameters::Parenthesized(self)))
     }
 }
 

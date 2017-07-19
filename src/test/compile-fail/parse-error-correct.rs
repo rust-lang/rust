@@ -17,5 +17,6 @@ fn main() {
     let y = 42;
     let x = y.;  //~ ERROR unexpected token
     let x = y.();  //~ ERROR unexpected token
+                   //~^ ERROR expected function, found `{integer}`
     let x = y.foo; //~ ERROR `{integer}` is a primitive type and therefore doesn't have fields [E061
 }
