@@ -749,14 +749,27 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             self.visit_operand(func, location);
 
             let fn_ty = func.ty(self.mir, self.tcx);
-            let (is_shuffle, is_const_fn) = match fn_ty.sty {
-                ty::TyFnDef(def_id, _) => {
-                    (self.tcx.fn_sig(def_id).abi() == Abi::PlatformIntrinsic &&
-                     self.tcx.item_name(def_id).as_str().starts_with("simd_shuffle"),
-                     self.tcx.is_const_fn(def_id))
+            let (mut is_shuffle, mut is_const_fn) = (false, false);
+            if let ty::TyFnDef(def_id, _) = fn_ty.sty {
+                match self.tcx.fn_sig(def_id).abi() {
+                    Abi::RustIntrinsic |
+                    Abi::PlatformIntrinsic => {
+                        assert!(!self.tcx.is_const_fn(def_id));
+                        match &self.tcx.item_name(def_id).as_str()[..] {
+                            "size_of" | "min_align_of" => is_const_fn = true,
+
+                            name if name.starts_with("simd_shuffle") => {
+                                is_shuffle = true;
+                            }
+
+                            _ => {}
+                        }
+                    }
+                    _ => {
+                        is_const_fn = self.tcx.is_const_fn(def_id);
+                    }
                 }
-                _ => (false, false)
-            };
+            }
 
             for (i, arg) in args.iter().enumerate() {
                 self.nest(|this| {

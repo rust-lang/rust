@@ -25,6 +25,7 @@ use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::DefIdMap;
 
+use syntax::abi::Abi;
 use syntax::ast;
 use rustc::hir::{self, Expr};
 use syntax_pos::Span;
@@ -339,6 +340,28 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
               Function(def_id, substs) => (def_id, substs),
               _ => signal!(e, TypeckError),
           };
+
+          if tcx.fn_sig(def_id).abi() == Abi::RustIntrinsic {
+            let layout_of = |ty: Ty<'tcx>| {
+                ty.layout(tcx, ty::ParamEnv::empty(traits::Reveal::All))
+                    .map_err(|err| {
+                        ConstEvalErr { span: e.span, kind: LayoutError(err) }
+                    })
+            };
+            match &tcx.item_name(def_id).as_str()[..] {
+                "size_of" => {
+                    let size = layout_of(substs.type_at(0))?.size(tcx);
+                    return Ok(Integral(Usize(ConstUsize::new(size.bytes(),
+                        tcx.sess.target.uint_type).unwrap())));
+                }
+                "min_align_of" => {
+                    let align = layout_of(substs.type_at(0))?.align(tcx);
+                    return Ok(Integral(Usize(ConstUsize::new(align.abi(),
+                        tcx.sess.target.uint_type).unwrap())));
+                }
+                _ => signal!(e, TypeckError)
+            }
+          }
 
           let body = if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
             if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(node_id)) {

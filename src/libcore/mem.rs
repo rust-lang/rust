@@ -188,7 +188,27 @@ pub fn forget<T>(t: T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 pub fn size_of<T>() -> usize {
+    unsafe { intrinsics::size_of::<T>() }
+}
+
+/// Returns the size of a type in bytes.
+///
+/// More specifically, this is the offset in bytes between successive
+/// items of the same type, including alignment padding.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of::<i32>());
+/// ```
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
 
@@ -279,7 +299,30 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 pub fn align_of<T>() -> usize {
+    unsafe { intrinsics::min_align_of::<T>() }
+}
+
+/// Returns the [ABI]-required minimum alignment of a type.
+///
+/// Every reference to a value of the type `T` must be a multiple of this number.
+///
+/// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
+///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::align_of::<i32>());
+/// ```
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
 

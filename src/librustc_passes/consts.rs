@@ -29,7 +29,7 @@ use rustc_const_eval::ConstContext;
 use rustc::middle::const_val::ConstEvalErr;
 use rustc::middle::const_val::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll};
 use rustc::middle::const_val::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
-use rustc::middle::const_val::ErrKind::{TypeckError, Math};
+use rustc::middle::const_val::ErrKind::{TypeckError, Math, LayoutError};
 use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -252,6 +252,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shl)), .. }) |
                 Err(ConstEvalErr { kind: IndexOpFeatureGated, .. }) => {}
                 Err(ConstEvalErr { kind: TypeckError, .. }) => {}
+                Err(ConstEvalErr {
+                    kind: LayoutError(ty::layout::LayoutError::Unknown(_)), ..
+                }) => {}
                 Err(msg) => {
                     self.tcx.sess.add_lint(CONST_ERR,
                                            ex.id,
