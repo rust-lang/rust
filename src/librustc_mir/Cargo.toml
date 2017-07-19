@@ -9,19 +9,25 @@ version = "0.1.0"
 [[bin]]
 doc = false
 name = "miri"
+path = "interpret/bin/miri.rs"
 test = false
 
 [[bin]]
 doc = false
 name = "cargo-miri"
+path = "interpret/bin/cargo-miri.rs"
 test = false
 
 [lib]
 test = false
+path = "interpret/mod.rs"
+
+[[test]]
+name = "compiletest"
+path = "../../tests/compiletest.rs"
 
 [dependencies]
-#byteorder = "0.4.2"
-byteorder = { git = "https://github.com/BurntSushi/byteorder", features = ["i128"]}
+byteorder = { version = "1.1", features = ["i128"]}
 env_logger = "0.3.3"
 log = "0.3.6"
 log_settings = "0.1.1"
