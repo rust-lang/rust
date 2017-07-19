@@ -1514,15 +1514,17 @@ fn rewrite_match(
         return None;
     }
 
-    // `match `cond` {`
+    // 6 = `match `, 2 = ` {`
     let cond_shape = match context.config.control_style() {
         Style::Legacy => try_opt!(shape.shrink_left(6).and_then(|s| s.sub_width(2))),
-        Style::Rfc => try_opt!(shape.offset_left(8)),
+        Style::Rfc => try_opt!(shape.offset_left(6).and_then(|s| s.sub_width(2))),
     };
     let cond_str = try_opt!(cond.rewrite(context, cond_shape));
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let block_sep = match context.config.control_brace_style() {
-        ControlBraceStyle::AlwaysNextLine => alt_block_sep.as_str(),
+        ControlBraceStyle::AlwaysNextLine => &alt_block_sep,
+        _ if last_line_extendable(&cond_str) => " ",
+        _ if cond_str.contains('\n') => &alt_block_sep,
         _ => " ",
     };
 
