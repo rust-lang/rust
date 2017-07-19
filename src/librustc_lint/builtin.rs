@@ -31,6 +31,7 @@
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::cfg;
+use rustc::ty::cast::CastKind;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc::traits::{self, Reveal};
@@ -1221,6 +1222,46 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
                                    drop code of union fields is ignored when dropping the union");
                     return;
                 }
+            }
+        }
+    }
+}
+
+/// Lint for casting from non-{i,u}size integers to pointers.
+pub struct IntToPtrCast;
+
+declare_lint! {
+    INT_TO_PTR_CAST,
+    Warn,
+    "casting from non-{i,u}size integers to pointers"
+}
+
+impl LintPass for IntToPtrCast {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(INT_TO_PTR_CAST)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntToPtrCast {
+    fn check_expr(&mut self, ctx: &LateContext, expr: &hir::Expr) {
+        if let hir::ExprCast(ref source, _) = expr.node {
+            match ctx.tables.cast_kinds.get(&source.id) {
+                Some(&CastKind::AddrPtrCast) => {
+                    let source_ty = &ctx.tables.expr_ty(&source).sty;
+                    match source_ty {
+                        &ty::TyInt(ast::IntTy::Is) |
+                        &ty::TyUint(ast::UintTy::Us) => {},
+                        &ty::TyInt(_) |
+                        &ty::TyUint(_) => {
+                            ctx.span_lint(
+                                INT_TO_PTR_CAST,
+                                expr.span,
+                                "casting from a different-size integer to a pointer");
+                        },
+                        _ => {},
+                    };
+                },
+                _ => {},
             }
         }
     }
