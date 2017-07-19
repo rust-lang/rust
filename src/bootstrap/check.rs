@@ -31,7 +31,7 @@ use util::{self, dylib_path, dylib_path_var};
 
 use compile;
 use native;
-use builder::{Kind, Builder, Compiler, Step};
+use builder::{Kind, ShouldRun, Builder, Compiler, Step};
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
 
@@ -121,8 +121,8 @@ impl Step for Linkcheck {
                             .arg(build.out.join(host).join("doc")));
     }
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/linkchecker")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/linkchecker")
     }
 
     fn make_run(
@@ -157,8 +157,8 @@ impl Step for Cargotest {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/cargotest")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/cargotest")
     }
 
     fn make_run(
@@ -212,8 +212,8 @@ impl Step for Cargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/cargo")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/cargo")
     }
 
     fn make_run(
@@ -264,8 +264,8 @@ impl Step for Rls {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/rls")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/rls")
     }
 
     fn make_run(
@@ -348,8 +348,8 @@ impl Step for Tidy {
         try_run(build, &mut cmd);
     }
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/tidy")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/tidy")
     }
 
     fn make_run(
@@ -531,13 +531,14 @@ impl Step for Compiletest {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
+    fn should_run(mut run: ShouldRun) -> ShouldRun {
         // Note that this is general, while a few more cases are skipped inside
         // run() itself. This is to avoid duplication across should_run and
         // make_run.
-        COMPILETESTS.iter().chain(DEFAULT_COMPILETESTS).chain(HOST_COMPILETESTS).any(|&test| {
-            path.ends_with(test.path)
-        })
+        for test in COMPILETESTS.iter().chain(DEFAULT_COMPILETESTS).chain(HOST_COMPILETESTS) {
+            run = run.path(test.path);
+        }
+        run
     }
 
     fn make_run(
@@ -803,8 +804,8 @@ impl Step for Docs {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/doc")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/doc")
     }
 
     fn make_run(
@@ -873,8 +874,8 @@ impl Step for ErrorIndex {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/error_index_generator")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/error_index_generator")
     }
 
     fn make_run(
@@ -973,10 +974,8 @@ impl Step for CrateLibrustc {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        builder.crates("rustc-main").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.krate("rustc-main")
     }
 
     fn make_run(
@@ -1087,13 +1086,8 @@ impl Step for Crate {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        builder.crates("std").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        }) ||
-        builder.crates("test").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.krate("std").krate("test")
     }
 
     fn make_run(
@@ -1358,8 +1352,8 @@ pub struct RemoteCopyLibs {
 impl Step for RemoteCopyLibs {
     type Output = ();
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     fn run(self, builder: &Builder) {
@@ -1413,8 +1407,8 @@ pub struct Distcheck;
 impl Step for Distcheck {
     type Output = ();
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("distcheck")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("distcheck")
     }
 
     /// Run "distcheck", a 'make check' from a tarball
@@ -1503,8 +1497,8 @@ impl Step for Bootstrap {
         try_run(build, &mut cmd);
     }
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/bootstrap")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/bootstrap")
     }
 
     fn make_run(

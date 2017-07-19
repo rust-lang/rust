@@ -32,7 +32,7 @@ use gcc;
 use Build;
 use util;
 use build_helper::up_to_date;
-use builder::{Builder, Step};
+use builder::{Builder, ShouldRun, Step};
 use cache::Interned;
 
 // rules.build("llvm", "src/llvm")
@@ -55,8 +55,8 @@ impl Step for Llvm {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/llvm")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/llvm")
     }
 
     /// Compile LLVM for `target`.
@@ -257,8 +257,8 @@ pub struct TestHelpers {
 impl Step for TestHelpers {
     type Output = ();
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/rt/rust_test_helpers.c")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/rt/rust_test_helpers.c")
     }
 
     fn make_run(
@@ -322,8 +322,8 @@ pub struct Openssl {
 impl Step for Openssl {
     type Output = ();
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     fn run(self, builder: &Builder) {

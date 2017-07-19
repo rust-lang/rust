@@ -20,7 +20,7 @@ use std::process::Command;
 
 use dist::{self, pkgname, sanitize_sh, tmpdir};
 
-use builder::{Builder, Step};
+use builder::{Builder, ShouldRun, Step};
 use cache::Interned;
 
 pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
@@ -149,8 +149,8 @@ macro_rules! install {
             const ONLY_HOSTS: bool = $only_hosts;
             $(const $c: bool = true;)*
 
-            fn should_run(_builder: &Builder, path: &Path) -> bool {
-                path.ends_with($path)
+            fn should_run(run: ShouldRun) -> ShouldRun {
+                run.path($path)
             }
 
             fn make_run(

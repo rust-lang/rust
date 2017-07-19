@@ -16,6 +16,7 @@ use std::process::Command;
 use std::fs;
 use std::ops::Deref;
 use std::any::Any;
+use std::collections::BTreeSet;
 
 use compile;
 use install;
@@ -70,7 +71,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// will execute. However, it does not get called in a "default" context
     /// when we are not passed any paths; in that case, make_run is called
     /// directly.
-    fn should_run(builder: &Builder, path: &Path) -> bool;
+    fn should_run(run: ShouldRun) -> ShouldRun;
 
     /// Build up a "root" rule, either as a default rule or from a path passed
     /// to us.
@@ -89,6 +90,43 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
         // they are likely dependencies (e.g., sysroot creation) or similar, and
         // as such calling them from ./x.py isn't logical.
         unimplemented!()
+    }
+}
+
+#[derive(Clone)]
+pub struct ShouldRun<'a> {
+    builder: &'a Builder<'a>,
+    // use a BTreeSet to maintain sort order
+    paths: BTreeSet<PathBuf>,
+}
+
+impl<'a> ShouldRun<'a> {
+    fn new(builder: &'a Builder) -> ShouldRun<'a> {
+        ShouldRun {
+            builder: builder,
+            paths: BTreeSet::new(),
+        }
+    }
+
+    pub fn krate(mut self, name: &str) -> Self {
+        for (_, krate_path) in self.builder.crates(name) {
+            self.paths.insert(PathBuf::from(krate_path));
+        }
+        self
+    }
+
+    pub fn path(mut self, path: &str) -> Self {
+        self.paths.insert(PathBuf::from(path));
+        self
+    }
+
+    // allows being more explicit about why should_run in Step returns the value passed to it
+    pub fn never(self) -> ShouldRun<'a> {
+        self
+    }
+
+    fn run(&self, path: &Path) -> bool {
+        self.paths.iter().any(|p| path.ends_with(p))
     }
 }
 
@@ -115,7 +153,7 @@ macro_rules! check {
             for path in paths {
                 let mut attempted_run = false;
                 $({
-                    if <$rule>::should_run($self, path) {
+                    if <$rule>::should_run(ShouldRun::new($self)).run(path) {
                         attempted_run = true;
                         $self.maybe_run::<$rule>(Some(path));
                     }
@@ -129,6 +167,60 @@ macro_rules! check {
 }
 
 impl<'a> Builder<'a> {
+    pub fn get_help(build: &Build, subcommand: &str) -> Option<String> {
+        let kind = match subcommand {
+            "build" => Kind::Build,
+            "doc" => Kind::Doc,
+            "test" => Kind::Test,
+            "bench" => Kind::Bench,
+            "dist" => Kind::Dist,
+            "install" => Kind::Install,
+            _ => return None,
+        };
+
+        let builder = Builder {
+            build: build,
+            top_stage: build.flags.stage.unwrap_or(2),
+            kind: kind,
+            cache: Cache::new(),
+            stack: RefCell::new(Vec::new()),
+        };
+
+        let builder = &builder;
+        let mut should_run = ShouldRun::new(builder);
+        macro_rules! into_shouldrun {
+            ($should_run:ident, $($rule:ty),+ $(,)*) => {{
+                $(
+                    $should_run = <$rule>::should_run($should_run);
+                )+
+            }};
+        }
+        match builder.kind {
+            Kind::Build => into_shouldrun!(should_run, compile::Std, compile::Test, compile::Rustc,
+                compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
+                tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
+                tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
+                tool::RustInstaller, tool::Cargo, tool::Rls),
+            Kind::Test => into_shouldrun!(should_run, check::Tidy, check::Bootstrap,
+                check::Compiletest, check::Crate, check::CrateLibrustc, check::Linkcheck,
+                check::Cargotest, check::Cargo, check::Docs, check::ErrorIndex, check::Distcheck),
+            Kind::Bench => into_shouldrun!(should_run, check::Crate, check::CrateLibrustc),
+            Kind::Doc => into_shouldrun!(should_run, doc::UnstableBook, doc::UnstableBookGen,
+                doc::TheBook, doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex,
+                doc::Nomicon, doc::Reference),
+            Kind::Dist => into_shouldrun!(should_run, dist::Docs, dist::Mingw, dist::Rustc,
+                dist::DebuggerScripts, dist::Std, dist::Analysis, dist::Src,
+                dist::PlainSourceTarball, dist::Cargo, dist::Rls, dist::Extended, dist::HashSign),
+            Kind::Install => into_shouldrun!(should_run, install::Docs, install::Std,
+                install::Cargo, install::Rls, install::Analysis, install::Src, install::Rustc),
+        }
+        let mut help = String::from("Available paths:\n");
+        for path in should_run.paths {
+            help.push_str(format!("    ./x.py {} {}\n", subcommand, path.display()).as_str());
+        }
+        Some(help)
+    }
+
     pub fn run(build: &Build) {
         let (kind, paths) = match build.flags.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
@@ -170,9 +262,8 @@ impl<'a> Builder<'a> {
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
         let paths = paths.unwrap_or(&[]);
-        check!(self, paths, doc::UnstableBook, doc::UnstableBookGen, doc::Rustbook, doc::TheBook,
-            doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex,
-            doc::Nomicon, doc::Reference);
+        check!(self, paths, doc::UnstableBook, doc::UnstableBookGen, doc::TheBook, doc::Standalone,
+            doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon, doc::Reference);
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explictly does
@@ -200,8 +291,8 @@ impl<'a> Builder<'a> {
         impl Step for Libdir {
             type Output = Interned<PathBuf>;
 
-            fn should_run(_builder: &Builder, _path: &Path) -> bool {
-                false
+            fn should_run(run: ShouldRun) -> ShouldRun {
+                run.never()
             }
 
             fn run(self, builder: &Builder) -> Interned<PathBuf> {

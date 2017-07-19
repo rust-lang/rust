@@ -34,7 +34,7 @@ use {Build, Compiler, Mode};
 use native;
 
 use cache::{INTERNER, Interned};
-use builder::{Step, Builder};
+use builder::{Step, ShouldRun, Builder};
 
 //
 //    // Crates which have build scripts need to rely on this rule to ensure that
@@ -152,11 +152,8 @@ impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/libstd") ||
-        builder.crates("std").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/libstd").krate("std")
     }
 
     fn make_run(
@@ -277,8 +274,8 @@ struct StdLink {
 impl Step for StdLink {
     type Output = ();
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Link all libstd rlibs/dylibs into the sysroot location.
@@ -350,8 +347,8 @@ pub struct StartupObjects {
 impl Step for StartupObjects {
     type Output = ();
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/rtstartup")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/rtstartup")
     }
 
     fn make_run(
@@ -422,11 +419,8 @@ impl Step for Test {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/libtest") ||
-        builder.crates("test").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/libtest").krate("test")
     }
 
     fn make_run(
@@ -508,8 +502,8 @@ pub struct TestLink {
 impl Step for TestLink {
     type Output = ();
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Same as `std_link`, only for libtest
@@ -548,11 +542,8 @@ impl Step for Rustc {
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/librustc") ||
-        builder.crates("rustc-main").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/librustc").krate("rustc-main")
     }
 
     fn make_run(
@@ -700,8 +691,8 @@ struct RustcLink {
 impl Step for RustcLink {
     type Output = ();
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Same as `std_link`, only for librustc
@@ -756,8 +747,8 @@ pub struct Sysroot {
 impl Step for Sysroot {
     type Output = Interned<PathBuf>;
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Returns the sysroot for the `compiler` specified that *this build system
@@ -806,8 +797,8 @@ pub struct Assemble {
 impl Step for Assemble {
     type Output = Compiler;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/rustc")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/rustc")
     }
 
     /// Prepare a new compiler from the artifacts in `stage`

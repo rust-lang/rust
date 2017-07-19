@@ -37,7 +37,7 @@ use build_helper::output;
 use {Build, Compiler, Mode};
 use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
-use builder::{Builder, Step};
+use builder::{Builder, ShouldRun, Step};
 use compile;
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
@@ -83,8 +83,8 @@ impl Step for Docs {
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/doc")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/doc")
     }
 
     fn make_run(
@@ -296,8 +296,8 @@ impl Step for Mingw {
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     fn make_run(
@@ -367,8 +367,8 @@ impl Step for Rustc {
     const ONLY_HOSTS: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/librustc")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/librustc")
     }
 
     fn make_run(
@@ -508,8 +508,8 @@ pub struct DebuggerScripts {
 impl Step for DebuggerScripts {
     type Output = ();
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/etc/lldb_batchmode.py")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/lldb_batchmode.py")
     }
 
     fn make_run(
@@ -584,8 +584,8 @@ impl Step for Std {
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/libstd")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/libstd")
     }
 
     fn make_run(
@@ -666,8 +666,8 @@ impl Step for Analysis {
     const DEFAULT: bool = true;
     const ONLY_BUILD_TARGETS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("analysis")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("analysis")
     }
 
     fn make_run(
@@ -794,8 +794,8 @@ impl Step for Src {
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_BUILD: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src")
     }
 
     fn make_run(
@@ -893,8 +893,8 @@ impl Step for PlainSourceTarball {
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_BUILD: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src")
     }
 
     fn make_run(
@@ -1046,8 +1046,8 @@ impl Step for Cargo {
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("cargo")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("cargo")
     }
 
     fn make_run(
@@ -1144,8 +1144,8 @@ impl Step for Rls {
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("rls")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("rls")
     }
 
     fn make_run(
@@ -1240,8 +1240,8 @@ impl Step for Extended {
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("cargo")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("cargo")
     }
 
     fn make_run(
@@ -1648,8 +1648,8 @@ impl Step for HashSign {
     const ONLY_HOSTS: bool = true;
     const ONLY_BUILD: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("hash-and-sign")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("hash-and-sign")
     }
 
     fn make_run(

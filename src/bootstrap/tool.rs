@@ -14,7 +14,7 @@ use std::process::Command;
 
 use Mode;
 use Compiler;
-use builder::{Step, Builder};
+use builder::{Step, ShouldRun, Builder};
 use util::{exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp, Rustc};
 use native;
@@ -55,8 +55,8 @@ pub struct CleanTools {
 impl Step for CleanTools {
     type Output = ();
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Build a tool in `src/tools`
@@ -93,8 +93,8 @@ pub struct ToolBuild {
 impl Step for ToolBuild {
     type Output = PathBuf;
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Build a tool in `src/tools`
@@ -183,8 +183,8 @@ macro_rules! tool {
         impl Step for $name {
             type Output = PathBuf;
 
-            fn should_run(_builder: &Builder, path: &Path) -> bool {
-                path.ends_with($path)
+            fn should_run(run: ShouldRun) -> ShouldRun {
+                run.path($path)
             }
 
             fn make_run(
@@ -274,8 +274,8 @@ pub struct RemoteTestServer {
 impl Step for RemoteTestServer {
     type Output = PathBuf;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/remote-test-server")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/remote-test-server")
     }
 
     fn make_run(
@@ -325,8 +325,8 @@ impl Step for Cargo {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/cargo")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/cargo")
     }
 
     fn make_run(
@@ -384,8 +384,8 @@ impl Step for Rls {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/rls")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/rls")
     }
 
     fn make_run(

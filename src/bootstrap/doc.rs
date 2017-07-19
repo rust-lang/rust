@@ -27,7 +27,7 @@ use Mode;
 use build_helper::up_to_date;
 
 use util::{cp_r, symlink_dir};
-use builder::{Builder, Step};
+use builder::{Builder, ShouldRun, Step};
 use tool::Tool;
 use compile;
 use cache::{INTERNER, Interned};
@@ -44,8 +44,8 @@ macro_rules! book {
             type Output = ();
             const DEFAULT: bool = true;
 
-            fn should_run(_builder: &Builder, path: &Path) -> bool {
-                path.ends_with($path)
+            fn should_run(run: ShouldRun) -> ShouldRun {
+                run.path($path)
             }
 
             fn make_run(
@@ -99,7 +99,7 @@ book!(
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Rustbook {
+struct Rustbook {
     target: Interned<String>,
     name: Interned<String>,
 }
@@ -109,8 +109,8 @@ impl Step for Rustbook {
 
     // rustbook is never directly called, and only serves as a shim for the nomicon and the
     // reference.
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Invoke `rustbook` for `target` for the doc book `name`.
@@ -149,8 +149,8 @@ impl Step for UnstableBook {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/doc/unstable-book")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/doc/unstable-book")
     }
 
     fn make_run(
@@ -179,7 +179,7 @@ impl Step for UnstableBook {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct RustbookSrc {
+struct RustbookSrc {
     target: Interned<String>,
     name: Interned<String>,
     src: Interned<PathBuf>,
@@ -188,9 +188,8 @@ pub struct RustbookSrc {
 impl Step for RustbookSrc {
     type Output = ();
 
-    fn should_run(_builder: &Builder, _path: &Path) -> bool {
-        // RustbookSrc is also never run directly, only as a helper to other rules
-        false
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Invoke `rustbook` for `target` for the doc book `name` from the `src` path.
@@ -242,8 +241,8 @@ impl Step for TheBook {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/doc/book")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/doc/book")
     }
 
     fn make_run(
@@ -366,8 +365,8 @@ impl Step for Standalone {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/doc")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/doc")
     }
 
     fn make_run(
@@ -475,11 +474,10 @@ impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        builder.crates("std").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.krate("std")
     }
+
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
@@ -588,10 +586,8 @@ impl Step for Test {
     type Output = ();
     const DEFAULT: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        builder.crates("test").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.krate("test")
     }
 
     fn make_run(
@@ -678,10 +674,8 @@ impl Step for Rustc {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(builder: &Builder, path: &Path) -> bool {
-        builder.crates("rustc-main").into_iter().any(|(_, krate_path)| {
-            path.ends_with(krate_path)
-        })
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.krate("rustc-main")
     }
 
     fn make_run(
@@ -780,8 +774,8 @@ impl Step for ErrorIndex {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/tools/error_index_generator")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/error_index_generator")
     }
 
     fn make_run(
@@ -844,8 +838,8 @@ impl Step for UnstableBookGen {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
-    fn should_run(_builder: &Builder, path: &Path) -> bool {
-        path.ends_with("src/doc/unstable-book")
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/unstable-book-gen")
     }
 
     fn make_run(
