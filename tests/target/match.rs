@@ -390,7 +390,8 @@ fn issue1395() {
 fn issue1456() {
     Ok(Recording {
         artists: match reader
-            .evaluate(".//mb:recording/mb:artist-credit/mb:name-credit")? {
+            .evaluate(".//mb:recording/mb:artist-credit/mb:name-credit")?
+        {
             Nodeset(nodeset) => {
                 let res: Result<Vec<ArtistRef>, ReadError> = nodeset
                     .iter()
