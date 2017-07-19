@@ -93,6 +93,89 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     }
 }
 
+struct StepDescription {
+    default: bool,
+    only_hosts: bool,
+    only_build_targets: bool,
+    only_build: bool,
+    should_run: fn(ShouldRun) -> ShouldRun,
+    make_run: fn(&Builder, Option<&Path>, Interned<String>, Interned<String>),
+}
+
+impl StepDescription {
+    fn from<S: Step>() -> StepDescription {
+        StepDescription {
+            default: S::DEFAULT,
+            only_hosts: S::ONLY_HOSTS,
+            only_build_targets: S::ONLY_BUILD_TARGETS,
+            only_build: S::ONLY_BUILD,
+            should_run: S::should_run,
+            make_run: S::make_run,
+        }
+    }
+
+    fn maybe_run(&self, builder: &Builder, path: Option<&Path>) {
+        let build = builder.build;
+        let hosts = if self.only_build_targets || self.only_build {
+            &build.config.host[..1]
+        } else {
+            &build.hosts
+        };
+
+        // Determine the actual targets participating in this rule.
+        // NOTE: We should keep the full projection from build triple to
+        // the hosts for the dist steps, now that the hosts array above is
+        // truncated to avoid duplication of work in that case. Therefore
+        // the original non-shadowed hosts array is used below.
+        let targets = if self.only_hosts {
+            // If --target was specified but --host wasn't specified,
+            // don't run any host-only tests. Also, respect any `--host`
+            // overrides as done for `hosts`.
+            if build.flags.host.len() > 0 {
+                &build.flags.host[..]
+            } else if build.flags.target.len() > 0 {
+                &[]
+            } else if self.only_build {
+                &build.config.host[..1]
+            } else {
+                &build.config.host[..]
+            }
+        } else {
+            &build.targets
+        };
+
+        for host in hosts {
+            for target in targets {
+                (self.make_run)(builder, path, *host, *target);
+            }
+        }
+    }
+
+    fn run(v: &[StepDescription], builder: &Builder, paths: &[PathBuf]) {
+        if paths.is_empty() {
+            for desc in v {
+                if desc.default {
+                    desc.maybe_run(builder, None);
+                }
+            }
+        } else {
+            for path in paths {
+                let mut attempted_run = false;
+                for desc in v {
+                    if (desc.should_run)(ShouldRun::new(builder)).run(path) {
+                        attempted_run = true;
+                        desc.maybe_run(builder, Some(path));
+                    }
+                }
+
+                if !attempted_run {
+                    eprintln!("Warning: no rules matched {}.", path.display());
+                }
+            }
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ShouldRun<'a> {
     builder: &'a Builder<'a>,
@@ -140,33 +223,34 @@ pub enum Kind {
     Install,
 }
 
-macro_rules! check {
-    ($self:ident, $paths:ident, $($rule:ty),+ $(,)*) => {{
-        let paths = $paths;
-        if paths.is_empty() {
-            $({
-                if <$rule>::DEFAULT {
-                    $self.maybe_run::<$rule>(None);
-                }
-            })+
-        } else {
-            for path in paths {
-                let mut attempted_run = false;
-                $({
-                    if <$rule>::should_run(ShouldRun::new($self)).run(path) {
-                        attempted_run = true;
-                        $self.maybe_run::<$rule>(Some(path));
-                    }
-                })+
-                if !attempted_run {
-                    eprintln!("Warning: no rules matched {}.", path.display());
-                }
-            }
-        }
-    }};
-}
-
 impl<'a> Builder<'a> {
+    fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
+        macro_rules! describe {
+            ($($rule:ty),+ $(,)*) => {{
+                vec![$(StepDescription::from::<$rule>()),+]
+            }};
+        }
+        match kind {
+            Kind::Build => describe!(compile::Std, compile::Test, compile::Rustc,
+                compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
+                tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
+                tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
+                tool::RustInstaller, tool::Cargo, tool::Rls),
+            Kind::Test => describe!(check::Tidy, check::Bootstrap, check::Compiletest, check::Crate,
+                check::CrateLibrustc, check::Linkcheck, check::Cargotest, check::Cargo, check::Docs,
+                check::ErrorIndex, check::Distcheck),
+            Kind::Bench => describe!(check::Crate, check::CrateLibrustc),
+            Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
+                doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
+                doc::Reference),
+            Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
+                dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
+                dist::Rls, dist::Extended, dist::HashSign),
+            Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
+                install::Analysis, install::Src, install::Rustc),
+        }
+    }
+
     pub fn get_help(build: &Build, subcommand: &str) -> Option<String> {
         let kind = match subcommand {
             "build" => Kind::Build,
@@ -188,31 +272,8 @@ impl<'a> Builder<'a> {
 
         let builder = &builder;
         let mut should_run = ShouldRun::new(builder);
-        macro_rules! into_shouldrun {
-            ($should_run:ident, $($rule:ty),+ $(,)*) => {{
-                $(
-                    $should_run = <$rule>::should_run($should_run);
-                )+
-            }};
-        }
-        match builder.kind {
-            Kind::Build => into_shouldrun!(should_run, compile::Std, compile::Test, compile::Rustc,
-                compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
-                tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
-                tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
-                tool::RustInstaller, tool::Cargo, tool::Rls),
-            Kind::Test => into_shouldrun!(should_run, check::Tidy, check::Bootstrap,
-                check::Compiletest, check::Crate, check::CrateLibrustc, check::Linkcheck,
-                check::Cargotest, check::Cargo, check::Docs, check::ErrorIndex, check::Distcheck),
-            Kind::Bench => into_shouldrun!(should_run, check::Crate, check::CrateLibrustc),
-            Kind::Doc => into_shouldrun!(should_run, doc::UnstableBook, doc::UnstableBookGen,
-                doc::TheBook, doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex,
-                doc::Nomicon, doc::Reference),
-            Kind::Dist => into_shouldrun!(should_run, dist::Docs, dist::Mingw, dist::Rustc,
-                dist::DebuggerScripts, dist::Std, dist::Analysis, dist::Src,
-                dist::PlainSourceTarball, dist::Cargo, dist::Rls, dist::Extended, dist::HashSign),
-            Kind::Install => into_shouldrun!(should_run, install::Docs, install::Std,
-                install::Cargo, install::Rls, install::Analysis, install::Src, install::Rustc),
+        for desc in Builder::get_step_descriptions(builder.kind) {
+            should_run = (desc.should_run)(should_run);
         }
         let mut help = String::from("Available paths:\n");
         for path in should_run.paths {
@@ -240,30 +301,12 @@ impl<'a> Builder<'a> {
             stack: RefCell::new(Vec::new()),
         };
 
-        let builder = &builder;
-        match builder.kind {
-            Kind::Build => check!(builder, paths, compile::Std, compile::Test, compile::Rustc,
-                compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
-                tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
-                tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
-                tool::RustInstaller, tool::Cargo, tool::Rls),
-            Kind::Test => check!(builder, paths, check::Tidy, check::Bootstrap, check::Compiletest,
-                check::Crate, check::CrateLibrustc, check::Linkcheck, check::Cargotest,
-                check::Cargo, check::Docs, check::ErrorIndex, check::Distcheck),
-            Kind::Bench => check!(builder, paths, check::Crate, check::CrateLibrustc),
-            Kind::Doc => builder.default_doc(Some(paths)),
-            Kind::Dist => check!(builder, paths, dist::Docs, dist::Mingw, dist::Rustc,
-                dist::DebuggerScripts, dist::Std, dist::Analysis, dist::Src,
-                dist::PlainSourceTarball, dist::Cargo, dist::Rls, dist::Extended, dist::HashSign),
-            Kind::Install => check!(builder, paths, install::Docs, install::Std, install::Cargo,
-                install::Rls, install::Analysis, install::Src, install::Rustc),
-        }
+        StepDescription::run(&Builder::get_step_descriptions(builder.kind), &builder, paths);
     }
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
         let paths = paths.unwrap_or(&[]);
-        check!(self, paths, doc::UnstableBook, doc::UnstableBookGen, doc::TheBook, doc::Standalone,
-            doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon, doc::Reference);
+        StepDescription::run(&Builder::get_step_descriptions(Kind::Doc), self, paths);
     }
 
     /// Obtain a compiler at a given stage and for a given host. Explictly does
@@ -512,43 +555,6 @@ impl<'a> Builder<'a> {
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
         cargo
-    }
-
-    fn maybe_run<S: Step>(&self, path: Option<&Path>) {
-        let build = self.build;
-        let hosts = if S::ONLY_BUILD_TARGETS || S::ONLY_BUILD {
-            &build.config.host[..1]
-        } else {
-            &build.hosts
-        };
-
-        // Determine the actual targets participating in this rule.
-        // NOTE: We should keep the full projection from build triple to
-        // the hosts for the dist steps, now that the hosts array above is
-        // truncated to avoid duplication of work in that case. Therefore
-        // the original non-shadowed hosts array is used below.
-        let targets = if S::ONLY_HOSTS {
-            // If --target was specified but --host wasn't specified,
-            // don't run any host-only tests. Also, respect any `--host`
-            // overrides as done for `hosts`.
-            if build.flags.host.len() > 0 {
-                &build.flags.host[..]
-            } else if build.flags.target.len() > 0 {
-                &[]
-            } else if S::ONLY_BUILD {
-                &build.config.host[..1]
-            } else {
-                &build.config.host[..]
-            }
-        } else {
-            &build.targets
-        };
-
-        for host in hosts {
-            for target in targets {
-                S::make_run(self, path, *host, *target);
-            }
-        }
     }
 
     /// Ensure that a given step is built, returning it's output. This will
