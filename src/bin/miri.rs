@@ -199,11 +199,7 @@ fn main() {
         args.push(sysroot_flag);
         args.push(find_sysroot());
     }
-    // we run the optimization passes inside miri
-    // if we ran them twice we'd get funny failures due to borrowck ElaborateDrops only working on
-    // unoptimized MIR
-    // FIXME: add an after-mir-passes hook to rustc driver
-    args.push("-Zmir-opt-level=0".to_owned());
+
     // for auxilary builds in unit tests
     args.push("-Zalways-encode-mir".to_owned());
 
