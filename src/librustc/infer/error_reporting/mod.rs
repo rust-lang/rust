@@ -847,7 +847,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                "{} may not live long enough",
                                                labeled_user_string);
                 err.help(&format!("consider adding an explicit lifetime \
-                                   bound `{}: 'static`...",
+                                   bound `{}: 'static + `...",
                                   bound_kind));
                 err
             }
