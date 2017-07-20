@@ -10,8 +10,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{State, Generator};
-use std::cell::Cell;
+use std::ops::Generator;
 
 fn main() {
     let _b = {

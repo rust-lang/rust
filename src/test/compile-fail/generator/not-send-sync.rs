@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators, generator_trait)]
+#![feature(generators)]
 
-use std::ops::{State, Generator};
 use std::cell::Cell;
 
 fn main() {
