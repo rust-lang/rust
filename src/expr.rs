@@ -51,21 +51,58 @@ pub enum ExprType {
 fn combine_attr_and_expr(
     context: &RewriteContext,
     shape: Shape,
-    attr_str: &str,
+    expr: &ast::Expr,
     expr_str: &str,
-) -> String {
+) -> Option<String> {
+    let attr_str = try_opt!((&*expr.attrs).rewrite(context, shape));
     let separator = if attr_str.is_empty() {
         String::new()
     } else {
-        if expr_str.contains('\n') || attr_str.contains('\n') ||
-            attr_str.len() + expr_str.len() > shape.width
-        {
-            format!("\n{}", shape.indent.to_string(context.config))
+        // Try to recover comments between the attributes and the expression if available.
+        let missing_snippet = context.snippet(mk_sp(
+            expr.attrs[expr.attrs.len() - 1].span.hi,
+            expr.span.lo,
+        ));
+        let comment_opening_pos = missing_snippet.chars().position(|c| c == '/');
+        let prefer_same_line = if let Some(pos) = comment_opening_pos {
+            !missing_snippet[..pos].contains('\n')
         } else {
+            !missing_snippet.contains('\n')
+        };
+
+        let trimmed = missing_snippet.trim();
+        let missing_comment = if trimmed.is_empty() {
+            String::new()
+        } else {
+            try_opt!(rewrite_comment(&trimmed, false, shape, context.config))
+        };
+
+        // 2 = ` ` + ` `
+        let one_line_width =
+            attr_str.len() + missing_comment.len() + 2 + first_line_width(expr_str);
+        let attr_expr_separator = if prefer_same_line && !missing_comment.starts_with("//") &&
+            one_line_width <= shape.width
+        {
             String::from(" ")
+        } else {
+            format!("\n{}", shape.indent.to_string(context.config))
+        };
+
+        if missing_comment.is_empty() {
+            attr_expr_separator
+        } else {
+            // 1 = ` `
+            let one_line_width =
+                last_line_width(&attr_str) + 1 + first_line_width(&missing_comment);
+            let attr_comment_separator = if prefer_same_line && one_line_width <= shape.width {
+                String::from(" ")
+            } else {
+                format!("\n{}", shape.indent.to_string(context.config))
+            };
+            attr_comment_separator + &missing_comment + &attr_expr_separator
         }
     };
-    format!("{}{}{}", attr_str, separator, expr_str)
+    Some(format!("{}{}{}", attr_str, separator, expr_str))
 }
 
 pub fn format_expr(
@@ -74,18 +111,8 @@ pub fn format_expr(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let attr_rw = (&*expr.attrs).rewrite(context, shape);
     if contains_skip(&*expr.attrs) {
-        if let Some(attr_str) = attr_rw {
-            return Some(combine_attr_and_expr(
-                context,
-                shape,
-                &attr_str,
-                &context.snippet(expr.span),
-            ));
-        } else {
-            return Some(context.snippet(expr.span));
-        }
+        return Some(context.snippet(expr.span()));
     }
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
@@ -321,15 +348,14 @@ pub fn format_expr(
             ))
         }
     };
-    match (attr_rw, expr_rw) {
-        (Some(attr_str), Some(expr_str)) => recover_comment_removed(
-            combine_attr_and_expr(context, shape, &attr_str, &expr_str),
-            expr.span,
-            context,
-            shape,
-        ),
-        _ => None,
-    }
+
+    expr_rw
+        .and_then(|expr_str| {
+            recover_comment_removed(expr_str, expr.span, context, shape)
+        })
+        .and_then(|expr_str| {
+            combine_attr_and_expr(context, shape, expr, &expr_str)
+        })
 }
 
 pub fn rewrite_pair<LHS, RHS>(
@@ -921,7 +947,7 @@ impl Rewrite for ast::Stmt {
             ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) => None,
         };
         result.and_then(|res| {
-            recover_comment_removed(res, self.span, context, shape)
+            recover_comment_removed(res, self.span(), context, shape)
         })
     }
 }

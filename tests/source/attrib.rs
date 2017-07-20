@@ -81,3 +81,13 @@ fn foo() {
     // ((((((((
 )]
 fn foo() {}
+
+// #1799
+fn issue_1799() {
+    #[allow(unreachable_code)] // https://github.com/rust-lang/rust/issues/43336
+    Some( Err(error) ) ;
+
+    #[allow(unreachable_code)]
+    // https://github.com/rust-lang/rust/issues/43336
+    Some( Err(error) ) ;
+}
