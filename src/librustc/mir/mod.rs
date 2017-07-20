@@ -836,11 +836,23 @@ pub enum StatementKind<'tcx> {
     Nop,
 }
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, PartialEq, Eq)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 pub enum ValidationOp {
     Acquire,
     Release,
     Suspend(CodeExtent),
+}
+
+impl Debug for ValidationOp {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        use self::ValidationOp::*;
+        match *self {
+            Acquire => write!(fmt, "Acquire"),
+            Release => write!(fmt, "Release"),
+            // (reuse lifetime rendering policy from ppaux.)
+            Suspend(ref ce) => write!(fmt, "Suspend({})", ty::ReScope(*ce)),
+        }
+    }
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
