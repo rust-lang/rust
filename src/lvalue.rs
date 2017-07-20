@@ -182,7 +182,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     /// Returns a value and (in case of a ByRef) if we are supposed to use aligned accesses.
     pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
-        let ty = self.lvalue_ty(lvalue);
         // Shortcut for things like accessing a fat pointer's field,
         // which would otherwise (in the `eval_lvalue` path) require moving a `ByValPair` to memory
         // and returning an `Lvalue::Ptr` to it
@@ -190,14 +189,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return Ok(val);
         }
         let lvalue = self.eval_lvalue(lvalue)?;
-        self.read_lvalue(lvalue, ty)
+        self.read_lvalue(lvalue)
     }
 
-    pub fn read_lvalue(&self, lvalue: Lvalue<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        if ty.is_never() {
-            return Err(EvalError::Unreachable);
-        }
-
+    pub fn read_lvalue(&self, lvalue: Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
         match lvalue {
             Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
@@ -382,7 +377,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Deref => {
-                let val = self.read_lvalue(base, base_ty)?;
+                let val = self.read_lvalue(base)?;
 
                 let pointee_type = match base_ty.sty {
                     ty::TyRawPtr(ref tam) |
