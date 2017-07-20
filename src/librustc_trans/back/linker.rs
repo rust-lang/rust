@@ -484,14 +484,10 @@ impl<'a> Linker for MsvcLinker<'a> {
                 match entry {
                     Ok(entry) => {
                         let path = entry.path();
-                        if let Some(ext) = path.extension() {
-                            if ext == OsStr::new("natvis") {
-                                if let Some(natvis_path_str) = path.to_str() {
-                                    self.cmd.arg(&format!("/NATVIS:{}",natvis_path_str));
-                                } else {
-                                    self.sess.warn(&format!("natvis path not unicode: {:?}", path));
-                                }
-                            }
+                        if path.extension() == Some("natvis".as_ref()) {
+                            let mut arg = OsString::from("/NATVIS:");
+                            arg.push(path);
+                            self.cmd.arg(arg);
                         }
                     },
                     Err(err) => {
