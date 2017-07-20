@@ -695,7 +695,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_div(-1), -128);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_div(self, rhs: Self) -> Self {
             self.overflowing_div(rhs).0
         }
@@ -721,7 +721,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_rem(-1), 0);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_rem(self, rhs: Self) -> Self {
             self.overflowing_rem(rhs).0
         }
@@ -744,7 +744,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_neg(), -128);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
         }
@@ -769,7 +769,7 @@ macro_rules! int_impl {
         /// assert_eq!((-1i8).wrapping_shl(8), -1);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
@@ -796,7 +796,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_shr(8), -128);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
@@ -822,7 +822,7 @@ macro_rules! int_impl {
         /// assert_eq!((-128i8).wrapping_abs() as u8, 128);
         /// ```
         #[stable(feature = "no_panic_abs", since = "1.13.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_abs(self) -> Self {
             if self.is_negative() {
                 self.wrapping_neg()
@@ -1831,7 +1831,7 @@ macro_rules! uint_impl {
         /// assert_eq!(100u8.wrapping_div(10), 10);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_div(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -1851,7 +1851,7 @@ macro_rules! uint_impl {
         /// assert_eq!(100u8.wrapping_rem(10), 0);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_rem(self, rhs: Self) -> Self {
             self % rhs
         }
@@ -1877,7 +1877,7 @@ macro_rules! uint_impl {
         /// assert_eq!(180u8.wrapping_neg(), (127 + 1) - (180u8 - (127 + 1)));
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
         }
@@ -1902,7 +1902,7 @@ macro_rules! uint_impl {
         /// assert_eq!(1u8.wrapping_shl(8), 1);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
@@ -1929,7 +1929,7 @@ macro_rules! uint_impl {
         /// assert_eq!(128u8.wrapping_shr(8), 128);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
-        #[inline(always)]
+        #[inline]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             unsafe {
                 intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)

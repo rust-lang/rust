@@ -244,7 +244,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///     assert_eq!(std::ptr::read(y), 12);
 /// }
 /// ```
-#[inline(always)]
+#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
@@ -278,7 +278,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///     assert_eq!(std::ptr::read_unaligned(y), 12);
 /// }
 /// ```
-#[inline(always)]
+#[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();

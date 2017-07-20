@@ -239,7 +239,7 @@ impl<S: Sip> Hasher<S> {
     // except for composite types (that includes slices and str hashing because of delimiter).
     // Without this extra push the compiler is very reluctant to inline delimiter writes,
     // degrading performance substantially for the most common use cases.
-    #[inline(always)]
+    #[inline]
     fn short_write(&mut self, msg: &[u8]) {
         debug_assert!(msg.len() <= 8);
         let length = msg.len();

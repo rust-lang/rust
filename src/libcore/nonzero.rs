@@ -42,7 +42,7 @@ pub struct NonZero<T: Zeroable>(T);
 impl<T: Zeroable> NonZero<T> {
     /// Creates an instance of NonZero with the provided value.
     /// You must indeed ensure that the value is actually "non-zero".
-    #[inline(always)]
+    #[inline]
     pub const unsafe fn new(inner: T) -> NonZero<T> {
         NonZero(inner)
     }
