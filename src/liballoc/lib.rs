@@ -82,7 +82,6 @@
 #![cfg_attr(not(test), feature(core_float))]
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![cfg_attr(not(test), feature(slice_rotate))]
-#![cfg_attr(not(test), feature(str_checked_slicing))]
 #![cfg_attr(test, feature(rand, test))]
 #![cfg_attr(stage0, feature(allocator))]
 #![feature(allow_internal_unstable)]

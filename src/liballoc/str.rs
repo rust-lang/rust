@@ -328,14 +328,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
     /// let v = "🗻∈🌏";
     /// assert_eq!(Some("🗻"), v.get(0..4));
     /// assert!(v.get(1..).is_none());
     /// assert!(v.get(..8).is_none());
     /// assert!(v.get(..42).is_none());
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
         core_str::StrExt::get(self, i)
@@ -351,14 +350,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
     /// let mut v = String::from("🗻∈🌏");
     /// assert_eq!(Some("🗻"), v.get_mut(0..4).map(|v| &*v));
     /// assert!(v.get_mut(1..).is_none());
     /// assert!(v.get_mut(..8).is_none());
     /// assert!(v.get_mut(..42).is_none());
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
         core_str::StrExt::get_mut(self, i)
@@ -383,7 +381,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
     /// let v = "🗻∈🌏";
     /// unsafe {
     ///     assert_eq!("🗻", v.get_unchecked(0..4));
@@ -391,7 +388,7 @@ impl str {
     ///     assert_eq!("🌏", v.get_unchecked(7..11));
     /// }
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
         core_str::StrExt::get_unchecked(self, i)
@@ -416,7 +413,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
     /// let mut v = String::from("🗻∈🌏");
     /// unsafe {
     ///     assert_eq!("🗻", v.get_unchecked_mut(0..4));
@@ -424,7 +420,7 @@ impl str {
     ///     assert_eq!("🌏", v.get_unchecked_mut(7..11));
     /// }
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
         core_str::StrExt::get_unchecked_mut(self, i)
