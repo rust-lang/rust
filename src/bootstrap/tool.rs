@@ -16,7 +16,7 @@ use Mode;
 use Compiler;
 use builder::{Step, ShouldRun, Builder};
 use util::{exe, add_lib_path};
-use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp, Rustc};
+use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
 use channel::GitInfo;
 use cache::Interned;
@@ -347,8 +347,8 @@ impl Step for Cargo {
         });
         // Cargo depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
-        builder.ensure(Rustc {
-            compiler: builder.compiler(builder.top_stage, builder.build.build),
+        builder.ensure(compile::Rustc {
+            compiler: builder.compiler(self.stage, builder.build.build),
             target: builder.build.build,
         });
         builder.ensure(ToolBuild {
@@ -394,7 +394,7 @@ impl Step for Rls {
         if path.is_none() && !builder.build.config.extended {
             return;
         }
-        builder.ensure(Cargo {
+        builder.ensure(Rls {
             stage: builder.top_stage,
             target,
         });
@@ -406,8 +406,8 @@ impl Step for Rls {
         });
         // RLS depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
-        builder.ensure(Rustc {
-            compiler: builder.compiler(builder.top_stage, builder.build.build),
+        builder.ensure(compile::Rustc {
+            compiler: builder.compiler(self.stage, builder.build.build),
             target: builder.build.build,
         });
         builder.ensure(ToolBuild {

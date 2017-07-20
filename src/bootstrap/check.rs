@@ -233,6 +233,7 @@ impl Step for Cargo {
         let build = builder.build;
         let compiler = builder.compiler(self.stage, self.host);
 
+        builder.ensure(tool::Cargo { stage: self.stage, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
         if !build.fail_fast {
@@ -287,6 +288,7 @@ impl Step for Rls {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
+        builder.ensure(tool::Rls { stage: self.stage, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/rls/Cargo.toml"));
 
@@ -629,10 +631,6 @@ impl Step for Compiletest {
                 sysroot: builder.sysroot(compiler),
                 target: target
             });
-
-            if mode == "debuginfo-gdb" {
-                builder.ensure(RemoteCopyLibs { compiler, target });
-            }
         }
 
         if suite.ends_with("fulldeps") ||
