@@ -4,6 +4,7 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::ConstVal;
+use rustc::middle::region::CodeExtent;
 use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
@@ -21,6 +22,7 @@ use memory::{Memory, MemoryPointer, TlsKey, HasMemory};
 use memory::Kind as MemoryKind;
 use operator;
 use value::{PrimVal, PrimValKind, Value, Pointer};
+use validation::ValidationQuery;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -28,6 +30,9 @@ pub struct EvalContext<'a, 'tcx: 'a> {
 
     /// The virtual memory system.
     pub(crate) memory: Memory<'a, 'tcx>,
+
+    /// Lvalues that were suspended by the validation subsystem, and will be recovered later
+    pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 
     /// Precomputed statics, constants and promoteds.
     pub(crate) globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
@@ -112,6 +117,12 @@ pub enum StackPopCleanup {
     None,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct DynamicLifetime {
+    pub frame: usize,
+    pub region: Option<CodeExtent>, // "None" indicates "until the function ends"
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct ResourceLimits {
     pub memory_size: u64,
@@ -134,6 +145,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         EvalContext {
             tcx,
             memory: Memory::new(&tcx.data_layout, limits.memory_size),
+            suspended: HashMap::new(),
             globals: HashMap::new(),
             stack: Vec::new(),
             stack_limit: limits.stack_limit,

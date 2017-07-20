@@ -54,7 +54,14 @@ pub enum EvalError<'tcx> {
     MemoryLockViolation {
         ptr: MemoryPointer,
         len: u64,
+        frame: usize,
         access: AccessKind,
+        lock: LockInfo,
+    },
+    MemoryAcquireConflict {
+        ptr: MemoryPointer,
+        len: u64,
+        kind: AccessKind,
         lock: LockInfo,
     },
     InvalidMemoryLockRelease {
@@ -114,10 +121,12 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "invalid use of NULL pointer",
             MemoryLockViolation { .. } =>
                 "memory access conflicts with lock",
+            MemoryAcquireConflict { .. } =>
+                "new memory lock conflicts with existing lock",
             ValidationFailure(..) =>
                 "type validation failed",
             InvalidMemoryLockRelease { .. } =>
-                "memory lock released that was never acquired",
+                "invalid attempt to release write lock",
             DeallocatedLockedMemory { .. } =>
                 "tried to deallocate memory in conflict with a lock",
             ReadPointerAsBytes =>
@@ -219,12 +228,16 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                        if access { "memory access" } else { "pointer computed" },
                        ptr.offset, ptr.alloc_id, allocation_size)
             },
-            MemoryLockViolation { ptr, len, access, ref lock } => {
-                write!(f, "{:?} access at {:?}, size {}, is in conflict with lock {:?}",
-                       access, ptr, len, lock)
+            MemoryLockViolation { ptr, len, frame, access, ref lock } => {
+                write!(f, "{:?} access by frame {} at {:?}, size {}, is in conflict with lock {:?}",
+                       access, frame, ptr, len, lock)
+            }
+            MemoryAcquireConflict { ptr, len, kind, ref lock } => {
+                write!(f, "new {:?} lock at {:?}, size {}, is in conflict with lock {:?}",
+                       kind, ptr, len, lock)
             }
             InvalidMemoryLockRelease { ptr, len } => {
-                write!(f, "tried to release memory write lock at {:?}, size {}, but the write lock is held by someone else",
+                write!(f, "tried to release memory write lock at {:?}, size {}, but the write lock is held by someone else or its a read lock",
                        ptr, len)
             }
             DeallocatedLockedMemory { ptr, ref lock } => {

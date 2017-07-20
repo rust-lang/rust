@@ -9,12 +9,11 @@ use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty;
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::Substs;
 
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
-use validation::ValidationCtx;
 use value::{Value, PrimVal};
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
@@ -132,14 +131,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // Validity checks.
             Validate(op, ref lvalues) => {
                 for operand in lvalues {
-                    // We need to monomorphize ty *without* erasing lifetimes
-                    let ty = operand.ty.subst(self.tcx, self.substs());
-                    let lvalue = self.eval_lvalue(&operand.lval)?;
-                    self.validate(lvalue, ty, ValidationCtx::new(op))?;
+                    self.validation_op(op, operand)?;
                 }
             }
             EndRegion(ce) => {
-                self.memory.locks_lifetime_ended(Some(ce));
+                self.end_region(ce)?;
             }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
