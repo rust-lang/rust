@@ -79,7 +79,6 @@
 
 #![cfg_attr(test, allow(deprecated))] // rand
 #![cfg_attr(test, feature(placement_in))]
-#![cfg_attr(not(test), feature(char_escape_debug))]
 #![cfg_attr(not(test), feature(core_float))]
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![cfg_attr(not(test), feature(slice_rotate))]

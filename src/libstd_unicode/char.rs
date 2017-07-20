@@ -326,7 +326,6 @@ impl char {
     /// As an iterator:
     ///
     /// ```
-    /// # #![feature(char_escape_debug)]
     /// for c in '\n'.escape_debug() {
     ///     print!("{}", c);
     /// }
@@ -336,7 +335,6 @@ impl char {
     /// Using `println!` directly:
     ///
     /// ```
-    /// # #![feature(char_escape_debug)]
     /// println!("{}", '\n'.escape_debug());
     /// ```
     ///
@@ -349,10 +347,9 @@ impl char {
     /// Using `to_string`:
     ///
     /// ```
-    /// # #![feature(char_escape_debug)]
     /// assert_eq!('\n'.escape_debug().to_string(), "\\n");
     /// ```
-    #[unstable(feature = "char_escape_debug", issue = "35068")]
+    #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
         C::escape_debug(self)
