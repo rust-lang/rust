@@ -1948,7 +1948,7 @@ impl<'a> LoweringContext<'a> {
                         });
                         if gen == hir::IsGenerator::Yes && !decl.inputs.is_empty() {
                             span_err!(this.sess, fn_decl_span, E0625,
-                                      "yield statement outside of generator literal");
+                                      "generators cannot have explicit arguments");
                             this.sess.abort_if_errors();
                         }
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
