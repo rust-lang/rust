@@ -163,7 +163,7 @@ Compatibility Notes
 [RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
 [RFC 1624]: https://github.com/rust-lang/rfcs/pull/1624
 [RFC 1721]: https://github.com/rust-lang/rfcs/pull/1721
-[`Command::envs`]: https://doc.rust-lang.org/nightly/std/process/struct.Command.html#method.envs
+[`Command::envs`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.envs
 [`OsString::shrink_to_fit`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to_fit
 [`cmp::Reverse`]: https://doc.rust-lang.org/std/cmp/struct.Reverse.html
 [`thread::ThreadId`]: https://doc.rust-lang.org/std/thread/struct.ThreadId.html
