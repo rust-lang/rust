@@ -1327,7 +1327,7 @@ impl PathBuf {
     ///
     /// [`Box`]: ../../std/boxed/struct.Box.html
     /// [`Path`]: struct.Path.html
-    #[unstable(feature = "into_boxed_path", issue = "40380")]
+    #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_boxed_path(self) -> Box<Path> {
         unsafe { mem::transmute(self.inner.into_boxed_os_str()) }
     }
@@ -2300,7 +2300,7 @@ impl Path {
     ///
     /// [`Box`]: ../../std/boxed/struct.Box.html
     /// [`PathBuf`]: struct.PathBuf.html
-    #[unstable(feature = "into_boxed_path", issue = "40380")]
+    #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
         let inner: Box<OsStr> = unsafe { mem::transmute(self) };
         PathBuf { inner: OsString::from(inner) }

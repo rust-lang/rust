@@ -260,7 +260,7 @@ impl OsString {
     ///
     /// let b: Box<OsStr> = s.into_boxed_os_str();
     /// ```
-    #[unstable(feature = "into_boxed_os_str", issue = "40380")]
+    #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }
@@ -511,7 +511,7 @@ impl OsStr {
     ///
     /// [`Box`]: ../boxed/struct.Box.html
     /// [`OsString`]: struct.OsString.html
-    #[unstable(feature = "into_boxed_os_str", issue = "40380")]
+    #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
         let inner: Box<Slice> = unsafe { mem::transmute(self) };
         OsString { inner: Buf::from_box(inner) }
