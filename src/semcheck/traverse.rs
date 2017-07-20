@@ -22,7 +22,7 @@ use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
 /// The main entry point to our analysis passes.
 ///
@@ -416,13 +416,18 @@ fn diff_traits(changes: &mut ChangeSet,
     for (name, item_pair) in &items {
         match *item_pair {
             (Some((old_def, old_item)), Some((new_def, new_item))) => {
+                let old_def_id = old_def.def_id();
+                let new_def_id = new_def.def_id();
+
                 id_mapping.add_trait_item(old_def, new_def);
                 changes.new_change(old_def.def_id(),
                                    new_def.def_id(),
                                    *name,
-                                   tcx.def_span(old_def.def_id()),
-                                   tcx.def_span(new_def.def_id()),
+                                   tcx.def_span(old_def_id),
+                                   tcx.def_span(new_def_id),
                                    true);
+
+                diff_generics(changes, id_mapping, tcx, true, old_def_id, new_def_id);
                 diff_method(changes, tcx, old_item, new_item);
             },
             (Some((_, old_item)), None) => {
@@ -481,15 +486,16 @@ fn diff_generics(changes: &mut ChangeSet,
                     found.push(TypeParameterRemoved { defaulted: false });
                     found.push(TypeParameterAdded { defaulted: true });
                 }
+
+                id_mapping.add_internal_item(old_type.def_id, new_type.def_id);
+                id_mapping.add_type_param(*new_type);
             },
             (Some(old_type), None) => {
                 found.push(TypeParameterRemoved { defaulted: old_type.has_default });
             },
             (None, Some(new_type)) => { // FIXME: is_fn could be used in a more elegant fashion
                 found.push(TypeParameterAdded { defaulted: new_type.has_default || is_fn });
-                if new_type.has_default {
-                    id_mapping.add_defaulted_type_param(new_type.def_id);
-                }
+                id_mapping.add_type_param(*new_type);
             },
             (None, None) => unreachable!(),
         }
@@ -587,7 +593,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     use rustc::ty::{Lift, ReEarlyBound};
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
-    let old = fold_to_new(id_mapping, tcx, &old).subst(tcx, substs);
+    let old = fold_to_new(id_mapping, tcx, old_def_id, &old).subst(tcx, substs);
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = if new.is_fn() {
@@ -617,8 +623,11 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     });
 }
 
-/// Fold a type of an old item to be comparable with a new type.
-fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: &T) -> T
+/// Fold a type of an old item to be comparable with a new item.
+fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            old_def_id: DefId,
+                            old: &T) -> T
     where T: TypeFoldable<'tcx>
 {
     use rustc::ty::{AdtDef, Binder, BoundRegion, EarlyBoundRegion, ExistentialProjection,
@@ -659,6 +668,21 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 })
             },
             reg => reg,
+        }
+    }
+
+    let mut index_map = HashMap::new();
+    let old_generics = tcx.generics_of(old_def_id);
+
+    for type_ in &old_generics.types {
+        index_map.insert(type_.index, type_.def_id);
+    }
+
+    if let Some(did) = old_generics.parent {
+        let parent_generics = tcx.generics_of(did);
+
+        for type_ in &parent_generics.types {
+            index_map.insert(type_.index, type_.def_id);
         }
     }
 
@@ -727,9 +751,15 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping, tcx: TyCtxt<'a, 'tcx, 'tcx>,
             TyAnon(did, substs) => {
                 tcx.mk_anon(id_mapping.get_new_id(did), substs)
             },
-            /* TODO: TyParam(param) => {
-
-            }, */
+            TyParam(param) => {
+                if param.idx != 0 { // `Self` is special
+                    let old_did = index_map[&param.idx];
+                    let new_did = id_mapping.get_new_id(old_did);
+                    tcx.mk_param_from_def(&id_mapping.get_type_param(&new_did))
+                } else {
+                    tcx.mk_ty(TyParam(param))
+                }
+            },
             _ => ty,
         }
     }})

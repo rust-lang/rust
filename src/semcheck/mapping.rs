@@ -5,8 +5,9 @@
 
 use rustc::hir::def::{Def, Export};
 use rustc::hir::def_id::DefId;
+use rustc::ty::TypeParameterDef;
 
-use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, HashMap, VecDeque};
 
 use syntax::ast::Name;
 
@@ -25,7 +26,7 @@ pub struct IdMapping {
     /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
     child_mapping: HashMap<DefId, BTreeSet<DefId>>,
     /// Set of new defaulted type parameters.
-    defaulted_type_params: HashSet<DefId>,
+    type_params: HashMap<DefId, TypeParameterDef>,
 }
 
 impl IdMapping {
@@ -66,16 +67,21 @@ impl IdMapping {
             .insert(old);
     }
 
-    /// Record that a `DefId` represents a newly added defaulted type parameter.
-    pub fn add_defaulted_type_param(&mut self, new: DefId) {
-        self.defaulted_type_params
-            .insert(new);
+    /// Record that a `DefId` represents a new type parameter.
+    pub fn add_type_param(&mut self, new: TypeParameterDef) {
+        self.type_params.insert(new.def_id, new);
+    }
+
+    /// Get the type parameter represented by a given `DefId`.
+    pub fn get_type_param(&self, def_id: &DefId) -> TypeParameterDef {
+        self.type_params[def_id]
     }
 
     /// Check whether a `DefId` represents a newly added defaulted type parameter.
     pub fn is_defaulted_type_param(&self, new: &DefId) -> bool {
-        self.defaulted_type_params
-            .contains(new)
+        self.type_params
+            .get(new)
+            .map_or(false, |def| def.has_default)
     }
 
     /// Get the new `DefId` associated with the given old one.
