@@ -493,8 +493,6 @@ static DEFAULT_COMPILETESTS: &[Test] = &[
 
     // What this runs varies depending on the native platform being apple
     Test { path: "src/test/debuginfo", mode: "debuginfo-XXX", suite: "debuginfo" },
-    Test { path: "src/test/debuginfo-lldb", mode: "debuginfo-lldb", suite: "debuginfo" },
-    Test { path: "src/test/debuginfo-gdb", mode: "debuginfo-gdb", suite: "debuginfo" },
 ];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -680,6 +678,11 @@ impl Step for Compiletest {
         }
 
         if suite == "debuginfo" {
+            // Skip debuginfo tests on MSVC
+            if build.build.contains("msvc") {
+                return;
+            }
+
             if mode == "debuginfo-XXX" {
                 return if build.build.contains("apple") {
                     builder.ensure(Compiletest {
@@ -692,11 +695,6 @@ impl Step for Compiletest {
                         ..self
                     });
                 };
-            }
-
-            // Skip debuginfo tests on MSVC
-            if build.build.contains("msvc") {
-                return;
             }
 
             builder.ensure(dist::DebuggerScripts {
