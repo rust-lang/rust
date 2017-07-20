@@ -22,8 +22,8 @@ error[E0425]: cannot find value `whiskers` in this scope
 52 |     whiskers -= other;
    |     ^^^^^^^^
    |     |
-   |     help: try: `self.whiskers`
    |     `self` value is only available in methods with `self` parameter
+   |     help: try: `self.whiskers`
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:57:5
@@ -91,8 +91,8 @@ error[E0425]: cannot find value `whiskers` in this scope
 110 |     whiskers = 4;
     |     ^^^^^^^^
     |     |
-    |     help: try: `self.whiskers`
     |     `self` value is only available in methods with `self` parameter
+    |     help: try: `self.whiskers`
 
 error[E0425]: cannot find function `purr_louder` in this scope
    --> $DIR/issue-2356.rs:115:5
