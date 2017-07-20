@@ -36,14 +36,6 @@ note: added defaulted item to trait (technically breaking)
 10 | |     }
    | |_____^
 
-warning: breaking changes in `test7`
-  --> $REPO_PATH/tests/cases/traits/new.rs:11:5
-   |
-11 |     fn test7() -> u16;
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = warning: type error: expected u8, found u16 (breaking)
-
 warning: breaking changes in `test8`
   --> $REPO_PATH/tests/cases/traits/new.rs:12:5
    |
@@ -59,4 +51,42 @@ warning: technically breaking changes in `test9`
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: added self-argument to method (technically breaking)
+
+warning: breaking changes in `Bcd`
+  --> $REPO_PATH/tests/cases/traits/new.rs:16:1
+   |
+16 | pub trait Bcd<A> {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: type parameter added (breaking)
+
+warning: breaking changes in `Cde`
+  --> $REPO_PATH/tests/cases/traits/new.rs:18:1
+   |
+18 | pub trait Cde {}
+   | ^^^^^^^^^^^^^^^^
+   |
+   = warning: type parameter removed (breaking)
+
+warning: breaking changes in `Def`
+  --> $REPO_PATH/tests/cases/traits/new.rs:20:1
+   |
+20 | / pub trait Def<A, B> {
+21 | |     // The method is not broken - the impls are, but calls should work as expected, as
+22 | |     // long as a proper impl is presented. Maybe this will need some more careful handling.
+23 | |     fn def(&self, a: B) -> bool;
+24 | | }
+   | |_^
+   |
+   = warning: type parameter added (breaking)
+
+warning: breaking changes in `Efg`
+  --> $REPO_PATH/tests/cases/traits/new.rs:26:1
+   |
+26 | / pub trait Efg<A> {
+27 | |     fn efg(&self, a: A) -> bool;
+28 | | }
+   | |_^
+   |
+   = warning: type parameter removed (breaking)
 

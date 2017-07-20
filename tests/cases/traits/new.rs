@@ -12,3 +12,17 @@ pub trait Abc {
     fn test8(_: &Self) -> u8;
     fn test9(&self) -> u8;
 }
+
+pub trait Bcd<A> {}
+
+pub trait Cde {}
+
+pub trait Def<A, B> {
+    // The method is not broken - the impls are, but calls should work as expected, as
+    // long as a proper impl is presented. Maybe this will need some more careful handling.
+    fn def(&self, a: B) -> bool;
+}
+
+pub trait Efg<A> {
+    fn efg(&self, a: A) -> bool;
+}

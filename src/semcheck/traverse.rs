@@ -43,12 +43,12 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     }
 
     // third pass
-    for &(old, new) in id_mapping.items() {
+    for (old, new) in id_mapping.items() {
         diff_bounds(&mut changes, tcx, old.def_id(), new.def_id());
     }
 
     // fourth pass
-    for &(old, new) in id_mapping.items() {
+    for (old, new) in id_mapping.items() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
@@ -134,11 +134,11 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         };
 
                         let output = o_vis == Public || n_vis == Public;
-                        changes.new_change(o.def.def_id(),
-                                           n.def.def_id(),
+                        changes.new_change(o_def_id,
+                                           n_def_id,
                                            o.ident.name,
-                                           tcx.def_span(o.def.def_id()),
-                                           tcx.def_span(n.def.def_id()),
+                                           tcx.def_span(o_def_id),
+                                           tcx.def_span(n_def_id),
                                            output);
 
                         if o_vis == Public && n_vis != Public {
@@ -419,13 +419,13 @@ fn diff_traits(changes: &mut ChangeSet,
                 let old_def_id = old_def.def_id();
                 let new_def_id = new_def.def_id();
 
-                id_mapping.add_trait_item(old_def, new_def);
-                changes.new_change(old_def.def_id(),
-                                   new_def.def_id(),
+                id_mapping.add_trait_item(old_def, new_def, old);
+                changes.new_change(old_def_id,
+                                   new_def_id,
                                    *name,
                                    tcx.def_span(old_def_id),
                                    tcx.def_span(new_def_id),
-                                   true);
+                                   true); // TODO: bad to do this unconditionally
 
                 diff_generics(changes, id_mapping, tcx, true, old_def_id, new_def_id);
                 diff_method(changes, tcx, old_item, new_item);
@@ -541,7 +541,9 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
-    if changes.item_breaking(old_def_id) {
+    if changes.item_breaking(old_def_id) ||
+            id_mapping.get_trait_def(&old_def_id)
+                .map_or(false, |did| changes.item_breaking(did)) {
         return;
     }
 
@@ -754,8 +756,12 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
             TyParam(param) => {
                 if param.idx != 0 { // `Self` is special
                     let old_did = index_map[&param.idx];
-                    let new_did = id_mapping.get_new_id(old_did);
-                    tcx.mk_param_from_def(&id_mapping.get_type_param(&new_did))
+                    if id_mapping.contains_id(old_did) {
+                        let new_did = id_mapping.get_new_id(old_did);
+                        tcx.mk_param_from_def(&id_mapping.get_type_param(&new_did))
+                    } else {
+                        tcx.mk_ty(TyParam(param))
+                    }
                 } else {
                     tcx.mk_ty(TyParam(param))
                 }

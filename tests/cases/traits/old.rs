@@ -12,3 +12,15 @@ pub trait Abc {
     fn test8(&self) -> u8;
     fn test9(_: &Self) -> u8;
 }
+
+pub trait Bcd {}
+
+pub trait Cde<A> {}
+
+pub trait Def<A> {
+    fn def(&self, a: A) -> bool;
+}
+
+pub trait Efg<A, B> {
+    fn efg(&self, a: B) -> bool;
+}

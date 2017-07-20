@@ -17,10 +17,10 @@ use syntax::ast::Name;
 /// losslessly. The *access* to the stored data happens through the same API, however.
 #[derive(Default)]
 pub struct IdMapping {
-    /// Toplevel items' old `DefId` mapped to new `DefId`, as well as old and new exports.
+    /// Toplevel items' old `DefId` mapped to old and new `Def`.
     toplevel_mapping: HashMap<DefId, (Def, Def)>,
-    /// Trait items' old `DefId` mapped to new `DefId`.
-    trait_item_mapping: HashMap<DefId, (Def, Def)>,
+    /// Trait items' old `DefId` mapped to old and new `Def`.
+    trait_item_mapping: HashMap<DefId, (Def, Def, DefId)>,
     /// Other item's old `DefId` mapped to new `DefId`.
     internal_mapping: HashMap<DefId, DefId>,
     /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
@@ -43,8 +43,8 @@ impl IdMapping {
     }
 
     /// Add any trait item's old and new `DefId`s.
-    pub fn add_trait_item(&mut self, old: Def, new: Def) {
-        self.trait_item_mapping.insert(old.def_id(), (old, new));
+    pub fn add_trait_item(&mut self, old: Def, new: Def, trait_def_id: DefId) {
+        self.trait_item_mapping.insert(old.def_id(), (old, new, trait_def_id));
     }
 
     /// Add any other item's old and new `DefId`s.
@@ -95,6 +95,11 @@ impl IdMapping {
         }
     }
 
+    /// Return the `DefId` of the trait a given item belongs to.
+    pub fn get_trait_def(&self, item_def_id: &DefId) -> Option<DefId> {
+        self.trait_item_mapping.get(item_def_id).map(|t| t.2)
+    }
+
     /// Tell us whether a `DefId` is present in the mappings.
     pub fn contains_id(&self, old: DefId) -> bool {
         self.toplevel_mapping.contains_key(&old) ||
@@ -111,10 +116,11 @@ impl IdMapping {
     }
 
     /// Iterate over the toplevel and trait item pairs.
-    pub fn items<'a>(&'a self) -> impl Iterator<Item = &'a (Def, Def)> + 'a {
+    pub fn items<'a>(&'a self) -> impl Iterator<Item = (Def, Def)> + 'a {
         self.toplevel_mapping
             .values()
-            .chain(self.trait_item_mapping.values())
+            .cloned()
+            .chain(self.trait_item_mapping.values().map(|&(o, n, _)| (o, n)))
     }
 
     /// Iterate over the item pairs of all children of a given item.
