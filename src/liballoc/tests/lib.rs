@@ -28,7 +28,6 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(utf8_error_error_len)]
 
 extern crate alloc;
 extern crate test;
