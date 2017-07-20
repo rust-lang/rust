@@ -177,20 +177,10 @@ macro_rules! install {
 }
 
 install!((self, builder),
-    // rules.install("install-docs", "src/doc")
-    //      .default(build.config.docs)
-    //      .only_host_build(true)
-    //      .dep(|s| s.name("dist-docs"))
-    //      .run(move |s| install::Installer::new(build).install_docs(s.stage, s.target));
     Docs, "src/doc", builder.build.config.docs, only_hosts: false, {
         builder.ensure(dist::Docs { stage: self.stage, target: self.target });
         install_docs(builder, self.stage, self.target);
     };
-    // rules.install("install-std", "src/libstd")
-    //      .default(true)
-    //      .only_host_build(true)
-    //      .dep(|s| s.name("dist-std"))
-    //      .run(move |s| install::Installer::new(build).install_std(s.stage));
     Std, "src/libstd", true, only_hosts: true, {
         builder.ensure(dist::Std {
             compiler: builder.compiler(self.stage, self.host),
@@ -198,31 +188,14 @@ install!((self, builder),
         });
         install_std(builder, self.stage);
     };
-    // rules.install("install-cargo", "cargo")
-    //      .default(build.config.extended)
-    //      .host(true)
-    //      .only_host_build(true)
-    //      .dep(|s| s.name("dist-cargo"))
-    //      .run(move |s| install::Installer::new(build).install_cargo(s.stage, s.target));
     Cargo, "cargo", builder.build.config.extended, only_hosts: true, {
         builder.ensure(dist::Cargo { stage: self.stage, target: self.target });
         install_cargo(builder, self.stage, self.target);
     };
-    // rules.install("install-rls", "rls")
-    //      .default(build.config.extended)
-    //      .host(true)
-    //      .only_host_build(true)
-    //      .dep(|s| s.name("dist-rls"))
-    //      .run(move |s| install::Installer::new(build).install_rls(s.stage, s.target));
     Rls, "rls", builder.build.config.extended, only_hosts: true, {
         builder.ensure(dist::Rls { stage: self.stage, target: self.target });
         install_rls(builder, self.stage, self.target);
     };
-    // rules.install("install-analysis", "analysis")
-    //      .default(build.config.extended)
-    //      .only_host_build(true)
-    //      .dep(|s| s.name("dist-analysis"))
-    //      .run(move |s| install::Installer::new(build).install_analysis(s.stage, s.target));
     Analysis, "analysis", builder.build.config.extended, only_hosts: false, {
         builder.ensure(dist::Analysis {
             compiler: builder.compiler(self.stage, self.host),
@@ -230,23 +203,10 @@ install!((self, builder),
         });
         install_analysis(builder, self.stage, self.target);
     };
-    // rules.install("install-src", "src")
-    //      .default(build.config.extended)
-    //      .host(true)
-    //      .only_build(true)
-    //      .only_host_build(true)
-    //      .dep(|s| s.name("dist-src"))
-    //      .run(move |s| install::Installer::new(build).install_src(s.stage));
     Src, "src", builder.build.config.extended, only_hosts: true, {
         builder.ensure(dist::Src);
         install_src(builder, self.stage);
     }, ONLY_BUILD;
-    // rules.install("install-rustc", "src/librustc")
-    //      .default(true)
-    //      .host(true)
-    //      .only_host_build(true)
-    //      .dep(|s| s.name("dist-rustc"))
-    //      .run(move |s| install::Installer::new(build).install_rustc(s.stage, s.target));
     Rustc, "src/librustc", builder.build.config.extended, only_hosts: true, {
         builder.ensure(dist::Rustc { stage: self.stage, target: self.target });
         install_rustc(builder, self.stage, self.target);

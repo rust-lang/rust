@@ -21,30 +21,6 @@ use native;
 use channel::GitInfo;
 use cache::Interned;
 
-//// ========================================================================
-//// Build tools
-////
-//// Tools used during the build system but not shipped
-//// "pseudo rule" which represents completely cleaning out the tools dir in
-//// one stage. This needs to happen whenever a dependency changes (e.g.
-//// libstd, libtest, librustc) and all of the tool compilations above will
-//// be sequenced after this rule.
-//rules.build("maybe-clean-tools", "path/to/nowhere")
-//     .after("librustc-tool")
-//     .after("libtest-tool")
-//     .after("libstd-tool");
-//
-//rules.build("librustc-tool", "path/to/nowhere")
-//     .dep(|s| s.name("librustc"))
-//     .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Librustc));
-//rules.build("libtest-tool", "path/to/nowhere")
-//     .dep(|s| s.name("libtest"))
-//     .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libtest));
-//rules.build("libstd-tool", "path/to/nowhere")
-//     .dep(|s| s.name("libstd"))
-//     .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libstd));
-//
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct CleanTools {
     pub stage: u32,
@@ -213,55 +189,15 @@ macro_rules! tool {
 }
 
 tool!(
-    // rules.build("tool-rustbook", "src/tools/rustbook")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("librustc-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "rustbook"));
     Rustbook, "src/tools/rustbook", "rustbook", Mode::Librustc;
-    // rules.build("tool-error-index", "src/tools/error_index_generator")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("librustc-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
     ErrorIndex, "src/tools/error_index_generator", "error_index_generator", Mode::Librustc;
-    // rules.build("tool-unstable-book-gen", "src/tools/unstable-book-gen")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::Libstd;
-    // rules.build("tool-tidy", "src/tools/tidy")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "tidy"));
     Tidy, "src/tools/tidy", "tidy", Mode::Libstd;
-    // rules.build("tool-linkchecker", "src/tools/linkchecker")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "linkchecker"));
     Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::Libstd;
-    // rules.build("tool-cargotest", "src/tools/cargotest")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "cargotest"));
     CargoTest, "src/tools/cargotest", "cargotest", Mode::Libstd;
-    // rules.build("tool-compiletest", "src/tools/compiletest")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libtest-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
     Compiletest, "src/tools/compiletest", "compiletest", Mode::Libtest;
-    // rules.build("tool-build-manifest", "src/tools/build-manifest")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Librustc;
-    // rules.build("tool-remote-test-client", "src/tools/remote-test-client")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::Libstd;
-    // rules.build("tool-rust-installer", "src/tools/rust-installer")
-    //      .dep(|s| s.name("maybe-clean-tools"))
-    //      .dep(|s| s.name("libstd-tool"))
-    //      .run(move |s| compile::tool(build, s.stage, s.target, "rust-installer"));
     RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::Libstd;
 );
 
@@ -300,20 +236,6 @@ impl Step for RemoteTestServer {
     }
 }
 
-// rules.build("tool-cargo", "src/tools/cargo")
-//      .host(true)
-//      .default(build.config.extended)
-//      .dep(|s| s.name("maybe-clean-tools"))
-//      .dep(|s| s.name("libstd-tool"))
-//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
-//      .dep(move |s| {
-//          // Cargo depends on procedural macros, which requires a full host
-//          // compiler to be available, so we need to depend on that.
-//          s.name("librustc-link")
-//           .target(&build.build)
-//           .host(&build.build)
-//      })
-//      .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
     pub stage: u32,
@@ -360,19 +282,6 @@ impl Step for Cargo {
     }
 }
 
-// rules.build("tool-rls", "src/tools/rls")
-//      .host(true)
-//      .default(build.config.extended)
-//      .dep(|s| s.name("librustc-tool"))
-//      .dep(|s| s.stage(0).host(s.target).name("openssl"))
-//      .dep(move |s| {
-//          // rls, like cargo, uses procedural macros
-//          s.name("librustc-link")
-//           .target(&build.build)
-//           .host(&build.build)
-//      })
-//      .run(move |s| compile::tool(build, s.stage, s.target, "rls"));
-//
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rls {
     pub stage: u32,

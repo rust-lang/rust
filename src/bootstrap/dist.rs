@@ -18,14 +18,6 @@
 //! out to `rust-installer` still. This may one day be replaced with bits and
 //! pieces of `rustup.rs`!
 
-// /// Helper to depend on a stage0 build-only rust-installer tool.
-// fn tool_rust_installer<'a>(build: &'a Build, step: &Step<'a>) -> Step<'a> {
-//     step.name("tool-rust-installer")
-//         .host(&build.build)
-//         .target(&build.build)
-//         .stage(0)
-// }
-
 use std::env;
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -64,13 +56,6 @@ pub fn tmpdir(build: &Build) -> PathBuf {
 fn rust_installer(builder: &Builder) -> Command {
     builder.tool_cmd(Tool::RustInstaller)
 }
-
-// rules.dist("dist-docs", "src/doc")
-//      .default(true)
-//      .only_host_build(true)
-//      .dep(|s| s.name("default:doc"))
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| dist::docs(build, s.stage, s.target));
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Docs {
@@ -276,16 +261,6 @@ fn make_win_dist(
     }
 }
 
-// rules.dist("dist-mingw", "path/to/nowhere")
-//      .default(true)
-//      .only_host_build(true)
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| {
-//          if s.target.contains("pc-windows-gnu") {
-//              dist::mingw(build, s.target)
-//          }
-//      });
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Mingw {
     target: Interned<String>,
@@ -346,14 +321,6 @@ impl Step for Mingw {
         Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
     }
 }
-
-// rules.dist("dist-rustc", "src/librustc")
-//      .dep(move |s| s.name("rustc").host(&build.build))
-//      .host(true)
-//      .only_host_build(true)
-//      .default(true)
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| dist::rustc(build, s.stage, s.target));
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
@@ -495,10 +462,6 @@ impl Step for Rustc {
     }
 }
 
-//rules.test("debugger-scripts", "src/etc/lldb_batchmode.py")
-//     .run(move |s| dist::debugger_scripts(build, &builder.sysroot(&s.compiler()),
-//                                     s.target));
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct DebuggerScripts {
     pub sysroot: Interned<PathBuf>,
@@ -556,22 +519,6 @@ impl Step for DebuggerScripts {
         }
     }
 }
-
-// rules.dist("dist-std", "src/libstd")
-//      .dep(move |s| {
-//          // We want to package up as many target libraries as possible
-//          // for the `rust-std` package, so if this is a host target we
-//          // depend on librustc and otherwise we just depend on libtest.
-//          if build.config.host.iter().any(|t| t == s.target) {
-//              s.name("librustc-link")
-//          } else {
-//              s.name("libtest-link")
-//          }
-//      })
-//      .default(true)
-//      .only_host_build(true)
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| dist::std(build, &s.compiler(), s.target));
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
@@ -647,13 +594,6 @@ impl Step for Std {
         Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
     }
 }
-
-// rules.dist("dist-analysis", "analysis")
-//      .default(build.config.extended)
-//      .dep(|s| s.name("dist-std"))
-//      .only_host_build(true)
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| dist::analysis(build, &s.compiler(), s.target));
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Analysis {
@@ -775,14 +715,6 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
     }
 }
 
-// rules.dist("dist-src", "src")
-//      .default(true)
-//      .host(true)
-//      .only_build(true)
-//      .only_host_build(true)
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |_| dist::rust_src(build));
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Src;
 
@@ -873,14 +805,6 @@ impl Step for Src {
 }
 
 const CARGO_VENDOR_VERSION: &str = "0.1.4";
-
-// rules.dist("dist-plain-source-tarball", "src")
-//      .default(build.config.rust_dist_src)
-//      .host(true)
-//      .only_build(true)
-//      .only_host_build(true)
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |_| dist::plain_source_tarball(build));
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct PlainSourceTarball;
@@ -1028,13 +952,6 @@ fn write_file(path: &Path, data: &[u8]) {
     t!(vf.write_all(data));
 }
 
-// rules.dist("dist-cargo", "cargo")
-//      .host(true)
-//      .only_host_build(true)
-//      .dep(|s| s.name("tool-cargo"))
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| dist::cargo(build, s.stage, s.target));
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
     pub stage: u32,
@@ -1127,12 +1044,6 @@ impl Step for Cargo {
     }
 }
 
-// rules.dist("dist-rls", "rls")
-//      .host(true)
-//      .only_host_build(true)
-//      .dep(|s| s.name("tool-rls"))
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| dist::rls(build, s.stage, s.target));
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rls {
     pub stage: u32,
@@ -1213,20 +1124,6 @@ impl Step for Rls {
         distdir(build).join(format!("{}-{}.tar.gz", name, target))
     }
 }
-
-// rules.dist("dist-extended", "extended")
-//      .default(build.config.extended)
-//      .host(true)
-//      .only_host_build(true)
-//      .dep(|d| d.name("dist-std"))
-//      .dep(|d| d.name("dist-rustc"))
-//      .dep(|d| d.name("dist-mingw"))
-//      .dep(|d| d.name("dist-docs"))
-//      .dep(|d| d.name("dist-cargo"))
-//      .dep(|d| d.name("dist-rls"))
-//      .dep(|d| d.name("dist-analysis"))
-//      .dep(move |s| tool_rust_installer(build, s))
-//      .run(move |s| dist::extended(build, s.stage, s.target));
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Extended {
@@ -1631,13 +1528,6 @@ fn add_env(build: &Build, cmd: &mut Command, target: Interned<String>) {
        cmd.env("CFG_PLATFORM", "x86");
     }
 }
-
-// rules.dist("dist-sign", "hash-and-sign")
-//      .host(true)
-//      .only_build(true)
-//      .only_host_build(true)
-//      .dep(move |s| s.name("tool-build-manifest").target(&build.build).stage(0))
-//      .run(move |_| dist::hash_and_sign(build));
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct HashSign;

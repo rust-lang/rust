@@ -35,17 +35,6 @@ use build_helper::up_to_date;
 use builder::{Builder, ShouldRun, Step};
 use cache::Interned;
 
-// rules.build("llvm", "src/llvm")
-//      .host(true)
-//      .dep(move |s| {
-//          if s.target == build.build {
-//              Step::noop()
-//          } else {
-//              s.target(&build.build)
-//          }
-//      })
-//      .run(move |s| native::llvm(build, s.target));
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: Interned<String>,
@@ -246,9 +235,6 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {}, need >=3.5\n\n", version)
 }
 
-//rules.build("test-helpers", "src/rt/rust_test_helpers.c")
-//     .run(move |s| native::test_helpers(build, s.target));
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TestHelpers {
     pub target: Interned<String>,
@@ -311,10 +297,7 @@ const OPENSSL_VERS: &'static str = "1.0.2k";
 const OPENSSL_SHA256: &'static str =
     "6b3977c61f2aedf0f96367dcfb5c6e578cf37e7b8d913b4ecb6643c3cb88d8c0";
 
-//rules.build("openssl", "path/to/nowhere")
-//     .run(move |s| native::openssl(build, s.target));
-
-    #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Openssl {
     pub target: Interned<String>,
 }

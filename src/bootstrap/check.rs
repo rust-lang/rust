@@ -87,13 +87,6 @@ fn try_run_quiet(build: &Build, cmd: &mut Command) {
     }
 }
 
-// rules.test("check-linkchecker", "src/tools/linkchecker")
-//      .dep(|s| s.name("tool-linkchecker").stage(0))
-//      .dep(|s| s.name("default:doc"))
-//      .default(build.config.docs)
-//      .host(true)
-//      .run(move |s| check::linkcheck(build, s.target));
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Linkcheck {
     host: Interned<String>,
@@ -140,12 +133,6 @@ impl Step for Linkcheck {
         }
     }
 }
-
-// rules.test("check-cargotest", "src/tools/cargotest")
-//      .dep(|s| s.name("tool-cargotest").stage(0))
-//      .dep(|s| s.name("librustc"))
-//      .host(true)
-//      .run(move |s| check::cargotest(build, s.stage, s.target));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cargotest {
@@ -196,11 +183,6 @@ impl Step for Cargotest {
                           .env("RUSTDOC", builder.rustdoc(compiler)));
     }
 }
-
-//rules.test("check-cargo", "cargo")
-//     .dep(|s| s.name("tool-cargo"))
-//     .host(true)
-//     .run(move |s| check::cargo(build, s.stage, s.target));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cargo {
@@ -257,10 +239,6 @@ pub struct Rls {
     host: Interned<String>,
 }
 
-//    rules.test("check-rls", "src/tools/rls")
-//         .dep(|s| s.name("tool-rls"))
-//         .host(true)
-//         .run(move |s| check::rls(build, s.stage, s.target));
 impl Step for Rls {
     type Output = ();
     const ONLY_HOSTS: bool = true;
@@ -309,13 +287,6 @@ fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     let old_path = env::var_os("PATH").unwrap_or_default();
     env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
 }
-
-//rules.test("check-tidy", "src/tools/tidy")
-//     .dep(|s| s.name("tool-tidy").stage(0))
-//     .default(true)
-//     .host(true)
-//     .only_build(true)
-//     .run(move |s| check::tidy(build, s.target));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy {
@@ -369,104 +340,6 @@ impl Step for Tidy {
 fn testdir(build: &Build, host: Interned<String>) -> PathBuf {
     build.out.join(host).join("test")
 }
-
-//    // ========================================================================
-//    // Test targets
-//    //
-//    // Various unit tests and tests suites we can run
-//    {
-//        let mut suite = |name, path, mode, dir| {
-//            rules.test(name, path)
-//                 .dep(|s| s.name("libtest"))
-//                 .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
-//                 .dep(|s| s.name("test-helpers"))
-//                 .dep(|s| s.name("remote-copy-libs"))
-//                 .default(mode != "pretty") // pretty tests don't run everywhere
-//                 .run(move |s| {
-//                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
-//                 });
-//        };
-//
-//        suite("check-ui", "src/test/ui", "ui", "ui");
-//        suite("check-rpass", "src/test/run-pass", "run-pass", "run-pass");
-//        suite("check-cfail", "src/test/compile-fail", "compile-fail", "compile-fail");
-//        suite("check-pfail", "src/test/parse-fail", "parse-fail", "parse-fail");
-//        suite("check-rfail", "src/test/run-fail", "run-fail", "run-fail");
-//        suite("check-rpass-valgrind", "src/test/run-pass-valgrind",
-//              "run-pass-valgrind", "run-pass-valgrind");
-//        suite("check-mir-opt", "src/test/mir-opt", "mir-opt", "mir-opt");
-//        if build.config.codegen_tests {
-//            suite("check-codegen", "src/test/codegen", "codegen", "codegen");
-//        }
-//        suite("check-codegen-units", "src/test/codegen-units", "codegen-units",
-//              "codegen-units");
-//        suite("check-incremental", "src/test/incremental", "incremental",
-//              "incremental");
-//    }
-//
-//    if build.build.contains("msvc") {
-//        // nothing to do for debuginfo tests
-//    } else {
-//        rules.test("check-debuginfo-lldb", "src/test/debuginfo-lldb")
-//             .dep(|s| s.name("libtest"))
-//             .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
-//             .dep(|s| s.name("test-helpers"))
-//             .dep(|s| s.name("debugger-scripts"))
-//             .run(move |s| check::compiletest(build, &s.compiler(), s.target,
-//                                         "debuginfo-lldb", "debuginfo"));
-//        rules.test("check-debuginfo-gdb", "src/test/debuginfo-gdb")
-//             .dep(|s| s.name("libtest"))
-//             .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
-//             .dep(|s| s.name("test-helpers"))
-//             .dep(|s| s.name("debugger-scripts"))
-//             .dep(|s| s.name("remote-copy-libs"))
-//             .run(move |s| check::compiletest(build, &s.compiler(), s.target,
-//                                         "debuginfo-gdb", "debuginfo"));
-//        let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
-//        rule.default(true);
-//        if build.build.contains("apple") {
-//            rule.dep(|s| s.name("check-debuginfo-lldb"));
-//        } else {
-//            rule.dep(|s| s.name("check-debuginfo-gdb"));
-//        }
-//    }
-//
-//
-//
-//    {
-//        let mut suite = |name, path, mode, dir| {
-//            rules.test(name, path)
-//                 .dep(|s| s.name("librustc"))
-//                 .dep(|s| s.name("test-helpers"))
-//                 .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
-//                 .default(mode != "pretty")
-//                 .host(true)
-//                 .run(move |s| {
-//                     check::compiletest(build, &s.compiler(), s.target, mode, dir)
-//                 });
-//        };
-//
-//        suite("check-ui-full", "src/test/ui-fulldeps", "ui", "ui-fulldeps");
-//        suite("check-rpass-full", "src/test/run-pass-fulldeps",
-//              "run-pass", "run-pass-fulldeps");
-//        suite("check-rfail-full", "src/test/run-fail-fulldeps",
-//              "run-fail", "run-fail-fulldeps");
-//        suite("check-cfail-full", "src/test/compile-fail-fulldeps",
-//              "compile-fail", "compile-fail-fulldeps");
-//        suite("check-rmake", "src/test/run-make", "run-make", "run-make");
-//        suite("check-rustdoc", "src/test/rustdoc", "rustdoc", "rustdoc");
-//        suite("check-pretty", "src/test/pretty", "pretty", "pretty");
-//        suite("check-pretty-rpass", "src/test/run-pass/pretty", "pretty",
-//              "run-pass");
-//        suite("check-pretty-rfail", "src/test/run-fail/pretty", "pretty",
-//              "run-fail");
-//        suite("check-pretty-valgrind", "src/test/run-pass-valgrind/pretty", "pretty",
-//              "run-pass-valgrind");
-//        suite("check-pretty-rpass-full", "src/test/run-pass-fulldeps/pretty",
-//              "pretty", "run-pass-fulldeps");
-//        suite("check-pretty-rfail-full", "src/test/run-fail-fulldeps/pretty",
-//              "pretty", "run-fail-fulldeps");
-//    }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Test {
@@ -862,11 +735,6 @@ pub struct Docs {
     compiler: Compiler,
 }
 
-// rules.test("check-docs", "src/doc")
-//     .dep(|s| s.name("libtest"))
-//     .default(true)
-//     .host(true)
-//     .run(move |s| check::docs(build, &s.compiler()));
 impl Step for Docs {
     type Output = ();
     const DEFAULT: bool = true;
@@ -924,13 +792,6 @@ impl Step for Docs {
         }
     }
 }
-
-//rules.test("check-error-index", "src/tools/error_index_generator")
-//     .dep(|s| s.name("libstd"))
-//     .dep(|s| s.name("tool-error-index").host(s.host).stage(0))
-//     .default(true)
-//     .host(true)
-//     .run(move |s| check::error_index(build, &s.compiler()));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ErrorIndex {
@@ -1013,22 +874,6 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     }
 }
 
-//    for (krate, path, _default) in krates("rustc-main") {
-//        rules.test(&krate.test_step, path)
-//             .dep(|s| s.name("librustc"))
-//             .dep(|s| s.name("remote-copy-libs"))
-//             .host(true)
-//             .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                        Mode::Librustc, TestKind::Test,
-//                                        Some(&krate.name)));
-//    }
-//    rules.test("check-rustc-all", "path/to/nowhere")
-//         .dep(|s| s.name("librustc"))
-//         .dep(|s| s.name("remote-copy-libs"))
-//         .default(true)
-//         .host(true)
-//         .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                    Mode::Librustc, TestKind::Test, None));
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateLibrustc {
     compiler: Compiler,
@@ -1094,52 +939,6 @@ impl Step for CrateLibrustc {
     }
 }
 
-
-//    for (krate, path, _default) in krates("std") {
-//        rules.test(&krate.test_step, path)
-//             .dep(|s| s.name("libtest"))
-//             .dep(|s| s.name("remote-copy-libs"))
-//             .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                        Mode::Libstd, TestKind::Test,
-//                                        Some(&krate.name)));
-//    }
-//    rules.test("check-std-all", "path/to/nowhere")
-//         .dep(|s| s.name("libtest"))
-//         .dep(|s| s.name("remote-copy-libs"))
-//         .default(true)
-//         .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                    Mode::Libstd, TestKind::Test, None));
-//
-//    // std benchmarks
-//    for (krate, path, _default) in krates("std") {
-//        rules.bench(&krate.bench_step, path)
-//             .dep(|s| s.name("libtest"))
-//             .dep(|s| s.name("remote-copy-libs"))
-//             .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                        Mode::Libstd, TestKind::Bench,
-//                                        Some(&krate.name)));
-//    }
-//    rules.bench("bench-std-all", "path/to/nowhere")
-//         .dep(|s| s.name("libtest"))
-//         .dep(|s| s.name("remote-copy-libs"))
-//         .default(true)
-//         .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                    Mode::Libstd, TestKind::Bench, None));
-//
-//    for (krate, path, _default) in krates("test") {
-//        rules.test(&krate.test_step, path)
-//             .dep(|s| s.name("libtest"))
-//             .dep(|s| s.name("remote-copy-libs"))
-//             .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                        Mode::Libtest, TestKind::Test,
-//                                        Some(&krate.name)));
-//    }
-//    rules.test("check-test-all", "path/to/nowhere")
-//         .dep(|s| s.name("libtest"))
-//         .dep(|s| s.name("remote-copy-libs"))
-//         .default(true)
-//         .run(move |s| check::krate(build, &s.compiler(), s.target,
-//                                    Mode::Libtest, TestKind::Test, None));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
@@ -1383,25 +1182,6 @@ fn find_tests(dir: &Path, target: Interned<String>) -> Vec<PathBuf> {
     dst
 }
 
-//    rules.test("remote-copy-libs", "path/to/nowhere")
-//         .dep(|s| s.name("libtest"))
-//         .dep(move |s| {
-//             if build.remote_tested(s.target) {
-//                s.name("tool-remote-test-client").target(s.host).stage(0)
-//             } else {
-//                 Step::noop()
-//             }
-//         })
-//         .dep(move |s| {
-//             if build.remote_tested(s.target) {
-//                s.name("tool-remote-test-server")
-//             } else {
-//                 Step::noop()
-//             }
-//         })
-//         .run(move |s| check::remote_copy_libs(build, &s.compiler(), s.target));
-//
-
 /// Some test suites are run inside emulators or on remote devices, and most
 /// of our test binaries are linked dynamically which means we need to ship
 /// the standard library and such to the emulator ahead of time. This step
@@ -1463,11 +1243,6 @@ impl Step for RemoteCopyLibs {
         }
     }
 }
-
-//rules.test("check-distcheck", "distcheck")
-//     .dep(|s| s.name("dist-plain-source-tarball"))
-//     .dep(|s| s.name("dist-src"))
-//     .run(move |_| check::distcheck(build));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Distcheck;
@@ -1533,12 +1308,6 @@ impl Step for Distcheck {
                          .current_dir(&dir));
     }
 }
-
-//rules.test("check-bootstrap", "src/bootstrap")
-//     .default(true)
-//     .host(true)
-//     .only_build(true)
-//     .run(move |_| check::bootstrap(build));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Bootstrap;

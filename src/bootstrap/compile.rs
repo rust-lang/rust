@@ -36,112 +36,6 @@ use native;
 use cache::{INTERNER, Interned};
 use builder::{Step, ShouldRun, Builder};
 
-//
-//    // Crates which have build scripts need to rely on this rule to ensure that
-//    // the necessary prerequisites for a build script are linked and located in
-//    // place.
-//    rules.build("may-run-build-script", "path/to/nowhere")
-//         .dep(move |s| {
-//             s.name("libstd-link")
-//              .host(&build.build)
-//              .target(&build.build)
-//         });
-
-//    // ========================================================================
-//    // Crate compilations
-//    //
-//    // Tools used during the build system but not shipped
-//    // These rules are "pseudo rules" that don't actually do any work
-//    // themselves, but represent a complete sysroot with the relevant compiler
-//    // linked into place.
-//    //
-//    // That is, depending on "libstd" means that when the rule is completed then
-//    // the `stage` sysroot for the compiler `host` will be available with a
-//    // standard library built for `target` linked in place. Not all rules need
-//    // the compiler itself to be available, just the standard library, so
-//    // there's a distinction between the two.
-//    rules.build("libstd", "src/libstd")
-//         .dep(|s| s.name("rustc").target(s.host))
-//         .dep(|s| s.name("libstd-link"));
-//    rules.build("libtest", "src/libtest")
-//         .dep(|s| s.name("libstd"))
-//         .dep(|s| s.name("libtest-link"))
-//         .default(true);
-//    rules.build("librustc", "src/librustc")
-//         .dep(|s| s.name("libtest"))
-//         .dep(|s| s.name("librustc-link"))
-//         .host(true)
-//         .default(true);
-
-// Helper method to define the rules to link a crate into its place in the
-// sysroot.
-//
-// The logic here is a little subtle as there's a few cases to consider.
-// Not all combinations of (stage, host, target) actually require something
-// to be compiled, but rather libraries could get propagated from a
-// different location. For example:
-//
-// * Any crate with a `host` that's not the build triple will not actually
-//   compile something. A different `host` means that the build triple will
-//   actually compile the libraries, and then we'll copy them over from the
-//   build triple to the `host` directory.
-//
-// * Some crates aren't even compiled by the build triple, but may be copied
-//   from previous stages. For example if we're not doing a full bootstrap
-//   then we may just depend on the stage1 versions of libraries to be
-//   available to get linked forward.
-//
-// * Finally, there are some cases, however, which do indeed comiple crates
-//   and link them into place afterwards.
-//
-// The rule definition below mirrors these three cases. The `dep` method
-// calculates the correct dependency which either comes from stage1, a
-// different compiler, or from actually building the crate itself (the `dep`
-// rule). The `run` rule then mirrors these three cases and links the cases
-// forward into the compiler sysroot specified from the correct location.
-// fn crate_rule<'a, 'b>(build: &'a Build,
-//                         rules: &'b mut Rules<'a>,
-//                         krate: &'a str,
-//                         dep: &'a str,
-//                         link: fn(&Build, compiler, compiler, &str))
-//                         -> RuleBuilder<'a, 'b> {
-//     let mut rule = rules.build(&krate, "path/to/nowhere");
-//     rule.dep(move |s| {
-//             if build.force_use_stage1(&s.compiler(), s.target) {
-//                 s.host(&build.build).stage(1)
-//             } else if s.host == build.build {
-//                 s.name(dep)
-//             } else {
-//                 s.host(&build.build)
-//             }
-//         })
-//         .run(move |s| {
-//             if build.force_use_stage1(&s.compiler(), s.target) {
-//                 link(build,
-//                         &s.stage(1).host(&build.build).compiler(),
-//                         &s.compiler(),
-//                         s.target)
-//             } else if s.host == build.build {
-//                 link(build, &s.compiler(), &s.compiler(), s.target)
-//             } else {
-//                 link(build,
-//                         &s.host(&build.build).compiler(),
-//                         &s.compiler(),
-//                         s.target)
-//             }
-//         });
-//         rule
-// }
-
-//        rules.build("libstd", "src/libstd")
-//             .dep(|s| s.name("rustc").target(s.host))
-//             .dep(|s| s.name("libstd-link"));
-//    for (krate, path, _default) in krates("std") {
-//        rules.build(&krate.build_step, path)
-//             .dep(|s| s.name("startup-objects"))
-//             .dep(move |s| s.name("rustc").host(&build.build).target(s.host))
-//             .run(move |s| compile::std(build, s.target, &s.compiler()));
-//    }
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: Interned<String>,
@@ -256,14 +150,6 @@ impl Step for Std {
 }
 
 
-// crate_rule(build,
-//            &mut rules,
-//            "libstd-link",
-//            "build-crate-std",
-//            compile::std_link)
-//     .dep(|s| s.name("startup-objects"))
-//     .dep(|s| s.name("create-sysroot").target(s.host));
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct StdLink {
     pub compiler: Compiler,
@@ -334,10 +220,6 @@ fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
     }
 }
 
-// rules.build("startup-objects", "src/rtstartup")
-//      .dep(|s| s.name("create-sysroot").target(s.host))
-//      .run(move |s| compile::build_startup_objects(build, &s.compiler(), s.target));
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct StartupObjects {
     pub compiler: Compiler,
@@ -404,11 +286,6 @@ impl Step for StartupObjects {
     }
 }
 
-//    for (krate, path, _default) in krates("test") {
-//        rules.build(&krate.build_step, path)
-//             .dep(|s| s.name("libstd-link"))
-//             .run(move |s| compile::test(build, s.target, &s.compiler()));
-//    }
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Test {
     pub compiler: Compiler,
@@ -484,14 +361,6 @@ impl Step for Test {
     }
 }
 
-
-// crate_rule(build,
-//            &mut rules,
-//            "libtest-link",
-//            "build-crate-test",
-//            compile::test_link)
-//     .dep(|s| s.name("libstd-link"));
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TestLink {
     pub compiler: Compiler,
@@ -522,14 +391,6 @@ impl Step for TestLink {
                     &libtest_stamp(build, compiler, target));
     }
 }
-
-//    for (krate, path, _default) in krates("rustc-main") {
-//        rules.build(&krate.build_step, path)
-//             .dep(|s| s.name("libtest-link"))
-//             .dep(move |s| s.name("llvm").host(&build.build).stage(0))
-//             .dep(|s| s.name("may-run-build-script"))
-//             .run(move |s| compile::rustc(build, s.target, &s.compiler()));
-//    }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
@@ -675,12 +536,6 @@ impl Step for Rustc {
     }
 }
 
-// crate_rule(build,
-//            &mut rules,
-//            "librustc-link",
-//            "build-crate-rustc-main",
-//            compile::rustc_link)
-//     .dep(|s| s.name("libtest-link"));
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct RustcLink {
     pub compiler: Compiler,
@@ -736,9 +591,6 @@ fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
     PathBuf::from(out.trim())
 }
 
-// rules.build("create-sysroot", "path/to/nowhere")
-//      .run(move |s| compile::create_sysroot(build, &s.compiler()));
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Sysroot {
     pub compiler: Compiler,
@@ -770,20 +622,6 @@ impl Step for Sysroot {
         INTERNER.intern_path(sysroot)
     }
 }
-
-// the compiler with no target libraries ready to go
-// rules.build("rustc", "src/rustc")
-//      .dep(|s| s.name("create-sysroot").target(s.host))
-//      .dep(move |s| {
-//          if s.stage == 0 {
-//              Step::noop()
-//          } else {
-//              s.name("librustc")
-//               .host(&build.build)
-//               .stage(s.stage - 1)
-//          }
-//      })
-//      .run(move |s| compile::assemble_rustc(build, s.stage, s.target));
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Assemble {
