@@ -100,6 +100,7 @@ impl Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }
     }
 
+    /// Return true if `self` fully encloses `other`.
     pub fn contains(self, other: Span) -> bool {
         self.lo <= other.lo && other.hi <= self.hi
     }
@@ -184,15 +185,32 @@ impl Span {
         result
     }
 
-    pub fn to(self, end: Span) -> Span {
-        // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
-        if self.ctxt == SyntaxContext::empty() {
-            Span { lo: self.lo, ..end }
-        } else {
-            Span { hi: end.hi, ..self }
-        }
+    pub fn empty_ctxt(&self) -> bool {
+        self.ctxt == SyntaxContext::empty()
     }
 
+    /// Return a `Span` that would enclose both `self` and `end`.
+    pub fn to(self, end: Span) -> Span {
+        let lo = if self.lo < end.lo {
+            self.lo
+        } else {
+            end.lo
+        };
+        let hi = if self.hi > end.hi {
+            self.hi
+        } else {
+            end.hi
+        };
+        // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
+        let ctxt = if self.ctxt == SyntaxContext::empty() {
+            end.ctxt
+        } else {
+            self.ctxt
+        };
+        Span {lo, hi, ctxt}
+    }
+
+    /// Return a `Span` between the end of `self` to the beginning of `end`.
     pub fn between(self, end: Span) -> Span {
         Span {
             lo: self.hi,
@@ -205,6 +223,7 @@ impl Span {
         }
     }
 
+    /// Return a `Span` between the beginning of `self` to the beginning of `end`.
     pub fn until(self, end: Span) -> Span {
         Span {
             lo: self.lo,
@@ -852,6 +871,7 @@ pub struct FileLines {
 thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
                 Cell::new(default_span_debug));
 
+#[derive(Debug)]
 pub struct MacroBacktrace {
     /// span where macro was applied to generate this code
     pub call_site: Span,

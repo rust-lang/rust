@@ -131,6 +131,15 @@ impl TokenTree {
         }
     }
 
+    /// Modify the `TokenTree`'s span inplace.
+    pub fn set_span(&mut self, span: Span) {
+        match *self {
+            TokenTree::Token(ref mut sp, _) | TokenTree::Delimited(ref mut sp, _) => {
+                *sp = span;
+            }
+        }
+    }
+
     /// Indicates if the stream is a token that is equal to the provided token.
     pub fn eq_token(&self, t: Token) -> bool {
         match *self {
@@ -190,6 +199,14 @@ impl PartialEq<TokenStream> for TokenStream {
 }
 
 impl TokenStream {
+    pub fn len(&self) -> usize {
+        if let TokenStreamKind::Stream(ref slice) = self.kind {
+            slice.len()
+        } else {
+            0
+        }
+    }
+
     pub fn empty() -> TokenStream {
         TokenStream { kind: TokenStreamKind::Empty }
     }
@@ -239,6 +256,21 @@ impl TokenStream {
             TokenStreamKind::JointTree(tree) => (tree, true),
             _ => unreachable!(),
         }
+    }
+
+    pub fn map_pos<F: FnMut(usize, TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
+        let mut trees = self.into_trees();
+        let mut result = Vec::new();
+        let mut i = 0;
+        while let Some(stream) = trees.next_as_stream() {
+            result.push(match stream.kind {
+                TokenStreamKind::Tree(tree) => f(i, tree).into(),
+                TokenStreamKind::JointTree(tree) => f(i, tree).joint(),
+                _ => unreachable!()
+            });
+            i += 1;
+        }
+        TokenStream::concat(result)
     }
 
     pub fn map<F: FnMut(TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {

@@ -150,7 +150,7 @@ fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
     lhs
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum PrevTokenKind {
     DocComment,
     Comma,
@@ -6090,8 +6090,7 @@ impl<'a> Parser<'a> {
             let (delim, tts) = self.expect_delimited_token_tree()?;
             if delim != token::Brace {
                 if !self.eat(&token::Semi) {
-                    let prev_span = self.prev_span;
-                    self.span_err(prev_span,
+                    self.span_err(self.prev_span,
                                   "macros that expand to items must either \
                                    be surrounded with braces or followed by \
                                    a semicolon");
@@ -6108,8 +6107,7 @@ impl<'a> Parser<'a> {
         match visibility {
             Visibility::Inherited => {}
             _ => {
-                let prev_span = self.prev_span;
-                return Err(self.span_fatal(prev_span, "unmatched visibility `pub`"));
+                return Err(self.span_fatal(self.prev_span, "unmatched visibility `pub`"));
             }
         }
 
