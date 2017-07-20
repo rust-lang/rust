@@ -143,11 +143,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "copy_nonoverlapping" => {
                 let elem_ty = substs.type_at(0);
                 let elem_size = self.type_size(elem_ty)?.expect("cannot copy unsized value");
-                if elem_size != 0 {
+                let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
+                if count * elem_size != 0 {
+                    // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
+                    // Also see the write_bytes intrinsic.
                     let elem_align = self.type_align(elem_ty)?;
                     let src = arg_vals[0].into_ptr(&mut self.memory)?;
                     let dest = arg_vals[1].into_ptr(&mut self.memory)?;
-                    let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
                     self.memory.copy(src, dest, count * elem_size, elem_align, intrinsic_name.ends_with("_nonoverlapping"))?;
                 }
             }
@@ -465,7 +467,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
                 if count > 0 {
-                    // TODO: Should we, at least, validate the alignment? (Also see memory::copy)
+                    // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
+                    // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)
                     self.memory.check_align(ptr, ty_align)?;
                     self.memory.write_repeat(ptr, val_byte, size * count)?;
                 }
