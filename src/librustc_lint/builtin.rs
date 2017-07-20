@@ -1245,23 +1245,20 @@ impl LintPass for IntToPtrCast {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntToPtrCast {
     fn check_expr(&mut self, ctx: &LateContext, expr: &hir::Expr) {
         if let hir::ExprCast(ref source, _) = expr.node {
-            match ctx.tables.cast_kinds.get(&source.id) {
-                Some(&CastKind::AddrPtrCast) => {
-                    let source_ty = &ctx.tables.expr_ty(&source).sty;
-                    match source_ty {
-                        &ty::TyInt(ast::IntTy::Is) |
-                        &ty::TyUint(ast::UintTy::Us) => {},
-                        &ty::TyInt(_) |
-                        &ty::TyUint(_) => {
-                            ctx.span_lint(
-                                INT_TO_PTR_CAST,
-                                expr.span,
-                                "casting from a different-size integer to a pointer");
-                        },
-                        _ => {},
-                    };
-                },
-                _ => {},
+            if let Some(&CastKind::AddrPtrCast) = ctx.tables.cast_kinds.get(&source.id) {
+                let source_ty = &ctx.tables.expr_ty(&source).sty;
+                match source_ty {
+                    &ty::TyInt(ast::IntTy::Is) |
+                    &ty::TyUint(ast::UintTy::Us) => {},
+                    &ty::TyInt(_) |
+                    &ty::TyUint(_) => {
+                        ctx.span_lint(
+                            INT_TO_PTR_CAST,
+                            expr.span,
+                            "casting from a different-size integer to a pointer");
+                    },
+                    _ => {},
+                };
             }
         }
     }
