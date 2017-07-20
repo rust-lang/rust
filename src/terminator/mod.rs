@@ -7,11 +7,12 @@ use syntax::attr;
 use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
-use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
+use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited, self};
 use lvalue::Lvalue;
 use memory::{MemoryPointer, TlsKey, Kind};
 use value::{PrimVal, Value};
 use rustc_data_structures::indexed_vec::Idx;
+use const_eval;
 
 use std::mem;
 
@@ -86,7 +87,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                         (instance, sig)
                     },
-                    ty::TyFnDef(def_id, substs) => (::eval_context::resolve(self.tcx, def_id, substs), func_ty.fn_sig(self.tcx)),
+                    ty::TyFnDef(def_id, substs) => (eval_context::resolve(self.tcx, def_id, substs), func_ty.fn_sig(self.tcx)),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
                         return Err(EvalError::Unimplemented(msg));
@@ -104,9 +105,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let lval = self.eval_lvalue(location)?;
                 let ty = self.lvalue_ty(location);
                 self.goto_block(target);
-                let ty = ::eval_context::apply_param_substs(self.tcx, self.substs(), &ty);
+                let ty = eval_context::apply_param_substs(self.tcx, self.substs(), &ty);
 
-                let instance = ::eval_context::resolve_drop_in_place(self.tcx, ty);
+                let instance = eval_context::resolve_drop_in_place(self.tcx, ty);
                 self.drop_lvalue(lval, instance, ty, terminator.source_info.span)?;
             }
 
@@ -869,7 +870,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         // compute global if not cached
                         let val = match self.globals.get(&cid).map(|glob| glob.value) {
                             Some(value) => self.value_to_primval(value, usize)?.to_u64()?,
-                            None => ::const_eval::eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
+                            None => const_eval::eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
                         };
                         if val == name {
                             result = Some(path_value);

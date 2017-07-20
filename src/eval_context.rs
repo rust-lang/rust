@@ -18,6 +18,7 @@ use syntax::abi::Abi;
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
 use memory::{Memory, MemoryPointer, TlsKey, HasMemory};
+use memory::Kind as MemoryKind;
 use operator;
 use value::{PrimVal, PrimValKind, Value, Pointer};
 
@@ -153,7 +154,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx, MemoryPointer> {
         let size = self.type_size_with_substs(ty, substs)?.expect("cannot alloc memory for unsized type");
         let align = self.type_align_with_substs(ty, substs)?;
-        self.memory.allocate(size, align, ::memory::Kind::Stack)
+        self.memory.allocate(size, align, MemoryKind::Stack)
     }
 
     pub fn memory(&self) -> &Memory<'a, 'tcx> {
@@ -417,8 +418,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // for a constant like `const FOO: &i32 = &1;` the local containing
                 // the `1` is referred to by the global. We transitively marked everything
                 // the global refers to as static itself, so we don't free it here
-                ::memory::Kind::Static => {}
-                ::memory::Kind::Stack => self.memory.deallocate(ptr, None, ::memory::Kind::Stack)?,
+                MemoryKind::Static => {}
+                MemoryKind::Stack => self.memory.deallocate(ptr, None, MemoryKind::Stack)?,
                 other => bug!("local contained non-stack memory: {:?}", other),
             }
         };
@@ -696,7 +697,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     self.write_primval(dest, PrimVal::Bytes(align.into()), dest_ty)?;
                 } else {
                     let align = self.type_align(ty)?;
-                    let ptr = self.memory.allocate(size, align, ::memory::Kind::Rust)?;
+                    let ptr = self.memory.allocate(size, align, MemoryKind::Rust)?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -1689,7 +1690,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
 
             // Return value
-            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi(), ::memory::Kind::Stack)?;
+            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi(), MemoryKind::Stack)?;
             cleanup_ptr = Some(ret_ptr);
 
             // Push our stack frame
@@ -1731,7 +1732,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
         while ecx.step()? {}
         if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory.deallocate(cleanup_ptr, None, ::memory::Kind::Stack)?;
+            ecx.memory.deallocate(cleanup_ptr, None, MemoryKind::Stack)?;
         }
         return Ok(());
     }
