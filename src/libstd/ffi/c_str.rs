@@ -453,8 +453,6 @@ impl CString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(as_c_str)]
-    ///
     /// use std::ffi::{CString, CStr};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).unwrap();
@@ -474,8 +472,6 @@ impl CString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(into_boxed_c_str)]
-    ///
     /// use std::ffi::{CString, CStr};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).unwrap();
@@ -1001,8 +997,6 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(into_boxed_c_str)]
-    ///
     /// use std::ffi::CString;
     ///
     /// let c_string = CString::new(b"foo".to_vec()).unwrap();

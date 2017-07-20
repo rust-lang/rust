@@ -303,7 +303,6 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_char)]
 #![feature(str_internals)]
-#![feature(str_mut_extras)]
 #![feature(str_utf16)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]

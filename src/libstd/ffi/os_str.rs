@@ -252,8 +252,6 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(into_boxed_os_str)]
-    ///
     /// use std::ffi::{OsString, OsStr};
     ///
     /// let s = OsString::from("hello");

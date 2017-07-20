@@ -290,7 +290,7 @@ impl str {
     }
 
     /// Converts a mutable string slice to a mutable byte slice.
-    #[unstable(feature = "str_mut_extras", issue = "41119")]
+    #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
         core_str::StrExt::as_bytes_mut(self)
@@ -1725,7 +1725,7 @@ impl str {
     }
 
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
-    #[unstable(feature = "str_box_extras", issue = "41119")]
+    #[stable(feature = "str_box_extras", since = "1.20.0")]
     pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
         self.into()
     }
@@ -1992,7 +1992,7 @@ impl str {
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking
 /// that the string contains valid UTF-8.
-#[unstable(feature = "str_box_extras", issue = "41119")]
+#[stable(feature = "str_box_extras", since = "1.20.0")]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     mem::transmute(v)
 }
