@@ -1947,7 +1947,7 @@ impl<'a> LoweringContext<'a> {
                             e
                         });
                         if gen == hir::IsGenerator::Yes && !decl.inputs.is_empty() {
-                            span_err!(this.sess, fn_decl_span, E0624,
+                            span_err!(this.sess, fn_decl_span, E0625,
                                       "yield statement outside of generator literal");
                             this.sess.abort_if_errors();
                         }
