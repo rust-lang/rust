@@ -12,10 +12,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         src_ty: Ty<'tcx>,
         dest_ty: Ty<'tcx>
     ) -> EvalResult<'tcx, PrimVal> {
-        let kind = self.ty_to_primval_kind(src_ty)?;
+        let src_kind = self.ty_to_primval_kind(src_ty)?;
 
         use value::PrimValKind::*;
-        match kind {
+        match src_kind {
             F32 => self.cast_float(val.to_f32()? as f64, dest_ty),
             F64 => self.cast_float(val.to_f64()?, dest_ty),
 
@@ -81,7 +81,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyChar => Err(EvalError::InvalidChar(v)),
 
             // No alignment check needed for raw pointers
-            TyRawPtr(_) => Ok(PrimVal::Bytes(v % (1 << self.memory.pointer_size()))),
+            TyRawPtr(_) => Ok(PrimVal::Bytes(v % (1 << (self.memory.pointer_size()*8)))),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
         }
