@@ -117,7 +117,6 @@ macro_rules! declare_features {
 
 declare_features! (
     (active, asm, "1.0.0", Some(29722)),
-    (active, compile_error, "1.20.0", Some(40872)),
     (active, concat_idents, "1.0.0", Some(29599)),
     (active, link_args, "1.0.0", Some(29596)),
     (active, log_syntax, "1.0.0", Some(29598)),
@@ -445,6 +444,8 @@ declare_features! (
     // Allows the definition of associated constants in `trait` or `impl`
     // blocks.
     (accepted, associated_consts, "1.20.0", Some(29646)),
+    // Usage of the `compile_error!` macro
+    (accepted, compile_error, "1.20.0", Some(40872)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1039,9 +1040,6 @@ pub const EXPLAIN_LOG_SYNTAX: &'static str =
 
 pub const EXPLAIN_CONCAT_IDENTS: &'static str =
     "`concat_idents` is not stable enough for use and is subject to change";
-
-pub const EXPLAIN_COMPILE_ERROR: &'static str =
-    "`compile_error` is not stable enough for use and is subject to change";
 
 pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
