@@ -10,6 +10,8 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
+use std::cmp::min;
+
 use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::ImplItem;
 use syntax::codemap::{BytePos, Span};
@@ -1120,15 +1122,22 @@ pub fn format_struct_struct(
         return Some(result);
     }
 
+    // 3 = ` ` and ` }`
+    let one_line_budget = context
+        .config
+        .max_width()
+        .checked_sub(result.len() + 3 + offset.width())
+        .unwrap_or(0);
+
     let items_str = try_opt!(rewrite_with_alignment(
         fields,
         context,
         Shape::indented(offset, context.config),
         mk_sp(body_lo, span.hi),
-        one_line_width.unwrap_or(0),
+        one_line_width.map_or(0, |one_line_width| min(one_line_width, one_line_budget)),
     ));
 
-    if one_line_width.is_some() && !items_str.contains('\n') {
+    if one_line_width.is_some() && !items_str.contains('\n') && !result.contains('\n') {
         Some(format!("{} {} }}", result, items_str))
     } else {
         Some(format!(
