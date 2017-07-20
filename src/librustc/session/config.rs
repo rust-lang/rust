@@ -1060,6 +1060,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
                      "insert profiling code"),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
+    nll: bool = (false, parse_bool, [UNTRACKED],
+                 "run the non-lexical lifetimes MIR pass"),
 }
 
 pub fn default_lib_output() -> CrateType {

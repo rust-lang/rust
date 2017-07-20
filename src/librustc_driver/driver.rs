@@ -938,6 +938,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_VALIDATED,
                      mir::transform::simplify_branches::SimplifyBranches::new("initial"));
     passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
+    passes.push_pass(MIR_VALIDATED, mir::transform::nll::NLL);
 
     // Optimizations begin.
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
