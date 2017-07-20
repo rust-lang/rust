@@ -795,7 +795,6 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// the type:
 ///
 /// ```rust
-/// # #![feature(manually_drop)]
 /// use std::mem::ManuallyDrop;
 /// struct Peach;
 /// struct Banana;
@@ -821,7 +820,7 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 #[allow(unions_with_drop_fields)]
 pub union ManuallyDrop<T>{ value: T }
 
@@ -831,11 +830,10 @@ impl<T> ManuallyDrop<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(manually_drop)]
     /// use std::mem::ManuallyDrop;
     /// ManuallyDrop::new(Box::new(()));
     /// ```
-    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: value }
@@ -846,12 +844,11 @@ impl<T> ManuallyDrop<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(manually_drop)]
     /// use std::mem::ManuallyDrop;
     /// let x = ManuallyDrop::new(Box::new(()));
     /// let _: Box<()> = ManuallyDrop::into_inner(x);
     /// ```
-    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub fn into_inner(slot: ManuallyDrop<T>) -> T {
         unsafe {
@@ -866,14 +863,14 @@ impl<T> ManuallyDrop<T> {
     /// This function runs the destructor of the contained value and thus the wrapped value
     /// now represents uninitialized data. It is up to the user of this method to ensure the
     /// uninitialized data is not actually used.
-    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
         ptr::drop_in_place(&mut slot.value)
     }
 }
 
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T> ::ops::Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline]
@@ -884,7 +881,7 @@ impl<T> ::ops::Deref for ManuallyDrop<T> {
     }
 }
 
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T> ::ops::DerefMut for ManuallyDrop<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -894,7 +891,7 @@ impl<T> ::ops::DerefMut for ManuallyDrop<T> {
     }
 }
 
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
     fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
         unsafe {

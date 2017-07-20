@@ -101,7 +101,6 @@
 #![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(lang_items)]
-#![feature(manually_drop)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]
 #![feature(offset_to)]
