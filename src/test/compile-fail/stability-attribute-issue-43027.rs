@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -F deprecated
+#![feature(staged_api)]
+#![stable(feature = "test", since = "0")]
 
-#[allow(deprecated)] //~ ERROR allow(deprecated) overruled by outer forbid(deprecated)
+#[stable(feature = "test", since = "0")]
+pub struct Reverse<T>(pub T); //~ ERROR This node does not have a stability attribute
+
 fn main() {
+    // Make sure the field is used to fill the stability cache
+    Reverse(0).0;
 }
