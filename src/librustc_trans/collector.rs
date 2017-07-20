@@ -594,14 +594,25 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.mir, tcx);
+                let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
 
-                let skip_const = self.const_context && match callee_ty.sty {
-                    ty::TyFnDef(def_id, _) => self.scx.tcx().is_const_fn(def_id),
-                    _ => false
+                let constness = match (self.const_context, &callee_ty.sty) {
+                    (true, &ty::TyFnDef(def_id, substs)) if self.scx.tcx().is_const_fn(def_id) => {
+                        let instance = monomorphize::resolve(self.scx, def_id, substs);
+                        Some(instance)
+                    }
+                    _ => None
                 };
 
-                if !skip_const {
-                    let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
+                if let Some(const_fn_instance) = constness {
+                    // If this is a const fn, called from a const context, we
+                    // have to visit its body in order to find any fn reifications
+                    // it might contain.
+                    collect_neighbours(self.scx,
+                                       const_fn_instance,
+                                       true,
+                                       self.output);
+                } else {
                     visit_fn_use(self.scx, callee_ty, true, &mut self.output);
                 }
             }
