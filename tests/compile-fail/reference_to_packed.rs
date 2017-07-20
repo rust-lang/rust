@@ -11,6 +11,6 @@ fn main() {
         x: 42,
         y: 99,
     };
-    let p = &foo.x; //~ ERROR tried to access memory with alignment 1, but alignment 4 is required
-    let i = *p;
+    let p = &foo.x;
+    let i = *p; //~ ERROR tried to access memory with alignment 1, but alignment 4 is required
 }

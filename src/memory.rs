@@ -720,12 +720,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn read_ptr(&self, ptr: MemoryPointer) -> EvalResult<'tcx, Pointer> {
         let size = self.pointer_size();
-        if self.check_defined(ptr, size).is_err() {
-            return Ok(PrimVal::Undef.into());
-        }
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianess = self.endianess();
         let bytes = self.get_bytes_unchecked(ptr, size, size)?;
+        // Undef check happens *after* we established that the alignment is correct.
+        // We must not return Ok() for unaligned pointers!
+        if self.check_defined(ptr, size).is_err() {
+            return Ok(PrimVal::Undef.into());
+        }
         let offset = read_target_uint(endianess, bytes).unwrap();
         assert_eq!(offset as u64 as u128, offset);
         let offset = offset as u64;
