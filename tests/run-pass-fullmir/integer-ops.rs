@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: remove the next line once https://github.com/rust-lang/rust/issues/43359 is fixed
+// compile-flags: -Zmir-opt-level=0
+
 use std::i32;
 
 pub fn main() {

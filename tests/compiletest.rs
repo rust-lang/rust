@@ -1,5 +1,8 @@
+#![feature(slice_concat_ext)]
+
 extern crate compiletest_rs as compiletest;
 
+use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
 use std::io::Write;
 
@@ -41,22 +44,34 @@ fn run_pass(path: &str) {
     compiletest::run_tests(&config);
 }
 
-fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool) {
-    eprintln!("## Running run-pass tests in {} against miri for target {}", path, target);
+fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
+    let opt_str = if opt {
+        " with optimizations"
+    } else {
+        ""
+    };
+    eprintln!("## Running run-pass tests in {} against miri for target {}{}", path, target, opt_str);
     let mut config = compiletest::default_config();
     config.mode = "mir-opt".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
     config.rustc_path = PathBuf::from("target/debug/miri");
+    let mut flags = Vec::new();
     if fullmir {
         if host != target {
             // skip fullmir on nonhost
             return;
         }
         let sysroot = Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST");
-        config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
+        flags.push(format!("--sysroot {}", sysroot.to_str().unwrap()));
     }
+    if opt {
+        flags.push("-Zmir-opt-level=3".to_owned());
+    } else {
+        flags.push("-Zmir-opt-level=0".to_owned());
+    }
+    config.target_rustcflags = Some(flags.join(" "));
     // don't actually execute the final binary, it might be for other targets and we only care
     // about running miri, not the binary.
     config.runtool = Some("echo \"\" || ".to_owned());
@@ -113,10 +128,12 @@ fn run_pass_miri() {
     let sysroot = get_sysroot();
     let host = get_host();
 
-    for_all_targets(&sysroot, |target| {
-        miri_pass("tests/run-pass", &target, &host, false);
-    });
-    miri_pass("tests/run-pass-fullmir", &host, &host, true);
+    for &opt in [false, true].iter() {
+        for_all_targets(&sysroot, |target| {
+            miri_pass("tests/run-pass", &target, &host, false, opt);
+        });
+        miri_pass("tests/run-pass-fullmir", &host, &host, true, opt);
+    }
 }
 
 #[test]

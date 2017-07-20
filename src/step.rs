@@ -87,14 +87,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 match *dest_layout {
                     Layout::General { discr, .. } => {
-                        // FIXME: I (oli-obk) think we need to check the
-                        // `dest_ty` for the variant's discriminant and write
-                        // instead of the variant index
-                        // We don't have any tests actually going through these lines
-                        let discr_ty = discr.to_ty(&self.tcx, false);
-                        let discr_lval = self.lvalue_field(dest, 0, dest_ty, discr_ty)?;
-
-                        self.write_value(Value::ByVal(PrimVal::Bytes(variant_index as u128)), discr_lval, discr_ty)?;
+                        let discr_size = discr.size().bytes();
+                        let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
+                        self.memory.write_uint(dest_ptr, variant_index as u128, discr_size)?
                     }
 
                     Layout::RawNullablePointer { nndiscr, .. } => {
@@ -102,6 +97,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             self.write_null(dest, dest_ty)?;
                         }
                     }
+
+                    Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
+                        if variant_index as u64 != nndiscr {
+                            let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+                            let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(offset.bytes(), self.memory.layout)?;
+                            trace!("struct wrapped nullable pointer type: {}", ty);
+                            // only the pointer part of a fat pointer is used for this space optimization
+                            let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
+                            self.memory.write_uint(nonnull, 0, discr_size)?;
+                        }
+                    },
 
                     _ => bug!("SetDiscriminant on {} represented as {:#?}", dest_ty, dest_layout),
                 }
