@@ -248,15 +248,13 @@ impl Step for Cargo {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/cargo")
+        let builder = run.builder;
+        run.path("src/tools/cargo").default_condition(builder.build.config.extended)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.extended {
-            return;
-        }
         builder.ensure(Cargo {
             stage: builder.top_stage,
             target,
@@ -294,15 +292,13 @@ impl Step for Rls {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/rls")
+        let builder = run.builder;
+        run.path("src/tools/rls").default_condition(builder.build.config.extended)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.extended {
-            return;
-        }
         builder.ensure(Rls {
             stage: builder.top_stage,
             target,

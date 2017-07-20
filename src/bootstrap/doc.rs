@@ -45,7 +45,8 @@ macro_rules! book {
             const DEFAULT: bool = true;
 
             fn should_run(run: ShouldRun) -> ShouldRun {
-                run.path($path)
+                let builder = run.builder;
+                run.path($path).default_condition(builder.build.config.docs)
             }
 
             fn make_run(
@@ -119,17 +120,13 @@ impl Step for UnstableBook {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/doc/unstable-book")
+        let builder = run.builder;
+        run.path("src/doc/unstable-book").default_condition(builder.build.config.docs)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.docs {
-            // Not a default rule if docs are disabled.
-            return;
-        }
-
         builder.ensure(UnstableBook {
             target,
         });
@@ -201,17 +198,13 @@ impl Step for TheBook {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/doc/book")
+        let builder = run.builder;
+        run.path("src/doc/book").default_condition(builder.build.config.docs)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.docs {
-            // Not a default rule if docs are disabled.
-            return;
-        }
-
         builder.ensure(TheBook {
             target,
             name: "book",
@@ -417,31 +410,17 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.krate("std")
+        let builder = run.builder;
+        run.krate("std").default_condition(builder.build.config.docs)
     }
-
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        let run = || {
-            builder.ensure(Std {
-                stage: builder.top_stage,
-                target
-            });
-        };
-
-        if let Some(path) = path {
-            for (_, krate_path) in builder.crates("std") {
-                if path.ends_with(krate_path) {
-                    run();
-                }
-            }
-        } else {
-            if builder.build.config.docs {
-                run();
-            }
-        }
+        builder.ensure(Std {
+            stage: builder.top_stage,
+            target
+        });
     }
 
     /// Compile all standard library documentation.
@@ -520,30 +499,17 @@ impl Step for Test {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.krate("test")
+        let builder = run.builder;
+        run.krate("test").default_condition(builder.config.compiler_docs)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        let run = || {
-            builder.ensure(Test {
-                stage: builder.top_stage,
-                target
-            });
-        };
-
-        if let Some(path) = path {
-            for (_, krate_path) in builder.crates("test") {
-                if path.ends_with(krate_path) {
-                    run();
-                }
-            }
-        } else {
-            if builder.build.config.compiler_docs {
-                run();
-            }
-        }
+        builder.ensure(Test {
+            stage: builder.top_stage,
+            target
+        });
     }
 
     /// Compile all libtest documentation.
@@ -597,30 +563,17 @@ impl Step for Rustc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.krate("rustc-main")
+        let builder = run.builder;
+        run.krate("rustc-main").default_condition(builder.build.config.docs)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        let run = || {
-            builder.ensure(Rustc {
-                stage: builder.top_stage,
-                target
-            });
-        };
-
-        if let Some(path) = path {
-            for (_, krate_path) in builder.crates("rustc-main") {
-                if path.ends_with(krate_path) {
-                    run();
-                }
-            }
-        } else {
-            if builder.build.config.docs {
-                run();
-            }
-        }
+        builder.ensure(Rustc {
+            stage: builder.top_stage,
+            target
+        });
     }
 
     /// Generate all compiler documentation.
@@ -690,17 +643,13 @@ impl Step for ErrorIndex {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/error_index_generator")
+        let builder = run.builder;
+        run.path("src/tools/error_index_generator").default_condition(builder.build.config.docs)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.docs {
-            // Not a default rule if docs are disabled.
-            return;
-        }
-
         builder.ensure(ErrorIndex {
             target,
         });
@@ -742,17 +691,13 @@ impl Step for UnstableBookGen {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/unstable-book-gen")
+        let builder = run.builder;
+        run.path("src/tools/unstable-book-gen").default_condition(builder.build.config.docs)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>,
     ) {
-        if path.is_none() && !builder.build.config.docs {
-            // Not a default rule if docs are disabled.
-            return;
-        }
-
         builder.ensure(UnstableBookGen {
             target,
         });

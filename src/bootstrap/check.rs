@@ -115,7 +115,8 @@ impl Step for Linkcheck {
     }
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/linkchecker")
+        let builder = run.builder;
+        run.path("src/tools/linkchecker").default_condition(builder.build.config.docs)
     }
 
     fn make_run(
@@ -124,13 +125,7 @@ impl Step for Linkcheck {
         host: Interned<String>,
         _target: Interned<String>,
     ) {
-        if path.is_some() {
-            builder.ensure(Linkcheck { host });
-        } else {
-            if builder.build.config.docs {
-                builder.ensure(Linkcheck { host });
-            }
-        }
+        builder.ensure(Linkcheck { host });
     }
 }
 

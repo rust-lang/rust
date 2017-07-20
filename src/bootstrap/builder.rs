@@ -152,17 +152,20 @@ impl StepDescription {
     }
 
     fn run(v: &[StepDescription], builder: &Builder, paths: &[PathBuf]) {
+        let should_runs = v.iter().map(|desc| {
+            (desc.should_run)(ShouldRun::new(builder))
+        }).collect::<Vec<_>>();
         if paths.is_empty() {
-            for desc in v {
-                if desc.default {
+            for (desc, should_run) in v.iter().zip(should_runs) {
+                if desc.default && should_run.is_really_default {
                     desc.maybe_run(builder, None);
                 }
             }
         } else {
             for path in paths {
                 let mut attempted_run = false;
-                for desc in v {
-                    if (desc.should_run)(ShouldRun::new(builder)).run(path) {
+                for (desc, should_run) in v.iter().zip(&should_runs) {
+                    if should_run.run(path) {
                         attempted_run = true;
                         desc.maybe_run(builder, Some(path));
                     }
@@ -178,9 +181,13 @@ impl StepDescription {
 
 #[derive(Clone)]
 pub struct ShouldRun<'a> {
-    builder: &'a Builder<'a>,
+    pub builder: &'a Builder<'a>,
     // use a BTreeSet to maintain sort order
     paths: BTreeSet<PathBuf>,
+
+    // If this is a default rule, this is an additional constraint placed on
+    // it's run. Generally something like compiler docs being enabled.
+    is_really_default: bool,
 }
 
 impl<'a> ShouldRun<'a> {
@@ -188,7 +195,13 @@ impl<'a> ShouldRun<'a> {
         ShouldRun {
             builder: builder,
             paths: BTreeSet::new(),
+            is_really_default: true, // by default no additional conditions
         }
+    }
+
+    pub fn default_condition(mut self, cond: bool) -> Self {
+        self.is_really_default = cond;
+        self
     }
 
     pub fn krate(mut self, name: &str) -> Self {

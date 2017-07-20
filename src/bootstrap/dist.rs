@@ -607,7 +607,8 @@ impl Step for Analysis {
     const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("analysis")
+        let builder = run.builder;
+        run.path("analysis").default_condition(builder.build.config.extended)
     }
 
     fn make_run(
@@ -616,9 +617,6 @@ impl Step for Analysis {
         host: Interned<String>,
         target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.extended {
-            return;
-        }
         builder.ensure(Analysis {
             compiler: builder.compiler(builder.top_stage, host),
             target: target,
@@ -818,16 +816,13 @@ impl Step for PlainSourceTarball {
     const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src")
+        let builder = run.builder;
+        run.path("src").default_condition(builder.config.rust_dist_src)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, _target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.rust_dist_src {
-            return;
-        }
-
         builder.ensure(PlainSourceTarball);
     }
 
@@ -1138,15 +1133,13 @@ impl Step for Extended {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("cargo")
+        let builder = run.builder;
+        run.path("cargo").default_condition(builder.config.extended)
     }
 
     fn make_run(
         builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
     ) {
-        if path.is_none() && !builder.build.config.extended {
-            return;
-        }
         builder.ensure(Extended {
             stage: builder.top_stage,
             target: target,

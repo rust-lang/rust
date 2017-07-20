@@ -150,7 +150,8 @@ macro_rules! install {
             $(const $c: bool = true;)*
 
             fn should_run(run: ShouldRun) -> ShouldRun {
-                run.path($path)
+                let $builder = run.builder;
+                run.path($path).default_condition($default_cond)
             }
 
             fn make_run(
@@ -159,9 +160,6 @@ macro_rules! install {
                 host: Interned<String>,
                 target: Interned<String>,
             ) {
-                if path.is_none() && !($default_cond) {
-                    return;
-                }
                 $builder.ensure($name {
                     stage: $builder.top_stage,
                     target,
