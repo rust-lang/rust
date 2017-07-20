@@ -20,7 +20,7 @@ use std::process::Command;
 
 use dist::{self, pkgname, sanitize_sh, tmpdir};
 
-use builder::{Builder, ShouldRun, Step};
+use builder::{Builder, RunConfig, ShouldRun, Step};
 use cache::Interned;
 
 pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
@@ -128,7 +128,7 @@ fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
 }
 
 macro_rules! install {
-    (($sel:ident, $builder:ident),
+    (($sel:ident, $builder:ident, $_config:ident),
        $($name:ident,
        $path:expr,
        $default_cond:expr,
@@ -150,20 +150,15 @@ macro_rules! install {
             $(const $c: bool = true;)*
 
             fn should_run(run: ShouldRun) -> ShouldRun {
-                let $builder = run.builder;
+                let $_config = &run.builder.config;
                 run.path($path).default_condition($default_cond)
             }
 
-            fn make_run(
-                $builder: &Builder,
-                path: Option<&Path>,
-                host: Interned<String>,
-                target: Interned<String>,
-            ) {
-                $builder.ensure($name {
-                    stage: $builder.top_stage,
-                    target,
-                    host,
+            fn make_run(run: RunConfig) {
+                run.builder.ensure($name {
+                    stage: run.builder.top_stage,
+                    target: run.target,
+                    host: run.host,
                 });
             }
 
@@ -174,8 +169,8 @@ macro_rules! install {
     }
 }
 
-install!((self, builder),
-    Docs, "src/doc", builder.build.config.docs, only_hosts: false, {
+install!((self, builder, _config),
+    Docs, "src/doc", _config.docs, only_hosts: false, {
         builder.ensure(dist::Docs { stage: self.stage, target: self.target });
         install_docs(builder, self.stage, self.target);
     };
@@ -186,26 +181,26 @@ install!((self, builder),
         });
         install_std(builder, self.stage);
     };
-    Cargo, "cargo", builder.build.config.extended, only_hosts: true, {
+    Cargo, "cargo", _config.extended, only_hosts: true, {
         builder.ensure(dist::Cargo { stage: self.stage, target: self.target });
         install_cargo(builder, self.stage, self.target);
     };
-    Rls, "rls", builder.build.config.extended, only_hosts: true, {
+    Rls, "rls", _config.extended, only_hosts: true, {
         builder.ensure(dist::Rls { stage: self.stage, target: self.target });
         install_rls(builder, self.stage, self.target);
     };
-    Analysis, "analysis", builder.build.config.extended, only_hosts: false, {
+    Analysis, "analysis", _config.extended, only_hosts: false, {
         builder.ensure(dist::Analysis {
             compiler: builder.compiler(self.stage, self.host),
             target: self.target
         });
         install_analysis(builder, self.stage, self.target);
     };
-    Src, "src", builder.build.config.extended, only_hosts: true, {
+    Src, "src", _config.extended, only_hosts: true, {
         builder.ensure(dist::Src);
         install_src(builder, self.stage);
     }, ONLY_BUILD;
-    Rustc, "src/librustc", builder.build.config.extended, only_hosts: true, {
+    Rustc, "src/librustc", _config.extended, only_hosts: true, {
         builder.ensure(dist::Rustc { stage: self.stage, target: self.target });
         install_rustc(builder, self.stage, self.target);
     };

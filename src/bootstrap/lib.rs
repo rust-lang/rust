@@ -96,7 +96,7 @@
 //! provide those libraries for it; they are mostly equivalent to constructing
 //! the stage1/bin compiler so we don't go through them individually.
 //!
-//! ## Uplifiting stage1 {std,test,rustc}
+//! ## Uplifting stage1 {std,test,rustc}
 //!
 //! This step copies the libraries from the stage1 compiler sysroot into the
 //! stage2 compiler. This is done to avoid rebuilding the compiler; libraries

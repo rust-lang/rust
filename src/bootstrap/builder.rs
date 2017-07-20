@@ -79,12 +79,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// When path is `None`, we are executing in a context where no paths were
     /// passed. When `./x.py build` is run, for example, this rule could get
     /// called if it is in the correct list below with a path of `None`.
-    fn make_run(
-        _builder: &Builder,
-        _path: Option<&Path>,
-        _host: Interned<String>,
-        _target: Interned<String>,
-    ) {
+    fn make_run(_run: RunConfig) {
         // It is reasonable to not have an implementation of make_run for rules
         // who do not want to get called from the root context. This means that
         // they are likely dependencies (e.g., sysroot creation) or similar, and
@@ -93,13 +88,20 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     }
 }
 
+pub struct RunConfig<'a> {
+    pub builder: &'a Builder<'a>,
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+    pub path: Option<&'a Path>,
+}
+
 struct StepDescription {
     default: bool,
     only_hosts: bool,
     only_build_targets: bool,
     only_build: bool,
     should_run: fn(ShouldRun) -> ShouldRun,
-    make_run: fn(&Builder, Option<&Path>, Interned<String>, Interned<String>),
+    make_run: fn(RunConfig),
 }
 
 impl StepDescription {
@@ -146,7 +148,13 @@ impl StepDescription {
 
         for host in hosts {
             for target in targets {
-                (self.make_run)(builder, path, *host, *target);
+                let run = RunConfig {
+                    builder,
+                    path,
+                    host: *host,
+                    target: *target,
+                };
+                (self.make_run)(run);
             }
         }
     }

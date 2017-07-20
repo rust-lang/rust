@@ -31,7 +31,7 @@ use util::{self, dylib_path, dylib_path_var};
 
 use compile;
 use native;
-use builder::{Kind, ShouldRun, Builder, Compiler, Step};
+use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
 
@@ -119,13 +119,8 @@ impl Step for Linkcheck {
         run.path("src/tools/linkchecker").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder,
-        path: Option<&Path>,
-        host: Interned<String>,
-        _target: Interned<String>,
-    ) {
-        builder.ensure(Linkcheck { host });
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Linkcheck { host: run.host });
     }
 }
 
@@ -143,15 +138,10 @@ impl Step for Cargotest {
         run.path("src/tools/cargotest")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        host: Interned<String>,
-        _target: Interned<String>,
-    ) {
-        builder.ensure(Cargotest {
-            stage: builder.top_stage,
-            host: host,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Cargotest {
+            stage: run.builder.top_stage,
+            host: run.host,
         });
     }
 
@@ -193,15 +183,10 @@ impl Step for Cargo {
         run.path("src/tools/cargo")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        _host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        builder.ensure(Cargo {
-            stage: builder.top_stage,
-            host: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Cargo {
+            stage: run.builder.top_stage,
+            host: run.target,
         });
     }
 
@@ -242,15 +227,10 @@ impl Step for Rls {
         run.path("src/tools/rls")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        _host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        builder.ensure(Rls {
-            stage: builder.top_stage,
-            host: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rls {
+            stage: run.builder.top_stage,
+            host: run.target,
         });
     }
 
@@ -320,14 +300,9 @@ impl Step for Tidy {
         run.path("src/tools/tidy")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        _host: Interned<String>,
-        _target: Interned<String>,
-    ) {
-        builder.ensure(Tidy {
-            host: builder.build.build,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Tidy {
+            host: run.builder.build.build,
         });
     }
 }
@@ -382,15 +357,10 @@ impl Step for DefaultCompiletest {
         run
     }
 
-    fn make_run(
-        builder: &Builder,
-        path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        let compiler = builder.compiler(builder.top_stage, host);
+    fn make_run(run: RunConfig) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
 
-        let test = path.map(|path| {
+        let test = run.path.map(|path| {
             DEFAULT_COMPILETESTS.iter().find(|&&test| {
                 path.ends_with(test.path)
             }).unwrap_or_else(|| {
@@ -399,17 +369,17 @@ impl Step for DefaultCompiletest {
         });
 
         if let Some(test) = test {
-            builder.ensure(DefaultCompiletest {
+            run.builder.ensure(DefaultCompiletest {
                 compiler,
-                target,
+                target: run.target,
                 mode: test.mode,
                 suite: test.suite,
             });
         } else {
             for test in DEFAULT_COMPILETESTS {
-                builder.ensure(DefaultCompiletest {
+                run.builder.ensure(DefaultCompiletest {
                     compiler,
-                    target,
+                    target: run.target,
                     mode: test.mode,
                     suite: test.suite
                 });
@@ -468,15 +438,10 @@ impl Step for HostCompiletest {
         run
     }
 
-    fn make_run(
-        builder: &Builder,
-        path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        let compiler = builder.compiler(builder.top_stage, host);
+    fn make_run(run: RunConfig) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
 
-        let test = path.map(|path| {
+        let test = run.path.map(|path| {
             HOST_COMPILETESTS.iter().find(|&&test| {
                 path.ends_with(test.path)
             }).unwrap_or_else(|| {
@@ -485,17 +450,17 @@ impl Step for HostCompiletest {
         });
 
         if let Some(test) = test {
-            builder.ensure(HostCompiletest {
+            run.builder.ensure(HostCompiletest {
                 compiler,
-                target,
+                target: run.target,
                 mode: test.mode,
                 suite: test.suite,
             });
         } else {
             for test in HOST_COMPILETESTS {
-                builder.ensure(HostCompiletest {
+                run.builder.ensure(HostCompiletest {
                     compiler,
-                    target,
+                    target: run.target,
                     mode: test.mode,
                     suite: test.suite
                 });
@@ -739,14 +704,9 @@ impl Step for Docs {
         run.path("src/doc")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        host: Interned<String>,
-        _target: Interned<String>,
-    ) {
-        builder.ensure(Docs {
-            compiler: builder.compiler(builder.top_stage, host),
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Docs {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
         });
     }
 
@@ -802,14 +762,9 @@ impl Step for ErrorIndex {
         run.path("src/tools/error_index_generator")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        host: Interned<String>,
-        _target: Interned<String>,
-    ) {
-        builder.ensure(ErrorIndex {
-            compiler: builder.compiler(builder.top_stage, host),
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(ErrorIndex {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
         });
     }
 
@@ -886,15 +841,11 @@ impl Step for CrateLibrustc {
         run.krate("rustc-main")
     }
 
-    fn make_run(
-        builder: &Builder,
-        path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        let compiler = builder.compiler(builder.top_stage, host);
+    fn make_run(run: RunConfig) {
+        let builder = run.builder;
+        let compiler = builder.compiler(builder.top_stage, run.host);
 
-        let run = |name: Option<Interned<String>>| {
+        let make = |name: Option<Interned<String>>| {
             let test_kind = if builder.kind == Kind::Test {
                 TestKind::Test
             } else if builder.kind == Kind::Bench {
@@ -905,20 +856,20 @@ impl Step for CrateLibrustc {
 
             builder.ensure(CrateLibrustc {
                 compiler,
-                target,
+                target: run.target,
                 test_kind: test_kind,
                 krate: name,
             });
         };
 
-        if let Some(path) = path {
+        if let Some(path) = run.path {
             for (name, krate_path) in builder.crates("rustc-main") {
                 if path.ends_with(krate_path) {
-                    run(Some(name));
+                    make(Some(name));
                 }
             }
         } else {
-            run(None);
+            make(None);
         }
     }
 
@@ -952,15 +903,11 @@ impl Step for Crate {
         run.krate("std").krate("test")
     }
 
-    fn make_run(
-        builder: &Builder,
-        path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        let compiler = builder.compiler(builder.top_stage, host);
+    fn make_run(run: RunConfig) {
+        let builder = run.builder;
+        let compiler = builder.compiler(builder.top_stage, run.host);
 
-        let run = |mode: Mode, name: Option<Interned<String>>| {
+        let make = |mode: Mode, name: Option<Interned<String>>| {
             let test_kind = if builder.kind == Kind::Test {
                 TestKind::Test
             } else if builder.kind == Kind::Bench {
@@ -970,27 +917,28 @@ impl Step for Crate {
             };
 
             builder.ensure(Crate {
-                compiler, target,
+                compiler,
+                target: run.target,
                 mode: mode,
                 test_kind: test_kind,
                 krate: name,
             });
         };
 
-        if let Some(path) = path {
+        if let Some(path) = run.path {
             for (name, krate_path) in builder.crates("std") {
                 if path.ends_with(krate_path) {
-                    run(Mode::Libstd, Some(name));
+                    make(Mode::Libstd, Some(name));
                 }
             }
             for (name, krate_path) in builder.crates("test") {
                 if path.ends_with(krate_path) {
-                    run(Mode::Libtest, Some(name));
+                    make(Mode::Libtest, Some(name));
                 }
             }
         } else {
-            run(Mode::Libstd, None);
-            run(Mode::Libtest, None);
+            make(Mode::Libstd, None);
+            make(Mode::Libtest, None);
         }
     }
 
@@ -1333,12 +1281,7 @@ impl Step for Bootstrap {
         run.path("src/bootstrap")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        _host: Interned<String>,
-        _target: Interned<String>,
-    ) {
-        builder.ensure(Bootstrap);
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Bootstrap);
     }
 }

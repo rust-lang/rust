@@ -27,7 +27,7 @@ use Mode;
 use build_helper::up_to_date;
 
 use util::{cp_r, symlink_dir};
-use builder::{Builder, ShouldRun, Step};
+use builder::{Builder, RunConfig, ShouldRun, Step};
 use tool::Tool;
 use compile;
 use cache::{INTERNER, Interned};
@@ -49,19 +49,9 @@ macro_rules! book {
                 run.path($path).default_condition(builder.build.config.docs)
             }
 
-            fn make_run(
-                builder: &Builder,
-                path: Option<&Path>,
-                _host: Interned<String>,
-                target: Interned<String>
-            ) {
-                if path.is_none() && !builder.build.config.docs {
-                    // Not a default rule if docs are disabled.
-                    return;
-                }
-
-                builder.ensure($name {
-                    target,
+            fn make_run(run: RunConfig) {
+                run.builder.ensure($name {
+                    target: run.target,
                 });
             }
 
@@ -124,11 +114,9 @@ impl Step for UnstableBook {
         run.path("src/doc/unstable-book").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(UnstableBook {
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(UnstableBook {
+            target: run.target,
         });
     }
 
@@ -202,11 +190,9 @@ impl Step for TheBook {
         run.path("src/doc/book").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(TheBook {
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(TheBook {
+            target: run.target,
             name: "book",
         });
     }
@@ -308,19 +294,13 @@ impl Step for Standalone {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/doc")
+        let builder = run.builder;
+        run.path("src/doc").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        if path.is_none() && !builder.build.config.docs {
-            // Not a default rule if docs are disabled.
-            return;
-        }
-
-        builder.ensure(Standalone {
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Standalone {
+            target: run.target,
         });
     }
 
@@ -414,12 +394,10 @@ impl Step for Std {
         run.krate("std").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Std {
-            stage: builder.top_stage,
-            target
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Std {
+            stage: run.builder.top_stage,
+            target: run.target
         });
     }
 
@@ -503,12 +481,10 @@ impl Step for Test {
         run.krate("test").default_condition(builder.config.compiler_docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Test {
-            stage: builder.top_stage,
-            target
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Test {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -567,12 +543,10 @@ impl Step for Rustc {
         run.krate("rustc-main").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Rustc {
-            stage: builder.top_stage,
-            target
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustc {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -647,11 +621,9 @@ impl Step for ErrorIndex {
         run.path("src/tools/error_index_generator").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(ErrorIndex {
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(ErrorIndex {
+            target: run.target,
         });
     }
 
@@ -695,11 +667,9 @@ impl Step for UnstableBookGen {
         run.path("src/tools/unstable-book-gen").default_condition(builder.build.config.docs)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>,
-    ) {
-        builder.ensure(UnstableBookGen {
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(UnstableBookGen {
+            target: run.target,
         });
     }
 

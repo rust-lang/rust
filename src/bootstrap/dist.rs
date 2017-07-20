@@ -29,7 +29,7 @@ use build_helper::output;
 use {Build, Compiler, Mode};
 use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
-use builder::{Builder, ShouldRun, Step};
+use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
 use tool::{self, Tool};
 use cache::{INTERNER, Interned};
@@ -72,12 +72,10 @@ impl Step for Docs {
         run.path("src/doc")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>,
-    ) {
-        builder.ensure(Docs {
-            stage: builder.top_stage,
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Docs {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -275,10 +273,8 @@ impl Step for Mingw {
         run.never()
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Mingw { target });
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Mingw { target: run.target });
     }
 
     /// Build the `rust-mingw` installer component.
@@ -338,12 +334,10 @@ impl Step for Rustc {
         run.path("src/librustc")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Rustc {
-            stage: builder.top_stage,
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustc {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -475,12 +469,10 @@ impl Step for DebuggerScripts {
         run.path("src/lldb_batchmode.py")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(DebuggerScripts {
-            sysroot: builder.sysroot(builder.compiler(builder.top_stage, host)),
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(DebuggerScripts {
+            sysroot: run.builder.sysroot(run.builder.compiler(run.builder.top_stage, run.host)),
+            target: run.target,
         });
     }
 
@@ -535,12 +527,10 @@ impl Step for Std {
         run.path("src/libstd")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Std {
-            compiler: builder.compiler(builder.top_stage, host),
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Std {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            target: run.target,
         });
     }
 
@@ -611,15 +601,10 @@ impl Step for Analysis {
         run.path("analysis").default_condition(builder.build.config.extended)
     }
 
-    fn make_run(
-        builder: &Builder,
-        path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>
-    ) {
-        builder.ensure(Analysis {
-            compiler: builder.compiler(builder.top_stage, host),
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Analysis {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            target: run.target,
         });
     }
 
@@ -728,10 +713,8 @@ impl Step for Src {
         run.path("src")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, _target: Interned<String>
-    ) {
-        builder.ensure(Src);
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Src);
     }
 
     /// Creates the `rust-src` installer component
@@ -820,10 +803,8 @@ impl Step for PlainSourceTarball {
         run.path("src").default_condition(builder.config.rust_dist_src)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, _target: Interned<String>
-    ) {
-        builder.ensure(PlainSourceTarball);
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(PlainSourceTarball);
     }
 
     /// Creates the plain source tarball
@@ -962,12 +943,10 @@ impl Step for Cargo {
         run.path("cargo")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Cargo {
-            stage: builder.top_stage,
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Cargo {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -1054,12 +1033,10 @@ impl Step for Rls {
         run.path("rls")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Rls {
-            stage: builder.top_stage,
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rls {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -1137,12 +1114,10 @@ impl Step for Extended {
         run.path("cargo").default_condition(builder.config.extended)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Extended {
-            stage: builder.top_stage,
-            target: target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Extended {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -1535,10 +1510,8 @@ impl Step for HashSign {
         run.path("hash-and-sign")
     }
 
-    fn make_run(
-        builder: &Builder, _path: Option<&Path>, _host: Interned<String>, _target: Interned<String>
-    ) {
-        builder.ensure(HashSign);
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(HashSign);
     }
 
     fn run(self, builder: &Builder) {

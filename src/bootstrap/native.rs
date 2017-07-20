@@ -32,7 +32,7 @@ use gcc;
 use Build;
 use util;
 use build_helper::up_to_date;
-use builder::{Builder, ShouldRun, Step};
+use builder::{Builder, RunConfig, ShouldRun, Step};
 use cache::Interned;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -247,13 +247,8 @@ impl Step for TestHelpers {
         run.path("src/rt/rust_test_helpers.c")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        _host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        builder.ensure(TestHelpers { target })
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(TestHelpers { target: run.target })
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various

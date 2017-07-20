@@ -9,12 +9,12 @@
 // except according to those terms.
 
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use Mode;
 use Compiler;
-use builder::{Step, ShouldRun, Builder};
+use builder::{Step, RunConfig, ShouldRun, Builder};
 use util::{exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
@@ -163,15 +163,10 @@ macro_rules! tool {
                 run.path($path)
             }
 
-            fn make_run(
-                builder: &Builder,
-                _path: Option<&Path>,
-                _host: Interned<String>,
-                target: Interned<String>
-            ) {
-                builder.ensure($name {
-                    stage: builder.top_stage,
-                    target,
+            fn make_run(run: RunConfig) {
+                run.builder.ensure($name {
+                    stage: run.builder.top_stage,
+                    target: run.target,
                 });
             }
 
@@ -214,15 +209,10 @@ impl Step for RemoteTestServer {
         run.path("src/tools/remote-test-server")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        _host: Interned<String>,
-        target: Interned<String>
-    ) {
-        builder.ensure(RemoteTestServer {
-            stage: builder.top_stage,
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(RemoteTestServer {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -252,12 +242,10 @@ impl Step for Cargo {
         run.path("src/tools/cargo").default_condition(builder.build.config.extended)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Cargo {
-            stage: builder.top_stage,
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Cargo {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 
@@ -296,12 +284,10 @@ impl Step for Rls {
         run.path("src/tools/rls").default_condition(builder.build.config.extended)
     }
 
-    fn make_run(
-        builder: &Builder, path: Option<&Path>, _host: Interned<String>, target: Interned<String>
-    ) {
-        builder.ensure(Rls {
-            stage: builder.top_stage,
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rls {
+            stage: run.builder.top_stage,
+            target: run.target,
         });
     }
 

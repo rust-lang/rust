@@ -34,7 +34,7 @@ use {Build, Compiler, Mode};
 use native;
 
 use cache::{INTERNER, Interned};
-use builder::{Step, ShouldRun, Builder};
+use builder::{Step, RunConfig, ShouldRun, Builder};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -50,15 +50,10 @@ impl Step for Std {
         run.path("src/libstd").krate("std")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        builder.ensure(Std {
-            compiler: builder.compiler(builder.top_stage, host),
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Std {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            target: run.target,
         });
     }
 
@@ -233,15 +228,10 @@ impl Step for StartupObjects {
         run.path("src/rtstartup")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        builder.ensure(StartupObjects {
-            compiler: builder.compiler(builder.top_stage, host),
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(StartupObjects {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            target: run.target,
         });
     }
 
@@ -300,15 +290,10 @@ impl Step for Test {
         run.path("src/libtest").krate("test")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        builder.ensure(Test {
-            compiler: builder.compiler(builder.top_stage, host),
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Test {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            target: run.target,
         });
     }
 
@@ -407,15 +392,10 @@ impl Step for Rustc {
         run.path("src/librustc").krate("rustc-main")
     }
 
-    fn make_run(
-        builder: &Builder,
-        _path: Option<&Path>,
-        host: Interned<String>,
-        target: Interned<String>,
-    ) {
-        builder.ensure(Rustc {
-            compiler: builder.compiler(builder.top_stage, host),
-            target,
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustc {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            target: run.target,
         });
     }
 
