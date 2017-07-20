@@ -17,7 +17,7 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 
 use dep_graph::{DepGraph, DepNode, DepKind};
 
-use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex, DefIndexAddressSpace};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndexAddressSpace};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
@@ -375,10 +375,6 @@ impl<'hir> Map<'hir> {
     pub fn def_path(&self, def_id: DefId) -> DefPath {
         assert!(def_id.is_local());
         self.definitions.def_path(def_id.index)
-    }
-
-    pub fn def_index_for_def_key(&self, def_key: DefKey) -> Option<DefIndex> {
-        self.definitions.def_index_for_def_key(def_key)
     }
 
     pub fn local_def_id(&self, node: NodeId) -> DefId {
