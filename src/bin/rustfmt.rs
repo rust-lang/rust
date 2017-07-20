@@ -78,11 +78,6 @@ impl CliOptions {
                     format!("Invalid write-mode: {}", write_mode),
                 ));
             }
-        } else if !matches.opt_present("no-warn-write-mode") {
-            println!(
-                "Warning: the default write-mode for Rustfmt will soon change to overwrite \
-                 - this will not leave backups of changed files."
-            );
         }
 
         if let Some(ref file_lines) = matches.opt_str("file-lines") {
@@ -120,17 +115,11 @@ fn make_opts() -> Options {
     opts.optflag("h", "help", "show this message");
     opts.optflag("V", "version", "show version information");
     opts.optflag("v", "verbose", "print verbose output");
-    // Suppress warning. Remove this option after the default write mode changed to overwrite.
-    opts.optflag(
-        "w",
-        "no-warn-write-mode",
-        "inhibit warning about write-mode change",
-    );
     opts.optopt(
         "",
         "write-mode",
-        "mode to write in (not usable when piping from stdin)",
-        "[replace|overwrite|display|diff|coverage|checkstyle]",
+        "how to write output (not usable when piping from stdin)",
+        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
     );
     opts.optflag("", "skip-children", "don't reformat child modules");
 

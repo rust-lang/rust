@@ -90,11 +90,12 @@ read data from stdin. Alternatively, you can use `cargo fmt` to format all
 binary and library targets of your crate.
 
 You'll probably want to specify the write mode. Currently, there are modes for
-diff, replace, overwrite, display, coverage, and checkstyle.
+`diff`, `replace`, `overwrite`, `display`, `coverage`, `checkstyle`, and `plain`.
 
-* `replace` Is the default and overwrites the original files after creating backups of the files.
-* `overwrite` Overwrites the original files _without_ creating backups.
+* `overwrite` Is the default and overwrites the original files _without_ creating backups.
+* `replace` Overwrites the original files after creating backups of the files.
 * `display` Will print the formatted files to stdout.
+* `plain` Also writes to stdout, but with no metadata.
 * `diff` Will print a diff between the original files and formatted files to stdout.
          Will also exit with an error code if there are any differences.
 * `checkstyle` Will output the lines that need to be corrected as a checkstyle XML file,
@@ -103,7 +104,7 @@ diff, replace, overwrite, display, coverage, and checkstyle.
 The write mode can be set by passing the `--write-mode` flag on
 the command line. For example `rustfmt --write-mode=display src/filename.rs`
 
-`cargo fmt` uses `--write-mode=replace` by default.
+`cargo fmt` uses `--write-mode=overwrite` by default.
 
 If you want to restrict reformatting to specific sets of lines, you can
 use the `--file-lines` option. Its argument is a JSON array of objects

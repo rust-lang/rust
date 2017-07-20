@@ -596,8 +596,9 @@ create_config! {
     spaces_within_square_brackets: bool, false, "Put spaces within non-empty square brackets";
     spaces_within_parens: bool, false, "Put spaces within non-empty parentheses";
     use_try_shorthand: bool, false, "Replace uses of the try! macro by the ? shorthand";
-    write_mode: WriteMode, WriteMode::Replace,
-        "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
+    write_mode: WriteMode, WriteMode::Overwrite,
+        "What Write Mode to use when none is supplied: \
+         Replace, Overwrite, Display, Plain, Diff, Coverage";
     condense_wildcard_suffixes: bool, false, "Replace strings of _ wildcards by a single .. in \
                                               tuple patterns";
     combine_control_expr: bool, true, "Combine control expressions with funciton calls.";
