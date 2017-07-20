@@ -50,6 +50,34 @@ pub struct Feature {
     pub tracking_issue: Option<u32>,
 }
 
+impl Feature {
+    fn check_match(&self, other: &Feature)-> Result<(), Vec<&'static str>> {
+        let mut mismatches = Vec::new();
+        if self.level != other.level {
+            mismatches.push("stability level");
+        }
+        if self.level == Status::Stable || other.level == Status::Stable {
+            // As long as a feature is unstable, the since field tracks
+            // when the given part of the feature has been implemented.
+            // Mismatches are tolerable as features evolve and functionality
+            // gets added.
+            // Once a feature is stable, the since field tracks the first version
+            // it was part of the stable distribution, and mismatches are disallowed.
+            if self.since != other.since {
+                mismatches.push("since");
+            }
+        }
+        if self.tracking_issue != other.tracking_issue {
+            mismatches.push("tracking issue");
+        }
+        if mismatches.is_empty() {
+            Ok(())
+        } else {
+            Err(mismatches)
+        }
+    }
+}
+
 pub type Features = HashMap<String, Feature>;
 
 pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
@@ -242,23 +270,20 @@ fn get_and_check_lib_features(base_src_path: &Path,
                      &mut |res, file, line| {
             match res {
                 Ok((name, f)) => {
-                    let mut err = |msg: &str| {
-                        tidy_error!(bad, "{}:{}: {}", file.display(), line, msg);
+                    let mut check_features = |f: &Feature, list: &Features, display: &str| {
+                        if let Some(ref s) = list.get(name) {
+                            if let Err(m) = (&f).check_match(s) {
+                                tidy_error!(bad,
+                                            "{}:{}: mismatches to {} in: {:?}",
+                                            file.display(),
+                                            line,
+                                            display,
+                                            &m);
+                            }
+                        }
                     };
-                    if lang_features.contains_key(name) && name != "proc_macro" {
-                        err("duplicating a lang feature");
-                    }
-                    if let Some(ref s) = lib_features.get(name) {
-                        if s.level != f.level {
-                            err("different stability level than before");
-                        }
-                        if s.since != f.since {
-                            err("different `since` than before");
-                        }
-                        if s.tracking_issue != f.tracking_issue {
-                            err("different `tracking_issue` than before");
-                        }
-                    }
+                    check_features(&f, &lang_features, "corresponding lang feature");
+                    check_features(&f, &lib_features, "previous");
                     lib_features.insert(name.to_owned(), f);
                 },
                 Err(msg) => {
