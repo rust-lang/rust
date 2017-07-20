@@ -920,7 +920,8 @@ impl Build {
     /// Returns whether the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
     fn remote_tested(&self, target: &str) -> bool {
-        self.qemu_rootfs(target).is_some() || target.contains("android")
+        self.qemu_rootfs(target).is_some() || target.contains("android") ||
+        env::var_os("TEST_DEVICE_ADDR").is_some()
     }
 
     /// Returns the root of the "rootfs" image that this target will be using,
