@@ -607,7 +607,7 @@ impl Step for Test {
                 }
             }
         } else {
-            if builder.build.config.docs {
+            if builder.build.config.compiler_docs {
                 run();
             }
         }
@@ -695,7 +695,7 @@ impl Step for Rustc {
                 }
             }
         } else {
-            if builder.build.config.compiler_docs {
+            if builder.build.config.docs {
                 run();
             }
         }
