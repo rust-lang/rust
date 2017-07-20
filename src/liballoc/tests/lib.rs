@@ -24,7 +24,6 @@
 #![feature(repr_align)]
 #![feature(slice_rotate)]
 #![feature(splice)]
-#![feature(str_checked_slicing)]
 #![feature(str_escape)]
 #![feature(test)]
 #![feature(unboxed_closures)]
