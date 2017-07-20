@@ -2025,4 +2025,5 @@ register_diagnostics! {
     E0490, // a value of type `..` is borrowed for too long
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
     E0566, // conflicting representation hints
+    E0624, // generators cannot have explicit arguments
 }

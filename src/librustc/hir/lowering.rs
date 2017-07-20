@@ -623,12 +623,12 @@ impl<'a> LoweringContext<'a> {
                 })))
             }
             TyKind::Array(ref ty, ref length) => {
-                let body = self.lower_body(None, |this| this.lower_expr(length));
-                hir::TyArray(self.lower_ty(ty), body)
+                let length = self.lower_body(None, |this| this.lower_expr(length));
+                hir::TyArray(self.lower_ty(ty), length)
             }
             TyKind::Typeof(ref expr) => {
-                let body = self.lower_body(None, |this| this.lower_expr(expr));
-                hir::TyTypeof(body)
+                let expr = self.lower_body(None, |this| this.lower_expr(expr));
+                hir::TyTypeof(expr)
             }
             TyKind::TraitObject(ref bounds) => {
                 let mut lifetime_bound = None;
@@ -1299,14 +1299,14 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemUse(path, kind)
             }
             ItemKind::Static(ref t, m, ref e) => {
-                let body = self.lower_body(None, |this| this.lower_expr(e));
+                let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemStatic(self.lower_ty(t),
                                 self.lower_mutability(m),
-                                body)
+                                value)
             }
             ItemKind::Const(ref t, ref e) => {
-                let body = self.lower_body(None, |this| this.lower_expr(e));
-                hir::ItemConst(self.lower_ty(t), body)
+                let value = self.lower_body(None, |this| this.lower_expr(e));
+                hir::ItemConst(self.lower_ty(t), value)
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 self.with_new_scopes(|this| {
@@ -1416,7 +1416,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     TraitItemKind::Method(ref sig, Some(ref body)) => {
                         let body_id = this.lower_body(Some(&sig.decl), |this| {
-                        let body = this.lower_block(body, false);
+                            let body = this.lower_block(body, false);
                             this.expr_block(body, ThinVec::new())
                         });
                         hir::TraitItemKind::Method(this.lower_method_sig(sig),
@@ -1472,7 +1472,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
                         let body_id = this.lower_body(Some(&sig.decl), |this| {
-                        let body = this.lower_block(body, false);
+                            let body = this.lower_block(body, false);
                             this.expr_block(body, ThinVec::new())
                         });
                         hir::ImplItemKind::Method(this.lower_method_sig(sig), body_id)
@@ -1846,8 +1846,8 @@ impl<'a> LoweringContext<'a> {
             }
             ExprKind::Repeat(ref expr, ref count) => {
                 let expr = P(self.lower_expr(expr));
-                let body = self.lower_body(None, |this| this.lower_expr(count));
-                hir::ExprRepeat(expr, body)
+                let count = self.lower_body(None, |this| this.lower_expr(count));
+                hir::ExprRepeat(expr, count)
             }
             ExprKind::Tup(ref elts) => {
                 hir::ExprTup(elts.iter().map(|x| self.lower_expr(x)).collect())
@@ -1947,9 +1947,9 @@ impl<'a> LoweringContext<'a> {
                             e
                         });
                         if gen == hir::IsGenerator::Yes && !decl.inputs.is_empty() {
-                            this.sess.span_fatal(
-                                    fn_decl_span,
-                                    &format!("generators cannot have explicit arguments"));
+                            span_err!(this.sess, fn_decl_span, E0624,
+                                      "yield statement outside of generator literal");
+                            this.sess.abort_if_errors();
                         }
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
