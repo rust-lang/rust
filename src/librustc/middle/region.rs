@@ -1150,10 +1150,6 @@ impl<'tcx> Visitor<'tcx> for YieldFinder {
         NestedVisitorMap::None
     }
 
-    fn visit_body(&mut self, _body: &'tcx hir::Body) {
-        // Closures don't execute
-    }
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if let hir::ExprYield(..) = expr.node {
             if self.0.is_none() {
