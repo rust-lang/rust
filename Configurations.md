@@ -2120,5 +2120,5 @@ See also: [`indent_match_arms`](#indent_match_arms), [`match_block_trailing_comm
 
 What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage
 
-- **Default value**: `"Replace"`
+- **Default value**: `"Overwrite"`
 - **Possible values**: `"Checkstyle"`, `"Coverage"`, `"Diff"`, `"Display"`, `"Overwrite"`, `"Plain"`, `"Replace"`
