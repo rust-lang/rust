@@ -469,14 +469,6 @@ fn testdir(build: &Build, host: Interned<String>) -> PathBuf {
 //    }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Compiletest {
-    compiler: Compiler,
-    target: Interned<String>,
-    mode: &'static str,
-    suite: &'static str,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Test {
     path: &'static str,
     mode: &'static str,
@@ -501,7 +493,73 @@ static DEFAULT_COMPILETESTS: &[Test] = &[
 
     // What this runs varies depending on the native platform being apple
     Test { path: "src/test/debuginfo", mode: "debuginfo-XXX", suite: "debuginfo" },
+    Test { path: "src/test/debuginfo-lldb", mode: "debuginfo-lldb", suite: "debuginfo" },
+    Test { path: "src/test/debuginfo-gdb", mode: "debuginfo-gdb", suite: "debuginfo" },
 ];
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct DefaultCompiletest {
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: &'static str,
+    suite: &'static str,
+}
+
+impl Step for DefaultCompiletest {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(mut run: ShouldRun) -> ShouldRun {
+        for test in DEFAULT_COMPILETESTS {
+            run = run.path(test.path);
+        }
+        run
+    }
+
+    fn make_run(
+        builder: &Builder,
+        path: Option<&Path>,
+        host: Interned<String>,
+        target: Interned<String>,
+    ) {
+        let compiler = builder.compiler(builder.top_stage, host);
+
+        let test = path.map(|path| {
+            DEFAULT_COMPILETESTS.iter().find(|&&test| {
+                path.ends_with(test.path)
+            }).unwrap_or_else(|| {
+                panic!("make_run in compile test to receive test path, received {:?}", path);
+            })
+        });
+
+        if let Some(test) = test {
+            builder.ensure(DefaultCompiletest {
+                compiler,
+                target,
+                mode: test.mode,
+                suite: test.suite,
+            });
+        } else {
+            for test in DEFAULT_COMPILETESTS {
+                builder.ensure(DefaultCompiletest {
+                    compiler,
+                    target,
+                    mode: test.mode,
+                    suite: test.suite
+                });
+            }
+        }
+    }
+
+    fn run(self, builder: &Builder) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: self.mode,
+            suite: self.suite,
+        })
+    }
+}
 
 // Also default, but host-only.
 static HOST_COMPILETESTS: &[Test] = &[
@@ -524,20 +582,21 @@ static HOST_COMPILETESTS: &[Test] = &[
     Test { path: "src/test/run-fail-fulldeps/pretty", mode: "pretty", suite: "run-fail-fulldeps" },
 ];
 
-static COMPILETESTS: &[Test] = &[
-    Test { path: "src/test/debuginfo-lldb", mode: "debuginfo-lldb", suite: "debuginfo" },
-    Test { path: "src/test/debuginfo-gdb", mode: "debuginfo-gdb", suite: "debuginfo" },
-];
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct HostCompiletest {
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: &'static str,
+    suite: &'static str,
+}
 
-impl Step for Compiletest {
+impl Step for HostCompiletest {
     type Output = ();
     const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
 
     fn should_run(mut run: ShouldRun) -> ShouldRun {
-        // Note that this is general, while a few more cases are skipped inside
-        // run() itself. This is to avoid duplication across should_run and
-        // make_run.
-        for test in COMPILETESTS.iter().chain(DEFAULT_COMPILETESTS).chain(HOST_COMPILETESTS) {
+        for test in HOST_COMPILETESTS {
             run = run.path(test.path);
         }
         run
@@ -552,42 +611,55 @@ impl Step for Compiletest {
         let compiler = builder.compiler(builder.top_stage, host);
 
         let test = path.map(|path| {
-            COMPILETESTS.iter().chain(DEFAULT_COMPILETESTS).chain(HOST_COMPILETESTS).find(|&&test| {
+            HOST_COMPILETESTS.iter().find(|&&test| {
                 path.ends_with(test.path)
             }).unwrap_or_else(|| {
                 panic!("make_run in compile test to receive test path, received {:?}", path);
             })
         });
 
-        if let Some(test) = test { // specific test
-            let target = if HOST_COMPILETESTS.contains(test) {
-                host
-            } else {
-                target
-            };
-            builder.ensure(Compiletest {
-                compiler, target, mode: test.mode, suite: test.suite
+        if let Some(test) = test {
+            builder.ensure(HostCompiletest {
+                compiler,
+                target,
+                mode: test.mode,
+                suite: test.suite,
             });
-        } else { // default tests
-            for test in DEFAULT_COMPILETESTS {
-                builder.ensure(Compiletest {
+        } else {
+            for test in HOST_COMPILETESTS {
+                builder.ensure(HostCompiletest {
                     compiler,
                     target,
                     mode: test.mode,
                     suite: test.suite
                 });
             }
-            for test in HOST_COMPILETESTS {
-                if test.mode != "pretty" {
-                    builder.ensure(Compiletest {
-                        compiler,
-                        target: host,
-                        mode: test.mode,
-                        suite: test.suite
-                    });
-                }
-            }
         }
+    }
+
+    fn run(self, builder: &Builder) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: self.mode,
+            suite: self.suite,
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+struct Compiletest {
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: &'static str,
+    suite: &'static str,
+}
+
+impl Step for Compiletest {
+    type Output = ();
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
     }
 
     /// Executes the `compiletest` tool to run a suite of tests.
