@@ -36,6 +36,14 @@ note: added defaulted item to trait (technically breaking)
 10 | |     }
    | |_____^
 
+warning: breaking changes in `test7`
+  --> $REPO_PATH/tests/cases/traits/new.rs:11:5
+   |
+11 |     fn test7() -> u16;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = warning: type error: expected u8, found u16 (breaking)
+
 warning: breaking changes in `test8`
   --> $REPO_PATH/tests/cases/traits/new.rs:12:5
    |

@@ -322,6 +322,38 @@ impl<'tcx> Change<'tcx> {
         self.changes.push((type_, span));
     }
 
+    /// Check whether a trait item contains breaking changes preventing further analysis of it's
+    /// child items.
+    fn trait_item_breaking(&self) -> bool {
+        for change in &self.changes {
+            match change.0 {
+                ItemMadePrivate |
+                KindDifference |
+                RegionParameterRemoved |
+                TypeParameterRemoved { .. } |
+                VariantAdded |
+                VariantRemoved |
+                VariantFieldAdded { .. } |
+                VariantFieldRemoved { .. } |
+                VariantStyleChanged { .. } |
+                TypeChanged { .. } |
+                FnConstChanged { now_const: false } |
+                MethodSelfChanged { now_self: false } |
+                Unknown => return true,
+                RegionParameterAdded |
+                MethodSelfChanged { now_self: true } |
+                TraitItemAdded { .. } |
+                TraitItemRemoved { .. } |
+                ItemMadePublic |
+                TypeParameterAdded { .. } |
+                TraitUnsafetyChanged { .. } |
+                FnConstChanged { now_const: true } => (),
+            }
+        }
+
+        false
+    }
+
     /// Get the change's category.
     fn to_category(&self) -> ChangeCategory {
         self.max.clone()
@@ -464,7 +496,16 @@ impl<'tcx> ChangeSet<'tcx> {
         // we only care about items that were present in both versions.
         self.changes
             .get(&old)
-            .map(|changes| changes.to_category() == Breaking)
+            .map(|change| change.to_category() == Breaking)
+            .unwrap_or(false)
+    }
+
+    /// Check whether a trait item contains breaking changes preventing further analysis of it's
+    /// child items.
+    pub fn trait_item_breaking(&self, old: DefId) -> bool {
+        self.changes
+            .get(&old)
+            .map(|change| change.trait_item_breaking())
             .unwrap_or(false)
     }
 

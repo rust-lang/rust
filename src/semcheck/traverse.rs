@@ -543,7 +543,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     if changes.item_breaking(old_def_id) ||
             id_mapping.get_trait_def(&old_def_id)
-                .map_or(false, |did| changes.item_breaking(did)) {
+                .map_or(false, |did| changes.trait_item_breaking(did)) {
         return;
     }
 
