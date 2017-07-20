@@ -106,7 +106,7 @@ fn test_env<F>(source_string: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
     let sess = session::build_session_(options,
                                        &dep_graph,
                                        None,

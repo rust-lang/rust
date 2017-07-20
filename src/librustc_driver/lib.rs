@@ -28,6 +28,9 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 
+#[cfg(not(feature="llvm"))]
+extern crate ar;
+
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
@@ -49,6 +52,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
+#[cfg(feature="llvm")]
 extern crate rustc_trans;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -74,6 +78,8 @@ use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
+#[cfg(not(feature="llvm"))]
+use rustc::middle::cstore::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::{time, ErrorReported};
@@ -151,6 +157,45 @@ pub fn run<F>(run_compiler: F) -> isize
     0
 }
 
+#[cfg(not(feature="llvm"))]
+pub struct NoLLvmMetadataLoader;
+
+#[cfg(not(feature="llvm"))]
+pub use NoLLvmMetadataLoader as MetadataLoader;
+#[cfg(feature="llvm")]
+pub use rustc_trans::LlvmMetadataLoader as MetadataLoader;
+
+#[cfg(not(feature="llvm"))]
+impl MetadataLoader for NoLLvmMetadataLoader {
+    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+        use std::fs::File;
+        use std::io;
+        use self::ar::Archive;
+
+        let file = File::open(filename).map_err(|e|format!("metadata file open err: {:?}", e))?;
+        let mut archive = Archive::new(file);
+
+        while let Some(entry_result) = archive.next_entry() {
+            let mut entry = entry_result.map_err(|e|format!("metadata section read err: {:?}", e))?;
+            if entry.header().identifier() == METADATA_FILENAME {
+                let mut buf = Vec::new();
+                io::copy(&mut entry, &mut buf).unwrap();
+                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+                return Ok(buf.erase_owner());
+            }
+        }
+
+        Err("Couldnt find metadata section".to_string())
+    }
+
+    fn get_dylib_metadata(&self,
+                          target: &Target,
+                          filename: &Path)
+                          -> Result<ErasedBoxRef<[u8]>, String> {
+        panic!("Dylib metadata loading not supported without LLVM")
+    }
+}
+
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
@@ -197,7 +242,7 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
@@ -477,7 +522,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     return None;
                 }
                 let dep_graph = DepGraph::new(sopts.build_dep_graph());
-                let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+                let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
                 let mut sess = build_session(sopts.clone(),
                     &dep_graph,
                     None,
