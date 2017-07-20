@@ -1101,6 +1101,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
+        //trace!("Writing {:?} to {:?} at type {:?}", src_val, dest, dest_ty);
         // Note that it is really important that the type here is the right one, and matches the type things are read at.
         // In case `src_val` is a `ByValPair`, we don't do any magic here to handle padding properly, which is only
         // correct if we never look at this data with the wrong type.
@@ -1378,7 +1379,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // if we transmute a ptr to an isize, reading it back into a primval shouldn't panic
                 // Due to read_ptr ignoring the sign, we need to jump around some hoops
                 match self.memory.read_int(ptr.to_ptr()?, size) {
-                    Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
+                    Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() =>
+                        // Reading as an int failed because we are seeing ptr bytes *and* we are actually reading at ptr size.
+                        // Let's try again, reading a ptr this time.
+                        self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
                     other => PrimVal::from_i128(other?),
                 }
             }
@@ -1393,11 +1397,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     U128 => 16,
                     Us => self.memory.pointer_size(),
                 };
-                if size == self.memory.pointer_size() {
-                    // if we transmute a ptr to an usize, reading it back into a primval shouldn't panic
-                    self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval()
-                } else {
-                    PrimVal::from_u128(self.memory.read_uint(ptr.to_ptr()?, size)?)
+                // if we transmute a ptr to an usize, reading it back into a primval shouldn't panic
+                // for consistency's sake, we use the same code as above
+                match self.memory.read_uint(ptr.to_ptr()?, size) {
+                    Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
+                    other => PrimVal::from_u128(other?),
                 }
             }
 
