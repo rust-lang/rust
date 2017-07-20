@@ -379,7 +379,7 @@ pub trait CharExt {
     fn escape_unicode(self) -> EscapeUnicode;
     #[stable(feature = "core", since = "1.6.0")]
     fn escape_default(self) -> EscapeDefault;
-    #[unstable(feature = "char_escape_debug", issue = "35068")]
+    #[stable(feature = "char_escape_debug", since = "1.20.0")]
     fn escape_debug(self) -> EscapeDebug;
     #[stable(feature = "core", since = "1.6.0")]
     fn len_utf8(self) -> usize;
@@ -776,24 +776,24 @@ impl fmt::Display for EscapeDefault {
 ///
 /// [`escape_debug`]: ../../std/primitive.char.html#method.escape_debug
 /// [`char`]: ../../std/primitive.char.html
-#[unstable(feature = "char_escape_debug", issue = "35068")]
+#[stable(feature = "char_escape_debug", since = "1.20.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeDebug(EscapeDefault);
 
-#[unstable(feature = "char_escape_debug", issue = "35068")]
+#[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl Iterator for EscapeDebug {
     type Item = char;
     fn next(&mut self) -> Option<char> { self.0.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
 }
 
-#[unstable(feature = "char_escape_debug", issue = "35068")]
+#[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl ExactSizeIterator for EscapeDebug { }
 
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for EscapeDebug {}
 
-#[unstable(feature = "char_escape_debug", issue = "35068")]
+#[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl fmt::Display for EscapeDebug {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
