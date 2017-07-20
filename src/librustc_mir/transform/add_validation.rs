@@ -20,6 +20,33 @@ use rustc::mir::transform::{MirPass, MirSource};
 
 pub struct AddValidation;
 
+
+fn is_lvalue_shared<'a, 'tcx, D>(lval: &Lvalue<'tcx>, local_decls: &D, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool
+    where D: HasLocalDecls<'tcx>
+{
+    use rustc::mir::Lvalue::*;
+
+    match *lval {
+        Local { .. } => false,
+        Static(_) => true,
+        Projection(ref proj) => {
+            // If the base is shared, things stay shared
+            if is_lvalue_shared(&proj.base, local_decls, tcx) {
+                return true;
+            }
+            // A Deref projection may make things shared
+            match proj.elem {
+                ProjectionElem::Deref => {
+                    // Computing the inside the recursion makes this quadratic.  We don't expect deep paths though.
+                    let ty = proj.base.ty(local_decls, tcx).to_ty(tcx);
+                    !ty.is_mutable_pointer()
+                }
+                _ => false,
+            }
+        }
+    }
+}
+
 impl MirPass for AddValidation {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -117,18 +144,20 @@ impl MirPass for AddValidation {
                 };
                 block_data.statements.insert(i+1, acquire_stmt);
 
-                // The source is released until the region of the borrow ends.
-                let src_ty = src_lval.ty(&local_decls, tcx).to_ty(tcx);
-                let op = match re {
-                    &RegionKind::ReScope(ce) => ValidationOp::Suspend(ce),
-                    &RegionKind::ReErased => bug!("AddValidation pass must be run before erasing lifetimes"),
-                    _ => ValidationOp::Release,
-                };
-                let release_stmt = Statement {
-                    source_info: block_data.statements[i].source_info,
-                    kind: StatementKind::Validate(op, vec![(src_ty, src_lval)]),
-                };
-                block_data.statements.insert(i, release_stmt);
+                // The source is released until the region of the borrow ends -- but not if it is shared.
+                if !is_lvalue_shared(&src_lval, &local_decls, tcx) {
+                    let src_ty = src_lval.ty(&local_decls, tcx).to_ty(tcx);
+                    let op = match re {
+                        &RegionKind::ReScope(ce) => ValidationOp::Suspend(ce),
+                        &RegionKind::ReErased => bug!("AddValidation pass must be run before erasing lifetimes"),
+                        _ => ValidationOp::Release,
+                    };
+                    let release_stmt = Statement {
+                        source_info: block_data.statements[i].source_info,
+                        kind: StatementKind::Validate(op, vec![(src_ty, src_lval)]),
+                    };
+                    block_data.statements.insert(i, release_stmt);
+                }
             }
         }
     }
