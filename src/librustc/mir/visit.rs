@@ -334,9 +334,10 @@ macro_rules! make_mir_visitor {
                     }
                     StatementKind::EndRegion(_) => {}
                     StatementKind::Validate(_, ref $($mutability)* lvalues) => {
-                        for & $($mutability)* (ref $($mutability)* ty, ref $($mutability)* lvalue) in lvalues {
-                            self.visit_ty(ty, Lookup::Loc(location));
-                            self.visit_lvalue(lvalue, LvalueContext::Validate, location);
+                        for operand in lvalues {
+                            self.visit_lvalue(& $($mutability)* operand.lval,
+                                              LvalueContext::Validate, location);
+                            self.visit_ty(& $($mutability)* operand.ty, Lookup::Loc(location));
                         }
                     }
                     StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {

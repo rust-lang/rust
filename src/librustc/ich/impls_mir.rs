@@ -243,6 +243,8 @@ for mir::StatementKind<'tcx> {
     }
 }
 
+impl_stable_hash_for!(struct mir::ValidationOperand<'tcx> { lval, ty, re, mutbl });
+
 impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(extent) });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for mir::Lvalue<'tcx> {

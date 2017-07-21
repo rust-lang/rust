@@ -684,6 +684,16 @@ pub enum Mutability {
     MutImmutable,
 }
 
+impl Mutability {
+    /// Return MutMutable only if both arguments are mutable.
+    pub fn and(self, other: Self) -> Self {
+        match self {
+            MutMutable => other,
+            MutImmutable => MutImmutable,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BinOp_ {
     /// The `+` operator (addition)

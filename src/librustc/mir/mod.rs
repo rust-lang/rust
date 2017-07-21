@@ -25,7 +25,7 @@ use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
 use rustc_back::slice;
-use hir::InlineAsm;
+use hir::{self, InlineAsm};
 use std::ascii;
 use std::borrow::{Cow};
 use std::cell::Ref;
@@ -826,7 +826,7 @@ pub enum StatementKind<'tcx> {
     },
 
     /// Assert the given lvalues to be valid inhabitants of their type.
-    Validate(ValidationOp, Vec<(Ty<'tcx>, Lvalue<'tcx>)>),
+    Validate(ValidationOp, Vec<ValidationOperand<'tcx>>),
 
     /// Mark one terminating point of an extent (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
@@ -852,6 +852,28 @@ impl Debug for ValidationOp {
             // (reuse lifetime rendering policy from ppaux.)
             Suspend(ref ce) => write!(fmt, "Suspend({})", ty::ReScope(*ce)),
         }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct ValidationOperand<'tcx> {
+    pub lval: Lvalue<'tcx>,
+    pub ty: Ty<'tcx>,
+    pub re: Option<CodeExtent>,
+    pub mutbl: hir::Mutability,
+}
+
+impl<'tcx> Debug for ValidationOperand<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        write!(fmt, "{:?}@{:?}", self.lval, self.ty)?;
+        if let Some(ce) = self.re {
+            // (reuse lifetime rendering policy from ppaux.)
+            write!(fmt, "/{}", ty::ReScope(ce))?;
+        }
+        if let hir::MutImmutable = self.mutbl {
+            write!(fmt, " (imm)")?;
+        }
+        Ok(())
     }
 }
 
@@ -1505,6 +1527,21 @@ impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ValidationOperand {
+            lval: self.lval.fold_with(folder),
+            ty: self.ty.fold_with(folder),
+            re: self.re,
+            mutbl: self.mutbl,
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.lval.visit_with(visitor) || self.ty.visit_with(visitor)
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         use mir::StatementKind::*;
@@ -1531,7 +1568,7 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
 
             Validate(ref op, ref lvals) =>
                 Validate(op.clone(),
-                         lvals.iter().map(|ty_and_lval| ty_and_lval.fold_with(folder)).collect()),
+                         lvals.iter().map(|operand| operand.fold_with(folder)).collect()),
 
             Nop => Nop,
         };
