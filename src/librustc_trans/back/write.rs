@@ -23,7 +23,7 @@ use rustc::hir::def_id::CrateNum;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr};
 use rustc::util::fs::link_or_copy;
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
-use errors::emitter::Emitter;
+use errors::emitter::{Emitter};
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
@@ -38,7 +38,7 @@ use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::slice;
 use libc::{c_uint, c_void, c_char, size_t};
 
@@ -304,6 +304,9 @@ pub struct CodegenContext<'a> {
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
     pub tx: Sender<Message>,
+
+    // Error messages...
+    pub shared_emitter: SharedEmitter,
 }
 
 struct HandlerFreeVars<'a> {
@@ -313,7 +316,7 @@ struct HandlerFreeVars<'a> {
 unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
                                                msg: &'b str,
                                                cookie: c_uint) {
-    drop(cgcx.tx.send(Message::InlineAsmError(cookie as u32, msg.to_string())));
+    cgcx.shared_emitter.inline_asm_error(cookie as u32, msg.to_string());
 }
 
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
@@ -613,8 +616,17 @@ pub fn cleanup_llvm(trans: &CrateTranslation) {
     }
 }
 
+pub struct RunLLVMPassesResult {
+    pub modules: Vec<ModuleTranslation>,
+    pub metadata_module: ModuleTranslation,
+    pub allocator_module: Option<ModuleTranslation>,
+}
+
 pub fn run_passes(sess: &Session,
                   trans: &OngoingCrateTranslation,
+                  modules: Vec<ModuleTranslation>,
+                  metadata_module: ModuleTranslation,
+                  allocator_module: Option<ModuleTranslation>,
                   output_types: &OutputTypes,
                   crate_output: &OutputFilenames) {
     // It's possible that we have `codegen_units > 1` but only one item in
@@ -631,7 +643,7 @@ pub fn run_passes(sess: &Session,
     }
 
     // Sanity check
-    assert!(trans.modules.len() == sess.opts.cg.codegen_units ||
+    assert!(modules.len() == sess.opts.cg.codegen_units ||
             sess.opts.debugging_opts.incremental.is_some() ||
             !sess.opts.output_types.should_trans() ||
             sess.opts.debugging_opts.no_trans);
@@ -722,17 +734,17 @@ pub fn run_passes(sess: &Session,
     // Populate a buffer with a list of codegen threads.  Items are processed in
     // LIFO order, just because it's a tiny bit simpler that way.  (The order
     // doesn't actually matter.)
-    let mut work_items = Vec::with_capacity(1 + trans.modules.len());
+    let mut work_items = Vec::with_capacity(1 + modules.len());
 
     {
         let work = build_work_item(sess,
-                                   trans.metadata_module.clone(),
+                                   metadata_module.clone(),
                                    metadata_config.clone(),
                                    crate_output.clone());
         work_items.push(work);
     }
 
-    if let Some(allocator) = trans.allocator_module.clone() {
+    if let Some(allocator) = allocator_module.clone() {
         let work = build_work_item(sess,
                                    allocator,
                                    allocator_config.clone(),
@@ -740,7 +752,7 @@ pub fn run_passes(sess: &Session,
         work_items.push(work);
     }
 
-    for mtrans in trans.modules.iter() {
+    for mtrans in modules.iter() {
         let work = build_work_item(sess,
                                    mtrans.clone(),
                                    modules_config.clone(),
@@ -760,7 +772,7 @@ pub fn run_passes(sess: &Session,
     });
 
     // If in incr. comp. mode, preserve the `.o` files for potential re-use
-    for mtrans in trans.modules.iter() {
+    for mtrans in modules.iter() {
         let mut files = vec![];
 
         if modules_config.emit_obj {
@@ -781,80 +793,82 @@ pub fn run_passes(sess: &Session,
         llvm::LLVMRustDisposeTargetMachine(tm);
     }
 
-    // Produce final compile outputs.
-    let copy_gracefully = |from: &Path, to: &Path| {
-        if let Err(e) = fs::copy(from, to) {
-            sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
-        }
-    };
-
-    let copy_if_one_unit = |output_type: OutputType,
-                            keep_numbered: bool| {
-        if trans.modules.len() == 1 {
-            // 1) Only one codegen unit.  In this case it's no difficulty
-            //    to copy `foo.0.x` to `foo.x`.
-            let module_name = Some(&trans.modules[0].name[..]);
-            let path = crate_output.temp_path(output_type, module_name);
-            copy_gracefully(&path,
-                            &crate_output.path(output_type));
-            if !sess.opts.cg.save_temps && !keep_numbered {
-                // The user just wants `foo.x`, not `foo.#module-name#.x`.
-                remove(sess, &path);
-            }
-        } else {
-            let ext = crate_output.temp_path(output_type, None)
-                                  .extension()
-                                  .unwrap()
-                                  .to_str()
-                                  .unwrap()
-                                  .to_owned();
-
-            if crate_output.outputs.contains_key(&output_type) {
-                // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
-                //    no good solution for this case, so warn the user.
-                sess.warn(&format!("ignoring emit path because multiple .{} files \
-                                    were produced", ext));
-            } else if crate_output.single_output_file.is_some() {
-                // 3) Multiple codegen units, with `-o some_name`.  We have
-                //    no good solution for this case, so warn the user.
-                sess.warn(&format!("ignoring -o because multiple .{} files \
-                                    were produced", ext));
-            } else {
-                // 4) Multiple codegen units, but no explicit name.  We
-                //    just leave the `foo.0.x` files in place.
-                // (We don't have to do any work in this case.)
-            }
-        }
-    };
-
-    // Flag to indicate whether the user explicitly requested bitcode.
-    // Otherwise, we produced it only as a temporary output, and will need
-    // to get rid of it.
     let mut user_wants_bitcode = false;
     let mut user_wants_objects = false;
-    for output_type in output_types.keys() {
-        match *output_type {
-            OutputType::Bitcode => {
-                user_wants_bitcode = true;
-                // Copy to .bc, but always keep the .0.bc.  There is a later
-                // check to figure out if we should delete .0.bc files, or keep
-                // them for making an rlib.
-                copy_if_one_unit(OutputType::Bitcode, true);
+    {
+        // Produce final compile outputs.
+        let copy_gracefully = |from: &Path, to: &Path| {
+            if let Err(e) = fs::copy(from, to) {
+                sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
             }
-            OutputType::LlvmAssembly => {
-                copy_if_one_unit(OutputType::LlvmAssembly, false);
+        };
+
+        let copy_if_one_unit = |output_type: OutputType,
+                                keep_numbered: bool| {
+            if modules.len() == 1 {
+                // 1) Only one codegen unit.  In this case it's no difficulty
+                //    to copy `foo.0.x` to `foo.x`.
+                let module_name = Some(&modules[0].name[..]);
+                let path = crate_output.temp_path(output_type, module_name);
+                copy_gracefully(&path,
+                                &crate_output.path(output_type));
+                if !sess.opts.cg.save_temps && !keep_numbered {
+                    // The user just wants `foo.x`, not `foo.#module-name#.x`.
+                    remove(sess, &path);
+                }
+            } else {
+                let ext = crate_output.temp_path(output_type, None)
+                                      .extension()
+                                      .unwrap()
+                                      .to_str()
+                                      .unwrap()
+                                      .to_owned();
+
+                if crate_output.outputs.contains_key(&output_type) {
+                    // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
+                    //    no good solution for this case, so warn the user.
+                    sess.warn(&format!("ignoring emit path because multiple .{} files \
+                                        were produced", ext));
+                } else if crate_output.single_output_file.is_some() {
+                    // 3) Multiple codegen units, with `-o some_name`.  We have
+                    //    no good solution for this case, so warn the user.
+                    sess.warn(&format!("ignoring -o because multiple .{} files \
+                                        were produced", ext));
+                } else {
+                    // 4) Multiple codegen units, but no explicit name.  We
+                    //    just leave the `foo.0.x` files in place.
+                    // (We don't have to do any work in this case.)
+                }
             }
-            OutputType::Assembly => {
-                copy_if_one_unit(OutputType::Assembly, false);
+        };
+
+        // Flag to indicate whether the user explicitly requested bitcode.
+        // Otherwise, we produced it only as a temporary output, and will need
+        // to get rid of it.
+        for output_type in output_types.keys() {
+            match *output_type {
+                OutputType::Bitcode => {
+                    user_wants_bitcode = true;
+                    // Copy to .bc, but always keep the .0.bc.  There is a later
+                    // check to figure out if we should delete .0.bc files, or keep
+                    // them for making an rlib.
+                    copy_if_one_unit(OutputType::Bitcode, true);
+                }
+                OutputType::LlvmAssembly => {
+                    copy_if_one_unit(OutputType::LlvmAssembly, false);
+                }
+                OutputType::Assembly => {
+                    copy_if_one_unit(OutputType::Assembly, false);
+                }
+                OutputType::Object => {
+                    user_wants_objects = true;
+                    copy_if_one_unit(OutputType::Object, true);
+                }
+                OutputType::Mir |
+                OutputType::Metadata |
+                OutputType::Exe |
+                OutputType::DepInfo => {}
             }
-            OutputType::Object => {
-                user_wants_objects = true;
-                copy_if_one_unit(OutputType::Object, true);
-            }
-            OutputType::Mir |
-            OutputType::Metadata |
-            OutputType::Exe |
-            OutputType::DepInfo => {}
         }
     }
     let user_wants_bitcode = user_wants_bitcode;
@@ -895,7 +909,7 @@ pub fn run_passes(sess: &Session,
         let keep_numbered_objects = needs_crate_object ||
                 (user_wants_objects && sess.opts.cg.codegen_units > 1);
 
-        for module_name in trans.modules.iter().map(|m| Some(&m.name[..])) {
+        for module_name in modules.iter().map(|m| Some(&m.name[..])) {
             if modules_config.emit_obj && !keep_numbered_objects {
                 let path = crate_output.temp_path(OutputType::Object, module_name);
                 remove(sess, &path);
@@ -909,11 +923,11 @@ pub fn run_passes(sess: &Session,
 
         if metadata_config.emit_bc && !user_wants_bitcode {
             let path = crate_output.temp_path(OutputType::Bitcode,
-                                              Some(&trans.metadata_module.name));
+                                              Some(&metadata_module.name));
             remove(sess, &path);
         }
         if allocator_config.emit_bc && !user_wants_bitcode {
-            if let Some(ref module) = trans.allocator_module {
+            if let Some(ref module) = allocator_module {
                 let path = crate_output.temp_path(OutputType::Bitcode,
                                                   Some(&module.name));
                 remove(sess, &path);
@@ -932,6 +946,14 @@ pub fn run_passes(sess: &Session,
     if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
         unsafe { llvm::LLVMRustPrintPassTimings(); }
     }
+
+    *trans.result.borrow_mut() = Some(
+        RunLLVMPassesResult {
+            modules,
+            metadata_module,
+            allocator_module,
+        }
+    );
 }
 
 pub fn dump_incremental_data(trans: &CrateTranslation) {
@@ -1011,10 +1033,7 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
 
 pub enum Message {
     Token(io::Result<Acquired>),
-    Diagnostic(Diagnostic),
     Done { success: bool },
-    InlineAsmError(u32, String),
-    AbortIfErrors,
 }
 
 pub struct Diagnostic {
@@ -1047,6 +1066,8 @@ fn execute_work<'a>(sess: &'a Session,
     for _ in 0..work_items.len() - 1 {
         helper.request_token();
     }
+
+    let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
 
     // This is the "main loop" of parallel work happening for parallel codegen.
     // It's here that we manage parallelism, schedule work, and work with
@@ -1112,7 +1133,13 @@ fn execute_work<'a>(sess: &'a Session,
         while work_items.len() > 0 && running < tokens.len() + 1 {
             let item = work_items.pop().unwrap();
             let index = work_items.len();
-            spawn_work(sess, exported_symbols, scope, tx.clone(), item, index);
+            spawn_work(sess,
+                       exported_symbols,
+                       scope,
+                       tx.clone(),
+                       shared_emitter.clone(),
+                       item,
+                       index);
             running += 1;
         }
 
@@ -1140,70 +1167,22 @@ fn execute_work<'a>(sess: &'a Session,
                 running -= 1;
             }
             Message::Done { success: false } => {
-                sess.fatal("aborting due to worker thread panic");
+                shared_emitter.fatal("aborting due to worker thread panic".to_string());
             }
-
-            // Our worker wants us to emit an error message, so get ahold of our
-            // `sess` and print it out
-            Message::Diagnostic(diag) => {
-                let handler = sess.diagnostic();
-                match diag.code {
-                    Some(ref code) => {
-                        handler.emit_with_code(&MultiSpan::new(),
-                                               &diag.msg,
-                                               &code,
-                                               diag.lvl);
-                    }
-                    None => {
-                        handler.emit(&MultiSpan::new(),
-                                     &diag.msg,
-                                     diag.lvl);
-                    }
-                }
-            }
-            Message::InlineAsmError(cookie, msg) => {
-                match Mark::from_u32(cookie).expn_info() {
-                    Some(ei) => sess.span_err(ei.call_site, &msg),
-                    None     => sess.err(&msg),
-                }
-            }
-
-            // Sent to us after a worker sends us a batch of error messages, and
-            // it's the point at which we check for errors.
-            Message::AbortIfErrors => sess.diagnostic().abort_if_errors(),
         }
+
+        shared_emitter_main.check(sess);
     }
 
     // Just in case, check this on the way out.
     sess.diagnostic().abort_if_errors();
 }
 
-struct SharedEmitter {
-    tx: Sender<Message>,
-}
-
-impl Emitter for SharedEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
-        drop(self.tx.send(Message::Diagnostic(Diagnostic {
-            msg: db.message(),
-            code: db.code.clone(),
-            lvl: db.level,
-        })));
-        for child in &db.children {
-            drop(self.tx.send(Message::Diagnostic(Diagnostic {
-                msg: child.message(),
-                code: None,
-                lvl: child.level,
-            })));
-        }
-        drop(self.tx.send(Message::AbortIfErrors));
-    }
-}
-
 fn spawn_work<'a>(sess: &'a Session,
                   exported_symbols: &'a ExportedSymbols,
                   scope: &Scope<'a>,
                   tx: Sender<Message>,
+                  emitter: SharedEmitter,
                   work: WorkItem,
                   idx: usize) {
     let plugin_passes = sess.plugin_llvm_passes.borrow().clone();
@@ -1244,8 +1223,8 @@ fn spawn_work<'a>(sess: &'a Session,
 
         // Set up our non-`Send` `CodegenContext` now that we're in a helper
         // thread and have all our info available to us.
-        let emitter = SharedEmitter { tx: tx.clone() };
-        let diag_handler = Handler::with_emitter(true, false, Box::new(emitter));
+        // let emitter = SharedEmitter { tx: tx.clone() };
+        let diag_handler = Handler::with_emitter(true, false, Box::new(emitter.clone()));
 
         let cgcx = CodegenContext {
             crate_types: crate_types,
@@ -1261,6 +1240,7 @@ fn spawn_work<'a>(sess: &'a Session,
             worker: idx,
             incr_comp_session_dir: incr_comp_session_dir,
             tx: tx.clone(),
+            shared_emitter: emitter,
         };
 
         // Execute the work itself, and if it finishes successfully then flag
@@ -1370,4 +1350,96 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
 
     f(builder);
     llvm::LLVMPassManagerBuilderDispose(builder);
+}
+
+
+enum SharedEmitterMessage {
+    Diagnostic(Diagnostic),
+    InlineAsmError(u32, String),
+    AbortIfErrors,
+    Fatal(String),
+}
+
+#[derive(Clone)]
+pub struct SharedEmitter {
+    sender: Sender<SharedEmitterMessage>,
+}
+
+pub struct SharedEmitterMain {
+    receiver: Receiver<SharedEmitterMessage>,
+}
+
+impl SharedEmitter {
+    pub fn new() -> (SharedEmitter, SharedEmitterMain) {
+        let (sender, receiver) = channel();
+
+        (SharedEmitter { sender }, SharedEmitterMain { receiver })
+    }
+
+    fn inline_asm_error(&self, cookie: u32, msg: String) {
+        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg)));
+    }
+
+    fn fatal(&self, msg: String) {
+        drop(self.sender.send(SharedEmitterMessage::Fatal(msg)));
+    }
+}
+
+impl Emitter for SharedEmitter {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
+        drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
+            msg: db.message(),
+            code: db.code.clone(),
+            lvl: db.level,
+        })));
+        for child in &db.children {
+            drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
+                msg: child.message(),
+                code: None,
+                lvl: child.level,
+            })));
+        }
+        drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
+    }
+}
+
+impl SharedEmitterMain {
+    pub fn check(&self, sess: &Session) {
+        loop {
+            match self.receiver.try_recv() {
+                Ok(SharedEmitterMessage::Diagnostic(diag)) => {
+                    let handler = sess.diagnostic();
+                    match diag.code {
+                        Some(ref code) => {
+                            handler.emit_with_code(&MultiSpan::new(),
+                                                   &diag.msg,
+                                                   &code,
+                                                   diag.lvl);
+                        }
+                        None => {
+                            handler.emit(&MultiSpan::new(),
+                                         &diag.msg,
+                                         diag.lvl);
+                        }
+                    }
+                }
+                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
+                    match Mark::from_u32(cookie).expn_info() {
+                        Some(ei) => sess.span_err(ei.call_site, &msg),
+                        None     => sess.err(&msg),
+                    }
+                }
+                Ok(SharedEmitterMessage::AbortIfErrors) => {
+                    sess.abort_if_errors();
+                }
+                Ok(SharedEmitterMessage::Fatal(msg)) => {
+                    sess.fatal(&msg);
+                }
+                Err(_) => {
+                    break;
+                }
+            }
+
+        }
+    }
 }

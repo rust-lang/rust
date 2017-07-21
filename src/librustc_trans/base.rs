@@ -963,9 +963,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
         return OngoingCrateTranslation {
             crate_name: tcx.crate_name(LOCAL_CRATE),
-            modules: vec![],
-            metadata_module: metadata_module,
-            allocator_module: None,
             link: link_meta,
             metadata: metadata,
             exported_symbols: Arc::new(empty_exported_symbols),
@@ -973,6 +970,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             linker_info: linker_info,
             windows_subsystem: None,
             no_integrated_as: false,
+            result: ::std::cell::RefCell::new(Some(::back::write::RunLLVMPassesResult {
+                modules: vec![],
+                metadata_module: metadata_module,
+                allocator_module: None,
+            })),
         };
     }
 
@@ -1228,9 +1230,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         windows_subsystem,
         no_integrated_as,
 
-        modules,
-        metadata_module,
-        allocator_module,
+        result: ::std::cell::RefCell::new(None),
     };
 
     time(sess.time_passes(),
@@ -1249,11 +1249,23 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
         time(sess.time_passes(),
              "LLVM passes",
-             || ::back::write::run_passes(sess, &crate_translation, &output_types, outputs))
+             || ::back::write::run_passes(sess,
+                                          &crate_translation,
+                                          modules,
+                                          metadata_module,
+                                          allocator_module,
+                                          &output_types,
+                                          outputs))
     } else {
         time(sess.time_passes(),
              "LLVM passes",
-             || ::back::write::run_passes(sess, &crate_translation, &sess.opts.output_types, outputs))
+             || ::back::write::run_passes(sess,
+                                          &crate_translation,
+                                          modules,
+                                          metadata_module,
+                                          allocator_module,
+                                          &sess.opts.output_types,
+                                          outputs))
     };
 
     crate_translation

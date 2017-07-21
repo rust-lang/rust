@@ -188,10 +188,8 @@ pub struct OngoingCrateTranslation {
     pub linker_info: back::linker::LinkerInfo,
     pub no_integrated_as: bool,
 
-    // These will be replaced by a Future.
-    pub modules: Vec<ModuleTranslation>,
-    pub metadata_module: ModuleTranslation,
-    pub allocator_module: Option<ModuleTranslation>,
+    // This will be replaced by a Future.
+    pub result: ::std::cell::RefCell<Option<back::write::RunLLVMPassesResult>>,
 }
 
 impl OngoingCrateTranslation {
@@ -199,6 +197,8 @@ impl OngoingCrateTranslation {
                 sess: &Session,
                 outputs: &OutputFilenames)
                 -> CrateTranslation {
+
+        let result = self.result.borrow_mut().take().unwrap();
 
         let trans = CrateTranslation {
             crate_name: self.crate_name,
@@ -209,9 +209,9 @@ impl OngoingCrateTranslation {
             windows_subsystem: self.windows_subsystem,
             linker_info: self.linker_info,
 
-            modules: self.modules,
-            metadata_module: self.metadata_module,
-            allocator_module: self.allocator_module,
+            modules: result.modules,
+            metadata_module: result.metadata_module,
+            allocator_module: result.allocator_module,
         };
 
         if self.no_integrated_as {
