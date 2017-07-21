@@ -2899,12 +2899,11 @@ pub fn rewrite_assign_rhs<S: Into<String>>(
     shape: Shape,
 ) -> Option<String> {
     let lhs = lhs.into();
-    let last_line_width = last_line_width(&lhs) -
-        if lhs.contains('\n') {
-            shape.indent.width()
-        } else {
-            0
-        };
+    let last_line_width = last_line_width(&lhs) - if lhs.contains('\n') {
+        shape.indent.width()
+    } else {
+        0
+    };
     // 1 = space between operator and rhs.
     let orig_shape = try_opt!(shape.offset_left(last_line_width + 1));
     let rhs = try_opt!(choose_rhs(

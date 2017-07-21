@@ -829,12 +829,11 @@ fn rewrite_trait_ref(
     result_len: usize,
 ) -> Option<String> {
     // 1 = space between generics and trait_ref
-    let used_space = 1 + polarity_str.len() +
-        if generics_str.contains('\n') {
-            last_line_width(&generics_str)
-        } else {
-            result_len + generics_str.len()
-        };
+    let used_space = 1 + polarity_str.len() + if generics_str.contains('\n') {
+        last_line_width(&generics_str)
+    } else {
+        result_len + generics_str.len()
+    };
     let shape = Shape::indented(offset + used_space, context.config);
     if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
         if !(retry && trait_ref_str.contains('\n')) {
