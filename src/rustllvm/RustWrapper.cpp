@@ -18,6 +18,10 @@
 
 #include "llvm/IR/CallSite.h"
 
+#if LLVM_VERSION_GE(5, 0)
+#include "llvm/ADT/Optional.h"
+#endif
+
 //===----------------------------------------------------------------------===
 //
 // This file defines alternate interfaces to core functions that are more
@@ -557,7 +561,11 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef PointeeTy,
     uint64_t SizeInBits, uint32_t AlignInBits, const char *Name) {
   return wrap(Builder->createPointerType(unwrapDI<DIType>(PointeeTy),
-                                         SizeInBits, AlignInBits, Name));
+                                         SizeInBits, AlignInBits,
+#if LLVM_VERSION_GE(5, 0)
+                                         /* DWARFAddressSpace */ None,
+#endif
+                                         Name));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
