@@ -28,7 +28,7 @@ A syntactical example of a generator is:
 ```rust
 #![feature(generators, generator_trait)]
 
-use std::ops::{Generator, State};
+use std::ops::{Generator, GeneratorState};
 
 fn main() {
     let mut generator = || {
@@ -37,11 +37,11 @@ fn main() {
     };
 
     match generator.resume() {
-        State::Yielded(1) => {}
+        GeneratorState::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
     match generator.resume() {
-        State::Complete("foo") => {}
+        GeneratorState::Complete("foo") => {}
         _ => panic!("unexpected value from resume"),
     }
 }
@@ -87,12 +87,12 @@ The `Generator` trait in `std::ops` currently looks like:
 
 ```
 # #![feature(generator_trait)]
-# use std::ops::State;
+# use std::ops::GeneratorState;
 
 pub trait Generator {
     type Yield;
     type Return;
-    fn resume(&mut self) -> State<Self::Yield, Self::Return>;
+    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return>;
 }
 ```
 
@@ -102,10 +102,10 @@ generator. This is typically the last expression in a generator's definition or
 any value passed to `return` in a generator. The `resume` function is the entry
 point for executing the `Generator` itself.
 
-The return value of `resume`, `State`, looks like:
+The return value of `resume`, `GeneratorState`, looks like:
 
 ```
-pub enum State<Y, R> {
+pub enum GeneratorState<Y, R> {
     Yielded(Y),
     Complete(R),
 }
@@ -185,7 +185,7 @@ This generator literal will compile down to something similar to:
 ```rust
 #![feature(generators, generator_trait)]
 
-use std::ops::{Generator, State};
+use std::ops::{Generator, GeneratorState};
 
 fn main() {
     let ret = "foo";
@@ -200,17 +200,17 @@ fn main() {
             type Yield = i32;
             type Return = &'static str;
 
-            fn resume(&mut self) -> State<i32, &'static str> {
+            fn resume(&mut self) -> GeneratorState<i32, &'static str> {
                 use std::mem;
                 match mem::replace(self, __Generator::Done) {
                     __Generator::Start(s) => {
                         *self = __Generator::Yield1(s);
-                        State::Yielded(1)
+                        GeneratorState::Yielded(1)
                     }
 
                     __Generator::Yield1(s) => {
                         *self = __Generator::Done;
-                        State::Complete(s)
+                        GeneratorState::Complete(s)
                     }
 
                     __Generator::Done => {
