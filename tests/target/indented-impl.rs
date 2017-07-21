@@ -1,5 +1,6 @@
 // rustfmt-item_brace_style: AlwaysNextLine
-mod x {
+mod x
+{
     struct X(i8);
 
     impl Y for X
