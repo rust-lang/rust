@@ -81,7 +81,7 @@ the same `impl Trait` type:
 // Type `Foo` refers to a type that implements the `Debug` trait.
 // The concrete type to which `Foo` refers is inferred from this module,
 // and this concrete type is hidden from outer modules (but not submodules).
-pub type Foo: impl Debug;
+pub type Foo = impl Debug;
 
 const FOO: Foo = 5;
 
@@ -325,7 +325,7 @@ struct MyStruct<T: Debug> {
     inner: T
 };
 
-type Foo<T> -> impl Debug;
+type Foo<T> = impl Debug;
 
 fn get_foo<T: Debug>(x: T) -> Foo<T> {
     MyStruct {
