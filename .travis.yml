@@ -15,9 +15,10 @@ script:
   xargo/build.sh
 - |
   # Test plain miri
-  cargo build &&
+  cd src/librustc_mir/ && cargo build &&
   cargo test &&
-  cargo install
+  cargo install &&
+  cd ../..
 - |
   # Test cargo miri
   cd cargo-miri-test &&
@@ -26,7 +27,7 @@ script:
   cd ..
 - |
   # and run all tests with full mir
-  MIRI_SYSROOT=~/.xargo/HOST cargo test
+  cd src/librustc_mir/ && MIRI_SYSROOT=~/.xargo/HOST cargo test && cd ../..
 notifications:
   email:
     on_success: never
