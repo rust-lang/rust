@@ -377,9 +377,9 @@ where
     // Note that this is non-conservative, but its just to see if it's even
     // worth trying to put everything on one line.
     let rhs_shape = try_opt!(shape.sub_width(suffix.len()));
-    let rhs_result = rhs.rewrite(context, rhs_shape);
+    let rhs_orig_result = rhs.rewrite(context, rhs_shape);
 
-    if let Some(rhs_result) = rhs_result {
+    if let Some(ref rhs_result) = rhs_orig_result {
         // This is needed in case of line break not caused by a
         // shortage of space, but by end-of-line comments, for example.
         if !rhs_result.contains('\n') {
@@ -419,6 +419,7 @@ where
     // We have to use multiple lines.
 
     // Re-evaluate the rhs because we have more space now:
+    let sep = if infix.ends_with(' ') { " " } else { "" };
     let infix = infix.trim_right();
     let rhs_shape = match context.config.control_style() {
         Style::Legacy => {
@@ -439,12 +440,24 @@ where
         width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
         ..shape
     };
-    let lhs_result = try_opt!(lhs.rewrite(context, lhs_shape));
+    let lhs_result = try_opt!(
+        lhs.rewrite(context, lhs_shape)
+            .map(|lhs_str| format!("{}{}{}", prefix, lhs_str, infix))
+    );
+    if let Some(ref rhs_str) = rhs_orig_result {
+        if rhs_str.lines().count() <= rhs_result.lines().count() &&
+            rhs_str
+                .lines()
+                .next()
+                .map_or(false, |first_line| first_line.ends_with('{')) &&
+            last_line_width(&lhs_result) + sep.len() + first_line_width(rhs_str) <= shape.width
+        {
+            return Some(format!("{}{}{}{}", lhs_result, sep, rhs_str, suffix));
+        }
+    }
     Some(format!(
-        "{}{}{}\n{}{}{}",
-        prefix,
+        "{}\n{}{}{}",
         lhs_result,
-        infix,
         rhs_shape.indent.to_string(context.config),
         rhs_result,
         suffix
