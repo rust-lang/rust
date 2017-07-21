@@ -19,7 +19,7 @@ use std::process::Command;
 use context::SharedCrateContext;
 
 use back::archive;
-use back::symbol_export::{self, ExportedSymbols};
+use back::symbol_export::ExportedSymbols;
 use rustc::middle::dependency_format::Linkage;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc_back::LinkerFlavor;
@@ -707,10 +707,8 @@ fn exported_symbols(scx: &SharedCrateContext,
                     exported_symbols: &ExportedSymbols,
                     crate_type: CrateType)
                     -> Vec<String> {
-    let export_threshold = symbol_export::crate_export_threshold(crate_type);
-
     let mut symbols = Vec::new();
-    exported_symbols.for_each_exported_symbol(LOCAL_CRATE, export_threshold, |name, _| {
+    exported_symbols.for_each_exported_symbol(LOCAL_CRATE, |name, _, _| {
         symbols.push(name.to_owned());
     });
 
@@ -722,7 +720,7 @@ fn exported_symbols(scx: &SharedCrateContext,
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             // ... we add its symbol list to our export list.
-            exported_symbols.for_each_exported_symbol(cnum, export_threshold, |name, _| {
+            exported_symbols.for_each_exported_symbol(cnum, |name, _, _| {
                 symbols.push(name.to_owned());
             })
         }

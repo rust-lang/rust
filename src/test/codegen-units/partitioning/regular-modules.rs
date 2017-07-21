@@ -16,67 +16,67 @@
 #![allow(dead_code)]
 #![crate_type="lib"]
 
-//~ TRANS_ITEM fn regular_modules::foo[0] @@ regular_modules[External]
+//~ TRANS_ITEM fn regular_modules::foo[0] @@ regular_modules[Internal]
 fn foo() {}
 
-//~ TRANS_ITEM fn regular_modules::bar[0] @@ regular_modules[External]
+//~ TRANS_ITEM fn regular_modules::bar[0] @@ regular_modules[Internal]
 fn bar() {}
 
-//~ TRANS_ITEM static regular_modules::BAZ[0] @@ regular_modules[External]
+//~ TRANS_ITEM static regular_modules::BAZ[0] @@ regular_modules[Internal]
 static BAZ: u64 = 0;
 
 mod mod1 {
 
-    //~ TRANS_ITEM fn regular_modules::mod1[0]::foo[0] @@ regular_modules-mod1[External]
+    //~ TRANS_ITEM fn regular_modules::mod1[0]::foo[0] @@ regular_modules-mod1[Internal]
     fn foo() {}
-    //~ TRANS_ITEM fn regular_modules::mod1[0]::bar[0] @@ regular_modules-mod1[External]
+    //~ TRANS_ITEM fn regular_modules::mod1[0]::bar[0] @@ regular_modules-mod1[Internal]
     fn bar() {}
-    //~ TRANS_ITEM static regular_modules::mod1[0]::BAZ[0] @@ regular_modules-mod1[External]
+    //~ TRANS_ITEM static regular_modules::mod1[0]::BAZ[0] @@ regular_modules-mod1[Internal]
     static BAZ: u64 = 0;
 
     mod mod1 {
-        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod1[0]::foo[0] @@ regular_modules-mod1-mod1[External]
+        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod1[0]::foo[0] @@ regular_modules-mod1-mod1[Internal]
         fn foo() {}
-        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod1[0]::bar[0] @@ regular_modules-mod1-mod1[External]
+        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod1[0]::bar[0] @@ regular_modules-mod1-mod1[Internal]
         fn bar() {}
-        //~ TRANS_ITEM static regular_modules::mod1[0]::mod1[0]::BAZ[0] @@ regular_modules-mod1-mod1[External]
+        //~ TRANS_ITEM static regular_modules::mod1[0]::mod1[0]::BAZ[0] @@ regular_modules-mod1-mod1[Internal]
         static BAZ: u64 = 0;
     }
 
     mod mod2 {
-        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod2[0]::foo[0] @@ regular_modules-mod1-mod2[External]
+        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod2[0]::foo[0] @@ regular_modules-mod1-mod2[Internal]
         fn foo() {}
-        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod2[0]::bar[0] @@ regular_modules-mod1-mod2[External]
+        //~ TRANS_ITEM fn regular_modules::mod1[0]::mod2[0]::bar[0] @@ regular_modules-mod1-mod2[Internal]
         fn bar() {}
-        //~ TRANS_ITEM static regular_modules::mod1[0]::mod2[0]::BAZ[0] @@ regular_modules-mod1-mod2[External]
+        //~ TRANS_ITEM static regular_modules::mod1[0]::mod2[0]::BAZ[0] @@ regular_modules-mod1-mod2[Internal]
         static BAZ: u64 = 0;
     }
 }
 
 mod mod2 {
 
-    //~ TRANS_ITEM fn regular_modules::mod2[0]::foo[0] @@ regular_modules-mod2[External]
+    //~ TRANS_ITEM fn regular_modules::mod2[0]::foo[0] @@ regular_modules-mod2[Internal]
     fn foo() {}
-    //~ TRANS_ITEM fn regular_modules::mod2[0]::bar[0] @@ regular_modules-mod2[External]
+    //~ TRANS_ITEM fn regular_modules::mod2[0]::bar[0] @@ regular_modules-mod2[Internal]
     fn bar() {}
-    //~ TRANS_ITEM static regular_modules::mod2[0]::BAZ[0] @@ regular_modules-mod2[External]
+    //~ TRANS_ITEM static regular_modules::mod2[0]::BAZ[0] @@ regular_modules-mod2[Internal]
     static BAZ: u64 = 0;
 
     mod mod1 {
-        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod1[0]::foo[0] @@ regular_modules-mod2-mod1[External]
+        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod1[0]::foo[0] @@ regular_modules-mod2-mod1[Internal]
         fn foo() {}
-        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod1[0]::bar[0] @@ regular_modules-mod2-mod1[External]
+        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod1[0]::bar[0] @@ regular_modules-mod2-mod1[Internal]
         fn bar() {}
-        //~ TRANS_ITEM static regular_modules::mod2[0]::mod1[0]::BAZ[0] @@ regular_modules-mod2-mod1[External]
+        //~ TRANS_ITEM static regular_modules::mod2[0]::mod1[0]::BAZ[0] @@ regular_modules-mod2-mod1[Internal]
         static BAZ: u64 = 0;
     }
 
     mod mod2 {
-        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod2[0]::foo[0] @@ regular_modules-mod2-mod2[External]
+        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod2[0]::foo[0] @@ regular_modules-mod2-mod2[Internal]
         fn foo() {}
-        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod2[0]::bar[0] @@ regular_modules-mod2-mod2[External]
+        //~ TRANS_ITEM fn regular_modules::mod2[0]::mod2[0]::bar[0] @@ regular_modules-mod2-mod2[Internal]
         fn bar() {}
-        //~ TRANS_ITEM static regular_modules::mod2[0]::mod2[0]::BAZ[0] @@ regular_modules-mod2-mod2[External]
+        //~ TRANS_ITEM static regular_modules::mod2[0]::mod2[0]::BAZ[0] @@ regular_modules-mod2-mod2[Internal]
         static BAZ: u64 = 0;
     }
 }

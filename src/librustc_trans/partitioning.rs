@@ -102,6 +102,7 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
+use back::symbol_export::ExportedSymbols;
 use collector::InliningMap;
 use common;
 use context::SharedCrateContext;
@@ -110,14 +111,15 @@ use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_incremental::IchHasher;
+use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{TransItem, InstantiationMode};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 pub enum PartitioningStrategy {
     /// Generate one codegen unit per source-level module.
@@ -134,16 +136,16 @@ pub struct CodegenUnit<'tcx> {
     /// as well as the crate name and disambiguator.
     name: InternedString,
 
-    items: FxHashMap<TransItem<'tcx>, llvm::Linkage>,
+    items: FxHashMap<TransItem<'tcx>, (llvm::Linkage, llvm::Visibility)>,
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: InternedString,
-               items: FxHashMap<TransItem<'tcx>, llvm::Linkage>)
+               items: FxHashMap<TransItem<'tcx>, (llvm::Linkage, llvm::Visibility)>)
                -> Self {
         CodegenUnit {
-            name: name,
-            items: items,
+            name,
+            items,
         }
     }
 
@@ -159,7 +161,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         &self.name
     }
 
-    pub fn items(&self) -> &FxHashMap<TransItem<'tcx>, llvm::Linkage> {
+    pub fn items(&self) -> &FxHashMap<TransItem<'tcx>, (llvm::Linkage, llvm::Visibility)> {
         &self.items
     }
 
@@ -172,10 +174,11 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn compute_symbol_name_hash<'a>(&self,
-                                        scx: &SharedCrateContext<'a, 'tcx>)
+                                        scx: &SharedCrateContext<'a, 'tcx>,
+                                        exported_symbols: &ExportedSymbols)
                                         -> u64 {
         let mut state = IchHasher::new();
-        let exported_symbols = scx.exported_symbols();
+        let exported_symbols = exported_symbols.local_exports();
         let all_items = self.items_in_deterministic_order(scx.tcx());
         for (item, _) in all_items {
             let symbol_name = item.symbol_name(scx.tcx());
@@ -200,7 +203,8 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn items_in_deterministic_order<'a>(&self,
                                             tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                            -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
+                                            -> Vec<(TransItem<'tcx>,
+                                                   (llvm::Linkage, llvm::Visibility))> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -233,7 +237,8 @@ const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
-                              inlining_map: &InliningMap<'tcx>)
+                              inlining_map: &InliningMap<'tcx>,
+                              exported_symbols: &ExportedSymbols)
                               -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
@@ -243,6 +248,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
     let mut initial_partitioning = place_root_translation_items(scx,
+                                                                exported_symbols,
                                                                 trans_items);
 
     debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
@@ -259,13 +265,22 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // translation items have to go into each codegen unit. These additional
     // translation items can be drop-glue, functions from external crates, and
     // local functions the definition of which is marked with #[inline].
-    let post_inlining = place_inlined_translation_items(initial_partitioning,
-                                                        inlining_map);
+    let mut post_inlining = place_inlined_translation_items(initial_partitioning,
+                                                            inlining_map);
 
-    debug_dump(tcx, "POST INLINING:", post_inlining.0.iter());
+    debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
+
+    // Next we try to make as many symbols "internal" as possible, so LLVM has
+    // more freedom to optimize.
+    internalize_symbols(tcx, &mut post_inlining, inlining_map);
 
     // Finally, sort by codegen unit name, so that we get deterministic results
-    let mut result = post_inlining.0;
+    let PostInliningPartitioning {
+        codegen_units: mut result,
+        trans_item_placements: _,
+        internalization_candidates: _,
+    } = post_inlining;
+
     result.sort_by(|cgu1, cgu2| {
         (&cgu1.name[..]).cmp(&cgu2.name[..])
     });
@@ -284,19 +299,37 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
 struct PreInliningPartitioning<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
     roots: FxHashSet<TransItem<'tcx>>,
+    internalization_candidates: FxHashSet<TransItem<'tcx>>,
 }
 
-struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
+/// For symbol internalization, we need to know whether a symbol/trans-item is
+/// accessed from outside the codegen unit it is defined in. This type is used
+/// to keep track of that.
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum TransItemPlacement {
+    SingleCgu { cgu_name: InternedString },
+    MultipleCgus,
+}
+
+struct PostInliningPartitioning<'tcx> {
+    codegen_units: Vec<CodegenUnit<'tcx>>,
+    trans_item_placements: FxHashMap<TransItem<'tcx>, TransItemPlacement>,
+    internalization_candidates: FxHashSet<TransItem<'tcx>>,
+}
 
 fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
+                                             exported_symbols: &ExportedSymbols,
                                              trans_items: I)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
     let tcx = scx.tcx();
+    let exported_symbols = exported_symbols.local_exports();
+
     let mut roots = FxHashSet();
     let mut codegen_units = FxHashMap();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
+    let mut internalization_candidates = FxHashSet();
 
     for trans_item in trans_items {
         let is_root = trans_item.instantiation_mode(tcx) == InstantiationMode::GloballyShared;
@@ -318,18 +351,52 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
             let mut codegen_unit = codegen_units.entry(codegen_unit_name.clone())
                                                 .or_insert_with(make_codegen_unit);
 
-            let linkage = match trans_item.explicit_linkage(tcx) {
-                Some(explicit_linkage) => explicit_linkage,
+            let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
+                Some(explicit_linkage) => (explicit_linkage, llvm::Visibility::Default),
                 None => {
                     match trans_item {
-                        TransItem::Fn(..) |
-                        TransItem::Static(..) |
-                        TransItem::GlobalAsm(..) => llvm::ExternalLinkage,
+                        TransItem::Fn(ref instance) => {
+                            let visibility = match instance.def {
+                                InstanceDef::Item(def_id) => {
+                                    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+                                        if exported_symbols.contains(&node_id) {
+                                            llvm::Visibility::Default
+                                        } else {
+                                            internalization_candidates.insert(trans_item);
+                                            llvm::Visibility::Hidden
+                                        }
+                                    } else {
+                                        internalization_candidates.insert(trans_item);
+                                        llvm::Visibility::Hidden
+                                    }
+                                }
+                                InstanceDef::FnPtrShim(..) |
+                                InstanceDef::Virtual(..) |
+                                InstanceDef::Intrinsic(..) |
+                                InstanceDef::ClosureOnceShim { .. } |
+                                InstanceDef::DropGlue(..) => {
+                                    bug!("partitioning: Encountered unexpected
+                                          root translation item: {:?}",
+                                          trans_item)
+                                }
+                            };
+                            (llvm::ExternalLinkage, visibility)
+                        }
+                        TransItem::Static(node_id) |
+                        TransItem::GlobalAsm(node_id) => {
+                            let visibility = if exported_symbols.contains(&node_id) {
+                                llvm::Visibility::Default
+                            } else {
+                                internalization_candidates.insert(trans_item);
+                                llvm::Visibility::Hidden
+                            };
+                            (llvm::ExternalLinkage, visibility)
+                        }
                     }
                 }
             };
 
-            codegen_unit.items.insert(trans_item, linkage);
+            codegen_unit.items.insert(trans_item, (linkage, visibility));
             roots.insert(trans_item);
         }
     }
@@ -338,15 +405,16 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
     // crate with just types (for example), we could wind up with no CGU
     if codegen_units.is_empty() {
         let codegen_unit_name = Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str();
-        codegen_units.entry(codegen_unit_name.clone())
-                     .or_insert_with(|| CodegenUnit::empty(codegen_unit_name.clone()));
+        codegen_units.insert(codegen_unit_name.clone(),
+                             CodegenUnit::empty(codegen_unit_name.clone()));
     }
 
     PreInliningPartitioning {
         codegen_units: codegen_units.into_iter()
                                     .map(|(_, codegen_unit)| codegen_unit)
                                     .collect(),
-        roots: roots,
+        roots,
+        internalization_candidates,
     }
 }
 
@@ -388,37 +456,75 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
                                          inlining_map: &InliningMap<'tcx>)
                                          -> PostInliningPartitioning<'tcx> {
     let mut new_partitioning = Vec::new();
+    let mut trans_item_placements = FxHashMap();
 
-    for codegen_unit in &initial_partitioning.codegen_units[..] {
+    let PreInliningPartitioning {
+        codegen_units: initial_cgus,
+        roots,
+        internalization_candidates,
+    } = initial_partitioning;
+
+    let single_codegen_unit = initial_cgus.len() == 1;
+
+    for old_codegen_unit in initial_cgus {
         // Collect all items that need to be available in this codegen unit
         let mut reachable = FxHashSet();
-        for root in codegen_unit.items.keys() {
+        for root in old_codegen_unit.items.keys() {
             follow_inlining(*root, inlining_map, &mut reachable);
         }
 
-        let mut new_codegen_unit =
-            CodegenUnit::empty(codegen_unit.name.clone());
+        let mut new_codegen_unit = CodegenUnit {
+            name: old_codegen_unit.name,
+            items: FxHashMap(),
+        };
 
         // Add all translation items that are not already there
         for trans_item in reachable {
-            if let Some(linkage) = codegen_unit.items.get(&trans_item) {
+            if let Some(linkage) = old_codegen_unit.items.get(&trans_item) {
                 // This is a root, just copy it over
                 new_codegen_unit.items.insert(trans_item, *linkage);
             } else {
-                if initial_partitioning.roots.contains(&trans_item) {
+                if roots.contains(&trans_item) {
                     bug!("GloballyShared trans-item inlined into other CGU: \
                           {:?}", trans_item);
                 }
 
                 // This is a cgu-private copy
-                new_codegen_unit.items.insert(trans_item, llvm::InternalLinkage);
+                new_codegen_unit.items.insert(trans_item,
+                                              (llvm::InternalLinkage, llvm::Visibility::Default));
+            }
+
+            if !single_codegen_unit {
+                // If there is more than one codegen unit, we need to keep track
+                // in which codegen units each translation item is placed:
+                match trans_item_placements.entry(trans_item) {
+                    Entry::Occupied(e) => {
+                        let placement = e.into_mut();
+                        debug_assert!(match *placement {
+                            TransItemPlacement::SingleCgu { ref cgu_name } => {
+                                *cgu_name != new_codegen_unit.name
+                            }
+                            TransItemPlacement::MultipleCgus => true,
+                        });
+                        *placement = TransItemPlacement::MultipleCgus;
+                    }
+                    Entry::Vacant(e) => {
+                        e.insert(TransItemPlacement::SingleCgu {
+                            cgu_name: new_codegen_unit.name.clone()
+                        });
+                    }
+                }
             }
         }
 
         new_partitioning.push(new_codegen_unit);
     }
 
-    return PostInliningPartitioning(new_partitioning);
+    return PostInliningPartitioning {
+        codegen_units: new_partitioning,
+        trans_item_placements,
+        internalization_candidates,
+    };
 
     fn follow_inlining<'tcx>(trans_item: TransItem<'tcx>,
                              inlining_map: &InliningMap<'tcx>,
@@ -430,6 +536,71 @@ fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartit
         inlining_map.with_inlining_candidates(trans_item, |target| {
             follow_inlining(target, inlining_map, visited);
         });
+    }
+}
+
+fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 partitioning: &mut PostInliningPartitioning<'tcx>,
+                                 inlining_map: &InliningMap<'tcx>) {
+    if partitioning.codegen_units.len() == 1 {
+        // Fast path for when there is only one codegen unit. In this case we
+        // can internalize all candidates, since there is nowhere else they
+        // could be accessed from.
+        for cgu in &mut partitioning.codegen_units {
+            for candidate in &partitioning.internalization_candidates {
+                cgu.items.insert(*candidate, (llvm::InternalLinkage,
+                                              llvm::Visibility::Default));
+            }
+        }
+
+        return;
+    }
+
+    // Build a map from every translation item to all the translation items that
+    // reference it.
+    let mut accessor_map: FxHashMap<TransItem<'tcx>, Vec<TransItem<'tcx>>> = FxHashMap();
+    inlining_map.iter_accesses(|accessor, accessees| {
+        for accessee in accessees {
+            accessor_map.entry(*accessee)
+                        .or_insert(Vec::new())
+                        .push(accessor);
+        }
+    });
+
+    let trans_item_placements = &partitioning.trans_item_placements;
+
+    // For each internalization candidates in each codegen unit, check if it is
+    // accessed from outside its defining codegen unit.
+    for cgu in &mut partitioning.codegen_units {
+        let home_cgu = TransItemPlacement::SingleCgu {
+            cgu_name: cgu.name.clone()
+        };
+
+        for (accessee, linkage_and_visibility) in &mut cgu.items {
+            if !partitioning.internalization_candidates.contains(accessee) {
+                // This item is no candidate for internalizing, so skip it.
+                continue
+            }
+            debug_assert_eq!(trans_item_placements[accessee], home_cgu);
+
+            if let Some(accessors) = accessor_map.get(accessee) {
+                if accessors.iter()
+                            .filter_map(|accessor| {
+                                // Some accessors might not have been
+                                // instantiated. We can safely ignore those.
+                                trans_item_placements.get(accessor)
+                            })
+                            .any(|placement| *placement != home_cgu) {
+                    // Found an accessor from another CGU, so skip to the next
+                    // item without marking this one as internal.
+                    continue
+                }
+            }
+
+            // If we got here, we did not find any accesses from other CGUs,
+            // so it's fine to make this translation item internal.
+            *linkage_and_visibility = (llvm::InternalLinkage, llvm::Visibility::Default);
+        }
     }
 }
 

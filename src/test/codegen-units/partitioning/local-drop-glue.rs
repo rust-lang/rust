@@ -31,7 +31,7 @@ struct Outer {
     _a: Struct
 }
 
-//~ TRANS_ITEM fn local_drop_glue::user[0] @@ local_drop_glue[External]
+//~ TRANS_ITEM fn local_drop_glue::user[0] @@ local_drop_glue[Internal]
 fn user()
 {
     let _ = Outer {
@@ -52,7 +52,7 @@ mod mod1
         _b: (u32, Struct),
     }
 
-    //~ TRANS_ITEM fn local_drop_glue::mod1[0]::user[0] @@ local_drop_glue-mod1[External]
+    //~ TRANS_ITEM fn local_drop_glue::mod1[0]::user[0] @@ local_drop_glue-mod1[Internal]
     fn user()
     {
         let _ = Struct2 {

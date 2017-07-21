@@ -66,7 +66,7 @@ pub fn run(cgcx: &CodegenContext,
     let export_threshold =
         symbol_export::crates_export_threshold(&cgcx.crate_types);
 
-    let symbol_filter = &|&(ref name, level): &(String, _)| {
+    let symbol_filter = &|&(ref name, _, level): &(String, _, _)| {
         if symbol_export::is_below_threshold(level, export_threshold) {
             let mut bytes = Vec::with_capacity(name.len() + 1);
             bytes.extend(name.bytes());
