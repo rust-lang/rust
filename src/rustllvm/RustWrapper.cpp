@@ -906,8 +906,8 @@ extern "C" void LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef Str) {
 
 extern "C" void LLVMRustUnpackOptimizationDiagnostic(
     LLVMDiagnosticInfoRef DI, RustStringRef PassNameOut,
-    LLVMValueRef *FunctionOut, LLVMDebugLocRef *DebugLocOut,
-    RustStringRef MessageOut) {
+    LLVMValueRef *FunctionOut, unsigned* Line, unsigned* Column,
+    RustStringRef FilenameOut, RustStringRef MessageOut) {
   // Undefined to call this not on an optimization diagnostic!
   llvm::DiagnosticInfoOptimizationBase *Opt =
       static_cast<llvm::DiagnosticInfoOptimizationBase *>(unwrap(DI));
@@ -915,7 +915,24 @@ extern "C" void LLVMRustUnpackOptimizationDiagnostic(
   RawRustStringOstream PassNameOS(PassNameOut);
   PassNameOS << Opt->getPassName();
   *FunctionOut = wrap(&Opt->getFunction());
-  *DebugLocOut = wrap(&Opt->getDebugLoc());
+
+  RawRustStringOstream FilenameOS(FilenameOut);
+#if LLVM_VERSION_GE(5,0)
+  DiagnosticLocation loc = Opt->getLocation();
+  if (loc.isValid()) {
+    *Line = loc.getLine();
+    *Column = loc.getColumn();
+    FilenameOS << loc.getFilename();
+  }
+#else
+  const DebugLoc &loc = Opt->getDebugLoc();
+  if (loc) {
+    *Line = loc.getLine();
+    *Column = loc.getCol();
+    FilenameOS << cast<DIScope>(loc.getScope())->getFilename();
+  }
+#endif
+
   RawRustStringOstream MessageOS(MessageOut);
   MessageOS << Opt->getMsg();
 }
