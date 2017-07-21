@@ -18,6 +18,7 @@ static LICENSES: &'static [&'static str] = &[
     "MIT/Apache-2.0",
     "MIT / Apache-2.0",
     "Apache-2.0/MIT",
+    "Apache-2.0 / MIT",
     "MIT OR Apache-2.0",
     "MIT",
     "Unlicense/MIT",
