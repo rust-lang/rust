@@ -1,16 +1,16 @@
 use rustc::traits::{self, Reveal};
-
-use eval_context::{EvalContext, self};
-use memory::{MemoryPointer, Kind};
-use value::{Value, PrimVal};
-
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use syntax::codemap::DUMMY_SP;
 use syntax::ast::{self, Mutability};
 
-use error::{EvalResult, EvalError};
+use super::{
+    EvalResult, EvalError,
+    EvalContext, eval_context,
+    MemoryPointer, Kind,
+    Value, PrimVal,
+};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 

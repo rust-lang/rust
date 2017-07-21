@@ -4,10 +4,12 @@ use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast::Mutability;
 
-use error::{EvalError, EvalResult};
-use eval_context::EvalContext;
-use memory::MemoryPointer;
-use value::{PrimVal, Pointer, Value};
+use super::{
+    EvalError, EvalResult,
+    EvalContext,
+    MemoryPointer,
+    PrimVal, Value, Pointer,
+};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Lvalue<'tcx> {

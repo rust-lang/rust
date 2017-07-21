@@ -6,13 +6,18 @@ use syntax::codemap::Span;
 use syntax::attr;
 use syntax::abi::Abi;
 
-use error::{EvalError, EvalResult};
-use eval_context::{EvalContext, IntegerExt, StackPopCleanup, TyAndPacked, is_inhabited, self};
-use lvalue::Lvalue;
-use memory::{MemoryPointer, TlsKey, Kind, HasMemory};
-use value::{PrimVal, Value};
+use super::{
+    EvalError, EvalResult,
+    EvalContext, StackPopCleanup, eval_context, TyAndPacked,
+    Lvalue, GlobalId,
+    MemoryPointer, TlsKey, Kind,
+    PrimVal, Value,
+    const_eval,
+    HasMemory,
+};
+use super::eval_context::IntegerExt;
+
 use rustc_data_structures::indexed_vec::Idx;
-use const_eval;
 
 use std::mem;
 
@@ -221,7 +226,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => return Err(EvalError::Unreachable),
                 };
                 let ty = sig.output();
-                if !is_inhabited(self.tcx, ty) {
+                if !eval_context::is_inhabited(self.tcx, ty) {
                     return Err(EvalError::Unreachable);
                 }
                 let layout = self.type_layout(ty)?;
@@ -867,7 +872,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let mut result = None;
                 for &(path, path_value) in paths {
                     if let Ok(instance) = self.resolve_path(path) {
-                        use lvalue::GlobalId;
                         let cid = GlobalId { instance, promoted: None };
                         // compute global if not cached
                         let val = match self.globals.get(&cid).map(|glob| glob.value) {

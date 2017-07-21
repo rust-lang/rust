@@ -2,38 +2,17 @@
 authors = ["Scott Olson <scott@solson.me>"]
 description = "An experimental interpreter for Rust MIR."
 license = "MIT/Apache-2.0"
-name = "miri"
+name = "rustc_miri"
 repository = "https://github.com/solson/miri"
 version = "0.1.0"
 
-[[bin]]
-doc = false
-name = "miri"
-path = "interpret/bin/miri.rs"
-test = false
-
-[[bin]]
-doc = false
-name = "cargo-miri"
-path = "interpret/bin/cargo-miri.rs"
-test = false
-
 [lib]
 test = false
-path = "interpret/mod.rs"
-
-[[test]]
-name = "compiletest"
-path = "../../tests/compiletest.rs"
+path = "lib.rs"
 
 [dependencies]
 byteorder = { version = "1.1", features = ["i128"]}
-env_logger = "0.3.3"
 log = "0.3.6"
 log_settings = "0.1.1"
-cargo_metadata = "0.2"
-regex = "0.2.2"
 lazy_static = "0.2.8"
-
-[dev-dependencies]
-compiletest_rs = "0.2.6"
+regex = "0.2.2"

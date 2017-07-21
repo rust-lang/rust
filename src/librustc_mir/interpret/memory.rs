@@ -8,9 +8,11 @@ use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
 use rustc::middle::region::CodeExtent;
 
-use error::{EvalError, EvalResult};
-use value::{PrimVal, Pointer};
-use eval_context::{EvalContext, DynamicLifetime};
+use super::{
+    EvalError, EvalResult,
+    PrimVal, Pointer,
+    EvalContext, DynamicLifetime,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Locks

@@ -1,10 +1,13 @@
 use rustc::ty::{self, Ty};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
-use error::{EvalResult, EvalError};
-use eval_context::EvalContext;
-use value::PrimVal;
-use memory::{MemoryPointer, PointerArithmetic};
+use super::{
+    PrimVal,
+    EvalContext,
+    EvalResult,
+    EvalError,
+    MemoryPointer, PointerArithmetic,
+};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn cast_primval(
@@ -19,7 +22,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             PrimVal::Undef => Ok(PrimVal::Undef),
             PrimVal::Ptr(ptr) => self.cast_from_ptr(ptr, dest_ty),
             val @ PrimVal::Bytes(_) => {
-                use value::PrimValKind::*;
+                use super::PrimValKind::*;
                 match src_kind {
                     F32 => self.cast_from_float(val.to_f32()? as f64, dest_ty),
                     F64 => self.cast_from_float(val.to_f64()?, dest_ty),

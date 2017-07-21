@@ -1,9 +1,12 @@
 #![allow(unknown_lints)]
 #![allow(float_cmp)]
 
-use error::{EvalError, EvalResult};
-use memory::{Memory, MemoryPointer, HasMemory, PointerArithmetic};
 use rustc::ty::layout::HasDataLayout;
+
+use super::{
+    EvalError, EvalResult,
+    Memory, MemoryPointer, HasMemory, PointerArithmetic
+};
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     f32::from_bits(bytes as u32)

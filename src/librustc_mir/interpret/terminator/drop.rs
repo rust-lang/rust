@@ -2,11 +2,12 @@ use rustc::mir;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 
-use error::EvalResult;
-use eval_context::{EvalContext, StackPopCleanup};
-use lvalue::{Lvalue, LvalueExtra};
-use value::PrimVal;
-use value::Value;
+use interpret::{
+    EvalResult,
+    EvalContext, StackPopCleanup,
+    Lvalue, LvalueExtra,
+    PrimVal, Value,
+};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(crate) fn drop_lvalue(&mut self, lval: Lvalue<'tcx>, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {

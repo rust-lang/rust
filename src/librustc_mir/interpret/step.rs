@@ -11,14 +11,16 @@ use rustc::ty;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 
+use super::{
+    EvalResult, EvalError,
+    EvalContext, StackPopCleanup, TyAndPacked,
+    Global, GlobalId, Lvalue,
+    Value, PrimVal,
+    HasMemory,
+};
+
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
-
-use error::{EvalResult, EvalError};
-use eval_context::{EvalContext, StackPopCleanup, TyAndPacked};
-use lvalue::{Global, GlobalId, Lvalue};
-use value::{Value, PrimVal};
-use memory::HasMemory;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
