@@ -1,0 +1,114 @@
+# Copyright 2015-2016 The Rust Project Developers. See the COPYRIGHT
+# file at the top-level directory of this distribution and at
+# http://rust-lang.org/COPYRIGHT.
+#
+# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+# option. This file may not be copied, modified, or distributed
+# except according to those terms.
+
+"""Bootstrap tests"""
+
+import os
+import doctest
+import unittest
+import tempfile
+import hashlib
+
+from shutil import rmtree
+
+import bootstrap
+
+
+class Stage0DataTestCase(unittest.TestCase):
+    """Test Case for stage0_data"""
+    def setUp(self):
+        self.rust_root = tempfile.mkdtemp()
+        os.mkdir(os.path.join(self.rust_root, "src"))
+        with open(os.path.join(self.rust_root, "src",
+                               "stage0.txt"), "w") as stage0:
+            stage0.write("#ignore\n\ndate: 2017-06-15\nrustc: beta\ncargo: beta")
+
+    def tearDown(self):
+        rmtree(self.rust_root)
+
+    def test_stage0_data(self):
+        """Extract data from stage0.txt"""
+        expected = {"date": "2017-06-15", "rustc": "beta", "cargo": "beta"}
+        data = bootstrap.stage0_data(self.rust_root)
+        self.assertDictEqual(data, expected)
+
+
+class VerifyTestCase(unittest.TestCase):
+    """Test Case for verify"""
+    def setUp(self):
+        self.container = tempfile.mkdtemp()
+        self.src = os.path.join(self.container, "src.txt")
+        self.sums = os.path.join(self.container, "sums")
+        self.bad_src = os.path.join(self.container, "bad.txt")
+        content = "Hello world"
+
+        with open(self.src, "w") as src:
+            src.write(content)
+        with open(self.sums, "w") as sums:
+            sums.write(hashlib.sha256(content.encode("utf-8")).hexdigest())
+        with open(self.bad_src, "w") as bad:
+            bad.write("Hello!")
+
+    def tearDown(self):
+        rmtree(self.container)
+
+    def test_valid_file(self):
+        """Check if the sha256 sum of the given file is valid"""
+        self.assertTrue(bootstrap.verify(self.src, self.sums, False))
+
+    def test_invalid_file(self):
+        """Should verify that the file is invalid"""
+        self.assertFalse(bootstrap.verify(self.bad_src, self.sums, False))
+
+
+class ProgramOutOfDate(unittest.TestCase):
+    """Test if a program is out of date"""
+    def setUp(self):
+        self.container = tempfile.mkdtemp()
+        os.mkdir(os.path.join(self.container, "stage0"))
+        self.build = bootstrap.RustBuild()
+        self.build.date = "2017-06-15"
+        self.build.build_dir = self.container
+        self.rustc_stamp_path = os.path.join(self.container, "stage0",
+                                             ".rustc-stamp")
+
+    def tearDown(self):
+        rmtree(self.container)
+
+    def test_stamp_path_does_not_exists(self):
+        """Return True when the stamp file does not exists"""
+        if os.path.exists(self.rustc_stamp_path):
+            os.unlink(self.rustc_stamp_path)
+        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path))
+
+    def test_dates_are_different(self):
+        """Return True when the dates are different"""
+        with open(self.rustc_stamp_path, "w") as rustc_stamp:
+            rustc_stamp.write("2017-06-14")
+        self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path))
+
+    def test_same_dates(self):
+        """Return False both dates match"""
+        with open(self.rustc_stamp_path, "w") as rustc_stamp:
+            rustc_stamp.write("2017-06-15")
+        self.assertFalse(self.build.program_out_of_date(self.rustc_stamp_path))
+
+
+if __name__ == '__main__':
+    SUITE = unittest.TestSuite()
+    TEST_LOADER = unittest.TestLoader()
+    SUITE.addTest(doctest.DocTestSuite(bootstrap))
+    SUITE.addTests([
+        TEST_LOADER.loadTestsFromTestCase(Stage0DataTestCase),
+        TEST_LOADER.loadTestsFromTestCase(VerifyTestCase),
+        TEST_LOADER.loadTestsFromTestCase(ProgramOutOfDate)])
+
+    RUNNER = unittest.TextTestRunner(verbosity=2)
+    RUNNER.run(SUITE)

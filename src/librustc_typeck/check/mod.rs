@@ -121,7 +121,7 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, BytePos, Span};
+use syntax_pos::{self, BytePos, Span, MultiSpan};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -4689,20 +4689,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
         let has_late_bound_lifetime_defs =
-            segment.map_or(false, |(_, generics)| generics.has_late_bound_regions);
-        if has_late_bound_lifetime_defs && !lifetimes.is_empty() {
+            segment.map_or(None, |(_, generics)| generics.has_late_bound_regions);
+        if let (Some(span_late), false) = (has_late_bound_lifetime_defs, lifetimes.is_empty()) {
             // Report this as a lint only if no error was reported previously.
+            let primary_msg = "cannot specify lifetime arguments explicitly \
+                               if late bound lifetime parameters are present";
+            let note_msg = "the late bound lifetime parameter is introduced here";
             if !is_method_call && (lifetimes.len() > lifetime_defs.len() ||
                                    lifetimes.len() < required_len && !infer_lifetimes) {
-                self.tcx.sess.span_err(lifetimes[0].span,
-                                       "cannot specify lifetime arguments explicitly \
-                                        if late bound lifetime parameters are present");
+                let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
+                err.span_note(span_late, note_msg);
+                err.emit();
                 *segment = None;
             } else {
+                let mut multispan = MultiSpan::from_span(lifetimes[0].span);
+                multispan.push_span_label(span_late, note_msg.to_string());
                 self.tcx.sess.add_lint(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                                       lifetimes[0].id, lifetimes[0].span,
-                                       format!("cannot specify lifetime arguments explicitly \
-                                                if late bound lifetime parameters are present"));
+                                       lifetimes[0].id, multispan, primary_msg.to_string());
             }
             return;
         }
