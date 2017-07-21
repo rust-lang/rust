@@ -167,10 +167,14 @@ extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   Attribute Attr = Attribute::get(Call->getContext(), fromRust(RustAttr));
+#if LLVM_VERSION_GE(5, 0)
+  Call.addAttribute(Index, Attr);
+#else
   AttrBuilder B(Attr);
   Call.setAttributes(Call.getAttributes().addAttributes(
       Call->getContext(), Index,
       AttributeSet::get(Call->getContext(), Index, B)));
+#endif
 }
 
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
@@ -179,9 +183,14 @@ extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
+#if LLVM_VERSION_GE(5, 0)
+  Call.setAttributes(Call.getAttributes().addAttributes(
+      Call->getContext(), Index, B));
+#else
   Call.setAttributes(Call.getAttributes().addAttributes(
       Call->getContext(), Index,
       AttributeSet::get(Call->getContext(), Index, B)));
+#endif
 }
 
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
@@ -189,7 +198,11 @@ extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
   Function *A = unwrap<Function>(Fn);
   Attribute Attr = Attribute::get(A->getContext(), fromRust(RustAttr));
   AttrBuilder B(Attr);
+#if LLVM_VERSION_GE(5, 0)
+  A->addAttributes(Index, B);
+#else
   A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
+#endif
 }
 
 extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
@@ -197,7 +210,11 @@ extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
+#if LLVM_VERSION_GE(5, 0)
+  A->addAttributes(Index, B);
+#else
   A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
+#endif
 }
 
 extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
@@ -207,18 +224,26 @@ extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
   Function *F = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addAttribute(Name, Value);
+#if LLVM_VERSION_GE(5, 0)
+  F->addAttributes(Index, B);
+#else
   F->addAttributes(Index, AttributeSet::get(F->getContext(), Index, B));
+#endif
 }
 
 extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
                                                  unsigned Index,
                                                  LLVMRustAttribute RustAttr) {
   Function *F = unwrap<Function>(Fn);
-  const AttributeSet PAL = F->getAttributes();
   Attribute Attr = Attribute::get(F->getContext(), fromRust(RustAttr));
   AttrBuilder B(Attr);
+  auto PAL = F->getAttributes();
+#if LLVM_VERSION_GE(5, 0)
+  auto PALNew = PAL.removeAttributes(F->getContext(), Index, B);
+#else
   const AttributeSet PALNew = PAL.removeAttributes(
       F->getContext(), Index, AttributeSet::get(F->getContext(), Index, B));
+#endif
   F->setAttributes(PALNew);
 }
 
