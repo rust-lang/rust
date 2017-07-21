@@ -453,7 +453,10 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        this.inner().weak.load(SeqCst) - 1
+        let cnt = this.inner().weak.load(SeqCst);
+        // If the weak count is currently locked, the value of the
+        // count was 0 just before taking the lock.
+        if cnt == usize::MAX { 0 } else { cnt - 1 }
     }
 
     /// Gets the number of strong (`Arc`) pointers to this value.
@@ -1497,6 +1500,25 @@ mod tests {
 
         assert!(Arc::ptr_eq(&five, &same_five));
         assert!(!Arc::ptr_eq(&five, &other_five));
+    }
+
+    #[test]
+    #[cfg_attr(target_os = "emscripten", ignore)]
+    fn test_weak_count_locked() {
+        let mut a = Arc::new(atomic::AtomicBool::new(false));
+        let a2 = a.clone();
+        let t = thread::spawn(move || {
+            for _i in 0..1000000 {
+                Arc::get_mut(&mut a);
+            }
+            a.store(true, SeqCst);
+        });
+
+        while !a2.load(SeqCst) {
+            let n = Arc::weak_count(&a2);
+            assert!(n < 2, "bad weak count: {}", n);
+        }
+        t.join().unwrap();
     }
 }
 
