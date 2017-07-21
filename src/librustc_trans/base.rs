@@ -23,7 +23,7 @@
 //!     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
 //!     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-use super::CrateTranslation;
+use super::OngoingCrateTranslation;
 use super::ModuleLlvm;
 use super::ModuleSource;
 use super::ModuleTranslation;
@@ -43,9 +43,9 @@ use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, OutputTypes};
 use rustc::session::Session;
-use rustc_incremental::IncrementalHashesMap;
+use rustc_incremental::{self, IncrementalHashesMap};
 use abi;
 use allocator;
 use mir::lvalue::LvalueRef;
@@ -922,7 +922,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              analysis: ty::CrateAnalysis,
                              incremental_hashes_map: &IncrementalHashesMap,
                              output_filenames: &OutputFilenames)
-                             -> CrateTranslation {
+                             -> OngoingCrateTranslation {
     // Be careful with this krate: obviously it gives access to the
     // entire contents of the krate. So if you push any subtasks of
     // `TransCrate`, you need to be careful to register "reads" of the
@@ -961,17 +961,18 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        !tcx.sess.opts.output_types.should_trans() {
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
-        return CrateTranslation {
+        return OngoingCrateTranslation {
             crate_name: tcx.crate_name(LOCAL_CRATE),
             modules: vec![],
             metadata_module: metadata_module,
             allocator_module: None,
             link: link_meta,
             metadata: metadata,
-            exported_symbols: empty_exported_symbols,
+            exported_symbols: Arc::new(empty_exported_symbols),
             no_builtins: no_builtins,
             linker_info: linker_info,
             windows_subsystem: None,
+            no_integrated_as: false,
         };
     }
 
@@ -1210,19 +1211,52 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         subsystem.to_string()
     });
 
-    CrateTranslation {
+    let outputs = output_filenames;
+
+    let no_integrated_as = sess.opts.cg.no_integrated_as ||
+        (sess.target.target.options.no_integrated_as &&
+         (outputs.outputs.contains_key(&OutputType::Object) ||
+          outputs.outputs.contains_key(&OutputType::Exe)));
+
+    let crate_translation = OngoingCrateTranslation {
         crate_name: tcx.crate_name(LOCAL_CRATE),
-        modules: modules,
-        metadata_module: metadata_module,
-        allocator_module: allocator_module,
         link: link_meta,
         metadata: metadata,
-        exported_symbols: Arc::try_unwrap(exported_symbols)
-            .expect("There's still a reference to exported_symbols?"),
-        no_builtins: no_builtins,
-        linker_info: linker_info,
-        windows_subsystem: windows_subsystem,
-    }
+        exported_symbols,
+        no_builtins,
+        linker_info,
+        windows_subsystem,
+        no_integrated_as,
+
+        modules,
+        metadata_module,
+        allocator_module,
+    };
+
+    time(sess.time_passes(),
+         "assert dep graph",
+         || rustc_incremental::assert_dep_graph(tcx));
+
+    time(sess.time_passes(),
+         "serialize dep graph",
+         || rustc_incremental::save_dep_graph(tcx,
+                                              incremental_hashes_map,
+                                              &crate_translation.metadata.hashes,
+                                              crate_translation.link.crate_hash));
+    // ---
+
+    if no_integrated_as {
+        let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
+        time(sess.time_passes(),
+             "LLVM passes",
+             || ::back::write::run_passes(sess, &crate_translation, &output_types, outputs))
+    } else {
+        time(sess.time_passes(),
+             "LLVM passes",
+             || ::back::write::run_passes(sess, &crate_translation, &sess.opts.output_types, outputs))
+    };
+
+    crate_translation
 }
 
 #[inline(never)] // give this a place in the profiler

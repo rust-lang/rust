@@ -18,7 +18,7 @@ use rustc::session::Session;
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
-use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
+use {CrateTranslation, OngoingCrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
 use rustc::hir::def_id::CrateNum;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr};
 use rustc::util::fs::link_or_copy;
@@ -255,7 +255,7 @@ impl ModuleConfig {
         }
     }
 
-    fn set_flags(&mut self, sess: &Session, trans: &CrateTranslation) {
+    fn set_flags(&mut self, sess: &Session, trans: &OngoingCrateTranslation) {
         self.no_verify = sess.no_verify();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = trans.no_builtins;
@@ -614,7 +614,7 @@ pub fn cleanup_llvm(trans: &CrateTranslation) {
 }
 
 pub fn run_passes(sess: &Session,
-                  trans: &CrateTranslation,
+                  trans: &OngoingCrateTranslation,
                   output_types: &OutputTypes,
                   crate_output: &OutputFilenames) {
     // It's possible that we have `codegen_units > 1` but only one item in
@@ -746,10 +746,6 @@ pub fn run_passes(sess: &Session,
                                    modules_config.clone(),
                                    crate_output.clone());
         work_items.push(work);
-    }
-
-    if sess.opts.debugging_opts.incremental_info {
-        dump_incremental_data(&trans);
     }
 
     let client = sess.jobserver_from_env.clone().unwrap_or_else(|| {
@@ -938,7 +934,7 @@ pub fn run_passes(sess: &Session,
     }
 }
 
-fn dump_incremental_data(trans: &CrateTranslation) {
+pub fn dump_incremental_data(trans: &CrateTranslation) {
     let mut reuse = 0;
     for mtrans in trans.modules.iter() {
         match mtrans.source {

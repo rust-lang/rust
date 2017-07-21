@@ -15,8 +15,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
 use rustc::session::{Session, CompileResult};
 use rustc::session::CompileIncomplete;
-use rustc::session::config::{self, Input, OutputFilenames, OutputType,
-                             OutputTypes};
+use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, dependency_format, stability, reachable};
@@ -26,7 +25,6 @@ use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
 use rustc::util::nodemap::NodeSet;
-use rustc::util::fs::rename_or_copy_remove;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
@@ -231,7 +229,7 @@ pub fn compile_input(sess: &Session,
         sess.code_stats.borrow().print_type_sizes();
     }
 
-    let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
+    let (phase5_result, trans) = phase_5_run_llvm_passes(sess, trans, &outputs);
 
     controller_entry_point!(after_llvm,
                             sess,
@@ -1057,7 +1055,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: &IncrementalHashesMap,
                                            output_filenames: &OutputFilenames)
-                                           -> trans::CrateTranslation {
+                                           -> trans::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
@@ -1069,61 +1067,26 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
              "translation",
              move || trans::trans_crate(tcx, analysis, &incremental_hashes_map, output_filenames));
 
-    time(time_passes,
-         "assert dep graph",
-         || rustc_incremental::assert_dep_graph(tcx));
-
-    time(time_passes,
-         "serialize dep graph",
-         || rustc_incremental::save_dep_graph(tcx,
-                                              &incremental_hashes_map,
-                                              &translation.metadata.hashes,
-                                              translation.link.crate_hash));
     translation
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
-                               trans: &trans::CrateTranslation,
-                               outputs: &OutputFilenames) -> CompileResult {
-    if sess.opts.cg.no_integrated_as ||
-        (sess.target.target.options.no_integrated_as &&
-         (outputs.outputs.contains_key(&OutputType::Object) ||
-          outputs.outputs.contains_key(&OutputType::Exe)))
-    {
-        let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
-        time(sess.time_passes(),
-             "LLVM passes",
-             || write::run_passes(sess, trans, &output_types, outputs));
+                               trans: trans::OngoingCrateTranslation,
+                               outputs: &OutputFilenames)
+                               -> (CompileResult, trans::CrateTranslation) {
+    let trans = trans.join(sess, outputs);
 
-        write::run_assembler(sess, outputs);
-
-        // HACK the linker expects the object file to be named foo.0.o but
-        // `run_assembler` produces an object named just foo.o. Rename it if we
-        // are going to build an executable
-        if sess.opts.output_types.contains_key(&OutputType::Exe) {
-            let f = outputs.path(OutputType::Object);
-            rename_or_copy_remove(&f,
-                     f.with_file_name(format!("{}.0.o",
-                                              f.file_stem().unwrap().to_string_lossy()))).unwrap();
-        }
-
-        // Remove assembly source, unless --save-temps was specified
-        if !sess.opts.cg.save_temps {
-            fs::remove_file(&outputs.temp_path(OutputType::Assembly, None)).unwrap();
-        }
-    } else {
-        time(sess.time_passes(),
-             "LLVM passes",
-             || write::run_passes(sess, trans, &sess.opts.output_types, outputs));
+    if sess.opts.debugging_opts.incremental_info {
+        write::dump_incremental_data(&trans);
     }
 
     time(sess.time_passes(),
          "serialize work products",
          move || rustc_incremental::save_work_products(sess));
 
-    sess.compile_status()
+    (sess.compile_status(), trans)
 }
 
 /// Run the linker on any artifacts that resulted from the LLVM run.
