@@ -332,7 +332,7 @@ error: it is more idiomatic to loop over references to containers instead of usi
    --> for_loop.rs:203:15
     |
 203 |     for _v in vec.iter() { }
-    |               ^^^^^^^^^^ help: to write this more concisely, try `&vec`
+    |               ^^^^^^^^^^ help: to write this more concisely, try: `&vec`
     |
     = note: `-D explicit-iter-loop` implied by `-D warnings`
 
@@ -340,13 +340,13 @@ error: it is more idiomatic to loop over references to containers instead of usi
    --> for_loop.rs:205:15
     |
 205 |     for _v in vec.iter_mut() { }
-    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try `&mut vec`
+    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut vec`
 
 error: it is more idiomatic to loop over containers instead of using explicit iteration methods`
    --> for_loop.rs:208:15
     |
 208 |     for _v in out_vec.into_iter() { }
-    |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try `out_vec`
+    |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `out_vec`
     |
     = note: `-D explicit-into-iter-loop` implied by `-D warnings`
 
@@ -354,61 +354,61 @@ error: it is more idiomatic to loop over references to containers instead of usi
    --> for_loop.rs:211:15
     |
 211 |     for _v in array.into_iter() {}
-    |               ^^^^^^^^^^^^^^^^^ help: to write this more concisely, try `&array`
+    |               ^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&array`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:216:15
     |
 216 |     for _v in [1, 2, 3].iter() { }
-    |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try `&[1, 2, 3]`
+    |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[1, 2, 3]`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:220:15
     |
 220 |     for _v in [0; 32].iter() {}
-    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try `&[0; 32]`
+    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 32]`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:225:15
     |
 225 |     for _v in ll.iter() { }
-    |               ^^^^^^^^^ help: to write this more concisely, try `&ll`
+    |               ^^^^^^^^^ help: to write this more concisely, try: `&ll`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:228:15
     |
 228 |     for _v in vd.iter() { }
-    |               ^^^^^^^^^ help: to write this more concisely, try `&vd`
+    |               ^^^^^^^^^ help: to write this more concisely, try: `&vd`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:231:15
     |
 231 |     for _v in bh.iter() { }
-    |               ^^^^^^^^^ help: to write this more concisely, try `&bh`
+    |               ^^^^^^^^^ help: to write this more concisely, try: `&bh`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:234:15
     |
 234 |     for _v in hm.iter() { }
-    |               ^^^^^^^^^ help: to write this more concisely, try `&hm`
+    |               ^^^^^^^^^ help: to write this more concisely, try: `&hm`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:237:15
     |
 237 |     for _v in bt.iter() { }
-    |               ^^^^^^^^^ help: to write this more concisely, try `&bt`
+    |               ^^^^^^^^^ help: to write this more concisely, try: `&bt`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:240:15
     |
 240 |     for _v in hs.iter() { }
-    |               ^^^^^^^^^ help: to write this more concisely, try `&hs`
+    |               ^^^^^^^^^ help: to write this more concisely, try: `&hs`
 
 error: it is more idiomatic to loop over references to containers instead of using explicit iteration methods
    --> for_loop.rs:243:15
     |
 243 |     for _v in bs.iter() { }
-    |               ^^^^^^^^^ help: to write this more concisely, try `&bs`
+    |               ^^^^^^^^^ help: to write this more concisely, try: `&bs`
 
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
    --> for_loop.rs:245:5
