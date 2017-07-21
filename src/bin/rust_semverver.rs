@@ -13,7 +13,7 @@ extern crate syntax;
 use semverver::semcheck::run_analysis;
 
 use rustc::hir::def_id::*;
-use rustc::session::{config, CompileIncomplete, Session};
+use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
@@ -155,7 +155,7 @@ fn main() {
             .expect("need to specify SYSROOT env var during compilation, or use rustup")
     };
 
-    rustc_driver::in_rustc_thread(|| {
+    let result = rustc_driver::run(|| {
         let args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
             std::env::args().collect()
         } else {
@@ -172,10 +172,8 @@ fn main() {
         };
 
         let mut cc = SemVerVerCompilerCalls::new(version);
-        let (result, _) = rustc_driver::run_compiler(&args, &mut cc, None, None);
-        if let Err(CompileIncomplete::Errored(_)) = result {
-            std::process::exit(1);
-        }
-    })
-            .expect("rustc thread failed");
+        rustc_driver::run_compiler(&args, &mut cc, None, None)
+    });
+
+    std::process::exit(result as i32);
 }
