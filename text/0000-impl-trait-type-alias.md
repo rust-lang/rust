@@ -395,7 +395,7 @@ to come from:
 - `foo1` constrains `Foo` because it returns an `i32`, which it claims is equal
 to `Foo`.
 - `foo2` constraints `Foo`, because it sets the result of function `foo1`
-(which returns type `Foo`) to `i32. It then returns that `i32` value as `Foo`,
+(which returns type `Foo`) to `i32`. It then returns that `i32` value as `Foo`,
 again constraining `Foo` to the concrete type `i32`.
 - `foo3` places no constraints on `Foo` because it merely returns the result
 of `foo1`, which is already known to be `Foo`.
