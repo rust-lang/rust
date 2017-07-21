@@ -258,7 +258,7 @@ impl TokenStream {
         }
     }
 
-    pub fn map_pos<F: FnMut(usize, TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
+    pub fn map_enumerated<F: FnMut(usize, TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
         let mut trees = self.into_trees();
         let mut result = Vec::new();
         let mut i = 0;

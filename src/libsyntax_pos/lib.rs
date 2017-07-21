@@ -185,29 +185,18 @@ impl Span {
         result
     }
 
-    pub fn empty_ctxt(&self) -> bool {
-        self.ctxt == SyntaxContext::empty()
-    }
-
     /// Return a `Span` that would enclose both `self` and `end`.
     pub fn to(self, end: Span) -> Span {
-        let lo = if self.lo < end.lo {
-            self.lo
-        } else {
-            end.lo
-        };
-        let hi = if self.hi > end.hi {
-            self.hi
-        } else {
-            end.hi
-        };
-        // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
-        let ctxt = if self.ctxt == SyntaxContext::empty() {
-            end.ctxt
-        } else {
-            self.ctxt
-        };
-        Span {lo, hi, ctxt}
+        Span {
+            lo: cmp::min(self.lo, end.lo),
+            hi: cmp::max(self.hi, end.hi),
+            // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
+            ctxt: if self.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                self.ctxt
+            },
+        }
     }
 
     /// Return a `Span` between the end of `self` to the beginning of `end`.
