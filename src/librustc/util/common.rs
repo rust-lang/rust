@@ -75,7 +75,12 @@ pub fn profq_msg(msg: ProfileQueriesMsg) {
         if let Some(s) = sender.borrow().as_ref() {
             s.send(msg).unwrap()
         } else {
-            panic!("no channel on which to send profq_msg: {:?}", msg)
+            // Do nothing.
+            //
+            // FIXME(matthewhammer): Multi-threaded translation phase triggers the panic below.
+            // From backtrace: rustc_trans::back::write::spawn_work::{{closure}}.
+            //
+            // panic!("no channel on which to send profq_msg: {:?}", msg)
         }
     })
 }

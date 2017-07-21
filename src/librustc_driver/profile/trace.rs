@@ -137,9 +137,15 @@ fn write_traces_rec(file: &mut File, traces: &Vec<Rec>, total: Duration, depth: 
 fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec>) {
     for t in traces.iter() {
         match t.effect {
-            Effect::TimeBegin(ref _msg) => {
-                // dont count time-begin effects
-            }
+            Effect::TimeBegin(ref msg) => {
+                let qm = match counts.get(msg) {
+                    Some(_qm) => { panic!("TimeBegin with non-unique, repeat message") }
+                    None => QueryMetric{
+                        count: 1,
+                        duration: t.duration
+                    }};
+                counts.insert(msg.clone(), qm);
+            },
             Effect::QueryBegin(ref qmsg, ref _cc) => {
                 let qcons = cons_of_query_msg(qmsg);
                 let qm = match counts.get(&qcons) {
@@ -239,29 +245,29 @@ body {
   display: none
 }
 .frac-50 {
-  padding: 4px;
+  padding: 10px;
   border-width: 10px;
-  font-size: 16px;
+  font-size: 32px;
 }
 .frac-40 {
-  padding: 4px;
+  padding: 8px;
   border-width: 8px;
-  font-size: 16px;
+  font-size: 24px;
 }
 .frac-30 {
-  padding: 3px;
+  padding: 6px;
   border-width: 6px;
-  font-size: 16px;
+  font-size: 18px;
 }
 .frac-20 {
-  padding: 3px;
+  padding: 4px;
   border-width: 6px;
   font-size: 16px;
 }
 .frac-10 {
-  padding: 3px;
+  padding: 2px;
   border-width: 6px;
-  font-size: 16px;
+  font-size: 14px;
 }
 ").unwrap();
 }
