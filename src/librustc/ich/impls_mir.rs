@@ -243,7 +243,19 @@ for mir::StatementKind<'tcx> {
     }
 }
 
-impl_stable_hash_for!(struct mir::ValidationOperand<'tcx> { lval, ty, re, mutbl });
+impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for mir::ValidationOperand<'tcx, T>
+    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>)
+    {
+        self.lval.hash_stable(hcx, hasher);
+        self.ty.hash_stable(hcx, hasher);
+        self.re.hash_stable(hcx, hasher);
+        self.mutbl.hash_stable(hcx, hasher);
+    }
+}
 
 impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(extent) });
 

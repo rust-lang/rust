@@ -88,7 +88,7 @@ impl MirPass for AddValidation {
         let local_decls = mir.local_decls.clone(); // TODO: Find a way to get rid of this clone.
 
         /// Convert an lvalue to a validation operand.
-        let lval_to_operand = |lval: Lvalue<'tcx>| -> ValidationOperand<'tcx> {
+        let lval_to_operand = |lval: Lvalue<'tcx>| -> ValidationOperand<'tcx, Lvalue<'tcx>> {
             let (re, mutbl) = lval_context(&lval, &local_decls, tcx);
             let ty = lval.ty(&local_decls, tcx).to_ty(tcx);
             ValidationOperand { lval, ty, re, mutbl }

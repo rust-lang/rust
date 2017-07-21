@@ -826,7 +826,7 @@ pub enum StatementKind<'tcx> {
     },
 
     /// Assert the given lvalues to be valid inhabitants of their type.
-    Validate(ValidationOp, Vec<ValidationOperand<'tcx>>),
+    Validate(ValidationOp, Vec<ValidationOperand<'tcx, Lvalue<'tcx>>>),
 
     /// Mark one terminating point of an extent (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
@@ -855,15 +855,16 @@ impl Debug for ValidationOp {
     }
 }
 
+// This is generic so that it can be reused by miri
 #[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct ValidationOperand<'tcx> {
-    pub lval: Lvalue<'tcx>,
+pub struct ValidationOperand<'tcx, T> {
+    pub lval: T,
     pub ty: Ty<'tcx>,
     pub re: Option<CodeExtent>,
     pub mutbl: hir::Mutability,
 }
 
-impl<'tcx> Debug for ValidationOperand<'tcx> {
+impl<'tcx, T: Debug> Debug for ValidationOperand<'tcx, T> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.lval, self.ty)?;
         if let Some(ce) = self.re {
@@ -1527,7 +1528,7 @@ impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Lvalue<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ValidationOperand {
             lval: self.lval.fold_with(folder),
