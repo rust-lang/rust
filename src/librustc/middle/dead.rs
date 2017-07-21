@@ -13,7 +13,7 @@
 // from live codes are live, and everything else is dead.
 
 use hir::map as hir_map;
-use hir::{self, PatKind};
+use hir::{self, Item_, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 
@@ -558,8 +558,20 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
     fn visit_struct_field(&mut self, field: &'tcx hir::StructField) {
         if self.should_warn_about_field(&field) {
-            self.warn_dead_code(field.id, field.span,
-                                field.name, "field");
+            let did = self.tcx.hir.get_parent_did(field.id);
+            if if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
+                match self.tcx.hir.find(node_id) {
+                    Some(hir_map::NodeItem(item)) => match item.node {
+                        Item_::ItemUnion(_, _) => false,
+                        _ => true,
+                    },
+                    _ => true,
+                }
+            } else {
+                true
+            } {
+                self.warn_dead_code(field.id, field.span, field.name, "field");
+            }
         }
 
         intravisit::walk_struct_field(self, field);

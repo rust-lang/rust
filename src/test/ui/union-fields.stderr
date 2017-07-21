@@ -1,0 +1,14 @@
+error: field is never used: `y`
+  --> $DIR/union-fields.rs:20:5
+   |
+20 |     y: u32,
+   |     ^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/union-fields.rs:11:9
+   |
+11 | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+
