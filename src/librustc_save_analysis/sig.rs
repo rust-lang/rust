@@ -534,7 +534,7 @@ impl Sig for ast::Item {
             ast::ItemKind::ForeignMod(_) => Err("extern mod"),
             ast::ItemKind::GlobalAsm(_) => Err("glboal asm"),
             ast::ItemKind::ExternCrate(_) => Err("extern crate"),
-            // FIXME should implement this (e.g., pub(crate) use).
+            // FIXME should implement this (e.g., pub use).
             ast::ItemKind::Use(_) => Err("import"),
             ast::ItemKind::Mac(..) |
             ast::ItemKind::MacroDef(_) => Err("Macro"),

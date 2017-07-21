@@ -273,7 +273,7 @@ pub enum Compilation {
 }
 
 impl Compilation {
-    fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
+    pub fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
         match self {
             Compilation::Stop => Compilation::Stop,
             Compilation::Continue => next(),
@@ -617,7 +617,7 @@ fn save_analysis_format(sess: &Session) -> save::Format {
 }
 
 impl RustcDefaultCalls {
-    fn list_metadata(sess: &Session, matches: &getopts::Matches, input: &Input) -> Compilation {
+    pub fn list_metadata(sess: &Session, matches: &getopts::Matches, input: &Input) -> Compilation {
         let r = matches.opt_strs("Z");
         if r.contains(&("ls".to_string())) {
             match input {
@@ -1016,7 +1016,7 @@ fn print_flag_list<T>(cmdline_opt: &str,
 ///
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
-fn handle_options(args: &[String]) -> Option<getopts::Matches> {
+pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
     let args = &args[1..];
 
@@ -1200,7 +1200,7 @@ fn exit_on_err() -> ! {
     panic!();
 }
 
-fn diagnostics_registry() -> errors::registry::Registry {
+pub fn diagnostics_registry() -> errors::registry::Registry {
     use errors::registry::Registry;
 
     let mut all_errors = Vec::new();

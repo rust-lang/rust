@@ -286,7 +286,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
     /// might not be instantiable. For example, a programmer can define this
     /// public function:
     ///
-    ///     pub(crate) fn foo<'a>(s: &'a mut ()) where &'a mut (): Clone {
+    ///     pub fn foo<'a>(s: &'a mut ()) where &'a mut (): Clone {
     ///         <&mut () as Clone>::clone(&s);
     ///     }
     ///

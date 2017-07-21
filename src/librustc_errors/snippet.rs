@@ -204,7 +204,7 @@ pub(crate) struct StyledString {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub(crate) enum Style {
+pub enum Style {
     HeaderMsg,
     LineAndColumn,
     LineNumber,

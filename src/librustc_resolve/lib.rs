@@ -1012,7 +1012,7 @@ impl<'a> NameBinding<'a> {
         resolver.get_macro(self.def_ignoring_ambiguity())
     }
 
-    // We sometimes need to treat variants as `pub(crate)` for backwards compatibility
+    // We sometimes need to treat variants as `pub` for backwards compatibility
     fn pseudo_vis(&self) -> ty::Visibility {
         if self.is_variant() { ty::Visibility::Public } else { self.vis }
     }

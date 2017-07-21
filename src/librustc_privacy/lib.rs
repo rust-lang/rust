@@ -156,7 +156,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemForeignMod(..) => {
                 self.prev_level
             }
-            // Other `pub(crate)` items inherit levels from parents
+            // Other `pub` items inherit levels from parents
             hir::ItemConst(..) | hir::ItemEnum(..) | hir::ItemExternCrate(..) |
             hir::ItemGlobalAsm(..) | hir::ItemFn(..) | hir::ItemMod(..) |
             hir::ItemStatic(..) | hir::ItemStruct(..) | hir::ItemTrait(..) |

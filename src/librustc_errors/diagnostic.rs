@@ -20,7 +20,7 @@ use snippet::Style;
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Diagnostic {
     pub level: Level,
-    pub(crate) message: Vec<(String, Style)>,
+    pub message: Vec<(String, Style)>,
     pub code: Option<String>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
@@ -31,7 +31,7 @@ pub struct Diagnostic {
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct SubDiagnostic {
     pub level: Level,
-    pub(crate) message: Vec<(String, Style)>,
+    pub message: Vec<(String, Style)>,
     pub span: MultiSpan,
     pub render_span: Option<RenderSpan>,
 }
@@ -69,7 +69,7 @@ pub enum StringPart {
 }
 
 impl StringPart {
-    pub(crate) fn content(&self) -> String {
+    pub fn content(&self) -> String {
         match self {
             &StringPart::Normal(ref s) | & StringPart::Highlighted(ref s) => s.to_owned()
         }
@@ -81,7 +81,7 @@ impl Diagnostic {
         Diagnostic::new_with_code(level, None, message)
     }
 
-    pub(crate) fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
+    pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
         Diagnostic {
             level: level,
             message: vec![(message.to_owned(), Style::NoStyle)],
@@ -101,7 +101,7 @@ impl Diagnostic {
         self.level = Level::Cancelled;
     }
 
-    pub(crate) fn cancelled(&self) -> bool {
+    pub fn cancelled(&self) -> bool {
         self.level == Level::Cancelled
     }
 
@@ -116,22 +116,22 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn note_expected_found(&mut self,
-                                      label: &fmt::Display,
-                                      expected: DiagnosticStyledString,
-                                      found: DiagnosticStyledString)
-                                      -> &mut Self
+    pub fn note_expected_found(&mut self,
+                               label: &fmt::Display,
+                               expected: DiagnosticStyledString,
+                               found: DiagnosticStyledString)
+                               -> &mut Self
     {
         self.note_expected_found_extra(label, expected, found, &"", &"")
     }
 
-    pub(crate) fn note_expected_found_extra(&mut self,
-                                            label: &fmt::Display,
-                                            expected: DiagnosticStyledString,
-                                            found: DiagnosticStyledString,
-                                            expected_extra: &fmt::Display,
-                                            found_extra: &fmt::Display)
-                                            -> &mut Self
+    pub fn note_expected_found_extra(&mut self,
+                                     label: &fmt::Display,
+                                     expected: DiagnosticStyledString,
+                                     found: DiagnosticStyledString,
+                                     expected_extra: &fmt::Display,
+                                     found_extra: &fmt::Display)
+                                     -> &mut Self
     {
         let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
         msg.extend(expected.0.iter()
@@ -161,12 +161,12 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn note(&mut self, msg: &str) -> &mut Self {
+    pub fn note(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
         self
     }
 
-    pub(crate) fn highlighted_note(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
+    pub fn highlighted_note(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
         self.sub_with_highlights(Level::Note, msg, MultiSpan::new(), None);
         self
     }
@@ -179,12 +179,12 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn warn(&mut self, msg: &str) -> &mut Self {
+    pub fn warn(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, MultiSpan::new(), None);
         self
     }
 
-    pub(crate) fn span_warn<S: Into<MultiSpan>>(&mut self,
+    pub fn span_warn<S: Into<MultiSpan>>(&mut self,
                                                 sp: S,
                                                 msg: &str)
                                                 -> &mut Self {
@@ -192,12 +192,12 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn help(&mut self , msg: &str) -> &mut Self {
+    pub fn help(&mut self , msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
         self
     }
 
-    pub(crate) fn span_help<S: Into<MultiSpan>>(&mut self,
+    pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                                 sp: S,
                                                 msg: &str)
                                                 -> &mut Self {
@@ -220,7 +220,7 @@ impl Diagnostic {
     /// * may contain a name of a function, variable or type, but not whole expressions
     ///
     /// See `diagnostic::CodeSuggestion` for more information.
-    pub(crate) fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
+    pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
                 span: sp,
@@ -231,7 +231,7 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>)
+    pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>)
                                    -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
@@ -248,7 +248,7 @@ impl Diagnostic {
         self
     }
 
-    pub(crate) fn code(&mut self, s: String) -> &mut Self {
+    pub fn code(&mut self, s: String) -> &mut Self {
         self.code = Some(s);
         self
     }
@@ -257,7 +257,7 @@ impl Diagnostic {
         self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
     }
 
-    pub(crate) fn styled_message(&self) -> &Vec<(String, Style)> {
+    pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
     }
 
@@ -307,7 +307,7 @@ impl SubDiagnostic {
         self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
     }
 
-    pub(crate) fn styled_message(&self) -> &Vec<(String, Style)> {
+    pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
     }
 }

@@ -677,7 +677,7 @@ extern "C" {
     pub fn LLVMRustSetLinkage(Global: ValueRef, RustLinkage: Linkage);
     pub(crate) fn LLVMGetSection(Global: ValueRef) -> *const c_char;
     pub fn LLVMSetSection(Global: ValueRef, Section: *const c_char);
-    pub(crate) fn LLVMRustGetVisibility(Global: ValueRef) -> Visibility;
+    pub fn LLVMRustGetVisibility(Global: ValueRef) -> Visibility;
     pub fn LLVMRustSetVisibility(Global: ValueRef, Viz: Visibility);
     pub fn LLVMGetAlignment(Global: ValueRef) -> c_uint;
     pub fn LLVMSetAlignment(Global: ValueRef, Bytes: c_uint);
