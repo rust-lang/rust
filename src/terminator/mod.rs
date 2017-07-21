@@ -814,8 +814,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 if let Some((name, value)) = new {
                     // +1 for the null terminator
                     let value_copy = self.memory.allocate((value.len() + 1) as u64, 1, Kind::Env)?;
-                    self.memory.write_bytes(PrimVal::Ptr(value_copy), &value)?;
-                    self.memory.write_bytes(PrimVal::Ptr(value_copy.offset(value.len() as u64, self.memory.layout)?), &[0])?;
+                    self.memory.write_bytes(value_copy.into(), &value)?;
+                    self.memory.write_bytes(value_copy.offset(value.len() as u64, self.memory.layout)?.into(), &[0])?;
                     if let Some(var) = self.env_vars.insert(name.to_owned(), value_copy) {
                         self.memory.deallocate(var, None, Kind::Env)?;
                     }

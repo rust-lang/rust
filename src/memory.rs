@@ -194,7 +194,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
 
         let ptr = self.allocate(bytes.len() as u64, 1, Kind::UninitializedStatic)?;
-        self.write_bytes(PrimVal::Ptr(ptr), bytes)?;
+        self.write_bytes(ptr.into(), bytes)?;
         self.mark_static_initalized(ptr.alloc_id, Mutability::Immutable)?;
         self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
         Ok(ptr)
@@ -280,6 +280,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
+    /// Check that the pointer is aligned and non-NULL
     pub fn check_align(&self, ptr: Pointer, align: u64) -> EvalResult<'tcx> {
         let offset = match ptr.into_inner_primval() {
             PrimVal::Ptr(ptr) => {
@@ -532,12 +533,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 /// Byte accessors
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn get_bytes_unchecked(&self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
-        if size == 0 {
-            return Ok(&[]);
-        }
-        // FIXME: check alignment for zst memory accesses?
+        // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
         if self.reads_are_aligned {
             self.check_align(ptr.into(), align)?;
+        }
+        if size == 0 {
+            return Ok(&[]);
         }
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
@@ -548,12 +549,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     fn get_bytes_unchecked_mut(&mut self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
-        if size == 0 {
-            return Ok(&mut []);
-        }
-        // FIXME: check alignment for zst memory accesses?
+        // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
         if self.writes_are_aligned {
             self.check_align(ptr.into(), align)?;
+        }
+        if size == 0 {
+            return Ok(&mut []);
         }
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
@@ -643,7 +644,13 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: u64, align: u64, nonoverlapping: bool) -> EvalResult<'tcx> {
         if size == 0 {
-            // TODO: Should we check for alignment here? (Also see write_bytes intrinsic)
+            // Empty accesses don't need to be valid pointers, but they should still be aligned
+            if self.reads_are_aligned {
+                self.check_align(src, align)?;
+            }
+            if self.writes_are_aligned {
+                self.check_align(dest, align)?;
+            }
             return Ok(());
         }
         let src = src.to_ptr()?;
@@ -695,13 +702,21 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn read_bytes(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
         if size == 0 {
+            // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+            if self.reads_are_aligned {
+                self.check_align(ptr, 1)?;
+            }
             return Ok(&[]);
         }
         self.get_bytes(ptr.to_ptr()?, size, 1)
     }
 
-    pub fn write_bytes(&mut self, ptr: PrimVal, src: &[u8]) -> EvalResult<'tcx> {
+    pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
         if src.is_empty() {
+            // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+            if self.writes_are_aligned {
+                self.check_align(ptr, 1)?;
+            }
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, src.len() as u64, 1)?;
@@ -711,6 +726,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
         if count == 0 {
+            // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+            if self.writes_are_aligned {
+                self.check_align(ptr, 1)?;
+            }
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, 1)?;
