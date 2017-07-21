@@ -19,7 +19,7 @@ use {Indent, Shape};
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, FindUncommented};
 use comment::rewrite_comment;
-use config::Config;
+use config::{BraceStyle, Config};
 use expr::{format_expr, ExprType};
 use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
             rewrite_static, rewrite_type_alias};
@@ -665,7 +665,11 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.push_str(&ident.to_string());
 
         if is_internal {
-            self.buffer.push_str(" {");
+            match self.config.item_brace_style() {
+                BraceStyle::AlwaysNextLine => self.buffer
+                    .push_str(&format!("\n{}{{", self.block_indent.to_string(self.config))),
+                _ => self.buffer.push_str(" {"),
+            }
             // Hackery to account for the closing }.
             let mod_lo = self.codemap.span_after(source!(self, s), "{");
             let body_snippet = self.snippet(mk_sp(mod_lo, source!(self, m.inner).hi - BytePos(1)));
