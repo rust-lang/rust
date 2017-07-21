@@ -1,6 +1,7 @@
 // rustfmt-item_brace_style: AlwaysNextLine
 
-mod M {
+mod M
+{
     enum A
     {
         A,
