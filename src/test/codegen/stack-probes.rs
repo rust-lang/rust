@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-arm
+// ignore-aarch64
 // ignore-powerpc
 // ignore-wasm
 // ignore-emscripten
