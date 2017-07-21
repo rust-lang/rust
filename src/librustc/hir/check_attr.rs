@@ -121,9 +121,10 @@ impl<'a> CheckAttrVisitor<'a> {
                 }
                 "align" => {
                     found_align = true;
-                    if target != Target::Struct {
-                        ("attribute should be applied to struct",
-                         "a struct")
+                    if target != Target::Struct &&
+                            target != Target::Union {
+                        ("attribute should be applied to struct or union",
+                         "a struct or union")
                     } else {
                         continue
                     }

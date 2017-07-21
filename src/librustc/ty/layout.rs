@@ -908,13 +908,30 @@ pub struct Union {
 }
 
 impl<'a, 'tcx> Union {
-    fn new(dl: &TargetDataLayout, packed: bool) -> Union {
-        let align = if packed { dl.i8_align } else { dl.aggregate_align };
+    fn new(dl: &TargetDataLayout, repr: &ReprOptions) -> Union {
+        if repr.packed() && repr.align > 0 {
+            bug!("Union cannot be packed and aligned");
+        }
+
+        let primitive_align = if repr.packed() {
+            dl.i8_align
+        } else {
+            dl.aggregate_align
+        };
+
+        let align = if repr.align > 0 {
+            let repr_align = repr.align as u64;
+            debug!("Union::new repr_align: {:?}", repr_align);
+            primitive_align.max(Align::from_bytes(repr_align, repr_align).unwrap())
+        } else {
+            primitive_align
+        };
+
         Union {
             align,
-            primitive_align: align,
+            primitive_align,
             min_size: Size::from_bytes(0),
-            packed,
+            packed: repr.packed(),
         }
     }
 
@@ -1311,7 +1328,7 @@ impl<'a, 'tcx> Layout {
                         field.ty(tcx, substs).layout(tcx, param_env)
                     }).collect::<Result<Vec<_>, _>>()?;
                     let layout = if def.is_union() {
-                        let mut un = Union::new(dl, def.repr.packed());
+                        let mut un = Union::new(dl, &def.repr);
                         un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
