@@ -267,6 +267,18 @@ enum class LLVMRustSynchronizationScope {
   CrossThread,
 };
 
+#if LLVM_VERSION_GE(5, 0)
+static SyncScope::ID fromRust(LLVMRustSynchronizationScope Scope) {
+  switch (Scope) {
+  case LLVMRustSynchronizationScope::SingleThread:
+    return SyncScope::SingleThread;
+  case LLVMRustSynchronizationScope::CrossThread:
+    return SyncScope::System;
+  default:
+    llvm_unreachable("bad SynchronizationScope.");
+  }
+}
+#else
 static SynchronizationScope fromRust(LLVMRustSynchronizationScope Scope) {
   switch (Scope) {
   case LLVMRustSynchronizationScope::SingleThread:
@@ -277,6 +289,7 @@ static SynchronizationScope fromRust(LLVMRustSynchronizationScope Scope) {
     llvm_unreachable("bad SynchronizationScope.");
   }
 }
+#endif
 
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicFence(LLVMBuilderRef B, LLVMAtomicOrdering Order,
