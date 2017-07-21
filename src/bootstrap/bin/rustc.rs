@@ -185,7 +185,10 @@ fn main() {
 
         // Emit save-analysis info.
         if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
-            cmd.arg("-Zsave-analysis-api");
+            cmd.arg("-Zsave-analysis");
+            cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
+                    "{\"output_file\": null,\"full_docs\": false,\"pub_only\": true,\
+                     \"signatures\": false,\"borrow_data\": false}");
         }
 
         // Dealing with rpath here is a little special, so let's go into some
