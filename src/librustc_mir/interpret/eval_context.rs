@@ -19,19 +19,23 @@ use syntax::abi::Abi;
 use super::{
     EvalError, EvalResult,
     Global, GlobalId, Lvalue, LvalueExtra,
-    Memory, MemoryPointer, TlsKey, HasMemory,
+    Memory, MemoryPointer, HasMemory,
     Kind as MemoryKind,
     operator,
     PrimVal, PrimValKind, Value, Pointer,
     ValidationQuery,
+    Machine,
 };
 
-pub struct EvalContext<'a, 'tcx: 'a> {
+pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
+    /// Stores data required by the `Machine`
+    pub machine_data: M::Data,
+
     /// The results of the type checker, from rustc.
-    pub(crate) tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// The virtual memory system.
-    pub(crate) memory: Memory<'a, 'tcx>,
+    pub memory: Memory<'a, 'tcx, M>,
 
     #[allow(dead_code)]
     // FIXME(@RalfJung): validation branch
@@ -39,7 +43,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 
     /// Precomputed statics, constants and promoteds.
-    pub(crate) globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
+    pub globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'tcx>>,
@@ -51,10 +55,6 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) steps_remaining: u64,
-
-    /// Environment variables set by `setenv`
-    /// Miri does not expose env vars from the host to the emulated program
-    pub(crate) env_vars: HashMap<Vec<u8>, MemoryPointer>,
 }
 
 /// A stack frame.
@@ -112,11 +112,6 @@ pub enum StackPopCleanup {
     /// A regular stackframe added due to a function call will need to get forwarded to the next
     /// block
     Goto(mir::BasicBlock),
-    /// After finishing a tls destructor, find the next one instead of starting from the beginning
-    /// and thus just rerunning the first one until its `data` argument is null
-    ///
-    /// The index is the current tls destructor's index
-    Tls(Option<TlsKey>),
     /// The main function and diverging functions have nowhere to return to
     None,
 }
@@ -150,17 +145,22 @@ pub struct TyAndPacked<'tcx> {
     pub packed: bool,
 }
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, limits: ResourceLimits) -> Self {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+    pub fn new(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        limits: ResourceLimits,
+        machine_data: M::Data,
+        memory_data: M::MemoryData,
+    ) -> Self {
         EvalContext {
+            machine_data,
             tcx,
-            memory: Memory::new(&tcx.data_layout, limits.memory_size),
+            memory: Memory::new(&tcx.data_layout, limits.memory_size, memory_data),
             suspended: HashMap::new(),
             globals: HashMap::new(),
             stack: Vec::new(),
             stack_limit: limits.stack_limit,
             steps_remaining: limits.step_limit,
-            env_vars: HashMap::new(),
         }
     }
 
@@ -179,11 +179,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.allocate(size, align, MemoryKind::Stack)
     }
 
-    pub fn memory(&self) -> &Memory<'a, 'tcx> {
+    pub fn memory(&self) -> &Memory<'a, 'tcx, M> {
         &self.memory
     }
 
-    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M> {
         &mut self.memory
     }
 
@@ -302,7 +302,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi())
     }
 
-    pub(super) fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
+    pub fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
         self.type_layout_with_substs(ty, self.substs())
     }
 
@@ -414,29 +414,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             StackPopCleanup::Goto(target) => self.goto_block(target),
             StackPopCleanup::None => {},
-            StackPopCleanup::Tls(key) => {
-                // either fetch the next dtor or start new from the beginning, if any are left with a non-null data
-                let dtor = match self.memory.fetch_tls_dtor(key)? {
-                    dtor @ Some(_) => dtor,
-                    None => self.memory.fetch_tls_dtor(None)?,
-                };
-                if let Some((instance, ptr, key)) = dtor {
-                    trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
-                    // TODO: Potentially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
-                    let mir = self.load_mir(instance.def)?;
-                    self.push_stack_frame(
-                        instance,
-                        mir.span,
-                        mir,
-                        Lvalue::undef(),
-                        StackPopCleanup::Tls(Some(key)),
-                    )?;
-                    let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
-                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                    let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                    self.write_ptr(dest, ptr, ty)?;
-                }
-            }
         }
         // deallocate all locals that are backed by an allocation
         for local in frame.locals {
@@ -999,7 +976,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.value_to_primval(value, ty)
     }
 
-    pub(super) fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::Operand::*;
         match *op {
             Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
@@ -1030,7 +1007,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
+    pub fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
         self.monomorphize(operand.ty(self.mir(), self.tcx), self.substs())
     }
 
@@ -1101,7 +1078,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    pub fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match self.follow_by_ref_value(value, ty)? {
             Value::ByRef{..} => bug!("follow_by_ref_value can't result in `ByRef`"),
 
@@ -1114,7 +1091,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn write_null(
+    pub fn write_null(
         &mut self,
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
@@ -1122,7 +1099,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
     }
 
-    pub(super) fn write_ptr(
+    pub fn write_ptr(
         &mut self,
         dest: Lvalue<'tcx>,
         val: Pointer,
@@ -1131,7 +1108,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.write_value(val.to_value(), dest, dest_ty)
     }
 
-    pub(super) fn write_primval(
+    pub fn write_primval(
         &mut self,
         dest: Lvalue<'tcx>,
         val: PrimVal,
@@ -1140,7 +1117,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.write_value(Value::ByVal(val), dest, dest_ty)
     }
 
-    pub(super) fn write_value(
+    pub fn write_value(
         &mut self,
         src_val: Value,
         dest: Lvalue<'tcx>,
@@ -1489,7 +1466,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Some(Value::ByVal(val)))
     }
 
-    pub(super) fn frame(&self) -> &Frame<'tcx> {
+    pub fn frame(&self) -> &Frame<'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
@@ -1607,7 +1584,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
+    pub fn dump_local(&self, lvalue: Lvalue<'tcx>) {
         // Debug output
         if let Lvalue::Local { frame, local } = lvalue {
             let mut allocs = Vec::new();
@@ -1678,6 +1655,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // }
         Ok(())
     }
+
+    pub fn report(&self, e: &EvalError) {
+        if let Some(frame) = self.stack().last() {
+            let block = &frame.mir.basic_blocks()[frame.block];
+            let span = if frame.stmt < block.statements.len() {
+                block.statements[frame.stmt].source_info.span
+            } else {
+                block.terminator().source_info.span
+            };
+            let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
+            for &Frame { instance, span, .. } in self.stack().iter().rev() {
+                if self.tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
+                    err.span_note(span, "inside call to closure");
+                    continue;
+                }
+                err.span_note(span, &format!("inside call to {}", instance));
+            }
+            err.emit();
+        } else {
+            self.tcx.sess.err(&e.to_string());
+        }
+    }
 }
 
 impl<'tcx> Frame<'tcx> {
@@ -1712,117 +1711,6 @@ impl<'tcx> Frame<'tcx> {
         let old = self.locals[local.index() - 1];
         self.locals[local.index() - 1] = None;
         return Ok(old);
-    }
-}
-
-pub fn eval_main<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    main_id: DefId,
-    start_wrapper: Option<DefId>,
-    limits: ResourceLimits,
-) {
-    fn run_main<'a, 'tcx: 'a>(
-        ecx: &mut EvalContext<'a, 'tcx>,
-        main_id: DefId,
-        start_wrapper: Option<DefId>,
-    ) -> EvalResult<'tcx> {
-        let main_instance = ty::Instance::mono(ecx.tcx, main_id);
-        let main_mir = ecx.load_mir(main_instance.def)?;
-        let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
-
-        if !main_mir.return_ty.is_nil() || main_mir.arg_count != 0 {
-            return Err(EvalError::Unimplemented("miri does not support main functions without `fn()` type signatures".to_owned()));
-        }
-
-        if let Some(start_id) = start_wrapper {
-            let start_instance = ty::Instance::mono(ecx.tcx, start_id);
-            let start_mir = ecx.load_mir(start_instance.def)?;
-
-            if start_mir.arg_count != 3 {
-                return Err(EvalError::AbiViolation(format!("'start' lang item should have three arguments, but has {}", start_mir.arg_count)));
-            }
-
-            // Return value
-            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi(), MemoryKind::Stack)?;
-            cleanup_ptr = Some(ret_ptr);
-
-            // Push our stack frame
-            ecx.push_stack_frame(
-                start_instance,
-                start_mir.span,
-                start_mir,
-                Lvalue::from_ptr(ret_ptr),
-                StackPopCleanup::Tls(None),
-            )?;
-
-            let mut args = ecx.frame().mir.args_iter();
-
-            // First argument: pointer to main()
-            let main_ptr = ecx.memory.create_fn_alloc(main_instance);
-            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
-            let main_ty = main_instance.def.def_ty(ecx.tcx);
-            let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx));
-            ecx.write_value(Value::ByVal(PrimVal::Ptr(main_ptr)), dest, main_ptr_ty)?;
-
-            // Second argument (argc): 0
-            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
-            let ty = ecx.tcx.types.isize;
-            ecx.write_null(dest, ty)?;
-
-            // Third argument (argv): 0
-            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
-            let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-            ecx.write_null(dest, ty)?;
-        } else {
-            ecx.push_stack_frame(
-                main_instance,
-                main_mir.span,
-                main_mir,
-                Lvalue::undef(),
-                StackPopCleanup::Tls(None),
-            )?;
-        }
-
-        while ecx.step()? {}
-        if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory.deallocate(cleanup_ptr, None, MemoryKind::Stack)?;
-        }
-        return Ok(());
-    }
-
-    let mut ecx = EvalContext::new(tcx, limits);
-    match run_main(&mut ecx, main_id, start_wrapper) {
-        Ok(()) => {
-            let leaks = ecx.memory.leak_report();
-            if leaks != 0 {
-                tcx.sess.err("the evaluated program leaked memory");
-            }
-        }
-        Err(e) => {
-            report(tcx, &ecx, &e);
-        }
-    }
-}
-
-fn report(tcx: TyCtxt, ecx: &EvalContext, e: &EvalError) {
-    if let Some(frame) = ecx.stack().last() {
-        let block = &frame.mir.basic_blocks()[frame.block];
-        let span = if frame.stmt < block.statements.len() {
-            block.statements[frame.stmt].source_info.span
-        } else {
-            block.terminator().source_info.span
-        };
-        let mut err = tcx.sess.struct_span_err(span, &e.to_string());
-        for &Frame { instance, span, .. } in ecx.stack().iter().rev() {
-            if tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
-                err.span_note(span, "inside call to closure");
-                continue;
-            }
-            err.span_note(span, &format!("inside call to {}", instance));
-        }
-        err.emit();
-    } else {
-        tcx.sess.err(&e.to_string());
     }
 }
 

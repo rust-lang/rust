@@ -9,6 +9,7 @@ use super::{
     EvalContext,
     MemoryPointer,
     PrimVal, Value, Pointer,
+    Machine,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -48,15 +49,15 @@ pub enum LvalueExtra {
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
-    pub(super) instance: ty::Instance<'tcx>,
+    pub instance: ty::Instance<'tcx>,
 
     /// The index for promoted globals within their function's `Mir`.
-    pub(super) promoted: Option<mir::Promoted>,
+    pub promoted: Option<mir::Promoted>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Global<'tcx> {
-    pub(super) value: Value,
+    pub value: Value,
     /// Only used in `force_allocation` to ensure we don't mark the memory
     /// before the static is initialized. It is possible to convert a
     /// global which initially is `Value::ByVal(PrimVal::Undef)` and gets
@@ -76,7 +77,7 @@ impl<'tcx> Lvalue<'tcx> {
         Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true }
     }
 
-    pub(crate) fn from_ptr(ptr: MemoryPointer) -> Self {
+    pub fn from_ptr(ptr: MemoryPointer) -> Self {
         Self::from_primval_ptr(ptr.into())
     }
 
@@ -132,7 +133,7 @@ impl<'tcx> Global<'tcx> {
     }
 }
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// Reads a value from the lvalue without going through the intermediate step of obtaining
     /// a `miri::Lvalue`
     pub fn try_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Option<Value>> {
@@ -209,7 +210,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
+    pub fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,

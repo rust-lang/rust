@@ -17,12 +17,13 @@ use super::{
     Global, GlobalId, Lvalue,
     Value, PrimVal,
     HasMemory,
+    Machine,
 };
 
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
         self.steps_remaining = self.steps_remaining.saturating_sub(n);
         if self.steps_remaining > 0 {
@@ -160,15 +161,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 // this includes any method that might access the stack
 // basically don't call anything other than `load_mir`, `alloc_ptr`, `push_stack_frame`
 // The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
-struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
+struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b, M: Machine<'tcx> + 'a> {
     span: Span,
-    ecx: &'a mut EvalContext<'b, 'tcx>,
+    ecx: &'a mut EvalContext<'b, 'tcx, M>,
     mir: &'tcx mir::Mir<'tcx>,
     instance: ty::Instance<'tcx>,
     new_constants: &'a mut EvalResult<'tcx, u64>,
 }
 
-impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx, M: Machine<'tcx>> ConstantExtractor<'a, 'b, 'tcx, M> {
     fn global_item(
         &mut self,
         def_id: DefId,
@@ -223,7 +224,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx, M> {
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: mir::Location) {
         self.super_constant(constant, location);
         match constant.literal {

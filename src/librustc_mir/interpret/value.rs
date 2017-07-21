@@ -5,7 +5,8 @@ use rustc::ty::layout::HasDataLayout;
 
 use super::{
     EvalError, EvalResult,
-    Memory, MemoryPointer, HasMemory, PointerArithmetic
+    Memory, MemoryPointer, HasMemory, PointerArithmetic,
+    Machine,
 };
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
@@ -75,7 +76,7 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub(crate) fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
@@ -170,7 +171,7 @@ impl<'a, 'tcx: 'a> Value {
 
     /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
     /// this may have to perform a load.
-    pub(super) fn into_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
+    pub fn into_ptr<M: Machine<'tcx>>(&self, mem: &Memory<'a, 'tcx, M>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef { ptr, aligned } => {
@@ -180,9 +181,9 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn into_ptr_vtable_pair(
+    pub(super) fn into_ptr_vtable_pair<M: Machine<'tcx>>(
         &self,
-        mem: &Memory<'a, 'tcx>
+        mem: &Memory<'a, 'tcx, M>
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         use self::Value::*;
         match *self {
@@ -200,7 +201,7 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn into_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
+    pub(super) fn into_slice<M: Machine<'tcx>>(&self, mem: &Memory<'a, 'tcx, M>) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
             ByRef { ptr: ref_ptr, aligned } => {

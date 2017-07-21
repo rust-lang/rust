@@ -16,6 +16,7 @@ use super::{
     AccessKind, LockInfo,
     PrimVal, Value,
     Lvalue, LvalueExtra,
+    Machine,
 };
 
 // FIXME remove this once it lands in rustc
@@ -56,7 +57,7 @@ impl ValidationMode {
 }
 
 // Validity checks
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
         // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
         {

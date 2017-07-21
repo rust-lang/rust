@@ -7,9 +7,10 @@ use super::{
     EvalResult,
     EvalError,
     MemoryPointer, PointerArithmetic,
+    Machine,
 };
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(super) fn cast_primval(
         &self,
         val: PrimVal,

@@ -10,9 +10,10 @@ use interpret::{
     Lvalue, LvalueExtra,
     PrimVal, PrimValKind, Value, Pointer,
     HasMemory,
+    Machine,
 };
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(super) fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,

@@ -10,10 +10,10 @@ use super::{
     EvalContext, eval_context,
     MemoryPointer, Kind,
     Value, PrimVal,
+    Machine,
 };
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.

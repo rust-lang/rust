@@ -1,9 +1,12 @@
+//! An interpreter for MIR used in CTFE and by miri
+
 mod cast;
 mod const_eval;
 mod error;
 mod eval_context;
 mod lvalue;
 mod validation;
+mod machine;
 mod memory;
 mod operator;
 mod step;
@@ -21,7 +24,6 @@ pub use self::eval_context::{
     Frame,
     ResourceLimits,
     StackPopCleanup,
-    eval_main,
     DynamicLifetime,
     TyAndPacked,
 };
@@ -38,7 +40,6 @@ pub use self::memory::{
     Memory,
     MemoryPointer,
     Kind,
-    TlsKey,
 };
 
 use self::memory::{
@@ -57,6 +58,11 @@ pub use self::value::{
 
 pub use self::const_eval::{
     eval_body_as_integer,
+    eval_body_as_primval,
+};
+
+pub use self::machine::{
+    Machine,
 };
 
 pub use self::validation::{

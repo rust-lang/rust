@@ -1,5 +1,7 @@
 use rustc::traits::Reveal;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
+use rustc::mir;
+
 use syntax::ast::Mutability;
 
 use super::{
@@ -16,7 +18,7 @@ pub fn eval_body_as_primval<'a, 'tcx>(
     instance: Instance<'tcx>,
 ) -> EvalResult<'tcx, (PrimVal, Ty<'tcx>)> {
     let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::new(tcx, limits);
+    let mut ecx = EvalContext::<Evaluator>::new(tcx, limits, (), ());
     let cid = GlobalId { instance, promoted: None };
     if ecx.tcx.has_attr(instance.def_id(), "linkage") {
         return Err(EvalError::NotConst("extern global".to_string()));
@@ -75,4 +77,22 @@ pub fn eval_body_as_integer<'a, 'tcx>(
         TyUint(UintTy::Us) => ConstInt::Usize(ConstUsize::new(prim as u64, tcx.sess.target.uint_type).expect("miri should already have errored")),
         _ => return Err(EvalError::NeedsRfc("evaluating anything other than isize/usize during typeck".to_string())),
     })
+}
+
+struct Evaluator;
+
+impl<'tcx> super::Machine<'tcx> for Evaluator {
+    type Data = ();
+    type MemoryData = ();
+    fn call_missing_fn<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        _arg_operands: &[mir::Operand<'tcx>],
+        _sig: ty::FnSig<'tcx>,
+        path: String,
+    ) -> EvalResult<'tcx> {
+        // some simple things like `malloc` might get accepted in the future
+        Err(EvalError::NeedsRfc(format!("calling extern function `{}`", path)))
+    }
 }

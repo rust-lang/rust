@@ -12,6 +12,7 @@ use super::{
     EvalError, EvalResult,
     PrimVal, Pointer,
     EvalContext, DynamicLifetime,
+    Machine,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,7 +212,7 @@ impl<'tcx> MemoryPointer {
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub(crate) fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
         Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().offset(self.offset, i)?))
     }
 }
@@ -220,15 +221,10 @@ impl<'tcx> MemoryPointer {
 // Top-level interpreter memory
 ////////////////////////////////////////////////////////////////////////////////
 
-pub type TlsKey = usize;
+pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
+    /// Additional data required by the Machine
+    pub data: M::MemoryData,
 
-#[derive(Copy, Clone, Debug)]
-pub struct TlsEntry<'tcx> {
-    data: Pointer, // Will eventually become a map from thread IDs to `Pointer`s, if we ever support more than one thread.
-    dtor: Option<ty::Instance<'tcx>>,
-}
-
-pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
     alloc_map: HashMap<AllocId, Allocation>,
 
@@ -261,12 +257,6 @@ pub struct Memory<'a, 'tcx> {
     /// allocations for string and bytestring literals.
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
 
-    /// pthreads-style thread-local storage.
-    thread_local: BTreeMap<TlsKey, TlsEntry<'tcx>>,
-
-    /// The Key to use for the next thread-local allocation.
-    next_thread_local: TlsKey,
-
     /// To avoid having to pass flags to every single memory access, we have some global state saying whether
     /// alignment checking is currently enforced for read and/or write accesses.
     reads_are_aligned: Cell<bool>,
@@ -276,9 +266,10 @@ pub struct Memory<'a, 'tcx> {
     cur_frame: usize,
 }
 
-impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn new(layout: &'a TargetDataLayout, max_memory: u64) -> Self {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
+    pub fn new(layout: &'a TargetDataLayout, max_memory: u64, data: M::MemoryData) -> Self {
         Memory {
+            data,
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
@@ -288,8 +279,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             memory_usage: 0,
             static_alloc: HashSet::new(),
             literal_alloc_cache: HashMap::new(),
-            thread_local: BTreeMap::new(),
-            next_thread_local: 0,
             reads_are_aligned: Cell::new(true),
             writes_are_aligned: Cell::new(true),
             cur_frame: usize::max_value(),
@@ -457,85 +446,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub(crate) fn set_cur_frame(&mut self, cur_frame: usize) {
         self.cur_frame = cur_frame;
     }
-
-    pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
-        let new_key = self.next_thread_local;
-        self.next_thread_local += 1;
-        self.thread_local.insert(new_key, TlsEntry { data: Pointer::null(), dtor });
-        trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
-        return new_key;
-    }
-
-    pub(crate) fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
-        return match self.thread_local.remove(&key) {
-            Some(_) => {
-                trace!("TLS key {} removed", key);
-                Ok(())
-            },
-            None => Err(EvalError::TlsOutOfBounds)
-        }
-    }
-
-    pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
-        return match self.thread_local.get(&key) {
-            Some(&TlsEntry { data, .. }) => {
-                trace!("TLS key {} loaded: {:?}", key, data);
-                Ok(data)
-            },
-            None => Err(EvalError::TlsOutOfBounds)
-        }
-    }
-
-    pub(crate) fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx> {
-        return match self.thread_local.get_mut(&key) {
-            Some(&mut TlsEntry { ref mut data, .. }) => {
-                trace!("TLS key {} stored: {:?}", key, new_data);
-                *data = new_data;
-                Ok(())
-            },
-            None => Err(EvalError::TlsOutOfBounds)
-        }
-    }
-    
-    /// Returns a dtor, its argument and its index, if one is supposed to run
-    ///
-    /// An optional destructor function may be associated with each key value.
-    /// At thread exit, if a key value has a non-NULL destructor pointer,
-    /// and the thread has a non-NULL value associated with that key,
-    /// the value of the key is set to NULL, and then the function pointed
-    /// to is called with the previously associated value as its sole argument.
-    /// The order of destructor calls is unspecified if more than one destructor
-    /// exists for a thread when it exits.
-    ///
-    /// If, after all the destructors have been called for all non-NULL values
-    /// with associated destructors, there are still some non-NULL values with
-    /// associated destructors, then the process is repeated.
-    /// If, after at least {PTHREAD_DESTRUCTOR_ITERATIONS} iterations of destructor
-    /// calls for outstanding non-NULL values, there are still some non-NULL values
-    /// with associated destructors, implementations may stop calling destructors,
-    /// or they may continue calling destructors until no non-NULL values with
-    /// associated destructors exist, even though this might result in an infinite loop.
-    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>> {
-        use std::collections::Bound::*;
-        let start = match key {
-            Some(key) => Excluded(key),
-            None => Unbounded,
-        };
-        for (&key, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.range_mut((start, Unbounded)) {
-            if !data.is_null()? {
-                if let Some(dtor) = dtor {
-                    let ret = Some((dtor, *data, key));
-                    *data = Pointer::null();
-                    return Ok(ret);
-                }
-            }
-        }
-        return Ok(None);
-    }
 }
 
 /// Locking
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub(crate) fn check_locks(&self, ptr: MemoryPointer, len: u64, access: AccessKind) -> EvalResult<'tcx> {
         if len == 0 {
             return Ok(())
@@ -658,7 +572,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Allocation accessors
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
         match self.alloc_map.get(&id) {
             Some(alloc) => Ok(alloc),
@@ -796,7 +710,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Byte accessors
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     fn get_bytes_unchecked(&self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
         if self.reads_are_aligned.get() {
@@ -849,7 +763,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Reading and writing
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     /// mark an allocation as being the entry point to a static (see `static_alloc` field)
     pub fn mark_static(&mut self, alloc_id: AllocId) {
         trace!("mark_static: {:?}", alloc_id);
@@ -1159,7 +1073,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Relocations
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     fn relocations(&self, ptr: MemoryPointer, size: u64)
         -> EvalResult<'tcx, btree_map::Range<u64, AllocId>>
     {
@@ -1214,7 +1128,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Undefined bytes
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     // FIXME(solson): This is a very naive, slow version.
     fn copy_undef_mask(&mut self, src: MemoryPointer, dest: MemoryPointer, size: u64) -> EvalResult<'tcx> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
@@ -1397,9 +1311,9 @@ fn bit_index(bits: u64) -> (usize, usize) {
 // Unaligned accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) trait HasMemory<'a, 'tcx> {
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx>;
-    fn memory(&self) -> &Memory<'a, 'tcx>;
+pub(crate) trait HasMemory<'a, 'tcx, M: Machine<'tcx>> {
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M>;
+    fn memory(&self) -> &Memory<'a, 'tcx, M>;
 
     // These are not supposed to be overriden.
     fn read_maybe_aligned<F, T>(&self, aligned: bool, f: F) -> EvalResult<'tcx, T>
@@ -1436,26 +1350,26 @@ pub(crate) trait HasMemory<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HasMemory<'a, 'tcx> for Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> HasMemory<'a, 'tcx, M> for Memory<'a, 'tcx, M> {
     #[inline]
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M> {
         self
     }
 
     #[inline]
-    fn memory(&self) -> &Memory<'a, 'tcx> {
+    fn memory(&self) -> &Memory<'a, 'tcx, M> {
         self
     }
 }
 
-impl<'a, 'tcx> HasMemory<'a, 'tcx> for EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> HasMemory<'a, 'tcx, M> for EvalContext<'a, 'tcx, M> {
     #[inline]
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M> {
         &mut self.memory
     }
 
     #[inline]
-    fn memory(&self) -> &Memory<'a, 'tcx> {
+    fn memory(&self) -> &Memory<'a, 'tcx, M> {
         &self.memory
     }
 }
@@ -1517,20 +1431,20 @@ pub trait PointerArithmetic : layout::HasDataLayout {
 
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
-impl<'a, 'tcx> layout::HasDataLayout for &'a Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> layout::HasDataLayout for &'a Memory<'a, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self.layout
     }
 }
-impl<'a, 'tcx> layout::HasDataLayout for &'a EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> layout::HasDataLayout for &'a EvalContext<'a, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self.memory().layout
     }
 }
 
-impl<'c, 'b, 'a, 'tcx> layout::HasDataLayout for &'c &'b mut EvalContext<'a, 'tcx> {
+impl<'c, 'b, 'a, 'tcx, M: Machine<'tcx>> layout::HasDataLayout for &'c &'b mut EvalContext<'a, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self.memory().layout

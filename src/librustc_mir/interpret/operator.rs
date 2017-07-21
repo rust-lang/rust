@@ -6,6 +6,7 @@ use super::{
     EvalContext,
     MemoryPointer,
     Lvalue,
+    Machine,
 };
 
 use super::value::{
@@ -18,7 +19,7 @@ use super::value::{
     f64_to_bytes,
 };
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
@@ -134,7 +135,7 @@ macro_rules! f64_arithmetic {
     )
 }
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// Returns the result of the specified operation and whether it overflowed.
     pub fn binary_op(
         &self,
