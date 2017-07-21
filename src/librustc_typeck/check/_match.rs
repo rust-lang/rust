@@ -113,10 +113,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype(pat.span, expected, rhs_ty);
                 common_type
             }
-            PatKind::Binding(bm, def_id, _, ref sub) => {
+            PatKind::Binding(ba, def_id, _, ref sub) => {
+                // Note the binding mode in the typeck tables. For now, what we store is always
+                // identical to what could be scraped from the HIR, but this will change with
+                // default binding modes (#42640).
+                let bm = ty::BindingMode::convert(ba);
+                self.inh.tables.borrow_mut().pat_binding_modes.insert(pat.id, bm);
+
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
-                    hir::BindByRef(mutbl) => {
+                    ty::BindByReference(mutbl) => {
                         // if the binding is like
                         //    ref x | ref const x | ref mut x
                         // then `x` is assigned a value of type `&M T` where M is the mutability
@@ -131,7 +137,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.demand_eqtype(pat.span, region_ty, typ);
                     }
                     // otherwise the type of x is the expected type T
-                    hir::BindByValue(_) => {
+                    ty::BindByValue(_) => {
                         // As above, `T <: typeof(x)` is required but we
                         // use equality, see (*) below.
                         self.demand_eqtype(pat.span, expected, typ);
@@ -396,11 +402,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        match_src: hir::MatchSource) -> Ty<'tcx> {
         let tcx = self.tcx;
 
-        // Not entirely obvious: if matches may create ref bindings, we
-        // want to use the *precise* type of the discriminant, *not* some
-        // supertype, as the "discriminant type" (issue #23116).
+        // Not entirely obvious: if matches may create ref bindings, we want to
+        // use the *precise* type of the discriminant, *not* some supertype, as
+        // the "discriminant type" (issue #23116).
+        //
+        // FIXME(tschottdorf): don't call contains_explicit_ref_binding, which
+        // is problematic as the HIR is being scraped, but ref bindings may be
+        // implicit after #42640. We need to make sure that pat_adjustments
+        // (once introduced) is populated by the time we get here.
         let contains_ref_bindings = arms.iter()
-                                        .filter_map(|a| a.contains_ref_binding())
+                                        .filter_map(|a| a.contains_explicit_ref_binding())
                                         .max_by_key(|m| match *m {
                                             hir::MutMutable => 1,
                                             hir::MutImmutable => 0,

@@ -1196,9 +1196,13 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, sub_pat| {
                 match sub_pat.node {
                     // `ref x` pattern
-                    PatKind::Binding(hir::BindByRef(mutbl), ..) => {
-                        self.link_region_from_node_type(sub_pat.span, sub_pat.id,
-                                                        mutbl, sub_cmt);
+                    PatKind::Binding(..) => {
+                        let bm = *mc.tables.pat_binding_modes.get(&sub_pat.id)
+                                                             .expect("missing binding mode");
+                        if let ty::BindByReference(mutbl) = bm {
+                            self.link_region_from_node_type(sub_pat.span, sub_pat.id,
+                                                            mutbl, sub_cmt);
+                        }
                     }
                     _ => {}
                 }

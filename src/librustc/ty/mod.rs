@@ -74,6 +74,9 @@ pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TypeVariants::*;
 
+pub use self::binding::BindingMode;
+pub use self::binding::BindingMode::*;
+
 pub use self::context::{TyCtxt, GlobalArenas, tls};
 pub use self::context::{Lift, TypeckTables};
 
@@ -84,6 +87,7 @@ pub use self::trait_def::TraitDef;
 pub use self::maps::queries;
 
 pub mod adjustment;
+pub mod binding;
 pub mod cast;
 pub mod error;
 pub mod fast_reject;

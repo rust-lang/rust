@@ -330,11 +330,12 @@ impl MutabilityCategory {
         ret
     }
 
-    fn from_local(tcx: TyCtxt, id: ast::NodeId) -> MutabilityCategory {
+    fn from_local(tcx: TyCtxt, tables: &ty::TypeckTables, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.hir.get(id) {
             hir_map::NodeLocal(p) => match p.node {
-                PatKind::Binding(bind_mode, ..) => {
-                    if bind_mode == hir::BindByValue(hir::MutMutable) {
+                PatKind::Binding(..) => {
+                    let bm = *tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+                    if bm == ty::BindByValue(hir::MutMutable) {
                         McDeclared
                     } else {
                         McImmutable
@@ -475,16 +476,21 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // *being borrowed* is.  But ideally we would put in a more
         // fundamental fix to this conflated use of the node id.
         let ret_ty = match pat.node {
-            PatKind::Binding(hir::BindByRef(_), ..) => {
-                // a bind-by-ref means that the base_ty will be the type of the ident itself,
-                // but what we want here is the type of the underlying value being borrowed.
-                // So peel off one-level, turning the &T into T.
-                match base_ty.builtin_deref(false, ty::NoPreference) {
-                    Some(t) => t.ty,
-                    None => {
-                        debug!("By-ref binding of non-derefable type {:?}", base_ty);
-                        return Err(());
+            PatKind::Binding(..) => {
+                let bm = *self.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode");
+                if let ty::BindByReference(_) = bm {
+                    // a bind-by-ref means that the base_ty will be the type of the ident itself,
+                    // but what we want here is the type of the underlying value being borrowed.
+                    // So peel off one-level, turning the &T into T.
+                    match base_ty.builtin_deref(false, ty::NoPreference) {
+                        Some(t) => t.ty,
+                        None => {
+                            debug!("By-ref binding of non-derefable type {:?}", base_ty);
+                            return Err(());
+                        }
                     }
+                } else {
+                    base_ty
                 }
             }
             _ => base_ty,
@@ -659,7 +665,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 id,
                 span,
                 cat: Categorization::Local(vid),
-                mutbl: MutabilityCategory::from_local(self.tcx, vid),
+                mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vid),
                 ty: expr_ty,
                 note: NoteNone
             }))
@@ -711,7 +717,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let var_ty = self.node_ty(var_id)?;
 
         // Mutability of original variable itself
-        let var_mutbl = MutabilityCategory::from_local(self.tcx, var_id);
+        let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_id);
 
         // Construct the upvar. This represents access to the field
         // from the environment (perhaps we should eventually desugar

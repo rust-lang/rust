@@ -374,27 +374,31 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Binding(bm, def_id, ref ident, ref sub) => {
+            PatKind::Binding(_, def_id, ref ident, ref sub) => {
                 let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                 let var_ty = self.tables.node_id_to_type(pat.id);
                 let region = match var_ty.sty {
                     ty::TyRef(r, _) => Some(r),
                     _ => None,
                 };
+                let bm = *self.tables.pat_binding_modes.get(&pat.id)
+                                                       .expect("missing binding mode");
                 let (mutability, mode) = match bm {
-                    hir::BindByValue(hir::MutMutable) =>
+                    ty::BindByValue(hir::MutMutable) =>
                         (Mutability::Mut, BindingMode::ByValue),
-                    hir::BindByValue(hir::MutImmutable) =>
+                    ty::BindByValue(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByValue),
-                    hir::BindByRef(hir::MutMutable) =>
-                        (Mutability::Not, BindingMode::ByRef(region.unwrap(), BorrowKind::Mut)),
-                    hir::BindByRef(hir::MutImmutable) =>
-                        (Mutability::Not, BindingMode::ByRef(region.unwrap(), BorrowKind::Shared)),
+                    ty::BindByReference(hir::MutMutable) =>
+                        (Mutability::Not, BindingMode::ByRef(
+                            region.unwrap(), BorrowKind::Mut)),
+                    ty::BindByReference(hir::MutImmutable) =>
+                        (Mutability::Not, BindingMode::ByRef(
+                            region.unwrap(), BorrowKind::Shared)),
                 };
 
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
-                if let hir::BindByRef(_) = bm {
+                if let ty::BindByReference(_) = bm {
                     if let ty::TyRef(_, mt) = ty.sty {
                         ty = mt.ty;
                     } else {

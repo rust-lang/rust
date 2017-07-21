@@ -867,13 +867,14 @@ mod tests {
                                     pat: P(ast::Pat {
                                         id: ast::DUMMY_NODE_ID,
                                         node: PatKind::Ident(
-                                            ast::BindingMode::ByValue(ast::Mutability::Immutable),
-                                                Spanned{
-                                                    span: sp(6,7),
-                                                    node: Ident::from_str("b")},
-                                                None
-                                                    ),
-                                            span: sp(6,7)
+                                            ast::BindingMode::ByValue(
+                                                ast::Mutability::Immutable),
+                                            Spanned{
+                                                span: sp(6,7),
+                                                node: Ident::from_str("b")},
+                                            None
+                                        ),
+                                        span: sp(6,7)
                                     }),
                                         id: ast::DUMMY_NODE_ID
                                     }],

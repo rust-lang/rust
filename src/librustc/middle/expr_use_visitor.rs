@@ -796,16 +796,19 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("determine_pat_move_mode cmt_discr={:?} pat={:?}", cmt_discr,
                pat);
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
-            match pat.node {
-                PatKind::Binding(hir::BindByRef(..), ..) =>
-                    mode.lub(BorrowingMatch),
-                PatKind::Binding(hir::BindByValue(..), ..) => {
-                    match copy_or_move(&self.mc, self.param_env, &cmt_pat, PatBindingMove) {
-                        Copy => mode.lub(CopyingMatch),
-                        Move(..) => mode.lub(MovingMatch),
+            if let PatKind::Binding(..) = pat.node {
+                let bm = *self.mc.tables.pat_binding_modes.get(&pat.id)
+                                                          .expect("missing binding mode");
+                match bm {
+                    ty::BindByReference(..) =>
+                        mode.lub(BorrowingMatch),
+                    ty::BindByValue(..) => {
+                        match copy_or_move(&self.mc, self.param_env, &cmt_pat, PatBindingMove) {
+                            Copy => mode.lub(CopyingMatch),
+                            Move(..) => mode.lub(MovingMatch),
+                        }
                     }
                 }
-                _ => {}
             }
         }));
     }
@@ -818,8 +821,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
-            if let PatKind::Binding(bmode, def_id, ..) = pat.node {
+            if let PatKind::Binding(_, def_id, ..) = pat.node {
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
+                let bm = *mc.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode");
 
                 // pat_ty: the type of the binding being produced.
                 let pat_ty = return_if_err!(mc.node_ty(pat.id));
@@ -832,14 +836,14 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 }
 
                 // It is also a borrow or copy/move of the value being matched.
-                match bmode {
-                    hir::BindByRef(m) => {
+                match bm {
+                    ty::BindByReference(m) => {
                         if let ty::TyRef(r, _) = pat_ty.sty {
                             let bk = ty::BorrowKind::from_mutbl(m);
                             delegate.borrow(pat.id, pat.span, cmt_pat, r, bk, RefBinding);
                         }
                     }
-                    hir::BindByValue(..) => {
+                    ty::BindByValue(..) => {
                         let mode = copy_or_move(mc, param_env, &cmt_pat, PatBindingMove);
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
