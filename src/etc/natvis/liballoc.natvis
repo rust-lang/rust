@@ -42,8 +42,8 @@
     </Expand>
   </Type>
   <Type Name="alloc::string::String">
-    <DisplayString>{*(char**)this,[vec.len]}</DisplayString>
-    <StringView>*(char**)this,[vec.len]</StringView>
+    <DisplayString>{*(char**)this,[vec.len]s8}</DisplayString>
+    <StringView>*(char**)this,[vec.len]s8</StringView>
     <Expand>
       <Item Name="[size]" ExcludeView="simple">vec.len</Item>
       <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap</Item>
