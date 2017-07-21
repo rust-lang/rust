@@ -2936,7 +2936,7 @@ impl<'a> Parser<'a> {
                         let expr_str = self.sess.codemap().span_to_snippet(expr.span)
                                                 .unwrap_or(pprust::expr_to_string(&expr));
                         err.span_suggestion(expr.span,
-                                            "if you want to compare the casted value then write:",
+                                            "try comparing the casted value",
                                             format!("({})", expr_str));
                         err.emit();
 
