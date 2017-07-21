@@ -51,8 +51,12 @@ pub struct ProfQDumpParams {
 /// FIXME(matthewhammer): Determine whether we should include cycle detection here or not.
 #[derive(Clone,Debug)]
 pub enum ProfileQueriesMsg {
+    /// begin a timed pass
+    TimeBegin(String),
+    // end a timed pass
+    TimeEnd,
     /// begin a new query
-    QueryBegin(Span,QueryMsg),
+    QueryBegin(Span, QueryMsg),
     /// query is satisfied by using an already-known value for the given key
     CacheHit,
     /// query requires running a provider; providers may nest, permitting queries to nest.
@@ -110,9 +114,15 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
         r
     });
 
+    if cfg!(debug_assertions) {
+        profq_msg(ProfileQueriesMsg::TimeBegin(what.to_string()))
+    };
     let start = Instant::now();
     let rv = f();
     let dur = start.elapsed();
+    if cfg!(debug_assertions) {
+        profq_msg(ProfileQueriesMsg::TimeEnd)
+    };
 
     print_time_passes_entry_internal(what, dur);
 

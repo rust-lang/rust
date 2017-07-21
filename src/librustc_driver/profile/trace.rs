@@ -22,6 +22,7 @@ pub struct Query {
 }
 pub enum Effect {
     QueryBegin(Query, CacheCase),
+    TimeBegin(String),
 }
 pub enum CacheCase {
     Hit, Miss
@@ -32,16 +33,6 @@ pub struct Rec {
     pub start: Instant,
     pub duration: Duration,
     pub extent: Box<Vec<Rec>>,
-}
-/// State for parsing recursive trace structure
-#[derive(Clone, Eq, PartialEq)]
-pub enum ParseState {
-    NoQuery,
-    HaveQuery(Query, Instant),
-}
-pub struct StackFrame {
-    pub parse_st: ParseState,
-    pub traces:   Vec<Rec>,
 }
 pub struct QueryMetric {
     pub count: usize,
@@ -58,6 +49,10 @@ pub fn cons_of_query_msg(q: &trace::Query) -> String {
 // First return value is text; second return value is a CSS class
 pub fn html_of_effect(eff: &Effect) -> (String, String) {
     match *eff {
+        Effect::TimeBegin(ref msg) => {
+            (msg.clone(),
+             format!("time-begin"))
+        },
         Effect::QueryBegin(ref qmsg, ref cc) => {
             let cons = cons_of_query_msg(qmsg);
             (cons.clone(),
@@ -142,6 +137,9 @@ fn write_traces_rec(file: &mut File, traces: &Vec<Rec>, total: Duration, depth: 
 fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec>) {
     for t in traces.iter() {
         match t.effect {
+            Effect::TimeBegin(ref _msg) => {
+                // dont count time-begin effects
+            }
             Effect::QueryBegin(ref qmsg, ref _cc) => {
                 let qcons = cons_of_query_msg(qmsg);
                 let qm = match counts.get(&qcons) {
@@ -212,6 +210,12 @@ body {
 .extent-0 {
     padding: 2px;
 }
+.time-begin {
+    border-width: 4px;
+    font-size: 12px;
+    color: white;
+    border-color: #afa;
+}
 .important {
     border-width: 3px;
     font-size: 12px;
@@ -233,6 +237,31 @@ body {
 }
 .dur {
   display: none
+}
+.frac-50 {
+  padding: 4px;
+  border-width: 10px;
+  font-size: 16px;
+}
+.frac-40 {
+  padding: 4px;
+  border-width: 8px;
+  font-size: 16px;
+}
+.frac-30 {
+  padding: 3px;
+  border-width: 6px;
+  font-size: 16px;
+}
+.frac-20 {
+  padding: 3px;
+  border-width: 6px;
+  font-size: 16px;
+}
+.frac-10 {
+  padding: 3px;
+  border-width: 6px;
+  font-size: 16px;
 }
 ").unwrap();
 }
