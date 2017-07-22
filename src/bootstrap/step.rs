@@ -546,52 +546,87 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     //
     // Tools used during the build system but not shipped
     rules.build("tool-rustbook", "src/tools/rustbook")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "rustbook"));
     rules.build("tool-error-index", "src/tools/error_index_generator")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
     rules.build("tool-unstable-book-gen", "src/tools/unstable-book-gen")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "unstable-book-gen"));
     rules.build("tool-tidy", "src/tools/tidy")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_build(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "tidy"));
     rules.build("tool-linkchecker", "src/tools/linkchecker")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "linkchecker"));
     rules.build("tool-cargotest", "src/tools/cargotest")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "cargotest"));
     rules.build("tool-compiletest", "src/tools/compiletest")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libtest-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
     rules.build("tool-build-manifest", "src/tools/build-manifest")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_build(true)
+         .only_host_build(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
     rules.build("tool-remote-test-server", "src/tools/remote-test-server")
+         .default(build.config.build_all_tools)
+         .host(true)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-server"));
     rules.build("tool-remote-test-client", "src/tools/remote-test-client")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "remote-test-client"));
     rules.build("tool-rust-installer", "src/tools/rust-installer")
+         .default(build.config.build_all_tools)
+         .host(true)
+         .only_stage(0)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "rust-installer"));
     rules.build("tool-cargo", "src/tools/cargo")
+         .default(build.config.extended || build.config.build_all_tools)
          .host(true)
-         .default(build.config.extended)
          .dep(|s| s.name("maybe-clean-tools"))
          .dep(|s| s.name("libstd-tool"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
@@ -604,8 +639,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          })
          .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
     rules.build("tool-rls", "src/tools/rls")
+         .default(build.config.extended || build.config.build_all_tools)
          .host(true)
-         .default(build.config.extended)
          .dep(|s| s.name("librustc-tool"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
          .dep(move |s| {
@@ -960,6 +995,9 @@ struct Rule<'a> {
     /// targets.
     only_build: bool,
 
+    /// Whether this rule is only built for one stage (usually stage 0).
+    only_stage: Option<u32>,
+
     /// A list of "order only" dependencies. This rules does not actually
     /// depend on these rules, but if they show up in the dependency graph then
     /// this rule must be executed after all these rules.
@@ -988,6 +1026,7 @@ impl<'a> Rule<'a> {
             host: false,
             only_host_build: false,
             only_build: false,
+            only_stage: None,
             after: Vec::new(),
         }
     }
@@ -1037,6 +1076,11 @@ impl<'a, 'b> RuleBuilder<'a, 'b> {
 
     fn only_host_build(&mut self, only_host_build: bool) -> &mut Self {
         self.rule.only_host_build = only_host_build;
+        self
+    }
+
+    fn only_stage(&mut self, stage: u32) -> &mut Self {
+        self.rule.only_stage = Some(stage);
         self
     }
 }
@@ -1205,6 +1249,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Clean => panic!(),
         };
+        let current_stage = self.sbuild.stage;
 
         let mut rules: Vec<_> = self.rules.values().filter_map(|rule| {
             if rule.kind != kind {
@@ -1258,7 +1303,10 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
 
             hosts.iter().flat_map(move |host| {
                 arr.iter().map(move |target| {
-                    self.sbuild.name(rule.name).target(target).host(host)
+                    self.sbuild.name(rule.name)
+                               .target(target)
+                               .host(host)
+                               .stage(rule.only_stage.unwrap_or(current_stage))
                 })
             })
         }).collect()
