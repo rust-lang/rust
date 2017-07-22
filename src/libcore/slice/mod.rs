@@ -1105,7 +1105,7 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn size_from_ptr<T>(_: *const T) -> usize {
     mem::size_of::<T>()
 }

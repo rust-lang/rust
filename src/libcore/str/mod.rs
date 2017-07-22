@@ -369,7 +369,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 ///
 /// assert_eq!("💖", sparkle_heart);
 /// ```
-#[inline(always)]
+#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     mem::transmute(v)
@@ -381,7 +381,7 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// See the immutable version, [`from_utf8_unchecked()`][fromutf8], for more information.
 ///
 /// [fromutf8]: fn.from_utf8_unchecked.html
-#[inline(always)]
+#[inline]
 #[unstable(feature = "str_mut_extras", issue = "41119")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     mem::transmute(v)
@@ -1380,7 +1380,7 @@ fn contains_nonascii(x: usize) -> bool {
 /// returning `true` in that case, or, if it is invalid, `false` with
 /// `iter` reset such that it is pointing at the first byte in the
 /// invalid sequence.
-#[inline(always)]
+#[inline]
 fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut index = 0;
     let len = v.len();

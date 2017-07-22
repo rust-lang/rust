@@ -668,7 +668,7 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
         match self.searcher {
             StrSearcherImpl::Empty(..) => {
@@ -936,7 +936,7 @@ impl TwoWaySearcher {
         bytes.iter().fold(0, |a, &b| (1 << (b & 0x3f)) | a)
     }
 
-    #[inline(always)]
+    #[inline]
     fn byteset_contains(&self, byte: u8) -> bool {
         (self.byteset >> ((byte & 0x3f) as usize)) & 1 != 0
     }
@@ -946,7 +946,7 @@ impl TwoWaySearcher {
     // left to right. If v matches, we try to match u by scanning right to left.
     // How far we can jump when we encounter a mismatch is all based on the fact
     // that (u, v) is a critical factorization for the needle.
-    #[inline(always)]
+    #[inline]
     fn next<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool)
         -> S::Output
         where S: TwoWayStrategy
