@@ -1,4 +1,3 @@
-use core::mem;
 use core::num::Wrapping;
 
 use float::Float;
@@ -75,7 +74,10 @@ macro_rules! add {
 
         // Swap a and b if necessary so that a has the larger absolute value.
         if b_abs > a_abs {
-            mem::swap(&mut a_rep, &mut b_rep);
+            // Don't use mem::swap because it may generate references to memcpy in unoptimized code.
+            let tmp = a_rep;
+            a_rep = b_rep;
+            b_rep = tmp;
         }
 
         // Extract the exponent and significand from the (possibly swapped) a and b.

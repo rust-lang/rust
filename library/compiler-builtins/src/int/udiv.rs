@@ -125,7 +125,11 @@ macro_rules! udivmod_inner {
         // 1 <= sr <= u64::bits() - 1
         let mut carry = 0;
 
-        for _ in 0..sr {
+        // Don't use a range because they may generate references to memcpy in unoptimized code
+        let mut i = 0;
+        while i < sr {
+            i += 1;
+
             // r:q = ((r:q) << 1) | carry
             r = (r << 1) | (q >> (<$ty>::bits() - 1));
             q = (q << 1) | carry as $ty;
@@ -181,7 +185,12 @@ intrinsics! {
         let mut r = n >> sr;
 
         let mut carry = 0;
-        for _ in 0..sr {
+
+        // Don't use a range because they may generate references to memcpy in unoptimized code
+        let mut i = 0;
+        while i < sr {
+            i += 1;
+
             // r:q = ((r:q) << 1) | carry
             r = (r << 1) | (q >> (u32::bits() - 1));
             q = (q << 1) | carry;
