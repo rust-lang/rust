@@ -73,9 +73,8 @@ impl EarlyLintPass for LiteralDigitGrouping {
             return;
         }
 
-        match expr.node {
-            ExprKind::Lit(ref lit) => self.check_lit(cx, lit),
-            _ => (),
+        if let ExprKind::Lit(ref lit) = expr.node {
+            self.check_lit(cx, lit)
         }
     }
 }
