@@ -23,38 +23,87 @@
 //!
 //! ## Architecture
 //!
-//! Although this build system defers most of the complicated logic to Cargo
-//! itself, it still needs to maintain a list of targets and dependencies which
-//! it can itself perform. Rustbuild is made up of a list of rules with
-//! dependencies amongst them (created in the `step` module) and then knows how
-//! to execute each in sequence. Each time rustbuild is invoked, it will simply
-//! iterate through this list of steps and execute each serially in turn.  For
-//! each step rustbuild relies on the step internally being incremental and
+//! The build system defers most of the complicated logic managing invocations
+//! of rustc and rustdoc to Cargo itself. However, moving through various stages
+//! and copying artifacts is still necessary for it to do. Each time rustbuild
+//! is invoked, it will iterate through the list of predefined steps and execute
+//! each serially in turn if it matches the paths passed or is a default rule.
+//! For each step rustbuild relies on the step internally being incremental and
 //! parallel. Note, though, that the `-j` parameter to rustbuild gets forwarded
 //! to appropriate test harnesses and such.
 //!
 //! Most of the "meaty" steps that matter are backed by Cargo, which does indeed
 //! have its own parallelism and incremental management. Later steps, like
 //! tests, aren't incremental and simply run the entire suite currently.
+//! However, compiletest itself tries to avoid running tests when the artifacts
+//! that are involved (mainly the compiler) haven't changed.
 //!
 //! When you execute `x.py build`, the steps which are executed are:
 //!
 //! * First, the python script is run. This will automatically download the
-//!   stage0 rustc and cargo according to `src/stage0.txt`, or using the cached
+//!   stage0 rustc and cargo according to `src/stage0.txt`, or use the cached
 //!   versions if they're available. These are then used to compile rustbuild
 //!   itself (using Cargo). Finally, control is then transferred to rustbuild.
 //!
 //! * Rustbuild takes over, performs sanity checks, probes the environment,
-//!   reads configuration, builds up a list of steps, and then starts executing
-//!   them.
+//!   reads configuration, and starts executing steps as it reads the command
+//!   line arguments (paths) or going through the default rules.
 //!
-//! * The stage0 libstd is compiled
-//! * The stage0 libtest is compiled
-//! * The stage0 librustc is compiled
-//! * The stage1 compiler is assembled
-//! * The stage1 libstd, libtest, librustc are compiled
-//! * The stage2 compiler is assembled
-//! * The stage2 libstd, libtest, librustc are compiled
+//!   The build output will be something like the following:
+//!
+//!   Building stage0 std artifacts
+//!   Copying stage0 std
+//!   Building stage0 test artifacts
+//!   Copying stage0 test
+//!   Building stage0 compiler artifacts
+//!   Copying stage0 rustc
+//!   Assembling stage1 compiler
+//!   Building stage1 std artifacts
+//!   Copying stage1 std
+//!   Building stage1 test artifacts
+//!   Copying stage1 test
+//!   Building stage1 compiler artifacts
+//!   Copying stage1 rustc
+//!   Assembling stage2 compiler
+//!   Uplifting stage1 std
+//!   Uplifting stage1 test
+//!   Uplifting stage1 rustc
+//!
+//! Let's disect that a little:
+//!
+//! ## Building stage0 {std,test,compiler} artifacts
+//!
+//! These steps use the provided (downloaded, usually) compiler to compile the
+//! local Rust source into libraries we can use.
+//!
+//! ## Copying stage0 {std,test,rustc}
+//!
+//! This copies the build output from Cargo into
+//! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: This step's
+//! documentation should be expanded -- the information already here may be
+//! incorrect.
+//!
+//! ## Assembling stage1 compiler
+//!
+//! This copies the libraries we built in "building stage0 ... artifacts" into
+//! the stage1 compiler's lib directory. These are the host libraries that the
+//! compiler itself uses to run. These aren't actually used by artifacts the new
+//! compiler generates. This step also copies the rustc and rustdoc binaries we
+//! generated into build/$HOST/stage/bin.
+//!
+//! The stage1/bin/rustc is a fully functional compiler, but it doesn't yet have
+//! any libraries to link built binaries or libraries to. The next 3 steps will
+//! provide those libraries for it; they are mostly equivalent to constructing
+//! the stage1/bin compiler so we don't go through them individually.
+//!
+//! ## Uplifting stage1 {std,test,rustc}
+//!
+//! This step copies the libraries from the stage1 compiler sysroot into the
+//! stage2 compiler. This is done to avoid rebuilding the compiler; libraries
+//! we'd build in this step should be identical (in function, if not necessarily
+//! identical on disk) so there's no need to recompile the compiler again. Note
+//! that if you want to, you can enable the full-bootstrap option to change this
+//! behavior.
 //!
 //! Each step is driven by a separate Cargo project and rustbuild orchestrates
 //! copying files between steps and otherwise preparing for Cargo to run.
@@ -65,15 +114,22 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(warnings)]
+#![allow(stable_features)]
+#![feature(associated_consts)]
 
 #[macro_use]
 extern crate build_helper;
+#[macro_use]
+extern crate serde_derive;
+#[macro_use]
+extern crate lazy_static;
+extern crate serde;
+extern crate serde_json;
 extern crate cmake;
 extern crate filetime;
 extern crate gcc;
 extern crate getopts;
 extern crate num_cpus;
-extern crate rustc_serialize;
 extern crate toml;
 
 #[cfg(unix)]
@@ -81,9 +137,8 @@ extern crate libc;
 
 use std::cell::Cell;
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::env;
-use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{PathBuf, Path};
@@ -91,7 +146,7 @@ use std::process::Command;
 
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 
-use util::{exe, libdir, add_lib_path, OutputFolder, CiEnv};
+use util::{exe, libdir, OutputFolder, CiEnv};
 
 mod cc;
 mod channel;
@@ -106,8 +161,10 @@ mod flags;
 mod install;
 mod native;
 mod sanity;
-mod step;
 pub mod util;
+mod builder;
+mod cache;
+mod tool;
 
 #[cfg(windows)]
 mod job;
@@ -131,6 +188,7 @@ mod job {
 
 pub use config::Config;
 pub use flags::{Flags, Subcommand};
+use cache::{Interned, INTERNER};
 
 /// A structure representing a Rust compiler.
 ///
@@ -138,9 +196,9 @@ pub use flags::{Flags, Subcommand};
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
-pub struct Compiler<'a> {
+pub struct Compiler {
     stage: u32,
-    host: &'a str,
+    host: Interned<String>,
 }
 
 /// Global configuration for the build system.
@@ -171,9 +229,9 @@ pub struct Build {
     verbosity: usize,
 
     // Targets for which to build.
-    build: String,
-    hosts: Vec<String>,
-    targets: Vec<String>,
+    build: Interned<String>,
+    hosts: Vec<Interned<String>>,
+    targets: Vec<Interned<String>>,
 
     // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
     initial_rustc: PathBuf,
@@ -185,10 +243,10 @@ pub struct Build {
 
     // Runtime state filled in later on
     // target -> (cc, ar)
-    cc: HashMap<String, (gcc::Tool, Option<PathBuf>)>,
+    cc: HashMap<Interned<String>, (gcc::Tool, Option<PathBuf>)>,
     // host -> (cc, ar)
-    cxx: HashMap<String, gcc::Tool>,
-    crates: HashMap<String, Crate>,
+    cxx: HashMap<Interned<String>, gcc::Tool>,
+    crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
     delayed_failures: Cell<usize>,
@@ -196,9 +254,9 @@ pub struct Build {
 
 #[derive(Debug)]
 struct Crate {
-    name: String,
+    name: Interned<String>,
     version: String,
-    deps: Vec<String>,
+    deps: Vec<Interned<String>>,
     path: PathBuf,
     doc_step: String,
     build_step: String,
@@ -210,7 +268,7 @@ struct Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Libstd,
@@ -299,12 +357,6 @@ impl Build {
         }
     }
 
-    fn build_slice(&self) -> &[String] {
-        unsafe {
-            std::slice::from_raw_parts(&self.build, 1)
-        }
-    }
-
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
@@ -333,7 +385,7 @@ impl Build {
         self.verbose("learning about cargo");
         metadata::build(self);
 
-        step::run(self);
+        builder::Builder::run(&self);
     }
 
     /// Clear out `dir` if `input` is newer.
@@ -349,242 +401,6 @@ impl Build {
         }
         t!(fs::create_dir_all(dir));
         t!(File::create(stamp));
-    }
-
-    /// Prepares an invocation of `cargo` to be run.
-    ///
-    /// This will create a `Command` that represents a pending execution of
-    /// Cargo. This cargo will be configured to use `compiler` as the actual
-    /// rustc compiler, its output will be scoped by `mode`'s output directory,
-    /// it will pass the `--target` flag for the specified `target`, and will be
-    /// executing the Cargo command `cmd`.
-    fn cargo(&self,
-             compiler: &Compiler,
-             mode: Mode,
-             target: &str,
-             cmd: &str) -> Command {
-        let mut cargo = Command::new(&self.initial_cargo);
-        let out_dir = self.stage_out(compiler, mode);
-        cargo.env("CARGO_TARGET_DIR", out_dir)
-             .arg(cmd)
-             .arg("-j").arg(self.jobs().to_string())
-             .arg("--target").arg(target);
-
-        // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
-        // Force cargo to output binaries with disambiguating hashes in the name
-        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.channel);
-
-        let stage;
-        if compiler.stage == 0 && self.local_rebuild {
-            // Assume the local-rebuild rustc already has stage1 features.
-            stage = 1;
-        } else {
-            stage = compiler.stage;
-        }
-
-        // Customize the compiler we're running. Specify the compiler to cargo
-        // as our shim and then pass it some various options used to configure
-        // how the actual compiler itself is called.
-        //
-        // These variables are primarily all read by
-        // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
-        cargo.env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
-             .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
-             .env("RUSTC_REAL", self.compiler_path(compiler))
-             .env("RUSTC_STAGE", stage.to_string())
-             .env("RUSTC_CODEGEN_UNITS",
-                  self.config.rust_codegen_units.to_string())
-             .env("RUSTC_DEBUG_ASSERTIONS",
-                  self.config.rust_debug_assertions.to_string())
-             .env("RUSTC_SYSROOT", self.sysroot(compiler))
-             .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
-             .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
-             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
-             .env("RUSTDOC_REAL", self.rustdoc(compiler))
-             .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
-
-        if mode != Mode::Tool {
-            // Tools don't get debuginfo right now, e.g. cargo and rls don't
-            // get compiled with debuginfo.
-            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-                 .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
-                 .env("RUSTC_FORCE_UNSTABLE", "1");
-
-            // Currently the compiler depends on crates from crates.io, and
-            // then other crates can depend on the compiler (e.g. proc-macro
-            // crates). Let's say, for example that rustc itself depends on the
-            // bitflags crate. If an external crate then depends on the
-            // bitflags crate as well, we need to make sure they don't
-            // conflict, even if they pick the same verison of bitflags. We'll
-            // want to make sure that e.g. a plugin and rustc each get their
-            // own copy of bitflags.
-
-            // Cargo ensures that this works in general through the -C metadata
-            // flag. This flag will frob the symbols in the binary to make sure
-            // they're different, even though the source code is the exact
-            // same. To solve this problem for the compiler we extend Cargo's
-            // already-passed -C metadata flag with our own. Our rustc.rs
-            // wrapper around the actual rustc will detect -C metadata being
-            // passed and frob it with this extra string we're passing in.
-            cargo.env("RUSTC_METADATA_SUFFIX", "rustc");
-        }
-
-        // Enable usage of unstable features
-        cargo.env("RUSTC_BOOTSTRAP", "1");
-        self.add_rust_test_threads(&mut cargo);
-
-        // Almost all of the crates that we compile as part of the bootstrap may
-        // have a build script, including the standard library. To compile a
-        // build script, however, it itself needs a standard library! This
-        // introduces a bit of a pickle when we're compiling the standard
-        // library itself.
-        //
-        // To work around this we actually end up using the snapshot compiler
-        // (stage0) for compiling build scripts of the standard library itself.
-        // The stage0 compiler is guaranteed to have a libstd available for use.
-        //
-        // For other crates, however, we know that we've already got a standard
-        // library up and running, so we can use the normal compiler to compile
-        // build scripts in that situation.
-        if mode == Mode::Libstd {
-            cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
-                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
-        } else {
-            cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
-                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
-        }
-
-        // Ignore incremental modes except for stage0, since we're
-        // not guaranteeing correctness across builds if the compiler
-        // is changing under your feet.`
-        if self.flags.incremental && compiler.stage == 0 {
-            let incr_dir = self.incremental_dir(compiler);
-            cargo.env("RUSTC_INCREMENTAL", incr_dir);
-        }
-
-        if let Some(ref on_fail) = self.flags.on_fail {
-            cargo.env("RUSTC_ON_FAIL", on_fail);
-        }
-
-        cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
-
-        // Specify some various options for build scripts used throughout
-        // the build.
-        //
-        // FIXME: the guard against msvc shouldn't need to be here
-        if !target.contains("msvc") {
-            cargo.env(format!("CC_{}", target), self.cc(target))
-                 .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
-                 .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
-
-            if let Ok(cxx) = self.cxx(target) {
-                 cargo.env(format!("CXX_{}", target), cxx);
-            }
-        }
-
-        if mode == Mode::Libstd &&
-           self.config.extended &&
-           compiler.is_final_stage(self) {
-            cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
-        }
-
-        // When being built Cargo will at some point call `nmake.exe` on Windows
-        // MSVC. Unfortunately `nmake` will read these two environment variables
-        // below and try to intepret them. We're likely being run, however, from
-        // MSYS `make` which uses the same variables.
-        //
-        // As a result, to prevent confusion and errors, we remove these
-        // variables from our environment to prevent passing MSYS make flags to
-        // nmake, causing it to blow up.
-        if cfg!(target_env = "msvc") {
-            cargo.env_remove("MAKE");
-            cargo.env_remove("MAKEFLAGS");
-        }
-
-        // Environment variables *required* throughout the build
-        //
-        // FIXME: should update code to not require this env var
-        cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
-
-        if self.is_verbose() {
-            cargo.arg("-v");
-        }
-        // FIXME: cargo bench does not accept `--release`
-        if self.config.rust_optimize && cmd != "bench" {
-            cargo.arg("--release");
-        }
-        if self.config.locked_deps {
-            cargo.arg("--locked");
-        }
-        if self.config.vendor || self.is_sudo {
-            cargo.arg("--frozen");
-        }
-
-        self.ci_env.force_coloring_in_ci(&mut cargo);
-
-        cargo
-    }
-
-    /// Get a path to the compiler specified.
-    fn compiler_path(&self, compiler: &Compiler) -> PathBuf {
-        if compiler.is_snapshot(self) {
-            self.initial_rustc.clone()
-        } else {
-            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
-        }
-    }
-
-    /// Get the specified tool built by the specified compiler
-    fn tool(&self, compiler: &Compiler, tool: &str) -> PathBuf {
-        self.cargo_out(compiler, Mode::Tool, compiler.host)
-            .join(exe(tool, compiler.host))
-    }
-
-    /// Get the `rustdoc` executable next to the specified compiler
-    fn rustdoc(&self, compiler: &Compiler) -> PathBuf {
-        let mut rustdoc = self.compiler_path(compiler);
-        rustdoc.pop();
-        rustdoc.push(exe("rustdoc", compiler.host));
-        rustdoc
-    }
-
-    /// Get a `Command` which is ready to run `tool` in `stage` built for
-    /// `host`.
-    fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
-        let mut cmd = Command::new(self.tool(&compiler, tool));
-        self.prepare_tool_cmd(compiler, &mut cmd);
-        cmd
-    }
-
-    /// Prepares the `cmd` provided to be able to run the `compiler` provided.
-    ///
-    /// Notably this munges the dynamic library lookup path to point to the
-    /// right location to run `compiler`.
-    fn prepare_tool_cmd(&self, compiler: &Compiler, cmd: &mut Command) {
-        let host = compiler.host;
-        let mut paths = vec![
-            self.sysroot_libdir(compiler, compiler.host),
-            self.cargo_out(compiler, Mode::Tool, host).join("deps"),
-        ];
-
-        // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make
-        // mode) and that C compiler may need some extra PATH modification. Do
-        // so here.
-        if compiler.host.contains("msvc") {
-            let curpaths = env::var_os("PATH").unwrap_or(OsString::new());
-            let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
-            for &(ref k, ref v) in self.cc[compiler.host].0.env() {
-                if k != "PATH" {
-                    continue
-                }
-                for path in env::split_paths(v) {
-                    if !curpaths.contains(&path) {
-                        paths.push(path);
-                    }
-                }
-            }
-        }
-        add_lib_path(paths, cmd);
     }
 
     /// Get the space-separated set of activated features for the standard
@@ -622,51 +438,24 @@ impl Build {
         if self.config.rust_optimize {"release"} else {"debug"}
     }
 
-    /// Returns the sysroot for the `compiler` specified that *this build system
-    /// generates*.
-    ///
-    /// That is, the sysroot for the stage0 compiler is not what the compiler
-    /// thinks it is by default, but it's the same as the default for stages
-    /// 1-3.
-    fn sysroot(&self, compiler: &Compiler) -> PathBuf {
-        if compiler.stage == 0 {
-            self.out.join(compiler.host).join("stage0-sysroot")
-        } else {
-            self.out.join(compiler.host).join(format!("stage{}", compiler.stage))
-        }
-    }
-
     /// Get the directory for incremental by-products when using the
     /// given compiler.
-    fn incremental_dir(&self, compiler: &Compiler) -> PathBuf {
-        self.out.join(compiler.host).join(format!("stage{}-incremental", compiler.stage))
-    }
-
-    /// Returns the libdir where the standard library and other artifacts are
-    /// found for a compiler's sysroot.
-    fn sysroot_libdir(&self, compiler: &Compiler, target: &str) -> PathBuf {
-        if compiler.stage >= 2 {
-            if let Some(ref libdir_relative) = self.config.libdir_relative {
-                return self.sysroot(compiler).join(libdir_relative)
-                    .join("rustlib").join(target).join("lib")
-            }
-        }
-       self.sysroot(compiler).join("lib").join("rustlib")
-           .join(target).join("lib")
+    fn incremental_dir(&self, compiler: Compiler) -> PathBuf {
+        self.out.join(&*compiler.host).join(format!("stage{}-incremental", compiler.stage))
     }
 
     /// Returns the root directory for all output generated in a particular
     /// stage when running with a particular host compiler.
     ///
     /// The mode indicates what the root directory is for.
-    fn stage_out(&self, compiler: &Compiler, mode: Mode) -> PathBuf {
+    fn stage_out(&self, compiler: Compiler, mode: Mode) -> PathBuf {
         let suffix = match mode {
             Mode::Libstd => "-std",
             Mode::Libtest => "-test",
             Mode::Tool => "-tools",
             Mode::Librustc => "-rustc",
         };
-        self.out.join(compiler.host)
+        self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
     }
 
@@ -674,42 +463,42 @@ impl Build {
     /// running a particular compiler, wehther or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self,
-                 compiler: &Compiler,
+                 compiler: Compiler,
                  mode: Mode,
-                 target: &str) -> PathBuf {
-        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
+                 target: Interned<String>) -> PathBuf {
+        self.stage_out(compiler, mode).join(&*target).join(self.cargo_dir())
     }
 
     /// Root output directory for LLVM compiled for `target`
     ///
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
-    fn llvm_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("llvm")
+    fn llvm_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("llvm")
     }
 
     /// Output directory for all documentation for a target
-    fn doc_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("doc")
+    fn doc_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("doc")
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
-    fn md_doc_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("md-doc")
+    fn md_doc_out(&self, target: Interned<String>) -> Interned<PathBuf> {
+        INTERNER.intern_path(self.out.join(&*target).join("md-doc"))
     }
 
     /// Output directory for all crate documentation for a target (temporary)
     ///
     /// The artifacts here are then copied into `doc_out` above.
-    fn crate_doc_out(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("crate-docs")
+    fn crate_doc_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("crate-docs")
     }
 
     /// Returns true if no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
-    fn is_rust_llvm(&self, target: &str) -> bool {
-        match self.config.target_config.get(target) {
+    fn is_rust_llvm(&self, target: Interned<String>) -> bool {
+        match self.config.target_config.get(&target) {
             Some(ref c) => c.llvm_config.is_none(),
             None => true
         }
@@ -719,25 +508,25 @@ impl Build {
     ///
     /// If a custom `llvm-config` was specified for target then that's returned
     /// instead.
-    fn llvm_config(&self, target: &str) -> PathBuf {
-        let target_config = self.config.target_config.get(target);
+    fn llvm_config(&self, target: Interned<String>) -> PathBuf {
+        let target_config = self.config.target_config.get(&target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             s.clone()
         } else {
-            self.llvm_out(&self.config.build).join("bin")
-                .join(exe("llvm-config", target))
+            self.llvm_out(self.config.build).join("bin")
+                .join(exe("llvm-config", &*target))
         }
     }
 
     /// Returns the path to `FileCheck` binary for the specified target
-    fn llvm_filecheck(&self, target: &str) -> PathBuf {
-        let target_config = self.config.target_config.get(target);
+    fn llvm_filecheck(&self, target: Interned<String>) -> PathBuf {
+        let target_config = self.config.target_config.get(&target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             let llvm_bindir = output(Command::new(s).arg("--bindir"));
-            Path::new(llvm_bindir.trim()).join(exe("FileCheck", target))
+            Path::new(llvm_bindir.trim()).join(exe("FileCheck", &*target))
         } else {
-            let base = self.llvm_out(&self.config.build).join("build");
-            let exe = exe("FileCheck", target);
+            let base = self.llvm_out(self.config.build).join("build");
+            let exe = exe("FileCheck", &*target);
             if !self.config.ninja && self.config.build.contains("msvc") {
                 base.join("Release/bin").join(exe)
             } else {
@@ -747,46 +536,20 @@ impl Build {
     }
 
     /// Directory for libraries built from C/C++ code and shared between stages.
-    fn native_dir(&self, target: &str) -> PathBuf {
-        self.out.join(target).join("native")
+    fn native_dir(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("native")
     }
 
     /// Root output directory for rust_test_helpers library compiled for
     /// `target`
-    fn test_helpers_out(&self, target: &str) -> PathBuf {
+    fn test_helpers_out(&self, target: Interned<String>) -> PathBuf {
         self.native_dir(target).join("rust-test-helpers")
-    }
-
-    /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
-    /// library lookup path.
-    fn add_rustc_lib_path(&self, compiler: &Compiler, cmd: &mut Command) {
-        // Windows doesn't need dylib path munging because the dlls for the
-        // compiler live next to the compiler and the system will find them
-        // automatically.
-        if cfg!(windows) {
-            return
-        }
-
-        add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
     }
 
     /// Adds the `RUST_TEST_THREADS` env var if necessary
     fn add_rust_test_threads(&self, cmd: &mut Command) {
         if env::var_os("RUST_TEST_THREADS").is_none() {
             cmd.env("RUST_TEST_THREADS", self.jobs().to_string());
-        }
-    }
-
-    /// Returns the compiler's libdir where it stores the dynamic libraries that
-    /// it itself links against.
-    ///
-    /// For example this returns `<sysroot>/lib` on Unix and `<sysroot>/bin` on
-    /// Windows.
-    fn rustc_libdir(&self, compiler: &Compiler) -> PathBuf {
-        if compiler.is_snapshot(self) {
-            self.rustc_snapshot_libdir()
-        } else {
-            self.sysroot(compiler).join(libdir(compiler.host))
         }
     }
 
@@ -846,16 +609,16 @@ impl Build {
     }
 
     /// Returns the path to the C compiler for the target specified.
-    fn cc(&self, target: &str) -> &Path {
-        self.cc[target].0.path()
+    fn cc(&self, target: Interned<String>) -> &Path {
+        self.cc[&target].0.path()
     }
 
     /// Returns a list of flags to pass to the C compiler for the target
     /// specified.
-    fn cflags(&self, target: &str) -> Vec<String> {
+    fn cflags(&self, target: Interned<String>) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // gcc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[target].0.args().iter()
+        let mut base = self.cc[&target].0.args().iter()
                            .map(|s| s.to_string_lossy().into_owned())
                            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
                            .collect::<Vec<_>>();
@@ -871,20 +634,20 @@ impl Build {
         // Work around an apparently bad MinGW / GCC optimization,
         // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
         // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
-        if target == "i686-pc-windows-gnu" {
+        if &*target == "i686-pc-windows-gnu" {
             base.push("-fno-omit-frame-pointer".into());
         }
         base
     }
 
     /// Returns the path to the `ar` archive utility for the target specified.
-    fn ar(&self, target: &str) -> Option<&Path> {
-        self.cc[target].1.as_ref().map(|p| &**p)
+    fn ar(&self, target: Interned<String>) -> Option<&Path> {
+        self.cc[&target].1.as_ref().map(|p| &**p)
     }
 
     /// Returns the path to the C++ compiler for the target specified.
-    fn cxx(&self, target: &str) -> Result<&Path, String> {
-        match self.cxx.get(target) {
+    fn cxx(&self, target: Interned<String>) -> Result<&Path, String> {
+        match self.cxx.get(&target) {
             Some(p) => Ok(p.path()),
             None => Err(format!(
                     "target `{}` is not configured as a host, only as a target",
@@ -893,7 +656,7 @@ impl Build {
     }
 
     /// Returns flags to pass to the compiler to generate code for `target`.
-    fn rustc_flags(&self, target: &str) -> Vec<String> {
+    fn rustc_flags(&self, target: Interned<String>) -> Vec<String> {
         // New flags should be added here with great caution!
         //
         // It's quite unfortunate to **require** flags to generate code for a
@@ -910,8 +673,8 @@ impl Build {
     }
 
     /// Returns the "musl root" for this `target`, if defined
-    fn musl_root(&self, target: &str) -> Option<&Path> {
-        self.config.target_config.get(target)
+    fn musl_root(&self, target: Interned<String>) -> Option<&Path> {
+        self.config.target_config.get(&target)
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
@@ -919,7 +682,7 @@ impl Build {
 
     /// Returns whether the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
-    fn remote_tested(&self, target: &str) -> bool {
+    fn remote_tested(&self, target: Interned<String>) -> bool {
         self.qemu_rootfs(target).is_some() || target.contains("android") ||
         env::var_os("TEST_DEVICE_ADDR").is_some()
     }
@@ -929,8 +692,8 @@ impl Build {
     ///
     /// If `Some` is returned then that means that tests for this target are
     /// emulated with QEMU and binaries will need to be shipped to the emulator.
-    fn qemu_rootfs(&self, target: &str) -> Option<&Path> {
-        self.config.target_config.get(target)
+    fn qemu_rootfs(&self, target: Interned<String>) -> Option<&Path> {
+        self.config.target_config.get(&target)
             .and_then(|t| t.qemu_rootfs.as_ref())
             .map(|p| &**p)
     }
@@ -958,20 +721,20 @@ impl Build {
     ///
     /// When all of these conditions are met the build will lift artifacts from
     /// the previous stage forward.
-    fn force_use_stage1(&self, compiler: &Compiler, target: &str) -> bool {
+    fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
-            self.config.host.iter().any(|h| h == target)
+            self.config.host.iter().any(|h| *h == target)
     }
 
     /// Returns the directory that OpenSSL artifacts are compiled into if
     /// configured to do so.
-    fn openssl_dir(&self, target: &str) -> Option<PathBuf> {
+    fn openssl_dir(&self, target: Interned<String>) -> Option<PathBuf> {
         // OpenSSL not used on Windows
         if target.contains("windows") {
             None
         } else if self.config.openssl_static {
-            Some(self.out.join(target).join("openssl"))
+            Some(self.out.join(&*target).join("openssl"))
         } else {
             None
         }
@@ -979,7 +742,7 @@ impl Build {
 
     /// Returns the directory that OpenSSL artifacts are installed into if
     /// configured as such.
-    fn openssl_install_dir(&self, target: &str) -> Option<PathBuf> {
+    fn openssl_install_dir(&self, target: Interned<String>) -> Option<PathBuf> {
         self.openssl_dir(target).map(|p| p.join("install"))
     }
 
@@ -1078,16 +841,38 @@ impl Build {
             None
         }
     }
+
+    /// Get a list of crates from a root crate.
+    ///
+    /// Returns Vec<(crate, path to crate, is_root_crate)>
+    fn crates(&self, root: &str) -> Vec<(Interned<String>, &Path)> {
+        let interned = INTERNER.intern_string(root.to_owned());
+        let mut ret = Vec::new();
+        let mut list = vec![interned];
+        let mut visited = HashSet::new();
+        while let Some(krate) = list.pop() {
+            let krate = &self.crates[&krate];
+            // If we can't strip prefix, then out-of-tree path
+            let path = krate.path.strip_prefix(&self.src).unwrap_or(&krate.path);
+            ret.push((krate.name, path));
+            for dep in &krate.deps {
+                if visited.insert(dep) && dep != "build_helper" {
+                    list.push(*dep);
+                }
+            }
+        }
+        ret
+    }
 }
 
-impl<'a> Compiler<'a> {
-    /// Creates a new complier for the specified stage/host
-    fn new(stage: u32, host: &'a str) -> Compiler<'a> {
-        Compiler { stage: stage, host: host }
+impl<'a> Compiler {
+    pub fn with_stage(mut self, stage: u32) -> Compiler {
+        self.stage = stage;
+        self
     }
 
     /// Returns whether this is a snapshot compiler for `build`'s configuration
-    fn is_snapshot(&self, build: &Build) -> bool {
+    pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
     }
 
@@ -1095,7 +880,7 @@ impl<'a> Compiler<'a> {
     /// current build session.
     /// This takes into account whether we're performing a full bootstrap or
     /// not; don't directly compare the stage with `2`!
-    fn is_final_stage(&self, build: &Build) -> bool {
+    pub fn is_final_stage(&self, build: &Build) -> bool {
         let final_stage = if build.config.full_bootstrap { 2 } else { 1 };
         self.stage >= final_stage
     }

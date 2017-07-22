@@ -18,121 +18,99 @@ use std::fs;
 use std::path::{Path, PathBuf, Component};
 use std::process::Command;
 
-use Build;
-use dist::{pkgname, sanitize_sh, tmpdir};
+use dist::{self, pkgname, sanitize_sh, tmpdir};
 
-pub struct Installer<'a> {
-    build: &'a Build,
-    prefix: PathBuf,
-    sysconfdir: PathBuf,
-    docdir: PathBuf,
-    bindir: PathBuf,
-    libdir: PathBuf,
-    mandir: PathBuf,
-    empty_dir: PathBuf,
+use builder::{Builder, RunConfig, ShouldRun, Step};
+use cache::Interned;
+
+pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "docs", "rust-docs", stage, Some(host));
 }
 
-impl<'a> Drop for Installer<'a> {
-    fn drop(&mut self) {
-        t!(fs::remove_dir_all(&self.empty_dir));
+pub fn install_std(builder: &Builder, stage: u32) {
+    for target in builder.build.config.target.iter() {
+        install_sh(builder, "std", "rust-std", stage, Some(*target));
     }
 }
 
-impl<'a> Installer<'a> {
-    pub fn new(build: &'a Build) -> Installer<'a> {
-        let prefix_default = PathBuf::from("/usr/local");
-        let sysconfdir_default = PathBuf::from("/etc");
-        let docdir_default = PathBuf::from("share/doc/rust");
-        let bindir_default = PathBuf::from("bin");
-        let libdir_default = PathBuf::from("lib");
-        let mandir_default = PathBuf::from("share/man");
-        let prefix = build.config.prefix.as_ref().unwrap_or(&prefix_default);
-        let sysconfdir = build.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
-        let docdir = build.config.docdir.as_ref().unwrap_or(&docdir_default);
-        let bindir = build.config.bindir.as_ref().unwrap_or(&bindir_default);
-        let libdir = build.config.libdir.as_ref().unwrap_or(&libdir_default);
-        let mandir = build.config.mandir.as_ref().unwrap_or(&mandir_default);
+pub fn install_cargo(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "cargo", "cargo", stage, Some(host));
+}
 
-        let sysconfdir = prefix.join(sysconfdir);
-        let docdir = prefix.join(docdir);
-        let bindir = prefix.join(bindir);
-        let libdir = prefix.join(libdir);
-        let mandir = prefix.join(mandir);
+pub fn install_rls(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "rls", "rls", stage, Some(host));
+}
 
-        let destdir = env::var_os("DESTDIR").map(PathBuf::from);
+pub fn install_analysis(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "analysis", "rust-analysis", stage, Some(host));
+}
 
-        let prefix = add_destdir(&prefix, &destdir);
-        let sysconfdir = add_destdir(&sysconfdir, &destdir);
-        let docdir = add_destdir(&docdir, &destdir);
-        let bindir = add_destdir(&bindir, &destdir);
-        let libdir = add_destdir(&libdir, &destdir);
-        let mandir = add_destdir(&mandir, &destdir);
+pub fn install_src(builder: &Builder, stage: u32) {
+    install_sh(builder, "src", "rust-src", stage, None);
+}
+pub fn install_rustc(builder: &Builder, stage: u32, host: Interned<String>) {
+    install_sh(builder, "rustc", "rustc", stage, Some(host));
+}
 
-        let empty_dir = build.out.join("tmp/empty_dir");
+fn install_sh(
+    builder: &Builder,
+    package: &str,
+    name: &str,
+    stage: u32,
+    host: Option<Interned<String>>
+) {
+    let build = builder.build;
+    println!("Install {} stage{} ({:?})", package, stage, host);
 
-        t!(fs::create_dir_all(&empty_dir));
+    let prefix_default = PathBuf::from("/usr/local");
+    let sysconfdir_default = PathBuf::from("/etc");
+    let docdir_default = PathBuf::from("share/doc/rust");
+    let bindir_default = PathBuf::from("bin");
+    let libdir_default = PathBuf::from("lib");
+    let mandir_default = PathBuf::from("share/man");
+    let prefix = build.config.prefix.as_ref().unwrap_or(&prefix_default);
+    let sysconfdir = build.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
+    let docdir = build.config.docdir.as_ref().unwrap_or(&docdir_default);
+    let bindir = build.config.bindir.as_ref().unwrap_or(&bindir_default);
+    let libdir = build.config.libdir.as_ref().unwrap_or(&libdir_default);
+    let mandir = build.config.mandir.as_ref().unwrap_or(&mandir_default);
 
-        Installer {
-            build,
-            prefix,
-            sysconfdir,
-            docdir,
-            bindir,
-            libdir,
-            mandir,
-            empty_dir,
-        }
-    }
+    let sysconfdir = prefix.join(sysconfdir);
+    let docdir = prefix.join(docdir);
+    let bindir = prefix.join(bindir);
+    let libdir = prefix.join(libdir);
+    let mandir = prefix.join(mandir);
 
-    pub fn install_docs(&self, stage: u32, host: &str) {
-        self.install_sh("docs", "rust-docs", stage, Some(host));
-    }
+    let destdir = env::var_os("DESTDIR").map(PathBuf::from);
 
-    pub fn install_std(&self, stage: u32) {
-        for target in self.build.config.target.iter() {
-            self.install_sh("std", "rust-std", stage, Some(target));
-        }
-    }
+    let prefix = add_destdir(&prefix, &destdir);
+    let sysconfdir = add_destdir(&sysconfdir, &destdir);
+    let docdir = add_destdir(&docdir, &destdir);
+    let bindir = add_destdir(&bindir, &destdir);
+    let libdir = add_destdir(&libdir, &destdir);
+    let mandir = add_destdir(&mandir, &destdir);
 
-    pub fn install_cargo(&self, stage: u32, host: &str) {
-        self.install_sh("cargo", "cargo", stage, Some(host));
-    }
+    let empty_dir = build.out.join("tmp/empty_dir");
 
-    pub fn install_rls(&self, stage: u32, host: &str) {
-        self.install_sh("rls", "rls", stage, Some(host));
-    }
+    t!(fs::create_dir_all(&empty_dir));
+    let package_name = if let Some(host) = host {
+        format!("{}-{}", pkgname(build, name), host)
+    } else {
+        pkgname(build, name)
+    };
 
-    pub fn install_analysis(&self, stage: u32, host: &str) {
-        self.install_sh("analysis", "rust-analysis", stage, Some(host));
-    }
-
-    pub fn install_src(&self, stage: u32) {
-        self.install_sh("src", "rust-src", stage, None);
-    }
-    pub fn install_rustc(&self, stage: u32, host: &str) {
-        self.install_sh("rustc", "rustc", stage, Some(host));
-    }
-
-    fn install_sh(&self, package: &str, name: &str, stage: u32, host: Option<&str>) {
-        println!("Install {} stage{} ({:?})", package, stage, host);
-        let package_name = if let Some(host) = host {
-            format!("{}-{}", pkgname(self.build, name), host)
-        } else {
-            pkgname(self.build, name)
-        };
-
-        let mut cmd = Command::new("sh");
-        cmd.current_dir(&self.empty_dir)
-           .arg(sanitize_sh(&tmpdir(self.build).join(&package_name).join("install.sh")))
-           .arg(format!("--prefix={}", sanitize_sh(&self.prefix)))
-           .arg(format!("--sysconfdir={}", sanitize_sh(&self.sysconfdir)))
-           .arg(format!("--docdir={}", sanitize_sh(&self.docdir)))
-           .arg(format!("--bindir={}", sanitize_sh(&self.bindir)))
-           .arg(format!("--libdir={}", sanitize_sh(&self.libdir)))
-           .arg(format!("--mandir={}", sanitize_sh(&self.mandir)))
-           .arg("--disable-ldconfig");
-        self.build.run(&mut cmd);
-    }
+    let mut cmd = Command::new("sh");
+    cmd.current_dir(&empty_dir)
+        .arg(sanitize_sh(&tmpdir(build).join(&package_name).join("install.sh")))
+        .arg(format!("--prefix={}", sanitize_sh(&prefix)))
+        .arg(format!("--sysconfdir={}", sanitize_sh(&sysconfdir)))
+        .arg(format!("--docdir={}", sanitize_sh(&docdir)))
+        .arg(format!("--bindir={}", sanitize_sh(&bindir)))
+        .arg(format!("--libdir={}", sanitize_sh(&libdir)))
+        .arg(format!("--mandir={}", sanitize_sh(&mandir)))
+        .arg("--disable-ldconfig");
+    build.run(&mut cmd);
+    t!(fs::remove_dir_all(&empty_dir));
 }
 
 fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
@@ -148,3 +126,82 @@ fn add_destdir(path: &Path, destdir: &Option<PathBuf>) -> PathBuf {
     }
     ret
 }
+
+macro_rules! install {
+    (($sel:ident, $builder:ident, $_config:ident),
+       $($name:ident,
+       $path:expr,
+       $default_cond:expr,
+       only_hosts: $only_hosts:expr,
+       $run_item:block $(, $c:ident)*;)+) => {
+        $(
+            #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+        pub struct $name {
+            pub stage: u32,
+            pub target: Interned<String>,
+            pub host: Interned<String>,
+        }
+
+        impl Step for $name {
+            type Output = ();
+            const DEFAULT: bool = true;
+            const ONLY_BUILD_TARGETS: bool = true;
+            const ONLY_HOSTS: bool = $only_hosts;
+            $(const $c: bool = true;)*
+
+            fn should_run(run: ShouldRun) -> ShouldRun {
+                let $_config = &run.builder.config;
+                run.path($path).default_condition($default_cond)
+            }
+
+            fn make_run(run: RunConfig) {
+                run.builder.ensure($name {
+                    stage: run.builder.top_stage,
+                    target: run.target,
+                    host: run.host,
+                });
+            }
+
+            fn run($sel, $builder: &Builder) {
+                $run_item
+            }
+        })+
+    }
+}
+
+install!((self, builder, _config),
+    Docs, "src/doc", _config.docs, only_hosts: false, {
+        builder.ensure(dist::Docs { stage: self.stage, target: self.target });
+        install_docs(builder, self.stage, self.target);
+    };
+    Std, "src/libstd", true, only_hosts: true, {
+        builder.ensure(dist::Std {
+            compiler: builder.compiler(self.stage, self.host),
+            target: self.target
+        });
+        install_std(builder, self.stage);
+    };
+    Cargo, "cargo", _config.extended, only_hosts: true, {
+        builder.ensure(dist::Cargo { stage: self.stage, target: self.target });
+        install_cargo(builder, self.stage, self.target);
+    };
+    Rls, "rls", _config.extended, only_hosts: true, {
+        builder.ensure(dist::Rls { stage: self.stage, target: self.target });
+        install_rls(builder, self.stage, self.target);
+    };
+    Analysis, "analysis", _config.extended, only_hosts: false, {
+        builder.ensure(dist::Analysis {
+            compiler: builder.compiler(self.stage, self.host),
+            target: self.target
+        });
+        install_analysis(builder, self.stage, self.target);
+    };
+    Src, "src", _config.extended, only_hosts: true, {
+        builder.ensure(dist::Src);
+        install_src(builder, self.stage);
+    }, ONLY_BUILD;
+    Rustc, "src/librustc", _config.extended, only_hosts: true, {
+        builder.ensure(dist::Rustc { stage: self.stage, target: self.target });
+        install_rustc(builder, self.stage, self.target);
+    };
+);
