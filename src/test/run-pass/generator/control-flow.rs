@@ -10,15 +10,15 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{State, Generator};
+use std::ops::{GeneratorState, Generator};
 
 fn finish<T>(mut amt: usize, mut t: T) -> T::Return
     where T: Generator<Yield = ()>
 {
     loop {
         match t.resume() {
-            State::Yielded(()) => amt = amt.checked_sub(1).unwrap(),
-            State::Complete(ret) => {
+            GeneratorState::Yielded(()) => amt = amt.checked_sub(1).unwrap(),
+            GeneratorState::Complete(ret) => {
                 assert_eq!(amt, 0);
                 return ret
             }

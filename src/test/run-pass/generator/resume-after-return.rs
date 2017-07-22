@@ -10,7 +10,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{State, Generator};
+use std::ops::{GeneratorState, Generator};
 use std::panic;
 
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
     };
 
     match foo.resume() {
-        State::Complete(()) => {}
+        GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 

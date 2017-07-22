@@ -12,7 +12,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{State, Generator};
+use std::ops::{GeneratorState, Generator};
 use std::thread;
 
 #[test]
@@ -24,7 +24,7 @@ fn simple() {
     };
 
     match foo.resume() {
-        State::Complete(()) => {}
+        GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -40,7 +40,7 @@ fn return_capture() {
     };
 
     match foo.resume() {
-        State::Complete(ref s) if *s == "foo" => {}
+        GeneratorState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -52,11 +52,11 @@ fn simple_yield() {
     };
 
     match foo.resume() {
-        State::Yielded(()) => {}
+        GeneratorState::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
     match foo.resume() {
-        State::Complete(()) => {}
+        GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -69,11 +69,11 @@ fn yield_capture() {
     };
 
     match foo.resume() {
-        State::Yielded(ref s) if *s == "foo" => {}
+        GeneratorState::Yielded(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
     match foo.resume() {
-        State::Complete(()) => {}
+        GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -86,11 +86,11 @@ fn simple_yield_value() {
     };
 
     match foo.resume() {
-        State::Yielded(ref s) if *s == "bar" => {}
+        GeneratorState::Yielded(ref s) if *s == "bar" => {}
         s => panic!("bad state: {:?}", s),
     }
     match foo.resume() {
-        State::Complete(ref s) if *s == "foo" => {}
+        GeneratorState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -104,11 +104,11 @@ fn return_after_yield() {
     };
 
     match foo.resume() {
-        State::Yielded(()) => {}
+        GeneratorState::Yielded(()) => {}
         s => panic!("bad state: {:?}", s),
     }
     match foo.resume() {
-        State::Complete(ref s) if *s == "foo" => {}
+        GeneratorState::Complete(ref s) if *s == "foo" => {}
         s => panic!("bad state: {:?}", s),
     }
 }
@@ -156,11 +156,11 @@ fn send_over_threads() {
     let mut foo = || { yield };
     thread::spawn(move || {
         match foo.resume() {
-            State::Yielded(()) => {}
+            GeneratorState::Yielded(()) => {}
             s => panic!("bad state: {:?}", s),
         }
         match foo.resume() {
-            State::Complete(()) => {}
+            GeneratorState::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }
     }).join().unwrap();
@@ -169,11 +169,11 @@ fn send_over_threads() {
     let mut foo = || { yield a };
     thread::spawn(move || {
         match foo.resume() {
-            State::Yielded(ref s) if *s == "a" => {}
+            GeneratorState::Yielded(ref s) if *s == "a" => {}
             s => panic!("bad state: {:?}", s),
         }
         match foo.resume() {
-            State::Complete(()) => {}
+            GeneratorState::Complete(()) => {}
             s => panic!("bad state: {:?}", s),
         }
     }).join().unwrap();

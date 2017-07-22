@@ -10,7 +10,7 @@
 
 #![feature(generators, generator_trait, conservative_impl_trait)]
 
-use std::ops::{State, Generator};
+use std::ops::{GeneratorState, Generator};
 
 struct W<T>(T);
 
@@ -19,8 +19,8 @@ impl<T: Generator<Return = ()>> Iterator for W<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.0.resume() {
-            State::Complete(..) => None,
-            State::Yielded(v) => Some(v),
+            GeneratorState::Complete(..) => None,
+            GeneratorState::Yielded(v) => Some(v),
         }
     }
 }
