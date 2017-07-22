@@ -120,6 +120,7 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     return_qualif: Option<Qualif>,
     qualif: Qualif,
     const_fn_arg_vars: BitVector,
+    local_needs_drop: IndexVec<Local, Option<Span>>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -146,6 +147,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return_qualif: None,
             qualif: Qualif::empty(),
             const_fn_arg_vars: BitVector::new(mir.local_decls.len()),
+            local_needs_drop: IndexVec::from_elem(None, &mir.local_decls),
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -194,15 +196,25 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Check for NEEDS_DROP (from an ADT or const fn call) and
+    /// error, unless we're in a function.
+    fn always_deny_drop(&self) {
+        self.deny_drop_with_feature_gate_override(false);
+    }
+
+    /// Check for NEEDS_DROP (from an ADT or const fn call) and
     /// error, unless we're in a function, or the feature-gate
     /// for globals with destructors is enabled.
     fn deny_drop(&self) {
+        self.deny_drop_with_feature_gate_override(true);
+    }
+
+    fn deny_drop_with_feature_gate_override(&self, allow_gate: bool) {
         if self.mode == Mode::Fn || !self.qualif.intersects(Qualif::NEEDS_DROP) {
             return;
         }
 
         // Static and const fn's allow destructors, but they're feature-gated.
-        let msg = if self.mode != Mode::Const {
+        let msg = if allow_gate && self.mode != Mode::Const {
             // Feature-gate for globals with destructors is enabled.
             if self.tcx.sess.features.borrow().drop_types_in_const {
                 return;
@@ -223,7 +235,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         let mut err =
             struct_span_err!(self.tcx.sess, self.span, E0493, "{}", msg);
 
-        if self.mode != Mode::Const {
+        if allow_gate && self.mode != Mode::Const {
             help!(&mut err,
                   "in Nightly builds, add `#![feature(drop_types_in_const)]` \
                    to the crate attributes to enable");
@@ -231,7 +243,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             self.find_drop_implementation_method_span()
                 .map(|span| err.span_label(span, "destructor defined here"));
 
-            err.span_label(self.span, "constants cannot have destructors");
+            err.span_label(self.span,
+                format!("{}s cannot have destructors", self.mode));
         }
 
         err.emit();
@@ -314,6 +327,15 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
+        // When initializing a local, record whether the *value* being
+        // stored in it needs dropping, which it may not, even if its
+        // type does, e.g. `None::<String>`.
+        if let Lvalue::Local(local) = *dest {
+            if qualif.intersects(Qualif::NEEDS_DROP) {
+                self.local_needs_drop[local] = Some(self.span);
+            }
+        }
+
         match *dest {
             Lvalue::Local(index) if self.mir.local_kind(index) == LocalKind::Temp => {
                 debug!("store to temp {:?}", index);
@@ -360,7 +382,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
             let target = match mir[bb].terminator().kind {
                 TerminatorKind::Goto { target } |
-                // Drops are considered noops.
                 TerminatorKind::Drop { target, .. } |
                 TerminatorKind::Assert { target, .. } |
                 TerminatorKind::Call { destination: Some((_, target)), .. } => {
@@ -558,11 +579,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         match *operand {
-            Operand::Consume(_) => {
+            Operand::Consume(ref lvalue) => {
                 self.nest(|this| {
                     this.super_operand(operand, location);
                     this.try_consume();
                 });
+
+                // Mark the consumed locals to indicate later drops are noops.
+                if let Lvalue::Local(local) = *lvalue {
+                    self.local_needs_drop[local] = None;
+                }
             }
             Operand::Constant(ref constant) => {
                 if let Literal::Item { def_id, substs } = constant.literal {
@@ -863,6 +889,30 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                 }
                 self.assign(dest, location);
+            }
+        } else if let TerminatorKind::Drop { location: ref lvalue, .. } = *kind {
+            self.super_terminator_kind(bb, kind, location);
+
+            // Deny *any* live drops anywhere other than functions.
+            if self.mode != Mode::Fn {
+                // HACK(eddyb) Emulate a bit of dataflow analysis,
+                // conservatively, that drop elaboration will do.
+                let needs_drop = if let Lvalue::Local(local) = *lvalue {
+                    self.local_needs_drop[local]
+                } else {
+                    None
+                };
+
+                if let Some(span) = needs_drop {
+                    let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    self.add_type(ty);
+
+                    // Use the original assignment span to be more precise.
+                    let old_span = self.span;
+                    self.span = span;
+                    self.always_deny_drop();
+                    self.span = old_span;
+                }
             }
         } else {
             // Qualify any operands inside other terminators.
