@@ -18,7 +18,10 @@ pub fn target() -> Result<Target, String> {
                           vec!["-s".to_string(),
                                "WASM=1".to_string(),
                                "-s".to_string(),
-                               "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()]);
+                               "ASSERTIONS=1".to_string(),
+                               "-s".to_string(),
+                               "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string(),
+                               "-g3".to_string()]);
 
     let opts = TargetOptions {
         linker: cmd("emcc"),
