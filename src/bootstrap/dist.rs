@@ -875,9 +875,10 @@ impl Step for PlainSourceTarball {
         let mut tarball = distdir(build).join(&format!("{}.tar.gz", plain_name));
         tarball.set_extension(""); // strip .gz
         tarball.set_extension(""); // strip .tar
-        if let Some(dir) = distdir(build).parent() {
+        if let Some(dir) = tarball.parent() {
             t!(fs::create_dir_all(dir));
         }
+        println!("running installer");
         let mut cmd = rust_installer(builder);
         cmd.arg("tarball")
            .arg("--input").arg(&plain_name)

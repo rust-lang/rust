@@ -1220,6 +1220,10 @@ impl Step for Distcheck {
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 
+        // Guarantee that these are built before we begin running.
+        builder.ensure(dist::PlainSourceTarball);
+        builder.ensure(dist::Src);
+
         let mut cmd = Command::new("tar");
         cmd.arg("-xzf")
            .arg(builder.ensure(dist::PlainSourceTarball))
