@@ -4,6 +4,12 @@ environment:
   AWS_SECRET_ACCESS_KEY:
     secure: 1UkmbiDd15tWtYbMm5O2Uqm0b0Ur8v1MoSlydxl4ojcroPeerRMlUges0l57py8c
   SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
+
+  # By default schannel checks revocation of certificates unlike some other SSL
+  # backends, but we've historically had problems on CI where a revocation
+  # server goes down presumably. See #43333 for more info
+  CARGO_HTTP_CHECK_REVOKE: false
+
   matrix:
   # 32/64 bit MSVC tests
   - MSYS_BITS: 64
