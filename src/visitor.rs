@@ -26,7 +26,7 @@ use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_ass
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{self, mk_sp};
+use utils::{self, contains_skip, mk_sp};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
@@ -79,11 +79,15 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
             }
-            ast::StmtKind::Local(..) => {
-                let rewrite = stmt.rewrite(
-                    &self.get_context(),
-                    Shape::indented(self.block_indent, self.config),
-                );
+            ast::StmtKind::Local(ref local) => {
+                let rewrite = if contains_skip(&local.attrs) {
+                    None
+                } else {
+                    stmt.rewrite(
+                        &self.get_context(),
+                        Shape::indented(self.block_indent, self.config),
+                    )
+                };
                 self.push_rewrite(stmt.span, rewrite);
             }
             ast::StmtKind::Expr(ref expr) => {
@@ -113,8 +117,12 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(span, rewrite)
             }
             ast::StmtKind::Mac(ref mac) => {
-                let (ref mac, _macro_style, _) = **mac;
-                self.visit_mac(mac, None, MacroPosition::Statement);
+                let (ref mac, _macro_style, ref attrs) = **mac;
+                if contains_skip(attrs) {
+                    self.push_rewrite(mac.span, None);
+                } else {
+                    self.visit_mac(mac, None, MacroPosition::Statement);
+                }
                 self.format_missing(stmt.span.hi);
             }
         }
