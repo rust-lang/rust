@@ -263,7 +263,7 @@ impl Step for StartupObjects {
                             .arg("--cfg").arg("stage0")
                             .arg("--target").arg(target)
                             .arg("--emit=obj")
-                            .arg("--o").arg(dst_file)
+                            .arg("-o").arg(dst_file)
                             .arg(src_file));
             }
 
