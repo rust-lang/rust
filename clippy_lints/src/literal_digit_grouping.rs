@@ -6,7 +6,7 @@ use syntax::ast::*;
 use syntax_pos;
 use utils::{span_help_and_lint, snippet_opt, in_external_macro};
 
-/// **What it does:** Warns if a long integral constant does not contain underscores.
+/// **What it does:** Warns if a long integral or floating-point constant does not contain underscores.
 ///
 /// **Why is this bad?** Reading long numbers is difficult without separators.
 ///
@@ -23,7 +23,7 @@ declare_lint! {
     "long integer literal without underscores"
 }
 
-/// **What it does:** Warns if an integral constant is grouped inconsistently with underscores.
+/// **What it does:** Warns if an integral or floating-point constant is grouped inconsistently with underscores.
 ///
 /// **Why is this bad?** Readers may incorrectly interpret inconsistently grouped digits.
 ///
@@ -40,7 +40,7 @@ declare_lint! {
     "integer literals with digits grouped inconsistently"
 }
 
-/// **What it does:** Warns if the digits of an integral constant are grouped into groups that
+/// **What it does:** Warns if the digits of an integral or floating-point constant are grouped into groups that
 /// are too large.
 ///
 /// **Why is this bad?** Negatively impacts readability.
