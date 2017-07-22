@@ -111,5 +111,6 @@ test!(regions, "tests/cases/regions");
 test!(removal, "tests/cases/removal");
 test!(removal_path, "tests/cases/removal_path");
 test!(structs, "tests/cases/structs");
+test!(swap, "tests/cases/swap");
 test!(traits, "tests/cases/traits");
 test!(ty_alias, "tests/cases/ty_alias");
