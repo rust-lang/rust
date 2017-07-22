@@ -1046,6 +1046,7 @@ impl<'feat> ExpansionConfig<'feat> {
 }
 
 // A Marker adds the given mark to the syntax context.
+#[derive(Debug)]
 pub struct Marker(pub Mark);
 
 impl Folder for Marker {

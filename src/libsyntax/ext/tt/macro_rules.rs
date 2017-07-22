@@ -119,8 +119,22 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     quoted::TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
+
+                let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let tts = transcribe(cx, Some(named_matches), rhs);
+                let mut tts = transcribe(cx, Some(named_matches), rhs);
+
+                // Replace all the tokens for the corresponding positions in the macro, to maintain
+                // proper positions in error reporting, while maintaining the macro_backtrace.
+                if rhs_spans.len() == tts.len() {
+                    tts = tts.map_enumerated(|i, tt| {
+                        let mut tt = tt.clone();
+                        let mut sp = rhs_spans[i];
+                        sp.ctxt = tt.span().ctxt;
+                        tt.set_span(sp);
+                        tt
+                    });
+                }
 
                 if cx.trace_macros() {
                     trace_macros_note(cx, sp, format!("to `{}`", tts));

@@ -128,7 +128,7 @@ impl TokenTree {
         }
     }
 
-    /// Retrieve the TokenTree's span.
+    /// Retrieve the `TokenTree`'s span.
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _) |
