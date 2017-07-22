@@ -101,7 +101,6 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use rustc::ty::TypeVariants::*;
 
-        // TODO: maybe fetch def ids from TyClosure
         let matching = match (&a.sty, &b.sty) {
             (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) => {
                 if self.check_substs(a_substs, b_substs) {
@@ -160,13 +159,14 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
                 None
             },
             (&TyDynamic(a_obj, a_r), &TyDynamic(b_obj, b_r)) => {
-                // TODO
                 let _ = self.relate(&a_r, &b_r)?;
-                if let (Some(a), Some(b)) = (a_obj.principal(), b_obj.principal()) {
-                    let _ = self.relate(&a, &b); // TODO: kill this?
-                    Some((a.skip_binder().def_id, b.skip_binder().def_id))
-                } else {
-                    None
+
+                match (a_obj.principal(), b_obj.principal()) {
+                    (Some(a), Some(b)) if self.check_substs(a.0.substs, b.0.substs) => {
+                        let _ = self.relate(&a.0.substs, &b.0.substs)?;
+                        Some((a.skip_binder().def_id, b.skip_binder().def_id))
+                    },
+                    _ => None,
                 }
             },
             (&TyTuple(as_, _), &TyTuple(bs, _)) => {
