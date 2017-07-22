@@ -23,11 +23,7 @@ warning: path changes to `Abc`
 1 | pub struct Abc;
   | ^^^^^^^^^^^^^^^
   |
-note: added path (technically breaking)
- --> $REPO_PATH/tests/cases/addition/new.rs:1:1
-  |
-1 | pub struct Abc;
-  | ^^^^^^^^^^^^^^^
+  = note: added definition (technically breaking)
 
 warning: path changes to `a`
  --> $REPO_PATH/tests/cases/addition/new.rs:7:1
@@ -35,11 +31,7 @@ warning: path changes to `a`
 7 | }
   | ^
   |
-note: added path (technically breaking)
- --> $REPO_PATH/tests/cases/addition/new.rs:7:1
-  |
-7 | }
-  | ^
+  = note: added definition (technically breaking)
 
 warning: path changes to `Cde`
   --> $REPO_PATH/tests/cases/addition/new.rs:11:5
@@ -47,9 +39,5 @@ warning: path changes to `Cde`
 11 |     pub struct Cde;
    |     ^^^^^^^^^^^^^^^
    |
-note: added path (technically breaking)
-  --> $REPO_PATH/tests/cases/addition/new.rs:11:5
-   |
-11 |     pub struct Cde;
-   |     ^^^^^^^^^^^^^^^
+   = note: added definition (technically breaking)
 

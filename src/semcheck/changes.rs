@@ -120,11 +120,19 @@ impl PathChange {
         let mut builder = session.struct_span_warn(self.def_span, &msg);
 
         for removed_span in &self.removals {
-            builder.span_warn(*removed_span, "removed path (breaking)");
+            if *removed_span == self.def_span {
+                builder.note("removed definition (breaking)");
+            } else {
+                builder.span_warn(*removed_span, "removed path (breaking)");
+            }
         }
 
         for added_span in &self.additions {
-            builder.span_note(*added_span, "added path (technically breaking)");
+            if *added_span == self.def_span {
+                builder.note("added definition (technically breaking)");
+            } else {
+                builder.span_note(*added_span, "added path (technically breaking)");
+            }
         }
 
         builder.emit();

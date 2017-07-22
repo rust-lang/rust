@@ -27,9 +27,5 @@ warning: path changes to `d`
 17 | }
    | ^
    |
-note: added path (technically breaking)
-  --> $REPO_PATH/tests/cases/addition_path/new.rs:17:1
-   |
-17 | }
-   | ^
+   = note: added definition (technically breaking)
 

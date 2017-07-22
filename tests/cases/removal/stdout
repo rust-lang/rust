@@ -5,11 +5,7 @@ warning: path changes to `Abc`
 1 | pub struct Abc;
   | ^^^^^^^^^^^^^^^
   |
-warning: removed path (breaking)
- --> $REPO_PATH/tests/cases/removal/old.rs:1:1
-  |
-1 | pub struct Abc;
-  | ^^^^^^^^^^^^^^^
+  = note: removed definition (breaking)
 
 warning: breaking changes in `Bcd`
  --> $REPO_PATH/tests/cases/removal/new.rs:2:1
@@ -25,11 +21,7 @@ warning: path changes to `a`
 7 | }
   | ^
   |
-warning: removed path (breaking)
- --> $REPO_PATH/tests/cases/removal/old.rs:7:1
-  |
-7 | }
-  | ^
+  = note: removed definition (breaking)
 
 warning: breaking changes in `b`
  --> $REPO_PATH/tests/cases/removal/new.rs:6:1
@@ -45,9 +37,5 @@ warning: path changes to `Cde`
 11 |     pub struct Cde;
    |     ^^^^^^^^^^^^^^^
    |
-warning: removed path (breaking)
-  --> $REPO_PATH/tests/cases/removal/old.rs:11:5
-   |
-11 |     pub struct Cde;
-   |     ^^^^^^^^^^^^^^^
+   = note: removed definition (breaking)
 

@@ -5,11 +5,7 @@ warning: path changes to `a`
 5 |         pub mod a { blow!($($rest)*); }
   |                     ^^^^^^^^^^^^^^^^^^^
   |
-note: added path (technically breaking)
- --> $REPO_PATH/tests/cases/pathologic_paths/new.rs:5:21
-  |
-5 |         pub mod a { blow!($($rest)*); }
-  |                     ^^^^^^^^^^^^^^^^^^^
+  = note: added definition (technically breaking)
 
 warning: path changes to `b`
  --> $REPO_PATH/tests/cases/pathologic_paths/new.rs:6:21
@@ -17,9 +13,5 @@ warning: path changes to `b`
 6 |         pub mod b { pub use super::a::*; }
   |                     ^^^^^^^^^^^^^^^^^^^^^^
   |
-note: added path (technically breaking)
- --> $REPO_PATH/tests/cases/pathologic_paths/new.rs:6:21
-  |
-6 |         pub mod b { pub use super::a::*; }
-  |                     ^^^^^^^^^^^^^^^^^^^^^^
+  = note: added definition (technically breaking)
 
