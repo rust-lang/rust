@@ -1,0 +1,53 @@
+error: multiple unused formatting arguments
+  --> $DIR/format-unused-lables.rs:12:5
+   |
+12 |     println!("Test", 123, 456, 789);
+   |     ^^^^^^^^^^^^^^^^^---^^---^^---^^
+   |                      |    |    |
+   |                      |    |    unused
+   |                      |    unused
+   |                      unused
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: multiple unused formatting arguments
+  --> $DIR/format-unused-lables.rs:14:5
+   |
+14 | /     println!("Test2",
+15 | |         123,
+   | |         --- unused
+16 | |         456,
+   | |         --- unused
+17 | |         789
+   | |         --- unused
+18 | |     );
+   | |______^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: named argument never used
+  --> $DIR/format-unused-lables.rs:20:35
+   |
+20 |     println!("Some stuff", UNUSED="args");
+   |                                   ^^^^^^
+
+error: multiple unused formatting arguments
+  --> $DIR/format-unused-lables.rs:22:5
+   |
+22 | /     println!("Some more $STUFF",
+23 | |         "woo!",
+   | |         ------ unused
+24 | |             STUFF=
+25 | |        "things"
+   | |        -------- unused
+26 | |              , UNUSED="args");
+   | |_______________________------_^
+   |                         |
+   |                         unused
+   |
+   = help: `$STUFF` should be written as `{STUFF}`
+   = note: shell formatting not supported; see the documentation for `std::fmt`
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to 4 previous errors
+

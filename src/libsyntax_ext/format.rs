@@ -798,9 +798,13 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
             } else {
                 let mut diag = cx.ecx.struct_span_err(cx.fmtsp,
                     "multiple unused formatting arguments");
-                for (sp, msg) in errs {
-                    diag.span_note(sp, msg);
+
+                // Ignoring message, as it gets repetitive
+                // Then use MultiSpan to not clutter up errors
+                for (sp, _) in errs {
+                    diag.span_label(sp, "unused");
                 }
+
                 diag
             }
         };
