@@ -1226,8 +1226,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let field_1_ty = self.get_field_ty(ty, 1)?;
         let field_0_size = self.type_size(field_0_ty)?.expect("pair element type must be sized");
         let field_1_size = self.type_size(field_1_ty)?.expect("pair element type must be sized");
-        self.memory.write_primval(ptr.offset(field_0, self.memory.layout)?.into(), a, field_0_size)?;
-        self.memory.write_primval(ptr.offset(field_1, self.memory.layout)?.into(), b, field_1_size)?;
+        let layout = self.memory.layout;
+        self.memory.write_primval(ptr.offset(field_0, layout)?.into(), a, field_0_size)?;
+        self.memory.write_primval(ptr.offset(field_1, layout)?.into(), b, field_1_size)?;
         Ok(())
     }
 

@@ -4,7 +4,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 use error::{EvalResult, EvalError};
 use eval_context::EvalContext;
 use value::PrimVal;
-use memory::MemoryPointer;
+use memory::{MemoryPointer, HasDataLayout};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn cast_primval(
@@ -78,7 +78,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyChar => Err(EvalError::InvalidChar(v)),
 
             // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
-            TyRawPtr(_) => Ok(PrimVal::Bytes(v % (1u128 << self.memory.layout.pointer_size.bits()))),
+            TyRawPtr(_) => Ok(PrimVal::Bytes(self.memory.truncate_to_ptr(v).0 as u128)),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
         }
