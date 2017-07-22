@@ -48,7 +48,7 @@ pub enum GeneratorState<Y, R> {
 /// ```rust
 /// #![feature(generators, generator_trait)]
 ///
-/// use std::ops::{Generator, State};
+/// use std::ops::{Generator, GeneratorState};
 ///
 /// fn main() {
 ///     let mut generator = || {
@@ -57,11 +57,11 @@ pub enum GeneratorState<Y, R> {
 ///     };
 ///
 ///     match generator.resume() {
-///         State::Yielded(1) => {}
+///         GeneratorState::Yielded(1) => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
 ///     match generator.resume() {
-///         State::Complete("foo") => {}
+///         GeneratorState::Complete("foo") => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
 /// }
@@ -100,11 +100,11 @@ pub trait Generator {
     ///
     /// # Return value
     ///
-    /// The `State` enum returned from this function indicates what state the
-    /// generator is in upon returning. If the `Yielded` variant is returned
-    /// then the generator has reached a suspension point and a value has been
-    /// yielded out. Generators in this state are available for resumption at a
-    /// later point.
+    /// The `GeneratorState` enum returned from this function indicates what
+    /// state the generator is in upon returning. If the `Yielded` variant is
+    /// returned then the generator has reached a suspension point and a value
+    /// has been yielded out. Generators in this state are available for
+    /// resumption at a later point.
     ///
     /// If `Complete` is returned then the generator has completely finished
     /// with the value provided. It is invalid for the generator to be resumed

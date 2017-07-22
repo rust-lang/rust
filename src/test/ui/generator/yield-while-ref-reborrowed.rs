@@ -10,7 +10,7 @@
 
 #![feature(generators, generator_trait)]
 
-use std::ops::{State, Generator};
+use std::ops::{GeneratorState, Generator};
 use std::cell::Cell;
 
 fn reborrow_shared_ref(x: &i32) {
