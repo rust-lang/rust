@@ -619,7 +619,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         let param_env = tcx.param_env(new_def_id);
         let origin = &ObligationCause::dummy();
-        let error = infcx.at(origin, param_env).eq(old, new);
+        let error = infcx
+            .at(origin, param_env)
+            .eq(old, new)
+            .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
 
         if let Err(err) = error {
             let region_maps = RegionMaps::new();
