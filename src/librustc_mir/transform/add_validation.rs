@@ -85,6 +85,10 @@ impl MirPass for AddValidation {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource,
                           mir: &mut Mir<'tcx>) {
+        if !tcx.sess.opts.debugging_opts.mir_emit_validate {
+            return;
+        }
+
         let local_decls = mir.local_decls.clone(); // TODO: Find a way to get rid of this clone.
 
         /// Convert an lvalue to a validation operand.
