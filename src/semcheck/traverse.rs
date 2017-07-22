@@ -202,7 +202,12 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               false,
                                               o_def_id,
                                               n_def_id);
-                                diff_traits(changes, id_mapping, tcx, o_def_id, n_def_id);
+                                diff_traits(changes,
+                                            id_mapping,
+                                            tcx,
+                                            o_def_id,
+                                            n_def_id,
+                                            output);
                             },
                             // non-matching item pair - register the difference and abort
                             _ => {
@@ -385,7 +390,8 @@ fn diff_traits(changes: &mut ChangeSet,
                id_mapping: &mut IdMapping,
                tcx: TyCtxt,
                old: DefId,
-               new: DefId) {
+               new: DefId,
+               output: bool) {
     use rustc::hir::Unsafety::Unsafe;
 
     let old_unsafety = tcx.trait_def(old).unsafety;
@@ -425,7 +431,7 @@ fn diff_traits(changes: &mut ChangeSet,
                                    *name,
                                    tcx.def_span(old_def_id),
                                    tcx.def_span(new_def_id),
-                                   true); // TODO: bad to do this unconditionally
+                                   output);
 
                 diff_generics(changes, id_mapping, tcx, true, old_def_id, new_def_id);
                 diff_method(changes, tcx, old_item, new_item);
@@ -627,7 +633,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         if let Err(err) = error {
             let region_maps = RegionMaps::new();
             let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
+            free_regions.relate_free_regions_from_predicates(param_env.caller_bounds);
             infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
 
             let err = infcx.resolve_type_vars_if_possible(&err);

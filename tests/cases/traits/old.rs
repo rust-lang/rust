@@ -24,3 +24,9 @@ pub trait Def<A> {
 pub trait Efg<A, B> {
     fn efg(&self, a: B) -> bool;
 }
+
+mod fgh {
+    pub trait Fgh {
+        fn fgh(&self) -> bool;
+    }
+}
