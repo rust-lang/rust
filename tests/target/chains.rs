@@ -114,11 +114,10 @@ fn floaters() {
     })
         .quux();
 
-    a +
-        match x {
-            true => "yay!",
-            false => "boo!",
-        }.bar()
+    a + match x {
+        true => "yay!",
+        false => "boo!",
+    }.bar()
 }
 
 fn is_replaced_content() -> bool {
