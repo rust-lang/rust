@@ -59,7 +59,7 @@ macro_rules! test {
                 };
 
                 success &= Command::new("./target/debug/rust-semverver")
-                    .args(&["--crate-type=lib",
+                    .args(&["--crate-type=lib", "-Zverbose",
                             "--extern", &format!("old={}", old_rlib.to_str().unwrap()),
                             "--extern", &format!("new={}", new_rlib.to_str().unwrap()),
                             "tests/helper/test.rs"])
@@ -107,9 +107,9 @@ test!(macros, "tests/cases/macros");
 test!(mix, "tests/cases/mix");
 test!(pathologic_paths, "tests/cases/pathologic_paths");
 test!(pub_use, "tests/cases/pub_use");
+test!(regions, "tests/cases/regions");
 test!(removal, "tests/cases/removal");
 test!(removal_path, "tests/cases/removal_path");
-test!(serde_traits, "tests/cases/serde_traits");
 test!(structs, "tests/cases/structs");
 test!(traits, "tests/cases/traits");
 test!(ty_alias, "tests/cases/ty_alias");

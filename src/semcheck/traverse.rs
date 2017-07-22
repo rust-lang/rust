@@ -592,7 +592,12 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        old: Ty<'tcx>,
                        new: Ty<'tcx>) {
     use syntax_pos::DUMMY_SP;
+    use rustc::infer::InferOk;
+    use rustc::middle::free_region::FreeRegionMap;
+    use rustc::middle::region::RegionMaps;
+    use rustc::traits::ObligationCause;
     use rustc::ty::{Lift, ReEarlyBound};
+    use rustc::ty::TypeVariants::*;
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
     let old = fold_to_new(id_mapping, tcx, old_def_id, &old).subst(tcx, substs);
@@ -612,11 +617,26 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         let new = new.subst(infcx.tcx, new_substs);
 
-        if let Err(err) = infcx.can_eq(tcx.param_env(new_def_id), old, new) {
-            let err = match infcx.fully_resolve(&err) {
-                Ok(res) => res,
-                Err(err) => panic!("err: {:?}", err),
-            };
+        let param_env = tcx.param_env(new_def_id);
+        let origin = &ObligationCause::dummy();
+        let error = infcx.at(origin, param_env).eq(old, new);
+
+        if let Err(err) = error {
+            let region_maps = RegionMaps::new();
+            let mut free_regions = FreeRegionMap::new();
+            free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
+            infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
+
+            let err = infcx.resolve_type_vars_if_possible(&err);
+            let err = err.fold_with(&mut BottomUpFolder { tcx: infcx.tcx, fldop: |ty| {
+                match ty.sty {
+                    TyRef(region, tm) if region.needs_infer() => {
+                        infcx.tcx.mk_ref(tcx.types.re_erased, tm)
+                    },
+                    TyInfer(_) => tcx.mk_ty(TyError),
+                    _ => ty,
+                }
+            }});
 
             changes.add_change(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
@@ -632,21 +652,13 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                             old: &T) -> T
     where T: TypeFoldable<'tcx>
 {
-    use rustc::ty::{AdtDef, Binder, BoundRegion, EarlyBoundRegion, ExistentialProjection,
+    use rustc::ty::{AdtDef, Binder, EarlyBoundRegion, ExistentialProjection,
                     ExistentialTraitRef, Region, RegionKind};
     use rustc::ty::ExistentialPredicate::*;
     use rustc::ty::TypeVariants::*;
 
-    fn replace_bound_region_did(id_mapping: &IdMapping, region: &BoundRegion) -> BoundRegion {
-        use rustc::ty::BoundRegion::BrNamed;
-
-        match *region {
-            BrNamed(def_id, name) => BrNamed(id_mapping.get_new_id(def_id), name),
-            reg => reg,
-        }
-    }
-
     fn replace_region_did<'tcx>(id_mapping: &IdMapping, region: Region<'tcx>) -> RegionKind {
+        use rustc::ty::BoundRegion::BrNamed;
         use rustc::ty::FreeRegion;
         use rustc::ty::RegionKind::*;
 
@@ -660,13 +672,13 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
 
                 ReEarlyBound(new_early)
             },
-            ReLateBound(index, region) => {
-                ReLateBound(index, replace_bound_region_did(id_mapping, &region))
-            },
             ReFree(FreeRegion { scope, bound_region }) => {
                 ReFree(FreeRegion {
                     scope: id_mapping.get_new_id(scope),
-                    bound_region: replace_bound_region_did(id_mapping, &bound_region),
+                    bound_region: match bound_region {
+                        BrNamed(def_id, name) => BrNamed(id_mapping.get_new_id(def_id), name),
+                        reg => reg,
+                    },
                 })
             },
             reg => reg,
