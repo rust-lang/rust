@@ -1596,7 +1596,8 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             // trait with a `fn visit_extent`.
             EndRegion(ref _extent) => false,
 
-            Validate(ref _op, ref lvalues) => lvalues.iter().any(|ty_and_lvalue| ty_and_lvalue.visit_with(visitor)),
+            Validate(ref _op, ref lvalues) =>
+                lvalues.iter().any(|ty_and_lvalue| ty_and_lvalue.visit_with(visitor)),
 
             Nop => false,
         }

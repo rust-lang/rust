@@ -43,7 +43,10 @@ impl MirPass for CleanEndRegions {
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let mut gather = GatherBorrowedRegions { seen_regions: FxHashSet(), in_validation_statement: false };
+        let mut gather = GatherBorrowedRegions {
+            seen_regions: FxHashSet(),
+            in_validation_statement: false
+        };
         gather.visit_mir(mir);
 
         let mut delete = DeleteTrivialEndRegions { seen_regions: &mut gather.seen_regions };

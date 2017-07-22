@@ -89,7 +89,7 @@ impl MirPass for AddValidation {
             return;
         }
 
-        let local_decls = mir.local_decls.clone(); // TODO: Find a way to get rid of this clone.
+        let local_decls = mir.local_decls.clone(); // FIXME: Find a way to get rid of this clone.
 
         /// Convert an lvalue to a validation operand.
         let lval_to_operand = |lval: Lvalue<'tcx>| -> ValidationOperand<'tcx, Lvalue<'tcx>> {
@@ -104,7 +104,7 @@ impl MirPass for AddValidation {
             let acquire_stmt = Statement {
                 source_info: SourceInfo {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
-                    span: mir.span, // TODO: Consider using just the span covering the function
+                    span: mir.span, // FIXME: Consider using just the span covering the function
                                     // argument declaration.
                 },
                 kind: StatementKind::Validate(ValidationOp::Acquire,

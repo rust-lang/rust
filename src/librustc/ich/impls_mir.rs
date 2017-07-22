@@ -243,7 +243,8 @@ for mir::StatementKind<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for mir::ValidationOperand<'tcx, T>
+impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+    for mir::ValidationOperand<'tcx, T>
     where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
