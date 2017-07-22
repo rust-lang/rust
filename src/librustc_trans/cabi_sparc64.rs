@@ -13,9 +13,9 @@
 use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
 use context::CrateContext;
 
-fn is_homogenous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
+fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
                                      -> Option<Uniform> {
-    arg.layout.homogenous_aggregate(ccx).and_then(|unit| {
+    arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
         let size = arg.layout.size(ccx);
 
         // Ensure we have at most eight uniquely addressable members.
@@ -46,7 +46,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         return;
     }
 
-    if let Some(uniform) = is_homogenous_aggregate(ccx, ret) {
+    if let Some(uniform) = is_homogeneous_aggregate(ccx, ret) {
         ret.cast_to(ccx, uniform);
         return;
     }
@@ -80,7 +80,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
         return;
     }
 
-    if let Some(uniform) = is_homogenous_aggregate(ccx, arg) {
+    if let Some(uniform) = is_homogeneous_aggregate(ccx, arg) {
         arg.cast_to(ccx, uniform);
         return;
     }
