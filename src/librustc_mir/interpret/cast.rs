@@ -77,8 +77,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
             TyChar => Err(EvalError::InvalidChar(v)),
 
-            // No alignment check needed for raw pointers
-            TyRawPtr(_) => Ok(PrimVal::Bytes(v % (1 << (self.memory.pointer_size()*8)))),
+            // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
+            TyRawPtr(_) => Ok(PrimVal::Bytes(v % (1u128 << self.memory.layout.pointer_size.bits()))),
 
             _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
         }
