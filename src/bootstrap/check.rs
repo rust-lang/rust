@@ -1197,6 +1197,10 @@ impl Step for Distcheck {
         run.path("distcheck")
     }
 
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Distcheck);
+    }
+
     /// Run "distcheck", a 'make check' from a tarball
     fn run(self, builder: &Builder) {
         let build = builder.build;
