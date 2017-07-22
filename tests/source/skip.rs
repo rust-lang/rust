@@ -29,3 +29,37 @@ fn issue1346() {
         }
     }))
 }
+
+fn skip_on_statements() {
+    // Semi
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    foo(
+        1, 2, 3, 4,
+        1, 2,
+        1, 2, 3,
+    );
+
+    // Local
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let x = foo(  a,   b  ,  c);
+
+    // Item
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    use   foobar  ;
+
+    // Mac
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    vec![
+        1, 2, 3, 4,
+        1, 2, 3, 4,
+        1, 2, 3, 4,
+        1, 2, 3,
+        1,
+        1, 2,
+        1,
+    ];
+
+    // Expr
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    foo(  a,   b  ,  c)
+}
