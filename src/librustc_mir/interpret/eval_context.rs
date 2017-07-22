@@ -426,21 +426,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub fn assign_discr_and_fields<
-        V: IntoValTyPair<'tcx>,
-        J: IntoIterator<Item = V>,
-    >(
+    pub fn assign_discr_and_fields(
         &mut self,
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
         discr_offset: u64,
-        operands: J,
+        operands: &[mir::Operand<'tcx>],
         discr_val: u128,
         variant_idx: usize,
         discr_size: u64,
-    ) -> EvalResult<'tcx>
-        where J::IntoIter: ExactSizeIterator,
-    {
+    ) -> EvalResult<'tcx> {
         // FIXME(solson)
         let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
 
@@ -456,29 +451,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.assign_fields(dest, dest_ty, operands)
     }
 
-    pub fn assign_fields<
-        V: IntoValTyPair<'tcx>,
-        J: IntoIterator<Item = V>,
-    >(
+    pub fn assign_fields(
         &mut self,
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
-        operands: J,
-    ) -> EvalResult<'tcx>
-        where J::IntoIter: ExactSizeIterator,
-    {
+        operands: &[mir::Operand<'tcx>],
+    ) -> EvalResult<'tcx> {
         if self.type_size(dest_ty)? == Some(0) {
             // zst assigning is a nop
             return Ok(());
         }
         if self.ty_to_primval_kind(dest_ty).is_ok() {
-            let mut iter = operands.into_iter();
-            assert_eq!(iter.len(), 1);
-            let (value, value_ty) = iter.next().unwrap().into_val_ty_pair(self)?;
+            assert_eq!(operands.len(), 1);
+            let value = self.eval_operand(&operands[0])?;
+            let value_ty = self.operand_ty(&operands[0]);
             return self.write_value(value, dest, value_ty);
         }
-        for (field_index, operand) in operands.into_iter().enumerate() {
-            let (value, value_ty) = operand.into_val_ty_pair(self)?;
+        for (field_index, operand) in operands.iter().enumerate() {
+            let value = self.eval_operand(operand)?;
+            let value_ty = self.operand_ty(operand);
             let field_dest = self.lvalue_field(dest, field_index, dest_ty, value_ty)?;
             self.write_value(value, field_dest, value_ty)?;
         }
@@ -1801,25 +1792,6 @@ pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &ty::
 pub fn is_inhabited<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.uninhabited_from(&mut HashMap::default(), tcx).is_empty()
 }
-
-pub trait IntoValTyPair<'tcx> {
-    fn into_val_ty_pair<'a>(self, ecx: &mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, (Value, Ty<'tcx>)> where 'tcx: 'a;
-}
-
-impl<'tcx> IntoValTyPair<'tcx> for (Value, Ty<'tcx>) {
-    fn into_val_ty_pair<'a>(self, _: &mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, (Value, Ty<'tcx>)> where 'tcx: 'a {
-        Ok(self)
-    }
-}
-
-impl<'b, 'tcx: 'b> IntoValTyPair<'tcx> for &'b mir::Operand<'tcx> {
-    fn into_val_ty_pair<'a>(self, ecx: &mut EvalContext<'a, 'tcx>) -> EvalResult<'tcx, (Value, Ty<'tcx>)> where 'tcx: 'a {
-        let value = ecx.eval_operand(self)?;
-        let value_ty = ecx.operand_ty(self);
-        Ok((value, value_ty))
-    }
-}
-
 
 /// FIXME: expose trans::monomorphize::resolve_closure
 pub fn resolve_closure<'a, 'tcx> (
