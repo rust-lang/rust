@@ -16,7 +16,7 @@ pub fn callback<F>(f: F) where F: FnOnce((&'static str, u32)) {
 }
 
 // LLVM does not yet output the required debug info to support showing inlined
-// function calls in backtraces when targetting MSVC, so disable inlining in
+// function calls in backtraces when targeting MSVC, so disable inlining in
 // this case.
 #[cfg_attr(not(target_env = "msvc"), inline(always))]
 #[cfg_attr(target_env = "msvc", inline(never))]

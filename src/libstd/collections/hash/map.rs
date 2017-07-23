@@ -203,7 +203,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 // so we round that up to 128.
 //
 // At a load factor of α, the odds of finding the target bucket after exactly n
-// unsuccesful probes[1] are
+// unsuccessful probes[1] are
 //
 // Pr_α{displacement = n} =
 // (1 - α) / α * ∑_{k≥1} e^(-kα) * (kα)^(k+n) / (k + n)! * (1 - kα / (k + n + 1))

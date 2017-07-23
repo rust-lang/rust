@@ -10,7 +10,7 @@
 
 // compile-flags: -Z parse-only
 
-// Test successful and unsucessful parsing of the `default` contextual keyword
+// Test successful and unsuccessful parsing of the `default` contextual keyword
 
 trait Foo {
     fn foo<T: Default>() -> T;

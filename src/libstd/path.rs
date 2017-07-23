@@ -476,7 +476,7 @@ impl<'a> Hash for PrefixComponent<'a> {
 
 /// A single component of a path.
 ///
-/// A `Component` roughtly corresponds to a substring between path separators
+/// A `Component` roughly corresponds to a substring between path separators
 /// (`/` or `\`).
 ///
 /// This `enum` is created by iterating over [`Components`], which in turn is
@@ -571,7 +571,7 @@ impl<'a> AsRef<OsStr> for Component<'a> {
     }
 }
 
-/// An interator over the [`Component`]s of a [`Path`].
+/// An iterator over the [`Component`]s of a [`Path`].
 ///
 /// This `struct` is created by the [`components`] method on [`Path`].
 /// See its documentation for more.
@@ -2019,7 +2019,7 @@ impl Path {
     /// * Repeated separators are ignored, so `a/b` and `a//b` both have
     ///   `a` and `b` as components.
     ///
-    /// * Occurences of `.` are normalized away, except if they are at the
+    /// * Occurrences of `.` are normalized away, except if they are at the
     ///   beginning of the path. For example, `a/./b`, `a/b/`, `a/b/.` and
     ///   `a/b` all have `a` and `b` as components, but `./a/b` starts with
     ///   an additional [`CurDir`] component.

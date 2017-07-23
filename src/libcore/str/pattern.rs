@@ -83,7 +83,7 @@ pub enum SearchStep {
     /// Note that there might be more than one `Reject` between two `Match`es,
     /// there is no requirement for them to be combined into one.
     Reject(usize, usize),
-    /// Expresses that every byte of the haystack has been visted, ending
+    /// Expresses that every byte of the haystack has been visited, ending
     /// the iteration.
     Done
 }
@@ -101,7 +101,7 @@ pub enum SearchStep {
 /// the haystack. This enables consumers of this trait to
 /// slice the haystack without additional runtime checks.
 pub unsafe trait Searcher<'a> {
-    /// Getter for the underlaying string to be searched in
+    /// Getter for the underlying string to be searched in
     ///
     /// Will always return the same `&str`
     fn haystack(&self) -> &'a str;
@@ -1153,7 +1153,7 @@ impl TwoWaySearcher {
     // The maximal suffix is a possible critical factorization (u', v') of `arr`.
     //
     // Returns `i` where `i` is the starting index of v', from the back;
-    // returns immedately when a period of `known_period` is reached.
+    // returns immediately when a period of `known_period` is reached.
     //
     // `order_greater` determines if lexical order is `<` or `>`. Both
     // orders must be computed -- the ordering with the largest `i` gives
