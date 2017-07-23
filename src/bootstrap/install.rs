@@ -171,7 +171,7 @@ macro_rules! install {
 
 install!((self, builder, _config),
     Docs, "src/doc", _config.docs, only_hosts: false, {
-        builder.ensure(dist::Docs { stage: self.stage, target: self.target });
+        builder.ensure(dist::Docs { stage: self.stage, host: self.target });
         install_docs(builder, self.stage, self.target);
     };
     Std, "src/libstd", true, only_hosts: true, {
@@ -201,7 +201,9 @@ install!((self, builder, _config),
         install_src(builder, self.stage);
     }, ONLY_BUILD;
     Rustc, "src/librustc", _config.extended, only_hosts: true, {
-        builder.ensure(dist::Rustc { stage: self.stage, target: self.target });
+        builder.ensure(dist::Rustc {
+            compiler: builder.compiler(self.stage, self.target),
+        });
         install_rustc(builder, self.stage, self.target);
     };
 );

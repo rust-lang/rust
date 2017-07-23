@@ -535,7 +535,7 @@ impl Step for Compiletest {
 
             builder.ensure(dist::DebuggerScripts {
                 sysroot: builder.sysroot(compiler),
-                target: target
+                host: target
             });
         }
 
