@@ -12,6 +12,7 @@ use std::time::{Instant};
 use rustc::util::common::{ProfQDumpParams, ProfileQueriesMsg, profq_msg, profq_set_chan};
 use std::sync::mpsc::{Receiver};
 use std::io::{Write};
+use rustc::dep_graph::{DepNode};
 
 pub mod trace;
 
@@ -52,6 +53,8 @@ enum ParseState {
     HaveQuery(trace::Query, Instant),
     // Have "time-begin" information from the last message (doit flag, and message)
     HaveTimeBegin(String, Instant),
+    // Have "task-begin" information from the last message
+    HaveTaskBegin(DepNode, Instant),
 }
 struct StackFrame {
     pub parse_st: ParseState,
@@ -170,7 +173,7 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                                 }
                             }
                         }
-                   },
+                    },
 
 
                     (ParseState::Clear,
@@ -212,19 +215,44 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                     },
                     (_, ProfileQueriesMsg::TimeEnd) => { panic!("parse error") }
 
-
-                    // Parse State: HaveTimeBegin -- for timing old
-                    // passes in driver (outside of query model, but
-                    // still in use)
-                    (ParseState::HaveTimeBegin(_, _),
-                     ProfileQueriesMsg::ProviderBegin) => {
+                    (ParseState::Clear,
+                     ProfileQueriesMsg::TaskBegin(key)) => {
+                        let start = Instant::now();
+                        frame.parse_st = ParseState::HaveTaskBegin(key, start);
+                        stack.push(frame);
+                        frame = StackFrame{parse_st:ParseState::Clear, traces:vec![]};
                     },
-                    (ParseState::HaveTimeBegin(_, _),
-                     ProfileQueriesMsg::CacheHit) => { unreachable!() },
-                    (ParseState::HaveTimeBegin(_, _),
-                     ProfileQueriesMsg::QueryBegin(_, _)) => { unreachable!() },
-                    (ParseState::HaveTimeBegin(_, _),
-                     ProfileQueriesMsg::ProviderEnd) => { unreachable!() },
+                    (_, ProfileQueriesMsg::TaskBegin(_)) =>
+                        panic!("parse error; did not expect time begin here"),
+
+                    (ParseState::Clear,
+                     ProfileQueriesMsg::TaskEnd) => {
+                        let provider_extent = frame.traces;
+                        match stack.pop() {
+                            None =>
+                                panic!("parse error: expected a stack frame; found an empty stack"),
+                            Some(old_frame) => {
+                                match old_frame.parse_st {
+                                    ParseState::HaveTaskBegin(key, start) => {
+                                        let duration = start.elapsed();
+                                        frame = StackFrame{
+                                            parse_st:ParseState::Clear,
+                                            traces:old_frame.traces
+                                        };
+                                        let trace = Rec {
+                                            effect: Effect::TaskBegin(key),
+                                            extent: Box::new(provider_extent),
+                                            start: start,
+                                            duration: duration,
+                                        };
+                                        frame.traces.push( trace );
+                                    },
+                                    _ => panic!("internal parse error: malformed parse stack")
+                                }
+                            }
+                        }
+                    },
+                    (_, ProfileQueriesMsg::TaskEnd) => { panic!("parse error") }
 
                     // Parse State: HaveQuery
                     (ParseState::HaveQuery(q,start),
@@ -244,6 +272,11 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                         stack.push(frame);
                         frame = StackFrame{parse_st:ParseState::Clear, traces:vec![]};
                     },
+
+                    //
+                    //
+                    // Parse errors:
+
                     (ParseState::HaveQuery(q,_),
                      ProfileQueriesMsg::ProviderEnd) => {
                         panic!("parse error: unexpected ProviderEnd; \
@@ -255,7 +288,15 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                                 earlier query is unfinished: {:?} and now {:?}",
                                q1, Query{span:span2, msg:querymsg2})
                     },
+
+                    (ParseState::HaveTimeBegin(_, _), _) => {
+                        unreachable!()
+                    },
+                    (ParseState::HaveTaskBegin(_, _), _) => {
+                        unreachable!()
+                    },
                 }
+
             }
         }
     }

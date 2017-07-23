@@ -14,6 +14,7 @@ use rustc::ty::maps::QueryMsg;
 use std::fs::File;
 use std::time::{Duration, Instant};
 use std::collections::hash_map::HashMap;
+use rustc::dep_graph::{DepNode};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Query {
@@ -23,6 +24,7 @@ pub struct Query {
 pub enum Effect {
     QueryBegin(Query, CacheCase),
     TimeBegin(String),
+    TaskBegin(DepNode),
 }
 pub enum CacheCase {
     Hit, Miss
@@ -46,12 +48,23 @@ pub fn cons_of_query_msg(q: &trace::Query) -> String {
     cons[0].to_string()
 }
 
+pub fn cons_of_key(k: &DepNode) -> String {
+    let s = format!("{:?}", k);
+    let cons: Vec<&str> = s.split(|d| d == '(' || d == '{').collect();
+    assert!(cons.len() > 0 && cons[0] != "");
+    cons[0].to_string()
+}
+
 // First return value is text; second return value is a CSS class
 pub fn html_of_effect(eff: &Effect) -> (String, String) {
     match *eff {
         Effect::TimeBegin(ref msg) => {
             (msg.clone(),
              format!("time-begin"))
+        },
+        Effect::TaskBegin(ref key) => {
+            let cons = cons_of_key(key);
+            (cons.clone(), format!("{} task-begin", cons))
         },
         Effect::QueryBegin(ref qmsg, ref cc) => {
             let cons = cons_of_query_msg(qmsg);
@@ -146,6 +159,20 @@ fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec
                     }};
                 counts.insert(msg.clone(), qm);
             },
+            Effect::TaskBegin(ref key) => {
+                let cons = cons_of_key(key);
+                let qm = match counts.get(&cons) {
+                    Some(qm) =>
+                        QueryMetric{
+                            count: qm.count + 1,
+                            duration: qm.duration + t.duration
+                        },
+                    None => QueryMetric{
+                        count: 1,
+                        duration: t.duration
+                    }};
+                counts.insert(cons, qm);
+            },
             Effect::QueryBegin(ref qmsg, ref _cc) => {
                 let qcons = cons_of_query_msg(qmsg);
                 let qm = match counts.get(&qcons) {
@@ -207,6 +234,12 @@ body {
     border-radius: 5px;
     padding: 0px;
     margin: 1px;
+    font-size: 0px;
+}
+.task-begin {
+    border-width: 1px;
+    color: white;
+    border-color: #ff8;
     font-size: 0px;
 }
 .miss {

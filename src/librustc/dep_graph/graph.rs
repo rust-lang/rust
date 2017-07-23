@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashMap;
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
+use util::common::{ProfileQueriesMsg, profq_msg};
 
 use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
@@ -118,7 +119,13 @@ impl DepGraph {
     {
         if let Some(ref data) = self.data {
             data.edges.borrow_mut().push_task(key);
+            if cfg!(debug_assertions) {
+                profq_msg(ProfileQueriesMsg::TaskBegin(key.clone()))
+            };
             let result = task(cx, arg);
+            if cfg!(debug_assertions) {
+                profq_msg(ProfileQueriesMsg::TaskEnd)
+            };
             let dep_node_index = data.edges.borrow_mut().pop_task(key);
             (result, dep_node_index)
         } else {

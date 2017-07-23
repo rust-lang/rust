@@ -22,6 +22,7 @@ use std::time::{Duration, Instant};
 use std::sync::mpsc::{Sender};
 use syntax_pos::{Span};
 use ty::maps::{QueryMsg};
+use dep_graph::{DepNode};
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
@@ -53,8 +54,12 @@ pub struct ProfQDumpParams {
 pub enum ProfileQueriesMsg {
     /// begin a timed pass
     TimeBegin(String),
-    // end a timed pass
+    /// end a timed pass
     TimeEnd,
+    /// begin a task (see dep_graph::graph::with_task)
+    TaskBegin(DepNode),
+    /// end a task
+    TaskEnd,
     /// begin a new query
     QueryBegin(Span, QueryMsg),
     /// query is satisfied by using an already-known value for the given key
