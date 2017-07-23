@@ -1808,8 +1808,8 @@ impl<'a> Parser<'a> {
                 // `<'a, T, A = U>`
                 let (lifetimes, types, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
-                let _span = lo.to(self.prev_span);
-                AngleBracketedParameterData { lifetimes, types, bindings }.into()
+                let span = lo.to(self.prev_span);
+                AngleBracketedParameterData { lifetimes, types, bindings, span }.into()
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
@@ -2357,7 +2357,7 @@ impl<'a> Parser<'a> {
             _ => {
                 // Field access `expr.f`
                 if let Some(parameters) = segment.parameters {
-                    self.span_err(parameters.span(segment.span),
+                    self.span_err(parameters.span(),
                                   "field expressions may not have generic arguments");
                 }
 

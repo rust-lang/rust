@@ -386,9 +386,10 @@ impl<'a> Resolver<'a> {
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                             -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
-        if segments.iter().any(|segment| segment.parameters.is_some()) {
-            self.session.span_err(span, "generic arguments in macro path");
-        }
+        segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
+            self.session.span_err(segment.parameters.as_ref().unwrap().span(),
+                                  "generic arguments in macro path");
+        });
 
         let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.identifier)).collect();
         let invocation = self.invocations[&scope];

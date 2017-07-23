@@ -239,6 +239,12 @@ pub struct SpanLabel {
     pub label: Option<String>,
 }
 
+impl Default for Span {
+    fn default() -> Self {
+        DUMMY_SP
+    }
+}
+
 impl serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("Span", 2, |s| {

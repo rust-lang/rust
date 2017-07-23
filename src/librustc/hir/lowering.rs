@@ -865,7 +865,7 @@ impl<'a> LoweringContext<'a> {
                                             data: &AngleBracketedParameterData,
                                             param_mode: ParamMode)
                                             -> hir::AngleBracketedParameterData {
-        let &AngleBracketedParameterData { ref lifetimes, ref types, ref bindings } = data;
+        let &AngleBracketedParameterData { ref lifetimes, ref types, ref bindings, .. } = data;
         hir::AngleBracketedParameterData {
             lifetimes: self.lower_lifetimes(lifetimes),
             types: types.iter().map(|ty| self.lower_ty(ty)).collect(),

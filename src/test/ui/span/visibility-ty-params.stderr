@@ -1,0 +1,22 @@
+error[E0577]: expected module, found struct `S`
+  --> $DIR/visibility-ty-params.rs:16:5
+   |
+16 | m!{ S<u8> } //~ ERROR generic arguments in visibility path
+   |     -^^^^
+   |     |
+   |     did you mean `m`?
+
+error: generic arguments in visibility path
+  --> $DIR/visibility-ty-params.rs:16:6
+   |
+16 | m!{ S<u8> } //~ ERROR generic arguments in visibility path
+   |      ^^^^
+
+error: generic arguments in visibility path
+  --> $DIR/visibility-ty-params.rs:20:10
+   |
+20 |     m!{ m<> } //~ ERROR generic arguments in visibility path
+   |          ^^
+
+error: aborting due to 3 previous errors
+

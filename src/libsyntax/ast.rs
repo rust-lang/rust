@@ -153,14 +153,10 @@ pub enum PathParameters {
 }
 
 impl PathParameters {
-    pub fn span(&self, fallback: Span) -> Span {
+    pub fn span(&self) -> Span {
         match *self {
-            AngleBracketed(ref data) => {
-                data.lifetimes.get(0).map(|x| x.span).or_else(||
-                data.types.get(0).map(|x| x.span)).or_else(||
-                data.bindings.get(0).map(|x| x.span)).unwrap_or(fallback)
-            }
-            Parenthesized(ref data) => data.span
+            AngleBracketed(ref data) => data.span,
+            Parenthesized(ref data) => data.span,
         }
     }
 }
@@ -168,6 +164,8 @@ impl PathParameters {
 /// A path like `Foo<'a, T>`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Default)]
 pub struct AngleBracketedParameterData {
+    /// Overall span
+    pub span: Span,
     /// The lifetime parameters for this path segment.
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
