@@ -91,14 +91,41 @@ mod tracing;
 // symbol resolvers:
 mod printing;
 
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "emscripten")))]
+#[cfg(not(target_os = "emscripten"))]
 pub mod gnu {
     use io;
     use fs;
     use libc::c_char;
 
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
         Err(io::Error::new(io::ErrorKind::Other, "Not implemented"))
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
+        use ptr;
+        use slice;
+        use ffi::OsStr;
+        use os::unix::ffi::OsStrExt;
+        use libc::c_int;
+
+        extern {
+            fn _NSGetExecutablePath(buf: *mut c_char,
+                                    bufsize: *mut u32) -> c_int;
+        }
+        unsafe {
+            let mut bufsize: u32 = 0;
+            _NSGetExecutablePath(ptr::null_mut(), &mut bufsize);
+            if bufsize == 0 { return Err(io::Error::last_os_error()); }
+            let mut buffer: Vec<c_char> = Vec::with_capacity(bufsize as usize);
+            let ret = _NSGetExecutablePath(buffer.as_mut_ptr(), &mut bufsize);
+            if ret != 0 { return Err(io::Error::last_os_error()); }
+            buffer.set_len(bufsize as usize);
+            let file = fs::File::open(OsStr::from_bytes(
+                    slice::from_raw_parts(buffer.as_ptr() as *const u8, buffer.len()-1)))?;
+            Ok((buffer, file))
+        }
     }
 }
 
