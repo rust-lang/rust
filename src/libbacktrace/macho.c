@@ -1,6 +1,9 @@
 /* macho.c -- Get debug data from an Mach-O file for backtraces.
    Copyright (C) 2012-2016 Free Software Foundation, Inc.
    Written by John Colanduoni.
+   
+   Pending upstream pull request:
+   https://github.com/ianlancetaylor/libbacktrace/pull/2
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
