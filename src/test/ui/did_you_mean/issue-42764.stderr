@@ -6,7 +6,7 @@ error[E0308]: mismatched types
    |
    = note: expected type `DoubleOption<_>`
               found type `usize`
-help: perhaps you meant to use a variant of the expected type
+help: try using a variant of the expected type
    |
 21 |     this_function_expects_a_double_option(DoubleOption::FirstSome(n));
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^

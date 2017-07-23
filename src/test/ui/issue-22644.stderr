@@ -2,66 +2,46 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
   --> $DIR/issue-22644.rs:16:31
    |
 16 |     println!("{}", a as usize < long_name);
-   |                               ^ --------- interpreted as generic arguments
-   |                               |
-   |                               not interpreted as comparison
-   |
-help: if you want to compare the casted value then write:
-   |
-16 |     println!("{}", (a as usize) < long_name);
-   |                    ^^^^^^^^^^^^
+   |                    ---------- ^ --------- interpreted as generic arguments
+   |                    |          |
+   |                    |          not interpreted as comparison
+   |                    help: try comparing the casted value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:17:33
    |
 17 |     println!("{}{}", a as usize < long_name, long_name);
-   |                                 ^ -------------------- interpreted as generic arguments
-   |                                 |
-   |                                 not interpreted as comparison
-   |
-help: if you want to compare the casted value then write:
-   |
-17 |     println!("{}{}", (a as usize) < long_name, long_name);
-   |                      ^^^^^^^^^^^^
+   |                      ---------- ^ -------------------- interpreted as generic arguments
+   |                      |          |
+   |                      |          not interpreted as comparison
+   |                      help: try comparing the casted value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:18:31
    |
 18 |     println!("{}", a as usize < 4);
-   |                               ^ - interpreted as generic arguments
-   |                               |
-   |                               not interpreted as comparison
-   |
-help: if you want to compare the casted value then write:
-   |
-18 |     println!("{}", (a as usize) < 4);
-   |                    ^^^^^^^^^^^^
+   |                    ---------- ^ - interpreted as generic arguments
+   |                    |          |
+   |                    |          not interpreted as comparison
+   |                    help: try comparing the casted value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:20:31
    |
 20 |     println!("{}{}", a: usize < long_name, long_name);
-   |                               ^ -------------------- interpreted as generic arguments
-   |                               |
-   |                               not interpreted as comparison
-   |
-help: if you want to compare the casted value then write:
-   |
-20 |     println!("{}{}", (a: usize) < long_name, long_name);
-   |                      ^^^^^^^^^^
+   |                      -------- ^ -------------------- interpreted as generic arguments
+   |                      |        |
+   |                      |        not interpreted as comparison
+   |                      help: try comparing the casted value: `(a: usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:21:29
    |
 21 |     println!("{}", a: usize < 4);
-   |                             ^ - interpreted as generic arguments
-   |                             |
-   |                             not interpreted as comparison
-   |
-help: if you want to compare the casted value then write:
-   |
-21 |     println!("{}", (a: usize) < 4);
-   |                    ^^^^^^^^^^
+   |                    -------- ^ - interpreted as generic arguments
+   |                    |        |
+   |                    |        not interpreted as comparison
+   |                    help: try comparing the casted value: `(a: usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:26:20
@@ -71,7 +51,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
 27 |                    4);
    |                    - interpreted as generic arguments
    |
-help: if you want to compare the casted value then write:
+help: try comparing the casted value
    |
 23 |     println!("{}", (a
 24 |                    as
@@ -86,7 +66,7 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
 36 |                    5);
    |                    - interpreted as generic arguments
    |
-help: if you want to compare the casted value then write:
+help: try comparing the casted value
    |
 28 |     println!("{}", (a
 29 | 

@@ -2654,7 +2654,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Add help to type error if this is an `if` condition with an assignment
             match (expected, &expr.node) {
                 (ExpectIfCondition, &hir::ExprAssign(ref lhs, ref rhs)) => {
-                    let msg = "did you mean to compare equality?";
+                    let msg = "try comparing for equality";
                     if let (Ok(left), Ok(right)) = (
                         self.tcx.sess.codemap().span_to_snippet(lhs.span),
                         self.tcx.sess.codemap().span_to_snippet(rhs.span))
@@ -4270,7 +4270,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 hir::ExprBlock(..) => {
                     let sp = cause_span.next_point();
                     err.span_suggestion(sp,
-                                        "did you mean to add a semicolon here?",
+                                        "try adding a semicolon",
                                         ";".to_string());
                 }
                 _ => (),
@@ -4302,7 +4302,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } = fn_decl {
             if ty.is_suggestable() {
                 err.span_suggestion(span,
-                                    "possibly return type missing here?",
+                                    "try adding a return type",
                                     format!("-> {} ", ty));
             } else {
                 err.span_label(span, "possibly return type missing here?");
