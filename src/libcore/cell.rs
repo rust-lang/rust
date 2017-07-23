@@ -187,6 +187,29 @@ use ops::{Deref, DerefMut, CoerceUnsized};
 use ptr;
 
 /// A mutable memory location.
+/// 
+/// ```
+/// use std::cell::Cell;
+///
+/// struct SomeStruct {
+///     regular_field: u8,
+///     special_field: Cell<u8>,
+/// }
+///
+/// let my_struct = SomeStruct {
+///     regular_field: 0,
+///     special_field: Cell::new(1),
+/// };
+///
+/// let new_value = 100;
+/// 
+/// // ERROR, because my_struct is immutable
+/// // immutable.regular_field = new_value;
+/// 
+/// // WORKS, special_field is mutable because it is Cell
+/// immutable.special_field.set(new_value);
+/// assert_eq!(immutable.special_field.get(), new_value);
+/// ```
 ///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
