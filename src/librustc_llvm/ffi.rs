@@ -478,6 +478,7 @@ pub mod debuginfo {
     }
 }
 
+pub enum ModuleBuffer {}
 
 // Link to our native llvm bindings (things that we need to use the C++ api
 // for) and because llvm is written in C++ we need to link against libstdc++
@@ -1609,6 +1610,7 @@ extern "C" {
     pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef, AddLifetimes: bool);
     pub fn LLVMRustLinkInExternalBitcode(M: ModuleRef, bc: *const c_char, len: size_t) -> bool;
+    pub fn LLVMRustLinkInParsedExternalBitcode(M: ModuleRef, M: ModuleRef) -> bool;
     pub fn LLVMRustRunRestrictionPass(M: ModuleRef, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
 
@@ -1678,4 +1680,9 @@ extern "C" {
     pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: ValueRef);
     pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
+    pub fn LLVMRustModuleBufferCreate(M: ModuleRef) -> *mut ModuleBuffer;
+    pub fn LLVMRustModuleBufferPtr(p: *const ModuleBuffer) -> *const u8;
+    pub fn LLVMRustModuleBufferLen(p: *const ModuleBuffer) -> usize;
+    pub fn LLVMRustModuleBufferFree(p: *mut ModuleBuffer);
+    pub fn LLVMRustModuleCost(M: ModuleRef) -> u64;
 }

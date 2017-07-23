@@ -31,7 +31,7 @@ use super::ModuleKind;
 use assert_module_sources::{self, Disposition};
 use back::link;
 use back::symbol_export;
-use back::write::{self, OngoingCrateTranslation};
+use back::write::{self, OngoingCrateTranslation, create_target_machine};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use metadata;
@@ -732,6 +732,7 @@ fn contains_null(s: &str) -> bool {
 }
 
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
+                            llmod_id: &str,
                             link_meta: &LinkMeta,
                             exported_symbols: &NodeSet)
                             -> (ContextRef, ModuleRef,
@@ -741,7 +742,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     use flate2::write::DeflateEncoder;
 
     let (metadata_llcx, metadata_llmod) = unsafe {
-        context::create_context_and_module(tcx.sess, "metadata")
+        context::create_context_and_module(tcx.sess, llmod_id)
     };
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -886,17 +887,20 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let shared_ccx = SharedCrateContext::new(tcx);
     // Translate the metadata.
+    let llmod_id = "metadata";
     let (metadata_llcx, metadata_llmod, metadata, metadata_incr_hashes) =
         time(tcx.sess.time_passes(), "write metadata", || {
-            write_metadata(tcx, &link_meta, &exported_symbol_node_ids)
+            write_metadata(tcx, llmod_id, &link_meta, &exported_symbol_node_ids)
         });
 
     let metadata_module = ModuleTranslation {
         name: link::METADATA_MODULE_NAME.to_string(),
+        llmod_id: llmod_id.to_string(),
         symbol_name_hash: 0, // we always rebuild metadata, at least for now
         source: ModuleSource::Translated(ModuleLlvm {
             llcx: metadata_llcx,
             llmod: metadata_llmod,
+            tm: create_target_machine(tcx.sess),
         }),
         kind: ModuleKind::Metadata,
     };
@@ -935,8 +939,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         shared_ccx.tcx().collect_and_partition_translation_items(LOCAL_CRATE).1;
     let codegen_units = (*codegen_units).clone();
 
-    assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
-
     let ongoing_translation = write::start_async_translation(
         tcx,
         time_graph.clone(),
@@ -945,24 +947,15 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         rx);
 
     // Translate an allocator shim, if any
-    //
-    // If LTO is enabled and we've got some previous LLVM module we translated
-    // above, then we can just translate directly into that LLVM module. If not,
-    // however, we need to create a separate module and trans into that. Note
-    // that the separate translation is critical for the standard library where
-    // the rlib's object file doesn't have allocator functions but the dylib
-    // links in an object file that has allocator functions. When we're
-    // compiling a final LTO artifact, though, there's no need to worry about
-    // this as we're not working with this dual "rlib/dylib" functionality.
-    let allocator_module = if tcx.sess.lto() {
-        None
-    } else if let Some(kind) = tcx.sess.allocator_kind.get() {
+    let allocator_module = if let Some(kind) = tcx.sess.allocator_kind.get() {
         unsafe {
+            let llmod_id = "allocator";
             let (llcx, llmod) =
-                context::create_context_and_module(tcx.sess, "allocator");
+                context::create_context_and_module(tcx.sess, llmod_id);
             let modules = ModuleLlvm {
                 llmod,
                 llcx,
+                tm: create_target_machine(tcx.sess),
             };
             time(tcx.sess.time_passes(), "write allocator module", || {
                 allocator::trans(tcx, &modules, kind)
@@ -970,6 +963,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             Some(ModuleTranslation {
                 name: link::ALLOCATOR_MODULE_NAME.to_string(),
+                llmod_id: llmod_id.to_string(),
                 symbol_name_hash: 0, // we always rebuild allocator shims
                 source: ModuleSource::Translated(modules),
                 kind: ModuleKind::Allocator,
@@ -1002,10 +996,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ongoing_translation.wait_for_signal_to_translate_item();
         ongoing_translation.check_for_errors(tcx.sess);
 
-        let _timing_guard = time_graph
-            .as_ref()
-            .map(|time_graph| time_graph.start(write::TRANS_WORKER_TIMELINE,
-                                               write::TRANS_WORK_PACKAGE_KIND));
+        let _timing_guard = time_graph.as_ref().map(|time_graph| {
+            time_graph.start(write::TRANS_WORKER_TIMELINE,
+                             write::TRANS_WORK_PACKAGE_KIND,
+                             &format!("codegen {}", cgu.name()))
+        });
         let start_time = Instant::now();
         all_stats.extend(tcx.compile_codegen_unit(*cgu.name()));
         total_trans_time += start_time.elapsed();
@@ -1336,6 +1331,16 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let cgu_id = cgu.work_product_id();
         let symbol_name_hash = cgu.compute_symbol_name_hash(tcx);
 
+        // Append ".rs" to LLVM module identifier.
+        //
+        // LLVM code generator emits a ".file filename" directive
+        // for ELF backends. Value of the "filename" is set as the
+        // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
+        // crashes if the module identifier is same as other symbols
+        // such as a function name in the module.
+        // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
+        let llmod_id = format!("{}.rs", cgu.name());
+
         // Check whether there is a previous work-product we can
         // re-use.  Not only must the file exist, and the inputs not
         // be dirty, but the hash of the symbols we will generate must
@@ -1361,6 +1366,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if let Some(buf) = previous_work_product {
             // Don't need to translate this module.
             let module = ModuleTranslation {
+                llmod_id: llmod_id,
                 name: cgu_name,
                 symbol_name_hash,
                 source: ModuleSource::Preexisting(buf.clone()),
@@ -1371,7 +1377,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Instantiate translation items without filling out definitions yet...
         let scx = SharedCrateContext::new(tcx);
-        let lcx = LocalCrateContext::new(&scx, cgu);
+        let lcx = LocalCrateContext::new(&scx, cgu, &llmod_id);
         let module = {
             let ccx = CrateContext::new(&scx, &lcx);
             let trans_items = ccx.codegen_unit()
@@ -1423,19 +1429,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let llvm_module = ModuleLlvm {
                 llcx: ccx.llcx(),
                 llmod: ccx.llmod(),
+                tm: create_target_machine(ccx.sess()),
             };
-
-            // In LTO mode we inject the allocator shim into the existing
-            // module.
-            if ccx.sess().lto() {
-                if let Some(kind) = ccx.sess().allocator_kind.get() {
-                    time(ccx.sess().time_passes(), "write allocator module", || {
-                        unsafe {
-                            allocator::trans(ccx.tcx(), &llvm_module, kind);
-                        }
-                    });
-                }
-            }
 
             // Adjust exported symbols for MSVC dllimport
             if ccx.sess().target.target.options.is_like_msvc &&
@@ -1448,6 +1443,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 symbol_name_hash,
                 source: ModuleSource::Translated(llvm_module),
                 kind: ModuleKind::Regular,
+                llmod_id,
             }
         };
 

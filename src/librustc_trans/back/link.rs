@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use super::archive::{ArchiveBuilder, ArchiveConfig};
+use super::bytecode::{self, RLIB_BYTECODE_EXTENSION};
 use super::linker::Linker;
 use super::command::Command;
 use super::rpath::RPathConfig;
@@ -36,12 +37,9 @@ use std::ffi::OsString;
 use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, Read, Write, BufWriter};
-use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::str;
-use flate2::Compression;
-use flate2::write::DeflateEncoder;
 use syntax::attr;
 
 /// The LLVM module name containing crate-metadata. This includes a `.` on
@@ -54,35 +52,6 @@ pub const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
 // same as for metadata above, but for allocator shim
 pub const ALLOCATOR_MODULE_NAME: &'static str = "crate.allocator";
 pub const ALLOCATOR_OBJ_NAME: &'static str = "crate.allocator.o";
-
-// RLIB LLVM-BYTECODE OBJECT LAYOUT
-// Version 1
-// Bytes    Data
-// 0..10    "RUST_OBJECT" encoded in ASCII
-// 11..14   format version as little-endian u32
-// 15..22   size in bytes of deflate compressed LLVM bitcode as
-//          little-endian u64
-// 23..     compressed LLVM bitcode
-
-// This is the "magic number" expected at the beginning of a LLVM bytecode
-// object in an rlib.
-pub const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
-
-// The version number this compiler will write to bytecode objects in rlibs
-pub const RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
-
-// The offset in bytes the bytecode object format version number can be found at
-pub const RLIB_BYTECODE_OBJECT_VERSION_OFFSET: usize = 11;
-
-// The offset in bytes the size of the compressed bytecode can be found at in
-// format version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
-    RLIB_BYTECODE_OBJECT_VERSION_OFFSET + 4;
-
-// The offset in bytes the compressed LLVM bytecode can be found at in format
-// version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
-    RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
 pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
                                   invalid_output_for_target, build_link_meta, out_filename,
@@ -201,8 +170,8 @@ pub fn link_binary(sess: &Session,
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
         if sess.opts.output_types.should_trans() {
-            for obj in object_filenames(trans, outputs) {
-                remove(sess, &obj);
+            for obj in trans.modules.iter() {
+                remove(sess, &obj.object);
             }
         }
         remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
@@ -282,10 +251,8 @@ fn link_binary_output(sess: &Session,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> Vec<PathBuf> {
-    let objects = object_filenames(trans, outputs);
-
-    for file in &objects {
-        check_file_is_writeable(file, sess);
+    for module in trans.modules.iter() {
+        check_file_is_writeable(&module.object, sess);
     }
 
     let tmpdir = match TempDir::new("rustc") {
@@ -308,7 +275,6 @@ fn link_binary_output(sess: &Session,
                 link_rlib(sess,
                           trans,
                           RlibFlavor::Normal,
-                          &objects,
                           outputs,
                           &out_filename,
                           tmpdir.path()).build();
@@ -317,12 +283,11 @@ fn link_binary_output(sess: &Session,
                 link_staticlib(sess,
                                trans,
                                outputs,
-                               &objects,
                                &out_filename,
                                tmpdir.path());
             }
             _ => {
-                link_natively(sess, crate_type, &objects, &out_filename,
+                link_natively(sess, crate_type, &out_filename,
                               trans, outputs, tmpdir.path());
             }
         }
@@ -334,14 +299,6 @@ fn link_binary_output(sess: &Session,
     }
 
     out_filenames
-}
-
-fn object_filenames(trans: &CrateTranslation,
-                    outputs: &OutputFilenames)
-                    -> Vec<PathBuf> {
-    trans.modules.iter().map(|module| {
-        outputs.temp_path(OutputType::Object, Some(&module.name))
-    }).collect()
 }
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
@@ -387,15 +344,14 @@ enum RlibFlavor {
 fn link_rlib<'a>(sess: &'a Session,
                  trans: &CrateTranslation,
                  flavor: RlibFlavor,
-                 objects: &[PathBuf],
                  outputs: &OutputFilenames,
                  out_filename: &Path,
                  tmpdir: &Path) -> ArchiveBuilder<'a> {
-    info!("preparing rlib from {:?} to {:?}", objects, out_filename);
+    info!("preparing rlib to {:?}", out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
 
-    for obj in objects {
-        ab.add_file(obj);
+    for module in trans.modules.iter() {
+        ab.add_file(&module.object);
     }
 
     // Note that in this loop we are ignoring the value of `lib.cfg`. That is,
@@ -462,15 +418,15 @@ fn link_rlib<'a>(sess: &'a Session,
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.  If codegen_units > 1, we insert each of the
             // bitcode files.
-            for obj in objects {
+            for module in trans.modules.iter() {
                 // Note that we make sure that the bytecode filename in the
                 // archive is never exactly 16 bytes long by adding a 16 byte
                 // extension to it. This is to work around a bug in LLDB that
                 // would cause it to crash if the name of a file in an archive
                 // was exactly 16 bytes.
-                let bc_filename = obj.with_extension("bc");
-                let bc_deflated_filename = tmpdir.join({
-                    obj.with_extension("bytecode.deflate").file_name().unwrap()
+                let bc_filename = module.object.with_extension("bc");
+                let bc_encoded_filename = tmpdir.join({
+                    module.object.with_extension(RLIB_BYTECODE_EXTENSION).file_name().unwrap()
                 });
 
                 let mut bc_data = Vec::new();
@@ -482,11 +438,9 @@ fn link_rlib<'a>(sess: &'a Session,
                                                  e))
                 }
 
-                let mut bc_data_deflated = Vec::new();
-                DeflateEncoder::new(&mut bc_data_deflated, Compression::Fast)
-                    .write_all(&bc_data).unwrap();
+                let encoded = bytecode::encode(&module.llmod_id, &bc_data);
 
-                let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
+                let mut bc_file_deflated = match fs::File::create(&bc_encoded_filename) {
                     Ok(file) => file,
                     Err(e) => {
                         sess.fatal(&format!("failed to create compressed \
@@ -494,8 +448,7 @@ fn link_rlib<'a>(sess: &'a Session,
                     }
                 };
 
-                match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
-                                                    &bc_data_deflated) {
+                match bc_file_deflated.write_all(&encoded) {
                     Ok(()) => {}
                     Err(e) => {
                         sess.fatal(&format!("failed to write compressed \
@@ -503,7 +456,7 @@ fn link_rlib<'a>(sess: &'a Session,
                     }
                 };
 
-                ab.add_file(&bc_deflated_filename);
+                ab.add_file(&bc_encoded_filename);
 
                 // See the bottom of back::write::run_passes for an explanation
                 // of when we do and don't keep .#module-name#.bc files around.
@@ -533,40 +486,6 @@ fn link_rlib<'a>(sess: &'a Session,
     ab
 }
 
-fn write_rlib_bytecode_object_v1(writer: &mut Write,
-                                 bc_data_deflated: &[u8]) -> io::Result<()> {
-    let bc_data_deflated_size: u64 = bc_data_deflated.len() as u64;
-
-    writer.write_all(RLIB_BYTECODE_OBJECT_MAGIC)?;
-    writer.write_all(&[1, 0, 0, 0])?;
-    writer.write_all(&[
-        (bc_data_deflated_size >>  0) as u8,
-        (bc_data_deflated_size >>  8) as u8,
-        (bc_data_deflated_size >> 16) as u8,
-        (bc_data_deflated_size >> 24) as u8,
-        (bc_data_deflated_size >> 32) as u8,
-        (bc_data_deflated_size >> 40) as u8,
-        (bc_data_deflated_size >> 48) as u8,
-        (bc_data_deflated_size >> 56) as u8,
-    ])?;
-    writer.write_all(&bc_data_deflated)?;
-
-    let number_of_bytes_written_so_far =
-        RLIB_BYTECODE_OBJECT_MAGIC.len() +                // magic id
-        mem::size_of_val(&RLIB_BYTECODE_OBJECT_VERSION) + // version
-        mem::size_of_val(&bc_data_deflated_size) +        // data size field
-        bc_data_deflated_size as usize;                    // actual data
-
-    // If the number of bytes written to the object so far is odd, add a
-    // padding byte to make it even. This works around a crash bug in LLDB
-    // (see issue #15950)
-    if number_of_bytes_written_so_far % 2 == 1 {
-        writer.write_all(&[0])?;
-    }
-
-    return Ok(());
-}
-
 // Create a static archive
 //
 // This is essentially the same thing as an rlib, but it also involves adding
@@ -582,13 +501,11 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 fn link_staticlib(sess: &Session,
                   trans: &CrateTranslation,
                   outputs: &OutputFilenames,
-                  objects: &[PathBuf],
                   out_filename: &Path,
                   tempdir: &Path) {
     let mut ab = link_rlib(sess,
                            trans,
                            RlibFlavor::StaticlibBase,
-                           objects,
                            outputs,
                            out_filename,
                            tempdir);
@@ -692,12 +609,11 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
 // links to all upstream files as well.
 fn link_natively(sess: &Session,
                  crate_type: config::CrateType,
-                 objects: &[PathBuf],
                  out_filename: &Path,
                  trans: &CrateTranslation,
                  outputs: &OutputFilenames,
                  tmpdir: &Path) {
-    info!("preparing {:?} from {:?} to {:?}", crate_type, objects, out_filename);
+    info!("preparing {:?} to {:?}", crate_type, out_filename);
     let flavor = sess.linker_flavor();
 
     // The invocations of cc share some flags across platforms
@@ -735,7 +651,7 @@ fn link_natively(sess: &Session,
     {
         let mut linker = trans.linker_info.to_linker(cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
-                  objects, out_filename, outputs, trans);
+                  out_filename, outputs, trans);
         cmd = linker.finalize();
     }
     if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
@@ -956,7 +872,6 @@ fn link_args(cmd: &mut Linker,
              sess: &Session,
              crate_type: config::CrateType,
              tmpdir: &Path,
-             objects: &[PathBuf],
              out_filename: &Path,
              outputs: &OutputFilenames,
              trans: &CrateTranslation) {
@@ -969,8 +884,8 @@ fn link_args(cmd: &mut Linker,
     let t = &sess.target.target;
 
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-    for obj in objects {
-        cmd.add_object(obj);
+    for module in trans.modules.iter() {
+        cmd.add_object(&module.object);
     }
     cmd.output_filename(out_filename);
 
@@ -1264,7 +1179,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         archive.update_symbols();
 
         for f in archive.src_files() {
-            if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
+            if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue
                 }
@@ -1342,7 +1257,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 
             let mut any_objects = false;
             for f in archive.src_files() {
-                if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
+                if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue
                 }

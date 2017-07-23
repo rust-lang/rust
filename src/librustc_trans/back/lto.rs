@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::link;
+use back::bytecode::{DecodedBytecode, RLIB_BYTECODE_EXTENSION};
 use back::write;
 use back::symbol_export;
 use rustc::session::config;
@@ -18,17 +18,14 @@ use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::util::common::time;
-use rustc::util::common::path2cstr;
 use rustc::hir::def_id::LOCAL_CRATE;
 use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
+use {ModuleTranslation, ModuleKind};
 
 use libc;
-use flate2::read::DeflateDecoder;
 
-use std::io::Read;
 use std::ffi::CString;
-use std::path::Path;
-use std::ptr::read_unaligned;
+use std::slice;
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
@@ -42,12 +39,58 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     }
 }
 
-pub fn run(cgcx: &CodegenContext,
-           diag_handler: &Handler,
-           llmod: ModuleRef,
-           tm: TargetMachineRef,
-           config: &ModuleConfig,
-           temp_no_opt_bc_filename: &Path) -> Result<(), FatalError> {
+pub enum LtoModuleTranslation {
+    Fat {
+        module: Option<ModuleTranslation>,
+        _serialized_bitcode: Vec<SerializedModule>,
+    },
+
+    // Note the lack of other entries in this enum! Ideally one day this gap is
+    // intended to be filled with a "Thin" LTO variant.
+}
+
+impl LtoModuleTranslation {
+    pub fn name(&self) -> &str {
+        match *self {
+            LtoModuleTranslation::Fat { .. } => "everything",
+        }
+    }
+
+    /// Optimize this module within the given codegen context.
+    ///
+    /// This function is unsafe as it'll return a `ModuleTranslation` still
+    /// points to LLVM data structures owned by this `LtoModuleTranslation`.
+    /// It's intended that the module returned is immediately code generated and
+    /// dropped, and then this LTO module is dropped.
+    pub unsafe fn optimize(&mut self, cgcx: &CodegenContext)
+        -> Result<ModuleTranslation, FatalError>
+    {
+        match *self {
+            LtoModuleTranslation::Fat { ref mut module, .. } => {
+                let trans = module.take().unwrap();
+                let config = cgcx.config(trans.kind);
+                let llmod = trans.llvm().unwrap().llmod;
+                let tm = trans.llvm().unwrap().tm;
+                run_pass_manager(cgcx, tm, llmod, config);
+                Ok(trans)
+            }
+        }
+    }
+
+    /// A "guage" of how costly it is to optimize this module, used to sort
+    /// biggest modules first.
+    pub fn cost(&self) -> u64 {
+        match *self {
+            // Only one module with fat LTO, so the cost doesn't matter.
+            LtoModuleTranslation::Fat { .. } => 0,
+        }
+    }
+}
+
+pub fn run(cgcx: &CodegenContext, modules: Vec<ModuleTranslation>)
+    -> Result<Vec<LtoModuleTranslation>, FatalError>
+{
+    let diag_handler = cgcx.create_diag_handler();
     if cgcx.opts.cg.prefer_dynamic {
         diag_handler.struct_err("cannot prefer dynamic linking when performing LTO")
                     .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
@@ -82,80 +125,35 @@ pub fn run(cgcx: &CodegenContext,
         .iter()
         .filter_map(symbol_filter)
         .collect();
+    info!("{} symbols in whitelist", symbol_white_list.len());
 
     // For each of our upstream dependencies, find the corresponding rlib and
     // load the bitcode from the archive. Then merge it into the current LLVM
     // module that we've got.
+    let mut upstream_modules = Vec::new();
     for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
         symbol_white_list.extend(
             cgcx.exported_symbols[&cnum]
                 .iter()
                 .filter_map(symbol_filter));
+        info!("{} symbols in whitelist after {}", symbol_white_list.len(), cnum);
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let bytecodes = archive.iter().filter_map(|child| {
             child.ok().and_then(|c| c.name().map(|name| (name, c)))
-        }).filter(|&(name, _)| name.ends_with("bytecode.deflate"));
+        }).filter(|&(name, _)| name.ends_with(RLIB_BYTECODE_EXTENSION));
         for (name, data) in bytecodes {
+            info!("adding bytecode {}", name);
             let bc_encoded = data.data();
 
-            let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
-                time(cgcx.time_passes, &format!("decode {}", name), || {
-                    // Read the version
-                    let version = extract_bytecode_format_version(bc_encoded);
-
-                    if version == 1 {
-                        // The only version existing so far
-                        let data_size = extract_compressed_bytecode_size_v1(bc_encoded);
-                        let compressed_data = &bc_encoded[
-                            link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET..
-                            (link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as usize)];
-
-                        let mut inflated = Vec::new();
-                        let res = DeflateDecoder::new(compressed_data)
-                            .read_to_end(&mut inflated);
-                        if res.is_err() {
-                            let msg = format!("failed to decompress bc of `{}`",
-                                              name);
-                            Err(diag_handler.fatal(&msg))
-                        } else {
-                            Ok(inflated)
-                        }
-                    } else {
-                        Err(diag_handler.fatal(&format!("Unsupported bytecode format version {}",
-                                                        version)))
-                    }
-                })?
-            } else {
-                time(cgcx.time_passes, &format!("decode {}", name), || {
-                    // the object must be in the old, pre-versioning format, so
-                    // simply inflate everything and let LLVM decide if it can
-                    // make sense of it
-                    let mut inflated = Vec::new();
-                    let res = DeflateDecoder::new(bc_encoded)
-                        .read_to_end(&mut inflated);
-                    if res.is_err() {
-                        let msg = format!("failed to decompress bc of `{}`",
-                                          name);
-                        Err(diag_handler.fatal(&msg))
-                    } else {
-                        Ok(inflated)
-                    }
-                })?
-            };
-
-            let ptr = bc_decoded.as_ptr();
-            debug!("linking {}", name);
-            time(cgcx.time_passes, &format!("ll link {}", name), || unsafe {
-                if llvm::LLVMRustLinkInExternalBitcode(llmod,
-                                                       ptr as *const libc::c_char,
-                                                       bc_decoded.len() as libc::size_t) {
-                    Ok(())
-                } else {
-                    let msg = format!("failed to load bc of `{}`", name);
-                    Err(write::llvm_err(&diag_handler, msg))
+            let (bc, id) = time(cgcx.time_passes, &format!("decode {}", name), || {
+                match DecodedBytecode::new(bc_encoded) {
+                    Ok(b) => Ok((b.bytecode(), b.identifier().to_string())),
+                    Err(e) => Err(diag_handler.fatal(&e)),
                 }
             })?;
+            let bc = SerializedModule::FromRlib(bc);
+            upstream_modules.push((bc, CString::new(id).unwrap()));
         }
     }
 
@@ -163,25 +161,104 @@ pub fn run(cgcx: &CodegenContext,
     let arr: Vec<*const libc::c_char> = symbol_white_list.iter()
                                                          .map(|c| c.as_ptr())
                                                          .collect();
-    let ptr = arr.as_ptr();
+
+    fat_lto(cgcx, &diag_handler, modules, upstream_modules, &arr)
+}
+
+fn fat_lto(cgcx: &CodegenContext,
+           diag_handler: &Handler,
+           mut modules: Vec<ModuleTranslation>,
+           mut serialized_modules: Vec<(SerializedModule, CString)>,
+           symbol_white_list: &[*const libc::c_char])
+    -> Result<Vec<LtoModuleTranslation>, FatalError>
+{
+    info!("going for a fat lto");
+
+    // Find the "costliest" module and merge everything into that codegen unit.
+    // All the other modules will be serialized and reparsed into the new
+    // context, so this hopefully avoids serializing and parsing the largest
+    // codegen unit.
+    //
+    // Additionally use a regular module as the base here to ensure that various
+    // file copy operations in the backend work correctly. The only other kind
+    // of module here should be an allocator one, and if your crate is smaller
+    // than the allocator module then the size doesn't really matter anyway.
+    let (_, costliest_module) = modules.iter()
+        .enumerate()
+        .filter(|&(_, module)| module.kind == ModuleKind::Regular)
+        .map(|(i, module)| {
+            let cost = unsafe {
+                llvm::LLVMRustModuleCost(module.llvm().unwrap().llmod)
+            };
+            (cost, i)
+        })
+        .max()
+        .expect("must be trans'ing at least one module");
+    let module = modules.remove(costliest_module);
+    let llmod = module.llvm().expect("can't lto pre-translated modules").llmod;
+    info!("using {:?} as a base module", module.llmod_id);
+
+    // For all other modules we translated we'll need to link them into our own
+    // bitcode. All modules were translated in their own LLVM context, however,
+    // and we want to move everything to the same LLVM context. Currently the
+    // way we know of to do that is to serialize them to a string and them parse
+    // them later. Not great but hey, that's why it's "fat" LTO, right?
+    for module in modules {
+        let llvm = module.llvm().expect("can't lto pre-translated modules");
+        let buffer = ModuleBuffer::new(llvm.llmod);
+        let llmod_id = CString::new(&module.llmod_id[..]).unwrap();
+        serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
+    }
+
+    // For all serialized bitcode files we parse them and link them in as we did
+    // above, this is all mostly handled in C++. Like above, though, we don't
+    // know much about the memory management here so we err on the side of being
+    // save and persist everything with the original module.
+    let mut serialized_bitcode = Vec::new();
+    for (bc_decoded, name) in serialized_modules {
+        info!("linking {:?}", name);
+        time(cgcx.time_passes, &format!("ll link {:?}", name), || unsafe {
+            let data = bc_decoded.data();
+            if llvm::LLVMRustLinkInExternalBitcode(llmod,
+                                                   data.as_ptr() as *const libc::c_char,
+                                                   data.len() as libc::size_t) {
+                Ok(())
+            } else {
+                let msg = format!("failed to load bc of {:?}", name);
+                Err(write::llvm_err(&diag_handler, msg))
+            }
+        })?;
+        serialized_bitcode.push(bc_decoded);
+    }
+    cgcx.save_temp_bitcode(&module, "lto.input");
+
+    // Internalize everything that *isn't* in our whitelist to help strip out
+    // more modules and such
     unsafe {
+        let ptr = symbol_white_list.as_ptr();
         llvm::LLVMRustRunRestrictionPass(llmod,
                                          ptr as *const *const libc::c_char,
-                                         arr.len() as libc::size_t);
+                                         symbol_white_list.len() as libc::size_t);
+        cgcx.save_temp_bitcode(&module, "lto.after-restriction");
     }
 
     if cgcx.no_landing_pads {
         unsafe {
             llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
         }
+        cgcx.save_temp_bitcode(&module, "lto.after-nounwind");
     }
 
-    if cgcx.opts.cg.save_temps {
-        let cstr = path2cstr(temp_no_opt_bc_filename);
-        unsafe {
-            llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
-        }
-    }
+    Ok(vec![LtoModuleTranslation::Fat {
+        module: Some(module),
+        _serialized_bitcode: serialized_bitcode,
+    }])
+}
+
+fn run_pass_manager(cgcx: &CodegenContext,
+                    tm: TargetMachineRef,
+                    llmod: ModuleRef,
+                    config: &ModuleConfig) {
 
     // Now we have one massive module inside of llmod. Time to run the
     // LTO-specific optimization passes that LLVM provides.
@@ -212,25 +289,45 @@ pub fn run(cgcx: &CodegenContext,
         llvm::LLVMDisposePassManager(pm);
     }
     debug!("lto done");
-    Ok(())
 }
 
-fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
-    let magic_id_byte_count = link::RLIB_BYTECODE_OBJECT_MAGIC.len();
-    return bc.len() > magic_id_byte_count &&
-           &bc[..magic_id_byte_count] == link::RLIB_BYTECODE_OBJECT_MAGIC;
+pub enum SerializedModule {
+    Local(ModuleBuffer),
+    FromRlib(Vec<u8>),
 }
 
-fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
-    let pos = link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET;
-    let byte_data = &bc[pos..pos + 4];
-    let data = unsafe { read_unaligned(byte_data.as_ptr() as *const u32) };
-    u32::from_le(data)
+impl SerializedModule {
+    fn data(&self) -> &[u8] {
+        match *self {
+            SerializedModule::Local(ref m) => m.data(),
+            SerializedModule::FromRlib(ref m) => m,
+        }
+    }
 }
 
-fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
-    let pos = link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET;
-    let byte_data = &bc[pos..pos + 8];
-    let data = unsafe { read_unaligned(byte_data.as_ptr() as *const u64) };
-    u64::from_le(data)
+pub struct ModuleBuffer(*mut llvm::ModuleBuffer);
+
+unsafe impl Send for ModuleBuffer {}
+unsafe impl Sync for ModuleBuffer {}
+
+impl ModuleBuffer {
+    fn new(m: ModuleRef) -> ModuleBuffer {
+        ModuleBuffer(unsafe {
+            llvm::LLVMRustModuleBufferCreate(m)
+        })
+    }
+
+    fn data(&self) -> &[u8] {
+        unsafe {
+            let ptr = llvm::LLVMRustModuleBufferPtr(self.0);
+            let len = llvm::LLVMRustModuleBufferLen(self.0);
+            slice::from_raw_parts(ptr, len)
+        }
+    }
+}
+
+impl Drop for ModuleBuffer {
+    fn drop(&mut self) {
+        unsafe { llvm::LLVMRustModuleBufferFree(self.0); }
+    }
 }

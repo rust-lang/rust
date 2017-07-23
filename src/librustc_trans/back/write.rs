@@ -22,7 +22,7 @@ use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
-use llvm::SMDiagnosticRef;
+use llvm::{SMDiagnosticRef, ContextRef};
 use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKind};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -41,10 +41,10 @@ use rustc_demangle;
 
 use std::any::Any;
 use std::ffi::CString;
-use std::fmt;
 use std::fs;
 use std::io;
 use std::io::Write;
+use std::mem;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::Arc;
@@ -143,6 +143,14 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
 }
 
 pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
+    target_machine_factory(sess)().unwrap_or_else(|err| {
+        panic!(llvm_err(sess.diagnostic(), err))
+    })
+}
+
+pub fn target_machine_factory(sess: &Session)
+    -> Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>
+{
     let reloc_model = get_reloc_model(sess);
 
     let opt_level = get_llvm_opt_level(sess.opts.optimize);
@@ -171,35 +179,37 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
 
     let triple = &sess.target.target.llvm_target;
 
-    let tm = unsafe {
-        let triple = CString::new(triple.as_bytes()).unwrap();
-        let cpu = match sess.opts.cg.target_cpu {
-            Some(ref s) => &**s,
-            None => &*sess.target.target.options.cpu
+    let triple = CString::new(triple.as_bytes()).unwrap();
+    let cpu = match sess.opts.cg.target_cpu {
+        Some(ref s) => &**s,
+        None => &*sess.target.target.options.cpu
+    };
+    let cpu = CString::new(cpu.as_bytes()).unwrap();
+    let features = CString::new(target_feature(sess).as_bytes()).unwrap();
+    let is_pie_binary = is_pie_binary(sess);
+
+    Arc::new(move || {
+        let tm = unsafe {
+            llvm::LLVMRustCreateTargetMachine(
+                triple.as_ptr(), cpu.as_ptr(), features.as_ptr(),
+                code_model,
+                reloc_model,
+                opt_level,
+                use_softfp,
+                is_pie_binary,
+                ffunction_sections,
+                fdata_sections,
+            )
         };
-        let cpu = CString::new(cpu.as_bytes()).unwrap();
-        let features = CString::new(target_feature(sess).as_bytes()).unwrap();
-        llvm::LLVMRustCreateTargetMachine(
-            triple.as_ptr(), cpu.as_ptr(), features.as_ptr(),
-            code_model,
-            reloc_model,
-            opt_level,
-            use_softfp,
-            is_pie_binary(sess),
-            ffunction_sections,
-            fdata_sections,
-        )
-    };
 
-    if tm.is_null() {
-        let msg = format!("Could not create LLVM TargetMachine for triple: {}",
-                          triple);
-        panic!(llvm_err(sess.diagnostic(), msg));
-    } else {
-        return tm;
-    };
+        if tm.is_null() {
+            Err(format!("Could not create LLVM TargetMachine for triple: {}",
+                        triple.to_str().unwrap()))
+        } else {
+            Ok(tm)
+        }
+    })
 }
-
 
 /// Module-specific configuration for `optimize_and_codegen`.
 pub struct ModuleConfig {
@@ -294,6 +304,7 @@ pub struct CodegenContext {
     pub time_passes: bool,
     pub lto: bool,
     pub no_landing_pads: bool,
+    pub save_temps: bool,
     pub exported_symbols: Arc<ExportedSymbols>,
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<config::CrateType>,
@@ -302,6 +313,7 @@ pub struct CodegenContext {
     regular_module_config: Arc<ModuleConfig>,
     metadata_module_config: Arc<ModuleConfig>,
     allocator_module_config: Arc<ModuleConfig>,
+    pub tm_factory: Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
 
     // Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
@@ -322,22 +334,62 @@ pub struct CodegenContext {
 }
 
 impl CodegenContext {
-    fn create_diag_handler(&self) -> Handler {
+    pub fn create_diag_handler(&self) -> Handler {
         Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
     }
 
-    fn config(&self, kind: ModuleKind) -> &ModuleConfig {
+    pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {
         match kind {
             ModuleKind::Regular => &self.regular_module_config,
             ModuleKind::Metadata => &self.metadata_module_config,
             ModuleKind::Allocator => &self.allocator_module_config,
         }
     }
+
+    pub fn save_temp_bitcode(&self, trans: &ModuleTranslation, name: &str) {
+        if !self.save_temps {
+            return
+        }
+        unsafe {
+            let ext = format!("{}.bc", name);
+            let cgu = Some(&trans.name[..]);
+            let path = self.output_filenames.temp_path_ext(&ext, cgu);
+            let cstr = path2cstr(&path);
+            let llmod = trans.llvm().unwrap().llmod;
+            llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
+        }
+    }
 }
 
-struct HandlerFreeVars<'a> {
-    cgcx: &'a CodegenContext,
-    diag_handler: &'a Handler,
+struct DiagnosticHandlers<'a> {
+    inner: Box<(&'a CodegenContext, &'a Handler)>,
+    llcx: ContextRef,
+}
+
+impl<'a> DiagnosticHandlers<'a> {
+    fn new(cgcx: &'a CodegenContext,
+           handler: &'a Handler,
+           llcx: ContextRef) -> DiagnosticHandlers<'a> {
+        let data = Box::new((cgcx, handler));
+        unsafe {
+            let arg = &*data as &(_, _) as *const _ as *mut _;
+            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, arg);
+            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, arg);
+        }
+        DiagnosticHandlers {
+            inner: data,
+            llcx: llcx,
+        }
+    }
+}
+
+impl<'a> Drop for DiagnosticHandlers<'a> {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, 0 as *mut _);
+            llvm::LLVMContextSetDiagnosticHandler(self.llcx, diagnostic_handler, 0 as *mut _);
+        }
+    }
 }
 
 unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext,
@@ -349,7 +401,10 @@ unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext,
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
                                         user: *const c_void,
                                         cookie: c_uint) {
-    let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
+    if user.is_null() {
+        return
+    }
+    let (cgcx, _) = *(user as *const (&CodegenContext, &Handler));
 
     let msg = llvm::build_string(|s| llvm::LLVMRustWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
@@ -358,7 +413,10 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
-    let HandlerFreeVars { cgcx, diag_handler, .. } = *(user as *const HandlerFreeVars);
+    if user.is_null() {
+        return
+    }
+    let (cgcx, diag_handler) = *(user as *const (&CodegenContext, &Handler));
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
@@ -389,28 +447,20 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 }
 
 // Unsafe due to LLVM calls.
-unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
-                               diag_handler: &Handler,
-                               mtrans: ModuleTranslation,
-                               tm: TargetMachineRef,
-                               config: &ModuleConfig)
-    -> Result<CompiledModule, FatalError>
+unsafe fn optimize(cgcx: &CodegenContext,
+                   diag_handler: &Handler,
+                   mtrans: &ModuleTranslation,
+                   config: &ModuleConfig)
+    -> Result<(), FatalError>
 {
-    let (llmod, llcx) = match mtrans.source {
-        ModuleSource::Translated(ref llvm) => (llvm.llmod, llvm.llcx),
+    let (llmod, llcx, tm) = match mtrans.source {
+        ModuleSource::Translated(ref llvm) => (llvm.llmod, llvm.llcx, llvm.tm),
         ModuleSource::Preexisting(_) => {
             bug!("optimize_and_codegen: called with ModuleSource::Preexisting")
         }
     };
 
-    let fv = HandlerFreeVars {
-        cgcx,
-        diag_handler,
-    };
-    let fv = &fv as *const HandlerFreeVars as *mut c_void;
-
-    llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
-    llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, fv);
+    let _handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
     let module_name = mtrans.name.clone();
     let module_name = Some(&module_name[..]);
@@ -485,25 +535,37 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         // Deallocate managers that we're now done with
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
-
-        if cgcx.lto {
-            time(cgcx.time_passes, "all lto passes", || {
-                let temp_no_opt_bc_filename =
-                    cgcx.output_filenames.temp_path_ext("no-opt.lto.bc", module_name);
-                lto::run(cgcx,
-                         diag_handler,
-                         llmod,
-                         tm,
-                         &config,
-                         &temp_no_opt_bc_filename)
-            })?;
-            if config.emit_lto_bc {
-                let out = cgcx.output_filenames.temp_path_ext("lto.bc", module_name);
-                let out = path2cstr(&out);
-                llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
-            }
-        }
     }
+    Ok(())
+}
+
+fn generate_lto_work(cgcx: &CodegenContext,
+                     modules: Vec<ModuleTranslation>)
+    -> Vec<(WorkItem, u64)>
+{
+    let lto_modules = lto::run(cgcx, modules).unwrap_or_else(|e| panic!(e));
+
+    lto_modules.into_iter().map(|module| {
+        let cost = module.cost();
+        (WorkItem::LTO(module), cost)
+    }).collect()
+}
+
+unsafe fn codegen(cgcx: &CodegenContext,
+                  diag_handler: &Handler,
+                  mtrans: ModuleTranslation,
+                  config: &ModuleConfig)
+    -> Result<CompiledModule, FatalError>
+{
+    let (llmod, llcx, tm) = match mtrans.source {
+        ModuleSource::Translated(ref llvm) => (llvm.llmod, llvm.llcx, llvm.tm),
+        ModuleSource::Preexisting(_) => {
+            bug!("codegen: called with ModuleSource::Preexisting")
+        }
+    };
+    let module_name = mtrans.name.clone();
+    let module_name = Some(&module_name[..]);
+    let handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
     // A codegen-specific pass manager is used to generate object
     // files for an LLVM module.
@@ -629,7 +691,10 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         }
     }
 
-    Ok(mtrans.into_compiled_module(config.emit_obj, config.emit_bc))
+    drop(handlers);
+    Ok(mtrans.into_compiled_module(config.emit_obj,
+                                   config.emit_bc,
+                                   &cgcx.output_filenames))
 }
 
 pub struct CompiledModules {
@@ -990,37 +1055,50 @@ pub fn dump_incremental_data(trans: &CrateTranslation) {
     eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
 }
 
-struct WorkItem {
-    mtrans: ModuleTranslation,
-    tm: TargetMachine,
+enum WorkItem {
+    Optimize(ModuleTranslation),
+    LTO(lto::LtoModuleTranslation),
 }
 
-impl fmt::Debug for WorkItem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "WorkItem({})", self.mtrans.name)
+impl WorkItem {
+    fn kind(&self) -> ModuleKind {
+        match *self {
+            WorkItem::Optimize(ref m) => m.kind,
+            WorkItem::LTO(_) => ModuleKind::Regular,
+        }
     }
-}
 
-struct TargetMachine(TargetMachineRef);
-
-unsafe impl Send for TargetMachine {}
-
-impl Drop for TargetMachine {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustDisposeTargetMachine(self.0);
+    fn name(&self) -> String {
+        match *self {
+            WorkItem::Optimize(ref m) => format!("optimize: {}", m.name),
+            WorkItem::LTO(ref m) => format!("lto: {}", m.name()),
         }
     }
 }
 
+enum WorkItemResult {
+    Compiled(CompiledModule),
+    NeedsLTO(ModuleTranslation),
+}
+
 fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
-    -> Result<CompiledModule, FatalError>
+    -> Result<WorkItemResult, FatalError>
 {
     let diag_handler = cgcx.create_diag_handler();
-    let module_name = work_item.mtrans.name.clone();
-    let config = cgcx.config(work_item.mtrans.kind);
+    let config = cgcx.config(work_item.kind());
+    let mtrans = match work_item {
+        WorkItem::Optimize(mtrans) => mtrans,
+        WorkItem::LTO(mut lto) => {
+            unsafe {
+                let module = lto.optimize(cgcx)?;
+                let module = codegen(cgcx, &diag_handler, module, config)?;
+                return Ok(WorkItemResult::Compiled(module))
+            }
+        }
+    };
+    let module_name = mtrans.name.clone();
 
-    let pre_existing = match work_item.mtrans.source {
+    let pre_existing = match mtrans.source {
         ModuleSource::Translated(_) => None,
         ModuleSource::Preexisting(ref wp) => Some(wp.clone()),
     };
@@ -1029,13 +1107,13 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
         let incr_comp_session_dir = cgcx.incr_comp_session_dir
                                         .as_ref()
                                         .unwrap();
-        let name = &work_item.mtrans.name;
+        let name = &mtrans.name;
         for (kind, saved_file) in wp.saved_files {
             let obj_out = cgcx.output_filenames.temp_path(kind, Some(name));
             let source_file = in_incr_comp_dir(&incr_comp_session_dir,
                                                &saved_file);
             debug!("copying pre-existing module `{}` from {:?} to {}",
-                   work_item.mtrans.name,
+                   mtrans.name,
                    source_file,
                    obj_out.display());
             match link_or_copy(&source_file, &obj_out) {
@@ -1048,31 +1126,39 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
                 }
             }
         }
+        let object = cgcx.output_filenames.temp_path(OutputType::Object, Some(name));
 
-        Ok(CompiledModule {
+        Ok(WorkItemResult::Compiled(CompiledModule {
+            object,
+            llmod_id: mtrans.llmod_id.clone(),
             name: module_name,
             kind: ModuleKind::Regular,
             pre_existing: true,
-            symbol_name_hash: work_item.mtrans.symbol_name_hash,
+            symbol_name_hash: mtrans.symbol_name_hash,
             emit_bc: config.emit_bc,
             emit_obj: config.emit_obj,
-        })
+        }))
     } else {
         debug!("llvm-optimizing {:?}", module_name);
 
         unsafe {
-            optimize_and_codegen(cgcx,
-                                 &diag_handler,
-                                 work_item.mtrans,
-                                 work_item.tm.0,
-                                 config)
+            optimize(cgcx, &diag_handler, &mtrans, config)?;
+            if !cgcx.lto || mtrans.kind == ModuleKind::Metadata {
+                let module = codegen(cgcx, &diag_handler, mtrans, config)?;
+                Ok(WorkItemResult::Compiled(module))
+            } else {
+                Ok(WorkItemResult::NeedsLTO(mtrans))
+            }
         }
     }
 }
 
-#[derive(Debug)]
 enum Message {
     Token(io::Result<Acquired>),
+    NeedsLTO {
+        result: ModuleTranslation,
+        worker_id: usize,
+    },
     Done {
         result: Result<CompiledModule, ()>,
         worker_id: usize,
@@ -1146,6 +1232,7 @@ fn start_executing_work(tcx: TyCtxt,
         each_linked_rlib_for_lto,
         lto: sess.lto(),
         no_landing_pads: sess.no_landing_pads(),
+        save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
         time_passes: sess.time_passes(),
         exported_symbols,
@@ -1160,6 +1247,7 @@ fn start_executing_work(tcx: TyCtxt,
         regular_module_config: modules_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
+        tm_factory: target_machine_factory(tcx.sess),
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1282,6 +1370,21 @@ fn start_executing_work(tcx: TyCtxt,
     // and whenever we're done with that work we release the semaphore. In this
     // manner we can ensure that the maximum number of parallel workers is
     // capped at any one point in time.
+    //
+    // LTO and the coordinator thread
+    // ------------------------------
+    //
+    // The final job the coordinator thread is responsible for is managing LTO
+    // and how that works. When LTO is requested what we'll to is collect all
+    // optimized LLVM modules into a local vector on the coordinator. Once all
+    // modules have been translated and optimized we hand this to the `lto`
+    // module for further optimization. The `lto` module will return back a list
+    // of more modules to work on, which the coordinator will continue to spawn
+    // work for.
+    //
+    // Each LLVM module is automatically sent back to the coordinator for LTO if
+    // necessary. There's already optimizations in place to avoid sending work
+    // back to the coordinator if LTO isn't requested.
     return thread::spawn(move || {
         // We pretend to be within the top-level LLVM time-passes task here:
         set_time_depth(1);
@@ -1304,6 +1407,8 @@ fn start_executing_work(tcx: TyCtxt,
         let mut compiled_modules = vec![];
         let mut compiled_metadata_module = None;
         let mut compiled_allocator_module = None;
+        let mut needs_lto = Vec::new();
+        let mut started_lto = false;
 
         // This flag tracks whether all items have gone through translations
         let mut translation_done = false;
@@ -1325,6 +1430,7 @@ fn start_executing_work(tcx: TyCtxt,
         while !translation_done ||
               work_items.len() > 0 ||
               running > 0 ||
+              needs_lto.len() > 0 ||
               main_thread_worker_state != MainThreadWorkerState::Idle {
 
             // While there are still CGUs to be translated, the coordinator has
@@ -1348,13 +1454,34 @@ fn start_executing_work(tcx: TyCtxt,
                             worker: get_worker_id(&mut free_worker_ids),
                             .. cgcx.clone()
                         };
-                        maybe_start_llvm_timer(cgcx.config(item.mtrans.kind),
+                        maybe_start_llvm_timer(cgcx.config(item.kind()),
                                                &mut llvm_start_time);
                         main_thread_worker_state = MainThreadWorkerState::LLVMing;
                         spawn_work(cgcx, item);
                     }
                 }
             } else {
+                // If we've finished everything related to normal translation
+                // then it must be the case that we've got some LTO work to do.
+                // Perform the serial work here of figuring out what we're
+                // going to LTO and then push a bunch of work items onto our
+                // queue to do LTO
+                if work_items.len() == 0 &&
+                   running == 0 &&
+                   main_thread_worker_state == MainThreadWorkerState::Idle {
+                    assert!(!started_lto);
+                    assert!(needs_lto.len() > 0);
+                    started_lto = true;
+                    let modules = mem::replace(&mut needs_lto, Vec::new());
+                    for (work, cost) in generate_lto_work(&cgcx, modules) {
+                        let insertion_index = work_items
+                            .binary_search_by_key(&cost, |&(_, cost)| cost)
+                            .unwrap_or_else(|e| e);
+                        work_items.insert(insertion_index, (work, cost));
+                        helper.request_token();
+                    }
+                }
+
                 // In this branch, we know that everything has been translated,
                 // so it's just a matter of determining whether the implicit
                 // Token is free to use for LLVM work.
@@ -1365,7 +1492,7 @@ fn start_executing_work(tcx: TyCtxt,
                                 worker: get_worker_id(&mut free_worker_ids),
                                 .. cgcx.clone()
                             };
-                            maybe_start_llvm_timer(cgcx.config(item.mtrans.kind),
+                            maybe_start_llvm_timer(cgcx.config(item.kind()),
                                                    &mut llvm_start_time);
                             main_thread_worker_state = MainThreadWorkerState::LLVMing;
                             spawn_work(cgcx, item);
@@ -1396,7 +1523,7 @@ fn start_executing_work(tcx: TyCtxt,
             while work_items.len() > 0 && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
-                maybe_start_llvm_timer(cgcx.config(item.mtrans.kind),
+                maybe_start_llvm_timer(cgcx.config(item.kind()),
                                        &mut llvm_start_time);
 
                 let cgcx = CodegenContext {
@@ -1499,6 +1626,17 @@ fn start_executing_work(tcx: TyCtxt,
                         }
                     }
                 }
+                Message::NeedsLTO { result, worker_id } => {
+                    assert!(!started_lto);
+                    if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                        main_thread_worker_state = MainThreadWorkerState::Idle;
+                    } else {
+                        running -= 1;
+                    }
+
+                    free_worker_ids.push(worker_id);
+                    needs_lto.push(result);
+                }
                 Message::Done { result: Err(()), worker_id: _ } => {
                     shared_emitter.fatal("aborting due to worker thread panic");
                     // Exit the coordinator thread
@@ -1575,20 +1713,22 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // we exit.
         struct Bomb {
             coordinator_send: Sender<Box<Any + Send>>,
-            result: Option<CompiledModule>,
+            result: Option<WorkItemResult>,
             worker_id: usize,
         }
         impl Drop for Bomb {
             fn drop(&mut self) {
-                let result = match self.result.take() {
-                    Some(compiled_module) => Ok(compiled_module),
-                    None => Err(())
+                let worker_id = self.worker_id;
+                let msg = match self.result.take() {
+                    Some(WorkItemResult::Compiled(m)) => {
+                        Message::Done { result: Ok(m), worker_id }
+                    }
+                    Some(WorkItemResult::NeedsLTO(m)) => {
+                        Message::NeedsLTO { result: m, worker_id }
+                    }
+                    None => Message::Done { result: Err(()), worker_id }
                 };
-
-                drop(self.coordinator_send.send(Box::new(Message::Done {
-                    result,
-                    worker_id: self.worker_id,
-                })));
+                drop(self.coordinator_send.send(Box::new(msg)));
             }
         }
 
@@ -1612,10 +1752,11 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // we're done, which if `execute_work_item` failed is unlikely to be
         // seen by the main thread, but hey we might as well try anyway.
         bomb.result = {
-            let _timing_guard = cgcx.time_graph
-                                .as_ref()
-                                .map(|tg| tg.start(time_graph::TimelineId(cgcx.worker),
-                                                   LLVM_WORK_PACKAGE_KIND));
+            let _timing_guard = cgcx.time_graph.as_ref().map(|tg| {
+                tg.start(time_graph::TimelineId(cgcx.worker),
+                         LLVM_WORK_PACKAGE_KIND,
+                         &work.name())
+            });
             Some(execute_work_item(&cgcx, work).unwrap())
         };
     });
@@ -1923,9 +2064,7 @@ impl OngoingCrateTranslation {
             Ok(Message::TranslateItem) => {
                 // Nothing to do
             }
-            Ok(message) => {
-                panic!("unexpected message: {:?}", message)
-            }
+            Ok(_) => panic!("unexpected message"),
             Err(_) => {
                 // One of the LLVM threads must have panicked, fall through so
                 // error handling can be reached.
@@ -1937,10 +2076,7 @@ impl OngoingCrateTranslation {
 pub fn submit_translated_module_to_llvm(tcx: TyCtxt,
                                         mtrans: ModuleTranslation,
                                         cost: u64) {
-    let llvm_work_item = WorkItem {
-        mtrans,
-        tm: TargetMachine(create_target_machine(tcx.sess)),
-    };
+    let llvm_work_item = WorkItem::Optimize(mtrans);
     drop(tcx.tx_to_llvm_workers.send(Box::new(Message::TranslationDone {
         llvm_work_item,
         cost,

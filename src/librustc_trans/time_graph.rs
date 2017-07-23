@@ -16,14 +16,15 @@ use std::io::prelude::*;
 use std::fs::File;
 
 const OUTPUT_WIDTH_IN_PX: u64 = 1000;
-const TIME_LINE_HEIGHT_IN_PX: u64 = 7;
-const TIME_LINE_HEIGHT_STRIDE_IN_PX: usize = 10;
+const TIME_LINE_HEIGHT_IN_PX: u64 = 20;
+const TIME_LINE_HEIGHT_STRIDE_IN_PX: usize = 30;
 
 #[derive(Clone)]
 struct Timing {
     start: Instant,
     end: Instant,
     work_package_kind: WorkPackageKind,
+    name: String,
 }
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq, Debug)]
@@ -32,7 +33,7 @@ pub struct TimelineId(pub usize);
 #[derive(Clone)]
 struct PerThread {
     timings: Vec<Timing>,
-    open_work_package: Option<(Instant, WorkPackageKind)>,
+    open_work_package: Option<(Instant, WorkPackageKind, String)>,
 }
 
 #[derive(Clone)]
@@ -66,7 +67,8 @@ impl TimeGraph {
 
     pub fn start(&self,
                  timeline: TimelineId,
-                 work_package_kind: WorkPackageKind) -> RaiiToken {
+                 work_package_kind: WorkPackageKind,
+                 name: &str) -> RaiiToken {
         {
             let mut table = self.data.lock().unwrap();
 
@@ -76,7 +78,7 @@ impl TimeGraph {
             });
 
             assert!(data.open_work_package.is_none());
-            data.open_work_package = Some((Instant::now(), work_package_kind));
+            data.open_work_package = Some((Instant::now(), work_package_kind, name.to_string()));
         }
 
         RaiiToken {
@@ -92,17 +94,16 @@ impl TimeGraph {
         let mut table = self.data.lock().unwrap();
         let data = table.get_mut(&timeline).unwrap();
 
-        if let Some((start, work_package_kind)) = data.open_work_package {
+        if let Some((start, work_package_kind, name)) = data.open_work_package.take() {
             data.timings.push(Timing {
                 start,
                 end,
                 work_package_kind,
+                name,
             });
         } else {
             bug!("end timing without start?")
         }
-
-        data.open_work_package = None;
     }
 
     pub fn dump(&self, output_filename: &str) {
@@ -148,16 +149,18 @@ impl TimeGraph {
                 let colors = span.work_package_kind.0;
 
                 writeln!(file, "<div style='position:absolute; \
+                                            overflow:hidden; \
                                             top:{}px; \
                                             left:{}px; \
                                             width:{}px; \
                                             height:{}px; \
-                                            background:{};'></div>",
+                                            background:{};'>{}</div>",
                     line_top,
                     start,
                     end - start,
                     TIME_LINE_HEIGHT_IN_PX,
-                    colors[color % colors.len()]
+                    colors[color % colors.len()],
+                    span.name,
                     ).unwrap();
 
                 color += 1;
