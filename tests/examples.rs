@@ -99,6 +99,7 @@ macro_rules! test {
 
 test!(addition, "tests/cases/addition");
 test!(addition_path, "tests/cases/addition_path");
+test!(addition_use, "tests/cases/addition_use");
 test!(enums, "tests/cases/enums");
 test!(func, "tests/cases/func");
 test!(infer, "tests/cases/infer");
@@ -110,6 +111,7 @@ test!(pub_use, "tests/cases/pub_use");
 test!(regions, "tests/cases/regions");
 test!(removal, "tests/cases/removal");
 test!(removal_path, "tests/cases/removal_path");
+test!(removal_use, "tests/cases/removal_use");
 test!(structs, "tests/cases/structs");
 test!(swap, "tests/cases/swap");
 test!(traits, "tests/cases/traits");
