@@ -165,6 +165,7 @@ clone_impl! { u128 }
 clone_impl! { f32 }
 clone_impl! { f64 }
 
+clone_impl! { ! }
 clone_impl! { () }
 clone_impl! { bool }
 clone_impl! { char }
