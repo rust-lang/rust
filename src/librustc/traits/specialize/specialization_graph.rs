@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> Children {
                 let overlap = traits::overlapping_impls(&infcx,
                                                         possible_sibling,
                                                         impl_def_id);
-                if let Some(impl_header) = overlap {
+                if let Some(overlap) = overlap {
                     if tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
                         return Ok((false, false));
                     }
@@ -123,7 +123,7 @@ impl<'a, 'gcx, 'tcx> Children {
 
                     if le == ge {
                         // overlap, but no specialization; error out
-                        let trait_ref = impl_header.trait_ref.unwrap();
+                        let trait_ref = overlap.impl_header.trait_ref.unwrap();
                         let self_ty = trait_ref.self_ty();
                         Err(OverlapError {
                             with_impl: possible_sibling,
@@ -135,7 +135,8 @@ impl<'a, 'gcx, 'tcx> Children {
                                 Some(self_ty.to_string())
                             } else {
                                 None
-                            }
+                            },
+                            intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
                         })
                     } else {
                         Ok((le, ge))
