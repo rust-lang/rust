@@ -261,6 +261,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
             changes.new_path_change(n_def_id, o.ident.name, tcx.def_span(n_def_id));
             changes.add_path_removal(n_def_id, o.span);
         } else {
+            id_mapping.add_removal(o_def_id);
             changes.new_path_change(o_def_id, o.ident.name, tcx.def_span(o_def_id));
             changes.add_path_removal(o_def_id, o.span);
         }
@@ -732,7 +733,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
 
     old.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
         match ty.sty {
-            TyAdt(&AdtDef { ref did, .. }, substs) if id_mapping.contains_id(*did) => {
+            TyAdt(&AdtDef { ref did, .. }, substs) if id_mapping.in_old_crate(*did) => {
                 let new_def_id = id_mapping.get_new_id(*did);
                 let new_adt = tcx.adt_def(new_def_id);
                 tcx.mk_adt(new_adt, substs)
@@ -747,11 +748,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                 let new_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
                     match *p.skip_binder() {
                         Trait(ExistentialTraitRef { def_id: did, substs }) => {
-                            let new_def_id = if id_mapping.contains_id(did) {
-                                id_mapping.get_new_id(did)
-                            } else {
-                                did
-                            };
+                            let new_def_id = id_mapping.get_new_id(did);
 
                             Trait(ExistentialTraitRef {
                                 def_id: new_def_id,
@@ -759,11 +756,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                             })
                         },
                         Projection(ExistentialProjection { item_def_id, substs, ty }) => {
-                            let new_def_id = if id_mapping.contains_id(item_def_id) {
-                                id_mapping.get_new_id(item_def_id)
-                            } else {
-                                item_def_id
-                            };
+                            let new_def_id = id_mapping.get_new_id(item_def_id);
 
                             Projection(ExistentialProjection {
                                 item_def_id: new_def_id,
@@ -772,11 +765,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                             })
                         },
                         AutoTrait(did) => {
-                            if id_mapping.contains_id(did) {
-                                AutoTrait(id_mapping.get_new_id(did))
-                            } else {
-                                AutoTrait(did)
-                            }
+                            AutoTrait(id_mapping.get_new_id(did))
                         },
                     }
                 }));
@@ -784,11 +773,9 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                 tcx.mk_dynamic(Binder(new_preds), region)
             },
             TyProjection(proj) => {
-                let new_def_id = if id_mapping.contains_id(proj.item_def_id) {
-                    id_mapping.get_new_id(proj.item_def_id)
-                } else {
-                    proj.item_def_id
-                };
+                let trait_def_id = tcx.associated_item(proj.item_def_id).container.id();
+                let new_def_id =
+                    id_mapping.get_new_trait_item_id(proj.item_def_id, trait_def_id);
 
                 tcx.mk_projection(new_def_id, proj.substs)
             },
@@ -798,7 +785,7 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
             TyParam(param) => {
                 if param.idx != 0 { // `Self` is special
                     let old_did = index_map[&param.idx];
-                    if id_mapping.contains_id(old_did) {
+                    if id_mapping.in_old_crate(old_did) {
                         let new_def_id = id_mapping.get_new_id(old_did);
                         tcx.mk_param_from_def(&id_mapping.get_type_param(&new_def_id))
                     } else {

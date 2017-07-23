@@ -7,7 +7,7 @@ use rustc::hir::def::{Def, Export};
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::ty::TypeParameterDef;
 
-use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 
 use syntax::ast::Name;
 
@@ -23,6 +23,8 @@ pub struct IdMapping {
     new_crate: CrateNum,
     /// Toplevel items' old `DefId` mapped to old and new `Def`.
     toplevel_mapping: HashMap<DefId, (Def, Def)>,
+    /// The set of toplevel items that have been removed.
+    removed_items: HashSet<DefId>,
     /// Trait items' old `DefId` mapped to old and new `Def`.
     trait_item_mapping: HashMap<DefId, (Def, Def, DefId)>,
     /// Other items' old `DefId` mapped to new `DefId`.
@@ -39,6 +41,7 @@ impl IdMapping {
             old_crate: old_crate,
             new_crate: new_crate,
             toplevel_mapping: HashMap::new(),
+            removed_items: HashSet::new(),
             trait_item_mapping: HashMap::new(),
             internal_mapping: HashMap::new(),
             child_mapping: HashMap::new(),
@@ -48,19 +51,30 @@ impl IdMapping {
 
     /// Register two exports representing the same item across versions.
     pub fn add_export(&mut self, old: Def, new: Def) -> bool {
-        if self.toplevel_mapping.contains_key(&old.def_id()) {
+        let old_def_id = old.def_id();
+
+        if !self.in_old_crate(old_def_id) || self.toplevel_mapping.contains_key(&old_def_id) {
             return false;
         }
 
         self.toplevel_mapping
-            .insert(old.def_id(), (old, new));
+            .insert(old_def_id, (old, new));
 
         true
     }
 
+    /// Register that an old item has no corresponding new item.
+    pub fn add_removal(&mut self, old: DefId) {
+        self.removed_items.insert(old);
+    }
+
     /// Add any trait item's old and new `DefId`s.
     pub fn add_trait_item(&mut self, old: Def, new: Def, trait_def_id: DefId) {
-        self.trait_item_mapping.insert(old.def_id(), (old, new, trait_def_id));
+        let old_def_id = old.def_id();
+
+        assert!(self.in_old_crate(old_def_id));
+
+        self.trait_item_mapping.insert(old_def_id, (old, new, trait_def_id));
     }
 
     /// Add any other item's old and new `DefId`s.
@@ -70,12 +84,14 @@ impl IdMapping {
                 old,
                 self.internal_mapping[&old],
                 new);
+        assert!(self.in_old_crate(old));
 
         self.internal_mapping.insert(old, new);
     }
 
     /// Add any other item's old and new `DefId`s, together with a parent entry.
     pub fn add_subitem(&mut self, parent: DefId, old: DefId, new: DefId) {
+        // NB: we rely on the assers in `add_internal_item` here.
         self.add_internal_item(old, new);
         self.child_mapping
             .entry(parent)
@@ -85,16 +101,18 @@ impl IdMapping {
 
     /// Record that a `DefId` represents a new type parameter.
     pub fn add_type_param(&mut self, new: TypeParameterDef) {
+        assert!(self.in_new_crate(new.def_id));
         self.type_params.insert(new.def_id, new);
     }
 
     /// Get the type parameter represented by a given `DefId`.
-    pub fn get_type_param(&self, def_id: &DefId) -> TypeParameterDef {
-        self.type_params[def_id]
+    pub fn get_type_param(&self, did: &DefId) -> TypeParameterDef {
+        self.type_params[did]
     }
 
     /// Check whether a `DefId` represents a newly added defaulted type parameter.
     pub fn is_defaulted_type_param(&self, new: &DefId) -> bool {
+        // TODO?
         self.type_params
             .get(new)
             .map_or(false, |def| def.has_default)
@@ -102,12 +120,30 @@ impl IdMapping {
 
     /// Get the new `DefId` associated with the given old one.
     pub fn get_new_id(&self, old: DefId) -> DefId {
-        if let Some(new) = self.toplevel_mapping.get(&old) {
-            new.1.def_id()
-        } else if let Some(new) = self.trait_item_mapping.get(&old) {
-            new.1.def_id()
+        assert!(!self.in_new_crate(old));
+
+        if self.in_old_crate(old) && !self.removed_items.contains(&old) {
+            if let Some(new) = self.toplevel_mapping.get(&old) {
+                new.1.def_id()
+            } else if let Some(new) = self.trait_item_mapping.get(&old) {
+                new.1.def_id()
+            } else {
+                self.internal_mapping[&old]
+            }
         } else {
-            self.internal_mapping[&old]
+            old
+        }
+    }
+
+    /// Get the new `DefId` associated with the given old one, respecting possibly removed
+    /// traits that are a parent of the given `DefId`.
+    pub fn get_new_trait_item_id(&self, old: DefId, trait_id: DefId) -> DefId {
+        assert!(!self.in_new_crate(trait_id));
+
+        if !self.removed_items.contains(&trait_id) {
+            self.get_new_id(old)
+        } else {
+            old
         }
     }
 
@@ -148,10 +184,12 @@ impl IdMapping {
             .map(|m| m.iter().map(move |old| (*old, self.internal_mapping[old])))
     }
 
+    /// Check whether a `DefId` belongs to an item in the old crate.
     pub fn in_old_crate(&self, did: DefId) -> bool {
         self.old_crate == did.krate
     }
 
+    /// Check whether a `DefId` belongs to an item in the new crate.
     pub fn in_new_crate(&self, did: DefId) -> bool {
         self.new_crate == did.krate
     }
