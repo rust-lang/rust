@@ -74,7 +74,20 @@ pub fn resolve_symname<F>(frame: Frame,
                                   data_addr as *mut libc::c_void)
             };
             if ret == 0 || data.is_null() {
-                None
+                let ret = unsafe {
+                    backtrace_pcinfo(state,
+                                     frame.symbol_addr as libc::uintptr_t,
+                                     syminfo_pcinfo_cb,
+                                     error_cb,
+                                     data_addr as *mut libc::c_void)
+                };
+                if ret == 0 || data.is_null() {
+                    None
+                } else {
+                    unsafe {
+                        CStr::from_ptr(data).to_str().ok()
+                    }
+                }
             } else {
                 unsafe {
                     CStr::from_ptr(data).to_str().ok()
@@ -142,6 +155,17 @@ extern fn syminfo_cb(data: *mut libc::c_void,
     let slot = data as *mut *const libc::c_char;
     unsafe { *slot = symname; }
 }
+
+extern fn syminfo_pcinfo_cb(data: *mut libc::c_void,
+                    _pc: libc::uintptr_t,
+                    _filename: *const libc::c_char,
+                    _lineno: libc::c_int,
+                    function: *const libc::c_char) -> libc::c_int {
+    let slot = data as *mut *const libc::c_char;
+    unsafe { *slot = function };
+    0
+}
+
 extern fn pcinfo_cb(data: *mut libc::c_void,
                     _pc: libc::uintptr_t,
                     filename: *const libc::c_char,
