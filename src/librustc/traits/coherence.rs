@@ -13,6 +13,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
 use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Reveal};
+use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Subst;
 
@@ -21,12 +22,17 @@ use infer::{InferCtxt, InferOk};
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
 
+pub struct OverlapResult<'tcx> {
+    pub impl_header: ty::ImplHeader<'tcx>,
+    pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+}
+
 /// If there are types that satisfy both impls, returns a suitably-freshened
 /// `ImplHeader` with those types substituted
 pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
                                           impl1_def_id: DefId,
                                           impl2_def_id: DefId)
-                                          -> Option<ty::ImplHeader<'tcx>>
+                                          -> Option<OverlapResult<'tcx>>
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
@@ -65,7 +71,7 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                             a_def_id: DefId,
                             b_def_id: DefId)
-                            -> Option<ty::ImplHeader<'tcx>>
+                            -> Option<OverlapResult<'tcx>>
 {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})",
            a_def_id,
@@ -113,7 +119,10 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
         return None
     }
 
-    Some(selcx.infcx().resolve_type_vars_if_possible(&a_impl_header))
+    Some(OverlapResult {
+        impl_header: selcx.infcx().resolve_type_vars_if_possible(&a_impl_header),
+        intercrate_ambiguity_causes: selcx.intercrate_ambiguity_causes().to_vec(),
+    })
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,

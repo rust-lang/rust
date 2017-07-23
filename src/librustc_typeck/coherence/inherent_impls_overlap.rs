@@ -12,6 +12,7 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::traits;
+use rustc::traits::IntercrateAmbiguityCause;
 use rustc::ty::{self, TyCtxt};
 
 pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -26,7 +27,8 @@ struct InherentOverlapChecker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
-    fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId) {
+    fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId,
+                                       overlap: traits::OverlapResult) {
         #[derive(Copy, Clone, PartialEq)]
         enum Namespace {
             Type,
@@ -50,16 +52,32 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
             for &item2 in &impl_items2[..] {
                 if (name, namespace) == name_and_namespace(item2) {
-                    struct_span_err!(self.tcx.sess,
-                                     self.tcx.span_of_impl(item1).unwrap(),
-                                     E0592,
-                                     "duplicate definitions with name `{}`",
-                                     name)
-                        .span_label(self.tcx.span_of_impl(item1).unwrap(),
-                                    format!("duplicate definitions for `{}`", name))
-                        .span_label(self.tcx.span_of_impl(item2).unwrap(),
-                                    format!("other definition for `{}`", name))
-                        .emit();
+                    let mut err = struct_span_err!(self.tcx.sess,
+                                                   self.tcx.span_of_impl(item1).unwrap(),
+                                                   E0592,
+                                                   "duplicate definitions with name `{}`",
+                                                   name);
+
+                    err.span_label(self.tcx.span_of_impl(item1).unwrap(),
+                                   format!("duplicate definitions for `{}`", name));
+                    err.span_label(self.tcx.span_of_impl(item2).unwrap(),
+                                   format!("other definition for `{}`", name));
+
+                    for cause in &overlap.intercrate_ambiguity_causes {
+                        match cause {
+                            &IntercrateAmbiguityCause::DownstreamCrate(def_id) => {
+                                err.note(&format!("downstream crates may implement {}",
+                                                  self.tcx.item_path_str(def_id)));
+                            }
+                            &IntercrateAmbiguityCause::UpstreamCrateUpdate(def_id) => {
+                                err.note(&format!("upstream crates may add new impl for {} \
+                                                  in future versions",
+                                                  self.tcx.item_path_str(def_id)));
+                            }
+                        }
+                    }
+
+                    err.emit();
                 }
             }
         }
@@ -71,8 +89,9 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i + 1)..] {
                 self.tcx.infer_ctxt().enter(|infcx| {
-                    if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
-                        self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
+                    if let Some(overlap) =
+                            traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
+                        self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap)
                     }
                 });
             }

@@ -90,6 +90,14 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     intercrate: bool,
 
     inferred_obligations: SnapshotVec<InferredObligationsSnapshotVecDelegate<'tcx>>,
+
+    intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+}
+
+#[derive(Clone)]
+pub enum IntercrateAmbiguityCause {
+    DownstreamCrate(DefId),
+    UpstreamCrateUpdate(DefId),
 }
 
 // A stack that walks back up the stack frame.
@@ -380,6 +388,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate: false,
             inferred_obligations: SnapshotVec::new(),
+            intercrate_ambiguity_causes: Vec::new(),
         }
     }
 
@@ -389,6 +398,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             freshener: infcx.freshener(),
             intercrate: true,
             inferred_obligations: SnapshotVec::new(),
+            intercrate_ambiguity_causes: Vec::new(),
         }
     }
 
@@ -402,6 +412,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'gcx, 'tcx> {
         self.infcx
+    }
+
+    pub fn intercrate_ambiguity_causes(&self) -> &[IntercrateAmbiguityCause] {
+        &self.intercrate_ambiguity_causes
     }
 
     /// Wraps the inference context's in_snapshot s.t. snapshot handling is only from the selection
@@ -757,6 +771,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         if unbound_input_types && self.intercrate {
             debug!("evaluate_stack({:?}) --> unbound argument, intercrate -->  ambiguous",
                    stack.fresh_trait_ref);
+            // Heuristics: show the diagnostics when there are no candidates in crate.
+            if let Ok(candidate_set) = self.assemble_candidates(stack) {
+                if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
+                    let did = stack.fresh_trait_ref.def_id();
+                    self.intercrate_ambiguity_causes.push(
+                        IntercrateAmbiguityCause::DownstreamCrate(did));
+                }
+            }
             return EvaluatedToAmbig;
         }
         if unbound_input_types &&
@@ -1003,6 +1025,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         if !self.is_knowable(stack) {
             debug!("coherence stage: not knowable");
+            // Heuristics: show the diagnostics when there are no candidates in crate.
+            let candidate_set = self.assemble_candidates(stack)?;
+            if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
+                let did = stack.obligation.predicate.def_id();
+                self.intercrate_ambiguity_causes.push(
+                    IntercrateAmbiguityCause::UpstreamCrateUpdate(did));
+            }
             return Ok(None);
         }
 
