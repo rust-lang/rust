@@ -1,0 +1,11 @@
+[package]
+name = "rustdoc-tool"
+version = "0.0.0"
+authors = ["The Rust Project Developers"]
+
+[[bin]]
+name = "rustdoc"
+path = "main.rs"
+
+[dependencies]
+rustdoc = { path = "../../librustdoc" }

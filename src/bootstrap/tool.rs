@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fs;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
@@ -15,7 +16,7 @@ use std::process::Command;
 use Mode;
 use Compiler;
 use builder::{Step, RunConfig, ShouldRun, Builder};
-use util::{exe, add_lib_path};
+use util::{copy, exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
 use channel::GitInfo;
@@ -220,6 +221,56 @@ impl Step for RemoteTestServer {
             tool: "remote-test-server",
             mode: Mode::Libstd,
         })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Rustdoc {
+    pub target_compiler: Compiler,
+}
+
+impl Step for Rustdoc {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/rustdoc")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustdoc {
+            target_compiler: run.builder.compiler(run.builder.top_stage, run.host),
+        });
+    }
+
+    fn run(self, builder: &Builder) -> PathBuf {
+        let target_compiler = self.target_compiler;
+        let build_compiler = if target_compiler.stage == 0 {
+            target_compiler
+        } else {
+            builder.compiler(target_compiler.stage - 1, target_compiler.host)
+        };
+
+        let tool_rustdoc = builder.ensure(ToolBuild {
+            compiler: build_compiler,
+            target: build_compiler.host,
+            tool: "rustdoc",
+            mode: Mode::Librustc,
+        });
+
+        // don't create a stage0-sysroot/bin directory.
+        if target_compiler.stage > 0 {
+            let sysroot = builder.sysroot(target_compiler);
+            let bindir = sysroot.join("bin");
+            t!(fs::create_dir_all(&bindir));
+            let bin_rustdoc = bindir.join(exe("rustdoc", &*target_compiler.host));
+            let _ = fs::remove_file(&bin_rustdoc);
+            copy(&tool_rustdoc, &bin_rustdoc);
+            bin_rustdoc
+        } else {
+            tool_rustdoc
+        }
     }
 }
 

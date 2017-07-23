@@ -809,8 +809,7 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     }
 
     println!("doc tests for: {}", markdown.display());
-    let mut cmd = Command::new(builder.rustdoc(compiler));
-    builder.add_rustc_lib_path(compiler, &mut cmd);
+    let mut cmd = builder.rustdoc_cmd(compiler);
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);

@@ -21,7 +21,6 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io;
 use std::path::{PathBuf, Path};
-use std::process::Command;
 
 use Mode;
 use build_helper::up_to_date;
@@ -242,11 +241,7 @@ fn invoke_rustdoc(builder: &Builder, target: Interned<String>, markdown: &str) {
     let build = builder.build;
     let out = build.doc_out(target);
 
-    let compiler = builder.compiler(0, build.build);
-
     let path = build.src.join("src/doc").join(markdown);
-
-    let rustdoc = builder.rustdoc(compiler);
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
@@ -263,9 +258,7 @@ fn invoke_rustdoc(builder: &Builder, target: Interned<String>, markdown: &str) {
         t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
     }
 
-    let mut cmd = Command::new(&rustdoc);
-
-    builder.add_rustc_lib_path(compiler, &mut cmd);
+    let mut cmd = builder.rustdoc_cmd(builder.compiler(0, build.build));
 
     let out = out.join("book");
 
@@ -357,8 +350,7 @@ impl Step for Standalone {
                 continue
             }
 
-            let mut cmd = Command::new(&rustdoc);
-            builder.add_rustc_lib_path(compiler, &mut cmd);
+            let mut cmd = builder.rustdoc_cmd(compiler);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)

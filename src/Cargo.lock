@@ -439,6 +439,9 @@ dependencies = [
 [[package]]
 name = "error_index_generator"
 version = "0.0.0"
+dependencies = [
+ "rustdoc 0.0.0",
+]
 
 [[package]]
 name = "filetime"
@@ -1222,7 +1225,6 @@ version = "0.0.0"
 dependencies = [
  "rustc_back 0.0.0",
  "rustc_driver 0.0.0",
- "rustdoc 0.0.0",
 ]
 
 [[package]]
@@ -1560,25 +1562,18 @@ dependencies = [
 name = "rustdoc"
 version = "0.0.0"
 dependencies = [
- "arena 0.0.0",
  "build_helper 0.1.0",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc 0.0.0",
- "rustc_back 0.0.0",
- "rustc_data_structures 0.0.0",
- "rustc_driver 0.0.0",
- "rustc_errors 0.0.0",
- "rustc_lint 0.0.0",
- "rustc_metadata 0.0.0",
- "rustc_resolve 0.0.0",
- "rustc_trans 0.0.0",
- "rustc_typeck 0.0.0",
- "serialize 0.0.0",
- "syntax 0.0.0",
- "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustdoc-tool"
+version = "0.0.0"
+dependencies = [
+ "rustdoc 0.0.0",
 ]
 
 [[package]]
