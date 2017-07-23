@@ -13,18 +13,17 @@ use std::process::Command;
 use std::path::PathBuf;
 
 use build_helper::output;
-use serde_json;
+use rustc_serialize::json;
 
 use {Build, Crate};
-use cache::INTERNER;
 
-#[derive(Deserialize)]
+#[derive(RustcDecodable)]
 struct Output {
     packages: Vec<Package>,
     resolve: Resolve,
 }
 
-#[derive(Deserialize)]
+#[derive(RustcDecodable)]
 struct Package {
     id: String,
     name: String,
@@ -33,12 +32,12 @@ struct Package {
     manifest_path: String,
 }
 
-#[derive(Deserialize)]
+#[derive(RustcDecodable)]
 struct Resolve {
     nodes: Vec<ResolveNode>,
 }
 
-#[derive(Deserialize)]
+#[derive(RustcDecodable)]
 struct ResolveNode {
     id: String,
     dependencies: Vec<String>,
@@ -62,20 +61,19 @@ fn build_krate(build: &mut Build, krate: &str) {
          .arg("--format-version").arg("1")
          .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));
     let output = output(&mut cargo);
-    let output: Output = serde_json::from_str(&output).unwrap();
+    let output: Output = json::decode(&output).unwrap();
     let mut id2name = HashMap::new();
     for package in output.packages {
         if package.source.is_none() {
-            let name = INTERNER.intern_string(package.name);
-            id2name.insert(package.id, name);
+            id2name.insert(package.id, package.name.clone());
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
-            build.crates.insert(name, Crate {
-                build_step: format!("build-crate-{}", name),
-                doc_step: format!("doc-crate-{}", name),
-                test_step: format!("test-crate-{}", name),
-                bench_step: format!("bench-crate-{}", name),
-                name: name,
+            build.crates.insert(package.name.clone(), Crate {
+                build_step: format!("build-crate-{}", package.name),
+                doc_step: format!("doc-crate-{}", package.name),
+                test_step: format!("test-crate-{}", package.name),
+                bench_step: format!("bench-crate-{}", package.name),
+                name: package.name,
                 version: package.version,
                 deps: Vec::new(),
                 path: path,
@@ -95,7 +93,7 @@ fn build_krate(build: &mut Build, krate: &str) {
                 Some(dep) => dep,
                 None => continue,
             };
-            krate.deps.push(*dep);
+            krate.deps.push(dep.clone());
         }
     }
 }
