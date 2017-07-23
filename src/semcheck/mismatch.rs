@@ -1,6 +1,6 @@
 //! The logic for the second analysis pass collecting mismatched non-public items to match them.
 //!
-//! Any two items' types found in the same place which are yet not matched with other items are
+//! Any two items' types found in the same place which are not matched yet with other items are
 //! essentially just renamed instances of the same item (as long as they are both unknown to us
 //! at the time of analysis). Thus, we may match them up to avoid some false positives.
 
@@ -48,21 +48,20 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
     pub fn process(&mut self) {
         use rustc::hir::def::Def::*;
 
-        while let Some((old_did, new_did)) = self.item_queue.pop_front() {
-            match self.tcx.describe_def(old_did) {
+        while let Some((old_def_id, new_def_id)) = self.item_queue.pop_front() {
+            match self.tcx.describe_def(old_def_id) {
                 Some(Trait(_)) | Some(Macro(_, _)) => continue,
                 _ => (),
             }
 
-            let old_ty = self.tcx.type_of(old_did);
-            let new_ty = self.tcx.type_of(new_did);
+            let old_ty = self.tcx.type_of(old_def_id);
+            let new_ty = self.tcx.type_of(new_def_id);
             let _ = self.relate(&old_ty, &new_ty);
         }
     }
 
-    fn check_substs(&self, a_substs: &'tcx Substs<'tcx>, b_substs: &'tcx Substs<'tcx>)
-        -> bool
-    {
+    /// Ensure that the pair of given `Substs` is suitable for being related.
+    fn check_substs(&self, a_substs: &'tcx Substs<'tcx>, b_substs: &'tcx Substs<'tcx>) -> bool {
         for (a, b) in a_substs.iter().zip(b_substs) {
             if a.as_type().is_some() != b.as_type().is_some() {
                 return false;
@@ -191,10 +190,11 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
             _ => None,
         };
 
-        if let Some((old_did, new_did)) = matching {
-            if !self.id_mapping.contains_id(old_did) && old_did.krate == self.old_crate {
-                self.id_mapping.add_internal_item(old_did, new_did);
-                self.item_queue.push_back((old_did, new_did));
+        if let Some((old_def_id, new_def_id)) = matching {
+            // TODO: implement proper crate tracking and fix this then.
+            if !self.id_mapping.contains_id(old_def_id) && old_def_id.krate == self.old_crate {
+                self.id_mapping.add_internal_item(old_def_id, new_def_id);
+                self.item_queue.push_back((old_def_id, new_def_id));
             }
         }
 

@@ -3,7 +3,10 @@
 //! This module provides data types to represent, store and record changes found in various
 //! analysis passes. We distinguish between path changes and regular changes, which represent
 //! changes to the export structure of the crate and to specific items, respectively. The
-//! ordering of changes and output generation is performed using these data structures, too.
+//! ordering of changes and output generation is performed using the span information contained
+//! in these data structures. This means that we try to use the old span only when no other span
+//! is available, which leads to (complete) removals being displayed first. Matters are further
+//! complicated that we still group changes by the item they refer to, even if it's path changes.
 
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
@@ -21,9 +24,10 @@ use syntax_pos::Span;
 
 /// The categories we use when analyzing changes between crate versions.
 ///
-/// These directly correspond to the semantic versioning spec, with the exception that
-/// some breaking changes are categorized as "technically breaking" - that is, [1]
-/// defines them as non-breaking when introduced to the standard libraries.
+/// These directly correspond to the semantic versioning spec, with the exception that some
+/// breaking changes are categorized as "technically breaking" - that is, [1] defines them as
+/// non-breaking when introduced to the standard libraries, because they only cause breakage in
+/// exotic and/or unlikely scenarios.
 ///
 /// [1]: https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -61,8 +65,9 @@ impl<'a> fmt::Display for ChangeCategory {
 
 /// A change record of newly introduced or removed paths to an item.
 ///
-/// It is important to note that the `Eq` and `Ord` instances are constucted to only
-/// regard the span of the associated item definition.
+/// It is important to note that the `Eq` and `Ord` instances are constucted to only regard the
+/// span of the associated item definition. All other spans are only present for later display of
+/// the change record.
 pub struct PathChange {
     /// The name of the item.
     name: Symbol,
@@ -72,10 +77,11 @@ pub struct PathChange {
     additions: BTreeSet<Span>,
     /// The set of spans of removed exports of the item.
     removals: BTreeSet<Span>,
+    // TODO: do we need an `output` member here as well?
 }
 
 impl PathChange {
-    /// Construct a new empty change record for an item.
+    /// Construct a new empty path change record for an item.
     fn new(name: Symbol, def_span: Span) -> PathChange {
         PathChange {
             name: name,
@@ -85,7 +91,7 @@ impl PathChange {
         }
     }
 
-    /// Insert a new span addition or deletion.
+    /// Insert a new span addition or deletion into an existing path change record.
     fn insert(&mut self, span: Span, add: bool) {
         if add {
             self.additions.insert(span);
@@ -110,7 +116,7 @@ impl PathChange {
         &self.def_span
     }
 
-    /// Report the change.
+    /// Report the change in a structured manner.
     fn report(&self, session: &Session) {
         if self.to_category() == Patch {
             return;
@@ -205,6 +211,7 @@ pub enum ChangeType<'tcx> {
 pub use self::ChangeType::*;
 
 impl<'tcx> ChangeType<'tcx> {
+    /// Get the change type's category.
     pub fn to_category(&self) -> ChangeCategory {
         match *self {
             ItemMadePrivate |
@@ -289,19 +296,19 @@ impl<'a> fmt::Display for ChangeType<'a> {
     }
 }
 
-/// A change record of an item kept between versions.
+/// A change record of an item present in both crate versions.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only
-/// regard the *new* span of the associated item export. This allows us to sort them
+/// regard the *new* span of the associated item definition. This allows us to sort them
 /// by appearance in the *new* source.
 pub struct Change<'tcx> {
-    /// The type of the change affecting the item.
+    /// The types of changes affecting the item, with optional subspans.
     changes: Vec<(ChangeType<'tcx>, Option<Span>)>,
     /// The most severe change category already recorded for the item.
     max: ChangeCategory,
-    /// The symbol associated with the change item.
+    /// The name of the item.
     name: Symbol,
-    /// The new span associated with the change item.
+    /// The new definition span of the item.
     new_span: Span,
     /// Whether to output changes. Used to distinguish all-private items.
     output: bool
@@ -319,8 +326,8 @@ impl<'tcx> Change<'tcx> {
         }
     }
 
-    /// Add another change type to the change record.
-    fn add(&mut self, type_: ChangeType<'tcx>, span: Option<Span>) {
+    /// Insert another change type into an existing path change record.
+    fn insert(&mut self, type_: ChangeType<'tcx>, span: Option<Span>) {
         let cat = type_.to_category();
 
         if cat > self.max {
@@ -332,6 +339,8 @@ impl<'tcx> Change<'tcx> {
 
     /// Check whether a trait item contains breaking changes preventing further analysis of it's
     /// child items.
+    ///
+    /// NB: The invariant that the item in question is actually a trait item isn't checked.
     fn trait_item_breaking(&self) -> bool {
         for change in &self.changes {
             match change.0 {
@@ -372,18 +381,13 @@ impl<'tcx> Change<'tcx> {
         &self.new_span
     }
 
-    /// Get the ident of the change item.
-    fn ident(&self) -> &Symbol {
-        &self.name
-    }
-
-    /// Report the change.
+    /// Report the change in a structured manner.
     fn report(&self, session: &Session) {
         if self.max == Patch || !self.output {
             return;
         }
 
-        let msg = format!("{} changes in `{}`", self.max, self.ident());
+        let msg = format!("{} changes in `{}`", self.max, self.name);
         let mut builder = session.struct_span_warn(self.new_span, &msg);
 
         for change in &self.changes {
@@ -441,7 +445,7 @@ pub struct ChangeSet<'tcx> {
 
 impl<'tcx> ChangeSet<'tcx> {
     /// Add a new path change entry for the given item.
-    pub fn new_path(&mut self, old: DefId, name: Symbol, def_span: Span) {
+    pub fn new_path_change(&mut self, old: DefId, name: Symbol, def_span: Span) {
         self.spans
             .entry(def_span)
             .or_insert_with(|| old);
@@ -473,17 +477,17 @@ impl<'tcx> ChangeSet<'tcx> {
 
     /// Add a new change entry for the given items.
     pub fn new_change(&mut self,
-                      old_did: DefId,
-                      new_did: DefId,
+                      old_def_id: DefId,
+                      new_def_id: DefId,
                       name: Symbol,
                       old_span: Span,
                       new_span: Span,
                       output: bool) {
         let change = Change::new(name, new_span, output);
 
-        self.spans.insert(old_span, old_did);
-        self.spans.insert(new_span, new_did);
-        self.changes.insert(old_did, change);
+        self.spans.insert(old_span, old_def_id);
+        self.spans.insert(new_span, new_def_id);
+        self.changes.insert(old_def_id, change);
     }
 
     /// Add a new change to an already existing entry.
@@ -494,7 +498,7 @@ impl<'tcx> ChangeSet<'tcx> {
             self.max = cat.clone();
         }
 
-        self.changes.get_mut(&old).unwrap().add(type_, span);
+        self.changes.get_mut(&old).unwrap().insert(type_, span);
     }
 
     /// Check whether an item with the given id has undergone breaking changes.
@@ -556,6 +560,7 @@ pub mod tests {
     use syntax_pos::hygiene::SyntaxContext;
     use syntax_pos::symbol::Interner;
 
+    /// A wrapper for `Span` that can be randomly generated.
     #[derive(Clone, Debug)]
     pub struct Span_(Span);
 
@@ -577,6 +582,7 @@ pub mod tests {
         }
     }
 
+    /// A wrapper for `DefId` that can be randomly generated.
     #[derive(Clone, Debug)]
     pub struct DefId_(DefId);
 
@@ -599,7 +605,7 @@ pub mod tests {
         }
     }
 
-    // a rip-off of the real `ChangeType` - but this one can be generated.
+    /// a rip-off of the real `ChangeType` that can be randomly generated.
     #[derive(Clone, Debug)]
     pub enum ChangeType_ {
         ItemMadePublic,
@@ -685,8 +691,10 @@ pub mod tests {
         }
     }
 
+    /// A wrapper type used to construct `Change`s.
     pub type Change_ = (DefId_, DefId_, Span_, Span_, bool, Vec<(ChangeType_, Option<Span_>)>);
 
+    /// Construct `Change`s from things that can be generated.
     fn build_change<'a>(s1: Span, output: bool, mut changes: Vec<(ChangeType_, Option<Span_>)>)
         -> Change<'a>
     {
@@ -694,14 +702,16 @@ pub mod tests {
         let mut change = Change::new(interner.intern("test"), s1, output);
 
         for (type_, span) in changes.drain(..) {
-            change.add(type_.inner(), span.map(|s| s.inner()));
+            change.insert(type_.inner(), span.map(|s| s.inner()));
         }
 
         change
     }
 
+    /// A wrapper type used to construct `PathChange`s.
     pub type PathChange_ = (DefId_, Span_, Vec<(bool, Span_)>);
 
+    /// Construct `PathChange`s from things that can be generated.
     fn build_path_change(s1: Span, mut spans: Vec<(bool, Span)>) -> PathChange {
         let mut interner = Interner::new();
         let mut change = PathChange::new(interner.intern("test"), s1);
@@ -764,7 +774,8 @@ pub mod tests {
             res
         }
 
-        /// The maximal change category for a change set gets computed correctly.
+        /// The maximal change category for a change set with regular changes only gets computed
+        /// correctly.
         fn max_pchange(changes: Vec<PathChange_>) -> bool {
             let mut set = ChangeSet::default();
 
@@ -780,7 +791,7 @@ pub mod tests {
 
             for &(ref did, ref span, ref spans) in &changes {
                 let def_id = did.clone().inner();
-                set.new_path(def_id, name, span.clone().inner());
+                set.new_path_change(def_id, name, span.clone().inner());
 
                 for &(add, ref span) in spans {
                     if add {
@@ -794,7 +805,8 @@ pub mod tests {
             set.max == max
         }
 
-        /// The maximal change category for a change set gets computed correctly.
+        /// The maximal change category for a change set with path changes only gets computed
+        /// correctly.
         fn max_change(changes: Vec<Change_>) -> bool {
             let mut set = ChangeSet::default();
 
@@ -808,10 +820,10 @@ pub mod tests {
                 .max()
                 .unwrap_or(Patch);
 
-            for &(ref o_did, ref n_did, ref o_span, ref n_span, out, ref sub) in &changes {
-                let old_did = o_did.clone().inner();
-                set.new_change(old_did,
-                               n_did.clone().inner(),
+            for &(ref o_def_id, ref n_def_id, ref o_span, ref n_span, out, ref sub) in &changes {
+                let old_def_id = o_def_id.clone().inner();
+                set.new_change(old_def_id,
+                               n_def_id.clone().inner(),
                                name,
                                o_span.clone().inner(),
                                n_span.clone().inner(),
@@ -819,13 +831,15 @@ pub mod tests {
 
                 for &(ref type_, ref span_) in sub {
                     set.add_change(type_.clone().inner(),
-                                   old_did,
+                                   old_def_id,
                                    span_.clone().map(|s| s.inner()));
                 }
             }
 
             set.max == max
         }
+
+        // TODO: a test for mixed change sets
 
         /// Difference in spans implies difference in `PathChange`s.
         fn pchange_span_neq(c1: PathChange_, c2: PathChange_) -> bool {

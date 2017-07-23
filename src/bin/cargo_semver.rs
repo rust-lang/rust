@@ -105,7 +105,7 @@ impl<'a> WorkInfo<'a> {
         })
     }
 
-    /// Obtain the paths to the rlib produced and to the output directory for dependencies.
+    /// Obtain the paths to the produced rlib and the dependency output directory.
     fn rlib_and_dep_output(&self, config: &'a Config, name: &str)
         -> CargoResult<(PathBuf, PathBuf)>
     {
@@ -123,8 +123,8 @@ impl<'a> WorkInfo<'a> {
 
 /// Perform the heavy lifting.
 ///
-/// Obtain the local crate and compile it, then fetch the latest version from the registry, and
-/// build it as well.
+/// Obtain the two versions of the crate to be analyzed as specified by command line arguments
+/// and/or defaults, and dispatch the actual analysis.
 // TODO: possibly reduce the complexity by finding where some info can be taken from directly
 fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     fn parse_arg(opt: &str) -> CargoResult<(&str, &str)> {
@@ -204,8 +204,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         .map_err(|e| human(format!("could not spawn rustc: {}", e)))?;
 
     if let Some(ref mut stdin) = child.stdin {
-        stdin
-            .write_fmt(format_args!("extern crate new; extern crate old;"))?;
+        stdin.write_fmt(format_args!("extern crate new; extern crate old;"))?;
     } else {
         return Err(human("could not pipe to rustc (wtf?)"));
     }
@@ -217,15 +216,20 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     Ok(())
 }
 
+/// Print a help message.
 fn help(opts: &Options) {
     let brief = "usage: cargo semver [options] [-- cargo options]";
     print!("{}", opts.usage(brief));
 }
 
+/// Print a version message.
 fn version() {
     println!("{}", env!("CARGO_PKG_VERSION"));
 }
 
+/// Main entry point.
+///
+/// Parse CLI arguments, handle their semantics, and provide for proper error handling.
 fn main() {
     fn err(config: &Config, e: Box<CargoError>) -> ! {
         exit_with_error(CliError::new(e, 1), &mut config.shell());

@@ -11,21 +11,22 @@ use std::collections::{BTreeSet, HashMap, VecDeque};
 
 use syntax::ast::Name;
 
-/// A mapping from old to new `DefId`s, as well as exports.
+/// A mapping from old to new `DefId`s, as well as associated definitions, if applicable.
 ///
-/// Exports and simple `DefId` mappings are kept separate to record both kinds of correspondence
-/// losslessly. The *access* to the stored data happens through the same API, however.
+/// Definitions and simple `DefId` mappings are kept separate to record both kinds of
+/// correspondence losslessly. The *access* to the stored data happens through the same API,
+/// however.
 #[derive(Default)]
 pub struct IdMapping {
     /// Toplevel items' old `DefId` mapped to old and new `Def`.
     toplevel_mapping: HashMap<DefId, (Def, Def)>,
     /// Trait items' old `DefId` mapped to old and new `Def`.
     trait_item_mapping: HashMap<DefId, (Def, Def, DefId)>,
-    /// Other item's old `DefId` mapped to new `DefId`.
+    /// Other items' old `DefId` mapped to new `DefId`.
     internal_mapping: HashMap<DefId, DefId>,
     /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
     child_mapping: HashMap<DefId, BTreeSet<DefId>>,
-    /// Set of new defaulted type parameters.
+    /// Map of type parameters' `DefId`s and their definitions.
     type_params: HashMap<DefId, TypeParameterDef>,
 }
 
@@ -100,7 +101,7 @@ impl IdMapping {
         self.trait_item_mapping.get(item_def_id).map(|t| t.2)
     }
 
-    /// Tell us whether a `DefId` is present in the mappings.
+    /// Check whether a `DefId` is present in the mappings.
     pub fn contains_id(&self, old: DefId) -> bool {
         self.toplevel_mapping.contains_key(&old) ||
             self.trait_item_mapping.contains_key(&old) ||

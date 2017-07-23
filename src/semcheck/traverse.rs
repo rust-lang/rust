@@ -81,42 +81,42 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
     mod_queue.push_back((old, new, Public, Public));
 
-    while let Some((old_did, new_did, old_vis, new_vis)) = mod_queue.pop_front() {
-        children.add(cstore.item_children(old_did, tcx.sess),
-                     cstore.item_children(new_did, tcx.sess));
+    while let Some((old_def_id, new_def_id, old_vis, new_vis)) = mod_queue.pop_front() {
+        children.add(cstore.item_children(old_def_id, tcx.sess),
+                     cstore.item_children(new_def_id, tcx.sess));
 
         for items in children.drain() {
             match items {
                 (Some(o), Some(n)) => {
-                    if let (Mod(o_did), Mod(n_did)) = (o.def, n.def) {
-                        if visited.insert((o_did, n_did)) {
+                    if let (Mod(o_def_id), Mod(n_def_id)) = (o.def, n.def) {
+                        if visited.insert((o_def_id, n_def_id)) {
                             let o_vis = if old_vis == Public {
-                                cstore.visibility(o_did)
+                                cstore.visibility(o_def_id)
                             } else {
                                 old_vis
                             };
                             let n_vis = if new_vis == Public {
-                                cstore.visibility(n_did)
+                                cstore.visibility(n_def_id)
                             } else {
                                 new_vis
                             };
 
                             if o_vis != n_vis {
-                                changes.new_change(o_did,
-                                                   n_did,
+                                changes.new_change(o_def_id,
+                                                   n_def_id,
                                                    o.ident.name,
-                                                   tcx.def_span(o_did),
-                                                   tcx.def_span(n_did),
+                                                   tcx.def_span(o_def_id),
+                                                   tcx.def_span(n_def_id),
                                                    true);
 
                                 if o_vis == Public && n_vis != Public {
-                                    changes.add_change(ItemMadePrivate, o_did, None);
+                                    changes.add_change(ItemMadePrivate, o_def_id, None);
                                 } else if o_vis != Public && n_vis == Public {
-                                    changes.add_change(ItemMadePublic, o_did, None);
+                                    changes.add_change(ItemMadePublic, o_def_id, None);
                                 }
                             }
 
-                            mod_queue.push_back((o_did, n_did, o_vis, n_vis));
+                            mod_queue.push_back((o_def_id, n_def_id, o_vis, n_vis));
                         }
                     } else if id_mapping.add_export(o.def, n.def) {
                         // struct constructors are weird/hard - let's go shopping!
@@ -226,9 +226,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    let o_did = o.def.def_id();
+                    let o_def_id = o.def.def_id();
 
-                    if old_vis == Public && cstore.visibility(o_did) == Public {
+                    if old_vis == Public && cstore.visibility(o_def_id) == Public {
                         // delay the handling of removals until the id mapping is complete
                         removals.push(o);
                     }
@@ -239,11 +239,11 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    let n_did = n.def.def_id();
+                    let n_def_id = n.def.def_id();
 
-                    if new_vis == Public && cstore.visibility(n_did) == Public {
-                        changes.new_path(n_did, n.ident.name, tcx.def_span(n_did));
-                        changes.add_path_addition(n_did, n.span);
+                    if new_vis == Public && cstore.visibility(n_def_id) == Public {
+                        changes.new_path_change(n_def_id, n.ident.name, tcx.def_span(n_def_id));
+                        changes.add_path_addition(n_def_id, n.span);
                     }
                 }
                 (None, None) => unreachable!(),
@@ -253,16 +253,16 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
     // finally, process item removals
     for o in removals.drain(..) {
-        let o_did = o.def.def_id();
+        let o_def_id = o.def.def_id();
 
         // reuse an already existing path change entry, if possible
-        if id_mapping.contains_id(o_did) {
-            let n_did = id_mapping.get_new_id(o_did);
-            changes.new_path(n_did, o.ident.name, tcx.def_span(n_did));
-            changes.add_path_removal(n_did, o.span);
+        if id_mapping.contains_id(o_def_id) {
+            let n_def_id = id_mapping.get_new_id(o_def_id);
+            changes.new_path_change(n_def_id, o.ident.name, tcx.def_span(n_def_id));
+            changes.add_path_removal(n_def_id, o.span);
         } else {
-            changes.new_path(o_did, o.ident.name, tcx.def_span(o_did));
-            changes.add_path_removal(o_did, o.span);
+            changes.new_path_change(o_def_id, o.ident.name, tcx.def_span(o_def_id));
+            changes.add_path_removal(o_def_id, o.span);
         }
     }
 }
@@ -293,8 +293,8 @@ fn diff_method(changes: &mut ChangeSet, tcx: TyCtxt, old: AssociatedItem, new: A
 
 /// Given two ADT items, perform structural checks.
 ///
-/// This establishes the needed correspondence relationship between non-toplevel items such as
-/// enum variants, struct fields etc.
+/// This establishes the needed correspondence between non-toplevel items such as enum variants,
+/// struct and enum fields etc.
 fn diff_adts(changes: &mut ChangeSet,
              id_mapping: &mut IdMapping,
              tcx: TyCtxt,
@@ -405,8 +405,8 @@ fn diff_adts(changes: &mut ChangeSet,
 
 /// Given two trait items, perform structural checks.
 ///
-/// This establishes the needed correspondence relationship between non-toplevel items found in
-/// the trait definition.
+/// This establishes the needed correspondence between non-toplevel items found in the trait
+/// definition.
 fn diff_traits(changes: &mut ChangeSet,
                id_mapping: &mut IdMapping,
                tcx: TyCtxt,
@@ -428,16 +428,16 @@ fn diff_traits(changes: &mut ChangeSet,
 
     let mut items = BTreeMap::new();
 
-    for old_did in tcx.associated_item_def_ids(old).iter() {
-        let item = tcx.associated_item(*old_did);
+    for old_def_id in tcx.associated_item_def_ids(old).iter() {
+        let item = tcx.associated_item(*old_def_id);
         items.entry(item.name).or_insert((None, None)).0 =
-            tcx.describe_def(*old_did).map(|d| (d, item));
+            tcx.describe_def(*old_def_id).map(|d| (d, item));
     }
 
-    for new_did in tcx.associated_item_def_ids(new).iter() {
-        let item = tcx.associated_item(*new_did);
+    for new_def_id in tcx.associated_item_def_ids(new).iter() {
+        let item = tcx.associated_item(*new_def_id);
         items.entry(item.name).or_insert((None, None)).1 =
-            tcx.describe_def(*new_did).map(|d| (d, item));
+            tcx.describe_def(*new_def_id).map(|d| (d, item));
     }
 
     for (name, item_pair) in &items {
@@ -598,9 +598,9 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         },
         Struct(_) | Enum(_) | Union(_) => {
             if let Some(children) = id_mapping.children_of(old_def_id) {
-                for (o_did, n_did) in children {
-                    let o_ty = tcx.type_of(o_did);
-                    let n_ty = tcx.type_of(n_did);
+                for (o_def_id, n_def_id) in children {
+                    let o_ty = tcx.type_of(o_def_id);
+                    let n_ty = tcx.type_of(n_def_id);
 
                     cmp_types(changes, id_mapping, tcx, old_def_id, new_def_id, o_ty, n_ty);
                 }
@@ -733,8 +733,8 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
     old.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
         match ty.sty {
             TyAdt(&AdtDef { ref did, .. }, substs) if id_mapping.contains_id(*did) => {
-                let new_did = id_mapping.get_new_id(*did);
-                let new_adt = tcx.adt_def(new_did);
+                let new_def_id = id_mapping.get_new_id(*did);
+                let new_adt = tcx.adt_def(new_def_id);
                 tcx.mk_adt(new_adt, substs)
             },
             TyRef(region, type_and_mut) => {
@@ -747,26 +747,26 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                 let new_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
                     match *p.skip_binder() {
                         Trait(ExistentialTraitRef { def_id: did, substs }) => {
-                            let new_did = if id_mapping.contains_id(did) {
+                            let new_def_id = if id_mapping.contains_id(did) {
                                 id_mapping.get_new_id(did)
                             } else {
                                 did
                             };
 
                             Trait(ExistentialTraitRef {
-                                def_id: new_did,
+                                def_id: new_def_id,
                                 substs: substs
                             })
                         },
                         Projection(ExistentialProjection { item_def_id, substs, ty }) => {
-                            let new_did = if id_mapping.contains_id(item_def_id) {
+                            let new_def_id = if id_mapping.contains_id(item_def_id) {
                                 id_mapping.get_new_id(item_def_id)
                             } else {
                                 item_def_id
                             };
 
                             Projection(ExistentialProjection {
-                                item_def_id: new_did,
+                                item_def_id: new_def_id,
                                 substs: substs,
                                 ty: ty,
                             })
@@ -784,13 +784,13 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                 tcx.mk_dynamic(Binder(new_preds), region)
             },
             TyProjection(proj) => {
-                let new_did = if id_mapping.contains_id(proj.item_def_id) {
+                let new_def_id = if id_mapping.contains_id(proj.item_def_id) {
                     id_mapping.get_new_id(proj.item_def_id)
                 } else {
                     proj.item_def_id
                 };
 
-                tcx.mk_projection(new_did, proj.substs)
+                tcx.mk_projection(new_def_id, proj.substs)
             },
             TyAnon(did, substs) => {
                 tcx.mk_anon(id_mapping.get_new_id(did), substs)
@@ -799,8 +799,8 @@ fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
                 if param.idx != 0 { // `Self` is special
                     let old_did = index_map[&param.idx];
                     if id_mapping.contains_id(old_did) {
-                        let new_did = id_mapping.get_new_id(old_did);
-                        tcx.mk_param_from_def(&id_mapping.get_type_param(&new_did))
+                        let new_def_id = id_mapping.get_new_id(old_did);
+                        tcx.mk_param_from_def(&id_mapping.get_type_param(&new_def_id))
                     } else {
                         tcx.mk_ty(TyParam(param))
                     }

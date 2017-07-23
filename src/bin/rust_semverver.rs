@@ -23,9 +23,9 @@ use std::process::Command;
 
 use syntax::ast;
 
-/// After the typechecker has finished it's work, we perform our checks.
+/// After the typechecker has finished it's work, perform our checks.
 ///
-/// To compare the two well-typed crates, we first find the aptly named crates `new` and `old`,
+/// To compare the two well-typed crates, first find the aptly named crates `new` and `old`,
 /// find their root modules and then proceed to walk their module trees.
 fn callback(state: &driver::CompileState, version: &str) {
     let tcx = state.tcx.unwrap();
@@ -45,7 +45,7 @@ fn callback(state: &driver::CompileState, version: &str) {
             }
         });
 
-    let (old_did, new_did) = if let (Some(c0), Some(c1)) = cnums {
+    let (old_def_id, new_def_id) = if let (Some(c0), Some(c1)) = cnums {
         (DefId {
              krate: c0,
              index: CRATE_DEF_INDEX,
@@ -59,18 +59,21 @@ fn callback(state: &driver::CompileState, version: &str) {
         return;
     };
 
-    let changes = run_analysis(tcx, old_did, new_did);
+    let changes = run_analysis(tcx, old_def_id, new_def_id);
 
     changes.output(tcx.sess, version);
 }
 
-/// Our wrapper to control compilation.
+/// A wrapper to control compilation.
 struct SemVerVerCompilerCalls {
+    /// The wrapped compilation handle.
     default: RustcDefaultCalls,
+    /// The version of the old crate.
     version: String,
 }
 
 impl SemVerVerCompilerCalls {
+    /// Construct a new compilation wrapper, given a version string.
     pub fn new(version: String) -> SemVerVerCompilerCalls {
         SemVerVerCompilerCalls {
             default: RustcDefaultCalls,
@@ -119,13 +122,14 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
                         matches: &getopts::Matches)
                         -> driver::CompileController<'a> {
         let mut controller = self.default.build_controller(sess, matches);
-
-        let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
+        let old_callback =
+            std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
         let version = self.version.clone();
+
         controller.after_analysis.callback = box move |state| {
-                                                     callback(state, &version);
-                                                     old_callback(state);
-                                                 };
+            callback(state, &version);
+            old_callback(state);
+        };
         controller.after_analysis.stop = Compilation::Stop;
 
         controller
@@ -168,7 +172,7 @@ fn main() {
         let version = if let Ok(ver) = std::env::var("RUST_SEMVER_CRATE_VERSION") {
             ver
         } else {
-            std::process::exit(1);
+            "no_version".to_owned()
         };
 
         let mut cc = SemVerVerCompilerCalls::new(version);
