@@ -194,7 +194,7 @@ impl Step for Cargo {
         let build = builder.build;
         let compiler = builder.compiler(self.stage, self.host);
 
-        builder.ensure(tool::Cargo { stage: self.stage, target: self.host });
+        builder.ensure(tool::Cargo { compiler, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
         if !build.fail_fast {
@@ -240,7 +240,7 @@ impl Step for Rls {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rls { stage: self.stage, target: self.host });
+        builder.ensure(tool::Rls { compiler, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/rls/Cargo.toml"));
 
@@ -1165,7 +1165,7 @@ impl Step for RemoteCopyLibs {
         println!("REMOTE copy libs to emulator ({})", target);
         t!(fs::create_dir_all(build.out.join("tmp")));
 
-        let server = builder.ensure(tool::RemoteTestServer { stage: compiler.stage, target });
+        let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);

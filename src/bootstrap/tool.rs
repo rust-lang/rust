@@ -22,10 +22,10 @@ use channel::GitInfo;
 use cache::Interned;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CleanTools {
-    pub stage: u32,
-    pub target: Interned<String>,
-    pub mode: Mode,
+struct CleanTools {
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: Mode,
 }
 
 impl Step for CleanTools {
@@ -41,11 +41,9 @@ impl Step for CleanTools {
     /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let stage = self.stage;
+        let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
-
-        let compiler = builder.compiler(stage, build.build);
 
         let stamp = match mode {
             Mode::Libstd => libstd_stamp(build, compiler, target),
@@ -59,11 +57,11 @@ impl Step for CleanTools {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct ToolBuild {
-    pub stage: u32,
-    pub target: Interned<String>,
-    pub tool: &'static str,
-    pub mode: Mode,
+struct ToolBuild {
+    compiler: Compiler,
+    target: Interned<String>,
+    tool: &'static str,
+    mode: Mode,
 }
 
 impl Step for ToolBuild {
@@ -79,12 +77,11 @@ impl Step for ToolBuild {
     /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
-        let stage = self.stage;
+        let compiler = self.compiler;
         let target = self.target;
         let tool = self.tool;
 
-        let compiler = builder.compiler(stage, build.build);
-        builder.ensure(CleanTools { stage, target, mode: self.mode });
+        builder.ensure(CleanTools { compiler, target, mode: self.mode });
         match self.mode {
             Mode::Libstd => builder.ensure(compile::Std { compiler, target }),
             Mode::Libtest => builder.ensure(compile::Test { compiler, target }),
@@ -92,8 +89,8 @@ impl Step for ToolBuild {
             Mode::Tool => panic!("unexpected Mode::Tool for tool build")
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
-        println!("Building stage{} tool {} ({})", stage, tool, target);
+        let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
+        println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
         let dir = build.src.join("src/tools").join(tool);
@@ -141,7 +138,7 @@ macro_rules! tool {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            stage: 0,
+                            compiler: self.compiler(0, self.build.build),
                             target: self.build.build,
                         }),
                     )+
@@ -152,7 +149,7 @@ macro_rules! tool {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            pub stage: u32,
+            pub compiler: Compiler,
             pub target: Interned<String>,
         }
 
@@ -165,14 +162,14 @@ macro_rules! tool {
 
             fn make_run(run: RunConfig) {
                 run.builder.ensure($name {
-                    stage: run.builder.top_stage,
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
                     target: run.target,
                 });
             }
 
             fn run(self, builder: &Builder) -> PathBuf {
                 builder.ensure(ToolBuild {
-                    stage: self.stage,
+                    compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
                     mode: $mode,
@@ -198,7 +195,7 @@ tool!(
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RemoteTestServer {
-    pub stage: u32,
+    pub compiler: Compiler,
     pub target: Interned<String>,
 }
 
@@ -211,14 +208,14 @@ impl Step for RemoteTestServer {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(RemoteTestServer {
-            stage: run.builder.top_stage,
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
 
     fn run(self, builder: &Builder) -> PathBuf {
         builder.ensure(ToolBuild {
-            stage: self.stage,
+            compiler: self.compiler,
             target: self.target,
             tool: "remote-test-server",
             mode: Mode::Libstd,
@@ -228,7 +225,7 @@ impl Step for RemoteTestServer {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
-    pub stage: u32,
+    pub compiler: Compiler,
     pub target: Interned<String>,
 }
 
@@ -244,7 +241,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargo {
-            stage: run.builder.top_stage,
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -256,11 +253,11 @@ impl Step for Cargo {
         // Cargo depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
-            compiler: builder.compiler(self.stage, builder.build.build),
+            compiler: self.compiler,
             target: builder.build.build,
         });
         builder.ensure(ToolBuild {
-            stage: self.stage,
+            compiler: self.compiler,
             target: self.target,
             tool: "cargo",
             mode: Mode::Librustc,
@@ -270,7 +267,7 @@ impl Step for Cargo {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rls {
-    pub stage: u32,
+    pub compiler: Compiler,
     pub target: Interned<String>,
 }
 
@@ -286,7 +283,7 @@ impl Step for Rls {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rls {
-            stage: run.builder.top_stage,
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -298,11 +295,11 @@ impl Step for Rls {
         // RLS depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
-            compiler: builder.compiler(self.stage, builder.build.build),
+            compiler: self.compiler,
             target: builder.build.build,
         });
         builder.ensure(ToolBuild {
-            stage: self.stage,
+            compiler: self.compiler,
             target: self.target,
             tool: "rls",
             mode: Mode::Librustc,

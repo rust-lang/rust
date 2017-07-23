@@ -963,7 +963,10 @@ impl Step for Cargo {
         // Prepare the image directory
         t!(fs::create_dir_all(image.join("share/zsh/site-functions")));
         t!(fs::create_dir_all(image.join("etc/bash_completion.d")));
-        let cargo = builder.ensure(tool::Cargo { stage, target });
+        let cargo = builder.ensure(tool::Cargo {
+            compiler: builder.compiler(stage, build.build),
+            target
+        });
         install(&cargo, &image.join("bin"), 0o755);
         for man in t!(etc.join("man").read_dir()) {
             let man = t!(man);
@@ -1046,7 +1049,10 @@ impl Step for Rls {
         t!(fs::create_dir_all(&image));
 
         // Prepare the image directory
-        let rls = builder.ensure(tool::Rls { stage, target });
+        let rls = builder.ensure(tool::Rls {
+            compiler: builder.compiler(stage, build.build),
+            target
+        });
         install(&rls, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rls");
         install(&src.join("README.md"), &doc, 0o644);
