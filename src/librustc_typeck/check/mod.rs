@@ -1073,6 +1073,8 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
+
+    check_packed(tcx, span, def_id);
 }
 
 pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item) {
@@ -1477,11 +1479,11 @@ fn check_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) 
     if tcx.adt_def(def_id).repr.packed() {
         if tcx.adt_def(def_id).repr.align > 0 {
             struct_span_err!(tcx.sess, sp, E0587,
-                             "struct has conflicting packed and align representation hints").emit();
+                             "type has conflicting packed and align representation hints").emit();
         }
         else if check_packed_inner(tcx, def_id, &mut Vec::new()) {
             struct_span_err!(tcx.sess, sp, E0588,
-                "packed struct cannot transitively contain a `[repr(align)]` struct").emit();
+                "packed type cannot transitively contain a `[repr(align)]` type").emit();
         }
     }
 }
@@ -1495,7 +1497,7 @@ fn check_packed_inner<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return false;
     }
     match t.sty {
-        ty::TyAdt(def, substs) if def.is_struct() => {
+        ty::TyAdt(def, substs) if def.is_struct() || def.is_union() => {
             if tcx.adt_def(def.did).repr.align > 0 {
                 return true;
             }
