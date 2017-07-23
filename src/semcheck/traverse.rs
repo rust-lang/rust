@@ -31,14 +31,14 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     -> ChangeSet<'tcx>
 {
     let mut changes = Default::default();
-    let mut id_mapping = Default::default();
+    let mut id_mapping = IdMapping::new(old.krate, new.krate);
 
     // first pass
     diff_structure(&mut changes, &mut id_mapping, tcx, old, new);
 
     // second pass
     {
-        let mut mismatch = Mismatch::new(tcx, old.krate, &mut id_mapping);
+        let mut mismatch = Mismatch::new(tcx, &mut id_mapping);
         mismatch.process();
     }
 

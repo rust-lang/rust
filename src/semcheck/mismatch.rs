@@ -4,7 +4,7 @@
 //! essentially just renamed instances of the same item (as long as they are both unknown to us
 //! at the time of analysis). Thus, we may match them up to avoid some false positives.
 
-use rustc::hir::def_id::{CrateNum, DefId};
+use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
@@ -27,20 +27,17 @@ pub struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     item_queue: VecDeque<(DefId, DefId)>,
     /// The id mapping to use.
     id_mapping: &'a mut IdMapping,
-    /// The old crate.
-    old_crate: CrateNum,
 }
 
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
     /// Construct a new mismtach type relation.
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, old_crate: CrateNum, id_mapping: &'a mut IdMapping)
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a mut IdMapping)
         -> Mismatch<'a, 'gcx, 'tcx>
     {
         Mismatch {
             tcx: tcx,
             item_queue: id_mapping.toplevel_queue(),
             id_mapping: id_mapping,
-            old_crate: old_crate,
         }
     }
 
@@ -191,8 +188,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
         };
 
         if let Some((old_def_id, new_def_id)) = matching {
-            // TODO: implement proper crate tracking and fix this then.
-            if !self.id_mapping.contains_id(old_def_id) && old_def_id.krate == self.old_crate {
+            if !self.id_mapping.contains_id(old_def_id) && self.id_mapping.in_old_crate(old_def_id) {
                 self.id_mapping.add_internal_item(old_def_id, new_def_id);
                 self.item_queue.push_back((old_def_id, new_def_id));
             }

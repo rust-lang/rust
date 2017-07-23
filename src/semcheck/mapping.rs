@@ -4,7 +4,7 @@
 //! map used to temporarily match up unsorted item sequences' elements by name.
 
 use rustc::hir::def::{Def, Export};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::ty::TypeParameterDef;
 
 use std::collections::{BTreeSet, HashMap, VecDeque};
@@ -16,8 +16,11 @@ use syntax::ast::Name;
 /// Definitions and simple `DefId` mappings are kept separate to record both kinds of
 /// correspondence losslessly. The *access* to the stored data happens through the same API,
 /// however.
-#[derive(Default)]
 pub struct IdMapping {
+    /// The old crate.
+    old_crate: CrateNum,
+    /// The new crate.
+    new_crate: CrateNum,
     /// Toplevel items' old `DefId` mapped to old and new `Def`.
     toplevel_mapping: HashMap<DefId, (Def, Def)>,
     /// Trait items' old `DefId` mapped to old and new `Def`.
@@ -31,6 +34,18 @@ pub struct IdMapping {
 }
 
 impl IdMapping {
+    pub fn new(old_crate: CrateNum, new_crate: CrateNum) -> IdMapping {
+        IdMapping {
+            old_crate: old_crate,
+            new_crate: new_crate,
+            toplevel_mapping: HashMap::new(),
+            trait_item_mapping: HashMap::new(),
+            internal_mapping: HashMap::new(),
+            child_mapping: HashMap::new(),
+            type_params: HashMap::new(),
+        }
+    }
+
     /// Register two exports representing the same item across versions.
     pub fn add_export(&mut self, old: Def, new: Def) -> bool {
         if self.toplevel_mapping.contains_key(&old.def_id()) {
@@ -131,6 +146,14 @@ impl IdMapping {
         self.child_mapping
             .get(&parent)
             .map(|m| m.iter().map(move |old| (*old, self.internal_mapping[old])))
+    }
+
+    pub fn in_old_crate(&self, did: DefId) -> bool {
+        self.old_crate == did.krate
+    }
+
+    pub fn in_new_crate(&self, did: DefId) -> bool {
+        self.new_crate == did.krate
     }
 }
 
