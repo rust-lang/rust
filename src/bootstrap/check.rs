@@ -458,6 +458,9 @@ impl Step for HostCompiletest {
             });
         } else {
             for test in HOST_COMPILETESTS {
+                if test.mode == "pretty" {
+                    continue;
+                }
                 run.builder.ensure(HostCompiletest {
                     compiler,
                     target: run.target,
