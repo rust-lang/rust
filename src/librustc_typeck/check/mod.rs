@@ -1063,11 +1063,7 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         check_simd(tcx, span, def_id);
     }
 
-    // if struct is packed and not aligned, check fields for alignment.
-    // Checks for combining packed and align attrs on single struct are done elsewhere.
-    if tcx.adt_def(def_id).repr.packed() && tcx.adt_def(def_id).repr.align == 0 {
-        check_packed(tcx, span, def_id);
-    }
+    check_packed(tcx, span, def_id);
 }
 
 fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1478,9 +1474,15 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId
 }
 
 fn check_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) {
-    if check_packed_inner(tcx, def_id, &mut Vec::new()) {
-        struct_span_err!(tcx.sess, sp, E0588,
-            "packed struct cannot transitively contain a `[repr(align)]` struct").emit();
+    if tcx.adt_def(def_id).repr.packed() {
+        if tcx.adt_def(def_id).repr.align > 0 {
+            struct_span_err!(tcx.sess, sp, E0587,
+                             "struct has conflicting packed and align representation hints").emit();
+        }
+        else if check_packed_inner(tcx, def_id, &mut Vec::new()) {
+            struct_span_err!(tcx.sess, sp, E0588,
+                "packed struct cannot transitively contain a `[repr(align)]` struct").emit();
+        }
     }
 }
 

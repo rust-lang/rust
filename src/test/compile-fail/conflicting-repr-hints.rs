@@ -27,7 +27,15 @@ enum D { D }
 #[repr(C, packed)]
 struct E(i32);
 
-#[repr(packed, align(8))] //~ ERROR conflicting packed and align representation hints
-struct F(i32);
+#[repr(packed, align(8))]
+struct F(i32); //~ ERROR struct has conflicting packed and align representation hints
+
+#[repr(packed)]
+#[repr(align(8))]
+struct G(i32); //~ ERROR struct has conflicting packed and align representation hints
+
+#[repr(align(8))]
+#[repr(packed)]
+struct H(i32); //~ ERROR struct has conflicting packed and align representation hints
 
 fn main() {}
