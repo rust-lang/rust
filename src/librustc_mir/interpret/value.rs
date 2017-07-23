@@ -2,7 +2,7 @@
 #![allow(float_cmp)]
 
 use error::{EvalError, EvalResult};
-use memory::{Memory, MemoryPointer, HasMemory, HasDataLayout};
+use memory::{Memory, MemoryPointer, HasMemory, PointerArithmetic};
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     f32::from_bits(bytes as u32)
@@ -59,7 +59,7 @@ impl<'tcx> Pointer {
         self.primval
     }
 
-    pub(crate) fn signed_offset<'a, L: HasDataLayout<'a>>(self, i: i64, layout: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn signed_offset<L: PointerArithmetic>(self, i: i64, layout: L) -> EvalResult<'tcx, Self> {
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
@@ -70,7 +70,7 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub(crate) fn offset<'a, L: HasDataLayout<'a>>(self, i: u64, layout: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn offset<L: PointerArithmetic>(self, i: u64, layout: L) -> EvalResult<'tcx, Self> {
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
@@ -81,7 +81,7 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub(crate) fn wrapping_signed_offset<'a, L: HasDataLayout<'a>>(self, i: i64, layout: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn wrapping_signed_offset<L: PointerArithmetic>(self, i: i64, layout: L) -> EvalResult<'tcx, Self> {
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);

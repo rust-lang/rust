@@ -68,30 +68,30 @@ pub struct MemoryPointer {
     pub offset: u64,
 }
 
-impl MemoryPointer {
+impl<'tcx> MemoryPointer {
     pub fn new(alloc_id: AllocId, offset: u64) -> Self {
         MemoryPointer { alloc_id, offset }
     }
 
-    pub(crate) fn wrapping_signed_offset<'a, L: HasDataLayout<'a>>(self, i: i64, l: L) -> Self {
+    pub(crate) fn wrapping_signed_offset<L: PointerArithmetic>(self, i: i64, l: L) -> Self {
         MemoryPointer::new(self.alloc_id, l.wrapping_signed_offset(self.offset, i))
     }
 
-    pub(crate) fn overflowing_signed_offset<'a, L: HasDataLayout<'a>>(self, i: i128, l: L) -> (Self, bool) {
+    pub(crate) fn overflowing_signed_offset<L: PointerArithmetic>(self, i: i128, l: L) -> (Self, bool) {
         let (res, over) = l.overflowing_signed_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub(crate) fn signed_offset<'a, 'tcx, L: HasDataLayout<'a>>(self, i: i64, l: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn signed_offset<L: PointerArithmetic>(self, i: i64, l: L) -> EvalResult<'tcx, Self> {
         Ok(MemoryPointer::new(self.alloc_id, l.signed_offset(self.offset, i)?))
     }
 
-    pub(crate) fn overflowing_offset<'a, L: HasDataLayout<'a>>(self, i: u64, l: L) -> (Self, bool) {
+    pub(crate) fn overflowing_offset<L: PointerArithmetic>(self, i: u64, l: L) -> (Self, bool) {
         let (res, over) = l.overflowing_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub(crate) fn offset<'a, 'tcx, L: HasDataLayout<'a>>(self, i: u64, l: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn offset<L: PointerArithmetic>(self, i: u64, l: L) -> EvalResult<'tcx, Self> {
         Ok(MemoryPointer::new(self.alloc_id, l.offset(self.offset, i)?))
     }
 }
@@ -1183,9 +1183,7 @@ impl<'a, 'tcx> HasMemory<'a, 'tcx> for EvalContext<'a, 'tcx> {
 // Pointer arithmetic
 ////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) trait HasDataLayout<'a> : Copy {
-    fn data_layout(self) -> &'a TargetDataLayout;
-
+pub trait PointerArithmetic : layout::HasDataLayout {
     // These are not supposed to be overriden.
 
     //// Trunace the given value to the pointer size; also return whether there was an overflow
@@ -1236,17 +1234,17 @@ pub(crate) trait HasDataLayout<'a> : Copy {
     }
 }
 
-impl<'a> HasDataLayout<'a> for &'a TargetDataLayout {
+impl<T: layout::HasDataLayout> PointerArithmetic for T {}
+
+impl<'a, 'tcx> layout::HasDataLayout for &'a Memory<'a, 'tcx> {
     #[inline]
-    fn data_layout(self) -> &'a TargetDataLayout {
-        self
+    fn data_layout(&self) -> &TargetDataLayout {
+        self.layout
     }
 }
-
-impl<'a, 'b, 'tcx, T> HasDataLayout<'a> for &'b T
-    where T: HasMemory<'a, 'tcx> {
+impl<'a, 'tcx> layout::HasDataLayout for &'a EvalContext<'a, 'tcx> {
     #[inline]
-    fn data_layout(self) -> &'a TargetDataLayout {
+    fn data_layout(&self) -> &TargetDataLayout {
         self.memory().layout
     }
 }

@@ -4,7 +4,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 use error::{EvalResult, EvalError};
 use eval_context::EvalContext;
 use value::PrimVal;
-use memory::{MemoryPointer, HasDataLayout};
+use memory::{MemoryPointer, PointerArithmetic};
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn cast_primval(
