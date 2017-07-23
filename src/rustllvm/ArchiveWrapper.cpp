@@ -12,6 +12,7 @@
 
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ArchiveWriter.h"
+#include "llvm/Support/Path.h"
 
 using namespace llvm;
 using namespace llvm::object;
@@ -256,6 +257,9 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
       }
+#if LLVM_VERSION_GE(5, 0)
+      MOrErr->MemberName = sys::path::filename(MOrErr->MemberName);
+#endif
       Members.push_back(std::move(*MOrErr));
 #elif LLVM_VERSION_EQ(3, 8)
       Members.push_back(NewArchiveIterator(Member->Filename));

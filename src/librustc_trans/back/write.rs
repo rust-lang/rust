@@ -16,7 +16,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Pas
                              AllPasses, Sanitizer};
 use rustc::session::Session;
 use llvm;
-use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
+use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
 use rustc::hir::def_id::CrateNum;
@@ -307,7 +307,6 @@ pub struct CodegenContext<'a> {
 }
 
 struct HandlerFreeVars<'a> {
-    llcx: ContextRef,
     cgcx: &'a CodegenContext<'a>,
 }
 
@@ -329,7 +328,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
-    let HandlerFreeVars { llcx, cgcx } = *(user as *const HandlerFreeVars);
+    let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
@@ -345,11 +344,12 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
             };
 
             if enabled {
-                let loc = llvm::debug_loc_to_string(llcx, opt.debug_loc);
-                cgcx.handler.note_without_error(&format!("optimization {} for {} at {}: {}",
+                cgcx.handler.note_without_error(&format!("optimization {} for {} at {}:{}:{}: {}",
                                                 opt.kind.describe(),
                                                 opt.pass_name,
-                                                if loc.is_empty() { "[unknown]" } else { &*loc },
+                                                opt.filename,
+                                                opt.line,
+                                                opt.column,
                                                 opt.message));
             }
         }
@@ -370,9 +370,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     let llcx = mllvm.llcx;
     let tm = config.tm;
 
-    // llcx doesn't outlive this function, so we can put this on the stack.
     let fv = HandlerFreeVars {
-        llcx: llcx,
         cgcx: cgcx,
     };
     let fv = &fv as *const HandlerFreeVars as *mut c_void;

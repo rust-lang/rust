@@ -1633,7 +1633,9 @@ extern "C" {
     pub fn LLVMRustUnpackOptimizationDiagnostic(DI: DiagnosticInfoRef,
                                                 pass_name_out: RustStringRef,
                                                 function_out: *mut ValueRef,
-                                                debugloc_out: *mut DebugLocRef,
+                                                loc_line_out: *mut c_uint,
+                                                loc_column_out: *mut c_uint,
+                                                loc_filename_out: RustStringRef,
                                                 message_out: RustStringRef);
     pub fn LLVMRustUnpackInlineAsmDiagnostic(DI: DiagnosticInfoRef,
                                              cookie_out: *mut c_uint,
