@@ -11,13 +11,10 @@
 // Make sure that the spans of import errors are correct.
 
 use abc::one_el;
-//~^ ERROR 13:5: 13:16
+//~^ ERROR 13:5: 13:8
 use abc::{a, bbb, cccccc};
-//~^ ERROR 15:11: 15:12
-//~^^ ERROR 15:14: 15:17
-//~^^^ ERROR 15:19: 15:25
+//~^ ERROR 15:5: 15:8
 use a_very_long_name::{el, el2};
-//~^ ERROR 19:24: 19:26
-//~^^ ERROR 19:28: 19:31
+//~^ ERROR 17:5: 17:21
 
 fn main() {}

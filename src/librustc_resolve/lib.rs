@@ -45,6 +45,7 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
+use syntax::codemap::{dummy_spanned, respan};
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
@@ -149,7 +150,7 @@ enum ResolutionError<'a> {
     /// error E0431: `self` import can only appear in an import list with a non-empty prefix
     SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// error E0432: unresolved import
-    UnresolvedImport(Option<(&'a str, &'a str)>),
+    UnresolvedImport(Option<(Span, &'a str, &'a str)>),
     /// error E0433: failed to resolve
     FailedToResolve(&'a str),
     /// error E0434: can't capture dynamic environment in a fn item
@@ -297,12 +298,12 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                               non-empty prefix")
         }
         ResolutionError::UnresolvedImport(name) => {
-            let msg = match name {
-                Some((n, _)) => format!("unresolved import `{}`", n),
-                None => "unresolved import".to_owned(),
+            let (span, msg) = match name {
+                Some((sp, n, _)) => (sp, format!("unresolved import `{}`", n)),
+                None => (span, "unresolved import".to_owned()),
             };
             let mut err = struct_span_err!(resolver.session, span, E0432, "{}", msg);
-            if let Some((_, p)) = name {
+            if let Some((_, _, p)) = name {
                 err.span_label(span, p);
             }
             err
@@ -820,7 +821,7 @@ enum PathResult<'a> {
     Module(Module<'a>),
     NonModule(PathResolution),
     Indeterminate,
-    Failed(String, bool /* is the error from the last segment? */),
+    Failed(Span, String, bool /* is the error from the last segment? */),
 }
 
 enum ModuleKind {
@@ -1276,19 +1277,21 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let hir::Path { ref segments, span, ref mut def } = *path;
-        let path: Vec<_> = segments.iter().map(|seg| Ident::with_empty_ctxt(seg.name)).collect();
+        let path: Vec<SpannedIdent> = segments.iter()
+            .map(|seg| respan(span, Ident::with_empty_ctxt(seg.name)))
+            .collect();
         match self.resolve_path(&path, Some(namespace), true, span) {
             PathResult::Module(module) => *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 *def = path_res.base_def(),
             PathResult::NonModule(..) => match self.resolve_path(&path, None, true, span) {
-                PathResult::Failed(msg, _) => {
+                PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 }
                 _ => {}
             },
             PathResult::Indeterminate => unreachable!(),
-            PathResult::Failed(msg, _) => {
+            PathResult::Failed(span, msg, _) => {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
             }
         }
@@ -1909,7 +1912,9 @@ impl<'a> Resolver<'a> {
         let mut new_val = None;
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
-            let path: Vec<_> = trait_ref.path.segments.iter().map(|seg| seg.identifier).collect();
+            let path: Vec<_> = trait_ref.path.segments.iter()
+                .map(|seg| respan(seg.span, seg.identifier))
+                .collect();
             let def = self.smart_resolve_path_fragment(trait_ref.ref_id,
                                                        None,
                                                        &path,
@@ -2334,7 +2339,9 @@ impl<'a> Resolver<'a> {
                           path: &Path,
                           source: PathSource)
                           -> PathResolution {
-        let segments = &path.segments.iter().map(|seg| seg.identifier).collect::<Vec<_>>();
+        let segments = &path.segments.iter()
+            .map(|seg| respan(seg.span, seg.identifier))
+            .collect::<Vec<_>>();
         let ident_span = path.segments.last().map_or(path.span, |seg| seg.span);
         self.smart_resolve_path_fragment(id, qself, segments, path.span, ident_span, source)
     }
@@ -2342,7 +2349,7 @@ impl<'a> Resolver<'a> {
     fn smart_resolve_path_fragment(&mut self,
                                    id: NodeId,
                                    qself: Option<&QSelf>,
-                                   path: &[Ident],
+                                   path: &[SpannedIdent],
                                    span: Span,
                                    ident_span: Span,
                                    source: PathSource)
@@ -2361,10 +2368,11 @@ impl<'a> Resolver<'a> {
                 (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
                  format!("not a {}", expected), span)
             } else {
-                let item_str = path[path.len() - 1];
+                let item_str = path[path.len() - 1].node;
+                let item_span = path[path.len() - 1].span;
                 let (mod_prefix, mod_str) = if path.len() == 1 {
                     (format!(""), format!("this scope"))
-                } else if path.len() == 2 && path[0].name == keywords::CrateRoot.name() {
+                } else if path.len() == 2 && path[0].node.name == keywords::CrateRoot.name() {
                     (format!(""), format!("the crate root"))
                 } else {
                     let mod_path = &path[..path.len() - 1];
@@ -2375,7 +2383,7 @@ impl<'a> Resolver<'a> {
                     (mod_prefix, format!("`{}`", names_to_string(mod_path)))
                 };
                 (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
-                 format!("not found in {}", mod_str), ident_span)
+                 format!("not found in {}", mod_str), item_span)
             };
             let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
 
@@ -2396,7 +2404,7 @@ impl<'a> Resolver<'a> {
 
             // Try to lookup the name in more relaxed fashion for better error reporting.
             let ident = *path.last().unwrap();
-            let candidates = this.lookup_import_candidates(ident.name, ns, is_expected);
+            let candidates = this.lookup_import_candidates(ident.node.name, ns, is_expected);
             if !candidates.is_empty() {
                 let mut module_span = this.current_module.span;
                 module_span.hi = module_span.lo;
@@ -2404,7 +2412,7 @@ impl<'a> Resolver<'a> {
                 show_candidates(&mut err, module_span, &candidates, def.is_some());
             } else if is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates =
-                    this.lookup_import_candidates(ident.name, ns, is_enum_variant);
+                    this.lookup_import_candidates(ident.node.name, ns, is_enum_variant);
                 let mut enum_candidates = enum_candidates.iter()
                     .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
                 enum_candidates.sort();
@@ -2422,8 +2430,8 @@ impl<'a> Resolver<'a> {
                 }
             }
             if path.len() == 1 && this.self_type_is_available(span) {
-                if let Some(candidate) = this.lookup_assoc_candidate(ident, ns, is_expected) {
-                    let self_is_available = this.self_value_is_available(path[0].ctxt, span);
+                if let Some(candidate) = this.lookup_assoc_candidate(ident.node, ns, is_expected) {
+                    let self_is_available = this.self_value_is_available(path[0].node.ctxt, span);
                     match candidate {
                         AssocSuggestion::Field => {
                             err.span_suggestion(span, "try",
@@ -2538,7 +2546,7 @@ impl<'a> Resolver<'a> {
                 // or `<T>::A::B`. If `B` should be resolved in value namespace then
                 // it needs to be added to the trait map.
                 if ns == ValueNS {
-                    let item_name = *path.last().unwrap();
+                    let item_name = path.last().unwrap().node;
                     let traits = self.get_traits_containing_item(item_name, ns);
                     self.trait_map.insert(id, traits);
                 }
@@ -2570,7 +2578,7 @@ impl<'a> Resolver<'a> {
     fn resolve_qpath_anywhere(&mut self,
                               id: NodeId,
                               qself: Option<&QSelf>,
-                              path: &[Ident],
+                              path: &[SpannedIdent],
                               primary_ns: Namespace,
                               span: Span,
                               defer_to_typeck: bool,
@@ -2590,9 +2598,10 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        let is_global = self.global_macros.get(&path[0].name).cloned()
+        let is_global = self.global_macros.get(&path[0].node.name).cloned()
             .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
-        if primary_ns != MacroNS && (is_global || self.macro_names.contains(&path[0].modern())) {
+        if primary_ns != MacroNS && (is_global ||
+                                     self.macro_names.contains(&path[0].node.modern())) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
                 PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
@@ -2605,7 +2614,7 @@ impl<'a> Resolver<'a> {
     fn resolve_qpath(&mut self,
                      id: NodeId,
                      qself: Option<&QSelf>,
-                     path: &[Ident],
+                     path: &[SpannedIdent],
                      ns: Namespace,
                      span: Span,
                      global_by_default: bool)
@@ -2645,8 +2654,9 @@ impl<'a> Resolver<'a> {
             // The same fallback is used when `a` resolves to nothing.
             PathResult::Module(..) | PathResult::Failed(..)
                     if (ns == TypeNS || path.len() > 1) &&
-                       self.primitive_type_table.primitive_types.contains_key(&path[0].name) => {
-                let prim = self.primitive_type_table.primitive_types[&path[0].name];
+                       self.primitive_type_table.primitive_types
+                           .contains_key(&path[0].node.name) => {
+                let prim = self.primitive_type_table.primitive_types[&path[0].node.name];
                 match prim {
                     TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
                         if !self.session.features.borrow().i128_type {
@@ -2661,7 +2671,7 @@ impl<'a> Resolver<'a> {
                 PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(module) => PathResolution::new(module.def().unwrap()),
-            PathResult::Failed(msg, false) => {
+            PathResult::Failed(span, msg, false) => {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 err_path_resolution()
             }
@@ -2670,8 +2680,8 @@ impl<'a> Resolver<'a> {
         };
 
         if path.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
-           path[0].name != keywords::CrateRoot.name() &&
-           path[0].name != keywords::DollarCrate.name() {
+           path[0].node.name != keywords::CrateRoot.name() &&
+           path[0].node.name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
@@ -2689,7 +2699,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_path(&mut self,
-                    path: &[Ident],
+                    path: &[SpannedIdent],
                     opt_ns: Option<Namespace>, // `None` indicates a module path
                     record_used: bool,
                     path_span: Span)
@@ -2698,15 +2708,16 @@ impl<'a> Resolver<'a> {
         let mut allow_super = true;
 
         for (i, &ident) in path.iter().enumerate() {
+            debug!("resolve_path ident {} {:?}", i, ident);
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
 
-            if i == 0 && ns == TypeNS && ident.name == keywords::SelfValue.name() {
-                let mut ctxt = ident.ctxt.modern();
+            if i == 0 && ns == TypeNS && ident.node.name == keywords::SelfValue.name() {
+                let mut ctxt = ident.node.ctxt.modern();
                 module = Some(self.resolve_self(&mut ctxt, self.current_module));
                 continue
-            } else if allow_super && ns == TypeNS && ident.name == keywords::Super.name() {
-                let mut ctxt = ident.ctxt.modern();
+            } else if allow_super && ns == TypeNS && ident.node.name == keywords::Super.name() {
+                let mut ctxt = ident.node.ctxt.modern();
                 let self_module = match i {
                     0 => self.resolve_self(&mut ctxt, self.current_module),
                     _ => module.unwrap(),
@@ -2716,26 +2727,26 @@ impl<'a> Resolver<'a> {
                     continue
                 } else {
                     let msg = "There are too many initial `super`s.".to_string();
-                    return PathResult::Failed(msg, false);
+                    return PathResult::Failed(ident.span, msg, false);
                 }
             }
             allow_super = false;
 
-            if i == 0 && ns == TypeNS && ident.name == keywords::CrateRoot.name() {
-                module = Some(self.resolve_crate_root(ident.ctxt.modern()));
+            if i == 0 && ns == TypeNS && ident.node.name == keywords::CrateRoot.name() {
+                module = Some(self.resolve_crate_root(ident.node.ctxt.modern()));
                 continue
-            } else if i == 0 && ns == TypeNS && ident.name == keywords::DollarCrate.name() {
-                module = Some(self.resolve_crate_root(ident.ctxt));
+            } else if i == 0 && ns == TypeNS && ident.node.name == keywords::DollarCrate.name() {
+                module = Some(self.resolve_crate_root(ident.node.ctxt));
                 continue
             }
 
             let binding = if let Some(module) = module {
-                self.resolve_ident_in_module(module, ident, ns, false, record_used, path_span)
+                self.resolve_ident_in_module(module, ident.node, ns, false, record_used, path_span)
             } else if opt_ns == Some(MacroNS) {
-                self.resolve_lexical_macro_path_segment(ident, ns, record_used, path_span)
+                self.resolve_lexical_macro_path_segment(ident.node, ns, record_used, path_span)
                     .map(MacroBinding::binding)
             } else {
-                match self.resolve_ident_in_lexical_scope(ident, ns, record_used, path_span) {
+                match self.resolve_ident_in_lexical_scope(ident.node, ns, record_used, path_span) {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
                     Some(LexicalScopeBinding::Def(def))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
@@ -2760,7 +2771,9 @@ impl<'a> Resolver<'a> {
                             def, path.len() - i - 1
                         ));
                     } else {
-                        return PathResult::Failed(format!("Not a module `{}`", ident), is_last);
+                        return PathResult::Failed(ident.span,
+                                                  format!("Not a module `{}`", ident.node),
+                                                  is_last);
                     }
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,
@@ -2775,19 +2788,19 @@ impl<'a> Resolver<'a> {
                     let msg = if module.and_then(ModuleData::def) == self.graph_root.def() {
                         let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
                         let mut candidates =
-                            self.lookup_import_candidates(ident.name, TypeNS, is_mod);
+                            self.lookup_import_candidates(ident.node.name, TypeNS, is_mod);
                         candidates.sort_by_key(|c| (c.path.segments.len(), c.path.to_string()));
                         if let Some(candidate) = candidates.get(0) {
                             format!("Did you mean `{}`?", candidate.path)
                         } else {
-                            format!("Maybe a missing `extern crate {};`?", ident)
+                            format!("Maybe a missing `extern crate {};`?", ident.node)
                         }
                     } else if i == 0 {
-                        format!("Use of undeclared type or module `{}`", ident)
+                        format!("Use of undeclared type or module `{}`", ident.node)
                     } else {
-                        format!("Could not find `{}` in `{}`", ident, path[i - 1])
+                        format!("Could not find `{}` in `{}`", ident.node, path[i - 1].node)
                     };
-                    return PathResult::Failed(msg, is_last);
+                    return PathResult::Failed(ident.span, msg, is_last);
                 }
             }
         }
@@ -2807,8 +2820,7 @@ impl<'a> Resolver<'a> {
         // An invalid forward use of a type parameter from a previous default.
         if let ForwardTyParamBanRibKind = self.ribs[ns][rib_index].kind {
             if record_used {
-                resolve_error(self, span,
-                        ResolutionError::ForwardDeclaredTyParam);
+                resolve_error(self, span, ResolutionError::ForwardDeclaredTyParam);
             }
             assert_eq!(def, Def::Err);
             return Def::Err;
@@ -2978,7 +2990,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn lookup_typo_candidate<FilterFn>(&mut self,
-                                       path: &[Ident],
+                                       path: &[SpannedIdent],
                                        ns: Namespace,
                                        filter_fn: FilterFn,
                                        span: Span)
@@ -3039,7 +3051,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let name = path[path.len() - 1].name;
+        let name = path[path.len() - 1].node.name;
         // Make sure error reporting is deterministic.
         names.sort_by_key(|name| name.as_str());
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
@@ -3573,27 +3585,31 @@ fn is_struct_like(def: Def) -> bool {
     }
 }
 
-fn is_self_type(path: &[Ident], namespace: Namespace) -> bool {
-    namespace == TypeNS && path.len() == 1 && path[0].name == keywords::SelfType.name()
+fn is_self_type(path: &[SpannedIdent], namespace: Namespace) -> bool {
+    namespace == TypeNS && path.len() == 1 && path[0].node.name == keywords::SelfType.name()
 }
 
-fn is_self_value(path: &[Ident], namespace: Namespace) -> bool {
-    namespace == ValueNS && path.len() == 1 && path[0].name == keywords::SelfValue.name()
+fn is_self_value(path: &[SpannedIdent], namespace: Namespace) -> bool {
+    namespace == ValueNS && path.len() == 1 && path[0].node.name == keywords::SelfValue.name()
 }
 
-fn names_to_string(idents: &[Ident]) -> String {
+fn names_to_string(idents: &[SpannedIdent]) -> String {
     let mut result = String::new();
-    for (i, ident) in idents.iter().filter(|i| i.name != keywords::CrateRoot.name()).enumerate() {
+    for (i, ident) in idents.iter()
+                            .filter(|i| i.node.name != keywords::CrateRoot.name())
+                            .enumerate() {
         if i > 0 {
             result.push_str("::");
         }
-        result.push_str(&ident.name.as_str());
+        result.push_str(&ident.node.name.as_str());
     }
     result
 }
 
 fn path_names_to_string(path: &Path) -> String {
-    names_to_string(&path.segments.iter().map(|seg| seg.identifier).collect::<Vec<_>>())
+    names_to_string(&path.segments.iter()
+                        .map(|seg| respan(seg.span, seg.identifier))
+                        .collect::<Vec<_>>())
 }
 
 /// Get the path for an enum and the variant from an `ImportSuggestion` for an enum variant.
@@ -3661,7 +3677,10 @@ fn module_to_string(module: Module) -> String {
     if names.is_empty() {
         return "???".to_string();
     }
-    names_to_string(&names.into_iter().rev().collect::<Vec<_>>())
+    names_to_string(&names.into_iter()
+                        .rev()
+                        .map(|n| dummy_spanned(n))
+                        .collect::<Vec<_>>())
 }
 
 fn err_path_resolution() -> PathResolution {

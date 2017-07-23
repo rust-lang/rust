@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use foo::self; //~ ERROR unresolved import `foo::self`
+use foo::self; //~ ERROR unresolved import `foo`
 //~^ ERROR `self` imports are only allowed within a { } list
 
 use std::mem::self;

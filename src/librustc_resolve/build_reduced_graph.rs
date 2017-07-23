@@ -35,6 +35,7 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::codemap::respan;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -119,7 +120,7 @@ impl<'a> Resolver<'a> {
                                  .unwrap()
                                  .1
                                  .iter()
-                                 .map(|seg| seg.identifier)
+                                 .map(|seg| respan(seg.span, seg.identifier))
                                  .collect()
                     }
 
@@ -127,14 +128,16 @@ impl<'a> Resolver<'a> {
                     ViewPathList(ref module_ident_path, _) => {
                         module_ident_path.segments
                                          .iter()
-                                         .map(|seg| seg.identifier)
+                                         .map(|seg| respan(seg.span, seg.identifier))
                                          .collect()
                     }
                 };
 
                 // This can be removed once warning cycle #36888 is complete.
-                if module_path.len() >= 2 && module_path[0].name == keywords::CrateRoot.name() &&
-                   token::Ident(module_path[1]).is_path_segment_keyword() {
+                if module_path.len() >= 2 &&
+                    module_path[0].node.name == keywords::CrateRoot.name() &&
+                    token::Ident(module_path[1].node).is_path_segment_keyword()
+                {
                     module_path.remove(0);
                 }
 
@@ -202,10 +205,13 @@ impl<'a> Resolver<'a> {
                             let (module_path, ident, rename, type_ns_only) = {
                                 if node.name.name != keywords::SelfValue.name() {
                                     let rename = node.rename.unwrap_or(node.name);
-                                    (module_path.clone(), node.name, rename, false)
+                                    (module_path.clone(),
+                                     respan(source_item.span, node.name),
+                                     rename,
+                                     false)
                                 } else {
                                     let ident = *module_path.last().unwrap();
-                                    if ident.name == keywords::CrateRoot.name() {
+                                    if ident.node.name == keywords::CrateRoot.name() {
                                         resolve_error(
                                             self,
                                             source_item.span,
@@ -215,13 +221,13 @@ impl<'a> Resolver<'a> {
                                         continue;
                                     }
                                     let module_path = module_path.split_last().unwrap().1;
-                                    let rename = node.rename.unwrap_or(ident);
+                                    let rename = node.rename.unwrap_or(ident.node);
                                     (module_path.to_vec(), ident, rename, true)
                                 }
                             };
                             let subclass = SingleImport {
                                 target: rename,
-                                source: ident,
+                                source: ident.node,
                                 result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
                                 type_ns_only: type_ns_only,
                             };

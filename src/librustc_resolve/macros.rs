@@ -19,6 +19,7 @@ use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use syntax::ast::{self, Name, Ident};
 use syntax::attr::{self, HasAttrs};
+use syntax::codemap::respan;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
@@ -393,7 +394,7 @@ impl<'a> Resolver<'a> {
             return Err(Determinacy::Determined);
         }
 
-        let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
+        let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.identifier)).collect();
         let invocation = self.invocations[&scope];
         self.current_module = invocation.module.get();
 
@@ -418,16 +419,19 @@ impl<'a> Resolver<'a> {
                     Err(Determinacy::Determined)
                 },
             };
+            let path = path.iter().map(|p| p.node).collect::<Vec<_>>();
             self.current_module.nearest_item_scope().macro_resolutions.borrow_mut()
                 .push((path.into_boxed_slice(), span));
             return def;
         }
 
-        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
+        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope,
+                                                          path[0].node,
+                                                          false);
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, span) {
+            match self.resolve_lexical_macro_path_segment(path[0].node, MacroNS, false, span) {
                 Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 Err(_) => {
@@ -438,7 +442,7 @@ impl<'a> Resolver<'a> {
         };
 
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((scope, path[0], span, kind));
+            .push((scope, path[0].node, span, kind));
 
         result
     }
@@ -576,9 +580,10 @@ impl<'a> Resolver<'a> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(path, Some(MacroNS), true, span) {
+            let path = path.iter().map(|p| respan(span, *p)).collect::<Vec<_>>();
+            match self.resolve_path(&path, Some(MacroNS), true, span) {
                 PathResult::NonModule(_) => {},
-                PathResult::Failed(msg, _) => {
+                PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 }
                 _ => unreachable!(),
@@ -652,7 +657,7 @@ impl<'a> Resolver<'a> {
                 }
             };
             let ident = Ident::from_str(name);
-            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro, span)
+            self.lookup_typo_candidate(&vec![respan(span, ident)], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {

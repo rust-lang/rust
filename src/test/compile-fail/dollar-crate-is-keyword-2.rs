@@ -13,7 +13,7 @@ mod a {}
 macro_rules! m {
     () => {
         use a::$crate; //~ ERROR unresolved import `a::$crate`
-        use a::$crate::b; //~ ERROR unresolved import `a::$crate::b`
+        use a::$crate::b; //~ ERROR unresolved import `a::$crate`
         type A = a::$crate; //~ ERROR cannot find type `$crate` in module `a`
     }
 }
