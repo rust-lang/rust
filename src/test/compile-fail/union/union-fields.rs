@@ -20,6 +20,7 @@ fn main() {
     let u = U { a: 0, b: 1, c: 2 }; //~ ERROR union expressions should have exactly one field
                                     //~^ ERROR union `U` has no field named `c`
                                     //~| NOTE `U` does not have this field
+                                    //~| NOTE available fields are: a, b
     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
                        //~^ ERROR functional record update syntax requires a struct
 

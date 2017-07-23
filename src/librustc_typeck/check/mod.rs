@@ -2956,6 +2956,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                format!("did you mean `{}`?", suggested_field_name));
                             } else {
                                 err.span_label(field.span, "unknown field");
+                                let struct_variant_def = def.struct_variant();
+                                let available_field_names = self.available_field_names(
+                                    struct_variant_def);
+                                err.note(&format!("available fields are: {}",
+                                                  available_field_names.join(", ")));
                             };
                     }
                     ty::TyRawPtr(..) => {
@@ -2979,7 +2984,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Return an hint about the closest match in field names
     fn suggest_field_name(variant: &'tcx ty::VariantDef,
                           field: &Spanned<ast::Name>,
-                          skip : Vec<InternedString>)
+                          skip: Vec<InternedString>)
                           -> Option<Symbol> {
         let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {
@@ -2992,8 +2997,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        // only find fits with at least one matching letter
-        find_best_match_for_name(names, &name, Some(name.len()))
+        find_best_match_for_name(names, &name, None)
+    }
+
+    fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<String> {
+        let mut available = Vec::new();
+        for field in variant.fields.iter() {
+            let (_, def_scope) = self.tcx.adjust(field.name, variant.did, self.body_id);
+            if field.vis.is_accessible_from(def_scope, self.tcx) {
+                available.push(field.name.to_string());
+            }
+        }
+        available
     }
 
     // Check tuple index expressions
@@ -3107,14 +3122,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            format!("field does not exist - did you mean `{}`?", field_name));
         } else {
             match ty.sty {
-                ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    err.span_label(field.name.span, format!("`{}::{}` does not have this field",
-                                                             ty, variant.name));
+                ty::TyAdt(adt, ..) => {
+                    if adt.is_enum() {
+                        err.span_label(field.name.span,
+                                       format!("`{}::{}` does not have this field",
+                                               ty, variant.name));
+                    } else {
+                        err.span_label(field.name.span,
+                                       format!("`{}` does not have this field", ty));
+                    }
+                    let available_field_names = self.available_field_names(variant);
+                    err.note(&format!("available fields are: {}",
+                                      available_field_names.join(", ")));
                 }
-                _ => {
-                    err.span_label(field.name.span, format!("`{}` does not have this field", ty));
-                }
+                _ => bug!("non-ADT passed to report_unknown_field")
             }
+
         };
         err.emit();
     }
