@@ -1,6 +1,6 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 warning: path changes to `Abc`
- --> $REPO_PATH/tests/cases/removal_path/old.rs:2:5
+ --> $REPO_PATH/tests/cases/removal_path/new.rs:2:5
   |
 2 |     pub struct Abc;
   |     ^^^^^^^^^^^^^^^

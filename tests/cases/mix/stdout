@@ -1,16 +1,4 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: path changes to `Abc`
- --> $REPO_PATH/tests/cases/mix/old.rs:2:5
-  |
-2 |     pub struct Abc;
-  |     ^^^^^^^^^^^^^^^
-  |
-warning: removed path (breaking)
- --> $REPO_PATH/tests/cases/mix/old.rs:10:9
-  |
-10| pub use self::a::Abc;
-  |         ^^^^^^^^^^^^
-
 warning: breaking changes in `Abc`
  --> $REPO_PATH/tests/cases/mix/new.rs:2:5
   |
@@ -33,6 +21,11 @@ warning: path changes to `Abc`
 2 |     pub enum Abc {}
   |     ^^^^^^^^^^^^^^^
   |
+warning: removed path (breaking)
+ --> $REPO_PATH/tests/cases/mix/old.rs:10:9
+  |
+10| pub use self::a::Abc;
+  |         ^^^^^^^^^^^^
 note: added path (technically breaking)
  --> $REPO_PATH/tests/cases/mix/new.rs:7:13
   |

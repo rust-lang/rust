@@ -74,6 +74,10 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
     let mut visited = HashSet::new();
     let mut children = NameMapping::default();
     let mut mod_queue = VecDeque::new();
+    // Removals are processed with a delay to avoid creating multiple path change entries.
+    // This is necessary, since the order in which added or removed paths are found wrt each
+    // other and their item's definition can't be relied upon.
+    let mut removals = Vec::new();
 
     mod_queue.push_back((old, new, Public, Public));
 
@@ -222,10 +226,11 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    if old_vis == Public && cstore.visibility(o.def.def_id()) == Public {
-                        let o_did = o.def.def_id();
-                        changes.new_path(o_did, o.ident.name, tcx.def_span(o_did));
-                        changes.add_path_removal(o_did, o.span);
+                    let o_did = o.def.def_id();
+
+                    if old_vis == Public && cstore.visibility(o_did) == Public {
+                        // delay the handling of removals until the id mapping is complete
+                        removals.push(o);
                     }
                 }
                 (None, Some(n)) => {
@@ -234,14 +239,30 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    if new_vis == Public && cstore.visibility(n.def.def_id()) == Public {
-                        let n_did = n.def.def_id();
+                    let n_did = n.def.def_id();
+
+                    if new_vis == Public && cstore.visibility(n_did) == Public {
                         changes.new_path(n_did, n.ident.name, tcx.def_span(n_did));
                         changes.add_path_addition(n_did, n.span);
                     }
                 }
                 (None, None) => unreachable!(),
             }
+        }
+    }
+
+    // finally, process item removals
+    for o in removals.drain(..) {
+        let o_did = o.def.def_id();
+
+        // reuse an already existing path change entry, if possible
+        if id_mapping.contains_id(o_did) {
+            let n_did = id_mapping.get_new_id(o_did);
+            changes.new_path(n_did, o.ident.name, tcx.def_span(n_did));
+            changes.add_path_removal(n_did, o.span);
+        } else {
+            changes.new_path(o_did, o.ident.name, tcx.def_span(o_did));
+            changes.add_path_removal(o_did, o.span);
         }
     }
 }
