@@ -10,9 +10,28 @@
 
 // gate-test-use_extern_macros
 
+macro_rules! m {
+    ($p1: path) => {
+        #[derive($p1)] struct U;
+    }
+}
+
 fn main() {
     globnar::brotz!(); //~ ERROR non-ident macro paths are experimental
-    ::foo!(); //~ ERROR non-ident macro paths are experimental
-    foo::<T>!(); //~ ERROR type parameters are not allowed on macros
     #[derive(foo::Bar)] struct T; //~ ERROR non-ident macro paths are experimental
+    ::foo!(); //~ ERROR non-ident macro paths are experimental
+
+    foo::<T>!();
+    //~^ ERROR generic arguments in macro path
+    //~| ERROR generic arguments in macro path
+    //~| ERROR generic arguments in macro path
+    foo::<>!();
+    //~^ ERROR generic arguments in macro path
+    //~| ERROR generic arguments in macro path
+    //~| ERROR generic arguments in macro path
+    m!(MyTrait<>);
+    //~^ ERROR generic arguments in macro path
+    //~| ERROR generic arguments in macro path
+    //~| ERROR generic arguments in macro path
+    //~| ERROR generic arguments in macro path
 }

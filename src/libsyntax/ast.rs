@@ -120,12 +120,11 @@ pub struct PathSegment {
     pub span: Span,
 
     /// Type/lifetime parameters attached to this path. They come in
-    /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
-    /// this is more than just simple syntactic sugar; the use of
-    /// parens affects the region binding rules, so we preserve the
-    /// distinction.
-    /// The `Option<P<..>>` wrapper is purely a size optimization;
-    /// `None` is used to represent both `Path` and `Path<>`.
+    /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`.
+    /// `None` means that no parameter list is supplied (`Path`),
+    /// `Some` means that parameter list is supplied (`Path<X, Y>`)
+    /// but it can be empty (`Path<>`).
+    /// `P` is used as a size optimization for the common case with no parameters.
     pub parameters: Option<P<PathParameters>>,
 }
 
@@ -181,8 +180,7 @@ pub struct AngleBracketedParameterData {
 
 impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
     fn into(self) -> Option<P<PathParameters>> {
-        let empty = self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty();
-        if empty { None } else { Some(P(PathParameters::AngleBracketed(self))) }
+        Some(P(PathParameters::AngleBracketed(self)))
     }
 }
 

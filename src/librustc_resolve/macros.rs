@@ -387,11 +387,7 @@ impl<'a> Resolver<'a> {
                             -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
         if segments.iter().any(|segment| segment.parameters.is_some()) {
-            let kind =
-                if segments.last().unwrap().parameters.is_some() { "macro" } else { "module" };
-            let msg = format!("type parameters are not allowed on {}s", kind);
-            self.session.span_err(path.span, &msg);
-            return Err(Determinacy::Determined);
+            self.session.span_err(span, "generic arguments in macro path");
         }
 
         let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.identifier)).collect();
