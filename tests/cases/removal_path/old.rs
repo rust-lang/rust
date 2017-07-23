@@ -11,3 +11,7 @@ pub mod c {
 }
 
 pub use self::a::Abc;
+
+mod d {
+    pub use a::Abc;
+}

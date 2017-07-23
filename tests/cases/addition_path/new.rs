@@ -19,3 +19,7 @@ pub mod d {
 mod e {
 
 }
+
+mod f {
+    pub use a::Abc;
+}

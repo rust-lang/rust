@@ -77,7 +77,6 @@ pub struct PathChange {
     additions: BTreeSet<Span>,
     /// The set of spans of removed exports of the item.
     removals: BTreeSet<Span>,
-    // TODO: do we need an `output` member here as well?
 }
 
 impl PathChange {
@@ -839,7 +838,54 @@ pub mod tests {
             set.max == max
         }
 
-        // TODO: a test for mixed change sets
+        fn max_pchange_or_change(pchanges: Vec<PathChange_>, changes: Vec<Change_>) -> bool {
+            let mut set = ChangeSet::default();
+
+            let mut interner = Interner::new();
+            let name = interner.intern("test");
+
+            let max = pchanges
+                .iter()
+                .flat_map(|change| change.2.iter())
+                .map(|&(c, _)| if c { TechnicallyBreaking } else { Breaking })
+                .chain(changes
+                    .iter()
+                    .flat_map(|change| change.5.iter())
+                    .map(|&(ref type_, _)| type_.inner().to_category()))
+                .max()
+                .unwrap_or(Patch);
+
+            for &(ref did, ref span, ref spans) in &pchanges {
+                let def_id = did.clone().inner();
+                set.new_path_change(def_id, name, span.clone().inner());
+
+                for &(add, ref span) in spans {
+                    if add {
+                        set.add_path_addition(def_id, span.clone().inner());
+                    } else {
+                        set.add_path_removal(def_id, span.clone().inner());
+                    }
+                }
+            }
+
+            for &(ref o_def_id, ref n_def_id, ref o_span, ref n_span, out, ref sub) in &changes {
+                let old_def_id = o_def_id.clone().inner();
+                set.new_change(old_def_id,
+                               n_def_id.clone().inner(),
+                               name,
+                               o_span.clone().inner(),
+                               n_span.clone().inner(),
+                               out);
+
+                for &(ref type_, ref span_) in sub {
+                    set.add_change(type_.clone().inner(),
+                                   old_def_id,
+                                   span_.clone().map(|s| s.inner()));
+                }
+            }
+
+            set.max == max
+        }
 
         /// Difference in spans implies difference in `PathChange`s.
         fn pchange_span_neq(c1: PathChange_, c2: PathChange_) -> bool {

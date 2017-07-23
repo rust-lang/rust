@@ -9,3 +9,7 @@ pub mod b {
 pub mod c {
 
 }
+
+mod f {
+
+}
