@@ -19,7 +19,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Pas
                              AllPasses, Sanitizer};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
-use time_graph::{self, TimeGraph};
+use time_graph::{self, TimeGraph, Timeline};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::{SMDiagnosticRef, ContextRef};
@@ -303,6 +303,7 @@ pub struct CodegenContext {
     // Resouces needed when running LTO
     pub time_passes: bool,
     pub lto: bool,
+    pub thinlto: bool,
     pub no_landing_pads: bool,
     pub save_temps: bool,
     pub exported_symbols: Arc<ExportedSymbols>,
@@ -315,6 +316,8 @@ pub struct CodegenContext {
     allocator_module_config: Arc<ModuleConfig>,
     pub tm_factory: Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
 
+    // Number of cgus excluding the allocator/metadata modules
+    pub total_cgus: usize,
     // Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
     // LLVM passes added by plugins.
@@ -450,7 +453,8 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 unsafe fn optimize(cgcx: &CodegenContext,
                    diag_handler: &Handler,
                    mtrans: &ModuleTranslation,
-                   config: &ModuleConfig)
+                   config: &ModuleConfig,
+                   timeline: &mut Timeline)
     -> Result<(), FatalError>
 {
     let (llmod, llcx, tm) = match mtrans.source {
@@ -529,6 +533,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
         // Finally, run the actual optimization passes
         time(config.time_passes, &format!("llvm function passes [{}]", module_name.unwrap()), ||
              llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
+        timeline.record("fpm");
         time(config.time_passes, &format!("llvm module passes [{}]", module_name.unwrap()), ||
              llvm::LLVMRunPassManager(mpm, llmod));
 
@@ -543,7 +548,18 @@ fn generate_lto_work(cgcx: &CodegenContext,
                      modules: Vec<ModuleTranslation>)
     -> Vec<(WorkItem, u64)>
 {
-    let lto_modules = lto::run(cgcx, modules).unwrap_or_else(|e| panic!(e));
+    let mut timeline = cgcx.time_graph.as_ref().map(|tg| {
+        tg.start(TRANS_WORKER_TIMELINE,
+                 TRANS_WORK_PACKAGE_KIND,
+                 "generate lto")
+    }).unwrap_or(Timeline::noop());
+    let mode = if cgcx.lto {
+        lto::LTOMode::WholeCrateGraph
+    } else {
+        lto::LTOMode::JustThisCrate
+    };
+    let lto_modules = lto::run(cgcx, modules, mode, &mut timeline)
+        .unwrap_or_else(|e| panic!(e));
 
     lto_modules.into_iter().map(|module| {
         let cost = module.cost();
@@ -554,9 +570,11 @@ fn generate_lto_work(cgcx: &CodegenContext,
 unsafe fn codegen(cgcx: &CodegenContext,
                   diag_handler: &Handler,
                   mtrans: ModuleTranslation,
-                  config: &ModuleConfig)
+                  config: &ModuleConfig,
+                  timeline: &mut Timeline)
     -> Result<CompiledModule, FatalError>
 {
+    timeline.record("codegen");
     let (llmod, llcx, tm) = match mtrans.source {
         ModuleSource::Translated(ref llvm) => (llvm.llmod, llvm.llcx, llvm.tm),
         ModuleSource::Preexisting(_) => {
@@ -601,7 +619,18 @@ unsafe fn codegen(cgcx: &CodegenContext,
 
     if write_bc {
         let bc_out_c = path2cstr(&bc_out);
-        llvm::LLVMWriteBitcodeToFile(llmod, bc_out_c.as_ptr());
+        if llvm::LLVMRustThinLTOAvailable() {
+            with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                llvm::LLVMRustWriteThinBitcodeToFile(
+                    cpm,
+                    llmod,
+                    bc_out_c.as_ptr(),
+                )
+            });
+        } else {
+            llvm::LLVMWriteBitcodeToFile(llmod, bc_out_c.as_ptr());
+        }
+        timeline.record("bc");
     }
 
     time(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
@@ -644,7 +673,8 @@ unsafe fn codegen(cgcx: &CodegenContext,
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), demangle_callback);
                 llvm::LLVMDisposePassManager(cpm);
-            })
+            });
+            timeline.record("ir");
         }
 
         if config.emit_asm {
@@ -665,6 +695,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
             if config.emit_obj {
                 llvm::LLVMDisposeModule(llmod);
             }
+            timeline.record("asm");
         }
 
         if write_obj {
@@ -672,6 +703,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
                 write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
                                   llvm::FileType::ObjectFile)
             })?;
+            timeline.record("obj");
         }
 
         Ok(())
@@ -712,7 +744,8 @@ pub fn start_async_translation(tcx: TyCtxt,
                                time_graph: Option<TimeGraph>,
                                link: LinkMeta,
                                metadata: EncodedMetadata,
-                               coordinator_receive: Receiver<Box<Any + Send>>)
+                               coordinator_receive: Receiver<Box<Any + Send>>,
+                               total_cgus: usize)
                                -> OngoingCrateTranslation {
     let sess = tcx.sess;
     let crate_output = tcx.output_filenames(LOCAL_CRATE);
@@ -836,6 +869,7 @@ pub fn start_async_translation(tcx: TyCtxt,
                                                   shared_emitter,
                                                   trans_worker_send,
                                                   coordinator_receive,
+                                                  total_cgus,
                                                   client,
                                                   time_graph.clone(),
                                                   Arc::new(modules_config),
@@ -1080,7 +1114,9 @@ enum WorkItemResult {
     NeedsLTO(ModuleTranslation),
 }
 
-fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
+fn execute_work_item(cgcx: &CodegenContext,
+                     work_item: WorkItem,
+                     timeline: &mut Timeline)
     -> Result<WorkItemResult, FatalError>
 {
     let diag_handler = cgcx.create_diag_handler();
@@ -1089,8 +1125,8 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
         WorkItem::Optimize(mtrans) => mtrans,
         WorkItem::LTO(mut lto) => {
             unsafe {
-                let module = lto.optimize(cgcx)?;
-                let module = codegen(cgcx, &diag_handler, module, config)?;
+                let module = lto.optimize(cgcx, timeline)?;
+                let module = codegen(cgcx, &diag_handler, module, config, timeline)?;
                 return Ok(WorkItemResult::Compiled(module))
             }
         }
@@ -1140,9 +1176,27 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
         debug!("llvm-optimizing {:?}", module_name);
 
         unsafe {
-            optimize(cgcx, &diag_handler, &mtrans, config)?;
-            if !cgcx.lto || mtrans.kind == ModuleKind::Metadata {
-                let module = codegen(cgcx, &diag_handler, mtrans, config)?;
+            optimize(cgcx, &diag_handler, &mtrans, config, timeline)?;
+
+            let lto = cgcx.lto;
+
+            let auto_thin_lto =
+                cgcx.thinlto &&
+                cgcx.total_cgus > 1 &&
+                mtrans.kind != ModuleKind::Allocator;
+
+            // If we're a metadata module we never participate in LTO.
+            //
+            // If LTO was explicitly requested on the command line, we always
+            // LTO everything else.
+            //
+            // If LTO *wasn't* explicitly requested and we're not a metdata
+            // module, then we may automatically do ThinLTO if we've got
+            // multiple codegen units. Note, however, that the allocator module
+            // doesn't participate here automatically because of linker
+            // shenanigans later on.
+            if mtrans.kind == ModuleKind::Metadata || (!lto && !auto_thin_lto) {
+                let module = codegen(cgcx, &diag_handler, mtrans, config, timeline)?;
                 Ok(WorkItemResult::Compiled(module))
             } else {
                 Ok(WorkItemResult::NeedsLTO(mtrans))
@@ -1187,6 +1241,7 @@ fn start_executing_work(tcx: TyCtxt,
                         shared_emitter: SharedEmitter,
                         trans_worker_send: Sender<Message>,
                         coordinator_receive: Receiver<Box<Any + Send>>,
+                        total_cgus: usize,
                         jobserver: Client,
                         time_graph: Option<TimeGraph>,
                         modules_config: Arc<ModuleConfig>,
@@ -1229,6 +1284,7 @@ fn start_executing_work(tcx: TyCtxt,
         crate_types: sess.crate_types.borrow().clone(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
+        thinlto: sess.opts.debugging_opts.thinlto,
         no_landing_pads: sess.no_landing_pads(),
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
@@ -1246,6 +1302,7 @@ fn start_executing_work(tcx: TyCtxt,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
         tm_factory: target_machine_factory(tcx.sess),
+        total_cgus,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1743,12 +1800,13 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // as a diagnostic was already sent off to the main thread - just
         // surface that there was an error in this worker.
         bomb.result = {
-            let _timing_guard = cgcx.time_graph.as_ref().map(|tg| {
+            let timeline = cgcx.time_graph.as_ref().map(|tg| {
                 tg.start(time_graph::TimelineId(cgcx.worker),
                          LLVM_WORK_PACKAGE_KIND,
                          &work.name())
             });
-            execute_work_item(&cgcx, work).ok()
+            let mut timeline = timeline.unwrap_or(Timeline::noop());
+            execute_work_item(&cgcx, work, &mut timeline).ok()
         };
     });
 }

@@ -115,6 +115,7 @@ fn main() {
                                 "linker",
                                 "asmparser",
                                 "mcjit",
+                                "lto",
                                 "interpreter",
                                 "instrumentation"];
 
