@@ -19,7 +19,7 @@ use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
 use ModuleLlvm;
 use llvm::{self, False, True};
 
-pub unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
+pub(crate) unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
     let llcx = mods.llcx;
     let llmod = mods.llmod;
     let usize = match &tcx.sess.target.target.target_pointer_width[..] {

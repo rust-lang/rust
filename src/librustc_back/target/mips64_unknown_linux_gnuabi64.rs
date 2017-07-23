@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     Ok(Target {
         llvm_target: "mips64-unknown-linux-gnuabi64".to_string(),
         target_endian: "big".to_string(),

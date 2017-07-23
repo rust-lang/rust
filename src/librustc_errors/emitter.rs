@@ -80,11 +80,11 @@ impl Emitter for EmitterWriter {
 }
 
 /// maximum number of lines we will print for each error; arbitrary.
-pub const MAX_HIGHLIGHT_LINES: usize = 6;
+pub(crate) const MAX_HIGHLIGHT_LINES: usize = 6;
 /// maximum number of suggestions to be shown
 ///
 /// Arbitrary, but taken from trait import suggestion limit
-pub const MAX_SUGGESTIONS: usize = 4;
+pub(crate) const MAX_SUGGESTIONS: usize = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorConfig {
@@ -1311,10 +1311,12 @@ fn stderr_isatty() -> bool {
     }
 }
 
-pub type BufferedStderr = term::Terminal<Output = BufferedWriter> + Send;
+pub(crate) type BufferedStderr = term::Terminal<Output = BufferedWriter> + Send;
 
-pub enum Destination {
+pub(crate) enum Destination {
+    #[cfg_attr(not(windows), allow(dead_code))]
     Terminal(Box<term::StderrTerminal>),
+    #[cfg_attr(windows, allow(dead_code))]
     BufferedTerminal(Box<BufferedStderr>),
     Raw(Box<Write + Send>),
 }
@@ -1322,7 +1324,7 @@ pub enum Destination {
 /// Buffered writer gives us a way on Unix to buffer up an entire error message before we output
 /// it.  This helps to prevent interleaving of multiple error messages when multiple compiler
 /// processes error simultaneously
-pub struct BufferedWriter {
+pub(crate) struct BufferedWriter {
     buffer: Vec<u8>,
 }
 

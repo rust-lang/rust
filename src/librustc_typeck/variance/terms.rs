@@ -29,13 +29,13 @@ use util::nodemap::NodeMap;
 
 use self::VarianceTerm::*;
 
-pub type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
+pub(crate) type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
 #[derive(Copy, Clone, Debug)]
-pub struct InferredIndex(pub usize);
+pub(crate) struct InferredIndex(pub(crate) usize);
 
 #[derive(Copy, Clone)]
-pub enum VarianceTerm<'a> {
+pub(crate) enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
     InferredTerm(InferredIndex),
@@ -58,26 +58,28 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 
 // The first pass over the crate simply builds up the set of inferreds.
 
-pub struct TermsContext<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub arena: &'a TypedArena<VarianceTerm<'a>>,
+pub(crate) struct TermsContext<'a, 'tcx: 'a> {
+    pub(crate) tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) arena: &'a TypedArena<VarianceTerm<'a>>,
 
     // For marker types, UnsafeCell, and other lang items where
     // variance is hardcoded, records the item-id and the hardcoded
     // variance.
-    pub lang_items: Vec<(ast::NodeId, Vec<ty::Variance>)>,
+    pub(crate) lang_items: Vec<(ast::NodeId, Vec<ty::Variance>)>,
 
     // Maps from the node id of an item to the first inferred index
     // used for its type & region parameters.
-    pub inferred_starts: NodeMap<InferredIndex>,
+    pub(crate) inferred_starts: NodeMap<InferredIndex>,
 
     // Maps from an InferredIndex to the term for that variable.
-    pub inferred_terms: Vec<VarianceTermPtr<'a>>,
+    pub(crate) inferred_terms: Vec<VarianceTermPtr<'a>>,
 }
 
-pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                     arena: &'a mut TypedArena<VarianceTerm<'a>>)
-                                                     -> TermsContext<'a, 'tcx> {
+pub(crate) fn determine_parameters_to_be_inferred<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    arena: &'a mut TypedArena<VarianceTerm<'a>>)
+    -> TermsContext<'a, 'tcx>
+{
     let mut terms_cx = TermsContext {
         tcx: tcx,
         arena: arena,

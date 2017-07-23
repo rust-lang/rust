@@ -26,7 +26,7 @@ use syntax::ptr::P;
 use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
-pub enum PatternError<'tcx> {
+pub(crate) enum PatternError<'tcx> {
     StaticInPattern(Span),
     ConstEval(ConstEvalErr<'tcx>),
 }
@@ -266,10 +266,10 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
     }
 }
 
-pub struct PatternContext<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub tables: &'a ty::TypeckTables<'gcx>,
-    pub errors: Vec<PatternError<'tcx>>,
+pub(crate) struct PatternContext<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    pub(crate) tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub(crate) tables: &'a ty::TypeckTables<'gcx>,
+    pub(crate) errors: Vec<PatternError<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
@@ -287,11 +287,11 @@ impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, tables: &'a ty::TypeckTables<'gcx>) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, tables: &'a ty::TypeckTables<'gcx>) -> Self {
         PatternContext { tcx: tcx, tables: tables, errors: vec![] }
     }
 
-    pub fn lower_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
+    pub(crate) fn lower_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
         let mut ty = self.tables.node_id_to_type(pat.id);
 
         let kind = match pat.node {
@@ -750,7 +750,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
     }
 }
 
-pub trait PatternFoldable<'tcx> : Sized {
+pub(crate) trait PatternFoldable<'tcx> : Sized {
     fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.super_fold_with(folder)
     }
@@ -758,7 +758,7 @@ pub trait PatternFoldable<'tcx> : Sized {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self;
 }
 
-pub trait PatternFolder<'tcx> : Sized {
+pub(crate) trait PatternFolder<'tcx> : Sized {
     fn fold_pattern(&mut self, pattern: &Pattern<'tcx>) -> Pattern<'tcx> {
         pattern.super_fold_with(self)
     }

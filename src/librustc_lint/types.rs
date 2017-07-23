@@ -56,13 +56,13 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct TypeLimits {
+pub(crate) struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: ast::NodeId,
 }
 
 impl TypeLimits {
-    pub fn new() -> TypeLimits {
+    pub(crate) fn new() -> TypeLimits {
         TypeLimits { negated_expr_id: ast::DUMMY_NODE_ID }
     }
 }
@@ -682,7 +682,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 }
 
 #[derive(Copy, Clone)]
-pub struct ImproperCTypes;
+pub(crate) struct ImproperCTypes;
 
 impl LintPass for ImproperCTypes {
     fn get_lints(&self) -> LintArray {
@@ -710,7 +710,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     }
 }
 
-pub struct VariantSizeDifferences;
+pub(crate) struct VariantSizeDifferences;
 
 impl LintPass for VariantSizeDifferences {
     fn get_lints(&self) -> LintArray {

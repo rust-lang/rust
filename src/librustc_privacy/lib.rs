@@ -41,7 +41,7 @@ use std::cmp;
 use std::mem::replace;
 use std::rc::Rc;
 
-pub mod diagnostics;
+mod diagnostics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Visitor used to determine if pub(restricted) is used anywhere in the crate.

@@ -40,19 +40,19 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option
     return None;
 }
 
-pub struct MoveDataParamEnv<'tcx> {
+pub(crate) struct MoveDataParamEnv<'tcx> {
     pub(crate) move_data: MoveData<'tcx>,
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 }
 
 pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                mir: &Mir<'tcx>,
-                                node_id: ast::NodeId,
-                                attributes: &[ast::Attribute],
-                                dead_unwinds: &IdxSet<BasicBlock>,
-                                bd: BD,
-                                p: P)
-                                -> DataflowResults<BD>
+                                           mir: &Mir<'tcx>,
+                                           node_id: ast::NodeId,
+                                           attributes: &[ast::Attribute],
+                                           dead_unwinds: &IdxSet<BasicBlock>,
+                                           bd: BD,
+                                           p: P)
+                                           -> DataflowResults<BD>
     where BD: BitDenotation<Idx=MovePathIndex> + DataflowOperator,
           P: Fn(&BD, BD::Idx) -> &fmt::Debug
 {
@@ -86,10 +86,10 @@ pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mbcx.flow_state.results()
 }
 
-pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
-                                        path: MovePathIndex,
-                                        mut cond: F)
-                                        -> Option<MovePathIndex>
+pub(crate) fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
+                                                   path: MovePathIndex,
+                                                   mut cond: F)
+                                                   -> Option<MovePathIndex>
     where F: FnMut(&mir::LvalueProjection<'tcx>) -> bool
 {
     let mut next_child = move_data.move_paths[path].first_child;

@@ -41,7 +41,7 @@ extern crate syntax_pos;
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
-pub mod diagnostics;
+mod diagnostics;
 
 mod eval;
 mod _match;

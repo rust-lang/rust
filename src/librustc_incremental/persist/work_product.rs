@@ -63,7 +63,7 @@ pub fn save_trans_partition(sess: &Session,
     sess.dep_graph.insert_work_product(&work_product_id, work_product);
 }
 
-pub fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {
+pub(crate) fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {
     for &(_, ref file_name) in &work_product.saved_files {
         let path = in_incr_comp_dir_sess(sess, file_name);
         match std_fs::remove_file(&path) {

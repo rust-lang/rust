@@ -161,28 +161,21 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
-    pub fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
+    pub(crate) fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new_with_code(handler, level, None, message)
     }
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
-    pub fn new_with_code(handler: &'a Handler,
-                         level: Level,
-                         code: Option<String>,
-                         message: &str)
-                         -> DiagnosticBuilder<'a> {
+    pub(crate) fn new_with_code(handler: &'a Handler,
+                                level: Level,
+                                code: Option<String>,
+                                message: &str)
+                                -> DiagnosticBuilder<'a> {
         DiagnosticBuilder {
             handler: handler,
             diagnostic: Diagnostic::new_with_code(level, code, message)
         }
-    }
-
-    pub fn into_diagnostic(mut self) -> Diagnostic {
-        // annoyingly, the Drop impl means we can't actually move
-        let result = self.diagnostic.clone();
-        self.cancel();
-        result
     }
 }
 

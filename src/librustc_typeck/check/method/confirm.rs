@@ -39,14 +39,14 @@ impl<'a, 'gcx, 'tcx> Deref for ConfirmContext<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn confirm_method(&self,
-                          span: Span,
-                          self_expr: &'gcx hir::Expr,
-                          call_expr: &'gcx hir::Expr,
-                          unadjusted_self_ty: Ty<'tcx>,
-                          pick: probe::Pick<'tcx>,
-                          segment: &hir::PathSegment)
-                          -> MethodCallee<'tcx> {
+    pub(crate) fn confirm_method(&self,
+                                 span: Span,
+                                 self_expr: &'gcx hir::Expr,
+                                 call_expr: &'gcx hir::Expr,
+                                 unadjusted_self_ty: Ty<'tcx>,
+                                 pick: probe::Pick<'tcx>,
+                                 segment: &hir::PathSegment)
+                                 -> MethodCallee<'tcx> {
         debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
                unadjusted_self_ty,
                pick,

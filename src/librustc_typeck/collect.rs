@@ -83,12 +83,12 @@ use rustc::hir::def_id::DefId;
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
-pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub(crate) fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = CollectItemTypesVisitor { tcx: tcx };
     tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         type_of,
         generics_of,
@@ -117,7 +117,7 @@ pub fn provide(providers: &mut Providers) {
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
 /// `get_type_parameter_bounds` requests, drawing the information from
 /// the AST (`hir::Generics`), recursively.
-pub struct ItemCtxt<'a,'tcx:'a> {
+pub(crate) struct ItemCtxt<'a,'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_def_id: DefId,
 }
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
 // Utility types and common code for the above passes.
 
 impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
            -> ItemCtxt<'a,'tcx> {
         ItemCtxt {
             tcx: tcx,
@@ -191,7 +191,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
 }
 
 impl<'a,'tcx> ItemCtxt<'a,'tcx> {
-    pub fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub(crate) fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 }
@@ -1563,17 +1563,17 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub enum SizedByDefault { Yes, No, }
+pub(crate) enum SizedByDefault { Yes, No, }
 
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
-pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                        param_ty: ty::Ty<'tcx>,
-                                        ast_bounds: &[hir::TyParamBound],
-                                        sized_by_default: SizedByDefault,
-                                        span: Span)
-                                        -> Bounds<'tcx>
+pub(crate) fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
+                                               param_ty: ty::Ty<'tcx>,
+                                               ast_bounds: &[hir::TyParamBound],
+                                               sized_by_default: SizedByDefault,
+                                               span: Span)
+                                               -> Bounds<'tcx>
 {
     let mut region_bounds = vec![];
     let mut trait_bounds = vec![];

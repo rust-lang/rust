@@ -30,13 +30,13 @@ mod test;
 mod util;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn match_expr(&mut self,
-                      destination: &Lvalue<'tcx>,
-                      span: Span,
-                      mut block: BasicBlock,
-                      discriminant: ExprRef<'tcx>,
-                      arms: Vec<Arm<'tcx>>)
-                      -> BlockAnd<()> {
+    pub(crate) fn match_expr(&mut self,
+                             destination: &Lvalue<'tcx>,
+                             span: Span,
+                             mut block: BasicBlock,
+                             discriminant: ExprRef<'tcx>,
+                             arms: Vec<Arm<'tcx>>)
+                             -> BlockAnd<()> {
         let discriminant_lvalue = unpack!(block = self.as_lvalue(block, discriminant));
 
         let mut arm_blocks = ArmBlocks {
@@ -113,11 +113,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         end_block.unit()
     }
 
-    pub fn expr_into_pattern(&mut self,
-                             mut block: BasicBlock,
-                             irrefutable_pat: Pattern<'tcx>,
-                             initializer: ExprRef<'tcx>)
-                             -> BlockAnd<()> {
+    pub(crate) fn expr_into_pattern(&mut self,
+                                    mut block: BasicBlock,
+                                    irrefutable_pat: Pattern<'tcx>,
+                                    initializer: ExprRef<'tcx>)
+                                    -> BlockAnd<()> {
         // optimize the case of `let x = ...`
         match *irrefutable_pat.kind {
             PatternKind::Binding { mode: BindingMode::ByValue,
@@ -135,11 +135,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn lvalue_into_pattern(&mut self,
-                               mut block: BasicBlock,
-                               irrefutable_pat: Pattern<'tcx>,
-                               initializer: &Lvalue<'tcx>)
-                               -> BlockAnd<()> {
+    pub(crate) fn lvalue_into_pattern(&mut self,
+                                      mut block: BasicBlock,
+                                      irrefutable_pat: Pattern<'tcx>,
+                                      initializer: &Lvalue<'tcx>)
+                                      -> BlockAnd<()> {
         // create a dummy candidate
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
@@ -169,11 +169,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Declares the bindings of the given pattern and returns the visibility scope
     /// for the bindings in this patterns, if such a scope had to be created.
     /// NOTE: Declaring the bindings should always be done in their drop scope.
-    pub fn declare_bindings(&mut self,
-                            mut var_scope: Option<VisibilityScope>,
-                            scope_span: Span,
-                            pattern: &Pattern<'tcx>)
-                            -> Option<VisibilityScope> {
+    pub(crate) fn declare_bindings(&mut self,
+                                   mut var_scope: Option<VisibilityScope>,
+                                   scope_span: Span,
+                                   pattern: &Pattern<'tcx>)
+                                   -> Option<VisibilityScope> {
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
                 var_scope = Some(this.new_visibility_scope(scope_span));
@@ -187,8 +187,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         var_scope
     }
 
-    pub fn storage_live_binding(&mut self, block: BasicBlock, var: NodeId, span: Span)
-                            -> Lvalue<'tcx>
+    pub(crate) fn storage_live_binding(&mut self, block: BasicBlock, var: NodeId, span: Span)
+                                       -> Lvalue<'tcx>
     {
         let local_id = self.var_indices[&var];
         let source_info = self.source_info(span);
@@ -199,14 +199,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         Lvalue::Local(local_id)
     }
 
-    pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span) {
+    pub(crate) fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span) {
         let local_id = self.var_indices[&var];
         let var_ty = self.local_decls[local_id].ty;
         let extent = self.hir.region_maps.var_scope(var);
         self.schedule_drop(span, extent, &Lvalue::Local(local_id), var_ty);
     }
 
-    pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, mut f: &mut F)
+    pub(crate) fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, mut f: &mut F)
         where F: FnMut(&mut Self, Mutability, Name, NodeId, Span, Ty<'tcx>)
     {
         match *pattern.kind {
@@ -245,7 +245,7 @@ struct ArmBlocks {
 }
 
 #[derive(Clone, Debug)]
-pub struct Candidate<'pat, 'tcx:'pat> {
+pub(crate) struct Candidate<'pat, 'tcx:'pat> {
     // span of the original pattern that gave rise to this candidate
     span: Span,
 
@@ -274,7 +274,7 @@ struct Binding<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct MatchPair<'pat, 'tcx:'pat> {
+pub(crate) struct MatchPair<'pat, 'tcx:'pat> {
     // this lvalue...
     lvalue: Lvalue<'tcx>,
 
@@ -326,7 +326,7 @@ enum TestKind<'tcx> {
 }
 
 #[derive(Debug)]
-pub struct Test<'tcx> {
+pub(crate) struct Test<'tcx> {
     span: Span,
     kind: TestKind<'tcx>,
 }

@@ -10,9 +10,9 @@
 
 //! The various pretty print routines.
 
-pub use self::UserIdentifiedItem::*;
-pub use self::PpSourceMode::*;
-pub use self::PpMode::*;
+pub(crate) use self::UserIdentifiedItem::*;
+pub(crate) use self::PpSourceMode::*;
+pub(crate) use self::PpMode::*;
 use self::NodesMatchingUII::*;
 
 use {abort_on_err, driver};
@@ -53,7 +53,7 @@ use rustc::hir::print as pprust_hir;
 use arena::DroplessArena;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PpSourceMode {
+pub(crate) enum PpSourceMode {
     PpmNormal,
     PpmEveryBodyLoops,
     PpmExpanded,
@@ -64,7 +64,7 @@ pub enum PpSourceMode {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PpFlowGraphMode {
+pub(crate) enum PpFlowGraphMode {
     Default,
     /// Drops the labels from the edges in the flowgraph output. This
     /// is mostly for use in the --unpretty flowgraph run-make tests,
@@ -73,7 +73,7 @@ pub enum PpFlowGraphMode {
     UnlabelledEdges,
 }
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum PpMode {
+pub(crate) enum PpMode {
     PpmSource(PpSourceMode),
     PpmHir(PpSourceMode),
     PpmFlowGraph(PpFlowGraphMode),
@@ -82,7 +82,7 @@ pub enum PpMode {
 }
 
 impl PpMode {
-    pub fn needs_ast_map(&self, opt_uii: &Option<UserIdentifiedItem>) -> bool {
+    pub(crate) fn needs_ast_map(&self, opt_uii: &Option<UserIdentifiedItem>) -> bool {
         match *self {
             PpmSource(PpmNormal) |
             PpmSource(PpmEveryBodyLoops) |
@@ -99,7 +99,7 @@ impl PpMode {
         }
     }
 
-    pub fn needs_analysis(&self) -> bool {
+    pub(crate) fn needs_analysis(&self) -> bool {
         match *self {
             PpmMir | PpmMirCFG | PpmFlowGraph(_) => true,
             _ => false,
@@ -107,10 +107,10 @@ impl PpMode {
     }
 }
 
-pub fn parse_pretty(sess: &Session,
-                    name: &str,
-                    extended: bool)
-                    -> (PpMode, Option<UserIdentifiedItem>) {
+pub(crate) fn parse_pretty(sess: &Session,
+                           name: &str,
+                           extended: bool)
+                           -> (PpMode, Option<UserIdentifiedItem>) {
     let mut split = name.splitn(2, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
@@ -542,7 +542,7 @@ fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
 }
 
 #[derive(Clone, Debug)]
-pub enum UserIdentifiedItem {
+pub(crate) enum UserIdentifiedItem {
     ItemViaNode(ast::NodeId),
     ItemViaPath(Vec<String>),
 }
@@ -773,7 +773,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     }
 }
 
-pub fn fold_crate(krate: ast::Crate, ppm: PpMode) -> ast::Crate {
+pub(crate) fn fold_crate(krate: ast::Crate, ppm: PpMode) -> ast::Crate {
     if let PpmSource(PpmEveryBodyLoops) = ppm {
         let mut fold = ReplaceBodyWithLoop::new();
         fold.fold_crate(krate)
@@ -807,11 +807,11 @@ fn write_output(out: Vec<u8>, ofile: Option<&Path>) {
     }
 }
 
-pub fn print_after_parsing(sess: &Session,
-                           input: &Input,
-                           krate: &ast::Crate,
-                           ppm: PpMode,
-                           ofile: Option<&Path>) {
+pub(crate) fn print_after_parsing(sess: &Session,
+                                  input: &Input,
+                                  krate: &ast::Crate,
+                                  ppm: PpMode,
+                                  ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
 
@@ -843,18 +843,18 @@ pub fn print_after_parsing(sess: &Session,
     write_output(out, ofile);
 }
 
-pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                                hir_map: &hir_map::Map<'tcx>,
-                                                analysis: &ty::CrateAnalysis,
-                                                resolutions: &Resolutions,
-                                                input: &Input,
-                                                krate: &ast::Crate,
-                                                crate_name: &str,
-                                                ppm: PpMode,
-                                                arena: &'tcx DroplessArena,
-                                                arenas: &'tcx GlobalArenas<'tcx>,
-                                                opt_uii: Option<UserIdentifiedItem>,
-                                                ofile: Option<&Path>) {
+pub(crate) fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                                       hir_map: &hir_map::Map<'tcx>,
+                                                       analysis: &ty::CrateAnalysis,
+                                                       resolutions: &Resolutions,
+                                                       input: &Input,
+                                                       krate: &ast::Crate,
+                                                       crate_name: &str,
+                                                       ppm: PpMode,
+                                                       arena: &'tcx DroplessArena,
+                                                       arenas: &'tcx GlobalArenas<'tcx>,
+                                                       opt_uii: Option<UserIdentifiedItem>,
+                                                       ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
 

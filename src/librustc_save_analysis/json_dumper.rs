@@ -18,16 +18,16 @@ use rls_span::{Column, Row};
 
 use Dump;
 
-pub struct JsonDumper<O: DumpOutput> {
+pub(crate) struct JsonDumper<O: DumpOutput> {
     result: Analysis,
     output: O,
 }
 
-pub trait DumpOutput {
+pub(crate) trait DumpOutput {
     fn dump(&mut self, result: &Analysis);
 }
 
-pub struct WriteOutput<'b, W: Write + 'b> {
+pub(crate) struct WriteOutput<'b, W: Write + 'b> {
     output: &'b mut W,
 }
 
@@ -39,7 +39,7 @@ impl<'b, W: Write> DumpOutput for WriteOutput<'b, W> {
     }
 }
 
-pub struct CallbackOutput<'b> {
+pub(crate) struct CallbackOutput<'b> {
     callback: &'b mut FnMut(&Analysis),
 }
 
@@ -50,13 +50,14 @@ impl<'b> DumpOutput for CallbackOutput<'b> {
 }
 
 impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
-    pub fn new(writer: &'b mut W) -> JsonDumper<WriteOutput<'b, W>> {
+    pub(crate) fn new(writer: &'b mut W) -> JsonDumper<WriteOutput<'b, W>> {
         JsonDumper { output: WriteOutput { output: writer }, result: Analysis::new() }
     }
 }
 
 impl<'b> JsonDumper<CallbackOutput<'b>> {
-    pub fn with_callback(callback: &'b mut FnMut(&Analysis)) -> JsonDumper<CallbackOutput<'b>> {
+    pub(crate) fn with_callback(callback: &'b mut FnMut(&Analysis))
+                                -> JsonDumper<CallbackOutput<'b>> {
         JsonDumper { output: CallbackOutput { callback: callback }, result: Analysis::new() }
     }
 }

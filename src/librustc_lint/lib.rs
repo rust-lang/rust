@@ -31,6 +31,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(i128_type)]
+#![feature(macro_vis_matcher)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
@@ -45,10 +46,10 @@ extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
 
-pub use rustc::lint;
-pub use rustc::middle;
-pub use rustc::session;
-pub use rustc::util;
+use rustc::lint;
+use rustc::middle;
+use rustc::session;
+use rustc::util;
 
 use session::Session;
 use lint::LintId;

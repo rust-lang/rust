@@ -53,7 +53,7 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(mir: &mut Mir) {
+pub(crate) fn simplify_cfg(mir: &mut Mir) {
     CfgSimplifier::new(mir).simplify();
     remove_dead_blocks(mir);
 
@@ -75,13 +75,13 @@ impl MirPass for SimplifyCfg {
     }
 }
 
-pub struct CfgSimplifier<'a, 'tcx: 'a> {
+pub(crate) struct CfgSimplifier<'a, 'tcx: 'a> {
     basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     pred_count: IndexVec<BasicBlock, u32>
 }
 
 impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
-    pub fn new(mir: &'a mut Mir<'tcx>) -> Self {
+    pub(crate) fn new(mir: &'a mut Mir<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, mir.basic_blocks());
 
         // we can't use mir.predecessors() here because that counts
@@ -104,7 +104,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         }
     }
 
-    pub fn simplify(mut self) {
+    pub(crate) fn simplify(mut self) {
         loop {
             let mut changed = false;
 
@@ -281,7 +281,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(mir: &mut Mir) {
+pub(crate) fn remove_dead_blocks(mir: &mut Mir) {
     let mut seen = BitVector::new(mir.basic_blocks().len());
     for (bb, _) in traversal::preorder(mir) {
         seen.insert(bb.index());
@@ -348,7 +348,7 @@ fn make_local_map<'tcx, I: Idx, V>(vec: &mut IndexVec<I, V>, mask: BitVector) ->
 }
 
 struct DeclMarker {
-    pub locals: BitVector,
+    pub(crate) locals: BitVector,
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {

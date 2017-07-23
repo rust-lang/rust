@@ -15,13 +15,13 @@ use rustc::session::config::Sanitizer;
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
-pub use syntax::attr::{self, InlineAttr};
+pub(crate) use syntax::attr::InlineAttr;
 use syntax::ast;
 use context::CrateContext;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-pub fn inline(val: ValueRef, inline: InlineAttr) {
+pub(crate) fn inline(val: ValueRef, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint   => Attribute::InlineHint.apply_llfn(Function, val),
@@ -37,30 +37,30 @@ pub fn inline(val: ValueRef, inline: InlineAttr) {
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub fn emit_uwtable(val: ValueRef, emit: bool) {
+pub(crate) fn emit_uwtable(val: ValueRef, emit: bool) {
     Attribute::UWTable.toggle_llfn(Function, val, emit);
 }
 
 /// Tell LLVM whether the function can or cannot unwind.
 #[inline]
-pub fn unwind(val: ValueRef, can_unwind: bool) {
+pub(crate) fn unwind(val: ValueRef, can_unwind: bool) {
     Attribute::NoUnwind.toggle_llfn(Function, val, !can_unwind);
 }
 
 /// Tell LLVM whether it should optimise function for size.
 #[inline]
 #[allow(dead_code)] // possibly useful function
-pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
+pub(crate) fn set_optimize_for_size(val: ValueRef, optimize: bool) {
     Attribute::OptimizeForSize.toggle_llfn(Function, val, optimize);
 }
 
 /// Tell LLVM if this function should be 'naked', i.e. skip the epilogue and prologue.
 #[inline]
-pub fn naked(val: ValueRef, is_naked: bool) {
+pub(crate) fn naked(val: ValueRef, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
-pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
+pub(crate) fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
     // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
     // parameter.
     if ccx.sess().must_not_eliminate_frame_pointers() {
@@ -70,7 +70,7 @@ pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
     }
 }
 
-pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
+pub(crate) fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
     if !ccx.sess().target.target.options.stack_probes {
@@ -94,7 +94,7 @@ pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
+pub(crate) fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
     use syntax::attr::*;
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
 

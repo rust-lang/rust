@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     // https://developer.android.com/ndk/guides/abis.html#armeabi
     base.features = "+v5te".to_string();

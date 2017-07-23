@@ -737,12 +737,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
     /// The expressions *must not* have any pre-existing adjustments.
-    pub fn try_coerce(&self,
-                      expr: &hir::Expr,
-                      expr_ty: Ty<'tcx>,
-                      expr_diverges: Diverges,
-                      target: Ty<'tcx>)
-                      -> RelateResult<'tcx, Ty<'tcx>> {
+    pub(crate) fn try_coerce(&self,
+                             expr: &hir::Expr,
+                             expr_ty: Ty<'tcx>,
+                             expr_diverges: Diverges,
+                             target: Ty<'tcx>)
+                             -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
@@ -763,7 +763,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Same as `try_coerce()`, but without side-effects.
-    pub fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
+    pub(crate) fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::can({:?} -> {:?})", source, target);
 
@@ -955,7 +955,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// }
 /// let final_ty = coerce.complete(fcx);
 /// ```
-pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
+pub(crate) struct CoerceMany<'gcx, 'tcx, 'exprs, E>
     where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
 {
     expected_ty: Ty<'tcx>,
@@ -966,7 +966,7 @@ pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
 
 /// The type of a `CoerceMany` that is storing up the expressions into
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<hir::Expr>>;
+pub(crate) type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<hir::Expr>>;
 
 enum Expressions<'gcx, 'exprs, E>
     where E: 'exprs + AsCoercionSite,
@@ -981,7 +981,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// The usual case; collect the set of expressions dynamically.
     /// If the full set of coercion sites is known before hand,
     /// consider `with_coercion_sites()` instead to avoid allocation.
-    pub fn new(expected_ty: Ty<'tcx>) -> Self {
+    pub(crate) fn new(expected_ty: Ty<'tcx>) -> Self {
         Self::make(expected_ty, Expressions::Dynamic(vec![]))
     }
 
@@ -990,8 +990,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// expected to pass each element in the slice to `coerce(...)` in
     /// order. This is used with arrays in particular to avoid
     /// needlessly cloning the slice.
-    pub fn with_coercion_sites(expected_ty: Ty<'tcx>,
-                               coercion_sites: &'exprs [E])
+    pub(crate) fn with_coercion_sites(expected_ty: Ty<'tcx>,
+                                      coercion_sites: &'exprs [E])
                       -> Self {
         Self::make(expected_ty, Expressions::UpFront(coercion_sites))
     }
@@ -1013,7 +1013,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// Typically, this is used as the expected type when
     /// type-checking each of the alternative expressions whose types
     /// we are trying to merge.
-    pub fn expected_ty(&self) -> Ty<'tcx> {
+    pub(crate) fn expected_ty(&self) -> Ty<'tcx> {
         self.expected_ty
     }
 
@@ -1021,7 +1021,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// at the LUB of the expressions we've seen so far (if any). This
     /// isn't *final* until you call `self.final()`, which will return
     /// the merged type.
-    pub fn merged_ty(&self) -> Ty<'tcx> {
+    pub(crate) fn merged_ty(&self) -> Ty<'tcx> {
         self.final_ty.unwrap_or(self.expected_ty)
     }
 
@@ -1030,12 +1030,12 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// could coerce from. This will record `expression` and later
     /// calls to `coerce` may come back and add adjustments and things
     /// if necessary.
-    pub fn coerce<'a>(&mut self,
-                      fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                      cause: &ObligationCause<'tcx>,
-                      expression: &'gcx hir::Expr,
-                      expression_ty: Ty<'tcx>,
-                      expression_diverges: Diverges)
+    pub(crate) fn coerce<'a>(&mut self,
+                             fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+                             cause: &ObligationCause<'tcx>,
+                             expression: &'gcx hir::Expr,
+                             expression_ty: Ty<'tcx>,
+                             expression_diverges: Diverges)
     {
         self.coerce_inner(fcx,
                           cause,
@@ -1057,11 +1057,11 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// The `augment_error` gives you a chance to extend the error
     /// message, in case any results (e.g., we use this to suggest
     /// removing a `;`).
-    pub fn coerce_forced_unit<'a>(&mut self,
-                                  fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                                  cause: &ObligationCause<'tcx>,
-                                  augment_error: &mut FnMut(&mut DiagnosticBuilder),
-                                  label_unit_as_expected: bool)
+    pub(crate) fn coerce_forced_unit<'a>(&mut self,
+                                         fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+                                         cause: &ObligationCause<'tcx>,
+                                         augment_error: &mut FnMut(&mut DiagnosticBuilder),
+                                         label_unit_as_expected: bool)
     {
         self.coerce_inner(fcx,
                           cause,
@@ -1215,7 +1215,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         }
     }
 
-    pub fn complete<'a>(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    pub(crate) fn complete<'a>(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         if let Some(final_ty) = self.final_ty {
             final_ty
         } else {
@@ -1229,7 +1229,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
 
 /// Something that can be converted into an expression to which we can
 /// apply a coercion.
-pub trait AsCoercionSite {
+pub(crate) trait AsCoercionSite {
     fn as_coercion_site(&self) -> &hir::Expr;
 }
 

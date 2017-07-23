@@ -21,11 +21,11 @@ use syntax::abi::Abi;
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
-    pub fn into_expr(&mut self,
-                     destination: &Lvalue<'tcx>,
-                     mut block: BasicBlock,
-                     expr: Expr<'tcx>)
-                     -> BlockAnd<()>
+    pub(crate) fn into_expr(&mut self,
+                            destination: &Lvalue<'tcx>,
+                            mut block: BasicBlock,
+                            expr: Expr<'tcx>)
+                            -> BlockAnd<()>
     {
         debug!("into_expr(destination={:?}, block={:?}, expr={:?})",
                destination, block, expr);

@@ -26,17 +26,17 @@ use super::file_format;
 use std::hash::Hash;
 use std::fmt::Debug;
 
-pub struct HashContext<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) struct HashContext<'a, 'tcx: 'a> {
+    pub(crate) tcx: TyCtxt<'a, 'tcx, 'tcx>,
     incremental_hashes_map: &'a IncrementalHashesMap,
     metadata_hashes: FxHashMap<DefId, Fingerprint>,
     crate_hashes: FxHashMap<CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               incremental_hashes_map: &'a IncrementalHashesMap)
-               -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                      incremental_hashes_map: &'a IncrementalHashesMap)
+                      -> Self {
         HashContext {
             tcx: tcx,
             incremental_hashes_map: incremental_hashes_map,
@@ -45,7 +45,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn is_hashable(tcx: TyCtxt, dep_node: &DepNode) -> bool {
+    pub(crate) fn is_hashable(tcx: TyCtxt, dep_node: &DepNode) -> bool {
         match dep_node.kind {
             DepKind::Krate |
             DepKind::Hir |
@@ -59,7 +59,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn hash(&mut self, dep_node: &DepNode) -> Option<Fingerprint> {
+    pub(crate) fn hash(&mut self, dep_node: &DepNode) -> Option<Fingerprint> {
         match dep_node.kind {
             DepKind::Krate => {
                 Some(self.incremental_hashes_map[dep_node])

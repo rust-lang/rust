@@ -20,21 +20,21 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedDepGraph {
+pub(crate) struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
-    pub nodes: IndexVec<DepNodeIndex, DepNode>,
+    pub(crate) nodes: IndexVec<DepNodeIndex, DepNode>,
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
-    pub edge_list_indices: IndexVec<DepNodeIndex, (u32, u32)>,
+    pub(crate) edge_list_indices: IndexVec<DepNodeIndex, (u32, u32)>,
     /// A flattened list of all edge targets in the graph. Edge sources are
     /// implicit in edge_list_indices.
-    pub edge_list_data: Vec<DepNodeIndex>,
+    pub(crate) edge_list_data: Vec<DepNodeIndex>,
 
     /// These are output nodes that have no incoming edges. We track
     /// these separately so that when we reload all edges, we don't
     /// lose track of these nodes.
-    pub bootstrap_outputs: Vec<DepNode>,
+    pub(crate) bootstrap_outputs: Vec<DepNode>,
 
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
@@ -55,11 +55,11 @@ pub struct SerializedDepGraph {
     /// will be different when we next compile) related to each node,
     /// but rather the `DefPathIndex`. This can then be retraced
     /// to find the current def-id.
-    pub hashes: Vec<(DepNodeIndex, Fingerprint)>,
+    pub(crate) hashes: Vec<(DepNodeIndex, Fingerprint)>,
 }
 
 impl SerializedDepGraph {
-    pub fn edge_targets_from(&self, source: DepNodeIndex) -> &[DepNodeIndex] {
+    pub(crate) fn edge_targets_from(&self, source: DepNodeIndex) -> &[DepNodeIndex] {
         let targets = self.edge_list_indices[source];
         &self.edge_list_data[targets.0 as usize .. targets.1 as usize]
     }
@@ -68,11 +68,11 @@ impl SerializedDepGraph {
 /// The index of a DepNode in the SerializedDepGraph::nodes array.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug,
          RustcEncodable, RustcDecodable)]
-pub struct DepNodeIndex(pub u32);
+pub(crate) struct DepNodeIndex(pub(crate) u32);
 
 impl DepNodeIndex {
     #[inline]
-    pub fn new(idx: usize) -> DepNodeIndex {
+    pub(crate) fn new(idx: usize) -> DepNodeIndex {
         assert!(idx <= ::std::u32::MAX as usize);
         DepNodeIndex(idx as u32)
     }
@@ -92,17 +92,17 @@ impl Idx for DepNodeIndex {
 }
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedWorkProduct {
+pub(crate) struct SerializedWorkProduct {
     /// node that produced the work-product
-    pub id: WorkProductId,
+    pub(crate) id: WorkProductId,
 
     /// work-product data itself
-    pub work_product: WorkProduct,
+    pub(crate) work_product: WorkProduct,
 }
 
 /// Data for use when downstream crates get recompiled.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct SerializedMetadataHashes {
+pub(crate) struct SerializedMetadataHashes {
     /// For each def-id defined in this crate that appears in the
     /// metadata, we hash all the inputs that were used when producing
     /// the metadata. We save this after compilation is done. Then,
@@ -121,7 +121,7 @@ pub struct SerializedMetadataHashes {
     /// where `X` refers to some item in this crate. That `X` will be
     /// a `DefPathIndex` that gets retracted to the current `DefId`
     /// (matching the one found in this structure).
-    pub entry_hashes: Vec<EncodedMetadataHash>,
+    pub(crate) entry_hashes: Vec<EncodedMetadataHash>,
 
     /// For each DefIndex (as it occurs in SerializedMetadataHash), this
     /// map stores the DefPathIndex (as it occurs in DefIdDirectory), so
@@ -133,5 +133,5 @@ pub struct SerializedMetadataHashes {
     /// is only populated if -Z query-dep-graph is specified. It will be
     /// empty otherwise. Importing crates are perfectly happy with just having
     /// the DefIndex.
-    pub index_map: FxHashMap<DefIndex, DefPathHash>
+    pub(crate) index_map: FxHashMap<DefIndex, DefPathHash>
 }

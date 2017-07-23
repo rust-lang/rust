@@ -29,13 +29,13 @@ use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
-pub struct LinkerInfo {
+pub(crate) struct LinkerInfo {
     exports: HashMap<CrateType, Vec<String>>,
 }
 
 impl<'a, 'tcx> LinkerInfo {
-    pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
-               exports: &ExportedSymbols) -> LinkerInfo {
+    pub(crate) fn new(scx: &SharedCrateContext<'a, 'tcx>,
+                      exports: &ExportedSymbols) -> LinkerInfo {
         LinkerInfo {
             exports: scx.sess().crate_types.borrow().iter().map(|&c| {
                 (c, exported_symbols(scx, exports, c))
@@ -43,9 +43,9 @@ impl<'a, 'tcx> LinkerInfo {
         }
     }
 
-    pub fn to_linker(&'a self,
-                     cmd: Command,
-                     sess: &'a Session) -> Box<Linker+'a> {
+    pub(crate) fn to_linker(&'a self,
+                            cmd: Command,
+                            sess: &'a Session) -> Box<Linker+'a> {
         match sess.linker_flavor() {
             LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker {
@@ -90,7 +90,7 @@ impl<'a, 'tcx> LinkerInfo {
 /// represents the meaning of each option being passed down. This trait is then
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
 /// MSVC linker (e.g. `link.exe`) is being used.
-pub trait Linker {
+pub(crate) trait Linker {
     fn link_dylib(&mut self, lib: &str);
     fn link_rust_dylib(&mut self, lib: &str, path: &Path);
     fn link_framework(&mut self, framework: &str);
@@ -117,7 +117,7 @@ pub trait Linker {
     fn finalize(&mut self) -> Command;
 }
 
-pub struct GccLinker<'a> {
+pub(crate) struct GccLinker<'a> {
     cmd: Command,
     sess: &'a Session,
     info: &'a LinkerInfo,
@@ -378,7 +378,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 }
 
-pub struct MsvcLinker<'a> {
+pub(crate) struct MsvcLinker<'a> {
     cmd: Command,
     sess: &'a Session,
     info: &'a LinkerInfo
@@ -557,7 +557,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 }
 
-pub struct EmLinker<'a> {
+pub(crate) struct EmLinker<'a> {
     cmd: Command,
     sess: &'a Session,
     info: &'a LinkerInfo

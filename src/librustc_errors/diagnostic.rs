@@ -105,10 +105,6 @@ impl Diagnostic {
         self.level == Level::Cancelled
     }
 
-    pub fn is_fatal(&self) -> bool {
-        self.level == Level::Fatal
-    }
-
     /// Add a span/label to be included in the resulting snippet.
     /// This is pushed onto the `MultiSpan` that was created when the
     /// diagnostic was first built. If you don't call this function at
@@ -189,9 +185,9 @@ impl Diagnostic {
     }
 
     pub fn span_warn<S: Into<MultiSpan>>(&mut self,
-                                         sp: S,
-                                         msg: &str)
-                                         -> &mut Self {
+                                                sp: S,
+                                                msg: &str)
+                                                -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
@@ -202,9 +198,9 @@ impl Diagnostic {
     }
 
     pub fn span_help<S: Into<MultiSpan>>(&mut self,
-                                         sp: S,
-                                         msg: &str)
-                                         -> &mut Self {
+                                                sp: S,
+                                                msg: &str)
+                                                -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
         self
     }
@@ -235,7 +231,8 @@ impl Diagnostic {
         self
     }
 
-    pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>) -> &mut Self {
+    pub fn span_suggestions(&mut self, sp: Span, msg: &str, suggestions: Vec<String>)
+                                   -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitution_parts: vec![Substitution {
                 span: sp,
@@ -260,16 +257,8 @@ impl Diagnostic {
         self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
     }
 
-    pub fn set_message(&mut self, message: &str) {
-        self.message = vec![(message.to_owned(), Style::NoStyle)];
-    }
-
     pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
-    }
-
-    pub fn level(&self) -> Level {
-        self.level
     }
 
     /// Used by a lint. Copies over all details *but* the "main

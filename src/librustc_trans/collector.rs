@@ -212,14 +212,14 @@ use rustc_data_structures::bitvec::BitVector;
 use back::symbol_export::ExportedSymbols;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub enum TransItemCollectionMode {
+pub(crate) enum TransItemCollectionMode {
     Eager,
     Lazy
 }
 
 /// Maps every translation item to all translation items it references in its
 /// body.
-pub struct InliningMap<'tcx> {
+pub(crate) struct InliningMap<'tcx> {
     // Maps a source translation item to the range of translation items
     // accessed by it.
     // The two numbers in the tuple are the start (inclusive) and
@@ -269,7 +269,7 @@ impl<'tcx> InliningMap<'tcx> {
 
     // Internally iterate over all items referenced by `source` which will be
     // made available for inlining.
-    pub fn with_inlining_candidates<F>(&self, source: TransItem<'tcx>, mut f: F)
+    pub(crate) fn with_inlining_candidates<F>(&self, source: TransItem<'tcx>, mut f: F)
         where F: FnMut(TransItem<'tcx>)
     {
         if let Some(&(start_index, end_index)) = self.index.get(&source) {
@@ -293,11 +293,11 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
-pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                                 exported_symbols: &ExportedSymbols,
-                                                 mode: TransItemCollectionMode)
-                                                 -> (FxHashSet<TransItem<'tcx>>,
-                                                     InliningMap<'tcx>) {
+pub(crate) fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                                                        exported_symbols: &ExportedSymbols,
+                                                        mode: TransItemCollectionMode)
+                                                        -> (FxHashSet<TransItem<'tcx>>,
+                                                            InliningMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
     scx.tcx().dep_graph.with_ignore(|| {

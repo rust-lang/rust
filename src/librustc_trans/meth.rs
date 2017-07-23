@@ -21,18 +21,18 @@ use value::Value;
 use rustc::ty;
 
 #[derive(Copy, Clone, Debug)]
-pub struct VirtualIndex(usize);
+pub(crate) struct VirtualIndex(usize);
 
-pub const DESTRUCTOR: VirtualIndex = VirtualIndex(0);
-pub const SIZE: VirtualIndex = VirtualIndex(1);
-pub const ALIGN: VirtualIndex = VirtualIndex(2);
+pub(crate) const DESTRUCTOR: VirtualIndex = VirtualIndex(0);
+pub(crate) const SIZE: VirtualIndex = VirtualIndex(1);
+pub(crate) const ALIGN: VirtualIndex = VirtualIndex(2);
 
 impl<'a, 'tcx> VirtualIndex {
-    pub fn from_index(index: usize) -> Self {
+    pub(crate) fn from_index(index: usize) -> Self {
         VirtualIndex(index + 3)
     }
 
-    pub fn get_fn(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+    pub(crate) fn get_fn(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 
@@ -42,7 +42,7 @@ impl<'a, 'tcx> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+    pub(crate) fn get_usize(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", Value(llvtable), self);
 
@@ -62,10 +62,10 @@ impl<'a, 'tcx> VirtualIndex {
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
-pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            ty: ty::Ty<'tcx>,
-                            trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
-                            -> ValueRef
+pub(crate) fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                   ty: ty::Ty<'tcx>,
+                                   trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
+                                   -> ValueRef
 {
     let tcx = ccx.tcx();
 

@@ -29,13 +29,13 @@ use rustc::hir;
 use rustc::hir::intravisit::FnKind;
 
 declare_lint! {
-    pub UNUSED_MUT,
+    pub(crate) UNUSED_MUT,
     Warn,
     "detect mut variables which don't need to be mutable"
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedMut;
+pub(crate) struct UnusedMut;
 
 impl UnusedMut {
     fn check_unused_mut_pat(&self, cx: &LateContext, pats: &[P<hir::Pat>]) {
@@ -109,19 +109,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
 }
 
 declare_lint! {
-    pub UNUSED_MUST_USE,
+    pub(crate) UNUSED_MUST_USE,
     Warn,
     "unused result of a type flagged as #[must_use]"
 }
 
 declare_lint! {
-    pub UNUSED_RESULTS,
+    pub(crate) UNUSED_RESULTS,
     Allow,
     "unused result of an expression in a statement"
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedResults;
+pub(crate) struct UnusedResults;
 
 impl LintPass for UnusedResults {
     fn get_lints(&self) -> LintArray {
@@ -172,13 +172,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 }
 
 declare_lint! {
-    pub UNUSED_UNSAFE,
+    pub(crate) UNUSED_UNSAFE,
     Warn,
     "unnecessary use of an `unsafe` block"
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedUnsafe;
+pub(crate) struct UnusedUnsafe;
 
 impl LintPass for UnusedUnsafe {
     fn get_lints(&self) -> LintArray {
@@ -226,13 +226,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedUnsafe {
 }
 
 declare_lint! {
-    pub PATH_STATEMENTS,
+    pub(crate) PATH_STATEMENTS,
     Warn,
     "path statements with no effect"
 }
 
 #[derive(Copy, Clone)]
-pub struct PathStatements;
+pub(crate) struct PathStatements;
 
 impl LintPass for PathStatements {
     fn get_lints(&self) -> LintArray {
@@ -251,13 +251,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
 }
 
 declare_lint! {
-    pub UNUSED_ATTRIBUTES,
+    pub(crate) UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedAttributes;
+pub(crate) struct UnusedAttributes;
 
 impl LintPass for UnusedAttributes {
     fn get_lints(&self) -> LintArray {
@@ -325,7 +325,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedParens;
+pub(crate) struct UnusedParens;
 
 impl UnusedParens {
     fn check_unused_parens_core(&self,
@@ -424,7 +424,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedImportBraces;
+pub(crate) struct UnusedImportBraces;
 
 impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
@@ -452,7 +452,7 @@ declare_lint! {
 }
 
 #[derive(Copy, Clone)]
-pub struct UnusedAllocation;
+pub(crate) struct UnusedAllocation;
 
 impl LintPass for UnusedAllocation {
     fn get_lints(&self) -> LintArray {

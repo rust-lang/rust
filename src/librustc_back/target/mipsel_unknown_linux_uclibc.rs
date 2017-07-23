@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     Ok(Target {
         llvm_target: "mipsel-unknown-linux-uclibc".to_string(),
         target_endian: "little".to_string(),

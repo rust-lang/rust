@@ -39,7 +39,7 @@ use PanicStrategy;
 use std::default::Default;
 use target::TargetOptions;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
         executables: true,

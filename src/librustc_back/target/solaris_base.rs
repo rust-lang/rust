@@ -11,7 +11,7 @@
 use target::TargetOptions;
 use std::default::Default;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         dynamic_linking: true,
         executables: true,

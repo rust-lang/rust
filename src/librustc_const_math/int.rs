@@ -37,14 +37,14 @@ pub use self::ConstInt::*;
 macro_rules! bounds {
     ($ct: ty, $($t:ident $min:ident $max:ident)*) => {
         $(
-            pub const $min: $ct = $t::min_value() as $ct;
-            pub const $max: $ct = $t::max_value() as $ct;
+            pub(crate) const $min: $ct = $t::min_value() as $ct;
+            pub(crate) const $max: $ct = $t::max_value() as $ct;
         )*
     };
     ($ct: ty: $min_val: expr, $($t:ident $min:ident $max:ident)*) => {
         $(
-            pub const $min: $ct = $min_val;
-            pub const $max: $ct = $t::max_value() as $ct;
+            pub(crate) const $min: $ct = $min_val;
+            pub(crate) const $max: $ct = $t::max_value() as $ct;
         )*
     }
 }
@@ -63,8 +63,8 @@ mod ibounds {
     #![allow(dead_code)]
     bounds!(i128, u64 U64MIN U64MAX);
 
-    pub const U128MIN: i128 = 0;
-    pub const U128MAX: i128 = i128::max_value();
+    pub(crate) const U128MIN: i128 = 0;
+    pub(crate) const U128MAX: i128 = i128::max_value();
 
     bounds!{i128,
         i8 I8MIN I8MAX i16 I16MIN I16MAX i32 I32MIN I32MAX i64 I64MIN I64MAX i128 I128MIN I128MAX
@@ -171,7 +171,7 @@ impl ConstInt {
     }
 
     /// Converts the value to a `u32` if it's in the range 0...std::u32::MAX
-    pub fn to_u32(&self) -> Option<u32> {
+    pub(crate) fn to_u32(&self) -> Option<u32> {
         self.to_u128().and_then(|v| if v <= u32::max_value() as u128 {
             Some(v as u32)
         } else {
@@ -189,7 +189,7 @@ impl ConstInt {
     }
 
     /// Converts the value to a `u128` if it's in the range 0...std::u128::MAX
-    pub fn to_u128(&self) -> Option<u128> {
+    pub(crate) fn to_u128(&self) -> Option<u128> {
         match *self {
             I8(v) if v >= 0 => Some(v as u128),
             I16(v) if v >= 0 => Some(v as u128),

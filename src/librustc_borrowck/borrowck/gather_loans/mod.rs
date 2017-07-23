@@ -35,9 +35,9 @@ mod restrictions;
 mod gather_moves;
 mod move_error;
 
-pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                    body: hir::BodyId)
-                                    -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
+pub(crate) fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                           body: hir::BodyId)
+                                           -> (Vec<Loan<'tcx>>, move_data::MoveData<'tcx>) {
     let def_id = bccx.tcx.hir.body_owner_def_id(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
@@ -94,12 +94,6 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                matched_pat,
                cmt,
                mode);
-
-        if let Categorization::Downcast(..) = cmt.cat {
-            gather_moves::gather_match_variant(
-                self.bccx, &self.move_data, &mut self.move_error_collector,
-                matched_pat, cmt, mode);
-        }
     }
 
     fn consume_pat(&mut self,
@@ -239,7 +233,7 @@ fn check_mutability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.bccx.tcx }
+    pub(crate) fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.bccx.tcx }
 
     /// Guarantees that `cmt` is assignable, or reports an error.
     fn guarantee_assignment_valid(&mut self,
@@ -432,7 +426,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         // }
     }
 
-    pub fn mark_loan_path_as_mutated(&self, loan_path: &LoanPath) {
+    pub(crate) fn mark_loan_path_as_mutated(&self, loan_path: &LoanPath) {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
 
@@ -452,10 +446,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn compute_gen_scope(&self,
-                             borrow_scope: region::CodeExtent,
-                             loan_scope: region::CodeExtent)
-                             -> region::CodeExtent {
+    pub(crate) fn compute_gen_scope(&self,
+                                    borrow_scope: region::CodeExtent,
+                                    loan_scope: region::CodeExtent)
+                                    -> region::CodeExtent {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
@@ -468,8 +462,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn compute_kill_scope(&self, loan_scope: region::CodeExtent, lp: &LoanPath<'tcx>)
-                              -> region::CodeExtent {
+    pub(crate) fn compute_kill_scope(&self, loan_scope: region::CodeExtent, lp: &LoanPath<'tcx>)
+                                     -> region::CodeExtent {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,
@@ -500,7 +494,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn report_potential_errors(&self) {
+    pub(crate) fn report_potential_errors(&self) {
         self.move_error_collector.report_potential_errors(self.bccx);
     }
 }

@@ -12,9 +12,8 @@
 //!
 //! A simple wrapper over the platform's dynamic library facilities
 
-use std::env;
-use std::ffi::{CString, OsString};
-use std::path::{Path, PathBuf};
+use std::ffi::CString;
+use std::path::Path;
 
 pub struct DynamicLibrary {
     handle: *mut u8
@@ -43,24 +42,6 @@ impl DynamicLibrary {
         }
     }
 
-    /// Prepends a path to this process's search path for dynamic libraries
-    pub fn prepend_search_path(path: &Path) {
-        let mut search_path = DynamicLibrary::search_path();
-        search_path.insert(0, path.to_path_buf());
-        env::set_var(DynamicLibrary::envvar(), &DynamicLibrary::create_path(&search_path));
-    }
-
-    /// From a slice of paths, create a new vector which is suitable to be an
-    /// environment variable for this platforms dylib search path.
-    pub fn create_path(path: &[PathBuf]) -> OsString {
-        let mut newvar = OsString::new();
-        for (i, path) in path.iter().enumerate() {
-            if i > 0 { newvar.push(DynamicLibrary::separator()); }
-            newvar.push(path);
-        }
-        return newvar;
-    }
-
     /// Returns the environment variable for this process's dynamic library
     /// search path
     pub fn envvar() -> &'static str {
@@ -72,19 +53,6 @@ impl DynamicLibrary {
             "LIBRARY_PATH"
         } else {
             "LD_LIBRARY_PATH"
-        }
-    }
-
-    fn separator() -> &'static str {
-        if cfg!(windows) { ";" } else { ":" }
-    }
-
-    /// Returns the current search path for dynamic libraries being used by this
-    /// process
-    pub fn search_path() -> Vec<PathBuf> {
-        match env::var_os(DynamicLibrary::envvar()) {
-            Some(var) => env::split_paths(&var).collect(),
-            None => Vec::new(),
         }
     }
 
@@ -166,7 +134,7 @@ mod dl {
     use std::ptr;
     use std::str;
 
-    pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
+    pub(crate) fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
         check_for_errors_in(|| {
             unsafe {
                 match filename {
@@ -188,7 +156,7 @@ mod dl {
         libc::dlopen(ptr::null(), LAZY) as *mut u8
     }
 
-    pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
+    pub(crate) fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
         F: FnOnce() -> T,
     {
         use std::sync::{Mutex, Once, ONCE_INIT};
@@ -217,14 +185,14 @@ mod dl {
         }
     }
 
-    pub unsafe fn symbol(handle: *mut u8,
-                         symbol: *const libc::c_char)
-                         -> Result<*mut u8, String> {
+    pub(crate) unsafe fn symbol(handle: *mut u8,
+                                symbol: *const libc::c_char)
+                                -> Result<*mut u8, String> {
         check_for_errors_in(|| {
             libc::dlsym(handle as *mut libc::c_void, symbol) as *mut u8
         })
     }
-    pub unsafe fn close(handle: *mut u8) {
+    pub(crate) unsafe fn close(handle: *mut u8) {
         libc::dlclose(handle as *mut libc::c_void); ()
     }
 }
@@ -256,7 +224,7 @@ mod dl {
         fn FreeLibrary(handle: HMODULE) -> BOOL;
     }
 
-    pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
+    pub(crate) fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
         // disable "dll load failed" error dialog.
         let prev_error_mode = unsafe {
             // SEM_FAILCRITICALERRORS 0x01
@@ -299,14 +267,14 @@ mod dl {
         result
     }
 
-    pub unsafe fn symbol(handle: *mut u8,
+    pub(crate) unsafe fn symbol(handle: *mut u8,
                          symbol: *const c_char)
                          -> Result<*mut u8, String> {
         let ptr = GetProcAddress(handle as HMODULE, symbol) as *mut u8;
         ptr_result(ptr)
     }
 
-    pub unsafe fn close(handle: *mut u8) {
+    pub(crate) unsafe fn close(handle: *mut u8) {
         FreeLibrary(handle as HMODULE);
     }
 

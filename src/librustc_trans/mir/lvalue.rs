@@ -30,7 +30,7 @@ use std::ops;
 use super::{MirContext, LocalRef};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Alignment {
+pub(crate) enum Alignment {
     Packed,
     AbiAligned,
 }
@@ -47,7 +47,7 @@ impl ops::BitOr for Alignment {
 }
 
 impl Alignment {
-    pub fn from_packed(packed: bool) -> Self {
+    pub(crate) fn from_packed(packed: bool) -> Self {
         if packed {
             Alignment::Packed
         } else {
@@ -55,14 +55,14 @@ impl Alignment {
         }
     }
 
-    pub fn to_align(self) -> Option<u32> {
+    pub(crate) fn to_align(self) -> Option<u32> {
         match self {
             Alignment::Packed => Some(1),
             Alignment::AbiAligned => None,
         }
     }
 
-    pub fn min_with(self, align: u32) -> Option<u32> {
+    pub(crate) fn min_with(self, align: u32) -> Option<u32> {
         match self {
             Alignment::Packed => Some(1),
             Alignment::AbiAligned => Some(align),
@@ -71,31 +71,32 @@ impl Alignment {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct LvalueRef<'tcx> {
+pub(crate) struct LvalueRef<'tcx> {
     /// Pointer to the contents of the lvalue
-    pub llval: ValueRef,
+    pub(crate) llval: ValueRef,
 
     /// This lvalue's extra data if it is unsized, or null
-    pub llextra: ValueRef,
+    pub(crate) llextra: ValueRef,
 
     /// Monomorphized type of this lvalue, including variant information
-    pub ty: LvalueTy<'tcx>,
+    pub(crate) ty: LvalueTy<'tcx>,
 
     /// Whether this lvalue is known to be aligned according to its layout
-    pub alignment: Alignment,
+    pub(crate) alignment: Alignment,
 }
 
 impl<'a, 'tcx> LvalueRef<'tcx> {
-    pub fn new_sized(llval: ValueRef, lvalue_ty: LvalueTy<'tcx>,
-                     alignment: Alignment) -> LvalueRef<'tcx> {
+    pub(crate) fn new_sized(llval: ValueRef, lvalue_ty: LvalueTy<'tcx>,
+                            alignment: Alignment) -> LvalueRef<'tcx> {
         LvalueRef { llval: llval, llextra: ptr::null_mut(), ty: lvalue_ty, alignment: alignment }
     }
 
-    pub fn new_sized_ty(llval: ValueRef, ty: Ty<'tcx>, alignment: Alignment) -> LvalueRef<'tcx> {
+    pub(crate) fn new_sized_ty(llval: ValueRef, ty: Ty<'tcx>, alignment: Alignment)
+                               -> LvalueRef<'tcx> {
         LvalueRef::new_sized(llval, LvalueTy::from_ty(ty), alignment)
     }
 
-    pub fn alloca(bcx: &Builder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> LvalueRef<'tcx> {
+    pub(crate) fn alloca(bcx: &Builder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, ty);
         let tmp = bcx.alloca(
             type_of::type_of(bcx.ccx, ty), name, bcx.ccx.over_align_of(ty));
@@ -103,7 +104,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         Self::new_sized_ty(tmp, ty, Alignment::AbiAligned)
     }
 
-    pub fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
+    pub(crate) fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         let ty = self.ty.to_ty(ccx.tcx());
         match ty.sty {
             ty::TyArray(_, n) => common::C_uint(ccx, n),
@@ -115,7 +116,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
     }
 
-    pub fn has_extra(&self) -> bool {
+    pub(crate) fn has_extra(&self) -> bool {
         !self.llextra.is_null()
     }
 
@@ -214,7 +215,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     /// Access a field, at a point when the value's case is known.
-    pub fn trans_field_ptr(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> (ValueRef, Alignment) {
+    pub(crate) fn trans_field_ptr(self, bcx: &Builder<'a, 'tcx>, ix: usize)
+                                  -> (ValueRef, Alignment) {
         let discr = match self.ty {
             LvalueTy::Ty { .. } => 0,
             LvalueTy::Downcast { variant_index, .. } => variant_index,
@@ -271,7 +273,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
     }
 
-    pub fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef) -> ValueRef {
+    pub(crate) fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef) -> ValueRef {
         if let ty::TySlice(_) = self.ty.to_ty(bcx.tcx()).sty {
             // Slices already point to the array element type.
             bcx.inbounds_gep(self.llval, &[llindex])
@@ -283,10 +285,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_lvalue(&mut self,
-                        bcx: &Builder<'a, 'tcx>,
-                        lvalue: &mir::Lvalue<'tcx>)
-                        -> LvalueRef<'tcx> {
+    pub(crate) fn trans_lvalue(&mut self,
+                               bcx: &Builder<'a, 'tcx>,
+                               lvalue: &mir::Lvalue<'tcx>)
+                               -> LvalueRef<'tcx> {
         debug!("trans_lvalue(lvalue={:?})", lvalue);
 
         let ccx = bcx.ccx;
@@ -406,7 +408,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
     }
 
-    pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
         let tcx = self.ccx.tcx();
         let lvalue_ty = lvalue.ty(self.mir, tcx);
         self.monomorphize(&lvalue_ty.to_ty(tcx))

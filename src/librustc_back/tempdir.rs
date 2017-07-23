@@ -95,15 +95,6 @@ impl TempDir {
         self.path.as_ref().unwrap()
     }
 
-    /// Close and remove the temporary directory
-    ///
-    /// Although `TempDir` removes the directory on drop, in the destructor
-    /// any errors are ignored. To detect errors cleaning up the temporary
-    /// directory, call `close` instead.
-    pub fn close(mut self) -> io::Result<()> {
-        self.cleanup_dir()
-    }
-
     fn cleanup_dir(&mut self) -> io::Result<()> {
         match self.path {
             Some(ref p) => fs::remove_dir_all(p),

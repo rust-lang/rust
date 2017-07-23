@@ -42,8 +42,8 @@ use libc::c_uint;
 use std::cmp;
 use std::iter;
 
-pub use syntax::abi::Abi;
-pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
+pub(crate) use syntax::abi::Abi;
+pub(crate) use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum ArgKind {
@@ -58,7 +58,7 @@ enum ArgKind {
 
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
 // of this module
-pub use self::attr_impl::ArgAttribute;
+pub(crate) use self::attr_impl::ArgAttribute;
 
 #[allow(non_upper_case_globals)]
 #[allow(unused)]
@@ -96,23 +96,23 @@ impl ArgAttribute {
 /// A compact representation of LLVM attributes (at least those relevant for this module)
 /// that can be manipulated without interacting with LLVM's Attribute machinery.
 #[derive(Copy, Clone, Debug, Default)]
-pub struct ArgAttributes {
+pub(crate) struct ArgAttributes {
     regular: ArgAttribute,
     dereferenceable_bytes: u64,
 }
 
 impl ArgAttributes {
-    pub fn set(&mut self, attr: ArgAttribute) -> &mut Self {
+    pub(crate) fn set(&mut self, attr: ArgAttribute) -> &mut Self {
         self.regular = self.regular | attr;
         self
     }
 
-    pub fn set_dereferenceable(&mut self, bytes: u64) -> &mut Self {
+    pub(crate) fn set_dereferenceable(&mut self, bytes: u64) -> &mut Self {
         self.dereferenceable_bytes = bytes;
         self
     }
 
-    pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+    pub(crate) fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
         unsafe {
             self.regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
             if self.dereferenceable_bytes != 0 {
@@ -123,7 +123,7 @@ impl ArgAttributes {
         }
     }
 
-    pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
+    pub(crate) fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
         unsafe {
             self.regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
             if self.dereferenceable_bytes != 0 {
@@ -135,21 +135,21 @@ impl ArgAttributes {
     }
 }
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum RegKind {
+pub(crate) enum RegKind {
     Integer,
     Float,
     Vector
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Reg {
-    pub kind: RegKind,
-    pub size: Size,
+pub(crate) struct Reg {
+    pub(crate) kind: RegKind,
+    pub(crate) size: Size,
 }
 
 macro_rules! reg_ctor {
     ($name:ident, $kind:ident, $bits:expr) => {
-        pub fn $name() -> Reg {
+        pub(crate) fn $name() -> Reg {
             Reg {
                 kind: RegKind::$kind,
                 size: Size::from_bits($bits)
@@ -189,8 +189,8 @@ impl Reg {
 /// An argument passed entirely registers with the
 /// same kind (e.g. HFA / HVA on PPC64 and AArch64).
 #[derive(Copy, Clone)]
-pub struct Uniform {
-    pub unit: Reg,
+pub(crate) struct Uniform {
+    pub(crate) unit: Reg,
 
     /// The total size of the argument, which can be:
     /// * equal to `unit.size` (one scalar/vector)
@@ -198,7 +198,7 @@ pub struct Uniform {
     /// * if `unit.kind` is `Integer`, the last element
     ///   can be shorter, i.e. `{ i64, i64, i32 }` for
     ///   64-bit integers with a total size of 20 bytes
-    pub total: Size,
+    pub(crate) total: Size,
 }
 
 impl From<Reg> for Uniform {
@@ -236,7 +236,7 @@ impl Uniform {
     }
 }
 
-pub trait LayoutExt<'tcx> {
+pub(crate) trait LayoutExt<'tcx> {
     fn is_aggregate(&self) -> bool;
     fn homogenous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg>;
 }
@@ -382,7 +382,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
     }
 }
 
-pub enum CastTarget {
+pub(crate) enum CastTarget {
     Uniform(Uniform),
     Pair(Reg, Reg)
 }
@@ -418,15 +418,15 @@ impl CastTarget {
 ///
 /// This is borrowed from clang's ABIInfo.h
 #[derive(Clone, Copy, Debug)]
-pub struct ArgType<'tcx> {
+pub(crate) struct ArgType<'tcx> {
     kind: ArgKind,
-    pub layout: TyLayout<'tcx>,
+    pub(crate) layout: TyLayout<'tcx>,
     /// Coerced LLVM Type
-    pub cast: Option<Type>,
+    pub(crate) cast: Option<Type>,
     /// Dummy argument, which is emitted before the real argument
-    pub pad: Option<Type>,
+    pub(crate) pad: Option<Type>,
     /// LLVM attributes of argument
-    pub attrs: ArgAttributes
+    pub(crate) attrs: ArgAttributes
 }
 
 impl<'a, 'tcx> ArgType<'tcx> {
@@ -440,7 +440,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
     }
 
-    pub fn make_indirect(&mut self, ccx: &CrateContext<'a, 'tcx>) {
+    pub(crate) fn make_indirect(&mut self, ccx: &CrateContext<'a, 'tcx>) {
         assert_eq!(self.kind, ArgKind::Direct);
 
         // Wipe old attributes, likely not valid through indirection.
@@ -458,12 +458,12 @@ impl<'a, 'tcx> ArgType<'tcx> {
         self.kind = ArgKind::Indirect;
     }
 
-    pub fn ignore(&mut self) {
+    pub(crate) fn ignore(&mut self) {
         assert_eq!(self.kind, ArgKind::Direct);
         self.kind = ArgKind::Ignore;
     }
 
-    pub fn extend_integer_width_to(&mut self, bits: u64) {
+    pub(crate) fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         let (i, signed) = match *self.layout {
             Layout::Scalar { value, .. } => {
@@ -495,25 +495,25 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
     }
 
-    pub fn cast_to<T: Into<CastTarget>>(&mut self, ccx: &CrateContext, target: T) {
+    pub(crate) fn cast_to<T: Into<CastTarget>>(&mut self, ccx: &CrateContext, target: T) {
         self.cast = Some(target.into().llvm_type(ccx));
     }
 
-    pub fn pad_with(&mut self, ccx: &CrateContext, reg: Reg) {
+    pub(crate) fn pad_with(&mut self, ccx: &CrateContext, reg: Reg) {
         self.pad = Some(reg.llvm_type(ccx));
     }
 
-    pub fn is_indirect(&self) -> bool {
+    pub(crate) fn is_indirect(&self) -> bool {
         self.kind == ArgKind::Indirect
     }
 
-    pub fn is_ignore(&self) -> bool {
+    pub(crate) fn is_ignore(&self) -> bool {
         self.kind == ArgKind::Ignore
     }
 
     /// Get the LLVM type for an lvalue of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
-    pub fn memory_ty(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    pub(crate) fn memory_ty(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
         type_of::type_of(ccx, self.layout.ty)
     }
 
@@ -521,7 +521,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, bcx: &Builder<'a, 'tcx>, mut val: ValueRef, dst: ValueRef) {
+    pub(crate) fn store(&self, bcx: &Builder<'a, 'tcx>, mut val: ValueRef, dst: ValueRef) {
         if self.is_ignore() {
             return;
         }
@@ -578,7 +578,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: ValueRef) {
+    pub(crate) fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: ValueRef) {
         if self.pad.is_some() {
             *idx += 1;
         }
@@ -597,20 +597,20 @@ impl<'a, 'tcx> ArgType<'tcx> {
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive(Clone, Debug)]
-pub struct FnType<'tcx> {
+pub(crate) struct FnType<'tcx> {
     /// The LLVM types of each argument.
-    pub args: Vec<ArgType<'tcx>>,
+    pub(crate) args: Vec<ArgType<'tcx>>,
 
     /// LLVM return type.
-    pub ret: ArgType<'tcx>,
+    pub(crate) ret: ArgType<'tcx>,
 
-    pub variadic: bool,
+    pub(crate) variadic: bool,
 
-    pub cconv: llvm::CallConv
+    pub(crate) cconv: llvm::CallConv
 }
 
 impl<'a, 'tcx> FnType<'tcx> {
-    pub fn of_instance(ccx: &CrateContext<'a, 'tcx>, instance: &ty::Instance<'tcx>)
+    pub(crate) fn of_instance(ccx: &CrateContext<'a, 'tcx>, instance: &ty::Instance<'tcx>)
                        -> Self {
         let fn_ty = instance_ty(ccx.shared(), &instance);
         let sig = ty_fn_sig(ccx, fn_ty);
@@ -618,17 +618,17 @@ impl<'a, 'tcx> FnType<'tcx> {
         Self::new(ccx, sig, &[])
     }
 
-    pub fn new(ccx: &CrateContext<'a, 'tcx>,
-               sig: ty::FnSig<'tcx>,
-               extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+    pub(crate) fn new(ccx: &CrateContext<'a, 'tcx>,
+                      sig: ty::FnSig<'tcx>,
+                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
     }
 
-    pub fn new_vtable(ccx: &CrateContext<'a, 'tcx>,
-                      sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+    pub(crate) fn new_vtable(ccx: &CrateContext<'a, 'tcx>,
+                             sig: ty::FnSig<'tcx>,
+                             extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         // Don't pass the vtable, it's not an argument of the virtual fn.
         fn_ty.args[1].ignore();
@@ -636,9 +636,9 @@ impl<'a, 'tcx> FnType<'tcx> {
         fn_ty
     }
 
-    pub fn unadjusted(ccx: &CrateContext<'a, 'tcx>,
-                      sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+    pub(crate) fn unadjusted(ccx: &CrateContext<'a, 'tcx>,
+                             sig: ty::FnSig<'tcx>,
+                             extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         debug!("FnType::unadjusted({:?}, {:?})", sig, extra_args);
 
         use self::Abi::*;
@@ -917,7 +917,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         }
     }
 
-    pub fn llvm_type(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    pub(crate) fn llvm_type(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
         let mut llargument_tys = Vec::new();
 
         let llreturn_ty = if self.ret.is_ignore() {
@@ -958,7 +958,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         }
     }
 
-    pub fn apply_attrs_llfn(&self, llfn: ValueRef) {
+    pub(crate) fn apply_attrs_llfn(&self, llfn: ValueRef) {
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
         if !self.ret.is_ignore() {
             self.ret.attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
@@ -973,7 +973,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         }
     }
 
-    pub fn apply_attrs_callsite(&self, callsite: ValueRef) {
+    pub(crate) fn apply_attrs_callsite(&self, callsite: ValueRef) {
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
         if !self.ret.is_ignore() {
             self.ret.attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
@@ -993,6 +993,6 @@ impl<'a, 'tcx> FnType<'tcx> {
     }
 }
 
-pub fn align_up_to(off: u64, a: u64) -> u64 {
+pub(crate) fn align_up_to(off: u64, a: u64) -> u64 {
     (off + a - 1) / a * a
 }

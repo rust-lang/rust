@@ -12,7 +12,7 @@ use LinkerFlavor;
 use super::{LinkArgs, Target, TargetOptions};
 use super::emscripten_base::{cmd};
 
-pub fn target() -> Result<Target, String> {
+pub(crate) fn target() -> Result<Target, String> {
     let mut args = LinkArgs::new();
     args.insert(LinkerFlavor::Em,
                 vec!["-s".to_string(),

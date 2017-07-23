@@ -23,13 +23,13 @@ use rls_data::{Analysis, Import, Def, CratePreludeData, Format, Relation};
 // information for navigating the source of the crate.
 // Relative to the regular JSON save-analysis info, this form is filtered to
 // remove non-visible items.
-pub struct JsonApiDumper<'b, W: Write + 'b> {
+pub(crate) struct JsonApiDumper<'b, W: Write + 'b> {
     output: &'b mut W,
     result: Analysis,
 }
 
 impl<'b, W: Write> JsonApiDumper<'b, W> {
-    pub fn new(writer: &'b mut W) -> JsonApiDumper<'b, W> {
+    pub(crate) fn new(writer: &'b mut W) -> JsonApiDumper<'b, W> {
         let mut result = Analysis::new();
         result.kind = Format::JsonApi;
         JsonApiDumper { output: writer, result }

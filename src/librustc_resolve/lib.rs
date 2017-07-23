@@ -406,7 +406,7 @@ enum PathSource<'a> {
     TupleStruct,
     // `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
-    // Path in `pub(path)`
+    // Path in `pub(in path)`
     Visibility,
     // Path in `use a::b::{...};`
     ImportPrefix,
@@ -548,14 +548,14 @@ impl<'a> PathSource<'a> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Namespace {
+enum Namespace {
     TypeNS,
     ValueNS,
     MacroNS,
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct PerNS<T> {
+struct PerNS<T> {
     value_ns: T,
     type_ns: T,
     macro_ns: Option<T>,
@@ -729,8 +729,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     }
 }
 
-pub type ErrorMessage = Option<(Span, String)>;
-
 #[derive(Copy, Clone)]
 enum TypeParameters<'a, 'b> {
     NoTypeParameters,
@@ -829,7 +827,7 @@ enum ModuleKind {
 }
 
 /// One node in the tree of modules.
-pub struct ModuleData<'a> {
+struct ModuleData<'a> {
     parent: Option<Module<'a>>,
     kind: ModuleKind,
 
@@ -862,7 +860,7 @@ pub struct ModuleData<'a> {
     expansion: Mark,
 }
 
-pub type Module<'a> = &'a ModuleData<'a>;
+type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
     fn new(parent: Option<Module<'a>>,
@@ -937,14 +935,14 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 
 // Records a possibly-private value, type, or module definition.
 #[derive(Clone, Debug)]
-pub struct NameBinding<'a> {
+struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     expansion: Mark,
     span: Span,
     vis: ty::Visibility,
 }
 
-pub trait ToNameBinding<'a> {
+trait ToNameBinding<'a> {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a>;
 }
 
@@ -2894,31 +2892,6 @@ impl<'a> Resolver<'a> {
             _ => {}
         }
         return def;
-    }
-
-    // Calls `f` with a `Resolver` whose current lexical scope is `module`'s lexical scope,
-    // i.e. the module's items and the prelude (unless the module is `#[no_implicit_prelude]`).
-    // FIXME #34673: This needs testing.
-    pub fn with_module_lexical_scope<T, F>(&mut self, module: Module<'a>, f: F) -> T
-        where F: FnOnce(&mut Resolver<'a>) -> T,
-    {
-        self.with_empty_ribs(|this| {
-            this.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
-            this.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
-            f(this)
-        })
-    }
-
-    fn with_empty_ribs<T, F>(&mut self, f: F) -> T
-        where F: FnOnce(&mut Resolver<'a>) -> T,
-    {
-        let ribs = replace(&mut self.ribs, PerNS::<Vec<Rib>>::default());
-        let label_ribs = replace(&mut self.label_ribs, Vec::new());
-
-        let result = f(self);
-        self.ribs = ribs;
-        self.label_ribs = label_ribs;
-        result
     }
 
     fn lookup_assoc_candidate<FilterFn>(&mut self,

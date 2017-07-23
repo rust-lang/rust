@@ -41,21 +41,21 @@ use std::mem;
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub struct InvocationData<'a> {
-    pub module: Cell<Module<'a>>,
-    pub def_index: DefIndex,
+pub(crate) struct InvocationData<'a> {
+    pub(crate) module: Cell<Module<'a>>,
+    pub(crate) def_index: DefIndex,
     // True if this expansion is in a `const_expr` position, for example `[u32; m!()]`.
     // c.f. `DefCollector::visit_const_expr`.
-    pub const_expr: bool,
+    pub(crate) const_expr: bool,
     // The scope in which the invocation path is resolved.
-    pub legacy_scope: Cell<LegacyScope<'a>>,
+    pub(crate) legacy_scope: Cell<LegacyScope<'a>>,
     // The smallest scope that includes this invocation's expansion,
     // or `Empty` if this invocation has not been expanded yet.
-    pub expansion: Cell<LegacyScope<'a>>,
+    pub(crate) expansion: Cell<LegacyScope<'a>>,
 }
 
 impl<'a> InvocationData<'a> {
-    pub fn root(graph_root: Module<'a>) -> Self {
+    pub(crate) fn root(graph_root: Module<'a>) -> Self {
         InvocationData {
             module: Cell::new(graph_root),
             def_index: CRATE_DEF_INDEX,
@@ -67,36 +67,36 @@ impl<'a> InvocationData<'a> {
 }
 
 #[derive(Copy, Clone)]
-pub enum LegacyScope<'a> {
+pub(crate) enum LegacyScope<'a> {
     Empty,
     Invocation(&'a InvocationData<'a>), // The scope of the invocation, not including its expansion
     Expansion(&'a InvocationData<'a>), // The scope of the invocation, including its expansion
     Binding(&'a LegacyBinding<'a>),
 }
 
-pub struct LegacyBinding<'a> {
-    pub parent: Cell<LegacyScope<'a>>,
-    pub ident: Ident,
+pub(crate) struct LegacyBinding<'a> {
+    pub(crate) parent: Cell<LegacyScope<'a>>,
+    pub(crate) ident: Ident,
     def_id: DefId,
-    pub span: Span,
+    pub(crate) span: Span,
 }
 
 #[derive(Copy, Clone)]
-pub enum MacroBinding<'a> {
+pub(crate) enum MacroBinding<'a> {
     Legacy(&'a LegacyBinding<'a>),
     Global(&'a NameBinding<'a>),
     Modern(&'a NameBinding<'a>),
 }
 
 impl<'a> MacroBinding<'a> {
-    pub fn span(self) -> Span {
+    pub(crate) fn span(self) -> Span {
         match self {
             MacroBinding::Legacy(binding) => binding.span,
             MacroBinding::Global(binding) | MacroBinding::Modern(binding) => binding.span,
         }
     }
 
-    pub fn binding(self) -> &'a NameBinding<'a> {
+    pub(crate) fn binding(self) -> &'a NameBinding<'a> {
         match self {
             MacroBinding::Global(binding) | MacroBinding::Modern(binding) => binding,
             MacroBinding::Legacy(_) => panic!("unexpected MacroBinding::Legacy"),
@@ -444,12 +444,12 @@ impl<'a> Resolver<'a> {
     }
 
     // Resolve the initial segment of a non-global macro path (e.g. `foo` in `foo::bar!();`)
-    pub fn resolve_lexical_macro_path_segment(&mut self,
-                                              mut ident: Ident,
-                                              ns: Namespace,
-                                              record_used: bool,
-                                              path_span: Span)
-                                              -> Result<MacroBinding<'a>, Determinacy> {
+    pub(crate) fn resolve_lexical_macro_path_segment(&mut self,
+                                                     mut ident: Ident,
+                                                     ns: Namespace,
+                                                     record_used: bool,
+                                                     path_span: Span)
+                                                     -> Result<MacroBinding<'a>, Determinacy> {
         ident = ident.modern();
         let mut module = Some(self.current_module);
         let mut potential_illegal_shadower = Err(Determinacy::Determined);
@@ -508,11 +508,11 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn resolve_legacy_scope(&mut self,
-                                mut scope: &'a Cell<LegacyScope<'a>>,
-                                ident: Ident,
-                                record_used: bool)
-                                -> Option<MacroBinding<'a>> {
+    pub(crate) fn resolve_legacy_scope(&mut self,
+                                       mut scope: &'a Cell<LegacyScope<'a>>,
+                                       ident: Ident,
+                                       record_used: bool)
+                                       -> Option<MacroBinding<'a>> {
         let ident = ident.modern();
         let mut possible_time_travel = None;
         let mut relative_depth: u32 = 0;
@@ -573,7 +573,7 @@ impl<'a> Resolver<'a> {
         Some(binding)
     }
 
-    pub fn finalize_current_module_macro_resolutions(&mut self) {
+    pub(crate) fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
             match self.resolve_path(path, Some(MacroNS), true, span) {
@@ -700,10 +700,10 @@ impl<'a> Resolver<'a> {
         });
     }
 
-    pub fn define_macro(&mut self,
-                        item: &ast::Item,
-                        expansion: Mark,
-                        legacy_scope: &mut LegacyScope<'a>) {
+    pub(crate) fn define_macro(&mut self,
+                               item: &ast::Item,
+                               expansion: Mark,
+                               legacy_scope: &mut LegacyScope<'a>) {
         self.local_macro_def_scopes.insert(item.id, self.current_module);
         let ident = item.ident;
         if ident.name == "macro_rules" {

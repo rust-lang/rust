@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     base.cpu = "x86-64".to_string();
     // https://developer.android.com/ndk/guides/abis.html#86-64

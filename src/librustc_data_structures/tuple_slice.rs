@@ -11,7 +11,7 @@
 use std::slice;
 
 /// Allows to view uniform tuples as slices
-pub trait TupleSlice<T> {
+pub(crate) trait TupleSlice<T> {
     fn as_slice(&self) -> &[T];
     fn as_mut_slice(&mut self) -> &mut [T];
 }

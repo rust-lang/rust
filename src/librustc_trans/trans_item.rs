@@ -37,7 +37,7 @@ use std::fmt::Write;
 use std::iter;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
-pub enum TransItem<'tcx> {
+pub(crate) enum TransItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(NodeId),
     GlobalAsm(NodeId),
@@ -45,7 +45,7 @@ pub enum TransItem<'tcx> {
 
 /// Describes how a translation item will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
-pub enum InstantiationMode {
+pub(crate) enum InstantiationMode {
     /// There will be exactly one instance of the given TransItem. It will have
     /// external linkage so that it can be linked to from other codegen units.
     GloballyShared,
@@ -57,7 +57,7 @@ pub enum InstantiationMode {
 
 impl<'a, 'tcx> TransItem<'tcx> {
 
-    pub fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
+    pub(crate) fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                   self.to_string(ccx.tcx()),
                   self.to_raw_string(),
@@ -97,10 +97,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
                ccx.codegen_unit().name());
     }
 
-    pub fn predefine(&self,
-                     ccx: &CrateContext<'a, 'tcx>,
-                     linkage: llvm::Linkage,
-                     visibility: llvm::Visibility) {
+    pub(crate) fn predefine(&self,
+                            ccx: &CrateContext<'a, 'tcx>,
+                            linkage: llvm::Linkage,
+                            visibility: llvm::Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
                self.to_raw_string(),
@@ -193,7 +193,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         ccx.instances().borrow_mut().insert(instance, lldecl);
     }
 
-    pub fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
+    pub(crate) fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
         match *self {
             TransItem::Fn(instance) => tcx.symbol_name(instance),
             TransItem::Static(node_id) => {
@@ -209,7 +209,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+    pub(crate) fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
         match *self {
             TransItem::Fn(Instance { def, .. }) => {
                 tcx.hir.as_local_node_id(def.def_id())
@@ -221,9 +221,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }.map(|node_id| tcx.hir.span(node_id))
     }
 
-    pub fn instantiation_mode(&self,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                              -> InstantiationMode {
+    pub(crate) fn instantiation_mode(&self,
+                                     tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                     -> InstantiationMode {
         match *self {
             TransItem::Fn(ref instance) => {
                 if self.explicit_linkage(tcx).is_none() &&
@@ -239,7 +239,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn is_generic_fn(&self) -> bool {
+    pub(crate) fn is_generic_fn(&self) -> bool {
         match *self {
             TransItem::Fn(ref instance) => {
                 instance.substs.types().next().is_some()
@@ -249,7 +249,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
+    pub(crate) fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def_id(),
             TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
@@ -298,7 +298,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
     /// Similarly, if a vtable method has such a signature, and therefore can't
     /// be used, we can just not emit it and have a placeholder (a null pointer,
     /// which will never be accessed) in its place.
-    pub fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+    pub(crate) fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self {
             TransItem::Fn(ref instance) => (instance.def_id(), instance.substs),
@@ -311,7 +311,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         traits::normalize_and_test_predicates(tcx, predicates)
     }
 
-    pub fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+    pub(crate) fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         let hir_map = &tcx.hir;
 
         return match *self {
@@ -340,7 +340,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn to_raw_string(&self) -> String {
+    pub(crate) fn to_raw_string(&self) -> String {
         match *self {
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
@@ -372,17 +372,17 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
-pub struct DefPathBasedNames<'a, 'tcx: 'a> {
+pub(crate) struct DefPathBasedNames<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     omit_disambiguators: bool,
     omit_local_crate_name: bool,
 }
 
 impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               omit_disambiguators: bool,
-               omit_local_crate_name: bool)
-               -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                      omit_disambiguators: bool,
+                      omit_local_crate_name: bool)
+                      -> Self {
         DefPathBasedNames {
             tcx: tcx,
             omit_disambiguators: omit_disambiguators,
@@ -390,7 +390,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
         }
     }
 
-    pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String) {
+    pub(crate) fn push_type_name(&self, t: Ty<'tcx>, output: &mut String) {
         match t.sty {
             ty::TyBool              => output.push_str("bool"),
             ty::TyChar              => output.push_str("char"),
@@ -521,9 +521,9 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
         }
     }
 
-    pub fn push_def_path(&self,
-                         def_id: DefId,
-                         output: &mut String) {
+    pub(crate) fn push_def_path(&self,
+                                def_id: DefId,
+                                output: &mut String) {
         let def_path = self.tcx.def_path(def_id);
 
         // some_crate::
@@ -581,9 +581,9 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
         output.push('>');
     }
 
-    pub fn push_instance_as_string(&self,
-                                   instance: Instance<'tcx>,
-                                   output: &mut String) {
+    pub(crate) fn push_instance_as_string(&self,
+                                          instance: Instance<'tcx>,
+                                          output: &mut String) {
         self.push_def_path(instance.def_id(), output);
         self.push_type_params(instance.substs, iter::empty(), output);
     }

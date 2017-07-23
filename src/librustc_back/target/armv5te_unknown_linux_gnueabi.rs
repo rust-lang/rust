@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let base = super::linux_base::opts();
     Ok(Target {
         llvm_target: "armv5te-unknown-linux-gnueabi".to_string(),

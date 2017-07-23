@@ -31,7 +31,7 @@ enum AutoderefKind {
     Overloaded,
 }
 
-pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
+pub(crate) struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     steps: Vec<(Ty<'tcx>, AutoderefKind)>,
     cur_ty: Ty<'tcx>,
@@ -144,27 +144,27 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 
     /// Returns the final type, generating an error if it is an
     /// unresolved inference variable.
-    pub fn unambiguous_final_ty(&self) -> Ty<'tcx> {
+    pub(crate) fn unambiguous_final_ty(&self) -> Ty<'tcx> {
         self.fcx.structurally_resolved_type(self.span, self.cur_ty)
     }
 
     /// Returns the final type we ended up with, which may well be an
     /// inference variable (we will resolve it first, if possible).
-    pub fn maybe_ambiguous_final_ty(&self) -> Ty<'tcx> {
+    pub(crate) fn maybe_ambiguous_final_ty(&self) -> Ty<'tcx> {
         self.fcx.resolve_type_vars_if_possible(&self.cur_ty)
     }
 
-    pub fn step_count(&self) -> usize {
+    pub(crate) fn step_count(&self) -> usize {
         self.steps.len()
     }
 
     /// Returns the adjustment steps.
-    pub fn adjust_steps(&self, pref: LvaluePreference)
+    pub(crate) fn adjust_steps(&self, pref: LvaluePreference)
                         -> Vec<Adjustment<'tcx>> {
         self.fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(pref))
     }
 
-    pub fn adjust_steps_as_infer_ok(&self, pref: LvaluePreference)
+    pub(crate) fn adjust_steps_as_infer_ok(&self, pref: LvaluePreference)
                                     -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
         let mut obligations = vec![];
         let targets = self.steps.iter().skip(1).map(|&(ty, _)| ty)
@@ -199,18 +199,18 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn finalize(self) {
+    pub(crate) fn finalize(self) {
         let fcx = self.fcx;
         fcx.register_predicates(self.into_obligations());
     }
 
-    pub fn into_obligations(self) -> Vec<traits::PredicateObligation<'tcx>> {
+    pub(crate) fn into_obligations(self) -> Vec<traits::PredicateObligation<'tcx>> {
         self.obligations
     }
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'gcx, 'tcx> {
+    pub(crate) fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'gcx, 'tcx> {
         Autoderef {
             fcx: self,
             steps: vec![],
@@ -221,11 +221,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn try_overloaded_deref(&self,
-                                span: Span,
-                                base_ty: Ty<'tcx>,
-                                pref: LvaluePreference)
-                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+    pub(crate) fn try_overloaded_deref(&self,
+                                       span: Span,
+                                       base_ty: Ty<'tcx>,
+                                       pref: LvaluePreference)
+                                       -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         self.try_overloaded_lvalue_op(span, base_ty, &[], pref, LvalueOp::Deref)
     }
 }

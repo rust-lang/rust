@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::TargetOptions;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut base = super::linux_base::opts();
     // Many of the symbols defined in compiler-rt are also defined in libgcc.
     // Android's linker doesn't like that by default.

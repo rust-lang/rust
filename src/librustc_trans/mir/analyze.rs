@@ -20,7 +20,7 @@ use rustc::mir::traversal;
 use common;
 use super::MirContext;
 
-pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
+pub(crate) fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
     let mir = mircx.mir;
     let mut analyzer = LocalAnalyzer::new(mircx);
 
@@ -191,14 +191,14 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum CleanupKind {
+pub(crate) enum CleanupKind {
     NotCleanup,
     Funclet,
     Internal { funclet: mir::BasicBlock }
 }
 
 impl CleanupKind {
-    pub fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
+    pub(crate) fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
         match self {
             CleanupKind::NotCleanup => None,
             CleanupKind::Funclet => Some(for_bb),
@@ -207,7 +207,8 @@ impl CleanupKind {
     }
 }
 
-pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
+pub(crate) fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>)
+                                      -> IndexVec<mir::BasicBlock, CleanupKind> {
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {

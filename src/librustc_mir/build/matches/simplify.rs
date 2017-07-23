@@ -31,10 +31,10 @@ use rustc_data_structures::fx::FxHashMap;
 use std::mem;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn simplify_candidate<'pat>(&mut self,
-                                    block: BasicBlock,
-                                    candidate: &mut Candidate<'pat, 'tcx>)
-                                    -> BlockAnd<()> {
+    pub(crate) fn simplify_candidate<'pat>(&mut self,
+                                           block: BasicBlock,
+                                           candidate: &mut Candidate<'pat, 'tcx>)
+                                           -> BlockAnd<()> {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);

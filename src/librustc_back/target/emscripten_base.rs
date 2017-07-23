@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn cmd(name: &str) -> String {
+pub(crate) fn cmd(name: &str) -> String {
     if cfg!(windows) {
         format!("{}.bat", name)
     } else {

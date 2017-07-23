@@ -40,7 +40,7 @@ pub struct Registry<'a> {
     pub args_hidden: Option<Vec<ast::NestedMetaItem>>,
 
     #[doc(hidden)]
-    pub krate_span: Span,
+    pub(crate) krate_span: Span,
 
     #[doc(hidden)]
     pub syntax_exts: Vec<NamedSyntaxExtension>,

@@ -14,7 +14,7 @@ use llvm::{BasicBlockRef, ValueRef};
 use common::*;
 use rustc::ty::Ty;
 
-pub fn slice_for_each<'a, 'tcx, F>(
+pub(crate) fn slice_for_each<'a, 'tcx, F>(
     bcx: &Builder<'a, 'tcx>,
     data_ptr: ValueRef,
     unit_ty: Ty<'tcx>,

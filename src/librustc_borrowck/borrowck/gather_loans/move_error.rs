@@ -19,35 +19,35 @@ use syntax_pos;
 use errors::DiagnosticBuilder;
 use borrowck::gather_loans::gather_moves::PatternSource;
 
-pub struct MoveErrorCollector<'tcx> {
+pub(crate) struct MoveErrorCollector<'tcx> {
     errors: Vec<MoveError<'tcx>>
 }
 
 impl<'tcx> MoveErrorCollector<'tcx> {
-    pub fn new() -> MoveErrorCollector<'tcx> {
+    pub(crate) fn new() -> MoveErrorCollector<'tcx> {
         MoveErrorCollector {
             errors: Vec::new()
         }
     }
 
-    pub fn add_error(&mut self, error: MoveError<'tcx>) {
+    pub(crate) fn add_error(&mut self, error: MoveError<'tcx>) {
         self.errors.push(error);
     }
 
-    pub fn report_potential_errors<'a>(&self, bccx: &BorrowckCtxt<'a, 'tcx>) {
+    pub(crate) fn report_potential_errors<'a>(&self, bccx: &BorrowckCtxt<'a, 'tcx>) {
         report_move_errors(bccx, &self.errors)
     }
 }
 
-pub struct MoveError<'tcx> {
+pub(crate) struct MoveError<'tcx> {
     move_from: mc::cmt<'tcx>,
     move_to: Option<MovePlace<'tcx>>
 }
 
 impl<'tcx> MoveError<'tcx> {
-    pub fn with_move_info(move_from: mc::cmt<'tcx>,
-                          move_to: Option<MovePlace<'tcx>>)
-                          -> MoveError<'tcx> {
+    pub(crate) fn with_move_info(move_from: mc::cmt<'tcx>,
+                                 move_to: Option<MovePlace<'tcx>>)
+                                 -> MoveError<'tcx> {
         MoveError {
             move_from: move_from,
             move_to: move_to,
@@ -56,13 +56,13 @@ impl<'tcx> MoveError<'tcx> {
 }
 
 #[derive(Clone)]
-pub struct MovePlace<'tcx> {
-    pub span: syntax_pos::Span,
-    pub name: ast::Name,
-    pub pat_source: PatternSource<'tcx>,
+pub(crate) struct MovePlace<'tcx> {
+    pub(crate) span: syntax_pos::Span,
+    pub(crate) name: ast::Name,
+    pub(crate) pat_source: PatternSource<'tcx>,
 }
 
-pub struct GroupedMoveErrors<'tcx> {
+pub(crate) struct GroupedMoveErrors<'tcx> {
     move_from: mc::cmt<'tcx>,
     move_to_places: Vec<MovePlace<'tcx>>
 }

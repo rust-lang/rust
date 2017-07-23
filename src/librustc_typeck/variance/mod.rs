@@ -30,12 +30,12 @@ mod constraints;
 mod solve;
 
 /// Code to write unit tests of variance.
-pub mod test;
+pub(crate) mod test;
 
 /// Code for transforming variances.
 mod xform;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         variances_of,
         crate_variances,

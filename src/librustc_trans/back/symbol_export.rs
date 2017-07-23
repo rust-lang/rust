@@ -21,21 +21,21 @@ use syntax::attr;
 /// `Rust` will only be exported if the crate produced is a Rust
 /// dylib.
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
-pub enum SymbolExportLevel {
+pub(crate) enum SymbolExportLevel {
     C,
     Rust,
 }
 
 /// The set of symbols exported from each crate in the crate graph.
 #[derive(Debug)]
-pub struct ExportedSymbols {
-    pub export_threshold: SymbolExportLevel,
+pub(crate) struct ExportedSymbols {
+    pub(crate) export_threshold: SymbolExportLevel,
     exports: FxHashMap<CrateNum, Vec<(String, DefId, SymbolExportLevel)>>,
     local_exports: NodeSet,
 }
 
 impl ExportedSymbols {
-    pub fn empty() -> ExportedSymbols {
+    pub(crate) fn empty() -> ExportedSymbols {
         ExportedSymbols {
             export_threshold: SymbolExportLevel::C,
             exports: FxHashMap(),
@@ -43,9 +43,9 @@ impl ExportedSymbols {
         }
     }
 
-    pub fn compute<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             local_exported_symbols: &NodeSet)
-                             -> ExportedSymbols {
+    pub(crate) fn compute<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    local_exported_symbols: &NodeSet)
+                                    -> ExportedSymbols {
         let export_threshold = crates_export_threshold(&tcx.sess.crate_types.borrow());
 
         let mut local_crate: Vec<_> = local_exported_symbols
@@ -173,22 +173,20 @@ impl ExportedSymbols {
         }
     }
 
-    pub fn local_exports(&self) -> &NodeSet {
+    pub(crate) fn local_exports(&self) -> &NodeSet {
         &self.local_exports
     }
 
-    pub fn exported_symbols(&self,
-                            cnum: CrateNum)
-                            -> &[(String, DefId, SymbolExportLevel)] {
+    pub(crate) fn exported_symbols(&self,
+                                   cnum: CrateNum)
+                                   -> &[(String, DefId, SymbolExportLevel)] {
         match self.exports.get(&cnum) {
             Some(exports) => exports,
             None => &[]
         }
     }
 
-    pub fn for_each_exported_symbol<F>(&self,
-                                       cnum: CrateNum,
-                                       mut f: F)
+    pub(crate) fn for_each_exported_symbol<F>(&self, cnum: CrateNum, mut f: F)
         where F: FnMut(&str, DefId, SymbolExportLevel)
     {
         for &(ref name, def_id, export_level) in self.exported_symbols(cnum) {
@@ -199,13 +197,13 @@ impl ExportedSymbols {
     }
 }
 
-pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
+pub(crate) fn metadata_symbol_name(tcx: TyCtxt) -> String {
     format!("rust_metadata_{}_{}",
             tcx.crate_name(LOCAL_CRATE),
             tcx.crate_disambiguator(LOCAL_CRATE))
 }
 
-pub fn crate_export_threshold(crate_type: config::CrateType)
+pub(crate) fn crate_export_threshold(crate_type: config::CrateType)
                                      -> SymbolExportLevel {
     match crate_type {
         config::CrateTypeExecutable |
@@ -217,7 +215,7 @@ pub fn crate_export_threshold(crate_type: config::CrateType)
     }
 }
 
-pub fn crates_export_threshold(crate_types: &[config::CrateType])
+pub(crate) fn crates_export_threshold(crate_types: &[config::CrateType])
                                       -> SymbolExportLevel {
     if crate_types.iter().any(|&crate_type| {
         crate_export_threshold(crate_type) == SymbolExportLevel::Rust
@@ -228,9 +226,9 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType])
     }
 }
 
-pub fn is_below_threshold(level: SymbolExportLevel,
-                          threshold: SymbolExportLevel)
-                          -> bool {
+pub(crate) fn is_below_threshold(level: SymbolExportLevel,
+                                 threshold: SymbolExportLevel)
+                                 -> bool {
     if threshold == SymbolExportLevel::Rust {
         // We export everything from Rust dylibs
         true

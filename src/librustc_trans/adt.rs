@@ -60,9 +60,9 @@ use mir::lvalue::Alignment;
 /// Treats closures as a struct with one variant.
 /// `empty_if_no_variants` is a switch to deal with empty enums.
 /// If true, `variant_index` is disregarded and an empty Vec returned in this case.
-pub fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
-                                variant_index: usize,
-                                empty_if_no_variants: bool) -> Vec<Ty<'tcx>> {
+pub(crate) fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
+                                       variant_index: usize,
+                                       empty_if_no_variants: bool) -> Vec<Ty<'tcx>> {
     match t.sty {
         ty::TyAdt(ref def, _) if def.variants.len() == 0 && empty_if_no_variants => {
             Vec::default()
@@ -89,17 +89,17 @@ pub fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
 /// For nominal types, in some cases, we need to use LLVM named structs
 /// and fill in the actual contents in a second pass to prevent
 /// unbounded recursion; see also the comments in `trans::type_of`.
-pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+pub(crate) fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     generic_type_of(cx, t, None)
 }
 
-pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                    t: Ty<'tcx>, name: &str) -> Type {
+pub(crate) fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                           t: Ty<'tcx>, name: &str) -> Type {
     generic_type_of(cx, t, Some(name))
 }
 
-pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                t: Ty<'tcx>, llty: &mut Type) {
+pub(crate) fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                       t: Ty<'tcx>, llty: &mut Type) {
     let l = cx.layout_of(t);
     debug!("finish_type_of: {} with layout {:#?}", t, l);
     match *l {
@@ -248,13 +248,13 @@ fn struct_llfields_path(discrfield: &layout::FieldPath) -> Vec<usize> {
 
 
 // Lookup `Struct::memory_index` and double it to account for padding
-pub fn struct_llfields_index(variant: &layout::Struct, index: usize) -> usize {
+pub(crate) fn struct_llfields_index(variant: &layout::Struct, index: usize) -> usize {
     (variant.memory_index[index] as usize) << 1
 }
 
 
-pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, field_tys: &Vec<Ty<'tcx>>,
-                             variant: &layout::Struct) -> Vec<Type> {
+pub(crate) fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, field_tys: &Vec<Ty<'tcx>>,
+                                        variant: &layout::Struct) -> Vec<Type> {
     debug!("struct_llfields: variant: {:?}", variant);
     let mut first_field = true;
     let mut min_offset = 0;
@@ -297,7 +297,7 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, field_tys: &Vec<Ty
     result
 }
 
-pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
+pub(crate) fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
     match *l {
         layout::CEnum { signed, .. }=> signed,
         _ => false,
@@ -305,7 +305,7 @@ pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
 }
 
 /// Obtain the actual discriminant of a value.
-pub fn trans_get_discr<'a, 'tcx>(
+pub(crate) fn trans_get_discr<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     t: Ty<'tcx>,
     scrutinee: ValueRef,
@@ -386,7 +386,8 @@ fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef,
 
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
-pub fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: u64) {
+pub(crate) fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>,
+                                        val: ValueRef, to: u64) {
     let l = bcx.ccx.layout_of(t);
     match *l {
         layout::CEnum{ discr, min, max, .. } => {
@@ -436,7 +437,7 @@ fn target_sets_discr_via_memset<'a, 'tcx>(bcx: &Builder<'a, 'tcx>) -> bool {
     bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
 }
 
-pub fn assert_discr_in_range<D: PartialOrd>(min: D, max: D, discr: D) {
+pub(crate) fn assert_discr_in_range<D: PartialOrd>(min: D, max: D, discr: D) {
     if min <= max {
         assert!(min <= discr && discr <= max)
     } else {
@@ -453,9 +454,9 @@ fn roundup(x: u64, a: u32) -> u64 { let a = a as u64; ((x + (a - 1)) / a) * a }
 ///
 /// (Not to be confused with `common::const_get_elt`, which operates on
 /// raw LLVM-level structs and arrays.)
-pub fn const_get_field<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
-                       val: ValueRef,
-                       ix: usize) -> ValueRef {
+pub(crate) fn const_get_field<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
+                                        val: ValueRef,
+                                        ix: usize) -> ValueRef {
     let l = ccx.layout_of(t);
     match *l {
         layout::CEnum { .. } => bug!("element access in C-like enum const"),

@@ -63,7 +63,7 @@ impl ArchiveRO {
         }
     }
 
-    pub fn raw(&self) -> ArchiveRef {
+    pub(crate) fn raw(&self) -> ArchiveRef {
         self.ptr
     }
 

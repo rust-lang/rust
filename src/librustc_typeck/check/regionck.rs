@@ -114,7 +114,7 @@ macro_rules! ignore_err {
 // PUBLIC ENTRY POINTS
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn regionck_expr(&self, body: &'gcx hir::Body) {
+    pub(crate) fn regionck_expr(&self, body: &'gcx hir::Body) {
         let subject = self.tcx.hir.body_owner_def_id(body.id());
         let id = body.value.id;
         let mut rcx = RegionCtxt::new(self, RepeatingScope(id), id, Subject(subject));
@@ -131,10 +131,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Region checking during the WF phase for items. `wf_tys` are the
     /// types from which we should derive implied bounds, if any.
-    pub fn regionck_item(&self,
-                         item_id: ast::NodeId,
-                         span: Span,
-                         wf_tys: &[Ty<'tcx>]) {
+    pub(crate) fn regionck_item(&self,
+                                item_id: ast::NodeId,
+                                span: Span,
+                                wf_tys: &[Ty<'tcx>]) {
         debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
         let subject = self.tcx.hir.local_def_id(item_id);
         let mut rcx = RegionCtxt::new(self, RepeatingScope(item_id), item_id, Subject(subject));
@@ -145,9 +145,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         rcx.resolve_regions_and_report_errors();
     }
 
-    pub fn regionck_fn(&self,
-                       fn_id: ast::NodeId,
-                       body: &'gcx hir::Body) {
+    pub(crate) fn regionck_fn(&self,
+                              fn_id: ast::NodeId,
+                              body: &'gcx hir::Body) {
         debug!("regionck_fn(id={})", fn_id);
         let subject = self.tcx.hir.body_owner_def_id(body.id());
         let node_id = body.value.id;
@@ -174,12 +174,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // INTERNALS
 
-pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+pub(crate) struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub(crate) fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 
     region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
 
-    pub region_maps: Rc<RegionMaps>,
+    pub(crate) region_maps: Rc<RegionMaps>,
 
     free_region_map: FreeRegionMap<'tcx>,
 
@@ -222,14 +222,14 @@ impl<'a, 'gcx, 'tcx> Deref for RegionCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub struct RepeatingScope(ast::NodeId);
-pub struct Subject(DefId);
+pub(crate) struct RepeatingScope(ast::NodeId);
+pub(crate) struct Subject(DefId);
 
 impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
-    pub fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-               RepeatingScope(initial_repeating_scope): RepeatingScope,
-               initial_body_id: ast::NodeId,
-               Subject(subject): Subject) -> RegionCtxt<'a, 'gcx, 'tcx> {
+    pub(crate) fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+                      RepeatingScope(initial_repeating_scope): RepeatingScope,
+                      initial_body_id: ast::NodeId,
+                      Subject(subject): Subject) -> RegionCtxt<'a, 'gcx, 'tcx> {
         let region_maps = fcx.tcx.region_maps(subject);
         RegionCtxt {
             fcx: fcx,
@@ -279,7 +279,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
     /// of b will be `&<R0>.i32` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
-    pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
         self.resolve_type_vars_if_possible(&unresolved_ty)
     }
 
@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Try to resolve the type for the given node.
-    pub fn resolve_expr_type_adjusted(&mut self, expr: &hir::Expr) -> Ty<'tcx> {
+    pub(crate) fn resolve_expr_type_adjusted(&mut self, expr: &hir::Expr) -> Ty<'tcx> {
         let ty = self.tables.borrow().expr_ty_adjusted(expr);
         self.resolve_type(ty)
     }
@@ -1052,10 +1052,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         Ok(cmt)
     }
 
-    pub fn mk_subregion_due_to_dereference(&mut self,
-                                           deref_span: Span,
-                                           minimum_lifetime: ty::Region<'tcx>,
-                                           maximum_lifetime: ty::Region<'tcx>) {
+    pub(crate) fn mk_subregion_due_to_dereference(&mut self,
+                                                  deref_span: Span,
+                                                  minimum_lifetime: ty::Region<'tcx>,
+                                                  maximum_lifetime: ty::Region<'tcx>) {
         self.sub_regions(infer::DerefPointer(deref_span),
                          minimum_lifetime, maximum_lifetime)
     }
@@ -1482,10 +1482,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// Ensures that type is well-formed in `region`, which implies (among
     /// other things) that all borrowed data reachable via `ty` outlives
     /// `region`.
-    pub fn type_must_outlive(&self,
-                             origin: infer::SubregionOrigin<'tcx>,
-                             ty: Ty<'tcx>,
-                             region: ty::Region<'tcx>)
+    pub(crate) fn type_must_outlive(&self,
+                                    origin: infer::SubregionOrigin<'tcx>,
+                                    ty: Ty<'tcx>,
+                                    region: ty::Region<'tcx>)
     {
         let ty = self.resolve_type(ty);
 

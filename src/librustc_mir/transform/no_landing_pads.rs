@@ -27,7 +27,7 @@ impl MirPass for NoLandingPads {
     }
 }
 
-pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
+pub(crate) fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
     if tcx.sess.no_landing_pads() {
         NoLandingPads.visit_mir(mir);
     }

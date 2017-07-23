@@ -19,7 +19,7 @@ use type_::Type;
 
 use syntax::ast;
 
-pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
+pub(crate) fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     match ty.sty {
         ty::TyRef(_, ty::TypeAndMut { ty: t, .. }) |
         ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if !ccx.shared().type_is_sized(t) => {
@@ -32,7 +32,7 @@ pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
     }
 }
 
-pub fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
+pub(crate) fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     let unsized_part = ccx.tcx().struct_tail(ty);
     match unsized_part.sty {
         ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
@@ -44,7 +44,7 @@ pub fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
     }
 }
 
-pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+pub(crate) fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     if t.is_bool() {
         Type::i1(cx)
     } else {
@@ -61,7 +61,7 @@ pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 /// This is needed due to the treatment of immediate values, as a fat pointer
 /// is too large for it to be placed in SSA value (by our rules).
 /// For the raw type without far pointer indirection, see `in_memory_type_of`.
-pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
+pub(crate) fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     let ty = if !cx.shared().type_is_sized(ty) {
         cx.tcx().mk_imm_ptr(ty)
     } else {
@@ -81,7 +81,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
 /// of that field's type - this is useful for taking the address of
 /// that field and ensuring the struct has the right alignment.
 /// For the LLVM type of a value as a whole, see `type_of`.
-pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+pub(crate) fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     // Check the cache.
     if let Some(&llty) = cx.lltypes().borrow().get(&t) {
         return llty;
@@ -207,15 +207,15 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 }
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
-    pub fn align_of(&self, ty: Ty<'tcx>) -> machine::llalign {
+    pub(crate) fn align_of(&self, ty: Ty<'tcx>) -> machine::llalign {
         self.layout_of(ty).align(self).abi() as machine::llalign
     }
 
-    pub fn size_of(&self, ty: Ty<'tcx>) -> machine::llsize {
+    pub(crate) fn size_of(&self, ty: Ty<'tcx>) -> machine::llsize {
         self.layout_of(ty).size(self).bytes() as machine::llsize
     }
 
-    pub fn over_align_of(&self, t: Ty<'tcx>)
+    pub(crate) fn over_align_of(&self, t: Ty<'tcx>)
                               -> Option<machine::llalign> {
         let layout = self.layout_of(t);
         if let Some(align) = layout.over_align(&self.tcx().data_layout) {

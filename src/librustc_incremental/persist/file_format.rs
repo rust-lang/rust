@@ -38,7 +38,7 @@ const HEADER_FORMAT_VERSION: u16 = 0;
 /// the git commit hash.
 const RUSTC_VERSION: Option<&'static str> = option_env!("CFG_VERSION");
 
-pub fn write_file_header<W: io::Write>(stream: &mut W) -> io::Result<()> {
+pub(crate) fn write_file_header<W: io::Write>(stream: &mut W) -> io::Result<()> {
     stream.write_all(FILE_MAGIC)?;
     stream.write_all(&[(HEADER_FORMAT_VERSION >> 0) as u8,
                        (HEADER_FORMAT_VERSION >> 8) as u8])?;
@@ -60,7 +60,7 @@ pub fn write_file_header<W: io::Write>(stream: &mut W) -> io::Result<()> {
 ///   incompatible version of the compiler.
 /// - Returns `Err(..)` if some kind of IO error occurred while reading the
 ///   file.
-pub fn read_file(sess: &Session, path: &Path) -> io::Result<Option<Vec<u8>>> {
+pub(crate) fn read_file(sess: &Session, path: &Path) -> io::Result<Option<Vec<u8>>> {
     if !path.exists() {
         return Ok(None);
     }

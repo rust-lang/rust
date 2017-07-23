@@ -65,11 +65,11 @@ impl<O: BitDenotation> DataflowState<O> {
         }
     }
 
-    pub fn interpret_set<'c, P>(&self,
-                                o: &'c O,
-                                words: &IdxSet<O::Idx>,
-                                render_idx: &P)
-                                -> Vec<&'c Debug>
+    pub(crate) fn interpret_set<'c, P>(&self,
+                                       o: &'c O,
+                                       words: &IdxSet<O::Idx>,
+                                       render_idx: &P)
+                                       -> Vec<&'c Debug>
         where P: Fn(&O, O::Idx) -> &Debug
     {
         let mut v = Vec::new();
@@ -80,7 +80,7 @@ impl<O: BitDenotation> DataflowState<O> {
     }
 }
 
-pub trait MirWithFlowState<'tcx> {
+pub(crate) trait MirWithFlowState<'tcx> {
     type BD: BitDenotation;
     fn node_id(&self) -> NodeId;
     fn mir(&self) -> &Mir<'tcx>;
@@ -120,10 +120,10 @@ pub(crate) fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     File::create(path).and_then(|mut f| f.write_all(&v))
 }
 
-pub type Node = BasicBlock;
+pub(crate) type Node = BasicBlock;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Edge { source: BasicBlock, index: usize }
+pub(crate) struct Edge { source: BasicBlock, index: usize }
 
 fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
     let succ_len = mir[bb].terminator().successors().len();

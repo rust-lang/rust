@@ -166,10 +166,10 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 }
 
-pub fn encode_dep_graph(tcx: TyCtxt,
-                        preds: &Predecessors,
-                        encoder: &mut Encoder)
-                        -> io::Result<()> {
+pub(crate) fn encode_dep_graph(tcx: TyCtxt,
+                               preds: &Predecessors,
+                               encoder: &mut Encoder)
+                               -> io::Result<()> {
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
@@ -272,12 +272,12 @@ pub fn encode_dep_graph(tcx: TyCtxt,
     Ok(())
 }
 
-pub fn encode_metadata_hashes(tcx: TyCtxt,
-                              svh: Svh,
-                              metadata_hashes: &EncodedMetadataHashes,
-                              current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
-                              encoder: &mut Encoder)
-                              -> io::Result<()> {
+pub(crate) fn encode_metadata_hashes(tcx: TyCtxt,
+                                     svh: Svh,
+                                     metadata_hashes: &EncodedMetadataHashes,
+                                     current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
+                                     encoder: &mut Encoder)
+                                     -> io::Result<()> {
     assert_eq!(metadata_hashes.hashes.len(),
         metadata_hashes.hashes.iter().map(|x| (x.def_index, ())).collect::<FxHashMap<_,_>>().len());
 
@@ -309,7 +309,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     Ok(())
 }
 
-pub fn encode_work_products(sess: &Session, encoder: &mut Encoder) -> io::Result<()> {
+pub(crate) fn encode_work_products(sess: &Session, encoder: &mut Encoder) -> io::Result<()> {
     let work_products: Vec<_> = sess.dep_graph
         .work_products()
         .iter()

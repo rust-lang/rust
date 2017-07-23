@@ -11,7 +11,7 @@
 //! Data structures used for tracking moves. Please see the extensive
 //! comments in the section "Moves and initialization" in `README.md`.
 
-pub use self::MoveKind::*;
+pub(crate) use self::MoveKind::*;
 
 use borrowck::*;
 use rustc::cfg;
@@ -33,48 +33,44 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
-pub struct MoveData<'tcx> {
+pub(crate) struct MoveData<'tcx> {
     /// Move paths. See section "Move paths" in `README.md`.
-    pub paths: RefCell<Vec<MovePath<'tcx>>>,
+    pub(crate) paths: RefCell<Vec<MovePath<'tcx>>>,
 
     /// Cache of loan path to move path index, for easy lookup.
-    pub path_map: RefCell<FxHashMap<Rc<LoanPath<'tcx>>, MovePathIndex>>,
+    pub(crate) path_map: RefCell<FxHashMap<Rc<LoanPath<'tcx>>, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
-    pub moves: RefCell<Vec<Move>>,
+    pub(crate) moves: RefCell<Vec<Move>>,
 
     /// Assignments to a variable, like `x = foo`. These are assigned
     /// bits for dataflow, since we must track them to ensure that
     /// immutable variables are assigned at most once along each path.
-    pub var_assignments: RefCell<Vec<Assignment>>,
+    pub(crate) var_assignments: RefCell<Vec<Assignment>>,
 
     /// Assignments to a path, like `x.f = foo`. These are not
     /// assigned dataflow bits, but we track them because they still
     /// kill move bits.
-    pub path_assignments: RefCell<Vec<Assignment>>,
-
-    /// Enum variant matched within a pattern on some match arm, like
-    /// `SomeStruct{ f: Variant1(x, y) } => ...`
-    pub variant_matches: RefCell<Vec<VariantMatch>>,
+    pub(crate) path_assignments: RefCell<Vec<Assignment>>,
 
     /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
-    pub assignee_ids: RefCell<NodeSet>,
+    pub(crate) assignee_ids: RefCell<NodeSet>,
 }
 
-pub struct FlowedMoveData<'a, 'tcx: 'a> {
-    pub move_data: MoveData<'tcx>,
+pub(crate) struct FlowedMoveData<'a, 'tcx: 'a> {
+    pub(crate) move_data: MoveData<'tcx>,
 
-    pub dfcx_moves: MoveDataFlow<'a, 'tcx>,
+    pub(crate) dfcx_moves: MoveDataFlow<'a, 'tcx>,
 
     // We could (and maybe should, for efficiency) combine both move
     // and assign data flow into one, but this way it's easier to
     // distinguish the bits that correspond to moves and assignments.
-    pub dfcx_assign: AssignDataFlow<'a, 'tcx>
+    pub(crate) dfcx_assign: AssignDataFlow<'a, 'tcx>
 }
 
 /// Index into `MoveData.paths`, used like a pointer
 #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct MovePathIndex(usize);
+pub(crate) struct MovePathIndex(usize);
 
 impl MovePathIndex {
     fn get(&self) -> usize {
@@ -93,7 +89,7 @@ const InvalidMovePathIndex: MovePathIndex = MovePathIndex(usize::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
 #[derive(Copy, Clone, PartialEq)]
-pub struct MoveIndex(usize);
+pub(crate) struct MoveIndex(usize);
 
 impl MoveIndex {
     fn get(&self) -> usize {
@@ -104,27 +100,27 @@ impl MoveIndex {
 #[allow(non_upper_case_globals)]
 const InvalidMoveIndex: MoveIndex = MoveIndex(usize::MAX);
 
-pub struct MovePath<'tcx> {
+pub(crate) struct MovePath<'tcx> {
     /// Loan path corresponding to this move path
-    pub loan_path: Rc<LoanPath<'tcx>>,
+    pub(crate) loan_path: Rc<LoanPath<'tcx>>,
 
     /// Parent pointer, `InvalidMovePathIndex` if root
-    pub parent: MovePathIndex,
+    pub(crate) parent: MovePathIndex,
 
     /// Head of linked list of moves to this path,
     /// `InvalidMoveIndex` if not moved
-    pub first_move: MoveIndex,
+    pub(crate) first_move: MoveIndex,
 
     /// First node in linked list of children, `InvalidMovePathIndex` if leaf
-    pub first_child: MovePathIndex,
+    pub(crate) first_child: MovePathIndex,
 
     /// Next node in linked list of parent's children (siblings),
     /// `InvalidMovePathIndex` if none.
-    pub next_sibling: MovePathIndex,
+    pub(crate) next_sibling: MovePathIndex,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum MoveKind {
+pub(crate) enum MoveKind {
     Declared,   // When declared, variables start out "moved".
     MoveExpr,   // Expression or binding that moves a variable
     MovePat,    // By-move binding
@@ -132,59 +128,44 @@ pub enum MoveKind {
 }
 
 #[derive(Copy, Clone)]
-pub struct Move {
+pub(crate) struct Move {
     /// Path being moved.
-    pub path: MovePathIndex,
+    pub(crate) path: MovePathIndex,
 
     /// id of node that is doing the move.
-    pub id: ast::NodeId,
+    pub(crate) id: ast::NodeId,
 
     /// Kind of move, for error messages.
-    pub kind: MoveKind,
+    pub(crate) kind: MoveKind,
 
     /// Next node in linked list of moves from `path`, or `InvalidMoveIndex`
-    pub next_move: MoveIndex
+    pub(crate) next_move: MoveIndex
 }
 
 #[derive(Copy, Clone)]
-pub struct Assignment {
+pub(crate) struct Assignment {
     /// Path being assigned.
-    pub path: MovePathIndex,
+    pub(crate) path: MovePathIndex,
 
     /// id where assignment occurs
-    pub id: ast::NodeId,
+    pub(crate) id: ast::NodeId,
 
     /// span of node where assignment occurs
-    pub span: Span,
-
-    /// id for l-value expression on lhs of assignment
-    pub assignee_id: ast::NodeId,
+    pub(crate) span: Span,
 }
 
 #[derive(Copy, Clone)]
-pub struct VariantMatch {
-    /// downcast to the variant.
-    pub path: MovePathIndex,
-
-    /// path being downcast to the variant.
-    pub base_path: MovePathIndex,
-
-    /// id where variant's pattern occurs
-    pub id: ast::NodeId,
-
-    /// says if variant established by move (and why), by copy, or by borrow.
-    pub mode: euv::MatchMode
-}
+pub(crate) struct VariantMatch {}
 
 #[derive(Clone, Copy)]
-pub struct MoveDataFlowOperator;
+pub(crate) struct MoveDataFlowOperator;
 
-pub type MoveDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, MoveDataFlowOperator>;
+pub(crate) type MoveDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, MoveDataFlowOperator>;
 
 #[derive(Clone, Copy)]
-pub struct AssignDataFlowOperator;
+pub(crate) struct AssignDataFlowOperator;
 
-pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
+pub(crate) type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     match loan_path.kind {
@@ -208,19 +189,18 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
 }
 
 impl<'a, 'tcx> MoveData<'tcx> {
-    pub fn new() -> MoveData<'tcx> {
+    pub(crate) fn new() -> MoveData<'tcx> {
         MoveData {
             paths: RefCell::new(Vec::new()),
             path_map: RefCell::new(FxHashMap()),
             moves: RefCell::new(Vec::new()),
             path_assignments: RefCell::new(Vec::new()),
             var_assignments: RefCell::new(Vec::new()),
-            variant_matches: RefCell::new(Vec::new()),
             assignee_ids: RefCell::new(NodeSet()),
         }
     }
 
-    pub fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath<'tcx>> {
+    pub(crate) fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath<'tcx>> {
         (*self.paths.borrow())[index.get()].loan_path.clone()
     }
 
@@ -266,8 +246,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     /// Returns the existing move path index for `lp`, if any, and otherwise adds a new index for
     /// `lp` and any of its base paths that do not yet have an index.
-    pub fn move_path(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
+    pub(crate) fn move_path(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            lp: Rc<LoanPath<'tcx>>) -> MovePathIndex {
         if let Some(&index) = self.path_map.borrow().get(&lp) {
             return index;
         }
@@ -354,10 +334,10 @@ impl<'a, 'tcx> MoveData<'tcx> {
     }
 
     /// Adds a new move entry for a move of `lp` that occurs at location `id` with kind `kind`.
-    pub fn add_move(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    orig_lp: Rc<LoanPath<'tcx>>,
-                    id: ast::NodeId,
-                    kind: MoveKind) {
+    pub(crate) fn add_move(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           orig_lp: Rc<LoanPath<'tcx>>,
+                           id: ast::NodeId,
+                           kind: MoveKind) {
         // Moving one union field automatically moves all its fields. Also move siblings of
         // all parent union fields, moves do not propagate upwards automatically.
         let mut lp = orig_lp.clone();
@@ -407,12 +387,12 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     /// Adds a new record for an assignment to `lp` that occurs at location `id` with the given
     /// `span`.
-    pub fn add_assignment(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          lp: Rc<LoanPath<'tcx>>,
-                          assign_id: ast::NodeId,
-                          span: Span,
-                          assignee_id: ast::NodeId,
-                          mode: euv::MutateMode) {
+    pub(crate) fn add_assignment(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 lp: Rc<LoanPath<'tcx>>,
+                                 assign_id: ast::NodeId,
+                                 span: Span,
+                                 assignee_id: ast::NodeId,
+                                 mode: euv::MutateMode) {
         // Assigning to one union field automatically assigns to all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
             if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
@@ -460,7 +440,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
             path: path_index,
             id: assign_id,
             span: span,
-            assignee_id: assignee_id,
         };
 
         if self.is_var_path(path_index) {
@@ -474,31 +453,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
             self.path_assignments.borrow_mut().push(assignment);
         }
-    }
-
-    /// Adds a new record for a match of `base_lp`, downcast to
-    /// variant `lp`, that occurs at location `pattern_id`.  (One
-    /// should be able to recover the span info from the
-    /// `pattern_id` and the hir_map, I think.)
-    pub fn add_variant_match(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             lp: Rc<LoanPath<'tcx>>,
-                             pattern_id: ast::NodeId,
-                             base_lp: Rc<LoanPath<'tcx>>,
-                             mode: euv::MatchMode) {
-        debug!("add_variant_match(lp={:?}, pattern_id={})",
-               lp, pattern_id);
-
-        let path_index = self.move_path(tcx, lp.clone());
-        let base_path_index = self.move_path(tcx, base_lp.clone());
-
-        let variant_match = VariantMatch {
-            path: path_index,
-            base_path: base_path_index,
-            id: pattern_id,
-            mode: mode,
-        };
-
-        self.variant_matches.borrow_mut().push(variant_match);
     }
 
     /// Adds the gen/kills for the various moves and
@@ -635,12 +589,12 @@ impl<'a, 'tcx> MoveData<'tcx> {
 }
 
 impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
-    pub fn new(move_data: MoveData<'tcx>,
-               bccx: &BorrowckCtxt<'a, 'tcx>,
-               cfg: &cfg::CFG,
-               id_range: IdRange,
-               body: &hir::Body)
-               -> FlowedMoveData<'a, 'tcx> {
+    pub(crate) fn new(move_data: MoveData<'tcx>,
+                      bccx: &BorrowckCtxt<'a, 'tcx>,
+                      cfg: &cfg::CFG,
+                      id_range: IdRange,
+                      body: &hir::Body)
+                      -> FlowedMoveData<'a, 'tcx> {
         let tcx = bccx.tcx;
 
         let mut dfcx_moves =
@@ -677,10 +631,10 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         }
     }
 
-    pub fn kind_of_move_of_path(&self,
-                                id: ast::NodeId,
-                                loan_path: &Rc<LoanPath<'tcx>>)
-                                -> Option<MoveKind> {
+    pub(crate) fn kind_of_move_of_path(&self,
+                                       id: ast::NodeId,
+                                       loan_path: &Rc<LoanPath<'tcx>>)
+                                       -> Option<MoveKind> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
         let mut ret = None;
@@ -702,11 +656,11 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     /// Iterates through each move of `loan_path` (or some base path of `loan_path`) that *may*
     /// have occurred on entry to `id` without an intervening assignment. In other words, any moves
     /// that would invalidate a reference to `loan_path` at location `id`.
-    pub fn each_move_of<F>(&self,
-                           id: ast::NodeId,
-                           loan_path: &Rc<LoanPath<'tcx>>,
-                           mut f: F)
-                           -> bool where
+    pub(crate) fn each_move_of<F>(&self,
+                                  id: ast::NodeId,
+                                  loan_path: &Rc<LoanPath<'tcx>>,
+                                  mut f: F)
+                                  -> bool where
         F: FnMut(&Move, &LoanPath<'tcx>) -> bool,
     {
         // Bad scenarios:
@@ -759,11 +713,11 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
     /// Iterates through every assignment to `loan_path` that may have occurred on entry to `id`.
     /// `loan_path` must be a single variable.
-    pub fn each_assignment_of<F>(&self,
-                                 id: ast::NodeId,
-                                 loan_path: &Rc<LoanPath<'tcx>>,
-                                 mut f: F)
-                                 -> bool where
+    pub(crate) fn each_assignment_of<F>(&self,
+                                        id: ast::NodeId,
+                                        loan_path: &Rc<LoanPath<'tcx>>,
+                                        mut f: F)
+                                        -> bool where
         F: FnMut(&Assignment) -> bool,
     {
         let loan_path_index = {

@@ -14,7 +14,7 @@ use rustc::hir;
 use syntax::ast;
 use syntax::attr;
 
-pub fn find(hir_map: &Map) -> Option<ast::NodeId> {
+pub(crate) fn find(hir_map: &Map) -> Option<ast::NodeId> {
     let krate = hir_map.krate();
 
     let mut finder = Finder { registrar: None };

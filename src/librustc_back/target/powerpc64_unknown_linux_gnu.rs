@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetResult, RelroLevel};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     base.cpu = "ppc64".to_string();
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());

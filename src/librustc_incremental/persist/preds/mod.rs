@@ -19,13 +19,13 @@ mod compress;
 
 /// A data-structure that makes it easy to enumerate the hashable
 /// predecessors of any given dep-node.
-pub struct Predecessors<'query> {
+pub(crate) struct Predecessors<'query> {
     // A reduced version of the input graph that contains fewer nodes.
     // This is intended to keep all of the base inputs (i.e., HIR
     // nodes) and all of the "work-products" we may care about
     // later. Other nodes may be retained if it keeps the overall size
     // of the graph down.
-    pub reduced_graph: Graph<&'query DepNode, ()>,
+    pub(crate) reduced_graph: Graph<&'query DepNode, ()>,
 
     // These are output nodes that have no incoming edges. We have to
     // track these specially because, when we load the data back up
@@ -33,14 +33,14 @@ pub struct Predecessors<'query> {
     // to recreate the nodes where all incoming edges are clean; but
     // since we ordinarily just serialize edges, we wind up just
     // forgetting that bootstrap outputs even exist in that case.)
-    pub bootstrap_outputs: Vec<&'query DepNode>,
+    pub(crate) bootstrap_outputs: Vec<&'query DepNode>,
 
     // For the inputs (hir/foreign-metadata), we include hashes.
-    pub hashes: FxHashMap<&'query DepNode, Fingerprint>,
+    pub(crate) hashes: FxHashMap<&'query DepNode, Fingerprint>,
 }
 
 impl<'q> Predecessors<'q> {
-    pub fn new(query: &'q DepGraphQuery, hcx: &mut HashContext) -> Self {
+    pub(crate) fn new(query: &'q DepGraphQuery, hcx: &mut HashContext) -> Self {
         let tcx = hcx.tcx;
 
         // Find the set of "start nodes". These are nodes that we will

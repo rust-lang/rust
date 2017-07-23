@@ -15,12 +15,12 @@ use rustc::hir;
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn ast_block(&mut self,
-                     destination: &Lvalue<'tcx>,
-                     block: BasicBlock,
-                     ast_block: &'tcx hir::Block,
-                     source_info: SourceInfo)
-                     -> BlockAnd<()> {
+    pub(crate) fn ast_block(&mut self,
+                            destination: &Lvalue<'tcx>,
+                            block: BasicBlock,
+                            ast_block: &'tcx hir::Block,
+                            source_info: SourceInfo)
+                            -> BlockAnd<()> {
         let Block { extent, opt_destruction_extent, span, stmts, expr, targeted_by_break } =
             self.hir.mirror(ast_block);
         self.in_opt_scope(opt_destruction_extent.map(|de|(de, source_info)), block, move |this| {

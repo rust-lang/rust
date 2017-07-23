@@ -318,7 +318,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     }
 }
 
-pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub(crate) struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     fulfillment_cx: traits::FulfillmentContext<'tcx>,
@@ -346,7 +346,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         traits::ObligationCause::misc(span, self.body_id)
     }
 
-    pub fn register_infer_ok_obligations<T>(&mut self, infer_ok: InferOk<'tcx, T>) -> T {
+    pub(crate) fn register_infer_ok_obligations<T>(&mut self, infer_ok: InferOk<'tcx, T>) -> T {
         for obligation in infer_ok.obligations {
             self.fulfillment_cx.register_predicate_obligation(self.infcx, obligation);
         }
@@ -738,12 +738,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 }
 
 pub struct TypeckMir;
-
-impl TypeckMir {
-    pub fn new() -> Self {
-        TypeckMir
-    }
-}
 
 impl MirPass for TypeckMir {
     fn run_pass<'a, 'tcx>(&self,

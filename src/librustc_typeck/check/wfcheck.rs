@@ -25,7 +25,7 @@ use errors::DiagnosticBuilder;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
-pub struct CheckTypeWellFormedVisitor<'a, 'tcx:'a> {
+pub(crate) struct CheckTypeWellFormedVisitor<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     code: ObligationCauseCode<'tcx>,
 }
@@ -63,7 +63,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>)
+    pub(crate) fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>)
                -> CheckTypeWellFormedVisitor<'a, 'gcx> {
         CheckTypeWellFormedVisitor {
             tcx: tcx,

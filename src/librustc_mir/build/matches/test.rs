@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
     /// It is a bug to call this with a simplifyable pattern.
-    pub fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
+    pub(crate) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
             PatternKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => {
                 Test {
@@ -108,13 +108,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_cases_to_switch<'pat>(&mut self,
-                                     test_lvalue: &Lvalue<'tcx>,
-                                     candidate: &Candidate<'pat, 'tcx>,
-                                     switch_ty: Ty<'tcx>,
-                                     options: &mut Vec<ConstVal<'tcx>>,
-                                     indices: &mut FxHashMap<ConstVal<'tcx>, usize>)
-                                     -> bool
+    pub(crate) fn add_cases_to_switch<'pat>(&mut self,
+                                            test_lvalue: &Lvalue<'tcx>,
+                                            candidate: &Candidate<'pat, 'tcx>,
+                                            switch_ty: Ty<'tcx>,
+                                            options: &mut Vec<ConstVal<'tcx>>,
+                                            indices: &mut FxHashMap<ConstVal<'tcx>, usize>)
+                                            -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
             Some(match_pair) => match_pair,
@@ -149,11 +149,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_variants_to_switch<'pat>(&mut self,
-                                        test_lvalue: &Lvalue<'tcx>,
-                                        candidate: &Candidate<'pat, 'tcx>,
-                                        variants: &mut BitVector)
-                                        -> bool
+    pub(crate) fn add_variants_to_switch<'pat>(&mut self,
+                                               test_lvalue: &Lvalue<'tcx>,
+                                               candidate: &Candidate<'pat, 'tcx>,
+                                               variants: &mut BitVector)
+                                               -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
             Some(match_pair) => match_pair,
@@ -175,11 +175,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Generates the code to perform a test.
-    pub fn perform_test(&mut self,
-                        block: BasicBlock,
-                        lvalue: &Lvalue<'tcx>,
-                        test: &Test<'tcx>)
-                        -> Vec<BasicBlock> {
+    pub(crate) fn perform_test(&mut self,
+                               block: BasicBlock,
+                               lvalue: &Lvalue<'tcx>,
+                               test: &Test<'tcx>)
+                               -> Vec<BasicBlock> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
@@ -429,12 +429,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// apply. For now, we return false, indicate that the test does
     /// not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
-    pub fn sort_candidate<'pat>(&mut self,
-                                test_lvalue: &Lvalue<'tcx>,
-                                test: &Test<'tcx>,
-                                candidate: &Candidate<'pat, 'tcx>,
-                                resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>])
-                                -> bool {
+    pub(crate) fn sort_candidate<'pat>(&mut self,
+                                       test_lvalue: &Lvalue<'tcx>,
+                                       test: &Test<'tcx>,
+                                       candidate: &Candidate<'pat, 'tcx>,
+                                       resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>])
+                                       -> bool {
         // Find the match_pair for this lvalue (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more

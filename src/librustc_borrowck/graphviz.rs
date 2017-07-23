@@ -14,7 +14,7 @@
 
 pub use self::Variant::*;
 
-pub use rustc::cfg::graphviz::{Node, Edge};
+pub(crate) use rustc::cfg::graphviz::{Node, Edge};
 use rustc::cfg::graphviz as cfg_dot;
 
 use borrowck;
@@ -33,7 +33,7 @@ pub enum Variant {
 }
 
 impl Variant {
-    pub fn short_name(&self) -> &'static str {
+    pub(crate) fn short_name(&self) -> &'static str {
         match *self {
             Loans   => "loans",
             Moves   => "moves",

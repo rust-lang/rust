@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use target::{Target, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut base = super::freebsd_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);

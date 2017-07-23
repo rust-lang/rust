@@ -14,14 +14,14 @@ use super::super::indexed_vec::IndexVec;
 #[cfg(test)]
 mod test;
 
-pub fn post_order_from<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
+pub(crate) fn post_order_from<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
     post_order_from_to(graph, start_node, None)
 }
 
-pub fn post_order_from_to<G: ControlFlowGraph>(graph: &G,
-                                               start_node: G::Node,
-                                               end_node: Option<G::Node>)
-                                               -> Vec<G::Node> {
+pub(crate) fn post_order_from_to<G: ControlFlowGraph>(graph: &G,
+                                                      start_node: G::Node,
+                                                      end_node: Option<G::Node>)
+                                                      -> Vec<G::Node> {
     let mut visited: IndexVec<G::Node, bool> = IndexVec::from_elem_n(false, graph.num_nodes());
     let mut result: Vec<G::Node> = Vec::with_capacity(graph.num_nodes());
     if let Some(end_node) = end_node {
@@ -47,23 +47,8 @@ fn post_order_walk<G: ControlFlowGraph>(graph: &G,
     result.push(node);
 }
 
-pub fn pre_order_walk<G: ControlFlowGraph>(graph: &G,
-                                           node: G::Node,
-                                           result: &mut Vec<G::Node>,
-                                           visited: &mut IndexVec<G::Node, bool>) {
-    if visited[node] {
-        return;
-    }
-    visited[node] = true;
-
-    result.push(node);
-
-    for successor in graph.successors(node) {
-        pre_order_walk(graph, successor, result, visited);
-    }
-}
-
-pub fn reverse_post_order<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
+pub(crate) fn reverse_post_order<G: ControlFlowGraph>(graph: &G, start_node: G::Node)
+                                                      -> Vec<G::Node> {
     let mut vec = post_order_from(graph, start_node);
     vec.reverse();
     vec

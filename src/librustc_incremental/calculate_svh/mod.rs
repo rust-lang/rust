@@ -51,31 +51,27 @@ pub struct IncrementalHashesMap {
     // -Z query-dep-graph was specified and are needed for auto-tests using
     // the #[rustc_metadata_dirty] and #[rustc_metadata_clean] attributes to
     // check whether some metadata hash has changed in between two revisions.
-    pub prev_metadata_hashes: RefCell<FxHashMap<DefId, Fingerprint>>,
+    pub(crate) prev_metadata_hashes: RefCell<FxHashMap<DefId, Fingerprint>>,
 }
 
 impl IncrementalHashesMap {
-    pub fn new() -> IncrementalHashesMap {
+    pub(crate) fn new() -> IncrementalHashesMap {
         IncrementalHashesMap {
             hashes: FxHashMap(),
             prev_metadata_hashes: RefCell::new(FxHashMap()),
         }
     }
 
-    pub fn get(&self, k: &DepNode) -> Option<&Fingerprint> {
-        self.hashes.get(k)
-    }
-
-    pub fn insert(&mut self, k: DepNode, v: Fingerprint) {
+    pub(crate) fn insert(&mut self, k: DepNode, v: Fingerprint) {
         assert!(self.hashes.insert(k, v).is_none());
     }
 
-    pub fn iter<'a>(&'a self)
+    pub(crate) fn iter<'a>(&'a self)
                     -> ::std::collections::hash_map::Iter<'a, DepNode, Fingerprint> {
         self.hashes.iter()
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.hashes.len()
     }
 }

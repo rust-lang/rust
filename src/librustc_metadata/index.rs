@@ -22,24 +22,24 @@ use std::u32;
 /// `u32::MAX`. Whenever an index is visited, we fill in the
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
-pub struct Index {
+pub(crate) struct Index {
     positions: [Vec<u32>; 2]
 }
 
 impl Index {
-    pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Index {
+    pub(crate) fn new((max_index_lo, max_index_hi): (usize, usize)) -> Index {
         Index {
             positions: [vec![u32::MAX; max_index_lo],
                         vec![u32::MAX; max_index_hi]],
         }
     }
 
-    pub fn record(&mut self, def_id: DefId, entry: Lazy<Entry>) {
+    pub(crate) fn record(&mut self, def_id: DefId, entry: Lazy<Entry>) {
         assert!(def_id.is_local());
         self.record_index(def_id.index, entry);
     }
 
-    pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry>) {
+    pub(crate) fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry>) {
         assert!(entry.position < (u32::MAX as usize));
         let position = entry.position as u32;
         let space_index = item.address_space().index();
@@ -54,7 +54,7 @@ impl Index {
         self.positions[space_index][array_index] = position.to_le();
     }
 
-    pub fn write_index(&self, buf: &mut Cursor<Vec<u8>>) -> LazySeq<Index> {
+    pub(crate) fn write_index(&self, buf: &mut Cursor<Vec<u8>>) -> LazySeq<Index> {
         let pos = buf.position();
 
         // First we write the length of the lower range ...
@@ -72,7 +72,7 @@ impl<'tcx> LazySeq<Index> {
     /// Given the metadata, extract out the offset of a particular
     /// DefIndex (if any).
     #[inline(never)]
-    pub fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
+    pub(crate) fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         let words = &bytes_to_words(&bytes[self.position..])[..self.len];
         let index = def_index.as_usize();
 
@@ -99,32 +99,6 @@ impl<'tcx> LazySeq<Index> {
             debug!("Index::lookup: position={:?}", position);
             Some(Lazy::with_position(position as usize))
         }
-    }
-
-    pub fn iter_enumerated<'a>(&self,
-                               bytes: &'a [u8])
-                               -> impl Iterator<Item = (DefIndex, Lazy<Entry<'tcx>>)> + 'a {
-        let words = &bytes_to_words(&bytes[self.position..])[..self.len];
-        let lo_count = u32::from_le(words[0].get()) as usize;
-        let lo = &words[1 .. lo_count + 1];
-        let hi = &words[1 + lo_count ..];
-
-        lo.iter().map(|word| word.get()).enumerate().filter_map(|(index, pos)| {
-            if pos == u32::MAX {
-                None
-            } else {
-                let pos = u32::from_le(pos) as usize;
-                Some((DefIndex::new(index), Lazy::with_position(pos)))
-            }
-        }).chain(hi.iter().map(|word| word.get()).enumerate().filter_map(|(index, pos)| {
-            if pos == u32::MAX {
-                None
-            } else {
-                let pos = u32::from_le(pos) as usize;
-                Some((DefIndex::new(index + DefIndexAddressSpace::High.start()),
-                                    Lazy::with_position(pos)))
-            }
-        }))
     }
 }
 

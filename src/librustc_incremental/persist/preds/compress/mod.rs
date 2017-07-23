@@ -29,9 +29,9 @@ use self::dag_id::DagId;
 #[cfg(test)]
 mod test;
 
-pub fn reduce_graph<N, I, O>(graph: &Graph<N, ()>,
-                             is_input: I,
-                             is_output: O) -> Reduction<N>
+pub(crate) fn reduce_graph<N, I, O>(graph: &Graph<N, ()>,
+                                    is_input: I,
+                                    is_output: O) -> Reduction<N>
     where N: Debug + Clone,
           I: Fn(&N) -> bool,
           O: Fn(&N) -> bool,
@@ -39,9 +39,9 @@ pub fn reduce_graph<N, I, O>(graph: &Graph<N, ()>,
     GraphReduce::new(graph, is_input, is_output).compute()
 }
 
-pub struct Reduction<'q, N> where N: 'q + Debug + Clone {
-    pub graph: Graph<&'q N, ()>,
-    pub input_nodes: Vec<NodeIndex>,
+pub(crate) struct Reduction<'q, N> where N: 'q + Debug + Clone {
+    pub(crate) graph: Graph<&'q N, ()>,
+    pub(crate) input_nodes: Vec<NodeIndex>,
 }
 
 struct GraphReduce<'q, N, I, O>

@@ -74,8 +74,8 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 /// Remember to add all intrinsics here, in librustc_trans/trans/intrinsic.rs,
 /// and in libcore/intrinsics.rs
-pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      it: &hir::ForeignItem) {
+pub(crate) fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                             it: &hir::ForeignItem) {
     let param = |n| tcx.mk_param(n, Symbol::intern(&format!("P{}", n)));
     let name = it.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
@@ -328,8 +328,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
-pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               it: &hir::ForeignItem) {
+pub(crate) fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                      it: &hir::ForeignItem) {
     let param = |n| {
         let name = Symbol::intern(&format!("P{}", n));
         tcx.mk_param(n, name)

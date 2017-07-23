@@ -45,15 +45,15 @@ use syntax::visit;
 use syntax_pos::{Span, DUMMY_SP};
 use log;
 
-pub struct Library {
-    pub dylib: Option<(PathBuf, PathKind)>,
-    pub rlib: Option<(PathBuf, PathKind)>,
-    pub rmeta: Option<(PathBuf, PathKind)>,
-    pub metadata: MetadataBlob,
+pub(crate) struct Library {
+    pub(crate) dylib: Option<(PathBuf, PathKind)>,
+    pub(crate) rlib: Option<(PathBuf, PathKind)>,
+    pub(crate) rmeta: Option<(PathBuf, PathKind)>,
+    pub(crate) metadata: MetadataBlob,
 }
 
 pub struct CrateLoader<'a> {
-    pub sess: &'a Session,
+    pub(crate) sess: &'a Session,
     cstore: &'a CStore,
     next_crate_num: CrateNum,
     local_crate_name: Symbol,

@@ -15,7 +15,7 @@ use super::*;
 #[cfg(test)]
 mod test;
 
-pub struct Classify<'a, 'g: 'a, N: 'g, I: 'a, O: 'a>
+pub(crate) struct Classify<'a, 'g: 'a, N: 'g, I: 'a, O: 'a>
     where N: Debug + Clone + 'g,
           I: Fn(&N) -> bool,
           O: Fn(&N) -> bool,

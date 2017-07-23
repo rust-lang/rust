@@ -63,20 +63,20 @@ const DW_ATE_unsigned: c_uint = 0x07;
 #[allow(non_upper_case_globals)]
 const DW_ATE_unsigned_char: c_uint = 0x08;
 
-pub const UNKNOWN_LINE_NUMBER: c_uint = 0;
-pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
+pub(crate) const UNKNOWN_LINE_NUMBER: c_uint = 0;
+pub(crate) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 // ptr::null() doesn't work :(
-pub const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
+pub(crate) const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
 
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
-pub struct UniqueTypeId(ast::Name);
+pub(crate) struct UniqueTypeId(ast::Name);
 
 // The TypeMap is where the CrateDebugContext holds the type metadata nodes
 // created so far. The metadata nodes are indexed by UniqueTypeId, and, for
 // faster lookup, also by Ty. The TypeMap is responsible for creating
 // UniqueTypeIds.
-pub struct TypeMap<'tcx> {
+pub(crate) struct TypeMap<'tcx> {
     // The UniqueTypeIds created so far
     unique_id_interner: Interner,
     // A map from UniqueTypeId to debuginfo metadata for that type. This is a 1:1 mapping.
@@ -88,7 +88,7 @@ pub struct TypeMap<'tcx> {
 }
 
 impl<'tcx> TypeMap<'tcx> {
-    pub fn new() -> TypeMap<'tcx> {
+    pub(crate) fn new() -> TypeMap<'tcx> {
         TypeMap {
             unique_id_interner: Interner::new(),
             type_to_metadata: FxHashMap(),
@@ -449,10 +449,10 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             syntax_pos::DUMMY_SP)
 }
 
-pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                               t: Ty<'tcx>,
-                               usage_site_span: Span)
-                               -> DIType {
+pub(crate) fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                      t: Ty<'tcx>,
+                                      usage_site_span: Span)
+                                      -> DIType {
     // Get the unique type id of this type.
     let unique_type_id = {
         let mut type_map = debug_context(cx).type_map.borrow_mut();
@@ -656,9 +656,9 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     metadata
 }
 
-pub fn file_metadata(cx: &CrateContext,
-                     file_name: &str,
-                     defining_crate: CrateNum) -> DIFile {
+pub(crate) fn file_metadata(cx: &CrateContext,
+                            file_name: &str,
+                            defining_crate: CrateNum) -> DIFile {
     debug!("file_metadata: file_name: {}, defining_crate: {}",
            file_name,
            defining_crate);
@@ -674,7 +674,7 @@ pub fn file_metadata(cx: &CrateContext,
     file_metadata_raw(cx, file_name, directory)
 }
 
-pub fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
+pub(crate) fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
     file_metadata_raw(cx, "<unknown>", "")
 }
 
@@ -761,11 +761,11 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return ptr_metadata;
 }
 
-pub fn compile_unit_metadata(scc: &SharedCrateContext,
-                             codegen_unit_name: &str,
-                             debug_context: &CrateDebugContext,
-                             sess: &Session)
-                             -> DIDescriptor {
+pub(crate) fn compile_unit_metadata(scc: &SharedCrateContext,
+                                    codegen_unit_name: &str,
+                                    debug_context: &CrateDebugContext,
+                                    sess: &Session)
+                                    -> DIDescriptor {
     let mut name_in_debuginfo = match sess.local_crate_source_file {
         Some(ref path) => path.clone(),
         None => scc.tcx().crate_name(LOCAL_CRATE).to_string(),
@@ -1771,9 +1771,9 @@ fn create_union_stub(cx: &CrateContext,
 /// Creates debug information for the given global variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_global_var_metadata(cx: &CrateContext,
-                                  node_id: ast::NodeId,
-                                  global: ValueRef) {
+pub(crate) fn create_global_var_metadata(cx: &CrateContext,
+                                         node_id: ast::NodeId,
+                                         global: ValueRef) {
     if cx.dbg_cx().is_none() {
         return;
     }
@@ -1819,11 +1819,11 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 }
 
 // Creates an "extension" of an existing DIScope into another file.
-pub fn extend_scope_to_file(ccx: &CrateContext,
-                            scope_metadata: DIScope,
-                            file: &syntax_pos::FileMap,
-                            defining_crate: CrateNum)
-                            -> DILexicalBlock {
+pub(crate) fn extend_scope_to_file(ccx: &CrateContext,
+                                   scope_metadata: DIScope,
+                                   file: &syntax_pos::FileMap,
+                                   defining_crate: CrateNum)
+                                   -> DILexicalBlock {
     let file_metadata = file_metadata(ccx, &file.name, defining_crate);
     unsafe {
         llvm::LLVMRustDIBuilderCreateLexicalBlockFile(

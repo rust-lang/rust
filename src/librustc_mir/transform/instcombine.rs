@@ -44,7 +44,7 @@ impl MirPass for InstCombine {
     }
 }
 
-pub struct InstCombineVisitor {
+pub(crate) struct InstCombineVisitor {
     optimizations: OptimizationList,
 }
 

@@ -114,7 +114,7 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
+pub(crate) fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
     for directive in resolver.potentially_unused_imports.iter() {
         match directive.subclass {
             _ if directive.used.get() ||

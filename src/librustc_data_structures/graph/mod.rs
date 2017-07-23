@@ -85,9 +85,9 @@ impl<E: Debug> Debug for Edge<E> {
 pub struct NodeIndex(pub usize);
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub struct EdgeIndex(pub usize);
+pub struct EdgeIndex(pub(crate) usize);
 
-pub const INVALID_EDGE_INDEX: EdgeIndex = EdgeIndex(usize::MAX);
+pub(crate) const INVALID_EDGE_INDEX: EdgeIndex = EdgeIndex(usize::MAX);
 
 // Use a private field here to guarantee no more instances are created:
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -102,13 +102,6 @@ pub const INCOMING: Direction = Direction { repr: 1 };
 impl NodeIndex {
     /// Returns unique id (unique with respect to the graph holding associated node).
     pub fn node_id(&self) -> usize {
-        self.0
-    }
-}
-
-impl EdgeIndex {
-    /// Returns unique id (unique with respect to the graph holding associated edge).
-    pub fn edge_id(&self) -> usize {
         self.0
     }
 }
@@ -201,43 +194,19 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         return idx;
     }
 
-    pub fn mut_edge_data(&mut self, idx: EdgeIndex) -> &mut E {
-        &mut self.edges[idx.0].data
-    }
-
-    pub fn edge_data(&self, idx: EdgeIndex) -> &E {
-        &self.edges[idx.0].data
-    }
-
     pub fn edge(&self, idx: EdgeIndex) -> &Edge<E> {
         &self.edges[idx.0]
     }
 
-    pub fn first_adjacent(&self, node: NodeIndex, dir: Direction) -> EdgeIndex {
-        //! Accesses the index of the first edge adjacent to `node`.
-        //! This is useful if you wish to modify the graph while walking
-        //! the linked list of edges.
-
-        self.nodes[node.0].first_edge[dir.repr]
-    }
-
-    pub fn next_adjacent(&self, edge: EdgeIndex, dir: Direction) -> EdgeIndex {
-        //! Accesses the next edge in a given direction.
-        //! This is useful if you wish to modify the graph while walking
-        //! the linked list of edges.
-
-        self.edges[edge.0].next_edge[dir.repr]
-    }
-
     // # Iterating over nodes, edges
 
-    pub fn enumerated_nodes(&self) -> EnumeratedNodes<N> {
+    pub(crate) fn enumerated_nodes(&self) -> EnumeratedNodes<N> {
         EnumeratedNodes {
             iter: self.nodes.iter().enumerate()
         }
     }
 
-    pub fn enumerated_edges(&self) -> EnumeratedEdges<E> {
+    pub(crate) fn enumerated_edges(&self) -> EnumeratedEdges<E> {
         EnumeratedEdges {
             iter: self.edges.iter().enumerate()
         }
@@ -282,65 +251,17 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.incoming_edges(target).sources()
     }
 
-    /// A common use for graphs in our compiler is to perform
-    /// fixed-point iteration. In this case, each edge represents a
-    /// constraint, and the nodes themselves are associated with
-    /// variables or other bitsets. This method facilitates such a
-    /// computation.
-    pub fn iterate_until_fixed_point<'a, F>(&'a self, mut op: F)
-        where F: FnMut(usize, EdgeIndex, &'a Edge<E>) -> bool
-    {
-        let mut iteration = 0;
-        let mut changed = true;
-        while changed {
-            changed = false;
-            iteration += 1;
-            for (edge_index, edge) in self.enumerated_edges() {
-                changed |= op(iteration, edge_index, edge);
-            }
-        }
-    }
-
     pub fn depth_traverse<'a>(&'a self,
                               start: NodeIndex,
                               direction: Direction)
                               -> DepthFirstTraversal<'a, N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
-
-    /// Whether or not a node can be reached from itself.
-    pub fn is_node_cyclic(&self, starting_node_index: NodeIndex) -> bool {
-        // This is similar to depth traversal below, but we
-        // can't use that, because depth traversal doesn't show
-        // the starting node a second time.
-        let mut visited = BitVector::new(self.len_nodes());
-        let mut stack = vec![starting_node_index];
-
-        while let Some(current_node_index) = stack.pop() {
-            visited.insert(current_node_index.0);
-
-            // Directionality doesn't change the answer,
-            // so just use outgoing edges.
-            for (_, edge) in self.outgoing_edges(current_node_index) {
-                let target_node_index = edge.target();
-
-                if target_node_index == starting_node_index {
-                    return true;
-                }
-
-                if !visited.contains(target_node_index.0) {
-                    stack.push(target_node_index);
-                }
-            }
-        }
-
-        false
-    }
 }
 
 // # Iterators
 
-pub struct EnumeratedNodes<'g, N>
+pub(crate) struct EnumeratedNodes<'g, N>
     where N: 'g,
 {
     iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Node<N>>>
@@ -354,7 +275,7 @@ impl<'g, N: Debug> Iterator for EnumeratedNodes<'g, N> {
     }
 }
 
-pub struct EnumeratedEdges<'g, E>
+pub(crate) struct EnumeratedEdges<'g, E>
     where E: 'g,
 {
     iter: ::std::iter::Enumerate<::std::slice::Iter<'g, Edge<E>>>
@@ -443,20 +364,10 @@ pub struct DepthFirstTraversal<'g, N, E>
 }
 
 impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
-    pub fn new(graph: &'g Graph<N, E>, direction: Direction) -> Self {
-        let visited = BitVector::new(graph.len_nodes());
-        DepthFirstTraversal {
-            graph: graph,
-            stack: vec![],
-            visited: visited,
-            direction: direction,
-        }
-    }
-
-    pub fn with_start_node(graph: &'g Graph<N, E>,
-                           start_node: NodeIndex,
-                           direction: Direction)
-                           -> Self {
+    pub(crate) fn with_start_node(graph: &'g Graph<N, E>,
+                                  start_node: NodeIndex,
+                                  direction: Direction)
+                                  -> Self {
         let mut visited = BitVector::new(graph.len_nodes());
         visited.insert(start_node.node_id());
         DepthFirstTraversal {
@@ -465,13 +376,6 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
             visited: visited,
             direction: direction,
         }
-    }
-
-    pub fn reset(&mut self, start_node: NodeIndex) {
-        self.stack.truncate(0);
-        self.stack.push(start_node);
-        self.visited.clear();
-        self.visited.insert(start_node.node_id());
     }
 
     fn visit(&mut self, node: NodeIndex) {
@@ -493,19 +397,6 @@ impl<'g, N: Debug, E: Debug> Iterator for DepthFirstTraversal<'g, N, E> {
             }
         }
         next
-    }
-}
-
-pub fn each_edge_index<F>(max_edge_index: EdgeIndex, mut f: F)
-    where F: FnMut(EdgeIndex) -> bool
-{
-    let mut i = 0;
-    let n = max_edge_index.0;
-    while i < n {
-        if !f(EdgeIndex(i)) {
-            return;
-        }
-        i += 1;
     }
 }
 

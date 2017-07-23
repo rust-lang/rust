@@ -104,8 +104,7 @@ pub fn compile_input(sess: &Session,
                                                                     sess,
                                                                     outdir,
                                                                     output,
-                                                                    krate,
-                                                                    &cstore);
+                                                                    krate);
             controller_entry_point!(after_parse,
                                     sess,
                                     compile_state,
@@ -121,7 +120,7 @@ pub fn compile_input(sess: &Session,
                 sess, &cstore, krate, registry, &crate_name, addl_plugins, control.make_glob_map,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
-                        input, sess, outdir, output, &cstore, expanded_crate, &crate_name,
+                        input, sess, outdir, output, expanded_crate, &crate_name,
                     );
                     controller_entry_point!(after_expand, sess, state, Ok(()));
                     Ok(())
@@ -153,7 +152,6 @@ pub fn compile_input(sess: &Session,
                                                                   output,
                                                                   &arena,
                                                                   &arenas,
-                                                                  &cstore,
                                                                   &hir_map,
                                                                   &analysis,
                                                                   &resolutions,
@@ -346,9 +344,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub session: &'tcx Session,
     pub krate: Option<ast::Crate>,
     pub registry: Option<Registry<'a>>,
-    pub cstore: Option<&'a CStore>,
     pub crate_name: Option<&'a str>,
-    pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
     pub out_file: Option<&'a Path>,
     pub arena: Option<&'tcx DroplessArena>,
@@ -376,9 +372,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             arenas: None,
             krate: None,
             registry: None,
-            cstore: None,
             crate_name: None,
-            output_filenames: None,
             expanded_crate: None,
             hir_crate: None,
             hir_map: None,
@@ -393,14 +387,12 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                          session: &'tcx Session,
                          out_dir: &'a Option<PathBuf>,
                          out_file: &'a Option<PathBuf>,
-                         krate: ast::Crate,
-                         cstore: &'a CStore)
+                         krate: ast::Crate)
                          -> Self {
         CompileState {
             // Initialize the registry before moving `krate`
             registry: Some(Registry::new(&session, krate.span)),
             krate: Some(krate),
-            cstore: Some(cstore),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }
@@ -410,13 +402,11 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                           session: &'tcx Session,
                           out_dir: &'a Option<PathBuf>,
                           out_file: &'a Option<PathBuf>,
-                          cstore: &'a CStore,
                           expanded_crate: &'a ast::Crate,
                           crate_name: &'a str)
                           -> Self {
         CompileState {
             crate_name: Some(crate_name),
-            cstore: Some(cstore),
             expanded_crate: Some(expanded_crate),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
@@ -429,7 +419,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 out_file: &'a Option<PathBuf>,
                                 arena: &'tcx DroplessArena,
                                 arenas: &'tcx GlobalArenas<'tcx>,
-                                cstore: &'a CStore,
                                 hir_map: &'a hir_map::Map<'tcx>,
                                 analysis: &'a ty::CrateAnalysis,
                                 resolutions: &'a Resolutions,
@@ -441,7 +430,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             crate_name: Some(crate_name),
             arena: Some(arena),
             arenas: Some(arenas),
-            cstore: Some(cstore),
             hir_map: Some(hir_map),
             analysis: Some(analysis),
             resolutions: Some(resolutions),
@@ -1200,7 +1188,8 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
     }
 }
 
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
+pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute])
+                           -> Vec<config::CrateType> {
     // Unconditionally collect crate types from attributes to make them used
     let attr_types: Vec<config::CrateType> =
         attrs.iter()

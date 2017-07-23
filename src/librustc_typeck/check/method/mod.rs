@@ -24,30 +24,28 @@ use syntax_pos::Span;
 
 use rustc::hir;
 
-pub use self::MethodError::*;
-pub use self::CandidateSource::*;
-
-pub use self::suggest::AllTraitsVec;
+pub(crate) use self::MethodError::*;
+pub(crate) use self::CandidateSource::*;
 
 mod confirm;
-pub mod probe;
+pub(crate) mod probe;
 mod suggest;
 
 use self::probe::IsSuggestion;
 
 #[derive(Clone, Copy, Debug)]
-pub struct MethodCallee<'tcx> {
+pub(crate) struct MethodCallee<'tcx> {
     /// Impl method ID, for inherent methods, or trait method ID, otherwise.
-    pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
+    pub(crate) def_id: DefId,
+    pub(crate) substs: &'tcx Substs<'tcx>,
 
     /// Instantiated method signature, i.e. it has been
     /// substituted, normalized, and has had late-bound
     /// lifetimes replaced with inference variables.
-    pub sig: ty::FnSig<'tcx>,
+    pub(crate) sig: ty::FnSig<'tcx>,
 }
 
-pub enum MethodError<'tcx> {
+pub(crate) enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
     NoMatch(NoMatchData<'tcx>),
 
@@ -64,19 +62,19 @@ pub enum MethodError<'tcx> {
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
-pub struct NoMatchData<'tcx> {
-    pub static_candidates: Vec<CandidateSource>,
-    pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
-    pub out_of_scope_traits: Vec<DefId>,
-    pub mode: probe::Mode,
+pub(crate) struct NoMatchData<'tcx> {
+    pub(crate) static_candidates: Vec<CandidateSource>,
+    pub(crate) unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+    pub(crate) out_of_scope_traits: Vec<DefId>,
+    pub(crate) mode: probe::Mode,
 }
 
 impl<'tcx> NoMatchData<'tcx> {
-    pub fn new(static_candidates: Vec<CandidateSource>,
-               unsatisfied_predicates: Vec<TraitRef<'tcx>>,
-               out_of_scope_traits: Vec<DefId>,
-               mode: probe::Mode)
-               -> Self {
+    pub(crate) fn new(static_candidates: Vec<CandidateSource>,
+                      unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+                      out_of_scope_traits: Vec<DefId>,
+                      mode: probe::Mode)
+                      -> Self {
         NoMatchData {
             static_candidates: static_candidates,
             unsatisfied_predicates: unsatisfied_predicates,
@@ -89,7 +87,7 @@ impl<'tcx> NoMatchData<'tcx> {
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum CandidateSource {
+pub(crate) enum CandidateSource {
     ImplSource(DefId),
     TraitSource(// trait id
                 DefId),
@@ -97,13 +95,13 @@ pub enum CandidateSource {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
-    pub fn method_exists(&self,
-                         span: Span,
-                         method_name: ast::Name,
-                         self_ty: ty::Ty<'tcx>,
-                         call_expr_id: ast::NodeId,
-                         allow_private: bool)
-                         -> bool {
+    pub(crate) fn method_exists(&self,
+                                span: Span,
+                                method_name: ast::Name,
+                                self_ty: ty::Ty<'tcx>,
+                                call_expr_id: ast::NodeId,
+                                allow_private: bool)
+                                -> bool {
         let mode = probe::Mode::MethodCall;
         match self.probe_for_name(span, mode, method_name, IsSuggestion(false),
                                   self_ty, call_expr_id) {
@@ -129,13 +127,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
     /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
     /// * `self_expr`:             the self expression (`foo`)
-    pub fn lookup_method(&self,
-                         self_ty: ty::Ty<'tcx>,
-                         segment: &hir::PathSegment,
-                         span: Span,
-                         call_expr: &'gcx hir::Expr,
-                         self_expr: &'gcx hir::Expr)
-                         -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
+    pub(crate) fn lookup_method(&self,
+                                self_ty: ty::Ty<'tcx>,
+                                segment: &hir::PathSegment,
+                                span: Span,
+                                call_expr: &'gcx hir::Expr,
+                                self_expr: &'gcx hir::Expr)
+                                -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                segment.name,
                self_ty,
@@ -172,13 +170,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// FIXME(#18741) -- It seems likely that we can consolidate some of this
     /// code with the other method-lookup code. In particular, the second half
     /// of this method is basically the same as confirmation.
-    pub fn lookup_method_in_trait(&self,
-                                  span: Span,
-                                  m_name: ast::Name,
-                                  trait_def_id: DefId,
-                                  self_ty: ty::Ty<'tcx>,
-                                  opt_input_types: Option<&[ty::Ty<'tcx>]>)
-                                  -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+    pub(crate) fn lookup_method_in_trait(&self,
+                                         span: Span,
+                                         m_name: ast::Name,
+                                         trait_def_id: DefId,
+                                         self_ty: ty::Ty<'tcx>,
+                                         opt_input_types: Option<&[ty::Ty<'tcx>]>)
+                                         -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("lookup_in_trait_adjusted(self_ty={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
@@ -291,12 +289,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn resolve_ufcs(&self,
-                        span: Span,
-                        method_name: ast::Name,
-                        self_ty: ty::Ty<'tcx>,
-                        expr_id: ast::NodeId)
-                        -> Result<Def, MethodError<'tcx>> {
+    pub(crate) fn resolve_ufcs(&self,
+                               span: Span,
+                               method_name: ast::Name,
+                               self_ty: ty::Ty<'tcx>,
+                               expr_id: ast::NodeId)
+                               -> Result<Def, MethodError<'tcx>> {
         let mode = probe::Mode::Path;
         let pick = self.probe_for_name(span, mode, method_name, IsSuggestion(false),
                                        self_ty, expr_id)?;
@@ -315,7 +313,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Find item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    pub fn associated_item(&self, def_id: DefId, item_name: ast::Name)
+    pub(crate) fn associated_item(&self, def_id: DefId, item_name: ast::Name)
                            -> Option<ty::AssociatedItem> {
         let ident = self.tcx.adjust(item_name, def_id, self.body_id).0;
         self.tcx.associated_items(def_id).find(|item| item.name.to_ident() == ident)

@@ -86,12 +86,12 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
-pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                      callee_ty: Ty<'tcx>,
-                                      fn_ty: &FnType,
-                                      llargs: &[ValueRef],
-                                      llresult: ValueRef,
-                                      span: Span) {
+pub(crate) fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+                                             callee_ty: Ty<'tcx>,
+                                             fn_ty: &FnType,
+                                             llargs: &[ValueRef],
+                                             llresult: ValueRef,
+                                             span: Span) {
     let ccx = bcx.ccx;
     let tcx = ccx.tcx();
 

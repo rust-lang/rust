@@ -41,7 +41,7 @@ fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut u64) {
     *offset += align_up_to(size.bytes(), align);
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub(crate) fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

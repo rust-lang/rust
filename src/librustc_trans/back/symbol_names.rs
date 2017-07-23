@@ -360,7 +360,7 @@ impl ItemPathBuffer for SymbolPathBuffer {
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 //
 // returns true if an underscore must be added at the start
-pub fn sanitize(result: &mut String, s: &str) -> bool {
+pub(crate) fn sanitize(result: &mut String, s: &str) -> bool {
     for c in s.chars() {
         match c {
             // Escape these with $ sequences

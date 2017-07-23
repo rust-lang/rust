@@ -12,7 +12,7 @@ use {LinkerFlavor, PanicStrategy};
 use target::{LinkArgs, TargetOptions};
 use std::default::Default;
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();
     args.insert(LinkerFlavor::Gcc, vec![
         // We want to be able to strip as much executable code as possible

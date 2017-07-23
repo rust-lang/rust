@@ -25,34 +25,34 @@ use syntax::ast;
 use syntax_pos::Span;
 use self::cx::Cx;
 
-pub mod cx;
+pub(crate) mod cx;
 
-pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
+pub(crate) use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
 
 #[derive(Clone, Debug)]
-pub struct Block<'tcx> {
-    pub targeted_by_break: bool,
-    pub extent: CodeExtent,
-    pub opt_destruction_extent: Option<CodeExtent>,
-    pub span: Span,
-    pub stmts: Vec<StmtRef<'tcx>>,
-    pub expr: Option<ExprRef<'tcx>>,
+pub(crate) struct Block<'tcx> {
+    pub(crate) targeted_by_break: bool,
+    pub(crate) extent: CodeExtent,
+    pub(crate) opt_destruction_extent: Option<CodeExtent>,
+    pub(crate) span: Span,
+    pub(crate) stmts: Vec<StmtRef<'tcx>>,
+    pub(crate) expr: Option<ExprRef<'tcx>>,
 }
 
 #[derive(Clone, Debug)]
-pub enum StmtRef<'tcx> {
+pub(crate) enum StmtRef<'tcx> {
     Mirror(Box<Stmt<'tcx>>),
 }
 
 #[derive(Clone, Debug)]
-pub struct Stmt<'tcx> {
-    pub span: Span,
-    pub kind: StmtKind<'tcx>,
-    pub opt_destruction_extent: Option<CodeExtent>,
+pub(crate) struct Stmt<'tcx> {
+    pub(crate) span: Span,
+    pub(crate) kind: StmtKind<'tcx>,
+    pub(crate) opt_destruction_extent: Option<CodeExtent>,
 }
 
 #[derive(Clone, Debug)]
-pub enum StmtKind<'tcx> {
+pub(crate) enum StmtKind<'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
         scope: CodeExtent,
@@ -93,23 +93,23 @@ pub enum StmtKind<'tcx> {
 /// example, method calls and overloaded operators are absent: they are
 /// expected to be converted into `Expr::Call` instances.
 #[derive(Clone, Debug)]
-pub struct Expr<'tcx> {
+pub(crate) struct Expr<'tcx> {
     /// type of this expression
-    pub ty: Ty<'tcx>,
+    pub(crate) ty: Ty<'tcx>,
 
     /// lifetime of this expression if it should be spilled into a
     /// temporary; should be None only if in a constant context
-    pub temp_lifetime: Option<CodeExtent>,
+    pub(crate) temp_lifetime: Option<CodeExtent>,
 
     /// span of the expression in the source
-    pub span: Span,
+    pub(crate) span: Span,
 
     /// kind of expression
-    pub kind: ExprKind<'tcx>,
+    pub(crate) kind: ExprKind<'tcx>,
 }
 
 #[derive(Clone, Debug)]
-pub enum ExprKind<'tcx> {
+pub(crate) enum ExprKind<'tcx> {
     Scope {
         extent: CodeExtent,
         value: ExprRef<'tcx>,
@@ -251,32 +251,32 @@ pub enum ExprKind<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub enum ExprRef<'tcx> {
+pub(crate) enum ExprRef<'tcx> {
     Hair(&'tcx hir::Expr),
     Mirror(Box<Expr<'tcx>>),
 }
 
 #[derive(Clone, Debug)]
-pub struct FieldExprRef<'tcx> {
-    pub name: Field,
-    pub expr: ExprRef<'tcx>,
+pub(crate) struct FieldExprRef<'tcx> {
+    pub(crate) name: Field,
+    pub(crate) expr: ExprRef<'tcx>,
 }
 
 #[derive(Clone, Debug)]
-pub struct FruInfo<'tcx> {
-    pub base: ExprRef<'tcx>,
-    pub field_types: Vec<Ty<'tcx>>
+pub(crate) struct FruInfo<'tcx> {
+    pub(crate) base: ExprRef<'tcx>,
+    pub(crate) field_types: Vec<Ty<'tcx>>
 }
 
 #[derive(Clone, Debug)]
-pub struct Arm<'tcx> {
-    pub patterns: Vec<Pattern<'tcx>>,
-    pub guard: Option<ExprRef<'tcx>>,
-    pub body: ExprRef<'tcx>,
+pub(crate) struct Arm<'tcx> {
+    pub(crate) patterns: Vec<Pattern<'tcx>>,
+    pub(crate) guard: Option<ExprRef<'tcx>>,
+    pub(crate) body: ExprRef<'tcx>,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum LogicalOp {
+pub(crate) enum LogicalOp {
     And,
     Or,
 }
@@ -296,7 +296,7 @@ pub enum LogicalOp {
 /// mirrored.  This allows a single AST node from the compiler to
 /// expand into one or more Hair nodes, which lets the Hair nodes be
 /// simpler.
-pub trait Mirror<'tcx> {
+pub(crate) trait Mirror<'tcx> {
     type Output;
 
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Self::Output;

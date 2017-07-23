@@ -86,14 +86,14 @@ use syntax::ast;
 
 use mir::lvalue::Alignment;
 
-pub struct StatRecorder<'a, 'tcx: 'a> {
+pub(crate) struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
     name: Option<String>,
     istart: usize,
 }
 
 impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
-    pub fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
+    pub(crate) fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
         let istart = ccx.stats().n_llvm_insns.get();
         StatRecorder {
             ccx: ccx,
@@ -116,17 +116,17 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-pub fn get_meta(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
+pub(crate) fn get_meta(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
     bcx.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
 }
 
-pub fn get_dataptr(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
+pub(crate) fn get_dataptr(bcx: &Builder, fat_ptr: ValueRef) -> ValueRef {
     bcx.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
 }
 
-pub fn bin_op_to_icmp_predicate(op: hir::BinOp_,
-                                signed: bool)
-                                -> llvm::IntPredicate {
+pub(crate) fn bin_op_to_icmp_predicate(op: hir::BinOp_,
+                                       signed: bool)
+                                       -> llvm::IntPredicate {
     match op {
         hir::BiEq => llvm::IntEQ,
         hir::BiNe => llvm::IntNE,
@@ -142,7 +142,7 @@ pub fn bin_op_to_icmp_predicate(op: hir::BinOp_,
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
+pub(crate) fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
     match op {
         hir::BiEq => llvm::RealOEQ,
         hir::BiNe => llvm::RealUNE,
@@ -158,7 +158,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'a, 'tcx>(
+pub(crate) fn compare_simd_types<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef,
@@ -190,11 +190,11 @@ pub fn compare_simd_types<'a, 'tcx>(
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be drived
 /// from the old one.
-pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
-                                source: Ty<'tcx>,
-                                target: Ty<'tcx>,
-                                old_info: Option<ValueRef>)
-                                -> ValueRef {
+pub(crate) fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
+                                       source: Ty<'tcx>,
+                                       target: Ty<'tcx>,
+                                       old_info: Option<ValueRef>)
+                                       -> ValueRef {
     let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
@@ -215,7 +215,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'a, 'tcx>(
+pub(crate) fn unsize_thin_ptr<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     src: ValueRef,
     src_ty: Ty<'tcx>,
@@ -245,9 +245,9 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                     src: &LvalueRef<'tcx>,
-                                     dst: &LvalueRef<'tcx>) {
+pub(crate) fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+                                            src: &LvalueRef<'tcx>,
+                                            dst: &LvalueRef<'tcx>) {
     let src_ty = src.ty.to_ty(bcx.tcx());
     let dst_ty = dst.ty.to_ty(bcx.tcx());
     let coerce_ptr = || {
@@ -311,13 +311,13 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     }
 }
 
-pub fn cast_shift_expr_rhs(
+pub(crate) fn cast_shift_expr_rhs(
     cx: &Builder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
-pub fn cast_shift_const_rhs(op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+pub(crate) fn cast_shift_const_rhs(op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op,
                    lhs,
                    rhs,
@@ -365,11 +365,11 @@ fn cast_shift_rhs<F, G>(op: hir::BinOp_,
 /// This is only true for MSVC targets, and even then the 64-bit MSVC target
 /// currently uses SEH-ish unwinding with DWARF info tables to the side (same as
 /// 64-bit MinGW) instead of "full SEH".
-pub fn wants_msvc_seh(sess: &Session) -> bool {
+pub(crate) fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
+pub(crate) fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
     let assume_intrinsic = b.ccx.get_intrinsic("llvm.assume");
     b.call(assume_intrinsic, &[val], None);
 }
@@ -377,8 +377,8 @@ pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
-pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
-                         alignment: Alignment, t: Ty<'tcx>) -> ValueRef {
+pub(crate) fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
+                                alignment: Alignment, t: Ty<'tcx>) -> ValueRef {
     let ccx = b.ccx;
     if type_is_zero_size(ccx, t) {
         return C_undef(type_of::type_of(ccx, t));
@@ -415,8 +415,8 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef,
-                          dst_align: Alignment, t: Ty<'tcx>) {
+pub(crate) fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef,
+                                 dst_align: Alignment, t: Ty<'tcx>) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.ccx, t) {
@@ -428,18 +428,18 @@ pub fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef,
     }
 }
 
-pub fn store_fat_ptr<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
-                               data: ValueRef,
-                               extra: ValueRef,
-                               dst: ValueRef,
-                               dst_align: Alignment,
-                               _ty: Ty<'tcx>) {
+pub(crate) fn store_fat_ptr<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
+                                      data: ValueRef,
+                                      extra: ValueRef,
+                                      dst: ValueRef,
+                                      dst_align: Alignment,
+                                      _ty: Ty<'tcx>) {
     // FIXME: emit metadata
     cx.store(data, get_dataptr(cx, dst), dst_align.to_align());
     cx.store(extra, get_meta(cx, dst), dst_align.to_align());
 }
 
-pub fn load_fat_ptr<'a, 'tcx>(
+pub(crate) fn load_fat_ptr<'a, 'tcx>(
     b: &Builder<'a, 'tcx>, src: ValueRef, alignment: Alignment, t: Ty<'tcx>
 ) -> (ValueRef, ValueRef) {
     let ptr = get_dataptr(b, src);
@@ -462,7 +462,7 @@ pub fn load_fat_ptr<'a, 'tcx>(
     (ptr, meta)
 }
 
-pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
+pub(crate) fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
     if val_ty(val) == Type::i1(bcx.ccx) {
         bcx.zext(val, Type::i8(bcx.ccx))
     } else {
@@ -470,7 +470,7 @@ pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn to_immediate(bcx: &Builder, val: ValueRef, ty: Ty) -> ValueRef {
+pub(crate) fn to_immediate(bcx: &Builder, val: ValueRef, ty: Ty) -> ValueRef {
     if ty.is_bool() {
         bcx.trunc(val, Type::i1(bcx.ccx))
     } else {
@@ -478,7 +478,7 @@ pub fn to_immediate(bcx: &Builder, val: ValueRef, ty: Ty) -> ValueRef {
     }
 }
 
-pub enum Lifetime { Start, End }
+pub(crate) enum Lifetime { Start, End }
 
 impl Lifetime {
     // If LLVM lifetime intrinsic support is enabled (i.e. optimizations
@@ -489,7 +489,7 @@ impl Lifetime {
     //
     // If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
     // off) or `ptr` is zero-sized, then no-op (does not call `emit`).
-    pub fn call(self, b: &Builder, ptr: ValueRef) {
+    pub(crate) fn call(self, b: &Builder, ptr: ValueRef) {
         if b.ccx.sess().opts.optimize == config::OptLevel::No {
             return;
         }
@@ -509,11 +509,11 @@ impl Lifetime {
     }
 }
 
-pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
-                               dst: ValueRef,
-                               src: ValueRef,
-                               n_bytes: ValueRef,
-                               align: u32) {
+pub(crate) fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
+                                    dst: ValueRef,
+                                    src: ValueRef,
+                                    n_bytes: ValueRef,
+                                    align: u32) {
     let ccx = b.ccx;
     let ptr_width = &ccx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
@@ -526,7 +526,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'a, 'tcx>(
+pub(crate) fn memcpy_ty<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     dst: ValueRef,
     src: ValueRef,
@@ -544,12 +544,12 @@ pub fn memcpy_ty<'a, 'tcx>(
     call_memcpy(bcx, dst, src, C_uint(ccx, size), align);
 }
 
-pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
-                             ptr: ValueRef,
-                             fill_byte: ValueRef,
-                             size: ValueRef,
-                             align: ValueRef,
-                             volatile: bool) -> ValueRef {
+pub(crate) fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
+                                    ptr: ValueRef,
+                                    fill_byte: ValueRef,
+                                    size: ValueRef,
+                                    align: ValueRef,
+                                    volatile: bool) -> ValueRef {
     let ptr_width = &b.ccx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
@@ -557,7 +557,7 @@ pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
-pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
+pub(crate) fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
     let _s = if ccx.sess().trans_stats() {
         let mut instance_name = String::new();
         DefPathBasedNames::new(ccx.tcx(), true, true)
@@ -608,7 +608,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
-pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
+pub(crate) fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
     // Rust code in the first place but whitelist them anyway and trust that
@@ -633,9 +633,9 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     }
 }
 
-pub fn set_link_section(ccx: &CrateContext,
-                        llval: ValueRef,
-                        attrs: &[ast::Attribute]) {
+pub(crate) fn set_link_section(ccx: &CrateContext,
+                               llval: ValueRef,
+                               attrs: &[ast::Attribute]) {
     if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
         if contains_null(&sect.as_str()) {
             ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
@@ -649,7 +649,7 @@ pub fn set_link_section(ccx: &CrateContext,
 
 /// Create the `main` function which will initialise the rust runtime and call
 /// users main function.
-pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
+pub(crate) fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
         Some((id, span)) => {
             (ccx.tcx().hir.local_def_id(id), span)
@@ -876,7 +876,7 @@ fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
+pub(crate) fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
     reachable.iter().cloned().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two

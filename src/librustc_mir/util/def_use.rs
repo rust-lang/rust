@@ -16,29 +16,29 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use std::marker::PhantomData;
 use std::mem;
 
-pub struct DefUseAnalysis<'tcx> {
+pub(crate) struct DefUseAnalysis<'tcx> {
     info: IndexVec<Local, Info<'tcx>>,
 }
 
 #[derive(Clone)]
-pub struct Info<'tcx> {
-    pub defs_and_uses: Vec<Use<'tcx>>,
+pub(crate) struct Info<'tcx> {
+    pub(crate) defs_and_uses: Vec<Use<'tcx>>,
 }
 
 #[derive(Clone)]
-pub struct Use<'tcx> {
-    pub context: LvalueContext<'tcx>,
-    pub location: Location,
+pub(crate) struct Use<'tcx> {
+    pub(crate) context: LvalueContext<'tcx>,
+    pub(crate) location: Location,
 }
 
 impl<'tcx> DefUseAnalysis<'tcx> {
-    pub fn new(mir: &Mir<'tcx>) -> DefUseAnalysis<'tcx> {
+    pub(crate) fn new(mir: &Mir<'tcx>) -> DefUseAnalysis<'tcx> {
         DefUseAnalysis {
             info: IndexVec::from_elem_n(Info::new(), mir.local_decls.len()),
         }
     }
 
-    pub fn analyze(&mut self, mir: &Mir<'tcx>) {
+    pub(crate) fn analyze(&mut self, mir: &Mir<'tcx>) {
         let mut finder = DefUseFinder {
             info: mem::replace(&mut self.info, IndexVec::new()),
         };
@@ -46,12 +46,8 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         self.info = finder.info
     }
 
-    pub fn local_info(&self, local: Local) -> &Info<'tcx> {
+    pub(crate) fn local_info(&self, local: Local) -> &Info<'tcx> {
         &self.info[local]
-    }
-
-    pub fn local_info_mut(&mut self, local: Local) -> &mut Info<'tcx> {
-        &mut self.info[local]
     }
 
     fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'tcx>, mut callback: F)
@@ -66,10 +62,10 @@ impl<'tcx> DefUseAnalysis<'tcx> {
     }
 
     /// FIXME(pcwalton): This should update the def-use chains.
-    pub fn replace_all_defs_and_uses_with(&self,
-                                          local: Local,
-                                          mir: &mut Mir<'tcx>,
-                                          new_lvalue: Lvalue<'tcx>) {
+    pub(crate) fn replace_all_defs_and_uses_with(&self,
+                                                 local: Local,
+                                                 mir: &mut Mir<'tcx>,
+                                                 new_lvalue: Lvalue<'tcx>) {
         self.mutate_defs_and_uses(local, mir, |lvalue, _, _| *lvalue = new_lvalue.clone())
     }
 }
@@ -112,17 +108,17 @@ impl<'tcx> Info<'tcx> {
         }
     }
 
-    pub fn def_count(&self) -> usize {
+    pub(crate) fn def_count(&self) -> usize {
         self.defs_and_uses.iter().filter(|lvalue_use| lvalue_use.context.is_mutating_use()).count()
     }
 
-    pub fn def_count_not_including_drop(&self) -> usize {
+    pub(crate) fn def_count_not_including_drop(&self) -> usize {
         self.defs_and_uses.iter().filter(|lvalue_use| {
             lvalue_use.context.is_mutating_use() && !lvalue_use.context.is_drop()
         }).count()
     }
 
-    pub fn use_count(&self) -> usize {
+    pub(crate) fn use_count(&self) -> usize {
         self.defs_and_uses.iter().filter(|lvalue_use| {
             lvalue_use.context.is_nonmutating_use()
         }).count()

@@ -35,7 +35,7 @@ struct GatherMoveInfo<'tcx> {
 
 /// Represents the kind of pattern
 #[derive(Debug, Clone, Copy)]
-pub enum PatternSource<'tcx> {
+pub(crate) enum PatternSource<'tcx> {
     MatchExpr(&'tcx Expr),
     LetDecl(&'tcx Local),
     Other,
@@ -86,20 +86,20 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
     }
 }
 
-pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                             move_data: &MoveData<'tcx>,
-                             var_id: ast::NodeId,
-                             var_ty: Ty<'tcx>) {
+pub(crate) fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                    move_data: &MoveData<'tcx>,
+                                    var_id: ast::NodeId,
+                                    var_ty: Ty<'tcx>) {
     let loan_path = Rc::new(LoanPath::new(LpVar(var_id), var_ty));
     move_data.add_move(bccx.tcx, loan_path, var_id, Declared);
 }
 
-pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                       move_data: &MoveData<'tcx>,
-                                       move_error_collector: &mut MoveErrorCollector<'tcx>,
-                                       move_expr_id: ast::NodeId,
-                                       cmt: mc::cmt<'tcx>,
-                                       move_reason: euv::MoveReason) {
+pub(crate) fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                              move_data: &MoveData<'tcx>,
+                                              move_error_collector: &mut MoveErrorCollector<'tcx>,
+                                              move_expr_id: ast::NodeId,
+                                              cmt: mc::cmt<'tcx>,
+                                              move_reason: euv::MoveReason) {
     let kind = match move_reason {
         euv::DirectRefMove | euv::PatBindingMove => MoveExpr,
         euv::CaptureMove => Captured
@@ -113,42 +113,11 @@ pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     gather_move(bccx, move_data, move_error_collector, move_info);
 }
 
-pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                      move_data: &MoveData<'tcx>,
-                                      _move_error_collector: &mut MoveErrorCollector<'tcx>,
-                                      move_pat: &hir::Pat,
-                                      cmt: mc::cmt<'tcx>,
-                                      mode: euv::MatchMode) {
-    let tcx = bccx.tcx;
-    debug!("gather_match_variant(move_pat={}, cmt={:?}, mode={:?})",
-           move_pat.id, cmt, mode);
-
-    let opt_lp = opt_loan_path(&cmt);
-    match opt_lp {
-        Some(lp) => {
-            match lp.kind {
-                LpDowncast(ref base_lp, _) =>
-                    move_data.add_variant_match(
-                        tcx, lp.clone(), move_pat.id, base_lp.clone(), mode),
-                _ => bug!("should only call gather_match_variant \
-                           for cat_downcast cmt"),
-            }
-        }
-        None => {
-            // We get None when input to match is non-path (e.g.
-            // temporary result like a function call). Since no
-            // loan-path is being matched, no need to record a
-            // downcast.
-            return;
-        }
-    }
-}
-
-pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                      move_data: &MoveData<'tcx>,
-                                      move_error_collector: &mut MoveErrorCollector<'tcx>,
-                                      move_pat: &hir::Pat,
-                                      cmt: mc::cmt<'tcx>) {
+pub(crate) fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                             move_data: &MoveData<'tcx>,
+                                             move_error_collector: &mut MoveErrorCollector<'tcx>,
+                                             move_pat: &hir::Pat,
+                                             cmt: mc::cmt<'tcx>) {
     let source = get_pattern_source(bccx.tcx,move_pat);
     let pat_span_path_opt = match move_pat.node {
         PatKind::Binding(_, _, ref path1, _) => {
@@ -202,13 +171,13 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     }
 }
 
-pub fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                   move_data: &MoveData<'tcx>,
-                                   assignment_id: ast::NodeId,
-                                   assignment_span: Span,
-                                   assignee_loan_path: Rc<LoanPath<'tcx>>,
-                                   assignee_id: ast::NodeId,
-                                   mode: euv::MutateMode) {
+pub(crate) fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                          move_data: &MoveData<'tcx>,
+                                          assignment_id: ast::NodeId,
+                                          assignment_span: Span,
+                                          assignee_loan_path: Rc<LoanPath<'tcx>>,
+                                          assignee_id: ast::NodeId,
+                                          mode: euv::MutateMode) {
     move_data.add_assignment(bccx.tcx,
                              assignee_loan_path,
                              assignment_id,

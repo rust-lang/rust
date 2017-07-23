@@ -264,8 +264,8 @@ fn dump_graph(tcx: TyCtxt) {
     }
 }
 
-pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>,
-                                Vec<(&'q DepNode, &'q DepNode)>);
+pub(crate) struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>,
+                                       Vec<(&'q DepNode, &'q DepNode)>);
 
 impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
     type Node = &'q DepNode;

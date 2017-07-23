@@ -32,7 +32,7 @@ use super::work_product;
 
 // The key is a dirty node. The value is **some** base-input that we
 // can blame it on.
-pub type DirtyNodes = FxHashMap<DepNodeIndex, DepNodeIndex>;
+pub(crate) type DirtyNodes = FxHashMap<DepNodeIndex, DepNodeIndex>;
 
 /// If we are in incremental mode, and a previous dep-graph exists,
 /// then load up those nodes/edges that are still valid into the
@@ -135,11 +135,11 @@ fn does_still_exist(tcx: TyCtxt, dep_node: &DepNode) -> bool {
 
 /// Decode the dep graph and load the edges/nodes that are still clean
 /// into `tcx.dep_graph`.
-pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  incremental_hashes_map: &IncrementalHashesMap,
-                                  dep_graph_data: &[u8],
-                                  work_products_data: &[u8])
-                                  -> Result<(), String>
+pub(crate) fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                         incremental_hashes_map: &IncrementalHashesMap,
+                                         dep_graph_data: &[u8],
+                                         work_products_data: &[u8])
+                                         -> Result<(), String>
 {
     // Decode the list of work_products
     let mut work_product_decoder = Decoder::new(work_products_data, 0);

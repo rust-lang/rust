@@ -17,30 +17,30 @@ use common::*;
 
 use type_::Type;
 
-pub type llbits = u64;
-pub type llsize = u64;
-pub type llalign = u32;
+pub(crate) type llbits = u64;
+pub(crate) type llsize = u64;
+pub(crate) type llalign = u32;
 
 // ______________________________________________________________________
 // compute sizeof / alignof
 
 // Returns the number of bytes between successive elements of type T in an
 // array of T. This is the "ABI" size. It includes any ABI-mandated padding.
-pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> llsize {
+pub(crate) fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> llsize {
     unsafe {
         return llvm::LLVMABISizeOfType(cx.td(), ty.to_ref());
     }
 }
 
 /// Returns the "real" size of the type in bits.
-pub fn llbitsize_of_real(cx: &CrateContext, ty: Type) -> llbits {
+pub(crate) fn llbitsize_of_real(cx: &CrateContext, ty: Type) -> llbits {
     unsafe {
         llvm::LLVMSizeOfTypeInBits(cx.td(), ty.to_ref())
     }
 }
 
 /// Returns the size of the type as an LLVM constant integer value.
-pub fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
+pub(crate) fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
     // Once upon a time, this called LLVMSizeOf, which does a
     // getelementptr(1) on a null pointer and casts to an int, in
     // order to obtain the type size as a value without requiring the
@@ -55,7 +55,7 @@ pub fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
 // The preferred alignment may be larger than the alignment used when
 // packing the type into structs. This will be used for things like
 // allocations inside a stack frame, which LLVM has a free hand in.
-pub fn llalign_of_pref(cx: &CrateContext, ty: Type) -> llalign {
+pub(crate) fn llalign_of_pref(cx: &CrateContext, ty: Type) -> llalign {
     unsafe {
         return llvm::LLVMPreferredAlignmentOfType(cx.td(), ty.to_ref());
     }
@@ -64,13 +64,13 @@ pub fn llalign_of_pref(cx: &CrateContext, ty: Type) -> llalign {
 // Returns the minimum alignment of a type required by the platform.
 // This is the alignment that will be used for struct fields, arrays,
 // and similar ABI-mandated things.
-pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> llalign {
+pub(crate) fn llalign_of_min(cx: &CrateContext, ty: Type) -> llalign {
     unsafe {
         return llvm::LLVMABIAlignmentOfType(cx.td(), ty.to_ref());
     }
 }
 
-pub fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: usize) -> u64 {
+pub(crate) fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: usize) -> u64 {
     unsafe {
         return llvm::LLVMOffsetOfElement(cx.td(),
                                          struct_ty.to_ref(),

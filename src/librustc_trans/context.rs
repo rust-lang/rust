@@ -27,10 +27,9 @@ use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
-use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -39,27 +38,26 @@ use std::iter;
 use std::str;
 use std::sync::Arc;
 use std::marker::PhantomData;
-use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::DUMMY_SP;
 use abi::Abi;
 
 #[derive(Clone, Default)]
-pub struct Stats {
-    pub n_glues_created: Cell<usize>,
-    pub n_null_glues: Cell<usize>,
-    pub n_real_glues: Cell<usize>,
-    pub n_fns: Cell<usize>,
-    pub n_inlines: Cell<usize>,
-    pub n_closures: Cell<usize>,
-    pub n_llvm_insns: Cell<usize>,
-    pub llvm_insns: RefCell<FxHashMap<String, usize>>,
+pub(crate) struct Stats {
+    pub(crate) n_glues_created: Cell<usize>,
+    pub(crate) n_null_glues: Cell<usize>,
+    pub(crate) n_real_glues: Cell<usize>,
+    pub(crate) n_fns: Cell<usize>,
+    pub(crate) n_inlines: Cell<usize>,
+    pub(crate) n_closures: Cell<usize>,
+    pub(crate) n_llvm_insns: Cell<usize>,
+    pub(crate) llvm_insns: RefCell<FxHashMap<String, usize>>,
     // (ident, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(String, usize)> >,
+    pub(crate) fn_stats: RefCell<Vec<(String, usize)> >,
 }
 
 impl Stats {
-    pub fn extend(&mut self, stats: Stats) {
+    pub(crate) fn extend(&mut self, stats: Stats) {
         self.n_glues_created.set(self.n_glues_created.get() + stats.n_glues_created.get());
         self.n_null_glues.set(self.n_null_glues.get() + stats.n_null_glues.get());
         self.n_real_glues.set(self.n_real_glues.get() + stats.n_real_glues.get());
@@ -78,7 +76,7 @@ impl Stats {
 /// per crate.  The data here is shared between all compilation units of the
 /// crate, so it must not contain references to any LLVM data structures
 /// (aside from metadata-related ones).
-pub struct SharedCrateContext<'a, 'tcx: 'a> {
+pub(crate) struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_overflow: bool,
 
@@ -91,7 +89,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 /// per compilation unit.  Each one has its own LLVM `ContextRef` so that
 /// several compilation units may be optimized in parallel.  All other LLVM
 /// data structures in the `LocalCrateContext` are tied to that `ContextRef`.
-pub struct LocalCrateContext<'a, 'tcx: 'a> {
+pub(crate) struct LocalCrateContext<'a, 'tcx: 'a> {
     llmod: ModuleRef,
     llcx: ContextRef,
     stats: Stats,
@@ -124,12 +122,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     /// Cache of emitted const globals (value -> global)
     const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
 
-    /// Cache of emitted const values
-    const_values: RefCell<FxHashMap<(ast::NodeId, &'tcx Substs<'tcx>), ValueRef>>,
-
-    /// Cache of external const values
-    extern_const_values: RefCell<DefIdMap<ValueRef>>,
-
     /// Mapping from static definitions to their DefId's.
     statics: RefCell<FxHashMap<ValueRef, DefId>>,
 
@@ -144,7 +136,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     used_statics: RefCell<Vec<ValueRef>>,
 
     lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
-    type_hashcodes: RefCell<FxHashMap<Ty<'tcx>, String>>,
     int_type: Type,
     opaque_vec_type: Type,
     str_slice_type: Type,
@@ -157,9 +148,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
 
     intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
 
-    /// Depth of the current type-of computation - used to bail out
-    type_of_depth: Cell<usize>,
-
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
 
@@ -170,15 +158,15 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
 /// A CrateContext value binds together one LocalCrateContext with the
 /// SharedCrateContext. It exists as a convenience wrapper, so we don't have to
 /// pass around (SharedCrateContext, LocalCrateContext) tuples all over trans.
-pub struct CrateContext<'a, 'tcx: 'a> {
+pub(crate) struct CrateContext<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
     local_ccx: &'a LocalCrateContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
-    pub fn new(shared: &'a SharedCrateContext<'a, 'tcx>,
-               local_ccx: &'a LocalCrateContext<'a, 'tcx>)
-               -> Self {
+    pub(crate) fn new(shared: &'a SharedCrateContext<'a, 'tcx>,
+                      local_ccx: &'a LocalCrateContext<'a, 'tcx>)
+                      -> Self {
         CrateContext { shared, local_ccx }
     }
 }
@@ -186,7 +174,7 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
 impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
 }
 
-pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
+pub(crate) fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
     let reloc_model_arg = match sess.opts.cg.relocation_model {
         Some(ref s) => &s[..],
         None => &sess.target.target.options.relocation_model[..],
@@ -212,11 +200,12 @@ fn is_any_library(sess: &Session) -> bool {
     })
 }
 
-pub fn is_pie_binary(sess: &Session) -> bool {
+pub(crate) fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
-pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
+pub(crate) unsafe fn create_context_and_module(sess: &Session, mod_name: &str)
+                                               -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
@@ -273,10 +262,10 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 }
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
-    pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               check_overflow: bool,
-               output_filenames: &'b OutputFilenames)
-               -> SharedCrateContext<'b, 'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
+                      check_overflow: bool,
+                      output_filenames: &'b OutputFilenames)
+                      -> SharedCrateContext<'b, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -330,45 +319,45 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         }
     }
 
-    pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
         ty.needs_drop(self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
     }
 
-    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
         ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
     }
 
-    pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
+    pub(crate) fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         ty.is_freeze(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
     }
 
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub(crate) fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
 
-    pub fn sess<'a>(&'a self) -> &'a Session {
+    pub(crate) fn sess<'a>(&'a self) -> &'a Session {
         &self.tcx.sess
     }
 
-    pub fn dep_graph<'a>(&'a self) -> &'a DepGraph {
+    pub(crate) fn dep_graph<'a>(&'a self) -> &'a DepGraph {
         &self.tcx.dep_graph
     }
 
-    pub fn use_dll_storage_attrs(&self) -> bool {
+    pub(crate) fn use_dll_storage_attrs(&self) -> bool {
         self.use_dll_storage_attrs
     }
 
-    pub fn output_filenames(&self) -> &OutputFilenames {
+    pub(crate) fn output_filenames(&self) -> &OutputFilenames {
         self.output_filenames
     }
 }
 
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
-    pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: CodegenUnit<'tcx>,
-               crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
-               exported_symbols: Arc<ExportedSymbols>,)
-               -> LocalCrateContext<'a, 'tcx> {
+    pub(crate) fn new(shared: &SharedCrateContext<'a, 'tcx>,
+                      codegen_unit: CodegenUnit<'tcx>,
+                      crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
+                      exported_symbols: Arc<ExportedSymbols>,)
+                      -> LocalCrateContext<'a, 'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
             //
@@ -406,13 +395,10 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 const_cstr_cache: RefCell::new(FxHashMap()),
                 const_unsized: RefCell::new(FxHashMap()),
                 const_globals: RefCell::new(FxHashMap()),
-                const_values: RefCell::new(FxHashMap()),
-                extern_const_values: RefCell::new(DefIdMap()),
                 statics: RefCell::new(FxHashMap()),
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
-                type_hashcodes: RefCell::new(FxHashMap()),
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 str_slice_type: Type::from_ref(ptr::null_mut()),
@@ -421,7 +407,6 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 eh_unwind_resume: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
-                type_of_depth: Cell::new(0),
                 local_gen_sym_counter: Cell::new(0),
                 placeholder: PhantomData,
             };
@@ -467,13 +452,13 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
         }
     }
 
-    pub fn into_stats(self) -> Stats {
+    pub(crate) fn into_stats(self) -> Stats {
         self.stats
     }
 }
 
 impl<'b, 'tcx> CrateContext<'b, 'tcx> {
-    pub fn shared(&self) -> &'b SharedCrateContext<'b, 'tcx> {
+    pub(crate) fn shared(&self) -> &'b SharedCrateContext<'b, 'tcx> {
         self.shared
     }
 
@@ -481,15 +466,15 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local_ccx
     }
 
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub(crate) fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.shared.tcx
     }
 
-    pub fn sess<'a>(&'a self) -> &'a Session {
+    pub(crate) fn sess<'a>(&'a self) -> &'a Session {
         &self.shared.tcx.sess
     }
 
-    pub fn get_intrinsic(&self, key: &str) -> ValueRef {
+    pub(crate) fn get_intrinsic(&self, key: &str) -> ValueRef {
         if let Some(v) = self.intrinsics().borrow().get(key).cloned() {
             return v;
         }
@@ -499,102 +484,86 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
     }
 
-    pub fn llmod(&self) -> ModuleRef {
+    pub(crate) fn llmod(&self) -> ModuleRef {
         self.local().llmod
     }
 
-    pub fn llcx(&self) -> ContextRef {
+    pub(crate) fn llcx(&self) -> ContextRef {
         self.local().llcx
     }
 
-    pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
+    pub(crate) fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
         &self.local().codegen_unit
     }
 
-    pub fn crate_trans_items(&self) -> &FxHashSet<TransItem<'tcx>> {
+    pub(crate) fn crate_trans_items(&self) -> &FxHashSet<TransItem<'tcx>> {
         &self.local().crate_trans_items
     }
 
-    pub fn exported_symbols(&self) -> &ExportedSymbols {
+    pub(crate) fn exported_symbols(&self) -> &ExportedSymbols {
         &self.local().exported_symbols
     }
 
-    pub fn td(&self) -> llvm::TargetDataRef {
+    pub(crate) fn td(&self) -> llvm::TargetDataRef {
         unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
     }
 
-    pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
+    pub(crate) fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
         &self.local().instances
     }
 
-    pub fn vtables<'a>(&'a self)
+    pub(crate) fn vtables<'a>(&'a self)
         -> &'a RefCell<FxHashMap<(ty::Ty<'tcx>,
                                   Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>> {
         &self.local().vtables
     }
 
-    pub fn const_cstr_cache<'a>(&'a self) -> &'a RefCell<FxHashMap<InternedString, ValueRef>> {
+    pub(crate) fn const_cstr_cache<'a>(&'a self)
+                                       -> &'a RefCell<FxHashMap<InternedString, ValueRef>> {
         &self.local().const_cstr_cache
     }
 
-    pub fn const_unsized<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
+    pub(crate) fn const_unsized<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
         &self.local().const_unsized
     }
 
-    pub fn const_globals<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
+    pub(crate) fn const_globals<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
         &self.local().const_globals
     }
 
-    pub fn const_values<'a>(&'a self) -> &'a RefCell<FxHashMap<(ast::NodeId, &'tcx Substs<'tcx>),
-                                                               ValueRef>> {
-        &self.local().const_values
-    }
-
-    pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
-        &self.local().extern_const_values
-    }
-
-    pub fn statics<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, DefId>> {
+    pub(crate) fn statics<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, DefId>> {
         &self.local().statics
     }
 
-    pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
+    pub(crate) fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
         &self.local().statics_to_rauw
     }
 
-    pub fn used_statics<'a>(&'a self) -> &'a RefCell<Vec<ValueRef>> {
+    pub(crate) fn used_statics<'a>(&'a self) -> &'a RefCell<Vec<ValueRef>> {
         &self.local().used_statics
     }
 
-    pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
+    pub(crate) fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
         &self.local().lltypes
     }
 
-    pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, String>> {
-        &self.local().type_hashcodes
-    }
-
-    pub fn stats<'a>(&'a self) -> &'a Stats {
+    pub(crate) fn stats<'a>(&'a self) -> &'a Stats {
         &self.local().stats
     }
 
-    pub fn int_type(&self) -> Type {
+    pub(crate) fn int_type(&self) -> Type {
         self.local().int_type
     }
 
-    pub fn opaque_vec_type(&self) -> Type {
-        self.local().opaque_vec_type
-    }
-
-    pub fn str_slice_type(&self) -> Type {
+    pub(crate) fn str_slice_type(&self) -> Type {
         self.local().str_slice_type
     }
 
-    pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext<'tcx>> {
+    pub(crate) fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext<'tcx>> {
         &self.local().dbg_cx
     }
 
-    pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
+    pub(crate) fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local().rust_try_fn
     }
 
@@ -602,44 +571,17 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().intrinsics
     }
 
-    pub fn obj_size_bound(&self) -> u64 {
-        self.tcx().data_layout.obj_size_bound()
-    }
-
-    pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
-        self.sess().fatal(
-            &format!("the type `{:?}` is too big for the current architecture",
-                    obj))
-    }
-
-    pub fn enter_type_of(&self, ty: Ty<'tcx>) -> TypeOfDepthLock<'b, 'tcx> {
-        let current_depth = self.local().type_of_depth.get();
-        debug!("enter_type_of({:?}) at depth {:?}", ty, current_depth);
-        if current_depth > self.sess().recursion_limit.get() {
-            self.sess().fatal(
-                &format!("overflow representing the type `{}`", ty))
-        }
-        self.local().type_of_depth.set(current_depth + 1);
-        TypeOfDepthLock(self.local())
-    }
-
-    pub fn check_overflow(&self) -> bool {
+    pub(crate) fn check_overflow(&self) -> bool {
         self.shared.check_overflow
     }
 
-    pub fn use_dll_storage_attrs(&self) -> bool {
+    pub(crate) fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
-    }
-
-    /// Given the def-id of some item that has no type parameters, make
-    /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        self.tcx().empty_substs_for_def_id(item_def_id)
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
-    pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
+    pub(crate) fn generate_local_symbol_name(&self, prefix: &str) -> String {
         let idx = self.local().local_gen_sym_counter.get();
         self.local().local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
@@ -651,7 +593,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         name
     }
 
-    pub fn eh_personality(&self) -> ValueRef {
+    pub(crate) fn eh_personality(&self) -> ValueRef {
         // The exception handling personality function.
         //
         // If our compilation unit has the `eh_personality` lang item somewhere
@@ -696,7 +638,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
-    pub fn eh_unwind_resume(&self) -> ValueRef {
+    pub(crate) fn eh_unwind_resume(&self) -> ValueRef {
         use attributes;
         let unwresume = &self.local().eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
@@ -773,14 +715,6 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
 
     fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.shared.normalize_projections(ty)
-    }
-}
-
-pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'a, 'tcx>);
-
-impl<'a, 'tcx> Drop for TypeOfDepthLock<'a, 'tcx> {
-    fn drop(&mut self) {
-        self.0.type_of_depth.set(self.0.type_of_depth.get() - 1);
     }
 }
 

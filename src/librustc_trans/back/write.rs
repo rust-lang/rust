@@ -60,14 +60,14 @@ pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
     ("large", llvm::CodeModel::Large),
 ];
 
-pub fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
+pub(crate) fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
     match llvm::last_error() {
         Some(err) => handler.fatal(&format!("{}: {}", msg, err)),
         None => handler.fatal(&msg),
     }
 }
 
-pub fn write_output_file(
+pub(crate) fn write_output_file(
         handler: &errors::Handler,
         target: llvm::TargetMachineRef,
         pm: llvm::PassManagerRef,
@@ -130,7 +130,7 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
     }
 }
 
-pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
+pub(crate) fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let reloc_model = get_reloc_model(sess);
 
     let opt_level = get_llvm_opt_level(sess.opts.optimize);
@@ -191,7 +191,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
 
 /// Module-specific configuration for `optimize_and_codegen`.
 #[derive(Clone)]
-pub struct ModuleConfig {
+pub(crate) struct ModuleConfig {
     /// LLVM TargetMachine to use for codegen.
     tm: TargetMachineRef,
     /// Names of additional optimization passes to run.
@@ -282,28 +282,28 @@ impl ModuleConfig {
 }
 
 /// Additional resources used by optimize_and_codegen (not module specific)
-pub struct CodegenContext<'a> {
+pub(crate) struct CodegenContext<'a> {
     // Resouces needed when running LTO
-    pub time_passes: bool,
-    pub lto: bool,
-    pub no_landing_pads: bool,
-    pub exported_symbols: &'a ExportedSymbols,
-    pub opts: &'a config::Options,
-    pub crate_types: Vec<config::CrateType>,
-    pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
+    pub(crate) time_passes: bool,
+    pub(crate) lto: bool,
+    pub(crate) no_landing_pads: bool,
+    pub(crate) exported_symbols: &'a ExportedSymbols,
+    pub(crate) opts: &'a config::Options,
+    pub(crate) crate_types: Vec<config::CrateType>,
+    pub(crate) each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
     // Handler to use for diagnostics produced during codegen.
-    pub handler: &'a Handler,
+    pub(crate) handler: &'a Handler,
     // LLVM passes added by plugins.
-    pub plugin_passes: Vec<String>,
+    pub(crate) plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
-    pub remark: Passes,
+    pub(crate) remark: Passes,
     // Worker thread number
-    pub worker: usize,
+    pub(crate) worker: usize,
     // The incremental compilation session directory, or None if we are not
     // compiling incrementally
-    pub incr_comp_session_dir: Option<PathBuf>,
+    pub(crate) incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
-    pub tx: Sender<Message>,
+    pub(crate) tx: Sender<Message>,
 }
 
 struct HandlerFreeVars<'a> {
@@ -1015,7 +1015,7 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
     Ok(())
 }
 
-pub enum Message {
+pub(crate) enum Message {
     Token(io::Result<Acquired>),
     Diagnostic(Diagnostic),
     Done { success: bool },
@@ -1023,7 +1023,7 @@ pub enum Message {
     AbortIfErrors,
 }
 
-pub struct Diagnostic {
+pub(crate) struct Diagnostic {
     msg: String,
     code: Option<String>,
     lvl: Level,
@@ -1320,9 +1320,9 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
     }
 }
 
-pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
-                            config: &ModuleConfig,
-                            f: &mut FnMut(llvm::PassManagerBuilderRef)) {
+pub(crate) unsafe fn with_llvm_pmb(llmod: ModuleRef,
+                                   config: &ModuleConfig,
+                                   f: &mut FnMut(llvm::PassManagerBuilderRef)) {
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.

@@ -45,19 +45,19 @@ use syntax::ast;
 use syntax::symbol::Symbol;
 use rustc::ty::layout::{self, LayoutTyper};
 
-pub mod gdb;
+pub(crate) mod gdb;
 mod utils;
 mod namespace;
 mod type_names;
-pub mod metadata;
+pub(crate) mod metadata;
 mod create_scope_map;
 mod source_loc;
 
-pub use self::create_scope_map::{create_mir_scopes, MirDebugScope};
-pub use self::source_loc::start_emitting_source_locations;
-pub use self::metadata::create_global_var_metadata;
-pub use self::metadata::extend_scope_to_file;
-pub use self::source_loc::set_source_location;
+pub(crate) use self::create_scope_map::{create_mir_scopes, MirDebugScope};
+pub(crate) use self::source_loc::start_emitting_source_locations;
+pub(crate) use self::metadata::create_global_var_metadata;
+pub(crate) use self::metadata::extend_scope_to_file;
+pub(crate) use self::source_loc::set_source_location;
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
@@ -65,7 +65,7 @@ const DW_TAG_auto_variable: c_uint = 0x100;
 const DW_TAG_arg_variable: c_uint = 0x101;
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct CrateDebugContext<'tcx> {
+pub(crate) struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
     llmod: ModuleRef,
     builder: DIBuilderRef,
@@ -81,7 +81,7 @@ pub struct CrateDebugContext<'tcx> {
 }
 
 impl<'tcx> CrateDebugContext<'tcx> {
-    pub fn new(llmod: ModuleRef) -> CrateDebugContext<'tcx> {
+    pub(crate) fn new(llmod: ModuleRef) -> CrateDebugContext<'tcx> {
         debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
@@ -99,14 +99,14 @@ impl<'tcx> CrateDebugContext<'tcx> {
     }
 }
 
-pub enum FunctionDebugContext {
+pub(crate) enum FunctionDebugContext {
     RegularContext(FunctionDebugContextData),
     DebugInfoDisabled,
     FunctionWithoutDebugInfo,
 }
 
 impl FunctionDebugContext {
-    pub fn get_ref<'a>(&'a self, span: Span) -> &'a FunctionDebugContextData {
+    pub(crate) fn get_ref<'a>(&'a self, span: Span) -> &'a FunctionDebugContextData {
         match *self {
             FunctionDebugContext::RegularContext(ref data) => data,
             FunctionDebugContext::DebugInfoDisabled => {
@@ -128,13 +128,13 @@ impl FunctionDebugContext {
     }
 }
 
-pub struct FunctionDebugContextData {
+pub(crate) struct FunctionDebugContextData {
     fn_metadata: DISubprogram,
     source_locations_enabled: Cell<bool>,
-    pub defining_crate: CrateNum,
+    pub(crate) defining_crate: CrateNum,
 }
 
-pub enum VariableAccess<'a> {
+pub(crate) enum VariableAccess<'a> {
     // The llptr given is an alloca containing the variable's value
     DirectVariable { alloca: ValueRef },
     // The llptr given is an alloca containing the start of some pointer chain
@@ -142,14 +142,14 @@ pub enum VariableAccess<'a> {
     IndirectVariable { alloca: ValueRef, address_operations: &'a [i64] }
 }
 
-pub enum VariableKind {
+pub(crate) enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
     CapturedVariable,
 }
 
 /// Create any deferred debug metadata nodes
-pub fn finalize(cx: &CrateContext) {
+pub(crate) fn finalize(cx: &CrateContext) {
     if cx.dbg_cx().is_none() {
         return;
     }
@@ -200,11 +200,11 @@ pub fn finalize(cx: &CrateContext) {
 /// for debug info creation. The function may also return another variant of the
 /// FunctionDebugContext enum which indicates why no debuginfo should be created
 /// for the function.
-pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                               instance: Instance<'tcx>,
-                                               sig: ty::FnSig<'tcx>,
-                                               llfn: ValueRef,
-                                               mir: &mir::Mir) -> FunctionDebugContext {
+pub(crate) fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                                      instance: Instance<'tcx>,
+                                                      sig: ty::FnSig<'tcx>,
+                                                      llfn: ValueRef,
+                                                      mir: &mir::Mir) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext::DebugInfoDisabled;
     }
@@ -457,14 +457,14 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                               dbg_context: &FunctionDebugContext,
-                               variable_name: ast::Name,
-                               variable_type: Ty<'tcx>,
-                               scope_metadata: DIScope,
-                               variable_access: VariableAccess,
-                               variable_kind: VariableKind,
-                               span: Span) {
+pub(crate) fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+                                      dbg_context: &FunctionDebugContext,
+                                      variable_name: ast::Name,
+                                      variable_type: Ty<'tcx>,
+                                      scope_metadata: DIScope,
+                                      variable_access: VariableAccess,
+                                      variable_kind: VariableKind,
+                                      span: Span) {
     let cx = bcx.ccx;
 
     let file = span_start(cx, span).file;

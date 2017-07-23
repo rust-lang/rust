@@ -30,17 +30,17 @@ use std::ffi::{CStr, CString};
 use syntax::ast;
 use syntax::attr;
 
-pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
+pub(crate) fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
     unsafe {
         llvm::LLVMConstPointerCast(val, ty.to_ref())
     }
 }
 
-pub fn addr_of_mut(ccx: &CrateContext,
-                   cv: ValueRef,
-                   align: machine::llalign,
-                   kind: &str)
-                    -> ValueRef {
+pub(crate) fn addr_of_mut(ccx: &CrateContext,
+                          cv: ValueRef,
+                          align: machine::llalign,
+                          kind: &str)
+                          -> ValueRef {
     unsafe {
         let name = ccx.generate_local_symbol_name(kind);
         let gv = declare::define_global(ccx, &name[..], val_ty(cv)).unwrap_or_else(||{
@@ -54,11 +54,11 @@ pub fn addr_of_mut(ccx: &CrateContext,
     }
 }
 
-pub fn addr_of(ccx: &CrateContext,
-               cv: ValueRef,
-               align: machine::llalign,
-               kind: &str)
-               -> ValueRef {
+pub(crate) fn addr_of(ccx: &CrateContext,
+                      cv: ValueRef,
+                      align: machine::llalign,
+                      kind: &str)
+                      -> ValueRef {
     if let Some(&gv) = ccx.const_globals().borrow().get(&cv) {
         unsafe {
             // Upgrade the alignment in cases where the same constant is used with different
@@ -77,7 +77,7 @@ pub fn addr_of(ccx: &CrateContext,
     gv
 }
 
-pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
+pub(crate) fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     let instance = Instance::mono(ccx.tcx(), def_id);
     if let Some(&g) = ccx.instances().borrow().get(&instance) {
         return g;
@@ -216,11 +216,11 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     g
 }
 
-pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              m: hir::Mutability,
-                              id: ast::NodeId,
-                              attrs: &[ast::Attribute])
-                              -> Result<ValueRef, ConstEvalErr<'tcx>> {
+pub(crate) fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                     m: hir::Mutability,
+                                     id: ast::NodeId,
+                                     attrs: &[ast::Attribute])
+                                     -> Result<ValueRef, ConstEvalErr<'tcx>> {
     unsafe {
         let def_id = ccx.tcx().hir.local_def_id(id);
         let g = get_static(ccx, def_id);

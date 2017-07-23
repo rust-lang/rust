@@ -30,9 +30,9 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use self::CandidateKind::*;
-pub use self::PickKind::*;
+pub(crate) use self::PickKind::*;
 
-pub enum LookingFor<'tcx> {
+pub(crate) enum LookingFor<'tcx> {
     /// looking for methods with the given name; this is the normal case
     MethodName(ast::Name),
 
@@ -43,7 +43,7 @@ pub enum LookingFor<'tcx> {
 
 /// Boolean flag used to indicate if this search is for a suggestion
 /// or not.  If true, we can allow ambiguity and so forth.
-pub struct IsSuggestion(pub bool);
+pub(crate) struct IsSuggestion(pub(crate) bool);
 
 struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
@@ -107,31 +107,31 @@ enum CandidateKind<'tcx> {
 }
 
 #[derive(Debug)]
-pub struct Pick<'tcx> {
-    pub item: ty::AssociatedItem,
-    pub kind: PickKind<'tcx>,
-    pub import_id: Option<ast::NodeId>,
+pub(crate) struct Pick<'tcx> {
+    pub(crate) item: ty::AssociatedItem,
+    pub(crate) kind: PickKind<'tcx>,
+    pub(crate) import_id: Option<ast::NodeId>,
 
     // Indicates that the source expression should be autoderef'd N times
     //
     // A = expr | *expr | **expr | ...
-    pub autoderefs: usize,
+    pub(crate) autoderefs: usize,
 
     // Indicates that an autoref is applied after the optional autoderefs
     //
     // B = A | &A | &mut A
-    pub autoref: Option<hir::Mutability>,
+    pub(crate) autoref: Option<hir::Mutability>,
 
     // Indicates that the source expression should be "unsized" to a
     // target type. This should probably eventually go away in favor
     // of just coercing method receivers.
     //
     // C = B | unsize(B)
-    pub unsize: Option<Ty<'tcx>>,
+    pub(crate) unsize: Option<Ty<'tcx>>,
 }
 
 #[derive(Clone,Debug)]
-pub enum PickKind<'tcx> {
+pub(crate) enum PickKind<'tcx> {
     InherentImplPick,
     ExtensionImplPick(// Impl
                       DefId),
@@ -141,10 +141,10 @@ pub enum PickKind<'tcx> {
                     ty::PolyTraitRef<'tcx>),
 }
 
-pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError<'tcx>>;
+pub(crate) type PickResult<'tcx> = Result<Pick<'tcx>, MethodError<'tcx>>;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum Mode {
+pub(crate) enum Mode {
     // An expression of the form `receiver.method_name(...)`.
     // Autoderefs are performed on `receiver`, lookup is done based on the
     // `self` argument  of the method, and static methods aren't considered.
@@ -162,13 +162,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// would result in an error (basically, the same criteria we
     /// would use to decide if a method is a plausible fit for
     /// ambiguity purposes).
-    pub fn probe_for_return_type(&self,
-                                 span: Span,
-                                 mode: Mode,
-                                 return_type: Ty<'tcx>,
-                                 self_ty: Ty<'tcx>,
-                                 scope_expr_id: ast::NodeId)
-                                 -> Vec<ty::AssociatedItem> {
+    pub(crate) fn probe_for_return_type(&self,
+                                        span: Span,
+                                        mode: Mode,
+                                        return_type: Ty<'tcx>,
+                                        self_ty: Ty<'tcx>,
+                                        scope_expr_id: ast::NodeId)
+                                        -> Vec<ty::AssociatedItem> {
         debug!("probe(self_ty={:?}, return_type={}, scope_expr_id={})",
                self_ty,
                return_type,
@@ -190,14 +190,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .collect()
     }
 
-    pub fn probe_for_name(&self,
-                          span: Span,
-                          mode: Mode,
-                          item_name: ast::Name,
-                          is_suggestion: IsSuggestion,
-                          self_ty: Ty<'tcx>,
-                          scope_expr_id: ast::NodeId)
-                          -> PickResult<'tcx> {
+    pub(crate) fn probe_for_name(&self,
+                                 span: Span,
+                                 mode: Mode,
+                                 item_name: ast::Name,
+                                 is_suggestion: IsSuggestion,
+                                 self_ty: Ty<'tcx>,
+                                 scope_expr_id: ast::NodeId)
+                                 -> PickResult<'tcx> {
         debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
                self_ty,
                item_name,
@@ -669,8 +669,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    pub fn matches_return_type(&self, method: &ty::AssociatedItem,
-                               expected: ty::Ty<'tcx>) -> bool {
+    pub(crate) fn matches_return_type(&self, method: &ty::AssociatedItem,
+                                      expected: ty::Ty<'tcx>) -> bool {
         match method.def() {
             Def::Method(def_id) => {
                 let fty = self.tcx.fn_sig(def_id);

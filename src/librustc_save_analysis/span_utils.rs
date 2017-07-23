@@ -23,22 +23,22 @@ use syntax::symbol::keywords;
 use syntax_pos::*;
 
 #[derive(Clone)]
-pub struct SpanUtils<'a> {
-    pub sess: &'a Session,
+pub(crate) struct SpanUtils<'a> {
+    pub(crate) sess: &'a Session,
     // FIXME given that we clone SpanUtils all over the place, this err_count is
     // probably useless and any logic relying on it is bogus.
-    pub err_count: Cell<isize>,
+    pub(crate) err_count: Cell<isize>,
 }
 
 impl<'a> SpanUtils<'a> {
-    pub fn new(sess: &'a Session) -> SpanUtils<'a> {
+    pub(crate) fn new(sess: &'a Session) -> SpanUtils<'a> {
         SpanUtils {
             sess: sess,
             err_count: Cell::new(0),
         }
     }
 
-    pub fn make_path_string(file_name: &str) -> String {
+    pub(crate) fn make_path_string(file_name: &str) -> String {
         let path = Path::new(file_name);
         if path.is_absolute() {
             path.clone().display().to_string()
@@ -47,19 +47,19 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn snippet(&self, span: Span) -> String {
+    pub(crate) fn snippet(&self, span: Span) -> String {
         match self.sess.codemap().span_to_snippet(span) {
             Ok(s) => s,
             Err(_) => String::new(),
         }
     }
 
-    pub fn retokenise_span(&self, span: Span) -> StringReader<'a> {
+    pub(crate) fn retokenise_span(&self, span: Span) -> StringReader<'a> {
         lexer::StringReader::retokenize(&self.sess.parse_sess, span)
     }
 
     // Re-parses a path and returns the span for the last identifier in the path
-    pub fn span_for_last_ident(&self, span: Span) -> Option<Span> {
+    pub(crate) fn span_for_last_ident(&self, span: Span) -> Option<Span> {
         let mut result = None;
 
         let mut toks = self.retokenise_span(span);
@@ -83,7 +83,7 @@ impl<'a> SpanUtils<'a> {
     }
 
     // Return the span for the first identifier in the path.
-    pub fn span_for_first_ident(&self, span: Span) -> Option<Span> {
+    pub(crate) fn span_for_first_ident(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         let mut bracket_count = 0;
         loop {
@@ -106,7 +106,7 @@ impl<'a> SpanUtils<'a> {
 
     // Return the span for the last ident before a `(` or `<` or '::<' and outside any
     // any brackets, or the last span.
-    pub fn sub_span_for_meth_name(&self, span: Span) -> Option<Span> {
+    pub(crate) fn sub_span_for_meth_name(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.real_token();
         let mut result = None;
@@ -147,7 +147,7 @@ impl<'a> SpanUtils<'a> {
 
     // Return the span for the last ident before a `<` and outside any
     // angle brackets, or the last span.
-    pub fn sub_span_for_type_name(&self, span: Span) -> Option<Span> {
+    pub(crate) fn sub_span_for_type_name(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.real_token();
         let mut result = None;
@@ -212,7 +212,8 @@ impl<'a> SpanUtils<'a> {
     // example with Foo<Bar<T,V>, Bar<T,V>>
     // Nesting = 0: all idents outside of angle brackets: [Foo]
     // Nesting = 1: idents within one level of angle brackets: [Bar, Bar]
-    pub fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize) -> Vec<Span> {
+    pub(crate) fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize)
+                                      -> Vec<Span> {
         let mut result: Vec<Span> = vec![];
 
         let mut toks = self.retokenise_span(span);
@@ -276,7 +277,7 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn sub_span_before_token(&self, span: Span, tok: Token) -> Option<Span> {
+    pub(crate) fn sub_span_before_token(&self, span: Span, tok: Token) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.real_token();
         loop {
@@ -291,7 +292,7 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn sub_span_of_token(&self, span: Span, tok: Token) -> Option<Span> {
+    pub(crate) fn sub_span_of_token(&self, span: Span, tok: Token) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
             let next = toks.real_token();
@@ -304,11 +305,12 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn sub_span_after_keyword(&self, span: Span, keyword: keywords::Keyword) -> Option<Span> {
+    pub(crate) fn sub_span_after_keyword(&self, span: Span, keyword: keywords::Keyword)
+                                         -> Option<Span> {
         self.sub_span_after(span, |t| t.is_keyword(keyword))
     }
 
-    pub fn sub_span_after_token(&self, span: Span, tok: Token) -> Option<Span> {
+    pub(crate) fn sub_span_after_token(&self, span: Span, tok: Token) -> Option<Span> {
         self.sub_span_after(span, |t| t == tok)
     }
 
@@ -333,20 +335,20 @@ impl<'a> SpanUtils<'a> {
 
     // Returns a list of the spans of idents in a path.
     // E.g., For foo::bar<x,t>::baz, we return [foo, bar, baz] (well, their spans)
-    pub fn spans_for_path_segments(&self, path: &ast::Path) -> Vec<Span> {
+    pub(crate) fn spans_for_path_segments(&self, path: &ast::Path) -> Vec<Span> {
         self.spans_with_brackets(path.span, 0, -1)
     }
 
     // Return an owned vector of the subspans of the param identifier
     // tokens found in span.
-    pub fn spans_for_ty_params(&self, span: Span, number: isize) -> Vec<Span> {
+    pub(crate) fn spans_for_ty_params(&self, span: Span, number: isize) -> Vec<Span> {
         // Type params are nested within one level of brackets:
         // i.e. we want Vec<A, B> from Foo<A, B<T,U>>
         self.spans_with_brackets(span, 1, number)
     }
 
     // // Return the name for a macro definition (identifier after first `!`)
-    // pub fn span_for_macro_def_name(&self, span: Span) -> Option<Span> {
+    // pub(crate) fn span_for_macro_def_name(&self, span: Span) -> Option<Span> {
     //     let mut toks = self.retokenise_span(span);
     //     loop {
     //         let ts = toks.real_token();
@@ -365,7 +367,7 @@ impl<'a> SpanUtils<'a> {
     // }
 
     // // Return the name for a macro use (identifier before first `!`).
-    // pub fn span_for_macro_use_name(&self, span:Span) -> Option<Span> {
+    // pub(crate) fn span_for_macro_use_name(&self, span:Span) -> Option<Span> {
     //     let mut toks = self.retokenise_span(span);
     //     let mut prev = toks.real_token();
     //     loop {
@@ -389,7 +391,7 @@ impl<'a> SpanUtils<'a> {
     ///
     /// Used to filter out spans of minimal value,
     /// such as references to macro internal variables.
-    pub fn filter_generated(&self, sub_span: Option<Span>, parent: Span) -> bool {
+    pub(crate) fn filter_generated(&self, sub_span: Option<Span>, parent: Span) -> bool {
         if !generated_code(parent) {
             if sub_span.is_none() {
                 // Edge case - this occurs on generated code with incorrect expansion info.

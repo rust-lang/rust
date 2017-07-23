@@ -31,7 +31,7 @@ use transform::{add_call_guards, no_landing_pads, simplify};
 use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
 use util::patch::MirPatch;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
@@ -212,7 +212,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     mir
 }
 
-pub struct DropShimElaborator<'a, 'tcx: 'a> {
+pub(crate) struct DropShimElaborator<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     patch: MirPatch<'tcx>,
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
@@ -401,11 +401,11 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     mir
 }
 
-pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
-                                      ctor_id: ast::NodeId,
-                                      fields: &[hir::StructField],
-                                      span: Span)
-                                      -> (Mir<'tcx>, MirSource)
+pub(crate) fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
+                                             ctor_id: ast::NodeId,
+                                             fields: &[hir::StructField],
+                                             span: Span)
+                                             -> (Mir<'tcx>, MirSource)
 {
     let tcx = infcx.tcx;
     let def_id = tcx.hir.local_def_id(ctor_id);

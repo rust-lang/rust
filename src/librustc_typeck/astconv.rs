@@ -34,7 +34,7 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-pub trait AstConv<'gcx, 'tcx> {
+pub(crate) trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
 
     /// Returns the set of bounds in scope for the type parameter with
@@ -92,7 +92,7 @@ struct ConvertedBinding<'tcx> {
 const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::FreshTy(0));
 
 impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
-    pub fn ast_region_to_region(&self,
+    pub(crate) fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
         def: Option<&ty::RegionParameterDef>)
         -> ty::Region<'tcx>
@@ -146,7 +146,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
     /// returns an appropriate set of substitutions for this particular reference to `I`.
-    pub fn ast_path_substs_for_ty(&self,
+    pub(crate) fn ast_path_substs_for_ty(&self,
         span: Span,
         def_id: DefId,
         item_segment: &hir::PathSegment)
@@ -363,7 +363,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     ///
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
-    pub fn instantiate_mono_trait_ref(&self,
+    pub(crate) fn instantiate_mono_trait_ref(&self,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
@@ -391,7 +391,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub fn instantiate_poly_trait_ref(&self,
+    pub(crate) fn instantiate_poly_trait_ref(&self,
         ast_trait_ref: &hir::PolyTraitRef,
         self_ty: Ty<'tcx>,
         poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
@@ -834,13 +834,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     // the whole path.
     // Will fail except for T::A and Self::A; i.e., if ty/ty_path_def are not a type
     // parameter or Self.
-    pub fn associated_path_def_to_ty(&self,
-                                     ref_id: ast::NodeId,
-                                     span: Span,
-                                     ty: Ty<'tcx>,
-                                     ty_path_def: Def,
-                                     item_segment: &hir::PathSegment)
-                                     -> (Ty<'tcx>, Def)
+    pub(crate) fn associated_path_def_to_ty(&self,
+                                            ref_id: ast::NodeId,
+                                            span: Span,
+                                            ty: Ty<'tcx>,
+                                            ty_path_def: Def,
+                                            item_segment: &hir::PathSegment)
+                                            -> (Ty<'tcx>, Def)
     {
         let tcx = self.tcx();
         let assoc_name = item_segment.name;
@@ -949,7 +949,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
-    pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
+    pub(crate) fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
             if let hir::ParenthesizedParameters(_) = segment.parameters {
                 self.prohibit_parenthesized_params(segment, false);
@@ -977,7 +977,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub fn prohibit_parenthesized_params(&self, segment: &hir::PathSegment, emit_error: bool) {
+    pub(crate) fn prohibit_parenthesized_params(&self,
+                                                segment: &hir::PathSegment,
+                                                emit_error: bool) {
         if let hir::ParenthesizedParameters(ref data) = segment.parameters {
             if emit_error {
                 struct_span_err!(self.tcx().sess, data.span, E0214,
@@ -992,18 +994,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub fn prohibit_projection(&self, span: Span) {
+    pub(crate) fn prohibit_projection(&self, span: Span) {
         let mut err = struct_span_err!(self.tcx().sess, span, E0229,
                                        "associated type bindings are not allowed here");
         err.span_label(span, "associated type not allowed here").emit();
     }
 
     // Check a type Path and convert it to a Ty.
-    pub fn def_to_ty(&self,
-                     opt_self_ty: Option<Ty<'tcx>>,
-                     path: &hir::Path,
-                     permit_variants: bool)
-                     -> Ty<'tcx> {
+    pub(crate) fn def_to_ty(&self,
+                            opt_self_ty: Option<Ty<'tcx>>,
+                            path: &hir::Path,
+                            permit_variants: bool)
+                            -> Ty<'tcx> {
         let tcx = self.tcx();
 
         debug!("base_def_to_ty(def={:?}, opt_self_ty={:?}, path_segments={:?})",
@@ -1080,7 +1082,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     /// Parses the programmer's textual representation of a type into our
     /// internal notion of a type.
-    pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub(crate) fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?})",
                ast_ty.id, ast_ty);
 
@@ -1250,10 +1252,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         result_ty
     }
 
-    pub fn ty_of_arg(&self,
-                     ty: &hir::Ty,
-                     expected_ty: Option<Ty<'tcx>>)
-                     -> Ty<'tcx>
+    pub(crate) fn ty_of_arg(&self,
+                            ty: &hir::Ty,
+                            expected_ty: Option<Ty<'tcx>>)
+                            -> Ty<'tcx>
     {
         match ty.node {
             hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
@@ -1262,11 +1264,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
-    pub fn ty_of_fn(&self,
-                    unsafety: hir::Unsafety,
-                    abi: abi::Abi,
-                    decl: &hir::FnDecl)
-                    -> ty::PolyFnSig<'tcx> {
+    pub(crate) fn ty_of_fn(&self,
+                           unsafety: hir::Unsafety,
+                           abi: abi::Abi,
+                           decl: &hir::FnDecl)
+                           -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
         let input_tys: Vec<Ty> =
@@ -1288,7 +1290,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         ))
     }
 
-    pub fn ty_of_closure(&self,
+    pub(crate) fn ty_of_closure(&self,
         unsafety: hir::Unsafety,
         decl: &hir::FnDecl,
         abi: abi::Abi,
@@ -1493,15 +1495,15 @@ fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected
 // A helper struct for conveniently grouping a set of bounds which we pass to
 // and return from functions in multiple places.
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Bounds<'tcx> {
-    pub region_bounds: Vec<ty::Region<'tcx>>,
-    pub implicitly_sized: bool,
-    pub trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
-    pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
+pub(crate) struct Bounds<'tcx> {
+    pub(crate) region_bounds: Vec<ty::Region<'tcx>>,
+    pub(crate) implicitly_sized: bool,
+    pub(crate) trait_bounds: Vec<ty::PolyTraitRef<'tcx>>,
+    pub(crate) projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
+    pub(crate) fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
                       -> Vec<ty::Predicate<'tcx>>
     {
         let mut vec = Vec::new();
@@ -1536,7 +1538,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     }
 }
 
-pub enum ExplicitSelf<'tcx> {
+pub(crate) enum ExplicitSelf<'tcx> {
     ByValue,
     ByReference(ty::Region<'tcx>, hir::Mutability),
     ByBox
@@ -1571,9 +1573,9 @@ impl<'tcx> ExplicitSelf<'tcx> {
     /// example, the impl type has one modifier, but the method
     /// type has two, so we end up with
     /// ExplicitSelf::ByReference.
-    pub fn determine(untransformed_self_ty: Ty<'tcx>,
-                     self_arg_ty: Ty<'tcx>)
-                     -> ExplicitSelf<'tcx> {
+    pub(crate) fn determine(untransformed_self_ty: Ty<'tcx>,
+                            self_arg_ty: Ty<'tcx>)
+                            -> ExplicitSelf<'tcx> {
         fn count_modifiers(ty: Ty) -> usize {
             match ty.sty {
                 ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,

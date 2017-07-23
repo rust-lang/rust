@@ -170,11 +170,11 @@ fn test_env<F>(source_string: &str,
 }
 
 impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
+    pub(crate) fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: CodeExtent) {
+    pub(crate) fn create_region_hierarchy(&mut self, rh: &RH, parent: CodeExtent) {
         let me = CodeExtent::Misc(rh.id);
         self.region_maps.record_code_extent(me, Some(parent));
         for child_rh in rh.sub {
@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn create_simple_region_hierarchy(&mut self) {
+    pub(crate) fn create_simple_region_hierarchy(&mut self) {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
 
@@ -204,7 +204,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
-    pub fn lookup_item(&self, names: &[String]) -> ast::NodeId {
+    pub(crate) fn lookup_item(&self, names: &[String]) -> ast::NodeId {
         return match search_mod(self, &self.infcx.tcx.hir.krate().module, 0, names) {
             Some(id) => id,
             None => {
@@ -254,29 +254,29 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    pub(crate) fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         match self.infcx.at(&ObligationCause::dummy(), self.param_env).sub(a, b) {
             Ok(_) => true,
             Err(ref e) => panic!("Encountered error: {}", e),
         }
     }
 
-    pub fn is_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    pub(crate) fn is_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         self.infcx.can_sub(self.param_env, a, b).is_ok()
     }
 
-    pub fn assert_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    pub(crate) fn assert_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) {
         if !self.is_subtype(a, b) {
             panic!("{} is not a subtype of {}, but it should be", a, b);
         }
     }
 
-    pub fn assert_eq(&self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    pub(crate) fn assert_eq(&self, a: Ty<'tcx>, b: Ty<'tcx>) {
         self.assert_subtype(a, b);
         self.assert_subtype(b, a);
     }
 
-    pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
         self.infcx.tcx.mk_fn_ptr(ty::Binder(self.infcx.tcx.mk_fn_sig(
             input_tys.iter().cloned(),
             output_ty,
@@ -286,20 +286,20 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         )))
     }
 
-    pub fn t_nil(&self) -> Ty<'tcx> {
+    pub(crate) fn t_nil(&self) -> Ty<'tcx> {
         self.infcx.tcx.mk_nil()
     }
 
-    pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
         self.infcx.tcx.intern_tup(&[ty1, ty2], false)
     }
 
-    pub fn t_param(&self, index: u32) -> Ty<'tcx> {
+    pub(crate) fn t_param(&self, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
         self.infcx.tcx.mk_param(index, Symbol::intern(&name))
     }
 
-    pub fn re_early_bound(&self, index: u32, name: &'static str) -> ty::Region<'tcx> {
+    pub(crate) fn re_early_bound(&self, index: u32, name: &'static str) -> ty::Region<'tcx> {
         let name = Symbol::intern(name);
         self.infcx.tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
@@ -308,72 +308,72 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         }))
     }
 
-    pub fn re_late_bound_with_debruijn(&self,
-                                       id: u32,
-                                       debruijn: ty::DebruijnIndex)
-                                       -> ty::Region<'tcx> {
+    pub(crate) fn re_late_bound_with_debruijn(&self,
+                                              id: u32,
+                                              debruijn: ty::DebruijnIndex)
+                                              -> ty::Region<'tcx> {
         self.infcx.tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(id)))
     }
 
-    pub fn t_rptr(&self, r: ty::Region<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn t_rptr(&self, r: ty::Region<'tcx>) -> Ty<'tcx> {
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
-    pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
+    pub(crate) fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
-    pub fn t_rptr_late_bound_with_debruijn(&self,
-                                           id: u32,
-                                           debruijn: ty::DebruijnIndex)
-                                           -> Ty<'tcx> {
+    pub(crate) fn t_rptr_late_bound_with_debruijn(&self,
+                                                  id: u32,
+                                                  debruijn: ty::DebruijnIndex)
+                                                  -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, debruijn);
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
-    pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
+    pub(crate) fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
         let r = ty::ReScope(CodeExtent::Misc(ast::NodeId::from_u32(id)));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
-    pub fn re_free(&self, id: u32) -> ty::Region<'tcx> {
+    pub(crate) fn re_free(&self, id: u32) -> ty::Region<'tcx> {
         self.infcx.tcx.mk_region(ty::ReFree(ty::FreeRegion {
             scope: self.infcx.tcx.hir.local_def_id(ast::CRATE_NODE_ID),
             bound_region: ty::BrAnon(id),
         }))
     }
 
-    pub fn t_rptr_free(&self, id: u32) -> Ty<'tcx> {
+    pub(crate) fn t_rptr_free(&self, id: u32) -> Ty<'tcx> {
         let r = self.re_free(id);
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
-    pub fn t_rptr_static(&self) -> Ty<'tcx> {
+    pub(crate) fn t_rptr_static(&self) -> Ty<'tcx> {
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.types.re_static,
                                   self.tcx().types.isize)
     }
 
-    pub fn t_rptr_empty(&self) -> Ty<'tcx> {
+    pub(crate) fn t_rptr_empty(&self) -> Ty<'tcx> {
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.types.re_empty,
                                   self.tcx().types.isize)
     }
 
-    pub fn sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, ()> {
+    pub(crate) fn sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, ()> {
         self.infcx.at(&ObligationCause::dummy(), self.param_env).sub(t1, t2)
     }
 
-    pub fn lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    pub(crate) fn lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         self.infcx.at(&ObligationCause::dummy(), self.param_env).lub(t1, t2)
     }
 
-    pub fn glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    pub(crate) fn glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         self.infcx.at(&ObligationCause::dummy(), self.param_env).glb(t1, t2)
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional
     /// region checks).
-    pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
+    pub(crate) fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub(t1, t2) {
             Ok(InferOk { obligations, value: () }) => {
                 // None of these tests should require nested obligations:
@@ -387,7 +387,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     /// Checks that `t1 <: t2` is false (this may register additional
     /// region checks).
-    pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
+    pub(crate) fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub(t1, t2) {
             Err(_) => {}
             Ok(_) => {
@@ -397,7 +397,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     /// Checks that `LUB(t1,t2) == t_lub`
-    pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
+    pub(crate) fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
         match self.lub(t1, t2) {
             Ok(InferOk { obligations, value: t }) => {
                 // None of these tests should require nested obligations:
@@ -410,7 +410,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     /// Checks that `GLB(t1,t2) == t_glb`
-    pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
+    pub(crate) fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
         debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
         match self.glb(t1, t2) {
             Err(e) => panic!("unexpected error computing LUB: {:?}", e),

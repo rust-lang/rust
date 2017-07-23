@@ -22,13 +22,13 @@ use syntax::abi::Abi;
 use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn check_expr_closure(&self,
-                              expr: &hir::Expr,
-                              _capture: hir::CaptureClause,
-                              decl: &'gcx hir::FnDecl,
-                              body_id: hir::BodyId,
-                              expected: Expectation<'tcx>)
-                              -> Ty<'tcx> {
+    pub(crate) fn check_expr_closure(&self,
+                                     expr: &hir::Expr,
+                                     _capture: hir::CaptureClause,
+                                     decl: &'gcx hir::FnDecl,
+                                     body_id: hir::BodyId,
+                                     expected: Expectation<'tcx>)
+                                     -> Ty<'tcx> {
         debug!("check_expr_closure(expr={:?},expected={:?})",
                expr,
                expected);

@@ -16,16 +16,16 @@ use std::fs;
 use rustc::hir::def_id::CrateNum;
 use rustc::middle::cstore::LibSource;
 
-pub struct RPathConfig<'a> {
-    pub used_crates: Vec<(CrateNum, LibSource)>,
-    pub out_filename: PathBuf,
-    pub is_like_osx: bool,
-    pub has_rpath: bool,
-    pub linker_is_gnu: bool,
-    pub get_install_prefix_lib_path: &'a mut FnMut() -> PathBuf,
+pub(crate) struct RPathConfig<'a> {
+    pub(crate) used_crates: Vec<(CrateNum, LibSource)>,
+    pub(crate) out_filename: PathBuf,
+    pub(crate) is_like_osx: bool,
+    pub(crate) has_rpath: bool,
+    pub(crate) linker_is_gnu: bool,
+    pub(crate) get_install_prefix_lib_path: &'a mut FnMut() -> PathBuf,
 }
 
-pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
+pub(crate) fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
     // No rpath on windows
     if !config.has_rpath {
         return Vec::new();

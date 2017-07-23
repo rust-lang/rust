@@ -11,7 +11,7 @@
 use LinkerFlavor;
 use super::{LinkArgs, Target, TargetOptions, TargetResult};
 
-pub fn target() -> TargetResult {
+pub(crate) fn target() -> TargetResult {
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(LinkerFlavor::Gcc,
                          vec!["--pnacl-exceptions=sjlj".to_string(),
