@@ -1065,6 +1065,7 @@
         block("macro", "Macros");
         block("struct", "Structs");
         block("enum", "Enums");
+        block("union", "Unions");
         block("constant", "Constants");
         block("static", "Statics");
         block("trait", "Traits");
