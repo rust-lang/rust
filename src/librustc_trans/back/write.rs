@@ -32,6 +32,7 @@ use rustc_demangle;
 
 use std::cmp;
 use std::ffi::CString;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -777,7 +778,33 @@ pub fn run_passes(sess: &Session,
         Client::new(num_workers).expect("failed to create jobserver")
     });
 
-    execute_work(sess, work_items, client, trans.exported_symbols.clone());
+    let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
+    let (trans_worker_send, trans_worker_receive) = channel();
+
+    let coordinator_thread = start_executing_work(sess,
+                                                  work_items,
+                                                  shared_emitter,
+                                                  trans_worker_send,
+                                                  client,
+                                                  trans.exported_symbols.clone());
+    loop {
+        shared_emitter_main.check(sess);
+
+        match trans_worker_receive.recv() {
+            Ok(Message::AllWorkDone) |
+            Err(_) => break,
+
+            Ok(Message::CheckErrorMessages) => continue,
+            Ok(msg) => {
+                bug!("unexpected message {:?}", msg);
+            }
+        }
+    }
+
+    coordinator_thread.join().unwrap();
+
+    // Just in case, check this on the way out.
+    sess.diagnostic().abort_if_errors();
 
     // If in incr. comp. mode, preserve the `.o` files for potential re-use
     for mtrans in modules.iter() {
@@ -975,10 +1002,16 @@ pub fn dump_incremental_data(trans: &CrateTranslation) {
     eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
 }
 
-struct WorkItem {
+pub struct WorkItem {
     mtrans: ModuleTranslation,
     config: ModuleConfig,
     output_names: OutputFilenames
+}
+
+impl fmt::Debug for WorkItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "WorkItem({})", self.mtrans.name)
+    }
 }
 
 fn build_work_item(sess: &Session,
@@ -1041,10 +1074,15 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
     Ok(())
 }
 
+#[derive(Debug)]
 pub enum Message {
     Token(io::Result<Acquired>),
     Done { success: bool },
+    WorkItem(WorkItem),
+    CheckErrorMessages,
+    AllWorkDone,
 }
+
 
 pub struct Diagnostic {
     msg: String,
@@ -1052,10 +1090,13 @@ pub struct Diagnostic {
     lvl: Level,
 }
 
-fn execute_work(sess: &Session,
-                mut work_items: Vec<WorkItem>,
-                jobserver: Client,
-                exported_symbols: Arc<ExportedSymbols>) {
+fn start_executing_work(sess: &Session,
+                        mut work_items: Vec<WorkItem>,
+                        shared_emitter: SharedEmitter,
+                        trans_worker_send: Sender<Message>,
+                        jobserver: Client,
+                        exported_symbols: Arc<ExportedSymbols>)
+                -> thread::JoinHandle<()> {
     let (tx, rx) = channel();
     let tx2 = tx.clone();
 
@@ -1075,8 +1116,6 @@ fn execute_work(sess: &Session,
     for _ in 0..work_items.len() - 1 {
         helper.request_token();
     }
-
-    let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(sess, &mut |cnum, path| {
@@ -1200,18 +1239,20 @@ fn execute_work(sess: &Session,
                 Message::Done { success: true } => {
                     drop(tokens.pop());
                     running -= 1;
+                    trans_worker_send.send(Message::CheckErrorMessages).unwrap();
                 }
                 Message::Done { success: false } => {
                     shared_emitter.fatal("aborting due to worker thread panic".to_string());
+                    trans_worker_send.send(Message::CheckErrorMessages).unwrap();
+                }
+                msg @ Message::WorkItem(_) |
+                msg @ Message::AllWorkDone |
+                msg @ Message::CheckErrorMessages => {
+                    bug!("unexpected message: {:?}", msg);
                 }
             }
         }
-    }).join().unwrap();
-
-    shared_emitter_main.check(sess);
-
-    // Just in case, check this on the way out.
-    sess.diagnostic().abort_if_errors();
+    })
 }
 
 fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
