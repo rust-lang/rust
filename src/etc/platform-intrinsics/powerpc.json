@@ -16,6 +16,13 @@
             "llvm": "vperm",
             "ret": "s32",
             "args": ["0", "0", "s8"]
+        },
+        {
+            "intrinsic": "mradds",
+            "width": [128],
+            "llvm": "vmhraddshs",
+            "ret": "s16",
+            "args": ["0", "0", "0"]
         }
     ]
 }
