@@ -27,6 +27,7 @@ language is evolving in.
   - [Implementing an RFC]
   - [RFC Postponement]
   - [Help this is all too informal!]
+  - [License]
 
 
 ## When you need to follow this process
@@ -249,3 +250,17 @@ consensus and community norms, not impose more structure than necessary.
 [RFC issue tracker]: https://github.com/rust-lang/rfcs/issues
 [RFC repository]: http://github.com/rust-lang/rfcs
 [sub-team]: http://www.rust-lang.org/team.html
+
+## License
+[License]: #license
+
+This repository is currently in the process of being licensed under either of
+
+* Apache License, Version 2.0, (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
+
+at your option. Some parts of the repository are already licensed according to those terms. For more see [RFC 2044](https://github.com/rust-lang/rfcs/pull/2044) and its [tracking issue](https://github.com/rust-lang/rust/issues/43461).
+
+### Contributions
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
