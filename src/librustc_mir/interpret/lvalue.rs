@@ -329,7 +329,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             _ => offset.bytes(),
         };
 
-        let ptr = base_ptr.offset(offset, self.memory.layout)?;
+        let ptr = base_ptr.offset(offset, &self)?;
 
         let field_ty = self.monomorphize(field_ty, self.substs());
 
@@ -412,7 +412,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let usize = self.tcx.types.usize;
                 let n = self.value_to_primval(n_ptr, usize)?.to_u64()?;
                 assert!(n < len, "Tried to access element {} of array/slice with length {}", n, len);
-                let ptr = base_ptr.offset(n * elem_size, self.memory.layout)?;
+                let ptr = base_ptr.offset(n * elem_size, &self)?;
                 (ptr, LvalueExtra::None, aligned)
             }
 
@@ -431,7 +431,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     u64::from(offset)
                 };
 
-                let ptr = base_ptr.offset(index * elem_size, self.memory.layout)?;
+                let ptr = base_ptr.offset(index * elem_size, &self)?;
                 (ptr, LvalueExtra::None, aligned)
             }
 
@@ -443,7 +443,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
                 let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 assert!(u64::from(from) <= n - u64::from(to));
-                let ptr = base_ptr.offset(u64::from(from) * elem_size, self.memory.layout)?;
+                let ptr = base_ptr.offset(u64::from(from) * elem_size, &self)?;
                 let extra = LvalueExtra::Length(n - u64::from(to) - u64::from(from));
                 (ptr, extra, aligned)
             }

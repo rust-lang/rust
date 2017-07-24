@@ -444,7 +444,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // FIXME(solson)
         let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
 
-        let discr_dest = dest_ptr.offset(discr_offset, self.memory.layout)?;
+        let discr_dest = dest_ptr.offset(discr_offset, &self)?;
         self.memory.write_uint(discr_dest, discr_val, discr_size)?;
 
         let dest = Lvalue::Ptr {
@@ -594,7 +594,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 // FIXME(solson)
                                 let dest = self.force_allocation(dest)?.to_ptr()?;
 
-                                let dest = dest.offset(offset.bytes(), self.memory.layout)?;
+                                let dest = dest.offset(offset.bytes(), &self)?;
                                 let dest_size = self.type_size(ty)?
                                     .expect("bad StructWrappedNullablePointer discrfield");
                                 self.memory.write_int(dest, 0, dest_size)?;
@@ -654,7 +654,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dest = Pointer::from(self.force_allocation(dest)?.to_ptr()?);
 
                 for i in 0..length {
-                    let elem_dest = dest.offset(i * elem_size, self.memory.layout)?;
+                    let elem_dest = dest.offset(i * elem_size, &self)?;
                     self.write_value_to_ptr(value, elem_dest, elem_ty)?;
                 }
             }
@@ -920,7 +920,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
         let offset = offset.overflowing_mul(pointee_size).0;
-        ptr.wrapping_signed_offset(offset, self.memory.layout)
+        ptr.wrapping_signed_offset(offset, self)
     }
 
     pub(super) fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
@@ -935,7 +935,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
         return if let Some(offset) = offset.checked_mul(pointee_size) {
-            let ptr = ptr.signed_offset(offset, self.memory.layout)?;
+            let ptr = ptr.signed_offset(offset, self)?;
             // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
             if let PrimVal::Ptr(ptr) = ptr.into_inner_primval() {
                 self.memory.check_bounds(ptr, false)?;
@@ -1226,9 +1226,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let field_1_ty = self.get_field_ty(ty, 1)?;
         let field_0_size = self.type_size(field_0_ty)?.expect("pair element type must be sized");
         let field_1_size = self.type_size(field_1_ty)?.expect("pair element type must be sized");
-        let layout = self.memory.layout;
-        self.memory.write_primval(ptr.offset(field_0, layout)?.into(), a, field_0_size)?;
-        self.memory.write_primval(ptr.offset(field_1, layout)?.into(), b, field_1_size)?;
+        let field_0_ptr = ptr.offset(field_0, &self)?.into();
+        let field_1_ptr = ptr.offset(field_1, &self)?.into();
+        self.memory.write_primval(field_0_ptr, a, field_0_size)?;
+        self.memory.write_primval(field_1_ptr, b, field_1_size)?;
         Ok(())
     }
 
@@ -1345,7 +1346,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Ok(p.to_value())
         } else {
             trace!("reading fat pointer extra of type {}", pointee_ty);
-            let extra = ptr.offset(self.memory.pointer_size(), self.memory.layout)?;
+            let extra = ptr.offset(self.memory.pointer_size(), self)?;
             match self.tcx.struct_tail(pointee_ty).sty {
                 ty::TyDynamic(..) => Ok(p.to_value_with_vtable(self.memory.read_ptr(extra)?.to_ptr()?)),
                 ty::TySlice(..) |
@@ -1540,8 +1541,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                     let src_field_offset = self.get_field_offset(src_ty, i)?.bytes();
                     let dst_field_offset = self.get_field_offset(dest_ty, i)?.bytes();
-                    let src_f_ptr = src_ptr.offset(src_field_offset, self.memory.layout)?;
-                    let dst_f_ptr = dest.offset(dst_field_offset, self.memory.layout)?;
+                    let src_f_ptr = src_ptr.offset(src_field_offset, &self)?;
+                    let dst_f_ptr = dest.offset(dst_field_offset, &self)?;
                     if src_fty == dst_fty {
                         self.copy(src_f_ptr, dst_f_ptr.into(), src_fty)?;
                     } else {

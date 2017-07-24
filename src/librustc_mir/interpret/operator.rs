@@ -310,11 +310,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(match bin_op {
             Sub =>
                 // The only way this can overflow is by underflowing, so signdeness of the right operands does not matter
-                map_to_primval(left.overflowing_signed_offset(-right, self.memory.layout)),
+                map_to_primval(left.overflowing_signed_offset(-right, self)),
             Add if signed =>
-                map_to_primval(left.overflowing_signed_offset(right, self.memory.layout)),
+                map_to_primval(left.overflowing_signed_offset(right, self)),
             Add if !signed =>
-                map_to_primval(left.overflowing_offset(right as u64, self.memory.layout)),
+                map_to_primval(left.overflowing_offset(right as u64, self)),
 
             BitAnd if !signed => {
                 let base_mask : u64 = !(self.memory.get(left.alloc_id)?.align - 1);

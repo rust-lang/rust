@@ -101,7 +101,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                         if variant_index as u64 != nndiscr {
                             let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
-                            let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(offset.bytes(), self.memory.layout)?;
+                            let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(offset.bytes(), &self)?;
                             trace!("struct wrapped nullable pointer type: {}", ty);
                             // only the pointer part of a fat pointer is used for this space optimization
                             let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");

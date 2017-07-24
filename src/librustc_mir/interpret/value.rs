@@ -3,6 +3,7 @@
 
 use error::{EvalError, EvalResult};
 use memory::{Memory, MemoryPointer, HasMemory, PointerArithmetic};
+use rustc::ty::layout::HasDataLayout;
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     f32::from_bits(bytes as u32)
@@ -59,7 +60,8 @@ impl<'tcx> Pointer {
         self.primval
     }
 
-    pub(crate) fn signed_offset<L: PointerArithmetic>(self, i: i64, layout: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+        let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
@@ -70,7 +72,8 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub(crate) fn offset<L: PointerArithmetic>(self, i: u64, layout: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+        let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
@@ -81,7 +84,8 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub(crate) fn wrapping_signed_offset<L: PointerArithmetic>(self, i: i64, layout: L) -> EvalResult<'tcx, Self> {
+    pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+        let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);

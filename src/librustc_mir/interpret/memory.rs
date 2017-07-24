@@ -3,7 +3,7 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr, mem, io};
 
 use rustc::ty;
-use rustc::ty::layout::{self, TargetDataLayout};
+use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
 
 use error::{EvalError, EvalResult};
@@ -73,26 +73,26 @@ impl<'tcx> MemoryPointer {
         MemoryPointer { alloc_id, offset }
     }
 
-    pub(crate) fn wrapping_signed_offset<L: PointerArithmetic>(self, i: i64, l: L) -> Self {
-        MemoryPointer::new(self.alloc_id, l.wrapping_signed_offset(self.offset, i))
+    pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
+        MemoryPointer::new(self.alloc_id, cx.data_layout().wrapping_signed_offset(self.offset, i))
     }
 
-    pub(crate) fn overflowing_signed_offset<L: PointerArithmetic>(self, i: i128, l: L) -> (Self, bool) {
-        let (res, over) = l.overflowing_signed_offset(self.offset, i);
+    pub(crate) fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
+        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub(crate) fn signed_offset<L: PointerArithmetic>(self, i: i64, l: L) -> EvalResult<'tcx, Self> {
-        Ok(MemoryPointer::new(self.alloc_id, l.signed_offset(self.offset, i)?))
+    pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+        Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().signed_offset(self.offset, i)?))
     }
 
-    pub(crate) fn overflowing_offset<L: PointerArithmetic>(self, i: u64, l: L) -> (Self, bool) {
-        let (res, over) = l.overflowing_offset(self.offset, i);
+    pub(crate) fn overflowing_offset<C: HasDataLayout>(self, i: u64, cx: C) -> (Self, bool) {
+        let (res, over) = cx.data_layout().overflowing_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub(crate) fn offset<L: PointerArithmetic>(self, i: u64, l: L) -> EvalResult<'tcx, Self> {
-        Ok(MemoryPointer::new(self.alloc_id, l.offset(self.offset, i)?))
+    pub(crate) fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+        Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().offset(self.offset, i)?))
     }
 }
 
@@ -1243,6 +1243,13 @@ impl<'a, 'tcx> layout::HasDataLayout for &'a Memory<'a, 'tcx> {
     }
 }
 impl<'a, 'tcx> layout::HasDataLayout for &'a EvalContext<'a, 'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        self.memory().layout
+    }
+}
+
+impl<'c, 'b, 'a, 'tcx> layout::HasDataLayout for &'c &'b mut EvalContext<'a, 'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self.memory().layout
