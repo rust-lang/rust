@@ -1315,8 +1315,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = self.save_ctxt.tcx.hir.expect_expr(ex.id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
-                    Some(ty) => ty.ty_adt_def().unwrap(),
-                    None => {
+                    Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
+                    _ => {
                         visit::walk_expr(self, ex);
                         return;
                     }
