@@ -640,6 +640,7 @@ pub fn format_impl(
             visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
+            visitor.visit_attrs(&item.attrs, ast::AttrStyle::Inner);
             for item in items {
                 visitor.visit_impl_item(item);
             }

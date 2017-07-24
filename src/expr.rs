@@ -914,7 +914,7 @@ fn rewrite_block_with_visitor(
         ast::BlockCheckMode::Default => visitor.last_pos = block.span.lo,
     }
 
-    visitor.visit_block(block);
+    visitor.visit_block(block, None);
     Some(format!("{}{}", prefix, visitor.buffer))
 }
 
