@@ -154,7 +154,7 @@ error: statement can be reduced
   --> no_effect.rs:65:5
    |
 65 |     Tuple(get_number());
-   |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
    |
    = note: `-D unnecessary-operation` implied by `-D warnings`
 
@@ -162,109 +162,109 @@ error: statement can be reduced
   --> no_effect.rs:66:5
    |
 66 |     Struct { field: get_number() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:67:5
    |
 67 |     Struct { ..get_struct() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_struct();`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_struct();`
 
 error: statement can be reduced
   --> no_effect.rs:68:5
    |
 68 |     Enum::Tuple(get_number());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:69:5
    |
 69 |     Enum::Struct { field: get_number() };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:70:5
    |
 70 |     5 + get_number();
-   |     ^^^^^^^^^^^^^^^^^ help: replace it with `5;get_number();`
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with: `5;get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:71:5
    |
 71 |     *&get_number();
-   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:72:5
    |
 72 |     &get_number();
-   |     ^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:73:5
    |
 73 |     (5, 6, get_number());
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with `5;6;get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `5;6;get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:74:5
    |
 74 |     box get_number();
-   |     ^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:75:5
    |
 75 |     get_number()..;
-   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:76:5
    |
 76 |     ..get_number();
-   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:77:5
    |
 77 |     5..get_number();
-   |     ^^^^^^^^^^^^^^^^ help: replace it with `5;get_number();`
+   |     ^^^^^^^^^^^^^^^^ help: replace it with: `5;get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:78:5
    |
 78 |     [42, get_number()];
-   |     ^^^^^^^^^^^^^^^^^^^ help: replace it with `42;get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^ help: replace it with: `42;get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:79:5
    |
 79 |     [42, 55][get_number() as usize];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `[42, 55];get_number() as usize;`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `[42, 55];get_number() as usize;`
 
 error: statement can be reduced
   --> no_effect.rs:80:5
    |
 80 |     (42, get_number()).1;
-   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with `42;get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `42;get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:81:5
    |
 81 |     [get_number(); 55];
-   |     ^^^^^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: statement can be reduced
   --> no_effect.rs:82:5
    |
 82 |     [42; 55][get_number() as usize];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with `[42; 55];get_number() as usize;`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `[42; 55];get_number() as usize;`
 
 error: statement can be reduced
   --> no_effect.rs:83:5
    |
 83 |     {get_number()};
-   |     ^^^^^^^^^^^^^^^ help: replace it with `get_number();`
+   |     ^^^^^^^^^^^^^^^ help: replace it with: `get_number();`
 
 error: aborting due to 44 previous errors
 

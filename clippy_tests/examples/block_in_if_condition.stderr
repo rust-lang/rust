@@ -46,7 +46,7 @@ error: this boolean expression can be simplified
   --> block_in_if_condition.rs:67:8
    |
 67 |     if true && x == 3 {
-   |        ^^^^^^^^^^^^^^ help: try `x == 3`
+   |        ^^^^^^^^^^^^^^ help: try: `x == 3`
    |
    = note: `-D nonminimal-bool` implied by `-D warnings`
 

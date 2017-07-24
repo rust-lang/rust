@@ -182,7 +182,7 @@ error: use of `unwrap_or` followed by a function call
    --> methods.rs:268:5
     |
 268 |     with_constructor.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_constructor.unwrap_or_else(make)`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_constructor.unwrap_or_else(make)`
     |
     = note: `-D or-fun-call` implied by `-D warnings`
 
@@ -190,67 +190,67 @@ error: use of `unwrap_or` followed by a call to `new`
    --> methods.rs:271:5
     |
 271 |     with_new.unwrap_or(Vec::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_new.unwrap_or_default()`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
    --> methods.rs:274:5
     |
 274 |     with_const_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_const_args.unwrap_or_else(|| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a function call
    --> methods.rs:277:5
     |
 277 |     with_err.unwrap_or(make());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_err.unwrap_or_else(|_| make())`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err.unwrap_or_else(|_| make())`
 
 error: use of `unwrap_or` followed by a function call
    --> methods.rs:280:5
     |
 280 |     with_err_args.unwrap_or(Vec::with_capacity(12));
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_err_args.unwrap_or_else(|_| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a call to `default`
    --> methods.rs:283:5
     |
 283 |     with_default_trait.unwrap_or(Default::default());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_default_trait.unwrap_or_default()`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `default`
    --> methods.rs:286:5
     |
 286 |     with_default_type.unwrap_or(u64::default());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_default_type.unwrap_or_default()`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
    --> methods.rs:289:5
     |
 289 |     with_vec.unwrap_or(vec![]);
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
 
 error: use of `unwrap_or` followed by a function call
    --> methods.rs:294:5
     |
 294 |     without_default.unwrap_or(Foo::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `without_default.unwrap_or_else(Foo::new)`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `without_default.unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` followed by a function call
    --> methods.rs:297:5
     |
 297 |     map.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `map.entry(42).or_insert_with(String::new)`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `map.entry(42).or_insert_with(String::new)`
 
 error: use of `or_insert` followed by a function call
    --> methods.rs:300:5
     |
 300 |     btree.entry(42).or_insert(String::new());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `btree.entry(42).or_insert_with(String::new)`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `btree.entry(42).or_insert_with(String::new)`
 
 error: use of `unwrap_or` followed by a function call
    --> methods.rs:303:13
     |
 303 |     let _ = stringy.unwrap_or("".to_owned());
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `stringy.unwrap_or_else(|| "".to_owned())`
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `stringy.unwrap_or_else(|| "".to_owned())`
 
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
    --> methods.rs:314:23
@@ -326,7 +326,7 @@ error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more co
    --> methods.rs:369:17
     |
 369 |         let _ = boxed_slice.get(1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&boxed_slice[1]`
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
     |
     = note: `-D get-unwrap` implied by `-D warnings`
 
@@ -334,55 +334,55 @@ error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more co
    --> methods.rs:370:17
     |
 370 |         let _ = some_slice.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_slice[0]`
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_slice[0]`
 
 error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
    --> methods.rs:371:17
     |
 371 |         let _ = some_vec.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_vec[0]`
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vec[0]`
 
 error: called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
    --> methods.rs:372:17
     |
 372 |         let _ = some_vecdeque.get(0).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_vecdeque[0]`
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vecdeque[0]`
 
 error: called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more concise
    --> methods.rs:373:17
     |
 373 |         let _ = some_hashmap.get(&1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_hashmap[&1]`
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_hashmap[&1]`
 
 error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
    --> methods.rs:374:17
     |
 374 |         let _ = some_btreemap.get(&1).unwrap();
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&some_btreemap[&1]`
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_btreemap[&1]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
    --> methods.rs:379:10
     |
 379 |         *boxed_slice.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut boxed_slice[0]`
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut boxed_slice[0]`
 
 error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
    --> methods.rs:380:10
     |
 380 |         *some_slice.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut some_slice[0]`
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_slice[0]`
 
 error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
    --> methods.rs:381:10
     |
 381 |         *some_vec.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut some_vec[0]`
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vec[0]`
 
 error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
    --> methods.rs:382:10
     |
 382 |         *some_vecdeque.get_mut(0).unwrap() = 1;
-    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this `&mut some_vecdeque[0]`
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vecdeque[0]`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
    --> methods.rs:396:13
@@ -436,7 +436,7 @@ error: you should use the `starts_with` method
    --> methods.rs:425:5
     |
 425 |     "".chars().next() == Some(' ');
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this `"".starts_with(' ')`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".starts_with(' ')`
     |
     = note: `-D chars-next-cmp` implied by `-D warnings`
 
@@ -444,13 +444,13 @@ error: you should use the `starts_with` method
    --> methods.rs:426:5
     |
 426 |     Some(' ') != "".chars().next();
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this `!"".starts_with(' ')`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".starts_with(' ')`
 
 error: calling `.extend(_.chars())`
    --> methods.rs:435:5
     |
 435 |     s.extend(abc.chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this `s.push_str(abc)`
+    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(abc)`
     |
     = note: `-D string-extend-chars` implied by `-D warnings`
 
@@ -458,19 +458,19 @@ error: calling `.extend(_.chars())`
    --> methods.rs:438:5
     |
 438 |     s.extend("abc".chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this `s.push_str("abc")`
+    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str("abc")`
 
 error: calling `.extend(_.chars())`
    --> methods.rs:441:5
     |
 441 |     s.extend(def.chars());
-    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this `s.push_str(&def)`
+    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 
 error: using `clone` on a `Copy` type
    --> methods.rs:452:5
     |
 452 |     42.clone();
-    |     ^^^^^^^^^^ help: try removing the `clone` call `42`
+    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
     |
     = note: `-D clone-on-copy` implied by `-D warnings`
 
@@ -478,25 +478,25 @@ error: using `clone` on a `Copy` type
    --> methods.rs:456:5
     |
 456 |     (&42).clone();
-    |     ^^^^^^^^^^^^^ help: try dereferencing it `*(&42)`
+    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
 error: using `clone` on a `Copy` type
    --> methods.rs:460:5
     |
 460 |     t.clone();
-    |     ^^^^^^^^^ help: try removing the `clone` call `t`
+    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
    --> methods.rs:462:5
     |
 462 |     Some(t).clone();
-    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call `Some(t)`
+    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
    --> methods.rs:468:22
     |
 468 |     let z: &Vec<_> = y.clone();
-    |                      ^^^^^^^^^ help: try dereferencing it `(*y).clone()`
+    |                      ^^^^^^^^^ help: try dereferencing it: `(*y).clone()`
     |
     = note: `-D clone-double-ref` implied by `-D warnings`
 
@@ -504,7 +504,7 @@ error: single-character string constant used as pattern
    --> methods.rs:475:13
     |
 475 |     x.split("x");
-    |     --------^^^- help: try using a char instead: `x.split('x')`
+    |     --------^^^- help: try using a char instead:: `x.split('x')`
     |
     = note: `-D single-char-pattern` implied by `-D warnings`
 
@@ -512,97 +512,97 @@ error: single-character string constant used as pattern
    --> methods.rs:492:16
     |
 492 |     x.contains("x");
-    |     -----------^^^- help: try using a char instead: `x.contains('x')`
+    |     -----------^^^- help: try using a char instead:: `x.contains('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:493:19
     |
 493 |     x.starts_with("x");
-    |     --------------^^^- help: try using a char instead: `x.starts_with('x')`
+    |     --------------^^^- help: try using a char instead:: `x.starts_with('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:494:17
     |
 494 |     x.ends_with("x");
-    |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
+    |     ------------^^^- help: try using a char instead:: `x.ends_with('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:495:12
     |
 495 |     x.find("x");
-    |     -------^^^- help: try using a char instead: `x.find('x')`
+    |     -------^^^- help: try using a char instead:: `x.find('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:496:13
     |
 496 |     x.rfind("x");
-    |     --------^^^- help: try using a char instead: `x.rfind('x')`
+    |     --------^^^- help: try using a char instead:: `x.rfind('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:497:14
     |
 497 |     x.rsplit("x");
-    |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
+    |     ---------^^^- help: try using a char instead:: `x.rsplit('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:498:24
     |
 498 |     x.split_terminator("x");
-    |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
+    |     -------------------^^^- help: try using a char instead:: `x.split_terminator('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:499:25
     |
 499 |     x.rsplit_terminator("x");
-    |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
+    |     --------------------^^^- help: try using a char instead:: `x.rsplit_terminator('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:500:17
     |
 500 |     x.splitn(0, "x");
-    |     ------------^^^- help: try using a char instead: `x.splitn(0, 'x')`
+    |     ------------^^^- help: try using a char instead:: `x.splitn(0, 'x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:501:18
     |
 501 |     x.rsplitn(0, "x");
-    |     -------------^^^- help: try using a char instead: `x.rsplitn(0, 'x')`
+    |     -------------^^^- help: try using a char instead:: `x.rsplitn(0, 'x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:502:15
     |
 502 |     x.matches("x");
-    |     ----------^^^- help: try using a char instead: `x.matches('x')`
+    |     ----------^^^- help: try using a char instead:: `x.matches('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:503:16
     |
 503 |     x.rmatches("x");
-    |     -----------^^^- help: try using a char instead: `x.rmatches('x')`
+    |     -----------^^^- help: try using a char instead:: `x.rmatches('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:504:21
     |
 504 |     x.match_indices("x");
-    |     ----------------^^^- help: try using a char instead: `x.match_indices('x')`
+    |     ----------------^^^- help: try using a char instead:: `x.match_indices('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:505:22
     |
 505 |     x.rmatch_indices("x");
-    |     -----------------^^^- help: try using a char instead: `x.rmatch_indices('x')`
+    |     -----------------^^^- help: try using a char instead:: `x.rmatch_indices('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:506:25
     |
 506 |     x.trim_left_matches("x");
-    |     --------------------^^^- help: try using a char instead: `x.trim_left_matches('x')`
+    |     --------------------^^^- help: try using a char instead:: `x.trim_left_matches('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:507:26
     |
 507 |     x.trim_right_matches("x");
-    |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
+    |     ---------------------^^^- help: try using a char instead:: `x.trim_right_matches('x')`
 
 error: you are getting the inner pointer of a temporary `CString`
    --> methods.rs:517:5

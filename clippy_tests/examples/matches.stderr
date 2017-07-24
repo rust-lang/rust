@@ -5,7 +5,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 27 | |         ExprNode::ExprAddrOf => Some(&NODE),
 28 | |         _ => { let x = 5; None },
 29 | |     }
-   | |_____^ help: try this `if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }`
+   | |_____^ help: try this: `if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }`
    |
    = note: `-D single-match-else` implied by `-D warnings`
 
@@ -16,7 +16,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 36 | |         Some(y) => { println!("{:?}", y); }
 37 | |         _ => ()
 38 | |     };
-   | |_____^ help: try this `if let Some(y) = x { println!("{:?}", y); }`
+   | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y); }`
    |
    = note: `-D single-match` implied by `-D warnings`
 
@@ -27,7 +27,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 42 | |         (2...3, 7...9) => dummy(),
 43 | |         _ => {}
 44 | |     };
-   | |_____^ help: try this `if let (2...3, 7...9) = z { dummy() }`
+   | |_____^ help: try this: `if let (2...3, 7...9) = z { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> matches.rs:63:5
@@ -36,7 +36,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 64 | |         Some(y) => dummy(),
 65 | |         None => ()
 66 | |     };
-   | |_____^ help: try this `if let Some(y) = x { dummy() }`
+   | |_____^ help: try this: `if let Some(y) = x { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> matches.rs:68:5
@@ -45,7 +45,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 69 | |         Ok(y) => dummy(),
 70 | |         Err(..) => ()
 71 | |     };
-   | |_____^ help: try this `if let Ok(y) = y { dummy() }`
+   | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> matches.rs:75:5
@@ -54,7 +54,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 76 | |         Cow::Borrowed(..) => dummy(),
 77 | |         Cow::Owned(..) => (),
 78 | |     };
-   | |_____^ help: try this `if let Cow::Borrowed(..) = c { dummy() }`
+   | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
 
 error: you seem to be trying to match on a boolean expression
   --> matches.rs:96:5
@@ -63,7 +63,7 @@ error: you seem to be trying to match on a boolean expression
 97 | |         true => 0,
 98 | |         false => 42,
 99 | |     };
-   | |_____^ help: consider using an if/else expression `if test { 0 } else { 42 }`
+   | |_____^ help: consider using an if/else expression: `if test { 0 } else { 42 }`
    |
    = note: `-D match-bool` implied by `-D warnings`
 
@@ -74,7 +74,7 @@ error: you seem to be trying to match on a boolean expression
 103 | |         true => 1,
 104 | |         false => 0,
 105 | |     };
-    | |_____^ help: consider using an if/else expression `if option == 1 { 1 } else { 0 }`
+    | |_____^ help: consider using an if/else expression: `if option == 1 { 1 } else { 0 }`
 
 error: you seem to be trying to match on a boolean expression
    --> matches.rs:107:5
@@ -83,7 +83,7 @@ error: you seem to be trying to match on a boolean expression
 108 | |         true => (),
 109 | |         false => { println!("Noooo!"); }
 110 | |     };
-    | |_____^ help: consider using an if/else expression `if !test { println!("Noooo!"); }`
+    | |_____^ help: consider using an if/else expression: `if !test { println!("Noooo!"); }`
 
 error: you seem to be trying to match on a boolean expression
    --> matches.rs:112:5
@@ -92,7 +92,7 @@ error: you seem to be trying to match on a boolean expression
 113 | |         false => { println!("Noooo!"); }
 114 | |         _ => (),
 115 | |     };
-    | |_____^ help: consider using an if/else expression `if !test { println!("Noooo!"); }`
+    | |_____^ help: consider using an if/else expression: `if !test { println!("Noooo!"); }`
 
 error: you seem to be trying to match on a boolean expression
    --> matches.rs:117:5
@@ -101,7 +101,7 @@ error: you seem to be trying to match on a boolean expression
 118 | |         false => { println!("Noooo!"); }
 119 | |         _ => (),
 120 | |     };
-    | |_____^ help: consider using an if/else expression `if !(test && test) { println!("Noooo!"); }`
+    | |_____^ help: consider using an if/else expression: `if !(test && test) { println!("Noooo!"); }`
 
 error: equal expressions as operands to `&&`
    --> matches.rs:117:11
@@ -118,7 +118,7 @@ error: you seem to be trying to match on a boolean expression
 123 | |         false => { println!("Noooo!"); }
 124 | |         true => { println!("Yes!"); }
 125 | |     };
-    | |_____^ help: consider using an if/else expression `if test { println!("Yes!"); } else { println!("Noooo!"); }`
+    | |_____^ help: consider using an if/else expression: `if test { println!("Yes!"); } else { println!("Noooo!"); }`
 
 error: you don't need to add `&` to all patterns
    --> matches.rs:138:9
@@ -156,7 +156,7 @@ error: you don't need to add `&` to both the expression and the patterns
 155 | |         &Some(v) => println!("{:?}", v),
 156 | |         &None => println!("none"),
 157 | |     }
-    | |_____^ help: try `match w { .. }`
+    | |_____^ help: try: `match w { .. }`
 
 error: you don't need to add `&` to all patterns
    --> matches.rs:165:5
@@ -177,7 +177,7 @@ error: you don't need to add `&` to both the expression and the patterns
 170 | /     if let &None = &b {
 171 | |         println!("none");
 172 | |     }
-    | |_____^ help: try `if let .. = b { .. }`
+    | |_____^ help: try: `if let .. = b { .. }`
 
 error: some ranges overlap
    --> matches.rs:179:9
