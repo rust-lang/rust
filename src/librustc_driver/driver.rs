@@ -167,7 +167,7 @@ pub fn compile_input(sess: &Session,
             hir::check_attr::check_crate(sess, &expanded_crate);
         });
 
-        let opt_crate = if keep_ast(sess) {
+        let opt_crate = if control.keep_ast {
             Some(&expanded_crate)
         } else {
             drop(expanded_crate);
@@ -263,9 +263,6 @@ fn keep_hygiene_data(sess: &Session) -> bool {
     sess.opts.debugging_opts.keep_hygiene_data
 }
 
-fn keep_ast(sess: &Session) -> bool {
-    sess.opts.debugging_opts.keep_ast || ::save_analysis(sess)
-}
 
 /// The name used for source code that doesn't originate in a file
 /// (e.g. source from stdin or a string)
@@ -304,6 +301,8 @@ pub struct CompileController<'a> {
     pub compilation_done: PhaseController<'a>,
 
     pub make_glob_map: MakeGlobMap,
+    // Whether the compiler should keep the ast beyond parsing.
+    pub keep_ast: bool,
 }
 
 impl<'a> CompileController<'a> {
@@ -316,6 +315,7 @@ impl<'a> CompileController<'a> {
             after_llvm: PhaseController::basic(),
             compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
+            keep_ast: false,
         }
     }
 }

@@ -518,6 +518,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         -> CompileController<'a> {
         let mut control = CompileController::basic();
 
+        control.keep_ast = sess.opts.debugging_opts.keep_ast || save_analysis(sess);
+
         if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
             if ppm.needs_ast_map(&opt_uii) {
                 control.after_hir_lowering.stop = Compilation::Stop;
