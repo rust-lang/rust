@@ -126,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against true are unnecessary",
-                                       "try simplifying it as shown:",
+                                       "try simplifying it as shown",
                                        hint);
                 },
                 (Other, Bool(true)) => {
@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against true are unnecessary",
-                                       "try simplifying it as shown:",
+                                       "try simplifying it as shown",
                                        hint);
                 },
                 (Bool(false), Other) => {
@@ -144,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against false can be replaced by a negation",
-                                       "try simplifying it as shown:",
+                                       "try simplifying it as shown",
                                        (!hint).to_string());
                 },
                 (Other, Bool(false)) => {
@@ -153,7 +153,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                                        BOOL_COMPARISON,
                                        e.span,
                                        "equality checks against false can be replaced by a negation",
-                                       "try simplifying it as shown:",
+                                       "try simplifying it as shown",
                                        (!hint).to_string());
                 },
                 _ => (),

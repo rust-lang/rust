@@ -96,7 +96,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                                expr.span,
                                "redundant closure found",
                                |db| if let Some(snippet) = snippet_opt(cx, caller.span) {
-                                   db.span_suggestion(expr.span, "remove closure as shown:", snippet);
+                                   db.span_suggestion(expr.span, "remove closure as shown", snippet);
                                });
         }
     }

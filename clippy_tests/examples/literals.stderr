@@ -33,11 +33,11 @@ error: this is a decimal constant
    |                           ^^^^^^^^^^^
    |
    = note: `-D zero-prefixed-literal` implied by `-D warnings`
-help: if you mean to use a decimal constant, remove the `0` to remove confusion:
+help: if you mean to use a decimal constant, remove the `0` to remove confusion
    |
 17 |     let fail_multi_zero = 123usize;
    |                           ^^^^^^^^
-help: if you mean to use an octal constant, use `0o`:
+help: if you mean to use an octal constant, use `0o`
    |
 17 |     let fail_multi_zero = 0o123usize;
    |                           ^^^^^^^^^^
@@ -78,11 +78,11 @@ error: this is a decimal constant
 30 |     let fail8 = 0123;
    |                 ^^^^
    |
-help: if you mean to use a decimal constant, remove the `0` to remove confusion:
+help: if you mean to use a decimal constant, remove the `0` to remove confusion
    |
 30 |     let fail8 = 123;
    |                 ^^^
-help: if you mean to use an octal constant, use `0o`:
+help: if you mean to use an octal constant, use `0o`
    |
 30 |     let fail8 = 0o123;
    |                 ^^^^^

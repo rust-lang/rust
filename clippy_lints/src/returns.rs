@@ -97,7 +97,7 @@ impl ReturnPass {
                            ret_span,
                            "unneeded return statement",
                            |db| if let Some(snippet) = snippet_opt(cx, inner_span) {
-                               db.span_suggestion(ret_span, "remove `return` as shown:", snippet);
+                               db.span_suggestion(ret_span, "remove `return` as shown", snippet);
                            });
     }
 
