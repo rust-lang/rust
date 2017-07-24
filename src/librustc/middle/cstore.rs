@@ -25,8 +25,7 @@
 use hir::def;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
-use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData,
-                            DefPathTable};
+use hir::map::definitions::{Definitions, DefKey, DefPathTable};
 use hir::svh::Svh;
 use ich;
 use middle::lang_items;
@@ -269,10 +268,6 @@ pub trait CrateStore {
     fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
-    fn retrace_path(&self,
-                    cnum: CrateNum,
-                    path_data: &[DisambiguatedDefPathData])
-                    -> Option<DefId>;
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
@@ -392,13 +387,6 @@ impl CrateStore for DummyCrateStore {
     fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
-    fn retrace_path(&self,
-                    cnum: CrateNum,
-                    path_data: &[DisambiguatedDefPathData])
-                    -> Option<DefId> {
-        None
-    }
-
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
     fn def_path(&self, def: DefId) -> hir_map::DefPath {
         bug!("relative_def_path")

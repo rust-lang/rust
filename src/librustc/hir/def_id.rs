@@ -136,6 +136,10 @@ impl DefIndex {
     pub fn as_array_index(&self) -> usize {
         (self.0 & !DEF_INDEX_HI_START.0) as usize
     }
+
+    pub fn from_array_index(i: usize, address_space: DefIndexAddressSpace) -> DefIndex {
+        DefIndex::new(address_space.start() + i)
+    }
 }
 
 /// The start of the "high" range of DefIndexes.

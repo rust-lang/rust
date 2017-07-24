@@ -18,7 +18,7 @@ use hir::TraitMap;
 use hir::def::{Def, ExportMap};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
-use hir::map::{DisambiguatedDefPathData, DefPathHash};
+use hir::map::DefPathHash;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime;
@@ -567,23 +567,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             self.sess.local_crate_disambiguator()
         } else {
             self.sess.cstore.crate_disambiguator(cnum)
-        }
-    }
-
-    pub fn retrace_path(self,
-                        krate: CrateNum,
-                        path_data: &[DisambiguatedDefPathData])
-                        -> Option<DefId> {
-        debug!("retrace_path(path={:?}, krate={:?})", path_data, self.crate_name(krate));
-
-        if krate == LOCAL_CRATE {
-            self.hir
-                .definitions()
-                .def_path_table()
-                .retrace_path(path_data)
-                .map(|def_index| DefId { krate: krate, index: def_index })
-        } else {
-            self.sess.cstore.retrace_path(krate, path_data)
         }
     }
 
