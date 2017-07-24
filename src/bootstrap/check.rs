@@ -458,6 +458,9 @@ impl Step for HostCompiletest {
             });
         } else {
             for test in HOST_COMPILETESTS {
+                if test.mode == "pretty" {
+                    continue;
+                }
                 run.builder.ensure(HostCompiletest {
                     compiler,
                     target: run.target,
@@ -532,7 +535,7 @@ impl Step for Compiletest {
 
             builder.ensure(dist::DebuggerScripts {
                 sysroot: builder.sysroot(compiler),
-                target: target
+                host: target
             });
         }
 
