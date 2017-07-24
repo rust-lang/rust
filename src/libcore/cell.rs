@@ -187,12 +187,9 @@ use ops::{Deref, DerefMut, CoerceUnsized};
 use ptr;
 
 /// A mutable memory location.
-/// 
 /// # Examples
-/// 
 /// Here you can see how using `Cell<T>` allows to use mutable field inside
 /// immutable struct (which is also called 'interior mutability').
-/// 
 /// ```
 /// use std::cell::Cell;
 ///
@@ -207,10 +204,8 @@ use ptr;
 /// };
 ///
 /// let new_value = 100;
-/// 
 /// // ERROR, because my_struct is immutable
 /// // immutable.regular_field = new_value;
-/// 
 /// // WORKS, although `my_struct` is immutable, field `special_field` is mutable because it is Cell
 /// immutable.special_field.set(new_value);
 /// assert_eq!(immutable.special_field.get(), new_value);
