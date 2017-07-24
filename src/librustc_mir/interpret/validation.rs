@@ -36,6 +36,26 @@ impl ValidationMode {
 // Validity checks
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
+        // Determine if this method is whitelisted and hence we do not perform any validation.
+        // TODO: Do not do this.
+        {
+            // The regexp we use for filtering
+            use regex::Regex;
+            lazy_static! {
+                static ref RE: Regex = Regex::new("^(\
+std::mem::swap::|\
+std::mem::uninitialized::|\
+std::ptr::read::|\
+<std::vec::Vec<T>><[a-zA-Z0-9_]+>::into_boxed_slice$\
+)").unwrap();
+            }
+            // Now test
+            let name = self.stack[self.cur_frame()].instance.to_string();
+            if RE.is_match(&name) {
+                return Ok(())
+            }
+        }
+
         // We need to monomorphize ty *without* erasing lifetimes
         let ty = operand.ty.subst(self.tcx, self.substs());
         let lval = self.eval_lvalue(&operand.lval)?;
@@ -114,6 +134,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             if Some(ce) == query.re {
                 return Ok(());
             }
+        }
+
+        // For now, bail out if we hit a dead local.
+        // TODO: Reconsider this.  I think MIR should rather be fixed.
+        match query.lval {
+            Lvalue::Local { frame, local } => {
+                if let Err(EvalError::DeadLocal) = self.stack[frame].get_local(local) {
+                    return Ok(())
+                }
+            }
+            _ => {}
         }
 
         // This is essentially a copy of normalize_associated_type, but without erasure

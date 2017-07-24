@@ -577,7 +577,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 WriteLock(ref lft) => {
                     // Make sure we can release this lock
                     if lft.frame != cur_frame {
-                        return Err(EvalError::InvalidMemoryLockRelease { ptr, len });
+                        return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
                     }
                     if !range.contained_in(ptr.offset, len) {
                         return Err(EvalError::Unimplemented(format!("miri does not support release part of a write-locked region")));
@@ -586,7 +586,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     remove_list.push(*range);
                 }
                 ReadLock(_) => {
-                    return Err(EvalError::InvalidMemoryLockRelease { ptr, len });
+                    return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
                 },
             }
         }
@@ -601,8 +601,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 
     pub(crate) fn locks_lifetime_ended(&mut self, ending_region: Option<CodeExtent>) {
-        trace!("Releasing locks that expire at {:?}", ending_region);
         let cur_frame = self.cur_frame;
+        trace!("Releasing frame {} locks that expire at {:?}", cur_frame, ending_region);
         let has_ended =  |lifetime: &DynamicLifetime| -> bool {
             if lifetime.frame != cur_frame {
                 return false;

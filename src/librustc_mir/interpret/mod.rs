@@ -16,6 +16,9 @@ extern crate syntax;
 
 // From crates.io.
 extern crate byteorder;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 
 mod cast;
 mod const_eval;

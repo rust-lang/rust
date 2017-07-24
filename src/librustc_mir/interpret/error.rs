@@ -67,6 +67,8 @@ pub enum EvalError<'tcx> {
     InvalidMemoryLockRelease {
         ptr: MemoryPointer,
         len: u64,
+        frame: usize,
+        lock: LockInfo,
     },
     DeallocatedLockedMemory {
         ptr: MemoryPointer,
@@ -236,9 +238,9 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "new {:?} lock at {:?}, size {}, is in conflict with lock {:?}",
                        kind, ptr, len, lock)
             }
-            InvalidMemoryLockRelease { ptr, len } => {
-                write!(f, "tried to release memory write lock at {:?}, size {}, but the write lock is held by someone else or its a read lock",
-                       ptr, len)
+            InvalidMemoryLockRelease { ptr, len, frame, ref lock } => {
+                write!(f, "frame {} tried to release memory write lock at {:?}, size {}, but cannot release lock {:?}",
+                       frame, ptr, len, lock)
             }
             DeallocatedLockedMemory { ptr, ref lock } => {
                 write!(f, "tried to deallocate memory at {:?} in conflict with lock {:?}",
