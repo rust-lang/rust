@@ -1,5 +1,5 @@
-#![allow(dead_code)] // bar
-
+#![allow(dead_code)]
+// bar
 //! Doc comment
 fn test() {
     // comment
