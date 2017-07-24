@@ -91,3 +91,20 @@ fn issue_1799() {
     // https://github.com/rust-lang/rust/issues/43336
     Some( Err(error) ) ;
 }
+
+// Formatting inner attributes
+fn inner_attributes() {
+    #![ this_is_an_inner_attribute ( foo ) ]
+
+    foo();
+}
+
+impl InnerAttributes() {
+    #![ this_is_an_inner_attribute ( foo ) ]
+
+    fn foo() {}
+}
+
+mod InnerAttributes {
+    #![ this_is_an_inner_attribute ( foo ) ]
+}

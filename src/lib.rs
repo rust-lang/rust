@@ -554,17 +554,24 @@ where
         if skip_children && path.as_path() != main_file {
             continue;
         }
-        let path = path.to_str().unwrap();
+        let path_str = path.to_str().unwrap();
         if config.verbose() {
-            println!("Formatting {}", path);
+            println!("Formatting {}", path_str);
         }
         {
             let mut visitor = FmtVisitor::from_codemap(parse_session, config);
-            visitor.format_separate_mod(module);
+            let filemap = visitor.codemap.lookup_char_pos(module.inner.lo).file;
+            // Format inner attributes if available.
+            if !krate.attrs.is_empty() && path == main_file {
+                visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner);
+            } else {
+                visitor.last_pos = filemap.start_pos;
+            }
+            visitor.format_separate_mod(module, &*filemap);
 
-            has_diff |= after_file(path, &mut visitor.buffer)?;
+            has_diff |= after_file(path_str, &mut visitor.buffer)?;
 
-            result.push((path.to_owned(), visitor.buffer));
+            result.push((path_str.to_owned(), visitor.buffer));
         }
         // Reset the error count.
         if parse_session.span_diagnostic.has_errors() {

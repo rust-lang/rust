@@ -12,7 +12,7 @@ use std::cmp;
 
 use strings::string_buffer::StringBuffer;
 use syntax::{ast, ptr, visit};
-use syntax::codemap::{BytePos, CodeMap, Span};
+use syntax::codemap::{self, BytePos, CodeMap, Span};
 use syntax::parse::ParseSess;
 
 use {Indent, Shape};
@@ -128,7 +128,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn visit_block(&mut self, b: &ast::Block) {
+    pub fn visit_block(&mut self, b: &ast::Block, inner_attrs: Option<&[ast::Attribute]>) {
         debug!(
             "visit_block: {:?} {:?}",
             self.codemap.lookup_char_pos(b.span.lo),
@@ -143,6 +143,11 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = self.last_pos + brace_compensation;
         self.block_indent = self.block_indent.block_indent(self.config);
         self.buffer.push_str("{");
+
+        // Format inner attributes if available.
+        if let Some(attrs) = inner_attrs {
+            self.visit_attrs(attrs, ast::AttrStyle::Inner);
+        }
 
         for stmt in &b.stmts {
             self.visit_stmt(stmt)
@@ -201,6 +206,7 @@ impl<'a> FmtVisitor<'a> {
         s: Span,
         _: ast::NodeId,
         defaultness: ast::Defaultness,
+        inner_attrs: Option<&[ast::Attribute]>,
     ) {
         let indent = self.block_indent;
         let block;
@@ -254,7 +260,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         self.last_pos = source!(self, block.span).lo;
-        self.visit_block(block)
+        self.visit_block(block, inner_attrs)
     }
 
     pub fn visit_item(&mut self, item: &ast::Item) {
@@ -262,6 +268,7 @@ impl<'a> FmtVisitor<'a> {
         // complex in the module case. It is complex because the module could be
         // in a separate file and there might be attributes in both files, but
         // the AST lumps them all together.
+        let mut attrs = item.attrs.clone();
         match item.node {
             ast::ItemKind::Mod(ref m) => {
                 let outer_file = self.codemap.lookup_char_pos(item.span.lo).file;
@@ -269,7 +276,7 @@ impl<'a> FmtVisitor<'a> {
                 if outer_file.name == inner_file.name {
                     // Module is inline, in this case we treat modules like any
                     // other item.
-                    if self.visit_attrs(&item.attrs) {
+                    if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
                         self.push_rewrite(item.span, None);
                         return;
                     }
@@ -279,7 +286,7 @@ impl<'a> FmtVisitor<'a> {
                 } else {
                     // Module is not inline and should not be skipped. We want
                     // to process only the attributes in the current file.
-                    let attrs = item.attrs
+                    let filterd_attrs = item.attrs
                         .iter()
                         .filter_map(|a| {
                             let attr_file = self.codemap.lookup_char_pos(a.span.lo).file;
@@ -292,10 +299,11 @@ impl<'a> FmtVisitor<'a> {
                         .collect::<Vec<_>>();
                     // Assert because if we should skip it should be caught by
                     // the above case.
-                    assert!(!self.visit_attrs(&attrs));
+                    assert!(!self.visit_attrs(&filterd_attrs, ast::AttrStyle::Outer));
+                    attrs = filterd_attrs;
                 }
             }
-            _ => if self.visit_attrs(&item.attrs) {
+            _ => if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
                 self.push_rewrite(item.span, None);
                 return;
             },
@@ -361,7 +369,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Mod(ref module) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
-                self.format_mod(module, &item.vis, item.span, item.ident);
+                self.format_mod(module, &item.vis, item.span, item.ident, &attrs);
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
@@ -416,6 +424,7 @@ impl<'a> FmtVisitor<'a> {
                     item.span,
                     item.id,
                     ast::Defaultness::Final,
+                    Some(&item.attrs),
                 )
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
@@ -457,7 +466,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
-        if self.visit_attrs(&ti.attrs) {
+        if self.visit_attrs(&ti.attrs, ast::AttrStyle::Outer) {
             self.push_rewrite(ti.span, None);
             return;
         }
@@ -489,6 +498,7 @@ impl<'a> FmtVisitor<'a> {
                     ti.span,
                     ti.id,
                     ast::Defaultness::Final,
+                    Some(&ti.attrs),
                 );
             }
             ast::TraitItemKind::Type(ref type_param_bounds, ref type_default) => {
@@ -508,7 +518,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
-        if self.visit_attrs(&ii.attrs) {
+        if self.visit_attrs(&ii.attrs, ast::AttrStyle::Outer) {
             self.push_rewrite(ii.span, None);
             return;
         }
@@ -521,6 +531,7 @@ impl<'a> FmtVisitor<'a> {
                     ii.span,
                     ii.id,
                     ii.defaultness,
+                    Some(&ii.attrs),
                 );
             }
             ast::ImplItemKind::Const(ref ty, ref expr) => {
@@ -597,31 +608,27 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Returns true if we should skip the following item.
-    pub fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
+    pub fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         if utils::contains_skip(attrs) {
             return true;
         }
 
-        let outers: Vec<_> = attrs
-            .iter()
-            .filter(|a| a.style == ast::AttrStyle::Outer)
-            .cloned()
-            .collect();
-        if outers.is_empty() {
+        let attrs: Vec<_> = attrs.iter().filter(|a| a.style == style).cloned().collect();
+        if attrs.is_empty() {
             return false;
         }
 
-        let first = &outers[0];
+        let first = &attrs[0];
         self.format_missing_with_indent(source!(self, first.span).lo);
 
-        let rewrite = outers
+        let rewrite = attrs
             .rewrite(
                 &self.get_context(),
                 Shape::indented(self.block_indent, self.config),
             )
             .unwrap();
         self.buffer.push_str(&rewrite);
-        let last = outers.last().unwrap();
+        let last = attrs.last().unwrap();
         self.last_pos = source!(self, last.span).hi;
         false
     }
@@ -659,7 +666,14 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn format_mod(&mut self, m: &ast::Mod, vis: &ast::Visibility, s: Span, ident: ast::Ident) {
+    fn format_mod(
+        &mut self,
+        m: &ast::Mod,
+        vis: &ast::Visibility,
+        s: Span,
+        ident: ast::Ident,
+        attrs: &[ast::Attribute],
+    ) {
         // Decide whether this is an inline mod or an external mod.
         let local_file_name = self.codemap.span_to_filename(s);
         let inner_span = source!(self, m.inner);
@@ -685,6 +699,7 @@ impl<'a> FmtVisitor<'a> {
             } else {
                 self.last_pos = mod_lo;
                 self.block_indent = self.block_indent.block_indent(self.config);
+                self.visit_attrs(attrs, ast::AttrStyle::Inner);
                 self.walk_mod_items(m);
                 self.format_missing_with_indent(source!(self, m.inner).hi - BytePos(1));
                 self.close_block(false);
@@ -696,9 +711,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn format_separate_mod(&mut self, m: &ast::Mod) {
-        let filemap = self.codemap.lookup_char_pos(m.inner.lo).file;
-        self.last_pos = filemap.start_pos;
+    pub fn format_separate_mod(&mut self, m: &ast::Mod, filemap: &codemap::FileMap) {
         self.block_indent = Indent::empty();
         self.walk_mod_items(m);
         self.format_missing_with_indent(filemap.end_pos);
@@ -836,14 +849,18 @@ impl Rewrite for ast::MetaItem {
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         try_opt!(self.meta()).rewrite(context, shape).map(
-            |rw| if rw.starts_with("///") {
+            |rw| if self.is_sugared_doc {
                 rw
             } else {
                 let original = context.snippet(self.span);
+                let prefix = match self.style {
+                    ast::AttrStyle::Inner => "#!",
+                    ast::AttrStyle::Outer => "#",
+                };
                 if contains_comment(&original) {
                     original
                 } else {
-                    format!("#[{}]", rw)
+                    format!("{}[{}]", prefix, rw)
                 }
             },
         )
