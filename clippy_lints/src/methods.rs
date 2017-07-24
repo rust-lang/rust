@@ -1233,7 +1233,7 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr)
                                SINGLE_CHAR_PATTERN,
                                arg.span,
                                "single-character string constant used as pattern",
-                               |db| { db.span_suggestion(expr.span, "try using a char instead:", hint); });
+                               |db| { db.span_suggestion(expr.span, "try using a char instead", hint); });
         }
     }
 }

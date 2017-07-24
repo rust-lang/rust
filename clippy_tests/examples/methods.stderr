@@ -504,7 +504,7 @@ error: single-character string constant used as pattern
    --> methods.rs:475:13
     |
 475 |     x.split("x");
-    |     --------^^^- help: try using a char instead:: `x.split('x')`
+    |     --------^^^- help: try using a char instead: `x.split('x')`
     |
     = note: `-D single-char-pattern` implied by `-D warnings`
 
@@ -512,97 +512,97 @@ error: single-character string constant used as pattern
    --> methods.rs:492:16
     |
 492 |     x.contains("x");
-    |     -----------^^^- help: try using a char instead:: `x.contains('x')`
+    |     -----------^^^- help: try using a char instead: `x.contains('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:493:19
     |
 493 |     x.starts_with("x");
-    |     --------------^^^- help: try using a char instead:: `x.starts_with('x')`
+    |     --------------^^^- help: try using a char instead: `x.starts_with('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:494:17
     |
 494 |     x.ends_with("x");
-    |     ------------^^^- help: try using a char instead:: `x.ends_with('x')`
+    |     ------------^^^- help: try using a char instead: `x.ends_with('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:495:12
     |
 495 |     x.find("x");
-    |     -------^^^- help: try using a char instead:: `x.find('x')`
+    |     -------^^^- help: try using a char instead: `x.find('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:496:13
     |
 496 |     x.rfind("x");
-    |     --------^^^- help: try using a char instead:: `x.rfind('x')`
+    |     --------^^^- help: try using a char instead: `x.rfind('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:497:14
     |
 497 |     x.rsplit("x");
-    |     ---------^^^- help: try using a char instead:: `x.rsplit('x')`
+    |     ---------^^^- help: try using a char instead: `x.rsplit('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:498:24
     |
 498 |     x.split_terminator("x");
-    |     -------------------^^^- help: try using a char instead:: `x.split_terminator('x')`
+    |     -------------------^^^- help: try using a char instead: `x.split_terminator('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:499:25
     |
 499 |     x.rsplit_terminator("x");
-    |     --------------------^^^- help: try using a char instead:: `x.rsplit_terminator('x')`
+    |     --------------------^^^- help: try using a char instead: `x.rsplit_terminator('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:500:17
     |
 500 |     x.splitn(0, "x");
-    |     ------------^^^- help: try using a char instead:: `x.splitn(0, 'x')`
+    |     ------------^^^- help: try using a char instead: `x.splitn(0, 'x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:501:18
     |
 501 |     x.rsplitn(0, "x");
-    |     -------------^^^- help: try using a char instead:: `x.rsplitn(0, 'x')`
+    |     -------------^^^- help: try using a char instead: `x.rsplitn(0, 'x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:502:15
     |
 502 |     x.matches("x");
-    |     ----------^^^- help: try using a char instead:: `x.matches('x')`
+    |     ----------^^^- help: try using a char instead: `x.matches('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:503:16
     |
 503 |     x.rmatches("x");
-    |     -----------^^^- help: try using a char instead:: `x.rmatches('x')`
+    |     -----------^^^- help: try using a char instead: `x.rmatches('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:504:21
     |
 504 |     x.match_indices("x");
-    |     ----------------^^^- help: try using a char instead:: `x.match_indices('x')`
+    |     ----------------^^^- help: try using a char instead: `x.match_indices('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:505:22
     |
 505 |     x.rmatch_indices("x");
-    |     -----------------^^^- help: try using a char instead:: `x.rmatch_indices('x')`
+    |     -----------------^^^- help: try using a char instead: `x.rmatch_indices('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:506:25
     |
 506 |     x.trim_left_matches("x");
-    |     --------------------^^^- help: try using a char instead:: `x.trim_left_matches('x')`
+    |     --------------------^^^- help: try using a char instead: `x.trim_left_matches('x')`
 
 error: single-character string constant used as pattern
    --> methods.rs:507:26
     |
 507 |     x.trim_right_matches("x");
-    |     ---------------------^^^- help: try using a char instead:: `x.trim_right_matches('x')`
+    |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
 
 error: you are getting the inner pointer of a temporary `CString`
    --> methods.rs:517:5

@@ -173,7 +173,7 @@ fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: 
                                LEN_ZERO,
                                span,
                                "length comparison to zero",
-                               "using `is_empty` is more concise:",
+                               "using `is_empty` is more concise",
                                format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")));
         }
     }
