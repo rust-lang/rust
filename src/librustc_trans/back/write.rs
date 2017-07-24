@@ -1248,7 +1248,13 @@ fn start_executing_work(sess: &Session,
                 // this to spawn a new unit of work, or it may get dropped
                 // immediately if we have no more work to spawn.
                 Message::Token(token) => {
-                    tokens.push(token.expect("failed to acquire jobserver token"));
+                    if let Ok(token) = token {
+                        tokens.push(token);
+                    } else {
+                        shared_emitter.fatal("failed to acquire jobserver token");
+                        drop(trans_worker_send.send(Message::CheckErrorMessages));
+                        return
+                    }
                 }
 
                 Message::WorkItem(work_item) => {
@@ -1266,11 +1272,12 @@ fn start_executing_work(sess: &Session,
                 Message::Done { success: true } => {
                     drop(tokens.pop());
                     running -= 1;
-                    trans_worker_send.send(Message::CheckErrorMessages).unwrap();
+                    drop(trans_worker_send.send(Message::CheckErrorMessages));
                 }
                 Message::Done { success: false } => {
-                    shared_emitter.fatal("aborting due to worker thread panic".to_string());
-                    trans_worker_send.send(Message::CheckErrorMessages).unwrap();
+                    shared_emitter.fatal("aborting due to worker thread panic");
+                    drop(trans_worker_send.send(Message::CheckErrorMessages));
+                    return
                 }
                 msg @ Message::CheckErrorMessages => {
                     bug!("unexpected message: {:?}", msg);
@@ -1440,8 +1447,8 @@ impl SharedEmitter {
         drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg)));
     }
 
-    fn fatal(&self, msg: String) {
-        drop(self.sender.send(SharedEmitterMessage::Fatal(msg)));
+    fn fatal(&self, msg: &str) {
+        drop(self.sender.send(SharedEmitterMessage::Fatal(msg.to_string())));
     }
 }
 
