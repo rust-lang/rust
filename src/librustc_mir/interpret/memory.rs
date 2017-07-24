@@ -3,11 +3,11 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr, mem, io};
 
 use rustc::ty;
-use rustc::ty::layout::{self, TargetDataLayout};
+use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
 
 use error::{EvalError, EvalResult};
-use value::{PrimVal, self, Pointer};
+use value::{PrimVal, Pointer};
 use eval_context::EvalContext;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,31 +68,31 @@ pub struct MemoryPointer {
     pub offset: u64,
 }
 
-impl MemoryPointer {
+impl<'tcx> MemoryPointer {
     pub fn new(alloc_id: AllocId, offset: u64) -> Self {
         MemoryPointer { alloc_id, offset }
     }
 
-    pub fn wrapping_signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> Self {
-        MemoryPointer::new(self.alloc_id, value::wrapping_signed_offset(self.offset, i, layout))
+    pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
+        MemoryPointer::new(self.alloc_id, cx.data_layout().wrapping_signed_offset(self.offset, i))
     }
 
-    pub fn overflowing_signed_offset<'tcx>(self, i: i128, layout: &TargetDataLayout) -> (Self, bool) {
-        let (res, over) = value::overflowing_signed_offset(self.offset, i, layout);
+    pub(crate) fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
+        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub fn signed_offset<'tcx>(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        Ok(MemoryPointer::new(self.alloc_id, value::signed_offset(self.offset, i, layout)?))
+    pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+        Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().signed_offset(self.offset, i)?))
     }
 
-    pub fn overflowing_offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> (Self, bool) {
-        let (res, over) = value::overflowing_offset(self.offset, i, layout);
+    pub(crate) fn overflowing_offset<C: HasDataLayout>(self, i: u64, cx: C) -> (Self, bool) {
+        let (res, over) = cx.data_layout().overflowing_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub fn offset<'tcx>(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
-        Ok(MemoryPointer::new(self.alloc_id, value::offset(self.offset, i, layout)?))
+    pub(crate) fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+        Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().offset(self.offset, i)?))
     }
 }
 
@@ -540,7 +540,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
-        self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(size, self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
         assert_eq!(size as usize as u64, size);
@@ -1131,6 +1131,7 @@ fn bit_index(bits: u64) -> (usize, usize) {
 
 pub(crate) trait HasMemory<'a, 'tcx> {
     fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx>;
+    fn memory(&self) -> &Memory<'a, 'tcx>;
 
     // These are not supposed to be overriden.
     fn read_maybe_aligned<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
@@ -1159,11 +1160,98 @@ impl<'a, 'tcx> HasMemory<'a, 'tcx> for Memory<'a, 'tcx> {
     fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
         self
     }
+
+    #[inline]
+    fn memory(&self) -> &Memory<'a, 'tcx> {
+        self
+    }
 }
 
 impl<'a, 'tcx> HasMemory<'a, 'tcx> for EvalContext<'a, 'tcx> {
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
         &mut self.memory
+    }
+
+    #[inline]
+    fn memory(&self) -> &Memory<'a, 'tcx> {
+        &self.memory
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Pointer arithmetic
+////////////////////////////////////////////////////////////////////////////////
+
+pub trait PointerArithmetic : layout::HasDataLayout {
+    // These are not supposed to be overriden.
+
+    //// Trunace the given value to the pointer size; also return whether there was an overflow
+    fn truncate_to_ptr(self, val: u128) -> (u64, bool) {
+        let max_ptr_plus_1 = 1u128 << self.data_layout().pointer_size.bits();
+        ((val % max_ptr_plus_1) as u64, val >= max_ptr_plus_1)
+    }
+
+    // Overflow checking only works properly on the range from -u64 to +u64.
+    fn overflowing_signed_offset(self, val: u64, i: i128) -> (u64, bool) {
+        // FIXME: is it possible to over/underflow here?
+        if i < 0 {
+            // trickery to ensure that i64::min_value() works fine
+            // this formula only works for true negative values, it panics for zero!
+            let n = u64::max_value() - (i as u64) + 1;
+            val.overflowing_sub(n)
+        } else {
+            self.overflowing_offset(val, i as u64)
+        }
+    }
+
+    fn overflowing_offset(self, val: u64, i: u64) -> (u64, bool) {
+        let (res, over1) = val.overflowing_add(i);
+        let (res, over2) = self.truncate_to_ptr(res as u128);
+        (res, over1 || over2)
+    }
+
+    fn signed_offset<'tcx>(self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
+        let (res, over) = self.overflowing_signed_offset(val, i as i128);
+        if over {
+            Err(EvalError::OverflowingMath)
+        } else {
+            Ok(res)
+        }
+    }
+
+    fn offset<'tcx>(self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
+        let (res, over) = self.overflowing_offset(val, i);
+        if over {
+            Err(EvalError::OverflowingMath)
+        } else {
+            Ok(res)
+        }
+    }
+
+    fn wrapping_signed_offset(self, val: u64, i: i64) -> u64 {
+        self.overflowing_signed_offset(val, i as i128).0
+    }
+}
+
+impl<T: layout::HasDataLayout> PointerArithmetic for T {}
+
+impl<'a, 'tcx> layout::HasDataLayout for &'a Memory<'a, 'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        self.layout
+    }
+}
+impl<'a, 'tcx> layout::HasDataLayout for &'a EvalContext<'a, 'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        self.memory().layout
+    }
+}
+
+impl<'c, 'b, 'a, 'tcx> layout::HasDataLayout for &'c &'b mut EvalContext<'a, 'tcx> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        self.memory().layout
     }
 }

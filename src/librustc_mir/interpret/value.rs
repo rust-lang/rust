@@ -1,10 +1,9 @@
 #![allow(unknown_lints)]
 #![allow(float_cmp)]
 
-use rustc::ty::layout::TargetDataLayout;
-
 use error::{EvalError, EvalResult};
-use memory::{Memory, MemoryPointer, HasMemory};
+use memory::{Memory, MemoryPointer, HasMemory, PointerArithmetic};
+use rustc::ty::layout::HasDataLayout;
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     f32::from_bits(bytes as u32)
@@ -61,33 +60,36 @@ impl<'tcx> Pointer {
         self.primval
     }
 
-    pub(crate) fn signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+    pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+        let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
-                Ok(Pointer::from(PrimVal::Bytes(signed_offset(b as u64, i, layout)? as u128)))
+                Ok(Pointer::from(PrimVal::Bytes(layout.signed_offset(b as u64, i)? as u128)))
             },
             PrimVal::Ptr(ptr) => ptr.signed_offset(i, layout).map(Pointer::from),
             PrimVal::Undef => Err(EvalError::ReadUndefBytes),
         }
     }
 
-    pub(crate) fn offset(self, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+    pub(crate) fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+        let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
-                Ok(Pointer::from(PrimVal::Bytes(offset(b as u64, i, layout)? as u128)))
+                Ok(Pointer::from(PrimVal::Bytes(layout.offset(b as u64, i)? as u128)))
             },
             PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(Pointer::from),
             PrimVal::Undef => Err(EvalError::ReadUndefBytes),
         }
     }
 
-    pub(crate) fn wrapping_signed_offset(self, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, Self> {
+    pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+        let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
-                Ok(Pointer::from(PrimVal::Bytes(wrapping_signed_offset(b as u64, i, layout) as u128)))
+                Ok(Pointer::from(PrimVal::Bytes(layout.wrapping_signed_offset(b as u64, i) as u128)))
             },
             PrimVal::Ptr(ptr) => Ok(Pointer::from(ptr.wrapping_signed_offset(i, layout))),
             PrimVal::Undef => Err(EvalError::ReadUndefBytes),
@@ -321,47 +323,6 @@ impl<'tcx> PrimVal {
             _ => Err(EvalError::InvalidBool),
         }
     }
-}
-
-// Overflow checking only works properly on the range from -u64 to +u64.
-pub fn overflowing_signed_offset<'tcx>(val: u64, i: i128, layout: &TargetDataLayout) -> (u64, bool) {
-    // FIXME: is it possible to over/underflow here?
-    if i < 0 {
-        // trickery to ensure that i64::min_value() works fine
-        // this formula only works for true negative values, it panics for zero!
-        let n = u64::max_value() - (i as u64) + 1;
-        val.overflowing_sub(n)
-    } else {
-        overflowing_offset(val, i as u64, layout)
-    }
-}
-
-pub fn overflowing_offset<'tcx>(val: u64, i: u64, layout: &TargetDataLayout) -> (u64, bool) {
-    let (res, over) = val.overflowing_add(i);
-    ((res as u128 % (1u128 << layout.pointer_size.bits())) as u64,
-     over || res as u128 >= (1u128 << layout.pointer_size.bits()))
-}
-
-pub fn signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
-    let (res, over) = overflowing_signed_offset(val, i as i128, layout);
-    if over {
-        Err(EvalError::OverflowingMath)
-    } else {
-        Ok(res)
-    }
-}
-
-pub fn offset<'tcx>(val: u64, i: u64, layout: &TargetDataLayout) -> EvalResult<'tcx, u64> {
-    let (res, over) = overflowing_offset(val, i, layout);
-    if over {
-        Err(EvalError::OverflowingMath)
-    } else {
-        Ok(res)
-    }
-}
-
-pub fn wrapping_signed_offset<'tcx>(val: u64, i: i64, layout: &TargetDataLayout) -> u64 {
-    overflowing_signed_offset(val, i as i128, layout).0
 }
 
 impl PrimValKind {

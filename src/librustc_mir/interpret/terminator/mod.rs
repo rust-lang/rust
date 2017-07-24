@@ -316,7 +316,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     Value::ByRef(ptr, aligned) => {
                                         assert!(aligned, "Unaligned ByRef-values cannot occur as function arguments");
                                         for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
-                                            let arg = Value::ByRef(ptr.offset(offset, self.memory.layout)?, true);
+                                            let arg = Value::ByRef(ptr.offset(offset, &self)?, true);
                                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                                             trace!("writing arg {:?} to {:?} (type: {})", arg, dest, ty);
                                             self.write_value(arg, dest, ty)?;
@@ -398,7 +398,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
                 let (_, vtable) = self.eval_operand(&arg_operands[0])?.into_ptr_vtable_pair(&mut self.memory)?;
-                let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3), self.memory.layout)?)?;
+                let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3), &self)?)?;
                 let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
                 let mut arg_operands = arg_operands.to_vec();
                 let ty = self.operand_ty(&arg_operands[0]);
@@ -488,7 +488,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                 let (offset, ty) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
-                let nonnull = adt_ptr.offset(offset.bytes(), self.memory.layout)?;
+                let nonnull = adt_ptr.offset(offset.bytes(), self)?;
                 trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization
                 let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
@@ -746,7 +746,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(|&c| c == val) {
-                    let new_ptr = ptr.offset(num - idx as u64 - 1, self.memory.layout)?;
+                    let new_ptr = ptr.offset(num - idx as u64 - 1, &self)?;
                     self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_null(dest, dest_ty)?;
@@ -758,7 +758,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(|&c| c == val) {
-                    let new_ptr = ptr.offset(idx as u64, self.memory.layout)?;
+                    let new_ptr = ptr.offset(idx as u64, &self)?;
                     self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_null(dest, dest_ty)?;
@@ -815,7 +815,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // +1 for the null terminator
                     let value_copy = self.memory.allocate((value.len() + 1) as u64, 1, Kind::Env)?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
-                    self.memory.write_bytes(value_copy.offset(value.len() as u64, self.memory.layout)?.into(), &[0])?;
+                    let trailing_null = value_copy.offset(value.len() as u64, &self)?.into();
+                    self.memory.write_bytes(trailing_null, &[0])?;
                     if let Some(var) = self.env_vars.insert(name.to_owned(), value_copy) {
                         self.memory.deallocate(var, None, Kind::Env)?;
                     }

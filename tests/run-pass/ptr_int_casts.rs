@@ -29,4 +29,7 @@ fn main() {
         let x : fn() -> i32 = unsafe { mem::transmute(y as *mut u8) };
         assert_eq!(x(), 42);
     }
+
+    // involving types other than usize
+    assert_eq!((-1i32) as usize as *const i32 as usize, (-1i32) as usize);
 }
