@@ -597,31 +597,27 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Returns true if we should skip the following item.
-    pub fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
+    pub fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         if utils::contains_skip(attrs) {
             return true;
         }
 
-        let outers: Vec<_> = attrs
-            .iter()
-            .filter(|a| a.style == ast::AttrStyle::Outer)
-            .cloned()
-            .collect();
-        if outers.is_empty() {
+        let attrs: Vec<_> = attrs.iter().filter(|a| a.style == style).cloned().collect();
+        if attrs.is_empty() {
             return false;
         }
 
-        let first = &outers[0];
+        let first = &attrs[0];
         self.format_missing_with_indent(source!(self, first.span).lo);
 
-        let rewrite = outers
+        let rewrite = attrs
             .rewrite(
                 &self.get_context(),
                 Shape::indented(self.block_indent, self.config),
             )
             .unwrap();
         self.buffer.push_str(&rewrite);
-        let last = outers.last().unwrap();
+        let last = attrs.last().unwrap();
         self.last_pos = source!(self, last.span).hi;
         false
     }
@@ -836,14 +832,18 @@ impl Rewrite for ast::MetaItem {
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         try_opt!(self.meta()).rewrite(context, shape).map(
-            |rw| if rw.starts_with("///") {
+            |rw| if self.is_sugared_doc {
                 rw
             } else {
                 let original = context.snippet(self.span);
+                let prefix = match self.style {
+                    ast::AttrStyle::Inner => "#!",
+                    ast::AttrStyle::Outer => "#",
+                };
                 if contains_comment(&original) {
                     original
                 } else {
-                    format!("#[{}]", rw)
+                    format!("{}[{}]", prefix, rw)
                 }
             },
         )
