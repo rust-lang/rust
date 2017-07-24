@@ -94,6 +94,10 @@
 #![feature(unwind_attributes)]
 
 #![cfg_attr(stage0, feature(associated_consts))]
+#![cfg_attr(
+    not(any(target_pointer_width = "16", target_pointer_width = "32", target_pointer_width = "64")),
+    feature(compile_error)
+)]
 
 #[prelude_import]
 #[allow(unused)]

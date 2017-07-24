@@ -36,6 +36,26 @@ mod flt2dec;
 mod dec2flt;
 mod bignum;
 
+
+/// Adds the attribute to all items in the block.
+macro_rules! cfg_block {
+    ($(#[$attr:meta]{$($it:item)*})*) => {$($(
+        #[$attr]
+        $it
+    )*)*}
+}
+
+/// Groups items that assume the pointer width is either 16/32/64, and has to be altered if
+/// support for larger/smaller pointer widths are added in the future.
+macro_rules! assume_usize_width {
+    {$($it:item)*} => {#[cfg(not(any(
+        target_pointer_width = "16", target_pointer_width = "32", target_pointer_width = "64")))]
+           compile_error!("The current tests of try_from on usize/isize assume that \
+                           the pointer width is either 16, 32, or 64");
+                    $($it)*
+    }
+}
+
 /// Helper function for testing numeric operations
 pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq
@@ -212,6 +232,8 @@ fn test_f32f64() {
     assert!(nan.is_nan());
 }
 
+
+/// Conversions where the full width of $source can be represented as $target
 macro_rules! test_impl_try_from_always_ok {
     ($fn_name:ident, $source:ty, $target: ty) => {
         #[test]
@@ -233,36 +255,89 @@ test_impl_try_from_always_ok! { test_try_u8u8, u8, u8 }
 test_impl_try_from_always_ok! { test_try_u8u16, u8, u16 }
 test_impl_try_from_always_ok! { test_try_u8u32, u8, u32 }
 test_impl_try_from_always_ok! { test_try_u8u64, u8, u64 }
+test_impl_try_from_always_ok! { test_try_u8u128, u8, u128 }
 test_impl_try_from_always_ok! { test_try_u8i16, u8, i16 }
 test_impl_try_from_always_ok! { test_try_u8i32, u8, i32 }
 test_impl_try_from_always_ok! { test_try_u8i64, u8, i64 }
+test_impl_try_from_always_ok! { test_try_u8i128, u8, i128 }
 
 test_impl_try_from_always_ok! { test_try_u16u16, u16, u16 }
 test_impl_try_from_always_ok! { test_try_u16u32, u16, u32 }
 test_impl_try_from_always_ok! { test_try_u16u64, u16, u64 }
+test_impl_try_from_always_ok! { test_try_u16u128, u16, u128 }
 test_impl_try_from_always_ok! { test_try_u16i32, u16, i32 }
 test_impl_try_from_always_ok! { test_try_u16i64, u16, i64 }
+test_impl_try_from_always_ok! { test_try_u16i128, u16, i128 }
 
 test_impl_try_from_always_ok! { test_try_u32u32, u32, u32 }
 test_impl_try_from_always_ok! { test_try_u32u64, u32, u64 }
+test_impl_try_from_always_ok! { test_try_u32u128, u32, u128 }
 test_impl_try_from_always_ok! { test_try_u32i64, u32, i64 }
+test_impl_try_from_always_ok! { test_try_u32i128, u32, i128 }
 
 test_impl_try_from_always_ok! { test_try_u64u64, u64, u64 }
+test_impl_try_from_always_ok! { test_try_u64u128, u64, u128 }
+test_impl_try_from_always_ok! { test_try_u64i128, u64, i128 }
+
+test_impl_try_from_always_ok! { test_try_u128, u128, u128 }
 
 test_impl_try_from_always_ok! { test_try_i8i8, i8, i8 }
 test_impl_try_from_always_ok! { test_try_i8i16, i8, i16 }
 test_impl_try_from_always_ok! { test_try_i8i32, i8, i32 }
 test_impl_try_from_always_ok! { test_try_i8i64, i8, i64 }
+test_impl_try_from_always_ok! { test_try_i8i128, i8, i128 }
 
 test_impl_try_from_always_ok! { test_try_i16i16, i16, i16 }
 test_impl_try_from_always_ok! { test_try_i16i32, i16, i32 }
 test_impl_try_from_always_ok! { test_try_i16i64, i16, i64 }
+test_impl_try_from_always_ok! { test_try_i16i128, i16, i128 }
 
 test_impl_try_from_always_ok! { test_try_i32i32, i32, i32 }
 test_impl_try_from_always_ok! { test_try_i32i64, i32, i64 }
+test_impl_try_from_always_ok! { test_try_i32i128, i32, i128 }
 
 test_impl_try_from_always_ok! { test_try_i64i64, i64, i64 }
+test_impl_try_from_always_ok! { test_try_i64i128, i64, i128 }
 
+test_impl_try_from_always_ok! { test_try_i128i128, i128, i128 }
+
+assume_usize_width! {
+    test_impl_try_from_always_ok! { test_try_u8usize, u8, usize }
+    test_impl_try_from_always_ok! { test_try_i8isize, i8, isize }
+
+    test_impl_try_from_always_ok! { test_try_u16usize, u16, usize }
+    test_impl_try_from_always_ok! { test_try_i16isize, i16, isize }
+
+    test_impl_try_from_always_ok! { test_try_usizeu64, usize, u64 }
+    test_impl_try_from_always_ok! { test_try_usizeu128, usize, u128 }
+    test_impl_try_from_always_ok! { test_try_usizei128, usize, i128 }
+
+    test_impl_try_from_always_ok! { test_try_isizei64, isize, i64 }
+    test_impl_try_from_always_ok! { test_try_isizei128, isize, i128 }
+
+    cfg_block!(
+        #[cfg(target_pointer_width = "16")] {
+            test_impl_try_from_always_ok! { test_try_u16usize, u16, usize }
+            test_impl_try_from_always_ok! { test_try_i16isize, i16, isize }
+        }
+
+        #[cfg(target_pointer_width = "32")] {
+            test_impl_try_from_always_ok! { test_try_usizeu32, usize, u32 }
+            test_impl_try_from_always_ok! { test_try_isizei32, isize, i32 }
+            test_impl_try_from_always_ok! { test_try_u32usize, u32, usize }
+            test_impl_try_from_always_ok! { test_try_i32isize, i32, isize }
+        }
+
+        #[cfg(target_pointer_width = "64")] {
+            test_impl_try_from_always_ok! { test_try_u32usize, u32, usize }
+            test_impl_try_from_always_ok! { test_try_i32isize, i32, isize }
+            test_impl_try_from_always_ok! { test_try_u64usize, u64, usize }
+            test_impl_try_from_always_ok! { test_try_i64isize, i64, isize }
+        }
+    );
+}
+
+/// Conversions where max of $source can be represented as $target,
 macro_rules! test_impl_try_from_signed_to_unsigned_upper_ok {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
@@ -285,16 +360,51 @@ test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u8, i8, u8 }
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u16, i8, u16 }
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u32, i8, u32 }
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u64, i8, u64 }
+test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8u128, i8, u128 }
 
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16u16, i16, u16 }
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16u32, i16, u32 }
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16u64, i16, u64 }
+test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16u128, i16, u128 }
 
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i32u32, i32, u32 }
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i32u64, i32, u64 }
+test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i32u128, i32, u128 }
 
 test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i64u64, i64, u64 }
+test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i64u128, i64, u128 }
 
+test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i128u128, i128, u128 }
+
+assume_usize_width! {
+    test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i8usize, i8, usize }
+    test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i16usize, i16, usize }
+
+    test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_isizeu64, isize, u64 }
+    test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_isizeu128, isize, u128 }
+    test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_isizeusize, isize, usize }
+
+    cfg_block!(
+        #[cfg(target_pointer_width = "16")] {
+            test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_isizeu16, isize, u16 }
+            test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_isizeu32, isize, u32 }
+        }
+
+        #[cfg(target_pointer_width = "32")] {
+            test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_isizeu32, isize, u32 }
+
+            test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i32usize, i32, usize }
+        }
+
+        #[cfg(target_pointer_width = "64")] {
+            test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i32usize, i32, usize }
+            test_impl_try_from_signed_to_unsigned_upper_ok! { test_try_i64usize, i64, usize }
+        }
+    );
+}
+
+/// Conversions where max of $source can not be represented as $target,
+/// but min can.
 macro_rules! test_impl_try_from_unsigned_to_signed_upper_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
@@ -325,6 +435,39 @@ test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64i16, u64, i16 }
 test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64i32, u64, i32 }
 test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64i64, u64, i64 }
 
+test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u128i8, u128, i8 }
+test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u128i16, u128, i16 }
+test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u128i32, u128, i32 }
+test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u128i64, u128, i64 }
+test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u128i128, u128, i128 }
+
+assume_usize_width! {
+    test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u64isize, u64, isize }
+    test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u128isize, u128, isize }
+
+    test_impl_try_from_unsigned_to_signed_upper_err! { test_try_usizei8, usize, i8 }
+    test_impl_try_from_unsigned_to_signed_upper_err! { test_try_usizei16, usize, i16 }
+    test_impl_try_from_unsigned_to_signed_upper_err! { test_try_usizeisize, usize, isize }
+
+    cfg_block!(
+        #[cfg(target_pointer_width = "16")] {
+            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32isize, u32, isize }
+            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32isize, u64, isize }
+        }
+
+        #[cfg(target_pointer_width = "32")] {
+            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32isize, u32, isize }
+            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_usizei32, usize, i32 }
+        }
+
+        #[cfg(target_pointer_width = "64")] {
+            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_usizei32, usize, i32 }
+            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_usizei64, usize, i64 }
+        }
+    );
+}
+
+/// Conversions where min/max of $source can not be represented as $target.
 macro_rules! test_impl_try_from_same_sign_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
@@ -359,7 +502,13 @@ test_impl_try_from_same_sign_err! { test_try_u64u8, u64, u8 }
 test_impl_try_from_same_sign_err! { test_try_u64u16, u64, u16 }
 test_impl_try_from_same_sign_err! { test_try_u64u32, u64, u32 }
 
+test_impl_try_from_same_sign_err! { test_try_u128u8, u128, u8 }
+test_impl_try_from_same_sign_err! { test_try_u128u16, u128, u16 }
+test_impl_try_from_same_sign_err! { test_try_u128u32, u128, u32 }
+test_impl_try_from_same_sign_err! { test_try_u128u64, u128, u64 }
+
 test_impl_try_from_same_sign_err! { test_try_i16i8, i16, i8 }
+test_impl_try_from_same_sign_err! { test_try_isizei8, isize, i8 }
 
 test_impl_try_from_same_sign_err! { test_try_i32i8, i32, i8 }
 test_impl_try_from_same_sign_err! { test_try_i32i16, i32, i16 }
@@ -368,6 +517,45 @@ test_impl_try_from_same_sign_err! { test_try_i64i8, i64, i8 }
 test_impl_try_from_same_sign_err! { test_try_i64i16, i64, i16 }
 test_impl_try_from_same_sign_err! { test_try_i64i32, i64, i32 }
 
+test_impl_try_from_same_sign_err! { test_try_i128i8, i128, i8 }
+test_impl_try_from_same_sign_err! { test_try_i128i16, i128, i16 }
+test_impl_try_from_same_sign_err! { test_try_i128i32, i128, i32 }
+test_impl_try_from_same_sign_err! { test_try_i128i64, i128, i64 }
+
+assume_usize_width! {
+    test_impl_try_from_same_sign_err! { test_try_usizeu8, usize, u8 }
+    test_impl_try_from_same_sign_err! { test_try_u128usize, u128, usize }
+    test_impl_try_from_same_sign_err! { test_try_i128isize, i128, isize }
+
+    cfg_block!(
+        #[cfg(target_pointer_width = "16")] {
+            test_impl_try_from_same_sign_err! { test_try_u32usize, u32, usize }
+            test_impl_try_from_same_sign_err! { test_try_u64usize, u64, usize }
+
+            test_impl_try_from_same_sign_err! { test_try_i32isize, i32, isize }
+            test_impl_try_from_same_sign_err! { test_try_i64isize, i64, isize }
+        }
+
+        #[cfg(target_pointer_width = "32")] {
+            test_impl_try_from_same_sign_err! { test_try_u64usize, u64, usize }
+            test_impl_try_from_same_sign_err! { test_try_usizeu16, usize, u16 }
+
+            test_impl_try_from_same_sign_err! { test_try_i64isize, i64, isize }
+            test_impl_try_from_same_sign_err! { test_try_isizei16, isize, i16 }
+        }
+
+        #[cfg(target_pointer_width = "64")] {
+            test_impl_try_from_same_sign_err! { test_try_usizeu16, usize, u16 }
+            test_impl_try_from_same_sign_err! { test_try_usizeu32, usize, u32 }
+
+            test_impl_try_from_same_sign_err! { test_try_isizei16, isize, i16 }
+            test_impl_try_from_same_sign_err! { test_try_isizei32, isize, i32 }
+        }
+    );
+}
+
+/// Conversinos where neither the min nor the max of $source can be represented by
+/// $target, but max/min of the target can be represented by the source.
 macro_rules! test_impl_try_from_signed_to_unsigned_err {
     ($fn_name:ident, $source:ty, $target:ty) => {
         #[test]
@@ -399,6 +587,32 @@ test_impl_try_from_signed_to_unsigned_err! { test_try_i32u16, i32, u16 }
 test_impl_try_from_signed_to_unsigned_err! { test_try_i64u8, i64, u8 }
 test_impl_try_from_signed_to_unsigned_err! { test_try_i64u16, i64, u16 }
 test_impl_try_from_signed_to_unsigned_err! { test_try_i64u32, i64, u32 }
+
+test_impl_try_from_signed_to_unsigned_err! { test_try_i128u8, i128, u8 }
+test_impl_try_from_signed_to_unsigned_err! { test_try_i128u16, i128, u16 }
+test_impl_try_from_signed_to_unsigned_err! { test_try_i128u32, i128, u32 }
+test_impl_try_from_signed_to_unsigned_err! { test_try_i128u64, i128, u64 }
+
+assume_usize_width! {
+    test_impl_try_from_signed_to_unsigned_err! { test_try_isizeu8, isize, u8 }
+    test_impl_try_from_signed_to_unsigned_err! { test_try_i128usize, i128, usize }
+
+    cfg_block! {
+        #[cfg(target_pointer_width = "16")] {
+            test_impl_try_from_signed_to_unsigned_err! { test_try_i32usize, i32, usize }
+            test_impl_try_from_signed_to_unsigned_err! { test_try_i64usize, i64, usize }
+        }
+        #[cfg(target_pointer_width = "32")] {
+            test_impl_try_from_signed_to_unsigned_err! { test_try_i64usize, i64, usize }
+
+            test_impl_try_from_signed_to_unsigned_err! { test_try_isizeu16, isize, u16 }
+        }
+        #[cfg(target_pointer_width = "64")] {
+            test_impl_try_from_signed_to_unsigned_err! { test_try_isizeu16, isize, u16 }
+            test_impl_try_from_signed_to_unsigned_err! { test_try_isizeu32, isize, u32 }
+        }
+    }
+}
 
 macro_rules! test_float {
     ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => { mod $modname {
