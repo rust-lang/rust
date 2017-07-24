@@ -112,7 +112,6 @@ impl IdMapping {
 
     /// Check whether a `DefId` represents a newly added defaulted type parameter.
     pub fn is_defaulted_type_param(&self, new: &DefId) -> bool {
-        // TODO?
         self.type_params
             .get(new)
             .map_or(false, |def| def.has_default)

@@ -21,8 +21,9 @@ use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
+use semcheck::translate::translate_item_type;
 
-use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 /// The main entry point to our analysis passes.
 ///
@@ -545,7 +546,8 @@ fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
                          _new: DefId)
     -> (Vec<ChangeType<'tcx>>, Vec<(DefId, DefId)>)
 {
-    /* let res = Default::default();
+    /* let old_param_env = tcx.param_env(old);
+    let res = Default::default();
 
     let old_preds = tcx.predicates_of(old).predicates;
     let new_preds = tcx.predicates_of(new).predicates;
@@ -628,7 +630,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     use rustc::ty::TypeVariants::*;
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
-    let old = fold_to_new(id_mapping, tcx, old_def_id, &old).subst(tcx, substs);
+    let old = translate_item_type(id_mapping, tcx, old_def_id, old).subst(tcx, substs);
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = if new.is_fn() {
@@ -674,128 +676,4 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                None);
         }
     });
-}
-
-/// Fold a type of an old item to be comparable with a new item.
-fn fold_to_new<'a, 'tcx, T>(id_mapping: &IdMapping,
-                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            old_def_id: DefId,
-                            old: &T) -> T
-    where T: TypeFoldable<'tcx>
-{
-    use rustc::ty::{AdtDef, Binder, EarlyBoundRegion, ExistentialProjection,
-                    ExistentialTraitRef, Region, RegionKind};
-    use rustc::ty::ExistentialPredicate::*;
-    use rustc::ty::TypeVariants::*;
-
-    fn replace_region_did<'tcx>(id_mapping: &IdMapping, region: Region<'tcx>) -> RegionKind {
-        use rustc::ty::BoundRegion::BrNamed;
-        use rustc::ty::FreeRegion;
-        use rustc::ty::RegionKind::*;
-
-        match *region {
-            ReEarlyBound(early) => {
-                let new_early = EarlyBoundRegion {
-                    def_id: id_mapping.get_new_id(early.def_id),
-                    index: early.index,
-                    name: early.name,
-                };
-
-                ReEarlyBound(new_early)
-            },
-            ReFree(FreeRegion { scope, bound_region }) => {
-                ReFree(FreeRegion {
-                    scope: id_mapping.get_new_id(scope),
-                    bound_region: match bound_region {
-                        BrNamed(def_id, name) => BrNamed(id_mapping.get_new_id(def_id), name),
-                        reg => reg,
-                    },
-                })
-            },
-            reg => reg,
-        }
-    }
-
-    let mut index_map = HashMap::new();
-    let old_generics = tcx.generics_of(old_def_id);
-
-    for type_ in &old_generics.types {
-        index_map.insert(type_.index, type_.def_id);
-    }
-
-    if let Some(did) = old_generics.parent {
-        let parent_generics = tcx.generics_of(did);
-
-        for type_ in &parent_generics.types {
-            index_map.insert(type_.index, type_.def_id);
-        }
-    }
-
-    old.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
-        match ty.sty {
-            TyAdt(&AdtDef { ref did, .. }, substs) if id_mapping.in_old_crate(*did) => {
-                let new_def_id = id_mapping.get_new_id(*did);
-                let new_adt = tcx.adt_def(new_def_id);
-                tcx.mk_adt(new_adt, substs)
-            },
-            TyRef(region, type_and_mut) => {
-                tcx.mk_ref(tcx.mk_region(replace_region_did(id_mapping, region)), type_and_mut)
-            },
-            TyFnDef(did, substs) => {
-                tcx.mk_fn_def(id_mapping.get_new_id(did), substs)
-            },
-            TyDynamic(preds, region) => {
-                let new_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
-                    match *p.skip_binder() {
-                        Trait(ExistentialTraitRef { def_id: did, substs }) => {
-                            let new_def_id = id_mapping.get_new_id(did);
-
-                            Trait(ExistentialTraitRef {
-                                def_id: new_def_id,
-                                substs: substs
-                            })
-                        },
-                        Projection(ExistentialProjection { item_def_id, substs, ty }) => {
-                            let new_def_id = id_mapping.get_new_id(item_def_id);
-
-                            Projection(ExistentialProjection {
-                                item_def_id: new_def_id,
-                                substs: substs,
-                                ty: ty,
-                            })
-                        },
-                        AutoTrait(did) => {
-                            AutoTrait(id_mapping.get_new_id(did))
-                        },
-                    }
-                }));
-
-                tcx.mk_dynamic(Binder(new_preds), region)
-            },
-            TyProjection(proj) => {
-                let trait_def_id = tcx.associated_item(proj.item_def_id).container.id();
-                let new_def_id =
-                    id_mapping.get_new_trait_item_id(proj.item_def_id, trait_def_id);
-
-                tcx.mk_projection(new_def_id, proj.substs)
-            },
-            TyAnon(did, substs) => {
-                tcx.mk_anon(id_mapping.get_new_id(did), substs)
-            },
-            TyParam(param) => {
-                if param.idx != 0 { // `Self` is special
-                    let old_did = index_map[&param.idx];
-                    if id_mapping.in_old_crate(old_did) {
-                        let new_def_id = id_mapping.get_new_id(old_did);
-                        tcx.mk_param_from_def(&id_mapping.get_type_param(&new_def_id))
-                    } else {
-                        tcx.mk_ty(TyParam(param))
-                    }
-                } else {
-                    tcx.mk_ty(TyParam(param))
-                }
-            },
-            _ => ty,
-        }
-    }})
 }

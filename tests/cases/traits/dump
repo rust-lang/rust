@@ -1,12 +1,15 @@
-13:28:48 eddyb | you need a fulfillment context that you put in all the bounds of the new item
-13:28:59 eddyb | (and assuming you used the translated old bounds as the ParamEnv)
-13:29:11 eddyb | (or rather, translated tcx.param_env(old_def_id))
-13:29:30 eddyb | you should be able to call the resolve_or_error or whatever it is thing
-13:29:55 eddyb | once you do that, impls are pretty easy
-13:30:03   twk | no, I didn't yet do this :P. But it seems I'll find most of what I need from browsing ParamEnv and friends
-13:30:20 eddyb | rustc::traits::fulfill
-13:30:22 eddyb | that's the important part
-13:31:07   twk | okay, I'll report back once there's something which doesn't fall over all the time
-13:31:09 eddyb | so for impls: for every old impl, e.g. impl Trait for X, check that X: Trait still holds, after translating (both X and Trait) to the new
-13:31:37 eddyb | it's the same fulfillment context thing as making sure the bounds are satisfied
-13:31:48   twk | hm, okay
+<eddyb> you need a fulfillment context that you put in all the bounds of the new item
+ (and assuming you used the translated old bounds as the ParamEnv)
+ (or rather, translated tcx.param_env(old_def_id))
+ you should be able to call the resolve_or_error or whatever it is thing
+ once you do that, impls are pretty easy
+
+<twk> it seems I'll find most of what I need from browsing ParamEnv and friends
+
+<eddyb> rustc::traits::fulfill that's the important part
+
+<twk> okay, I'll report back once there's something which doesn't fall over all the time
+
+<eddyb> so for impls: for every old impl, e.g. impl Trait for X, check that X: Trait still holds,
+ after translating (both X and Trait) to the new
+ it's the same fulfillment context thing as making sure the bounds are satisfied
