@@ -847,7 +847,7 @@ macro_rules! generate_pattern_iterators {
         internal:
             $internal_iterator:ident yielding ($iterty:ty);
 
-        // Kind of delgation - either single ended or double ended
+        // Kind of delegation - either single ended or double ended
         delegate $($t:tt)*
     } => {
         $(#[$forward_iterator_attribute])*

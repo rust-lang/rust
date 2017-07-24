@@ -22,7 +22,7 @@ use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
+use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
@@ -305,16 +305,6 @@ impl CrateStore for cstore::CStore {
 
     fn is_no_builtins(&self, cnum: CrateNum) -> bool {
         self.get_crate_data(cnum).is_no_builtins(&self.dep_graph)
-    }
-
-    fn retrace_path(&self,
-                    cnum: CrateNum,
-                    path: &[DisambiguatedDefPathData])
-                    -> Option<DefId> {
-        let cdata = self.get_crate_data(cnum);
-        cdata.def_path_table
-             .retrace_path(&path)
-             .map(|index| DefId { krate: cnum, index: index })
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

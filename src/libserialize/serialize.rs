@@ -729,7 +729,7 @@ pub trait SpecializationError {
     /// `S` is the encoder/decoder state type,
     /// `T` is the type being encoded/decoded, and
     /// the arguments are the names of the trait
-    /// and method that should've been overriden.
+    /// and method that should've been overridden.
     fn not_found<S, T: ?Sized>(trait_name: &'static str,
                                method_name: &'static str) -> Self;
 }
@@ -737,7 +737,7 @@ pub trait SpecializationError {
 impl<E> SpecializationError for E {
     default fn not_found<S, T: ?Sized>(trait_name: &'static str,
                                        method_name: &'static str) -> E {
-        panic!("missing specializaiton: `<{} as {}<{}>>::{}` not overriden",
+        panic!("missing specialization: `<{} as {}<{}>>::{}` not overridden",
                unsafe { intrinsics::type_name::<S>() },
                trait_name,
                unsafe { intrinsics::type_name::<T>() },

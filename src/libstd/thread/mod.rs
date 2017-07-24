@@ -190,7 +190,7 @@ pub use self::local::{LocalKey, LocalKeyState, AccessError};
 /// - [`name`]: allows to give a name to the thread which is currently
 ///   only used in `panic` messages.
 /// - [`stack_size`]: specifies the desired stack size. Note that this can
-///   be overriden by the OS.
+///   be overridden by the OS.
 ///
 /// If the [`stack_size`] field is not specified, the stack size
 /// will be the `RUST_MIN_STACK` environment variable. If it is
@@ -529,7 +529,7 @@ pub fn current() -> Thread {
 /// Thus the pattern of `yield`ing after a failed poll is rather common when
 /// implementing low-level shared resources or synchronization primitives.
 ///
-/// However programmers will usualy prefer to use, [`channel`]s, [`Condvar`]s,
+/// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
 /// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
 /// thinking about thread schedulling.
 ///
@@ -770,7 +770,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// preemption or platform differences that may not cause the maximum
 /// amount of time waited to be precisely `dur` long.
 ///
-/// See the [park dococumentation][park] for more details.
+/// See the [park documentation][park] for more details.
 ///
 /// # Platform behavior
 ///
@@ -891,7 +891,7 @@ struct Inner {
 /// The [`thread::current`] function is available even for threads not spawned
 /// by the APIs of this module.
 ///
-/// There is usualy no need to create a `Thread` struct yourself, one
+/// There is usually no need to create a `Thread` struct yourself, one
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
