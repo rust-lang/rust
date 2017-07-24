@@ -12,7 +12,7 @@ use back::link;
 use back::write;
 use back::symbol_export;
 use rustc::session::config;
-use errors::FatalError;
+use errors::{FatalError, Handler};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
@@ -41,24 +41,24 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
 }
 
 pub fn run(cgcx: &CodegenContext,
+           diag_handler: &Handler,
            llmod: ModuleRef,
            tm: TargetMachineRef,
            config: &ModuleConfig,
            temp_no_opt_bc_filename: &Path) -> Result<(), FatalError> {
-    let handler = cgcx.handler;
     if cgcx.opts.cg.prefer_dynamic {
-        handler.struct_err("cannot prefer dynamic linking when performing LTO")
-            .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
-                   supported with LTO")
-            .emit();
+        diag_handler.struct_err("cannot prefer dynamic linking when performing LTO")
+                    .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
+                           supported with LTO")
+                    .emit();
         return Err(FatalError)
     }
 
     // Make sure we actually can run LTO
     for crate_type in cgcx.crate_types.iter() {
         if !crate_type_allows_lto(*crate_type) {
-            let e = handler.fatal("lto can only be run for executables, cdylibs and \
-                                   static library outputs");
+            let e = diag_handler.fatal("lto can only be run for executables, cdylibs and \
+                                        static library outputs");
             return Err(e)
         }
     }
@@ -116,13 +116,13 @@ pub fn run(cgcx: &CodegenContext,
                         if res.is_err() {
                             let msg = format!("failed to decompress bc of `{}`",
                                               name);
-                            Err(handler.fatal(&msg))
+                            Err(diag_handler.fatal(&msg))
                         } else {
                             Ok(inflated)
                         }
                     } else {
-                        Err(handler.fatal(&format!("Unsupported bytecode format version {}",
-                                                   version)))
+                        Err(diag_handler.fatal(&format!("Unsupported bytecode format version {}",
+                                                        version)))
                     }
                 })?
             } else {
@@ -136,7 +136,7 @@ pub fn run(cgcx: &CodegenContext,
                     if res.is_err() {
                         let msg = format!("failed to decompress bc of `{}`",
                                           name);
-                        Err(handler.fatal(&msg))
+                        Err(diag_handler.fatal(&msg))
                     } else {
                         Ok(inflated)
                     }
@@ -152,7 +152,7 @@ pub fn run(cgcx: &CodegenContext,
                     Ok(())
                 } else {
                     let msg = format!("failed to load bc of `{}`", name);
-                    Err(write::llvm_err(handler, msg))
+                    Err(write::llvm_err(&diag_handler, msg))
                 }
             })?;
         }

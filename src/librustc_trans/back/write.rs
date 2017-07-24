@@ -282,6 +282,7 @@ impl ModuleConfig {
 }
 
 /// Additional resources used by optimize_and_codegen (not module specific)
+#[derive(Clone)]
 pub struct CodegenContext<'a> {
     // Resouces needed when running LTO
     pub time_passes: bool,
@@ -292,7 +293,7 @@ pub struct CodegenContext<'a> {
     pub crate_types: Vec<config::CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
     // Handler to use for diagnostics produced during codegen.
-    pub handler: &'a Handler,
+    pub diag_emitter: SharedEmitter,
     // LLVM passes added by plugins.
     pub plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
@@ -303,20 +304,24 @@ pub struct CodegenContext<'a> {
     // compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
-    pub tx: Sender<Message>,
+    pub coordinator_send: Sender<Message>,
+}
 
-    // Error messages...
-    pub shared_emitter: SharedEmitter,
+impl<'a> CodegenContext<'a> {
+    fn create_diag_handler(&self) -> Handler {
+        Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
+    }
 }
 
 struct HandlerFreeVars<'a> {
     cgcx: &'a CodegenContext<'a>,
+    diag_handler: &'a Handler,
 }
 
 unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
                                                msg: &'b str,
                                                cookie: c_uint) {
-    cgcx.shared_emitter.inline_asm_error(cookie as u32, msg.to_string());
+    cgcx.diag_emitter.inline_asm_error(cookie as u32, msg.to_string());
 }
 
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
@@ -331,7 +336,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
-    let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
+    let HandlerFreeVars { cgcx, diag_handler, .. } = *(user as *const HandlerFreeVars);
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
@@ -347,7 +352,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
             };
 
             if enabled {
-                cgcx.handler.note_without_error(&format!("optimization {} for {} at {}:{}:{}: {}",
+                diag_handler.note_without_error(&format!("optimization {} for {} at {}:{}:{}: {}",
                                                 opt.kind.describe(),
                                                 opt.pass_name,
                                                 opt.filename,
@@ -363,6 +368,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 
 // Unsafe due to LLVM calls.
 unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
+                               diag_handler: &Handler,
                                mtrans: ModuleTranslation,
                                mllvm: ModuleLlvm,
                                config: ModuleConfig,
@@ -375,6 +381,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
     let fv = HandlerFreeVars {
         cgcx: cgcx,
+        diag_handler: diag_handler,
     };
     let fv = &fv as *const HandlerFreeVars as *mut c_void;
 
@@ -409,7 +416,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 llvm::PassKind::Function => fpm,
                 llvm::PassKind::Module => mpm,
                 llvm::PassKind::Other => {
-                    cgcx.handler.err("Encountered LLVM pass kind we can't handle");
+                    diag_handler.err("Encountered LLVM pass kind we can't handle");
                     return true
                 },
             };
@@ -429,20 +436,20 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         for pass in &config.passes {
             if !addpass(pass) {
-                cgcx.handler.warn(&format!("unknown pass `{}`, ignoring",
+                diag_handler.warn(&format!("unknown pass `{}`, ignoring",
                                            pass));
             }
         }
 
         for pass in &cgcx.plugin_passes {
             if !addpass(pass) {
-                cgcx.handler.err(&format!("a plugin asked for LLVM pass \
+                diag_handler.err(&format!("a plugin asked for LLVM pass \
                                            `{}` but LLVM does not \
                                            recognize it", pass));
             }
         }
 
-        cgcx.handler.abort_if_errors();
+        diag_handler.abort_if_errors();
 
         // Finally, run the actual optimization passes
         time(config.time_passes, &format!("llvm function passes [{}]", cgcx.worker), ||
@@ -459,6 +466,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 let temp_no_opt_bc_filename =
                     output_names.temp_path_ext("no-opt.lto.bc", module_name);
                 lto::run(cgcx,
+                         diag_handler,
                          llmod,
                          tm,
                          &config,
@@ -564,7 +572,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 llmod
             };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path,
+                write_output_file(diag_handler, tm, cpm, llmod, &path,
                                   llvm::FileType::AssemblyFile)
             })?;
             if config.emit_obj {
@@ -574,7 +582,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out,
+                write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
                                   llvm::FileType::ObjectFile)
             })?;
         }
@@ -585,14 +593,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     if copy_bc_to_obj {
         debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
         if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-            cgcx.handler.err(&format!("failed to copy bitcode to object file: {}", e));
+            diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
         }
     }
 
     if rm_bc {
         debug!("removing_bitcode {:?}", bc_out);
         if let Err(e) = fs::remove_file(&bc_out) {
-            cgcx.handler.err(&format!("failed to remove bitcode: {}", e));
+            diag_handler.err(&format!("failed to remove bitcode: {}", e));
         }
     }
 
@@ -991,11 +999,13 @@ fn build_work_item(sess: &Session,
 fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
     -> Result<(), FatalError>
 {
+    let diag_handler = cgcx.create_diag_handler();
     unsafe {
         match work_item.mtrans.source {
             ModuleSource::Translated(mllvm) => {
                 debug!("llvm-optimizing {:?}", work_item.mtrans.name);
                 optimize_and_codegen(cgcx,
+                                     &diag_handler,
                                      work_item.mtrans,
                                      mllvm,
                                      work_item.config,
@@ -1017,7 +1027,7 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
                     match link_or_copy(&source_file, &obj_out) {
                         Ok(_) => { }
                         Err(err) => {
-                            cgcx.handler.err(&format!("unable to copy {} to {}: {}",
+                            diag_handler.err(&format!("unable to copy {} to {}: {}",
                                                       source_file.display(),
                                                       obj_out.display(),
                                                       err));
@@ -1068,6 +1078,30 @@ fn execute_work<'a>(sess: &'a Session,
     }
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
+
+    let mut each_linked_rlib_for_lto = Vec::new();
+    drop(link::each_linked_rlib(sess, &mut |cnum, path| {
+        if link::ignored_for_lto(sess, cnum) {
+            return
+        }
+        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
+    }));
+
+    let cgcx = CodegenContext {
+        crate_types: sess.crate_types.borrow().clone(),
+        each_linked_rlib_for_lto: each_linked_rlib_for_lto,
+        lto: sess.lto(),
+        no_landing_pads: sess.no_landing_pads(),
+        opts: &sess.opts,
+        time_passes: sess.time_passes(),
+        exported_symbols: exported_symbols,
+        plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
+        remark: sess.opts.cg.remark.clone(),
+        worker: 0,
+        incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
+        coordinator_send: tx.clone(),
+        diag_emitter: shared_emitter.clone(),
+    };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
     // It's here that we manage parallelism, schedule work, and work with
@@ -1132,14 +1166,16 @@ fn execute_work<'a>(sess: &'a Session,
         // parallelism slots and work left to spawn.
         while work_items.len() > 0 && running < tokens.len() + 1 {
             let item = work_items.pop().unwrap();
-            let index = work_items.len();
-            spawn_work(sess,
-                       exported_symbols,
+            let worker_index = work_items.len();
+
+            let cgcx = CodegenContext {
+                worker: worker_index,
+                .. cgcx.clone()
+            };
+
+            spawn_work(cgcx,
                        scope,
-                       tx.clone(),
-                       shared_emitter.clone(),
-                       item,
-                       index);
+                       item);
             running += 1;
         }
 
@@ -1178,29 +1214,10 @@ fn execute_work<'a>(sess: &'a Session,
     sess.diagnostic().abort_if_errors();
 }
 
-fn spawn_work<'a>(sess: &'a Session,
-                  exported_symbols: &'a ExportedSymbols,
+fn spawn_work<'a>(cgcx: CodegenContext<'a>,
                   scope: &Scope<'a>,
-                  tx: Sender<Message>,
-                  emitter: SharedEmitter,
-                  work: WorkItem,
-                  idx: usize) {
-    let plugin_passes = sess.plugin_llvm_passes.borrow().clone();
-    let remark = sess.opts.cg.remark.clone();
-    let incr_comp_session_dir = sess.incr_comp_session_dir_opt().map(|r| r.clone());
+                  work: WorkItem) {
     let depth = time_depth();
-    let lto = sess.lto();
-    let crate_types = sess.crate_types.borrow().clone();
-    let mut each_linked_rlib_for_lto = Vec::new();
-    drop(link::each_linked_rlib(sess, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, cnum) {
-            return
-        }
-        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
-    }));
-    let time_passes = sess.time_passes();
-    let no_landing_pads = sess.no_landing_pads();
-    let opts = &sess.opts;
 
     scope.spawn(move || {
         set_time_depth(depth);
@@ -1208,39 +1225,18 @@ fn spawn_work<'a>(sess: &'a Session,
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb {
-            tx: Sender<Message>,
+            coordinator_send: Sender<Message>,
             success: bool,
         }
         impl Drop for Bomb {
             fn drop(&mut self) {
-                drop(self.tx.send(Message::Done { success: self.success }));
+                drop(self.coordinator_send.send(Message::Done { success: self.success }));
             }
         }
+
         let mut bomb = Bomb {
-            tx: tx.clone(),
+            coordinator_send: cgcx.coordinator_send.clone(),
             success: false,
-        };
-
-        // Set up our non-`Send` `CodegenContext` now that we're in a helper
-        // thread and have all our info available to us.
-        // let emitter = SharedEmitter { tx: tx.clone() };
-        let diag_handler = Handler::with_emitter(true, false, Box::new(emitter.clone()));
-
-        let cgcx = CodegenContext {
-            crate_types: crate_types,
-            each_linked_rlib_for_lto: each_linked_rlib_for_lto,
-            lto: lto,
-            no_landing_pads: no_landing_pads,
-            opts: opts,
-            time_passes: time_passes,
-            exported_symbols: exported_symbols,
-            handler: &diag_handler,
-            plugin_passes: plugin_passes,
-            remark: remark,
-            worker: idx,
-            incr_comp_session_dir: incr_comp_session_dir,
-            tx: tx.clone(),
-            shared_emitter: emitter,
         };
 
         // Execute the work itself, and if it finishes successfully then flag
