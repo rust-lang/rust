@@ -117,11 +117,11 @@ enum NodeState {
     /// non-ambiguous result.
     Pending,
 
-    /// This obligation was selected successfuly, but may or
+    /// This obligation was selected successfully, but may or
     /// may not have subobligations.
     Success,
 
-    /// This obligation was selected sucessfully, but it has
+    /// This obligation was selected successfully, but it has
     /// a pending subobligation.
     Waiting,
 

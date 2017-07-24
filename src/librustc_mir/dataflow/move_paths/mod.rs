@@ -259,7 +259,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     /// NOTE: lvalues behind references *do not* get a move path, which is
     /// problematic for borrowck.
     ///
-    /// Maybe we should have seperate "borrowck" and "moveck" modes.
+    /// Maybe we should have separate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, lval: &Lvalue<'tcx>)
                      -> Result<MovePathIndex, MovePathError>
     {

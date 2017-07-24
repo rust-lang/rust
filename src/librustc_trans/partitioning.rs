@@ -251,7 +251,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                                                                 exported_symbols,
                                                                 trans_items);
 
-    debug_dump(tcx, "INITIAL PARTITONING:", initial_partitioning.codegen_units.iter());
+    debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
@@ -261,7 +261,7 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
         debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
 
-    // In the next step, we use the inlining map to determine which addtional
+    // In the next step, we use the inlining map to determine which additional
     // translation items have to go into each codegen unit. These additional
     // translation items can be drop-glue, functions from external crates, and
     // local functions the definition of which is marked with #[inline].
