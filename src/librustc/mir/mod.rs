@@ -1209,10 +1209,13 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
 
                 // When printing regions, add trailing space if necessary.
-                let region = {
+                let region = if ppaux::verbose() || ppaux::identify_regions() {
                     let mut region = format!("{}", region);
                     if region.len() > 0 { region.push(' '); }
                     region
+                } else {
+                    // Do not even print 'static
+                    "".to_owned()
                 };
                 write!(fmt, "&{}{}{:?}", region, kind_str, lv)
             }
