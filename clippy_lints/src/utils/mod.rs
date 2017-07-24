@@ -584,6 +584,7 @@ pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(S
             })
             .collect(),
         msg: help_msg,
+        show_code_when_inline: true,
     };
     db.suggestions.push(sugg);
 }
