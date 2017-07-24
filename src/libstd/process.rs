@@ -799,8 +799,8 @@ impl From<fs::File> for Stdio {
 pub struct ExitStatus(imp::ExitStatus);
 
 impl ExitStatus {
-    /// Was termination successful? Signal termination not considered a success,
-    /// and success is defined as a zero exit status.
+    /// Was termination successful? Signal termination is not considered a
+    /// success, and success is defined as a zero exit status.
     ///
     /// # Examples
     ///
