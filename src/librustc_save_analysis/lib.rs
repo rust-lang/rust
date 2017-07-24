@@ -31,7 +31,6 @@ extern crate rls_data;
 extern crate rls_span;
 
 
-mod json_api_dumper;
 mod json_dumper;
 mod dump_visitor;
 #[macro_use]
@@ -43,10 +42,10 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::map::{Node, NodeItem};
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
 
+use std::default::Default;
 use std::env;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -61,13 +60,13 @@ use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
 use syntax_pos::*;
 
-pub use json_api_dumper::JsonApiDumper;
-pub use json_dumper::JsonDumper;
+use json_dumper::JsonDumper;
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Ref, RefKind, SpanData, MacroRef, Def, DefKind, Relation, RelationKind,
-               ExternalCrateData, Import, CratePreludeData};
+               ExternalCrateData};
+use rls_data::config::Config;
 
 
 pub struct SaveContext<'l, 'tcx: 'l> {
@@ -75,6 +74,7 @@ pub struct SaveContext<'l, 'tcx: 'l> {
     tables: &'l ty::TypeckTables<'tcx>,
     analysis: &'l ty::CrateAnalysis,
     span_utils: SpanUtils<'tcx>,
+    config: Config,
 }
 
 #[derive(Debug)]
@@ -84,15 +84,6 @@ pub enum Data {
     RefData(Ref),
     DefData(Def),
     RelationData(Relation),
-}
-
-pub trait Dump {
-    fn crate_prelude(&mut self, _: CratePreludeData);
-    fn macro_use(&mut self, _: MacroRef) {}
-    fn import(&mut self, _: bool, _: Import);
-    fn dump_ref(&mut self, _: Ref) {}
-    fn dump_def(&mut self, _: bool, _: Def);
-    fn dump_relation(&mut self, data: Relation);
 }
 
 macro_rules! option_try(
@@ -158,7 +149,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::foreign_item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -181,7 +172,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::foreign_item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -205,7 +196,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -234,7 +225,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -257,7 +248,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -281,7 +272,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: m.items.iter().map(|i| id_from_node_id(i.id, self)).collect(),
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
@@ -309,7 +300,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                  .map(|v| id_from_node_id(v.node.data.id(), self))
                                  .collect(),
                     decl_id: None,
-                    docs: docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
                     attributes: lower_attributes(item.attrs.to_owned(), self),
                 }))
@@ -370,7 +361,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 parent: Some(id_from_node_id(scope, self)),
                 children: vec![],
                 decl_id: None,
-                docs: docs_for_attrs(&field.attrs),
+                docs: self.docs_for_attrs(&field.attrs),
                 sig: sig::field_signature(field, self),
                 attributes: lower_attributes(field.attrs.clone(), self),
             })
@@ -415,7 +406,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             result.push_str(">");
 
                             (result, trait_id, decl_id,
-                             docs_for_attrs(&item.attrs),
+                             self.docs_for_attrs(&item.attrs),
                              item.attrs.to_vec())
                         }
                         _ => {
@@ -440,7 +431,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         Some(Node::NodeItem(item)) => {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
                              Some(def_id), None,
-                             docs_for_attrs(&item.attrs),
+                             self.docs_for_attrs(&item.attrs),
                              item.attrs.to_vec())
                         }
                         r => {
@@ -769,6 +760,31 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
         self.tcx.hir.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
+
+    fn docs_for_attrs(&self, attrs: &[Attribute]) -> String {
+        let mut result = String::new();
+
+        for attr in attrs {
+            if attr.check_name("doc") {
+                if let Some(val) = attr.value_str() {
+                    if attr.is_sugared_doc {
+                        result.push_str(&strip_doc_comment_decoration(&val.as_str()));
+                    } else {
+                        result.push_str(&val.as_str());
+                    }
+                    result.push('\n');
+                }
+            }
+        }
+
+        if !self.config.full_docs {
+            if let Some(index) = result.find("\n\n") {
+                result.truncate(index);
+            }
+        }
+
+        result
+    }
 }
 
 fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
@@ -845,37 +861,6 @@ impl<'a> Visitor<'a> for PathCollector {
     }
 }
 
-fn docs_for_attrs(attrs: &[Attribute]) -> String {
-    let mut result = String::new();
-
-    for attr in attrs {
-        if attr.check_name("doc") {
-            if let Some(val) = attr.value_str() {
-                if attr.is_sugared_doc {
-                    result.push_str(&strip_doc_comment_decoration(&val.as_str()));
-                } else {
-                    result.push_str(&val.as_str());
-                }
-                result.push('\n');
-            }
-        }
-    }
-
-    result
-}
-
-#[derive(Clone, Copy, Debug, RustcEncodable)]
-pub enum Format {
-    Json,
-    JsonApi,
-}
-
-impl Format {
-    fn extension(&self) -> &'static str {
-        ".json"
-    }
-}
-
 /// Defines what to do with the results of saving the analysis.
 pub trait SaveHandler {
     fn save<'l, 'tcx>(&mut self,
@@ -886,53 +871,54 @@ pub trait SaveHandler {
 
 /// Dump the save-analysis results to a file.
 pub struct DumpHandler<'a> {
-    format: Format,
     odir: Option<&'a Path>,
     cratename: String
 }
 
 impl<'a> DumpHandler<'a> {
-    pub fn new(format: Format, odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
+    pub fn new(odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
         DumpHandler {
-            format: format,
             odir: odir,
             cratename: cratename.to_owned()
         }
     }
 
-    fn output_file(&self, sess: &Session) -> File {
-        let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
-            Some(val) => PathBuf::from(val),
-            None => match self.odir {
-                Some(val) => val.join("save-analysis"),
-                None => PathBuf::from("save-analysis-temp"),
-            },
+    fn output_file(&self, ctx: &SaveContext) -> File {
+        let sess = &ctx.tcx.sess;
+        let file_name = match ctx.config.output_file {
+            Some(ref s) => PathBuf::from(s),
+            None => {
+                let mut root_path = match self.odir {
+                    Some(val) => val.join("save-analysis"),
+                    None => PathBuf::from("save-analysis-temp"),
+                };
+
+                if let Err(e) = std::fs::create_dir_all(&root_path) {
+                    error!("Could not create directory {}: {}", root_path.display(), e);
+                }
+
+                let executable =
+                    sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
+                let mut out_name = if executable {
+                    "".to_owned()
+                } else {
+                    "lib".to_owned()
+                };
+                out_name.push_str(&self.cratename);
+                out_name.push_str(&sess.opts.cg.extra_filename);
+                out_name.push_str(".json");
+                root_path.push(&out_name);
+
+                root_path
+            }
         };
 
-        if let Err(e) = std::fs::create_dir_all(&root_path) {
-            error!("Could not create directory {}: {}", root_path.display(), e);
-        }
+        info!("Writing output to {}", file_name.display());
 
-        {
-            let disp = root_path.display();
-            info!("Writing output to {}", disp);
-        }
-
-        let executable = sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
-        let mut out_name = if executable {
-            "".to_owned()
-        } else {
-            "lib".to_owned()
-        };
-        out_name.push_str(&self.cratename);
-        out_name.push_str(&sess.opts.cg.extra_filename);
-        out_name.push_str(self.format.extension());
-        root_path.push(&out_name);
-        let output_file = File::create(&root_path).unwrap_or_else(|e| {
-            let disp = root_path.display();
-            sess.fatal(&format!("Could not open {}: {}", disp, e));
+        let output_file = File::create(&file_name).unwrap_or_else(|e| {
+            sess.fatal(&format!("Could not open {}: {}", file_name.display(), e))
         });
-        root_path.pop();
+
         output_file
     }
 }
@@ -942,22 +928,12 @@ impl<'a> SaveHandler for DumpHandler<'a> {
                       save_ctxt: SaveContext<'l, 'tcx>,
                       krate: &ast::Crate,
                       cratename: &str) {
-        macro_rules! dump {
-            ($new_dumper: expr) => {{
-                let mut dumper = $new_dumper;
-                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+        let output = &mut self.output_file(&save_ctxt);
+        let mut dumper = JsonDumper::new(output, save_ctxt.config.clone());
+        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
 
-                visitor.dump_crate_info(cratename, krate);
-                visit::walk_crate(&mut visitor, krate);
-            }}
-        }
-
-        let output = &mut self.output_file(&save_ctxt.tcx.sess);
-
-        match self.format {
-            Format::Json => dump!(JsonDumper::new(output)),
-            Format::JsonApi => dump!(JsonApiDumper::new(output)),
-        }
+        visitor.dump_crate_info(cratename, krate);
+        visit::walk_crate(&mut visitor, krate);
     }
 }
 
@@ -971,22 +947,16 @@ impl<'b> SaveHandler for CallbackHandler<'b> {
                       save_ctxt: SaveContext<'l, 'tcx>,
                       krate: &ast::Crate,
                       cratename: &str) {
-        macro_rules! dump {
-            ($new_dumper: expr) => {{
-                let mut dumper = $new_dumper;
-                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
-
-                visitor.dump_crate_info(cratename, krate);
-                visit::walk_crate(&mut visitor, krate);
-            }}
-        }
-
         // We're using the JsonDumper here because it has the format of the
         // save-analysis results that we will pass to the callback. IOW, we are
         // using the JsonDumper to collect the save-analysis results, but not
         // actually to dump them to a file. This is all a bit convoluted and
         // there is certainly a simpler design here trying to get out (FIXME).
-        dump!(JsonDumper::with_callback(self.callback))
+        let mut dumper = JsonDumper::with_callback(self.callback, save_ctxt.config.clone());
+        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+
+        visitor.dump_crate_info(cratename, krate);
+        visit::walk_crate(&mut visitor, krate);
     }
 }
 
@@ -994,6 +964,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                                                krate: &ast::Crate,
                                                analysis: &'l ty::CrateAnalysis,
                                                cratename: &str,
+                                               config: Option<Config>,
                                                mut handler: H) {
     let _ignore = tcx.dep_graph.in_ignore();
 
@@ -1006,9 +977,23 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         tables: &ty::TypeckTables::empty(),
         analysis: analysis,
         span_utils: SpanUtils::new(&tcx.sess),
+        config: find_config(config),
     };
 
     handler.save(save_ctxt, krate, cratename)
+}
+
+fn find_config(supplied: Option<Config>) -> Config {
+    if let Some(config) = supplied {
+        return config;
+    }
+    match env::var_os("RUST_SAVE_ANALYSIS_CONFIG") {
+        Some(config_string) => {
+            rustc_serialize::json::decode(config_string.to_str().unwrap())
+                .expect("Could not deserialize save-analysis config")
+        },
+        None => Config::default(),
+    }
 }
 
 // Utility functions for the module.

@@ -518,6 +518,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         -> CompileController<'a> {
         let mut control = CompileController::basic();
 
+        control.keep_ast = sess.opts.debugging_opts.keep_ast || save_analysis(sess);
+
         if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
             if ppm.needs_ast_map(&opt_uii) {
                 control.after_hir_lowering.stop = Compilation::Stop;
@@ -578,8 +580,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
-                                        DumpHandler::new(save_analysis_format(state.session),
-                                                         state.out_dir,
+                                        None,
+                                        DumpHandler::new(state.out_dir,
                                                          state.crate_name.unwrap()))
                 });
             };
@@ -602,18 +604,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 }
 
 fn save_analysis(sess: &Session) -> bool {
-    sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_api
-}
-
-fn save_analysis_format(sess: &Session) -> save::Format {
-    if sess.opts.debugging_opts.save_analysis {
-        save::Format::Json
-    } else if sess.opts.debugging_opts.save_analysis_api {
-        save::Format::JsonApi
-    } else {
-        unreachable!();
-    }
+    sess.opts.debugging_opts.save_analysis
 }
 
 impl RustcDefaultCalls {

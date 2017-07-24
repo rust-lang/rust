@@ -960,9 +960,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
-    save_analysis_api: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis information for opaque libraries (in JSON format), \
-         in addition to normal output"),
     print_move_fragments: bool = (false, parse_bool, [UNTRACKED],
         "print out move-fragment data for every fn"),
     flowgraph_print_loans: bool = (false, parse_bool, [UNTRACKED],
@@ -2526,8 +2523,6 @@ mod tests {
         opts.debugging_opts.ls = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.save_analysis = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.save_analysis_api = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.print_move_fragments = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
