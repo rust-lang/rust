@@ -413,7 +413,7 @@ impl Builder {
 ///   *by value* from the thread where it is spawned to the new thread. Its
 ///   return value will need to be passed from the new thread to the thread
 ///   where it is `join`ed.
-///   As a reminder, the [`Send`] marker trait, expresses that it is safe to be
+///   As a reminder, the [`Send`] marker trait expresses that it is safe to be
 ///   passed from thread to thread. [`Sync`] expresses that it is safe to have a
 ///   reference be passed from thread to thread.
 ///
