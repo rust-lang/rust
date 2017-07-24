@@ -15,6 +15,7 @@
 use fs;
 use net;
 use sys;
+use io;
 use sys_common::{self, AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
@@ -107,6 +108,21 @@ impl AsRawFd for net::UdpSocket {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().as_inner().fd().raw()
     }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRawFd for io::Stdin {
+    fn as_raw_fd(&self) -> RawFd { 0 }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRawFd for io::Stdout {
+    fn as_raw_fd(&self) -> RawFd { 1 }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRawFd for io::Stderr {
+    fn as_raw_fd(&self) -> RawFd { 2 }
 }
 
 #[stable(feature = "from_raw_os", since = "1.1.0")]
