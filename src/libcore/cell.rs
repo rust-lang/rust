@@ -188,10 +188,10 @@ use ptr;
 
 /// A mutable memory location.
 /// 
-/// # Example
+/// # Examples
 /// 
-/// Here you can see how using `Cell<T>` allows to use muttable field inside
-/// immutable struct (which is also called "interior mutability").
+/// Here you can see how using `Cell<T>` allows to use mutable field inside
+/// immutable struct (which is also called 'interior mutability').
 /// 
 /// ```
 /// use std::cell::Cell;
