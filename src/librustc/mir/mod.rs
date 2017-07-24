@@ -1208,14 +1208,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     BorrowKind::Mut | BorrowKind::Unique => "mut ",
                 };
 
-                // When identifying regions, add trailing space if
-                // necessary.
-                let region = if ppaux::identify_regions() {
+                // When printing regions, add trailing space if necessary.
+                let region = {
                     let mut region = format!("{}", region);
                     if region.len() > 0 { region.push(' '); }
                     region
-                } else {
-                    "".to_owned()
                 };
                 write!(fmt, "&{}{}{:?}", region, kind_str, lv)
             }
