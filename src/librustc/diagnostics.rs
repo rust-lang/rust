@@ -1708,7 +1708,7 @@ not apply to structs.
 representation of enums isn't strictly defined in Rust, and this attribute
 won't work on enums.
 
-`#[repr(simd)]` will give a struct consisting of a homogenous series of machine
+`#[repr(simd)]` will give a struct consisting of a homogeneous series of machine
 types (i.e. `u8`, `i32`, etc) a representation that permits vectorization via
 SIMD. This doesn't make much sense for enums since they don't consist of a
 single list of data.
