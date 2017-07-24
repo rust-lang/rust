@@ -157,6 +157,42 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// }
 /// ```
 ///
+/// Here is an example of the same `Point` struct implementing the `Sub` trait
+/// using generics.
+///
+/// ```
+/// use std::ops::Sub;
+///
+/// #[derive(Debug)]
+/// struct Point<T> {
+///     x: T,
+///     y: T,
+/// }
+///
+/// // Notice that the implementation uses the `Output` associated type
+/// impl<T: Sub<Output=T>> Sub for Point<T> {
+///     type Output = Point<T>;
+///
+///     fn sub(self, other: Point<T>) -> Point<T> {
+///         Point {
+///             x: self.x - other.x,
+///             y: self.y - other.y,
+///         }
+///     }
+/// }
+///
+/// impl<T: PartialEq> PartialEq for Point<T> {
+///     fn eq(&self, other: &Self) -> bool {
+///         self.x == other.x && self.y == other.y
+///     }
+/// }
+///
+/// fn main() {
+///     assert_eq!(Point { x: 2, y: 3 } - Point { x: 1, y: 0 },
+///                Point { x: 1, y: 3 });
+/// }
+/// ```
+///
 /// Note that `RHS = Self` by default, but this is not mandatory. For example,
 /// [std::time::SystemTime] implements `Sub<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime - Duration`.
