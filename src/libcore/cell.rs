@@ -209,11 +209,11 @@ use ptr;
 /// let new_value = 100;
 ///
 /// // ERROR, because my_struct is immutable
-/// // immutable.regular_field = new_value;
+/// // my_struct.regular_field = new_value;
 ///
 /// // WORKS, although `my_struct` is immutable, field `special_field` is mutable because it is Cell
-/// immutable.special_field.set(new_value);
-/// assert_eq!(immutable.special_field.get(), new_value);
+/// my_struct.special_field.set(new_value);
+/// assert_eq!(my_struct.special_field.get(), new_value);
 /// ```
 ///
 /// See the [module-level documentation](index.html) for more.
