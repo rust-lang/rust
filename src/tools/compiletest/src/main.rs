@@ -67,7 +67,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
-        .reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
+        .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
         .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
@@ -157,7 +157,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
-        rustdoc_path: opt_path(matches, "rustdoc-path"),
+        rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         lldb_python: matches.opt_str("lldb-python").unwrap(),
         docck_python: matches.opt_str("docck-python").unwrap(),
         valgrind_path: matches.opt_str("valgrind-path"),
@@ -210,7 +210,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
-    logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path.display()));
+    logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
     logv(c, format!("src_base: {:?}", config.src_base.display()));
     logv(c, format!("build_base: {:?}", config.build_base.display()));
     logv(c, format!("stage_id: {}", config.stage_id));

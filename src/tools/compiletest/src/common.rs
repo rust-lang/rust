@@ -93,7 +93,7 @@ pub struct Config {
     pub rustc_path: PathBuf,
 
     // The rustdoc executable
-    pub rustdoc_path: PathBuf,
+    pub rustdoc_path: Option<PathBuf>,
 
     // The python executable to use for LLDB
     pub lldb_python: String,

@@ -562,7 +562,12 @@ impl Step for Compiletest {
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
-        cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
+
+        // Avoid depending on rustdoc when we don't need it.
+        if mode == "rustdoc" || mode == "run-make" {
+            cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
+        }
+
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(build, compiler.host).join(suite));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
