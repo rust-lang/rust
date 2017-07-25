@@ -25,6 +25,7 @@ use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_ass
             rewrite_static, rewrite_type_alias};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
+use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
 use utils::{self, contains_skip, mk_sp};
 
@@ -338,7 +339,14 @@ impl<'a> FmtVisitor<'a> {
             ast::ItemKind::ExternCrate(_) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
                 let new_str = self.snippet(item.span);
-                self.buffer.push_str(&new_str);
+                if contains_comment(&new_str) {
+                    self.buffer.push_str(&new_str)
+                } else {
+                    let no_whitespace =
+                        &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
+                    self.buffer
+                        .push_str(&Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"));
+                }
                 self.last_pos = source!(self, item.span).hi;
             }
             ast::ItemKind::Struct(ref def, ref generics) => {

@@ -1,5 +1,8 @@
 // rustfmt-normalize_comments: true
 
+extern crate foo;
+extern crate foo as bar;
+
 extern "C" {
     fn c_func(x: *mut *mut libc::c_void);
 
