@@ -1,1 +1,41 @@
-version bump: 1.0.0 -> (patch) -> 1.0.1
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: path changes to `qux1`
+  --> $REPO_PATH/tests/cases/macros/old.rs:15:5
+   |
+15 | pub macro qux1() { Item }
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: removed definition (breaking)
+
+warning: path changes to `qux2`
+  --> $REPO_PATH/tests/cases/macros/old.rs:18:1
+   |
+18 | / macro_rules! qux2 {
+19 | |     () => {
+20 | |         Item
+21 | |     }
+22 | | }
+   | |_^
+   |
+   = note: removed definition (breaking)
+
+warning: path changes to `quux1`
+  --> $REPO_PATH/tests/cases/macros/new.rs:15:5
+   |
+15 | pub macro quux1() { Item }
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `quux2`
+  --> $REPO_PATH/tests/cases/macros/new.rs:18:1
+   |
+18 | / macro_rules! quux2 {
+19 | |     () => {
+20 | |         Item
+21 | |     }
+22 | | }
+   | |_^
+   |
+   = note: added definition (technically breaking)
+
