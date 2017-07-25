@@ -184,6 +184,10 @@ impl MirPass for AddValidation {
                     _ => continue,
                 };
                 // So this is a ref, and we got all the data we wanted.
+                // Do an acquire of the result -- but only what it points to, so add a Deref
+                // projection.
+                let dest_lval = Projection { base: dest_lval, elem: ProjectionElem::Deref };
+                let dest_lval = Lvalue::Projection(Box::new(dest_lval));
                 let acquire_stmt = Statement {
                     source_info: block_data.statements[i].source_info,
                     kind: StatementKind::Validate(ValidationOp::Acquire,
