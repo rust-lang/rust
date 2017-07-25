@@ -10,8 +10,11 @@ use super::{
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum EvalError<'tcx> {
+    /// This variant is used by machines to signal their own errors that do not
+    /// match an existing variant
+    MachineError(Box<Error>),
     FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     NoMirFor(String),
     UnterminatedCString(MemoryPointer),
@@ -95,8 +98,6 @@ pub enum EvalError<'tcx> {
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
     Panic,
-    NeedsRfc(String),
-    NotConst(String),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
 }
@@ -107,6 +108,7 @@ impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
         use self::EvalError::*;
         match *self {
+            MachineError(ref inner) => inner.description(),
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
             InvalidMemoryAccess =>
@@ -211,10 +213,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "entered unreachable code",
             Panic =>
                 "the evaluated program panicked",
-            NeedsRfc(_) =>
-                "this feature needs an rfc before being allowed inside constants",
-            NotConst(_) =>
-                "this feature is not compatible with constant evaluation",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
             EvalError::PathNotFound(_) =>
@@ -222,7 +220,13 @@ impl<'tcx> Error for EvalError<'tcx> {
         }
     }
 
-    fn cause(&self) -> Option<&Error> { None }
+    fn cause(&self) -> Option<&Error> {
+        use self::EvalError::*;
+        match *self {
+            MachineError(ref inner) => Some(&**inner),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
@@ -278,12 +282,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "expected primitive type, got {}", ty),
             Layout(ref err) =>
                 write!(f, "rustc layout computation failed: {:?}", err),
-            NeedsRfc(ref msg) =>
-                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg),
-            NotConst(ref msg) =>
-                write!(f, "Cannot evaluate within constants: \"{}\"", msg),
-            EvalError::PathNotFound(ref path) =>
+            PathNotFound(ref path) =>
                 write!(f, "Cannot find path {:?}", path),
+            MachineError(ref inner) =>
+                write!(f, "machine error: {}", inner),
             _ => write!(f, "{}", self.description()),
         }
     }

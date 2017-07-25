@@ -666,9 +666,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             Len(ref lvalue) => {
-                if self.const_env() {
-                    return Err(EvalError::NeedsRfc("computing the length of arrays".to_string()));
-                }
+                // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
@@ -692,9 +690,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
-                if self.const_env() {
-                    return Err(EvalError::NeedsRfc("\"heap\" allocations".to_string()));
-                }
+                // FIXME(CTFE): don't allow heap allocations in const eval
                 // FIXME: call the `exchange_malloc` lang item if available
                 let size = self.type_size(ty)?.expect("box only works with sized types");
                 if size == 0 {
@@ -708,9 +704,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                if self.const_env() {
-                    return Err(EvalError::NeedsRfc("computing the size of types (size_of)".to_string()));
-                }
                 let size = self.type_size(ty)?.expect("SizeOf nullary MIR operator called for unsized type");
                 self.write_primval(dest, PrimVal::from_u128(size as u128), dest_ty)?;
             }
@@ -944,7 +937,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         ptr.wrapping_signed_offset(offset, self)
     }
 
-    pub(super) fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
+    pub fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
         // This function raises an error if the offset moves the pointer outside of its allocation.  We consider
         // ZSTs their own huge allocation that doesn't overlap with anything (and nothing moves in there because the size is 0).
         // We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own

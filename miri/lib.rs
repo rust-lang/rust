@@ -7,6 +7,7 @@
 #[macro_use]
 extern crate log;
 extern crate log_settings;
+#[macro_use]
 extern crate rustc;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
@@ -25,8 +26,10 @@ extern crate rustc_miri;
 pub use rustc_miri::interpret::*;
 
 mod missing_fns;
+mod operator;
 
 use missing_fns::EvalContextExt as MissingFnsEvalContextExt;
+use operator::EvalContextExt as OperatorEvalContextExt;
 
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -279,5 +282,19 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         path: String,
     ) -> EvalResult<'tcx> {
         ecx.call_missing_fn(instance, destination, arg_operands, sig, path)
+    }
+    fn ptr_op<'a>(
+        ecx: &rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
+        bin_op: mir::BinOp,
+        left: PrimVal,
+        left_ty: ty::Ty<'tcx>,
+        right: PrimVal,
+        right_ty: ty::Ty<'tcx>,
+    ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
+        ecx.ptr_op(bin_op, left, left_ty, right, right_ty)
+    }
+
+    fn check_non_const_fn_call(_instance: ty::Instance<'tcx>) -> EvalResult<'tcx> {
+        Ok(())
     }
 }

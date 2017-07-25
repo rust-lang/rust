@@ -6,6 +6,7 @@ use super::{
     EvalResult,
     EvalContext,
     Lvalue,
+    PrimVal
 };
 
 use rustc::{mir, ty};
@@ -29,5 +30,25 @@ pub trait Machine<'tcx>: Sized {
         sig: ty::FnSig<'tcx>,
         path: String,
     ) -> EvalResult<'tcx>;
+
+    /// Called when operating on the value of pointers.
+    ///
+    /// Returns `None` if the operation should be handled by the integer
+    /// op code
+    ///
+    /// Returns a (value, overflowed) pair otherwise
+    fn ptr_op<'a>(
+        ecx: &EvalContext<'a, 'tcx, Self>,
+        bin_op: mir::BinOp,
+        left: PrimVal,
+        left_ty: ty::Ty<'tcx>,
+        right: PrimVal,
+        right_ty: ty::Ty<'tcx>,
+    ) -> EvalResult<'tcx, Option<(PrimVal, bool)>>;
+
+    /// Called when adding a frame for a function that's not `const fn`
+    ///
+    /// Const eval returns `Err`, miri returns `Ok`
+    fn check_non_const_fn_call(instance: ty::Instance<'tcx>) -> EvalResult<'tcx>;
 }
 

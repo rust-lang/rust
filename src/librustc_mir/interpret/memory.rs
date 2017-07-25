@@ -198,7 +198,7 @@ impl<'tcx> MemoryPointer {
         MemoryPointer::new(self.alloc_id, cx.data_layout().wrapping_signed_offset(self.offset, i))
     }
 
-    pub(crate) fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
+    pub fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
@@ -207,7 +207,7 @@ impl<'tcx> MemoryPointer {
         Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().signed_offset(self.offset, i)?))
     }
 
-    pub(crate) fn overflowing_offset<C: HasDataLayout>(self, i: u64, cx: C) -> (Self, bool) {
+    pub fn overflowing_offset<C: HasDataLayout>(self, i: u64, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }

@@ -5,13 +5,16 @@ use rustc::mir;
 use syntax::ast::Mutability;
 
 use super::{
-    EvalError, EvalResult,
+    EvalResult, EvalError,
     Global, GlobalId, Lvalue,
     PrimVal,
     EvalContext, StackPopCleanup,
 };
 
 use rustc_const_math::ConstInt;
+
+use std::fmt;
+use std::error::Error;
 
 pub fn eval_body_as_primval<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -21,7 +24,7 @@ pub fn eval_body_as_primval<'a, 'tcx>(
     let mut ecx = EvalContext::<Evaluator>::new(tcx, limits, (), ());
     let cid = GlobalId { instance, promoted: None };
     if ecx.tcx.has_attr(instance.def_id(), "linkage") {
-        return Err(EvalError::NotConst("extern global".to_string()));
+        return Err(ConstEvalError::NotConst("extern global".to_string()).into());
     }
     
     let mir = ecx.load_mir(instance.def)?;
@@ -75,11 +78,51 @@ pub fn eval_body_as_integer<'a, 'tcx>(
         TyUint(UintTy::U64) => ConstInt::U64(prim as u64),
         TyUint(UintTy::U128) => ConstInt::U128(prim),
         TyUint(UintTy::Us) => ConstInt::Usize(ConstUsize::new(prim as u64, tcx.sess.target.uint_type).expect("miri should already have errored")),
-        _ => return Err(EvalError::NeedsRfc("evaluating anything other than isize/usize during typeck".to_string())),
+        _ => return Err(ConstEvalError::NeedsRfc("evaluating anything other than isize/usize during typeck".to_string()).into()),
     })
 }
 
 struct Evaluator;
+
+impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
+    fn into(self) -> EvalError<'tcx> {
+        EvalError::MachineError(Box::new(self))
+    }
+}
+
+#[derive(Clone, Debug)]
+enum ConstEvalError {
+    NeedsRfc(String),
+    NotConst(String),
+}
+
+impl fmt::Display for ConstEvalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::ConstEvalError::*;
+        match *self {
+            NeedsRfc(ref msg) =>
+                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg),
+            NotConst(ref msg) =>
+                write!(f, "Cannot evaluate within constants: \"{}\"", msg),
+        }
+    }
+}
+
+impl Error for ConstEvalError {
+    fn description(&self) -> &str {
+        use self::ConstEvalError::*;
+        match *self {
+            NeedsRfc(_) =>
+                "this feature needs an rfc before being allowed inside constants",
+            NotConst(_) =>
+                "this feature is not compatible with constant evaluation",
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        None
+    }
+}
 
 impl<'tcx> super::Machine<'tcx> for Evaluator {
     type Data = ();
@@ -93,6 +136,21 @@ impl<'tcx> super::Machine<'tcx> for Evaluator {
         path: String,
     ) -> EvalResult<'tcx> {
         // some simple things like `malloc` might get accepted in the future
-        Err(EvalError::NeedsRfc(format!("calling extern function `{}`", path)))
+        Err(ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path)).into())
+    }
+
+    fn ptr_op<'a>(
+        _ecx: &EvalContext<'a, 'tcx, Self>,
+        _bin_op: mir::BinOp,
+        _left: PrimVal,
+        _left_ty: Ty<'tcx>,
+        _right: PrimVal,
+        _right_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
+        Err(ConstEvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()).into())
+    }
+
+    fn check_non_const_fn_call(instance: ty::Instance<'tcx>) -> EvalResult<'tcx> {
+        return Err(ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into());
     }
 }
