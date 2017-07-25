@@ -11,12 +11,12 @@
 
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
+use rustc::traits::{FulfillmentContext, Obligation, ObligationCause};
 use rustc::ty::{AssociatedItem, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 
-use semcheck::changes::ChangeType;
 use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
@@ -540,36 +540,11 @@ fn diff_generics(changes: &mut ChangeSet,
 // being exported.
 
 /// Given two items, compare the bounds on their type and region parameters.
-fn diff_bounds<'a, 'tcx>(changes: &mut ChangeSet,
-                         id_mapping: &IdMapping,
-                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         old: Def,
-                         new: Def) {
-    use rustc::hir::def::Def::Macro;
-
-    let old_def_id = old.def_id();
-    let new_def_id = new.def_id();
-
-    if changes.item_breaking(old_def_id) ||
-            id_mapping.get_trait_def(&old_def_id)
-                .map_or(false, |did| changes.trait_item_breaking(did)) {
-        return;
-    }
-
-    if let Macro(_, _) = old {
-        return; // TODO: more cases like this one
-    }
-
-    let old_param_env =
-        translate_param_env(id_mapping, tcx, old_def_id, tcx.param_env(old_def_id));
-
-    /* let old_param_env = tcx.param_env(old);
-    let res = Default::default();
-
-    let old_preds = tcx.predicates_of(old).predicates;
-    let new_preds = tcx.predicates_of(new).predicates;
-
-    res */
+fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
+                         _id_mapping: &IdMapping,
+                         _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         _old: Def,
+                         _new: Def) {
 }
 
 // Below functions constitute the fourth and last pass of analysis, in which the types of
@@ -640,7 +615,6 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     use rustc::infer::InferOk;
     use rustc::middle::free_region::FreeRegionMap;
     use rustc::middle::region::RegionMaps;
-    use rustc::traits::ObligationCause;
     use rustc::ty::{Lift, ReEarlyBound};
     use rustc::ty::TypeVariants::*;
 
@@ -662,17 +636,34 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         let new = new.subst(infcx.tcx, new_substs);
 
-        let param_env = tcx.param_env(new_def_id);
-        let origin = &ObligationCause::dummy();
+        let old_param_env =
+            translate_param_env(id_mapping, tcx, old_def_id, tcx.param_env(old_def_id));
+        let new_param_env = tcx.param_env(new_def_id);
+
+        let cause = ObligationCause::dummy();
+
+        let mut fulfill_cx = FulfillmentContext::new();
+
+        for predicate in new_param_env.caller_bounds.iter() {
+            let obligation = Obligation::new(cause.clone(), old_param_env, *predicate);
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
+
+        if let Err(error) = fulfill_cx.select_all_or_error(&infcx) {
+            // println!("old param env: {:?}", old_param_env);
+            // println!("new param env: {:?}", new_param_env);
+            // println!("could not fulfill obligation: {:?}", error);
+        }
+
         let error = infcx
-            .at(origin, param_env)
+            .at(&cause, new_param_env)
             .eq(old, new)
             .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
 
         if let Err(err) = error {
             let region_maps = RegionMaps::new();
             let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(param_env.caller_bounds);
+            free_regions.relate_free_regions_from_predicates(new_param_env.caller_bounds);
             infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
 
             let err = infcx.resolve_type_vars_if_possible(&err);

@@ -18,6 +18,7 @@ fn construct_index_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old_def_id: DefId)
     for type_ in &old_generics.types {
         index_map.insert(type_.index, type_.def_id);
     }
+
     if let Some(did) = old_generics.parent {
         let parent_generics = tcx.generics_of(did);
 
