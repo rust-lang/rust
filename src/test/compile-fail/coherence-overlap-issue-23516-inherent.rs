@@ -12,13 +12,15 @@
 // though we see no impl of `Sugar` for `Box`. Therefore, an overlap
 // error is reported for the following pair of impls (#23516).
 
-pub trait Sugar { fn dummy(&self) { } }
-pub trait Sweet { fn dummy(&self) { } }
-impl<T:Sugar> Sweet for T { }
-//~^ NOTE first implementation here
-impl<U:Sugar> Sweet for Box<U> { }
-//~^ ERROR E0119
-//~| NOTE conflicting implementation for `std::boxed::Box<_>`
+pub trait Sugar {}
+
+struct Cake<X>(X);
+
+impl<T:Sugar> Cake<T> { fn dummy(&self) { } }
+//~^ ERROR E0592
+//~| NOTE duplicate definitions for `dummy`
 //~| NOTE upstream crates may add new impl for `Sugar` in future versions
+impl<U:Sugar> Cake<Box<U>> { fn dummy(&self) { } }
+//~^ NOTE other definition for `dummy`
 
 fn main() { }
