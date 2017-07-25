@@ -426,6 +426,7 @@ impl<'a> Builder<'a> {
                 self.sysroot(compiler)
             })
             .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
+            .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler));
         cmd
     }
@@ -573,6 +574,9 @@ impl<'a> Builder<'a> {
         //
         // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
+
+        // Set this for all builds to make sure doc builds also get it.
+        cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.channel);
 
         if self.is_verbose() {
             cargo.arg("-v");
