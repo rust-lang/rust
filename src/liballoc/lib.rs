@@ -85,7 +85,6 @@
 #![cfg_attr(not(test), feature(slice_rotate))]
 #![cfg_attr(not(test), feature(str_checked_slicing))]
 #![cfg_attr(test, feature(rand, test))]
-#![cfg_attr(stage0, feature(allocator))]
 #![feature(allow_internal_unstable)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -124,7 +123,7 @@
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsize)]
-#![cfg_attr(not(stage0), feature(allocator_internals))]
+#![feature(allocator_internals)]
 
 #![cfg_attr(not(test), feature(fused, fn_traits, placement_new_protocol))]
 #![cfg_attr(test, feature(test, box_heap))]

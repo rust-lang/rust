@@ -14,8 +14,6 @@
 #![no_std]
 #![deny(warnings)]
 
-#![cfg_attr(stage0, feature(associated_consts))]
-
 //! A typesafe bitmask flag generator.
 
 #[cfg(test)]

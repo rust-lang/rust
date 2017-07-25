@@ -91,47 +91,7 @@ impl Step for Std {
         let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
-        let mut features = build.std_features();
-
-        if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-            cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
-        }
-
-        // When doing a local rebuild we tell cargo that we're stage1 rather than
-        // stage0. This works fine if the local rust and being-built rust have the
-        // same view of what the default allocator is, but fails otherwise. Since
-        // we don't have a way to express an allocator preference yet, work
-        // around the issue in the case of a local rebuild with jemalloc disabled.
-        if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
-            features.push_str(" force_alloc_system");
-        }
-
-        if compiler.stage != 0 && build.config.sanitizers {
-            // This variable is used by the sanitizer runtime crates, e.g.
-            // rustc_lsan, to build the sanitizer runtime from C code
-            // When this variable is missing, those crates won't compile the C code,
-            // so we don't set this variable during stage0 where llvm-config is
-            // missing
-            // We also only build the runtimes when --enable-sanitizers (or its
-            // config.toml equivalent) is used
-            cargo.env("LLVM_CONFIG", build.llvm_config(target));
-        }
-
-        cargo.arg("--features").arg(features)
-            .arg("--manifest-path")
-            .arg(build.src.join("src/libstd/Cargo.toml"));
-
-        if let Some(target) = build.config.target_config.get(&target) {
-            if let Some(ref jemalloc) = target.jemalloc {
-                cargo.env("JEMALLOC_OVERRIDE", jemalloc);
-            }
-        }
-        if target.contains("musl") {
-            if let Some(p) = build.musl_root(target) {
-                cargo.env("MUSL_ROOT", p);
-            }
-        }
-
+        std_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
                 &mut cargo,
                 &libstd_stamp(build, compiler, target));
@@ -144,6 +104,53 @@ impl Step for Std {
     }
 }
 
+/// Configure cargo to compile the standard library, adding appropriate env vars
+/// and such.
+pub fn std_cargo(build: &Build,
+                 compiler: &Compiler,
+                 target: Interned<String>,
+                 cargo: &mut Command) {
+    let mut features = build.std_features();
+
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
+
+    // When doing a local rebuild we tell cargo that we're stage1 rather than
+    // stage0. This works fine if the local rust and being-built rust have the
+    // same view of what the default allocator is, but fails otherwise. Since
+    // we don't have a way to express an allocator preference yet, work
+    // around the issue in the case of a local rebuild with jemalloc disabled.
+    if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
+        features.push_str(" force_alloc_system");
+    }
+
+    if compiler.stage != 0 && build.config.sanitizers {
+        // This variable is used by the sanitizer runtime crates, e.g.
+        // rustc_lsan, to build the sanitizer runtime from C code
+        // When this variable is missing, those crates won't compile the C code,
+        // so we don't set this variable during stage0 where llvm-config is
+        // missing
+        // We also only build the runtimes when --enable-sanitizers (or its
+        // config.toml equivalent) is used
+        cargo.env("LLVM_CONFIG", build.llvm_config(target));
+    }
+
+    cargo.arg("--features").arg(features)
+        .arg("--manifest-path")
+        .arg(build.src.join("src/libstd/Cargo.toml"));
+
+    if let Some(target) = build.config.target_config.get(&target) {
+        if let Some(ref jemalloc) = target.jemalloc {
+            cargo.env("JEMALLOC_OVERRIDE", jemalloc);
+        }
+    }
+    if target.contains("musl") {
+        if let Some(p) = build.musl_root(target) {
+            cargo.env("MUSL_ROOT", p);
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct StdLink {
@@ -329,11 +336,7 @@ impl Step for Test {
         let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
-        if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-            cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
-        }
-        cargo.arg("--manifest-path")
-            .arg(build.src.join("src/libtest/Cargo.toml"));
+        test_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
                 &mut cargo,
                 &libtest_stamp(build, compiler, target));
@@ -344,6 +347,18 @@ impl Step for Test {
             target: target,
         });
     }
+}
+
+/// Same as `std_cargo`, but for libtest
+pub fn test_cargo(build: &Build,
+                  _compiler: &Compiler,
+                  _target: Interned<String>,
+                  cargo: &mut Command) {
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
+    cargo.arg("--manifest-path")
+        .arg(build.src.join("src/libtest/Cargo.toml"));
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -443,67 +458,7 @@ impl Step for Rustc {
         build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
-        cargo.arg("--features").arg(build.rustc_features())
-             .arg("--manifest-path")
-             .arg(build.src.join("src/rustc/Cargo.toml"));
-
-        // Set some configuration variables picked up by build scripts and
-        // the compiler alike
-        cargo.env("CFG_RELEASE", build.rust_release())
-             .env("CFG_RELEASE_CHANNEL", &build.config.channel)
-             .env("CFG_VERSION", build.rust_version())
-             .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default());
-
-        if compiler.stage == 0 {
-            cargo.env("CFG_LIBDIR_RELATIVE", "lib");
-        } else {
-            let libdir_relative =
-                build.config.libdir_relative.clone().unwrap_or(PathBuf::from("lib"));
-            cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
-        }
-
-        // If we're not building a compiler with debugging information then remove
-        // these two env vars which would be set otherwise.
-        if build.config.rust_debuginfo_only_std {
-            cargo.env_remove("RUSTC_DEBUGINFO");
-            cargo.env_remove("RUSTC_DEBUGINFO_LINES");
-        }
-
-        if let Some(ref ver_date) = build.rust_info.commit_date() {
-            cargo.env("CFG_VER_DATE", ver_date);
-        }
-        if let Some(ref ver_hash) = build.rust_info.sha() {
-            cargo.env("CFG_VER_HASH", ver_hash);
-        }
-        if !build.unstable_features() {
-            cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
-        }
-        // Flag that rust llvm is in use
-        if build.is_rust_llvm(target) {
-            cargo.env("LLVM_RUSTLLVM", "1");
-        }
-        cargo.env("LLVM_CONFIG", build.llvm_config(target));
-        let target_config = build.config.target_config.get(&target);
-        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            cargo.env("CFG_LLVM_ROOT", s);
-        }
-        // Building with a static libstdc++ is only supported on linux right now,
-        // not for MSVC or macOS
-        if build.config.llvm_static_stdcpp &&
-           !target.contains("windows") &&
-           !target.contains("apple") {
-            cargo.env("LLVM_STATIC_STDCPP",
-                      compiler_file(build.cxx(target).unwrap(), "libstdc++.a"));
-        }
-        if build.config.llvm_link_shared {
-            cargo.env("LLVM_LINK_SHARED", "1");
-        }
-        if let Some(ref s) = build.config.rustc_default_linker {
-            cargo.env("CFG_DEFAULT_LINKER", s);
-        }
-        if let Some(ref s) = build.config.rustc_default_ar {
-            cargo.env("CFG_DEFAULT_AR", s);
-        }
+        rustc_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
                   &librustc_stamp(build, compiler, target));
@@ -513,6 +468,74 @@ impl Step for Rustc {
             target_compiler: compiler,
             target,
         });
+    }
+}
+
+/// Same as `std_cargo`, but for libtest
+pub fn rustc_cargo(build: &Build,
+                   compiler: &Compiler,
+                   target: Interned<String>,
+                   cargo: &mut Command) {
+    cargo.arg("--features").arg(build.rustc_features())
+         .arg("--manifest-path")
+         .arg(build.src.join("src/rustc/Cargo.toml"));
+
+    // Set some configuration variables picked up by build scripts and
+    // the compiler alike
+    cargo.env("CFG_RELEASE", build.rust_release())
+         .env("CFG_RELEASE_CHANNEL", &build.config.channel)
+         .env("CFG_VERSION", build.rust_version())
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default());
+
+    if compiler.stage == 0 {
+        cargo.env("CFG_LIBDIR_RELATIVE", "lib");
+    } else {
+        let libdir_relative =
+            build.config.libdir_relative.clone().unwrap_or(PathBuf::from("lib"));
+        cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
+    }
+
+    // If we're not building a compiler with debugging information then remove
+    // these two env vars which would be set otherwise.
+    if build.config.rust_debuginfo_only_std {
+        cargo.env_remove("RUSTC_DEBUGINFO");
+        cargo.env_remove("RUSTC_DEBUGINFO_LINES");
+    }
+
+    if let Some(ref ver_date) = build.rust_info.commit_date() {
+        cargo.env("CFG_VER_DATE", ver_date);
+    }
+    if let Some(ref ver_hash) = build.rust_info.sha() {
+        cargo.env("CFG_VER_HASH", ver_hash);
+    }
+    if !build.unstable_features() {
+        cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
+    }
+    // Flag that rust llvm is in use
+    if build.is_rust_llvm(target) {
+        cargo.env("LLVM_RUSTLLVM", "1");
+    }
+    cargo.env("LLVM_CONFIG", build.llvm_config(target));
+    let target_config = build.config.target_config.get(&target);
+    if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+        cargo.env("CFG_LLVM_ROOT", s);
+    }
+    // Building with a static libstdc++ is only supported on linux right now,
+    // not for MSVC or macOS
+    if build.config.llvm_static_stdcpp &&
+       !target.contains("windows") &&
+       !target.contains("apple") {
+        cargo.env("LLVM_STATIC_STDCPP",
+                  compiler_file(build.cxx(target).unwrap(), "libstdc++.a"));
+    }
+    if build.config.llvm_link_shared {
+        cargo.env("LLVM_LINK_SHARED", "1");
+    }
+    if let Some(ref s) = build.config.rustc_default_linker {
+        cargo.env("CFG_DEFAULT_LINKER", s);
+    }
+    if let Some(ref s) = build.config.rustc_default_ar {
+        cargo.env("CFG_DEFAULT_AR", s);
     }
 }
 

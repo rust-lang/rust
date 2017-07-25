@@ -263,7 +263,7 @@ impl Step for Cargo {
             stage: self.stage,
             target: self.target,
             tool: "cargo",
-            mode: Mode::Libstd,
+            mode: Mode::Librustc,
         })
     }
 }

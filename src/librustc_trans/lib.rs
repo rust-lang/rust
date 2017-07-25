@@ -34,8 +34,6 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
-#![cfg_attr(stage0, feature(associated_consts))]
-
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 

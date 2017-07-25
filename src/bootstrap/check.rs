@@ -25,15 +25,14 @@ use std::io::Read;
 
 use build_helper::{self, output};
 
-use {Build, Mode};
-use dist;
-use util::{self, dylib_path, dylib_path_var};
-
-use compile;
-use native;
 use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
-use tool::{self, Tool};
 use cache::{INTERNER, Interned};
+use compile;
+use dist;
+use native;
+use tool::{self, Tool};
+use util::{self, dylib_path, dylib_path_var};
+use {Build, Mode};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -963,25 +962,6 @@ impl Step for Crate {
 
         builder.ensure(compile::Test { compiler, target });
         builder.ensure(RemoteCopyLibs { compiler, target });
-        let (name, path, features, root) = match mode {
-            Mode::Libstd => {
-                ("libstd", "src/libstd", build.std_features(), "std")
-            }
-            Mode::Libtest => {
-                ("libtest", "src/libtest", String::new(), "test")
-            }
-            Mode::Librustc => {
-                builder.ensure(compile::Rustc { compiler, target });
-                ("librustc", "src/rustc", build.rustc_features(), "rustc-main")
-            }
-            _ => panic!("can only test libraries"),
-        };
-        let root = INTERNER.intern_string(String::from(root));
-        let _folder = build.fold_output(|| {
-            format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, name)
-        });
-        println!("{} {} stage{} ({} -> {})", test_kind, name, compiler.stage,
-                &compiler.host, target);
 
         // If we're not doing a full bootstrap but we're testing a stage2 version of
         // libstd, then what we're actually testing is the libstd produced in
@@ -993,15 +973,35 @@ impl Step for Crate {
             compiler.clone()
         };
 
+        let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
+        let (name, root) = match mode {
+            Mode::Libstd => {
+                compile::std_cargo(build, &compiler, target, &mut cargo);
+                ("libstd", "std")
+            }
+            Mode::Libtest => {
+                compile::test_cargo(build, &compiler, target, &mut cargo);
+                ("libtest", "test")
+            }
+            Mode::Librustc => {
+                builder.ensure(compile::Rustc { compiler, target });
+                compile::rustc_cargo(build, &compiler, target, &mut cargo);
+                ("librustc", "rustc-main")
+            }
+            _ => panic!("can only test libraries"),
+        };
+        let root = INTERNER.intern_string(String::from(root));
+        let _folder = build.fold_output(|| {
+            format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, name)
+        });
+        println!("{} {} stage{} ({} -> {})", test_kind, name, compiler.stage,
+                &compiler.host, target);
+
         // Build up the base `cargo test` command.
         //
         // Pass in some standard flags then iterate over the graph we've discovered
         // in `cargo metadata` with the maps above and figure out what `-p`
         // arguments need to get passed.
-        let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
-        cargo.arg("--manifest-path")
-            .arg(build.src.join(path).join("Cargo.toml"))
-            .arg("--features").arg(features);
         if test_kind.subcommand() == "test" && !build.fail_fast {
             cargo.arg("--no-fail-fast");
         }
@@ -1014,16 +1014,18 @@ impl Step for Crate {
                 let mut visited = HashSet::new();
                 let mut next = vec![root];
                 while let Some(name) = next.pop() {
-                    // Right now jemalloc is our only target-specific crate in the
-                    // sense that it's not present on all platforms. Custom skip it
-                    // here for now, but if we add more this probably wants to get
-                    // more generalized.
+                    // Right now jemalloc and the sanitizer crates are
+                    // target-specific crate in the sense that it's not present
+                    // on all platforms. Custom skip it here for now, but if we
+                    // add more this probably wants to get more generalized.
                     //
-                    // Also skip `build_helper` as it's not compiled normally for
-                    // target during the bootstrap and it's just meant to be a
-                    // helper crate, not tested. If it leaks through then it ends up
-                    // messing with various mtime calculations and such.
-                    if !name.contains("jemalloc") && *name != *"build_helper" {
+                    // Also skip `build_helper` as it's not compiled normally
+                    // for target during the bootstrap and it's just meant to be
+                    // a helper crate, not tested. If it leaks through then it
+                    // ends up messing with various mtime calculations and such.
+                    if !name.contains("jemalloc") &&
+                       *name != *"build_helper" &&
+                       !(name.starts_with("rustc_") && name.ends_with("san")) {
                         cargo.arg("-p").arg(&format!("{}:0.0.0", name));
                     }
                     for dep in build.crates[&name].deps.iter() {

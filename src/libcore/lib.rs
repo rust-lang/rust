@@ -93,8 +93,6 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 
-#![cfg_attr(stage0, feature(associated_consts))]
-
 #[prelude_import]
 #[allow(unused)]
 use prelude::v1::*;

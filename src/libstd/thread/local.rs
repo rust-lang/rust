@@ -110,7 +110,6 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
     }
 }
 
-#[cfg(not(stage0))]
 /// Declare a new thread local storage key of type [`std::thread::LocalKey`].
 ///
 /// # Syntax
@@ -152,7 +151,6 @@ macro_rules! thread_local {
     );
 }
 
-#[cfg(not(stage0))]
 #[doc(hidden)]
 #[unstable(feature = "thread_local_internals",
            reason = "should not be necessary",
@@ -183,71 +181,6 @@ macro_rules! __thread_local_inner {
             $crate::thread::LocalKey::new(__getit, __init)
         };
     }
-}
-
-#[cfg(stage0)]
-/// Declare a new thread local storage key of type `std::thread::LocalKey`.
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable]
-macro_rules! thread_local {
-    // rule 0: empty (base case for the recursion)
-    () => {};
-
-    // rule 1: process multiple declarations where the first one is private
-    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        thread_local!($(#[$attr])* static $name: $t = $init); // go to rule 2
-        thread_local!($($rest)*);
-    );
-
-    // rule 2: handle a single private declaration
-    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr) => (
-        $(#[$attr])* static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init);
-    );
-
-    // rule 3: handle multiple declarations where the first one is public
-    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        thread_local!($(#[$attr])* pub static $name: $t = $init); // go to rule 4
-        thread_local!($($rest)*);
-    );
-
-    // rule 4: handle a single public declaration
-    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr) => (
-        $(#[$attr])* pub static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init);
-    );
-}
-
-#[cfg(stage0)]
-#[doc(hidden)]
-#[unstable(feature = "thread_local_internals",
-           reason = "should not be necessary",
-           issue = "0")]
-#[macro_export]
-#[allow_internal_unstable]
-macro_rules! __thread_local_inner {
-    ($t:ty, $init:expr) => {{
-        fn __init() -> $t { $init }
-
-        fn __getit() -> $crate::option::Option<
-            &'static $crate::cell::UnsafeCell<
-                $crate::option::Option<$t>>>
-        {
-            #[thread_local]
-            #[cfg(target_thread_local)]
-            static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
-                $crate::thread::__FastLocalKeyInner::new();
-
-            #[cfg(not(target_thread_local))]
-            static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
-                $crate::thread::__OsLocalKeyInner::new();
-
-            __KEY.get()
-        }
-
-        $crate::thread::LocalKey::new(__getit, __init)
-    }}
 }
 
 /// Indicator of the state of a thread local storage key.

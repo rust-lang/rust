@@ -39,7 +39,7 @@
 use fmt;
 
 #[cold] #[inline(never)] // this is the slow path, always
-#[cfg_attr(not(stage0), lang = "panic")]
+#[lang = "panic"]
 pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
     // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
     // reduce size overhead. The format_args! macro uses str's Display trait to
@@ -51,33 +51,12 @@ pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
     panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), &(file, line, col))
 }
 
-// FIXME: remove when SNAP
 #[cold] #[inline(never)]
-#[cfg(stage0)]
-#[lang = "panic"]
-pub fn panic_old(expr_file_line: &(&'static str, &'static str, u32)) -> ! {
-    let (expr, file, line) = *expr_file_line;
-    let expr_file_line_col = (expr, file, line, 0);
-    panic(&expr_file_line_col)
-}
-
-#[cold] #[inline(never)]
-#[cfg_attr(not(stage0), lang = "panic_bounds_check")]
+#[lang = "panic_bounds_check"]
 fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
                      index: usize, len: usize) -> ! {
     panic_fmt(format_args!("index out of bounds: the len is {} but the index is {}",
                            len, index), file_line_col)
-}
-
-// FIXME: remove when SNAP
-#[cold] #[inline(never)]
-#[cfg(stage0)]
-#[lang = "panic_bounds_check"]
-fn panic_bounds_check_old(file_line: &(&'static str, u32),
-                     index: usize, len: usize) -> ! {
-    let (file, line) = *file_line;
-    panic_fmt(format_args!("index out of bounds: the len is {} but the index is {}",
-                           len, index), &(file, line, 0))
 }
 
 #[cold] #[inline(never)]
