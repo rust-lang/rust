@@ -1,7 +1,7 @@
 - Feature Name: extern_types
 - Start Date: 2017-01-18
-- RFC PR: 
-- Rust Issue: 
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1861
+- Rust Issue: https://github.com/rust-lang/rust/issues/43467
 
 # Summary
 [summary]: #summary
