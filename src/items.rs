@@ -1128,16 +1128,18 @@ pub fn format_struct_struct(
         .max_width()
         .checked_sub(result.len() + 3 + offset.width())
         .unwrap_or(0);
+    let one_line_budget =
+        one_line_width.map_or(0, |one_line_width| min(one_line_width, one_line_budget));
 
     let items_str = try_opt!(rewrite_with_alignment(
         fields,
         context,
         Shape::indented(offset, context.config),
         mk_sp(body_lo, span.hi),
-        one_line_width.map_or(0, |one_line_width| min(one_line_width, one_line_budget)),
+        one_line_budget,
     ));
 
-    if one_line_width.is_some() && !items_str.contains('\n') && !result.contains('\n') {
+    if !items_str.contains('\n') && !result.contains('\n') && items_str.len() <= one_line_budget {
         Some(format!("{} {} }}", result, items_str))
     } else {
         Some(format!(
