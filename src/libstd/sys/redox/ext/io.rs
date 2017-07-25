@@ -110,17 +110,17 @@ impl AsRawFd for net::UdpSocket {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stdin {
     fn as_raw_fd(&self) -> RawFd { 0 }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stdout {
     fn as_raw_fd(&self) -> RawFd { 1 }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stderr {
     fn as_raw_fd(&self) -> RawFd { 2 }
 }
