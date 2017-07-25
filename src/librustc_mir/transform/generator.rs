@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Transforming generator bodies into a state machines
+//! Transforms generators into state machines
 
 #![allow(warnings)]
 
