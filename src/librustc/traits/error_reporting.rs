@@ -729,32 +729,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                    expected_found.found,
                                                    expected_trait_ty.is_closure())
                 } else if let &TypeError::Sorts(ref expected_found) = e {
-                    let expected = if let ty::TyTuple(tys, _) = expected_found.expected.sty {
-                        tys.len()
+                    let mut count_mismatch = None;
+                    if let ty::TyTuple(expected_tys, _) = expected_found.expected.sty {
+                        if let ty::TyTuple(found_tys, _) = expected_found.found.sty {
+                            if expected_tys.len() != found_tys.len() {
+                                // Expected `|| { }`, found `|x, y| { }`
+                                // Expected `fn(x) -> ()`, found `|| { }`
+                                count_mismatch = Some(self.report_arg_count_mismatch(span,
+                                                               found_span,
+                                                               expected_tys.len(),
+                                                               found_tys.len(),
+                                                               expected_trait_ty.is_closure()));
+                            }
+                        }
+                    }
+                    if let Some(count_mismatch) = count_mismatch {
+                        count_mismatch
                     } else {
-                        1
-                    };
-                    let found = if let ty::TyTuple(tys, _) = expected_found.found.sty {
-                        tys.len()
-                    } else {
-                        1
-                    };
-
-                    if expected != found {
-                        // Expected `|| { }`, found `|x, y| { }`
-                        // Expected `fn(x) -> ()`, found `|| { }`
-                        self.report_arg_count_mismatch(span,
-                                                       found_span,
-                                                       expected,
-                                                       found,
-                                                       expected_trait_ty.is_closure())
-                    } else {
-                        self.report_type_argument_mismatch(span,
-                                                            found_span,
-                                                            expected_trait_ty,
-                                                            expected_trait_ref,
-                                                            actual_trait_ref,
-                                                            e)
+                       self.report_closure_arg_mismatch(span,
+                                                         found_span,
+                                                         expected_trait_ref,
+                                                         actual_trait_ref)
                     }
                 } else {
                     self.report_type_argument_mismatch(span,
@@ -826,6 +821,24 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             err.span_label(span, format!("takes {} argument{}",
                                           found,
                                           if found == 1 { "" } else { "s" }));
+        }
+        err
+    }
+
+    fn report_closure_arg_mismatch(&self,
+                           span: Span,
+                           found_span: Option<Span>,
+                           expected_ref: ty::PolyTraitRef<'tcx>,
+                           found: ty::PolyTraitRef<'tcx>)
+        -> DiagnosticBuilder<'tcx>
+    {
+        let mut err = struct_span_err!(self.tcx.sess, span, E0623,
+            "type mismatch in closure arguments");
+        if let Some(sp) = found_span {
+            err.span_label(span, format!("expected closure that takes a `{}`", found));
+            err.span_label(sp, format!("takes a `{}`", expected_ref));
+        } else {
+            panic!();
         }
         err
     }
