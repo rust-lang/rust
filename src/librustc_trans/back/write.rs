@@ -18,7 +18,8 @@ use rustc::session::Session;
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
-use {CrateTranslation, OngoingCrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
+use {CrateTranslation, OngoingCrateTranslation, ModuleSource, ModuleTranslation,
+     CompiledModule, ModuleKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr};
 use rustc::util::fs::link_or_copy;
@@ -192,7 +193,6 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
 
 
 /// Module-specific configuration for `optimize_and_codegen`.
-#[derive(Clone)]
 pub struct ModuleConfig {
     /// LLVM TargetMachine to use for codegen.
     tm: TargetMachineRef,
@@ -231,9 +231,9 @@ pub struct ModuleConfig {
 unsafe impl Send for ModuleConfig { }
 
 impl ModuleConfig {
-    fn new(tm: TargetMachineRef, passes: Vec<String>) -> ModuleConfig {
+    fn new(sess: &Session, passes: Vec<String>) -> ModuleConfig {
         ModuleConfig {
-            tm: tm,
+            tm: create_target_machine(sess),
             passes: passes,
             opt_level: None,
             opt_size: None,
@@ -280,6 +280,40 @@ impl ModuleConfig {
 
         self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
                                sess.opts.optimize == config::OptLevel::Aggressive;
+    }
+
+    fn clone(&self, sess: &Session) -> ModuleConfig {
+        ModuleConfig {
+            tm: create_target_machine(sess),
+            passes: self.passes.clone(),
+            opt_level: self.opt_level,
+            opt_size: self.opt_size,
+
+            emit_no_opt_bc: self.emit_no_opt_bc,
+            emit_bc: self.emit_bc,
+            emit_lto_bc: self.emit_lto_bc,
+            emit_ir: self.emit_ir,
+            emit_asm: self.emit_asm,
+            emit_obj: self.emit_obj,
+            obj_is_bitcode: self.obj_is_bitcode,
+
+            no_verify: self.no_verify,
+            no_prepopulate_passes: self.no_prepopulate_passes,
+            no_builtins: self.no_builtins,
+            time_passes: self.time_passes,
+            vectorize_loop: self.vectorize_loop,
+            vectorize_slp: self.vectorize_slp,
+            merge_functions: self.merge_functions,
+            inline_threshold: self.inline_threshold,
+        }
+    }
+}
+
+impl Drop for ModuleConfig {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMRustDisposeTargetMachine(self.tm);
+        }
     }
 }
 
@@ -372,13 +406,17 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                diag_handler: &Handler,
                                mtrans: ModuleTranslation,
-                               mllvm: ModuleLlvm,
                                config: ModuleConfig,
                                output_names: OutputFilenames)
-    -> Result<(), FatalError>
+    -> Result<CompiledModule, FatalError>
 {
-    let llmod = mllvm.llmod;
-    let llcx = mllvm.llcx;
+    let (llmod, llcx) = match mtrans.source {
+        ModuleSource::Translated(ref llvm) => (llvm.llmod, llvm.llcx),
+        ModuleSource::Preexisting(_) => {
+            bug!("optimize_and_codegen: called with ModuleSource::Preexisting")
+        }
+    };
+
     let tm = config.tm;
 
     let fv = HandlerFreeVars {
@@ -390,7 +428,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
     llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, fv);
 
-    let module_name = Some(&mtrans.name[..]);
+    let module_name = mtrans.name.clone();
+    let module_name = Some(&module_name[..]);
 
     if config.emit_no_opt_bc {
         let out = output_names.temp_path_ext("no-opt.bc", module_name);
@@ -606,30 +645,13 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         }
     }
 
-    llvm::LLVMRustDisposeTargetMachine(tm);
-    Ok(())
+    Ok(mtrans.into_compiled_module(config.emit_obj, config.emit_bc))
 }
 
-
-pub fn cleanup_llvm(trans: &CrateTranslation) {
-    for module in trans.modules.iter() {
-        unsafe {
-            match module.source {
-                ModuleSource::Translated(llvm) => {
-                    llvm::LLVMDisposeModule(llvm.llmod);
-                    llvm::LLVMContextDispose(llvm.llcx);
-                }
-                ModuleSource::Preexisting(_) => {
-                }
-            }
-        }
-    }
-}
-
-pub struct RunLLVMPassesResult {
-    pub modules: Vec<ModuleTranslation>,
-    pub metadata_module: ModuleTranslation,
-    pub allocator_module: Option<ModuleTranslation>,
+pub struct CompiledModules {
+    pub modules: Vec<CompiledModule>,
+    pub metadata_module: CompiledModule,
+    pub allocator_module: Option<CompiledModule>,
 }
 
 pub fn run_passes(sess: &Session,
@@ -658,13 +680,11 @@ pub fn run_passes(sess: &Session,
             !sess.opts.output_types.should_trans() ||
             sess.opts.debugging_opts.no_trans);
 
-    let tm = create_target_machine(sess);
-
     // Figure out what we actually need to build.
 
-    let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
-    let mut metadata_config = ModuleConfig::new(tm, vec![]);
-    let mut allocator_config = ModuleConfig::new(tm, vec![]);
+    let mut modules_config = ModuleConfig::new(sess, sess.opts.cg.passes.clone());
+    let mut metadata_config = ModuleConfig::new(sess, vec![]);
+    let mut allocator_config = ModuleConfig::new(sess, vec![]);
 
     if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
         match *sanitizer {
@@ -747,25 +767,22 @@ pub fn run_passes(sess: &Session,
     let mut work_items = Vec::with_capacity(1 + modules.len());
 
     {
-        let work = build_work_item(sess,
-                                   metadata_module.clone(),
-                                   metadata_config.clone(),
+        let work = build_work_item(metadata_module,
+                                   metadata_config.clone(sess),
                                    crate_output.clone());
         work_items.push(work);
     }
 
-    if let Some(allocator) = allocator_module.clone() {
-        let work = build_work_item(sess,
-                                   allocator,
-                                   allocator_config.clone(),
+    if let Some(allocator) = allocator_module {
+        let work = build_work_item(allocator,
+                                   allocator_config.clone(sess),
                                    crate_output.clone());
         work_items.push(work);
     }
 
-    for mtrans in modules.iter() {
-        let work = build_work_item(sess,
-                                   mtrans.clone(),
-                                   modules_config.clone(),
+    for mtrans in modules {
+        let work = build_work_item(mtrans,
+                                   modules_config.clone(sess),
                                    crate_output.clone());
         work_items.push(work);
     }
@@ -777,6 +794,10 @@ pub fn run_passes(sess: &Session,
         let num_workers = cmp::min(work_items.len() - 1, 32);
         Client::new(num_workers).expect("failed to create jobserver")
     });
+
+    drop(modules_config);
+    drop(metadata_config);
+    drop(allocator_config);
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (trans_worker_send, trans_worker_receive) = channel();
@@ -813,37 +834,27 @@ pub fn run_passes(sess: &Session,
         }
     }
 
-    match coordinator_thread.join() {
-        Ok(()) => {},
-        Err(err) => {
-            panic!("error: {:?}", err);
-        }
-    }
+    let compiled_modules = coordinator_thread.join().unwrap();
 
     // Just in case, check this on the way out.
     shared_emitter_main.check(sess);
     sess.diagnostic().abort_if_errors();
 
     // If in incr. comp. mode, preserve the `.o` files for potential re-use
-    for mtrans in modules.iter() {
+    for module in compiled_modules.modules.iter() {
         let mut files = vec![];
 
-        if modules_config.emit_obj {
-            let path = crate_output.temp_path(OutputType::Object, Some(&mtrans.name));
+        if module.emit_obj {
+            let path = crate_output.temp_path(OutputType::Object, Some(&module.name));
             files.push((OutputType::Object, path));
         }
 
-        if modules_config.emit_bc {
-            let path = crate_output.temp_path(OutputType::Bitcode, Some(&mtrans.name));
+        if module.emit_bc {
+            let path = crate_output.temp_path(OutputType::Bitcode, Some(&module.name));
             files.push((OutputType::Bitcode, path));
         }
 
-        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &files);
-    }
-
-    // All codegen is finished.
-    unsafe {
-        llvm::LLVMRustDisposeTargetMachine(tm);
+        save_trans_partition(sess, &module.name, module.symbol_name_hash, &files);
     }
 
     let mut user_wants_bitcode = false;
@@ -858,10 +869,10 @@ pub fn run_passes(sess: &Session,
 
         let copy_if_one_unit = |output_type: OutputType,
                                 keep_numbered: bool| {
-            if modules.len() == 1 {
+            if compiled_modules.modules.len() == 1 {
                 // 1) Only one codegen unit.  In this case it's no difficulty
                 //    to copy `foo.0.x` to `foo.x`.
-                let module_name = Some(&modules[0].name[..]);
+                let module_name = Some(&compiled_modules.modules[0].name[..]);
                 let path = crate_output.temp_path(output_type, module_name);
                 copy_gracefully(&path,
                                 &crate_output.path(output_type));
@@ -962,27 +973,30 @@ pub fn run_passes(sess: &Session,
         let keep_numbered_objects = needs_crate_object ||
                 (user_wants_objects && sess.opts.cg.codegen_units > 1);
 
-        for module_name in modules.iter().map(|m| Some(&m.name[..])) {
-            if modules_config.emit_obj && !keep_numbered_objects {
+        for module in compiled_modules.modules.iter() {
+            let module_name = Some(&module.name[..]);
+
+            if module.emit_obj && !keep_numbered_objects {
                 let path = crate_output.temp_path(OutputType::Object, module_name);
                 remove(sess, &path);
             }
 
-            if modules_config.emit_bc && !keep_numbered_bitcode {
+            if module.emit_bc && !keep_numbered_bitcode {
                 let path = crate_output.temp_path(OutputType::Bitcode, module_name);
                 remove(sess, &path);
             }
         }
 
-        if metadata_config.emit_bc && !user_wants_bitcode {
+        if compiled_modules.metadata_module.emit_bc && !user_wants_bitcode {
             let path = crate_output.temp_path(OutputType::Bitcode,
-                                              Some(&metadata_module.name));
+                                              Some(&compiled_modules.metadata_module.name));
             remove(sess, &path);
         }
-        if allocator_config.emit_bc && !user_wants_bitcode {
-            if let Some(ref module) = allocator_module {
+
+        if let Some(ref allocator_module) = compiled_modules.allocator_module {
+            if allocator_module.emit_bc && !user_wants_bitcode {
                 let path = crate_output.temp_path(OutputType::Bitcode,
-                                                  Some(&module.name));
+                                                  Some(&allocator_module.name));
                 remove(sess, &path);
             }
         }
@@ -1000,21 +1014,14 @@ pub fn run_passes(sess: &Session,
         unsafe { llvm::LLVMRustPrintPassTimings(); }
     }
 
-    *trans.result.borrow_mut() = Some(
-        RunLLVMPassesResult {
-            modules,
-            metadata_module,
-            allocator_module,
-        }
-    );
+    *trans.result.borrow_mut() = Some(compiled_modules);
 }
 
 pub fn dump_incremental_data(trans: &CrateTranslation) {
     let mut reuse = 0;
     for mtrans in trans.modules.iter() {
-        match mtrans.source {
-            ModuleSource::Preexisting(..) => reuse += 1,
-            ModuleSource::Translated(..) => (),
+        if mtrans.pre_existing {
+            reuse += 1;
         }
     }
     eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
@@ -1032,14 +1039,11 @@ impl fmt::Debug for WorkItem {
     }
 }
 
-fn build_work_item(sess: &Session,
-                   mtrans: ModuleTranslation,
+fn build_work_item(mtrans: ModuleTranslation,
                    config: ModuleConfig,
                    output_names: OutputFilenames)
                    -> WorkItem
 {
-    let mut config = config;
-    config.tm = create_target_machine(sess);
     WorkItem {
         mtrans: mtrans,
         config: config,
@@ -1048,54 +1052,65 @@ fn build_work_item(sess: &Session,
 }
 
 fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
-    -> Result<(), FatalError>
+    -> Result<CompiledModule, FatalError>
 {
     let diag_handler = cgcx.create_diag_handler();
-    unsafe {
-        match work_item.mtrans.source {
-            ModuleSource::Translated(mllvm) => {
-                debug!("llvm-optimizing {:?}", work_item.mtrans.name);
-                optimize_and_codegen(cgcx,
-                                     &diag_handler,
-                                     work_item.mtrans,
-                                     mllvm,
-                                     work_item.config,
-                                     work_item.output_names)?;
-            }
-            ModuleSource::Preexisting(wp) => {
-                let incr_comp_session_dir = cgcx.incr_comp_session_dir
-                                                .as_ref()
-                                                .unwrap();
-                let name = &work_item.mtrans.name;
-                for (kind, saved_file) in wp.saved_files {
-                    let obj_out = work_item.output_names.temp_path(kind, Some(name));
-                    let source_file = in_incr_comp_dir(&incr_comp_session_dir,
-                                                       &saved_file);
-                    debug!("copying pre-existing module `{}` from {:?} to {}",
-                           work_item.mtrans.name,
-                           source_file,
-                           obj_out.display());
-                    match link_or_copy(&source_file, &obj_out) {
-                        Ok(_) => { }
-                        Err(err) => {
-                            diag_handler.err(&format!("unable to copy {} to {}: {}",
-                                                      source_file.display(),
-                                                      obj_out.display(),
-                                                      err));
-                        }
-                    }
+    let module_name = work_item.mtrans.name.clone();
+
+    let pre_existing = match work_item.mtrans.source {
+        ModuleSource::Translated(_) => None,
+        ModuleSource::Preexisting(ref wp) => Some(wp.clone()),
+    };
+
+    if let Some(wp) = pre_existing {
+        let incr_comp_session_dir = cgcx.incr_comp_session_dir
+                                        .as_ref()
+                                        .unwrap();
+        let name = &work_item.mtrans.name;
+        for (kind, saved_file) in wp.saved_files {
+            let obj_out = work_item.output_names.temp_path(kind, Some(name));
+            let source_file = in_incr_comp_dir(&incr_comp_session_dir,
+                                               &saved_file);
+            debug!("copying pre-existing module `{}` from {:?} to {}",
+                   work_item.mtrans.name,
+                   source_file,
+                   obj_out.display());
+            match link_or_copy(&source_file, &obj_out) {
+                Ok(_) => { }
+                Err(err) => {
+                    diag_handler.err(&format!("unable to copy {} to {}: {}",
+                                              source_file.display(),
+                                              obj_out.display(),
+                                              err));
                 }
             }
         }
-    }
 
-    Ok(())
+        Ok(CompiledModule {
+            name: module_name,
+            kind: ModuleKind::Regular,
+            pre_existing: true,
+            symbol_name_hash: work_item.mtrans.symbol_name_hash,
+            emit_bc: work_item.config.emit_bc,
+            emit_obj: work_item.config.emit_obj,
+        })
+    } else {
+        debug!("llvm-optimizing {:?}", module_name);
+
+        unsafe {
+            optimize_and_codegen(cgcx,
+                                 &diag_handler,
+                                 work_item.mtrans,
+                                 work_item.config,
+                                 work_item.output_names)
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum Message {
     Token(io::Result<Acquired>),
-    Done { success: bool },
+    Done { result: Result<CompiledModule, ()> },
     WorkItem(WorkItem),
     CheckErrorMessages,
 }
@@ -1115,7 +1130,7 @@ fn start_executing_work(sess: &Session,
                         coordinator_receive: Receiver<Message>,
                         jobserver: Client,
                         exported_symbols: Arc<ExportedSymbols>)
-                        -> thread::JoinHandle<()> {
+                        -> thread::JoinHandle<CompiledModules> {
     // First up, convert our jobserver into a helper thread so we can use normal
     // mpsc channels to manage our messages and such. Once we've got the helper
     // thread then request `n-1` tokens because all of our work items are ready
@@ -1215,6 +1230,10 @@ fn start_executing_work(sess: &Session,
     // the jobserver.
 
     thread::spawn(move || {
+        let mut compiled_modules = vec![];
+        let mut compiled_metadata_module = None;
+        let mut compiled_allocator_module = None;
+
         let mut work_items_left = total_work_item_count;
         let mut work_items = Vec::with_capacity(total_work_item_count);
         let mut tokens = Vec::new();
@@ -1253,7 +1272,8 @@ fn start_executing_work(sess: &Session,
                     } else {
                         shared_emitter.fatal("failed to acquire jobserver token");
                         drop(trans_worker_send.send(Message::CheckErrorMessages));
-                        return
+                        // Exit the coordinator thread
+                        panic!()
                     }
                 }
 
@@ -1269,20 +1289,41 @@ fn start_executing_work(sess: &Session,
                 //
                 // Note that if the thread failed that means it panicked, so we
                 // abort immediately.
-                Message::Done { success: true } => {
+                Message::Done { result: Ok(compiled_module) } => {
                     drop(tokens.pop());
                     running -= 1;
                     drop(trans_worker_send.send(Message::CheckErrorMessages));
+
+                    match compiled_module.kind {
+                        ModuleKind::Regular => {
+                            compiled_modules.push(compiled_module);
+                        }
+                        ModuleKind::Metadata => {
+                            assert!(compiled_metadata_module.is_none());
+                            compiled_metadata_module = Some(compiled_module);
+                        }
+                        ModuleKind::Allocator => {
+                            assert!(compiled_allocator_module.is_none());
+                            compiled_allocator_module = Some(compiled_module);
+                        }
+                    }
                 }
-                Message::Done { success: false } => {
+                Message::Done { result: Err(()) } => {
                     shared_emitter.fatal("aborting due to worker thread panic");
                     drop(trans_worker_send.send(Message::CheckErrorMessages));
-                    return
+                    // Exit the coordinator thread
+                    panic!()
                 }
                 msg @ Message::CheckErrorMessages => {
                     bug!("unexpected message: {:?}", msg);
                 }
             }
+        }
+
+        CompiledModules {
+            modules: compiled_modules,
+            metadata_module: compiled_metadata_module.unwrap(),
+            allocator_module: compiled_allocator_module,
         }
     })
 }
@@ -1297,17 +1338,22 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // we exit.
         struct Bomb {
             coordinator_send: Sender<Message>,
-            success: bool,
+            result: Option<CompiledModule>,
         }
         impl Drop for Bomb {
             fn drop(&mut self) {
-                drop(self.coordinator_send.send(Message::Done { success: self.success }));
+                let result = match self.result.take() {
+                    Some(compiled_module) => Ok(compiled_module),
+                    None => Err(())
+                };
+
+                drop(self.coordinator_send.send(Message::Done { result }));
             }
         }
 
         let mut bomb = Bomb {
             coordinator_send: cgcx.coordinator_send.clone(),
-            success: false,
+            result: None,
         };
 
         // Execute the work itself, and if it finishes successfully then flag
@@ -1323,8 +1369,7 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // we just ignore the result and then send off our message saying that
         // we're done, which if `execute_work_item` failed is unlikely to be
         // seen by the main thread, but hey we might as well try anyway.
-        drop(execute_work_item(&cgcx, work).is_err());
-        bomb.success = true;
+        bomb.result = Some(execute_work_item(&cgcx, work).unwrap());
     });
 }
 

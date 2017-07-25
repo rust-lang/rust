@@ -27,6 +27,7 @@ use super::OngoingCrateTranslation;
 use super::ModuleLlvm;
 use super::ModuleSource;
 use super::ModuleTranslation;
+use super::ModuleKind;
 
 use assert_module_sources;
 use back::link;
@@ -952,6 +953,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             llcx: metadata_llcx,
             llmod: metadata_llmod,
         }),
+        kind: ModuleKind::Metadata,
     };
 
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
@@ -961,7 +963,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        !tcx.sess.opts.output_types.should_trans() {
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
-        return OngoingCrateTranslation {
+        let crate_translation = OngoingCrateTranslation {
             crate_name: tcx.crate_name(LOCAL_CRATE),
             link: link_meta,
             metadata: metadata,
@@ -970,12 +972,18 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             linker_info: linker_info,
             windows_subsystem: None,
             no_integrated_as: false,
-            result: ::std::cell::RefCell::new(Some(::back::write::RunLLVMPassesResult {
-                modules: vec![],
-                metadata_module: metadata_module,
-                allocator_module: None,
-            })),
+            result: ::std::cell::RefCell::new(None),
         };
+
+        ::back::write::run_passes(tcx.sess,
+                                  &crate_translation,
+                                  vec![],
+                                  metadata_module,
+                                  None,
+                                  &output_filenames.outputs,
+                                  output_filenames);
+
+        return crate_translation;
     }
 
     let exported_symbols = Arc::new(ExportedSymbols::compute(tcx,
@@ -1047,7 +1055,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let module = ModuleTranslation {
                 name: cgu_name,
                 symbol_name_hash,
-                source: ModuleSource::Preexisting(buf.clone())
+                source: ModuleSource::Preexisting(buf.clone()),
+                kind: ModuleKind::Regular,
             };
             return (Stats::default(), module);
         }
@@ -1108,7 +1117,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 source: ModuleSource::Translated(ModuleLlvm {
                     llcx: ccx.llcx(),
                     llmod: ccx.llmod(),
-                })
+                }),
+                kind: ModuleKind::Regular,
             }
         };
 
@@ -1196,6 +1206,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 name: link::ALLOCATOR_MODULE_NAME.to_string(),
                 symbol_name_hash: 0, // we always rebuild allocator shims
                 source: ModuleSource::Translated(modules),
+                kind: ModuleKind::Allocator,
             })
         }
     });
