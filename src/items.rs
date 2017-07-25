@@ -1095,12 +1095,14 @@ pub fn format_struct_struct(
     };
     // 1 = `}`
     let overhead = if fields.is_empty() { 1 } else { 0 };
-    let max_len = context.config.max_width() - offset.width();
+    let max_len = context
+        .config
+        .max_width()
+        .checked_sub(offset.width())
+        .unwrap_or(0);
     if !generics_str.contains('\n') && result.len() + generics_str.len() + overhead > max_len {
         result.push('\n');
-        result.push_str(&offset
-            .block_indent(context.config)
-            .to_string(context.config));
+        result.push_str(&offset.to_string(context.config));
         result.push_str(&generics_str.trim_left());
     } else {
         result.push_str(&generics_str);
@@ -2730,13 +2732,14 @@ fn format_generics(
     let shape = Shape::legacy(context.budget(used_width + offset.width()), offset);
     let mut result = try_opt!(rewrite_generics(context, generics, shape, span));
 
-    if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
-        let budget = try_opt!(
-            context
-                .config
-                .max_width()
-                .checked_sub(last_line_width(&result))
-        );
+    let same_line_brace = if !generics.where_clause.predicates.is_empty() ||
+        result.contains('\n')
+    {
+        let budget = context
+            .config
+            .max_width()
+            .checked_sub(last_line_width(&result))
+            .unwrap_or(0);
         let where_clause_str = try_opt!(rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -2751,29 +2754,38 @@ fn format_generics(
             generics.span.hi,
         ));
         result.push_str(&where_clause_str);
-        let same_line_brace = force_same_line_brace ||
-            (generics.where_clause.predicates.is_empty() && trimmed_last_line_width(&result) == 1);
-        if !same_line_brace &&
-            (brace_style == BraceStyle::SameLineWhere ||
-                brace_style == BraceStyle::AlwaysNextLine)
-        {
-            result.push('\n');
-            result.push_str(&offset.block_only().to_string(context.config));
-        } else {
-            result.push(' ');
-        }
-        result.push_str(opener);
+        force_same_line_brace || brace_style == BraceStyle::PreferSameLine ||
+            (generics.where_clause.predicates.is_empty() && trimmed_last_line_width(&result) == 1)
     } else {
-        if force_same_line_brace || trimmed_last_line_width(&result) == 1 ||
+        force_same_line_brace || trimmed_last_line_width(&result) == 1 ||
             brace_style != BraceStyle::AlwaysNextLine
-        {
-            result.push(' ');
-        } else {
-            result.push('\n');
-            result.push_str(&offset.block_only().to_string(context.config));
-        }
-        result.push_str(opener);
+    };
+    let total_used_width = if result.contains('\n') {
+        last_line_width(&result)
+    } else {
+        used_width + result.len()
+    };
+    let remaining_budget = context
+        .config
+        .max_width()
+        .checked_sub(total_used_width)
+        .unwrap_or(0);
+    // If the same line brace if forced, it indicates that we are rewriting an item with empty body,
+    // and hence we take the closer into account as well for one line budget.
+    // We assume that the closer has the same length as the opener.
+    let overhead = if force_same_line_brace {
+        1 + opener.len() + opener.len()
+    } else {
+        1 + opener.len()
+    };
+    let forbid_same_line_brace = overhead > remaining_budget;
+    if !forbid_same_line_brace && same_line_brace {
+        result.push(' ');
+    } else {
+        result.push('\n');
+        result.push_str(&offset.block_only().to_string(context.config));
     }
+    result.push_str(opener);
 
     Some(result)
 }
