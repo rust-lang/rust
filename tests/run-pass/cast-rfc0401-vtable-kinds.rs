@@ -55,4 +55,5 @@ fn main() {
     let bar_ref : *const BarS<[u32]> = foo_to_bar(u);
     let z : &BarS<[u32]> = unsafe{&*bar_ref};
     assert_eq!(&z.0, &[0,1,2]);
+    // If validation fails here, that's likely because an immutable suspension is recovered mutably.
 }

@@ -9,8 +9,8 @@ use rustc::middle::region::CodeExtent;
 
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, DynamicLifetime};
-use memory::AccessKind;
-use value::Value;
+use memory::{AccessKind, LockInfo};
+use value::{PrimVal, Value};
 use lvalue::{Lvalue, LvalueExtra};
 
 pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue<'tcx>>;
@@ -36,8 +36,7 @@ impl ValidationMode {
 // Validity checks
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
-        // Determine if this method is whitelisted and hence we do not perform any validation.
-        // TODO: Do not do this.
+        // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
         {
             // The regexp we use for filtering
             use regex::Regex;
@@ -46,6 +45,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 std::mem::swap::|\
 std::mem::uninitialized::|\
 std::ptr::read::|\
+std::panicking::try::do_call::|\
 <std::vec::Vec<T>><[a-zA-Z0-9_]+>::into_boxed_slice$\
 )").unwrap();
             }
@@ -64,18 +64,30 @@ std::ptr::read::|\
         let mode = match op {
             ValidationOp::Acquire => ValidationMode::Acquire,
             ValidationOp::Release => ValidationMode::Release,
-            ValidationOp::Suspend(ce) => {
-                if operand.mutbl == MutImmutable {
-                    // Nothing to do when suspending immutable things
-                    return Ok(());
-                }
-                let lft = DynamicLifetime { frame: self.cur_frame(), region: Some(ce) };
-                trace!("Suspending {:?} until {:?}", query, ce);
-                self.suspended.entry(lft).or_insert_with(Vec::new).push(query.clone());
-                ValidationMode::Release
-            }
+            ValidationOp::Suspend(_) => ValidationMode::Release,
         };
-        self.validate(query, mode)?;
+        match self.validate(query.clone(), mode) {
+            Err(EvalError::InvalidMemoryLockRelease { lock: LockInfo::ReadLock(_), .. }) => {
+                // HACK: When &x is used while x is already borrowed read-only, AddValidation still
+                // emits suspension.  This code is legit, so just ignore the error *and*
+                // do NOT register a suspension.
+                // TODO: Integrate AddValidation better with borrowck so that we can/ not emit
+                // these wrong validation statements.  This is all pretty fragile right now.
+                return Ok(());
+            }
+            res => res,
+        }?;
+        // Now that we are here, we know things went well.  Time to register the suspension.
+        match op {
+            ValidationOp::Suspend(ce) => {
+                if query.mutbl == MutMutable {
+                    let lft = DynamicLifetime { frame: self.cur_frame(), region: Some(ce) };
+                    trace!("Suspending {:?} until {:?}", query, ce);
+                    self.suspended.entry(lft).or_insert_with(Vec::new).push(query);
+                }
+            }
+            _ => {}
+        };
         Ok(())
     }
 
@@ -85,6 +97,7 @@ std::ptr::read::|\
         let lft = DynamicLifetime { frame: self.cur_frame(), region: Some(ce) };
         if let Some(queries) = self.suspended.remove(&lft) {
             for query in queries {
+                trace!("Recovering {:?} from suspension", query);
                 self.validate(query, ValidationMode::Recover(ce))?;
             }
         }
@@ -111,7 +124,18 @@ std::ptr::read::|\
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = val.into_ptr(&mut self.memory)?;
-        self.memory.check_align(ptr, align)?;
+        match self.memory.check_align(ptr, align) {
+            // HACK: If, during releasing, we hit memory we cannot use, we just ignore that.
+            // This can happen because releases are added before drop elaboration.
+            // TODO: Fix the MIR so that these releases do not happen.
+            res @ Err(EvalError::DanglingPointerDeref) | res @ Err(EvalError::ReadUndefBytes) => {
+                if let ValidationMode::Release = mode {
+                    return Ok(());
+                }
+                res
+            }
+            res => res,
+        }?;
 
         // Recurse
         let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
@@ -136,14 +160,24 @@ std::ptr::read::|\
             }
         }
 
-        // For now, bail out if we hit a dead local.
-        // TODO: Reconsider this.  I think MIR should rather be fixed.
+        // HACK: For now, bail out if we hit a dead local during recovery (can happen because sometimes we have
+        // StorageDead before EndRegion).
+        // TODO: We should rather fix the MIR.
+        // HACK: Releasing on dead/undef local variables is a NOP.  This can happen because of releases being added
+        // before drop elaboration.
+        // TODO: Fix the MIR so that these releases do not happen.
         match query.lval {
             Lvalue::Local { frame, local } => {
-                if let Err(EvalError::DeadLocal) = self.stack[frame].get_local(local) {
-                    return Ok(())
+                let res = self.stack[frame].get_local(local);
+                match (res, mode) {
+                    (Err(EvalError::DeadLocal), ValidationMode::Recover(_)) |
+                    (Err(EvalError::DeadLocal), ValidationMode::Release) |
+                    (Ok(Value::ByVal(PrimVal::Undef)), ValidationMode::Release) => {
+                        return Ok(());
+                    }
+                    _ => {},
                 }
-            }
+            },
             _ => {}
         }
 
@@ -229,7 +263,7 @@ std::ptr::read::|\
                 if query.re == None {
                     match *region {
                         ReScope(ce) => query.re = Some(ce),
-                        // It is possible for us to encode erased lifetimes here because the lifetimes in
+                        // It is possible for us to encounter erased lifetimes here because the lifetimes in
                         // this functions' Subst will be erased.
                         _ => {},
                     }
@@ -279,10 +313,10 @@ std::ptr::read::|\
                 };
                 self.read_size_and_align_from_vtable(vtable)?;
                 // TODO: Check that the vtable contains all the function pointers we expect it to have.
-                // TODO: Is there anything we can/should validate here?  Trait objects cannot have any operations performed
+                // Trait objects cannot have any operations performed
                 // on them directly.  We cannot, in general, even acquire any locks as the trait object *could*
                 // contain an UnsafeCell.  If we call functions to get access to data, we will validate
-                // their return values.  So, it doesn't seem like there's anything to do.
+                // their return values.  So, it doesn't seem like there's anything else to do.
                 Ok(())
             }
             TyAdt(adt, subst) => {

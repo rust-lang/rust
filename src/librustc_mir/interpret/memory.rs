@@ -565,7 +565,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
-    /// Release a write lock prematurely. If there's just read locks, do nothing.
+    /// Release a write lock prematurely. If there's a read lock or someone else's lock, fail.
     pub(crate) fn release_write_lock(&mut self, ptr: MemoryPointer, len: u64) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
@@ -580,18 +580,20 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                         return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
                     }
                     if !range.contained_in(ptr.offset, len) {
-                        return Err(EvalError::Unimplemented(format!("miri does not support release part of a write-locked region")));
+                        return Err(EvalError::Unimplemented(format!("miri does not support releasing part of a write-locked region")));
                     }
                     // Release it later.  We cannot do this now.
                     remove_list.push(*range);
                 }
                 ReadLock(_) => {
+                    // Abort here and bubble the error outwards so that we do not even register a suspension.
                     return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
                 },
             }
         }
 
         for range in remove_list {
+            trace!("Releasing {:?}", alloc.locks[&range]);
             alloc.locks.remove(&range);
         }
 
