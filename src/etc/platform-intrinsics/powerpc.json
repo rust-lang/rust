@@ -1,0 +1,21 @@
+{
+    "platform": "powerpc",
+    "intrinsic_prefix": "_vec_",
+    "llvm_prefix": "llvm.ppc.altivec.",
+    "number_info": {
+        "unsigned": {},
+        "signed": {}
+    },
+    "width_info": {
+        "128": { "width": "" }
+    },
+    "intrinsics": [
+        {
+            "intrinsic": "perm",
+            "width": [128],
+            "llvm": "vperm",
+            "ret": "s32",
+            "args": ["0", "0", "s8"]
+        }
+    ]
+}
