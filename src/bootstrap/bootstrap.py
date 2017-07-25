@@ -596,6 +596,7 @@ class RustBuild(object):
 def bootstrap():
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
+    parser.add_argument('--build')
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
 
@@ -669,7 +670,7 @@ def bootstrap():
     rb.update_submodules()
 
     # Fetch/build the bootstrap
-    rb.build = rb.build_triple()
+    rb.build = args.build or rb.build_triple()
     rb.download_stage0()
     sys.stdout.flush()
     rb.build_bootstrap()
