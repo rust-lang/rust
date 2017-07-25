@@ -100,6 +100,26 @@ pub enum IntercrateAmbiguityCause {
     UpstreamCrateUpdate(DefId),
 }
 
+impl IntercrateAmbiguityCause {
+    /// Emits notes when the overlap is caused by complex intercrate ambiguities.
+    /// See #23980 for details.
+    pub fn add_intercrate_ambiguity_hint<'a, 'tcx>(&self,
+                                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                   err: &mut ::errors::DiagnosticBuilder) {
+        match self {
+            &IntercrateAmbiguityCause::DownstreamCrate(def_id) => {
+                err.note(&format!("downstream crates may implement `{}`",
+                                  tcx.item_path_str(def_id)));
+            }
+            &IntercrateAmbiguityCause::UpstreamCrateUpdate(def_id) => {
+                err.note(&format!("upstream crates may add new impl for `{}` \
+                                  in future versions",
+                                  tcx.item_path_str(def_id)));
+            }
+        }
+    }
+}
+
 // A stack that walks back up the stack frame.
 struct TraitObligationStack<'prev, 'tcx: 'prev> {
     obligation: &'prev TraitObligation<'tcx>,
