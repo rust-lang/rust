@@ -21,7 +21,7 @@ pub fn eval_body_as_primval<'a, 'tcx>(
     instance: Instance<'tcx>,
 ) -> EvalResult<'tcx, (PrimVal, Ty<'tcx>)> {
     let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::<Evaluator>::new(tcx, limits, (), ());
+    let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, limits, (), ());
     let cid = GlobalId { instance, promoted: None };
     if ecx.tcx.has_attr(instance.def_id(), "linkage") {
         return Err(ConstEvalError::NotConst("extern global".to_string()).into());
@@ -82,7 +82,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     })
 }
 
-struct Evaluator;
+struct CompileTimeFunctionEvaluator;
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
     fn into(self) -> EvalError<'tcx> {
@@ -124,7 +124,7 @@ impl Error for ConstEvalError {
     }
 }
 
-impl<'tcx> super::Machine<'tcx> for Evaluator {
+impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     type Data = ();
     type MemoryData = ();
     fn call_missing_fn<'a>(
