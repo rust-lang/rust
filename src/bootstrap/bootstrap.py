@@ -37,12 +37,12 @@ def get(url, path, verbose=False):
         if os.path.exists(path):
             if verify(path, sha_path, False):
                 if verbose:
-                    print("using already-download file " + path)
+                    print("using already-download file", path)
                 return
             else:
                 if verbose:
-                    print("ignoring already-download file " +
-                          path + " due to failed verification")
+                    print("ignoring already-download file",
+                          path, "due to failed verification")
                 os.unlink(path)
         download(temp_path, url, True, verbose)
         if not verify(temp_path, sha_path, verbose):
@@ -59,12 +59,12 @@ def delete_if_present(path, verbose):
     """Remove the given file if present"""
     if os.path.isfile(path):
         if verbose:
-            print("removing " + path)
+            print("removing", path)
         os.unlink(path)
 
 
 def download(path, url, probably_big, verbose):
-    for x in range(0, 4):
+    for _ in range(0, 4):
         try:
             _download(path, url, probably_big, verbose, True)
             return
@@ -96,7 +96,7 @@ def _download(path, url, probably_big, verbose, exception):
 def verify(path, sha_path, verbose):
     """Check if the sha256 sum of the given path is valid"""
     if verbose:
-        print("verifying " + path)
+        print("verifying", path)
     with open(path, "rb") as source:
         found = hashlib.sha256(source.read()).hexdigest()
     with open(sha_path, "r") as sha256sum:
@@ -111,29 +111,30 @@ def verify(path, sha_path, verbose):
 
 def unpack(tarball, dst, verbose=False, match=None):
     """Unpack the given tarball file"""
-    print("extracting " + tarball)
+    print("extracting", tarball)
     fname = os.path.basename(tarball).replace(".tar.gz", "")
     with contextlib.closing(tarfile.open(tarball)) as tar:
-        for p in tar.getnames():
-            if "/" not in p:
+        for member in tar.getnames():
+            if "/" not in member:
                 continue
-            name = p.replace(fname + "/", "", 1)
+            name = member.replace(fname + "/", "", 1)
             if match is not None and not name.startswith(match):
                 continue
             name = name[len(match) + 1:]
 
-            fp = os.path.join(dst, name)
+            dst_path = os.path.join(dst, name)
             if verbose:
-                print("  extracting " + p)
-            tar.extract(p, dst)
-            tp = os.path.join(dst, p)
-            if os.path.isdir(tp) and os.path.exists(fp):
+                print("  extracting", member)
+            tar.extract(member, dst)
+            src_path = os.path.join(dst, member)
+            if os.path.isdir(src_path) and os.path.exists(dst_path):
                 continue
-            shutil.move(tp, fp)
+            shutil.move(src_path, dst_path)
     shutil.rmtree(os.path.join(dst, fname))
 
 
 def run(args, verbose=False, exception=False, **kwargs):
+    """Run a child program in a new process"""
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
@@ -149,97 +150,118 @@ def run(args, verbose=False, exception=False, **kwargs):
 
 
 def stage0_data(rust_root):
+    """Build a dictionary from stage0.txt"""
     nightlies = os.path.join(rust_root, "src/stage0.txt")
-    data = {}
     with open(nightlies, 'r') as nightlies:
-        for line in nightlies:
-            line = line.rstrip()  # Strip newline character, '\n'
-            if line.startswith("#") or line == '':
-                continue
-            a, b = line.split(": ", 1)
-            data[a] = b
-    return data
+        lines = [line.rstrip() for line in nightlies
+                 if not line.startswith("#")]
+        return dict([line.split(": ", 1) for line in lines if line])
 
 
 def format_build_time(duration):
+    """Return a nicer format for build time
+
+    >>> format_build_time('300')
+    '0:05:00'
+    """
     return str(datetime.timedelta(seconds=int(duration)))
 
 
 class RustBuild(object):
+    """Provide all the methods required to build Rust"""
+    def __init__(self):
+        self.cargo_channel = ''
+        self.date = ''
+        self._download_url = 'https://static.rust-lang.org'
+        self.rustc_channel = ''
+        self.build = ''
+        self.build_dir = os.path.join(os.getcwd(), "build")
+        self.clean = False
+        self.config_mk = ''
+        self.config_toml = ''
+        self.printed = False
+        self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+        self.use_locked_deps = ''
+        self.use_vendored_sources = ''
+        self.verbose = False
 
     def download_stage0(self):
-        cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, self.stage0_date())
-        if not os.path.exists(rustc_cache):
-            os.makedirs(rustc_cache)
+        """Fetch the build system for Rust, written in Rust
 
-        rustc_channel = self.stage0_rustc_channel()
-        cargo_channel = self.stage0_cargo_channel()
+        This method will build a cache directory, then it will fetch the
+        tarball which has the stage0 compiler used to then bootstrap the Rust
+        compiler itself.
+
+        Each downloaded tarball is extracted, after that, the script
+        will move all the content to the right place.
+        """
+        rustc_channel = self.rustc_channel
+        cargo_channel = self.cargo_channel
 
         if self.rustc().startswith(self.bin_root()) and \
-                (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
-            self.print_what_it_means_to_bootstrap()
+                (not os.path.exists(self.rustc()) or
+                 self.program_out_of_date(self.rustc_stamp())):
+            self.print_what_bootstrap_means()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             filename = "rust-std-{}-{}.tar.gz".format(
                 rustc_channel, self.build)
-            url = self._download_url + "/dist/" + self.stage0_date()
-            tarball = os.path.join(rustc_cache, filename)
-            if not os.path.exists(tarball):
-                get("{}/{}".format(url, filename),
-                    tarball, verbose=self.verbose)
-            unpack(tarball, self.bin_root(),
-                   match="rust-std-" + self.build,
-                   verbose=self.verbose)
+            pattern = "rust-std-{}".format(self.build)
+            self._download_stage0_helper(filename, pattern)
 
             filename = "rustc-{}-{}.tar.gz".format(rustc_channel, self.build)
-            url = self._download_url + "/dist/" + self.stage0_date()
-            tarball = os.path.join(rustc_cache, filename)
-            if not os.path.exists(tarball):
-                get("{}/{}".format(url, filename),
-                    tarball, verbose=self.verbose)
-            unpack(tarball, self.bin_root(),
-                   match="rustc", verbose=self.verbose)
-            self.fix_executable(self.bin_root() + "/bin/rustc")
-            self.fix_executable(self.bin_root() + "/bin/rustdoc")
-            with open(self.rustc_stamp(), 'w') as f:
-                f.write(self.stage0_date())
+            self._download_stage0_helper(filename, "rustc")
+            self.fix_executable("{}/bin/rustc".format(self.bin_root()))
+            self.fix_executable("{}/bin/rustdoc".format(self.bin_root()))
+            with open(self.rustc_stamp(), 'w') as rust_stamp:
+                rust_stamp.write(self.date)
 
             if "pc-windows-gnu" in self.build:
                 filename = "rust-mingw-{}-{}.tar.gz".format(
                     rustc_channel, self.build)
-                url = self._download_url + "/dist/" + self.stage0_date()
-                tarball = os.path.join(rustc_cache, filename)
-                if not os.path.exists(tarball):
-                    get("{}/{}".format(url, filename),
-                        tarball, verbose=self.verbose)
-                unpack(tarball, self.bin_root(),
-                       match="rust-mingw", verbose=self.verbose)
+                self._download_stage0_helper(filename, "rust-mingw")
 
         if self.cargo().startswith(self.bin_root()) and \
-                (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
-            self.print_what_it_means_to_bootstrap()
+                (not os.path.exists(self.cargo()) or
+                 self.program_out_of_date(self.cargo_stamp())):
+            self.print_what_bootstrap_means()
             filename = "cargo-{}-{}.tar.gz".format(cargo_channel, self.build)
-            url = self._download_url + "/dist/" + self.stage0_date()
-            tarball = os.path.join(rustc_cache, filename)
-            if not os.path.exists(tarball):
-                get("{}/{}".format(url, filename),
-                    tarball, verbose=self.verbose)
-            unpack(tarball, self.bin_root(),
-                   match="cargo", verbose=self.verbose)
-            self.fix_executable(self.bin_root() + "/bin/cargo")
-            with open(self.cargo_stamp(), 'w') as f:
-                f.write(self.stage0_date())
+            self._download_stage0_helper(filename, "cargo")
+            self.fix_executable("{}/bin/cargo".format(self.bin_root()))
+            with open(self.cargo_stamp(), 'w') as cargo_stamp:
+                cargo_stamp.write(self.date)
 
-    def fix_executable(self, fname):
-        # If we're on NixOS we need to change the path to the dynamic loader
+    def _download_stage0_helper(self, filename, pattern):
+        cache_dst = os.path.join(self.build_dir, "cache")
+        rustc_cache = os.path.join(cache_dst, self.date)
+        if not os.path.exists(rustc_cache):
+            os.makedirs(rustc_cache)
 
+        url = "{}/dist/{}".format(self._download_url, self.date)
+        tarball = os.path.join(rustc_cache, filename)
+        if not os.path.exists(tarball):
+            get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
+        unpack(tarball, self.bin_root(), match=pattern, verbose=self.verbose)
+
+    @staticmethod
+    def fix_executable(fname):
+        """Modifies the interpreter section of 'fname' to fix the dynamic linker
+
+        This method is only required on NixOS and uses the PatchELF utility to
+        change the dynamic linker of ELF executables.
+
+        Please see https://nixos.org/patchelf.html for more information
+        """
         default_encoding = sys.getdefaultencoding()
         try:
             ostype = subprocess.check_output(
                 ['uname', '-s']).strip().decode(default_encoding)
-        except (subprocess.CalledProcessError, WindowsError):
+        except subprocess.CalledProcessError:
             return
+        except OSError as reason:
+            if getattr(reason, 'winerror', None) is not None:
+                return
+            raise reason
 
         if ostype != "Linux":
             return
@@ -257,8 +279,8 @@ class RustBuild(object):
             interpreter = subprocess.check_output(
                 ["patchelf", "--print-interpreter", fname])
             interpreter = interpreter.strip().decode(default_encoding)
-        except subprocess.CalledProcessError as e:
-            print("warning: failed to call patchelf: %s" % e)
+        except subprocess.CalledProcessError as reason:
+            print("warning: failed to call patchelf:", reason)
             return
 
         loader = interpreter.split("/")[-1]
@@ -267,8 +289,8 @@ class RustBuild(object):
             ldd_output = subprocess.check_output(
                 ['ldd', '/run/current-system/sw/bin/sh'])
             ldd_output = ldd_output.strip().decode(default_encoding)
-        except subprocess.CalledProcessError as e:
-            print("warning: unable to call ldd: %s" % e)
+        except subprocess.CalledProcessError as reason:
+            print("warning: unable to call ldd:", reason)
             return
 
         for line in ldd_output.splitlines():
@@ -285,45 +307,66 @@ class RustBuild(object):
         try:
             subprocess.check_output(
                 ["patchelf", "--set-interpreter", correct_interpreter, fname])
-        except subprocess.CalledProcessError as e:
-            print("warning: failed to call patchelf: %s" % e)
+        except subprocess.CalledProcessError as reason:
+            print("warning: failed to call patchelf:", reason)
             return
 
-    def stage0_date(self):
-        return self._date
-
-    def stage0_rustc_channel(self):
-        return self._rustc_channel
-
-    def stage0_cargo_channel(self):
-        return self._cargo_channel
-
     def rustc_stamp(self):
-        """Return the path for .rustc-stamp"""
+        """Return the path for .rustc-stamp
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.rustc_stamp() == os.path.join("build", "stage0", ".rustc-stamp")
+        True
+        """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
     def cargo_stamp(self):
-        """Return the path for .cargo-stamp"""
+        """Return the path for .cargo-stamp
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.cargo_stamp() == os.path.join("build", "stage0", ".cargo-stamp")
+        True
+        """
         return os.path.join(self.bin_root(), '.cargo-stamp')
 
-    def rustc_out_of_date(self):
-        """Check if rustc is out of date"""
-        if not os.path.exists(self.rustc_stamp()) or self.clean:
+    def program_out_of_date(self, stamp_path):
+        """Check if the given program stamp is out of date"""
+        if not os.path.exists(stamp_path) or self.clean:
             return True
-        with open(self.rustc_stamp(), 'r') as f:
-            return self.stage0_date() != f.read()
-
-    def cargo_out_of_date(self):
-        """Check if cargo is out of date"""
-        if not os.path.exists(self.cargo_stamp()) or self.clean:
-            return True
-        with open(self.cargo_stamp(), 'r') as f:
-            return self.stage0_date() != f.read()
+        with open(stamp_path, 'r') as stamp:
+            return self.date != stamp.read()
 
     def bin_root(self):
+        """Return the binary root directory
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.bin_root() == os.path.join("build", "stage0")
+        True
+
+        When the 'build' property is given should be a nested directory:
+
+        >>> rb.build = "devel"
+        >>> rb.bin_root() == os.path.join("build", "devel", "stage0")
+        True
+        """
         return os.path.join(self.build_dir, self.build, "stage0")
 
     def get_toml(self, key):
+        """Returns the value of the given key in config.toml, otherwise returns None
+
+        >>> rb = RustBuild()
+        >>> rb.config_toml = 'key1 = "value1"\\nkey2 = "value2"'
+        >>> rb.get_toml("key2")
+        'value2'
+
+        If the key does not exists, the result is None:
+
+        >>> rb.get_toml("key3") == None
+        True
+        """
         for line in self.config_toml.splitlines():
             match = re.match(r'^{}\s*=(.*)$'.format(key), line)
             if match is not None:
@@ -332,6 +375,18 @@ class RustBuild(object):
         return None
 
     def get_mk(self, key):
+        """Returns the value of the given key in config.mk, otherwise returns None
+
+        >>> rb = RustBuild()
+        >>> rb.config_mk = 'key := value\\n'
+        >>> rb.get_mk('key')
+        'value'
+
+        If the key does not exists, the result is None:
+
+        >>> rb.get_mk('does_not_exists') == None
+        True
+        """
         for line in iter(self.config_mk.splitlines()):
             if line.startswith(key + ' '):
                 var = line[line.find(':=') + 2:].strip()
@@ -340,36 +395,64 @@ class RustBuild(object):
         return None
 
     def cargo(self):
-        config = self.get_toml('cargo')
-        if config:
-            return config
-        config = self.get_mk('CFG_LOCAL_RUST_ROOT')
-        if config:
-            return config + '/bin/cargo' + self.exe_suffix()
-        return os.path.join(self.bin_root(), "bin/cargo" + self.exe_suffix())
+        """Return config path for cargo"""
+        return self.program_config('cargo')
 
     def rustc(self):
-        config = self.get_toml('rustc')
+        """Return config path for rustc"""
+        return self.program_config('rustc')
+
+    def program_config(self, program):
+        """Return config path for the given program
+
+        >>> rb = RustBuild()
+        >>> rb.config_toml = 'rustc = "rustc"\\n'
+        >>> rb.config_mk = 'CFG_LOCAL_RUST_ROOT := /tmp/rust\\n'
+        >>> rb.program_config('rustc')
+        'rustc'
+        >>> cargo_path = rb.program_config('cargo')
+        >>> cargo_path.rstrip(".exe") == os.path.join("/tmp/rust",
+        ... "bin", "cargo")
+        True
+        >>> rb.config_toml = ''
+        >>> rb.config_mk = ''
+        >>> cargo_path = rb.program_config('cargo')
+        >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(),
+        ... "bin", "cargo")
+        True
+        """
+        config = self.get_toml(program)
         if config:
             return config
         config = self.get_mk('CFG_LOCAL_RUST_ROOT')
         if config:
-            return config + '/bin/rustc' + self.exe_suffix()
-        return os.path.join(self.bin_root(), "bin/rustc" + self.exe_suffix())
+            return os.path.join(config, "bin", "{}{}".format(
+                program, self.exe_suffix()))
+        return os.path.join(self.bin_root(), "bin", "{}{}".format(
+            program, self.exe_suffix()))
 
-    def get_string(self, line):
+    @staticmethod
+    def get_string(line):
+        """Return the value between double quotes
+
+        >>> RustBuild.get_string('    "devel"   ')
+        'devel'
+        """
         start = line.find('"')
         if start == -1:
             return None
         end = start + 1 + line[start + 1:].find('"')
         return line[start + 1:end]
 
-    def exe_suffix(self):
+    @staticmethod
+    def exe_suffix():
+        """Return a suffix for executables"""
         if sys.platform == 'win32':
             return '.exe'
         return ''
 
-    def print_what_it_means_to_bootstrap(self):
+    def print_what_bootstrap_means(self):
+        """Prints more information about the build system"""
         if hasattr(self, 'printed'):
             return
         self.printed = True
@@ -386,10 +469,19 @@ class RustBuild(object):
         print('      src/bootstrap/README.md before the download finishes')
 
     def bootstrap_binary(self):
-        return os.path.join(self.build_dir, "bootstrap/debug/bootstrap")
+        """Return the path of the boostrap binary
+
+        >>> rb = RustBuild()
+        >>> rb.build_dir = "build"
+        >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap",
+        ... "debug", "bootstrap")
+        True
+        """
+        return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
     def build_bootstrap(self):
-        self.print_what_it_means_to_bootstrap()
+        """Build bootstrap"""
+        self.print_what_bootstrap_means()
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -409,7 +501,8 @@ class RustBuild(object):
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
-            raise Exception("no cargo executable found at `%s`" % self.cargo())
+            raise Exception("no cargo executable found at `{}`".format(
+                self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
         if self.verbose:
@@ -423,6 +516,7 @@ class RustBuild(object):
         run(args, env=env, verbose=self.verbose)
 
     def build_triple(self):
+        """Build triple as in LLVM"""
         default_encoding = sys.getdefaultencoding()
         config = self.get_toml('build')
         if config:
@@ -445,23 +539,26 @@ class RustBuild(object):
 
         # The goal here is to come up with the same triple as LLVM would,
         # at least for the subset of platforms we're willing to target.
-        if ostype == 'Linux':
+        ostype_mapper = {
+            'Bitrig': 'unknown-bitrig',
+            'Darwin': 'apple-darwin',
+            'DragonFly': 'unknown-dragonfly',
+            'FreeBSD': 'unknown-freebsd',
+            'Haiku': 'unknown-haiku',
+            'NetBSD': 'unknown-netbsd',
+            'OpenBSD': 'unknown-openbsd'
+        }
+
+        # Consider the direct transformation first and then the special cases
+        if ostype in ostype_mapper:
+            ostype = ostype_mapper[ostype]
+        elif ostype == 'Linux':
             os_from_sp = subprocess.check_output(
                 ['uname', '-o']).strip().decode(default_encoding)
             if os_from_sp == 'Android':
                 ostype = 'linux-android'
             else:
                 ostype = 'unknown-linux-gnu'
-        elif ostype == 'FreeBSD':
-            ostype = 'unknown-freebsd'
-        elif ostype == 'DragonFly':
-            ostype = 'unknown-dragonfly'
-        elif ostype == 'Bitrig':
-            ostype = 'unknown-bitrig'
-        elif ostype == 'OpenBSD':
-            ostype = 'unknown-openbsd'
-        elif ostype == 'NetBSD':
-            ostype = 'unknown-netbsd'
         elif ostype == 'SunOS':
             ostype = 'sun-solaris'
             # On Solaris, uname -m will return a machine classification instead
@@ -477,10 +574,6 @@ class RustBuild(object):
                 if self.verbose:
                     raise Exception(err)
                 sys.exit(err)
-        elif ostype == 'Darwin':
-            ostype = 'apple-darwin'
-        elif ostype == 'Haiku':
-            ostype = 'unknown-haiku'
         elif ostype.startswith('MINGW'):
             # msys' `uname` does not print gcc configuration, but prints msys
             # configuration. so we cannot believe `uname -m`:
@@ -499,13 +592,36 @@ class RustBuild(object):
                 cputype = 'x86_64'
             ostype = 'pc-windows-gnu'
         else:
-            err = "unknown OS type: " + ostype
+            err = "unknown OS type: {}".format(ostype)
             if self.verbose:
                 raise ValueError(err)
             sys.exit(err)
 
-        if cputype in {'i386', 'i486', 'i686', 'i786', 'x86'}:
-            cputype = 'i686'
+        cputype_mapper = {
+            'BePC': 'i686',
+            'aarch64': 'aarch64',
+            'amd64': 'x86_64',
+            'arm64': 'aarch64',
+            'i386': 'i686',
+            'i486': 'i686',
+            'i686': 'i686',
+            'i786': 'i686',
+            'powerpc': 'powerpc',
+            'powerpc64': 'powerpc64',
+            'powerpc64le': 'powerpc64le',
+            'ppc': 'powerpc',
+            'ppc64': 'powerpc64',
+            'ppc64le': 'powerpc64le',
+            's390x': 's390x',
+            'x64': 'x86_64',
+            'x86': 'i686',
+            'x86-64': 'x86_64',
+            'x86_64': 'x86_64'
+        }
+
+        # Consider the direct transformation first and then the special cases
+        if cputype in cputype_mapper:
+            cputype = cputype_mapper[cputype]
         elif cputype in {'xscale', 'arm'}:
             cputype = 'arm'
             if ostype == 'linux-android':
@@ -522,40 +638,26 @@ class RustBuild(object):
                 ostype = 'linux-androideabi'
             else:
                 ostype += 'eabihf'
-        elif cputype in {'aarch64', 'arm64'}:
-            cputype = 'aarch64'
         elif cputype == 'mips':
             if sys.byteorder == 'big':
                 cputype = 'mips'
             elif sys.byteorder == 'little':
                 cputype = 'mipsel'
             else:
-                raise ValueError('unknown byteorder: ' + sys.byteorder)
+                raise ValueError("unknown byteorder: {}".format(sys.byteorder))
         elif cputype == 'mips64':
             if sys.byteorder == 'big':
                 cputype = 'mips64'
             elif sys.byteorder == 'little':
                 cputype = 'mips64el'
             else:
-                raise ValueError('unknown byteorder: ' + sys.byteorder)
+                raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
             # only the n64 ABI is supported, indicate it
             ostype += 'abi64'
-        elif cputype in {'powerpc', 'ppc'}:
-            cputype = 'powerpc'
-        elif cputype in {'powerpc64', 'ppc64'}:
-            cputype = 'powerpc64'
-        elif cputype in {'powerpc64le', 'ppc64le'}:
-            cputype = 'powerpc64le'
         elif cputype == 'sparcv9':
             pass
-        elif cputype in {'amd64', 'x86_64', 'x86-64', 'x64'}:
-            cputype = 'x86_64'
-        elif cputype == 's390x':
-            cputype = 's390x'
-        elif cputype == 'BePC':
-            cputype = 'i686'
         else:
-            err = "unknown cpu type: " + cputype
+            err = "unknown cpu type: {}".format(cputype)
             if self.verbose:
                 raise ValueError(err)
             sys.exit(err)
@@ -563,6 +665,7 @@ class RustBuild(object):
         return "{}-{}".format(cputype, ostype)
 
     def update_submodules(self):
+        """Update submodules"""
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false" or \
                 self.get_mk('CFG_DISABLE_MANAGE_SUBMODULES') == "1":
@@ -592,8 +695,13 @@ class RustBuild(object):
              "clean", "-qdfx"],
             cwd=self.rust_root, verbose=self.verbose)
 
+    def set_dev_environment(self):
+        """Set download URL for development environment"""
+        self._download_url = 'https://dev-static.rust-lang.org'
+
 
 def bootstrap():
+    """Configure, fetch, build and run the initial bootstrap"""
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
@@ -604,107 +712,103 @@ def bootstrap():
     args, _ = parser.parse_known_args(args)
 
     # Configure initial bootstrap
-    rb = RustBuild()
-    rb.config_toml = ''
-    rb.config_mk = ''
-    rb.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
-    rb.build_dir = os.path.join(os.getcwd(), "build")
-    rb.verbose = args.verbose
-    rb.clean = args.clean
+    build = RustBuild()
+    build.verbose = args.verbose
+    build.clean = args.clean
 
     try:
         with open(args.config or 'config.toml') as config:
-            rb.config_toml = config.read()
+            build.config_toml = config.read()
     except:
         pass
     try:
-        rb.config_mk = open('config.mk').read()
+        build.config_mk = open('config.mk').read()
     except:
         pass
 
-    if '\nverbose = 2' in rb.config_toml:
-        rb.verbose = 2
-    elif '\nverbose = 1' in rb.config_toml:
-        rb.verbose = 1
+    if '\nverbose = 2' in build.config_toml:
+        build.verbose = 2
+    elif '\nverbose = 1' in build.config_toml:
+        build.verbose = 1
 
-    rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
-                              'CFG_ENABLE_VENDOR' in rb.config_mk
+    build.use_vendored_sources = '\nvendor = true' in build.config_toml or \
+                                 'CFG_ENABLE_VENDOR' in build.config_mk
 
-    rb.use_locked_deps = '\nlocked-deps = true' in rb.config_toml or \
-                         'CFG_ENABLE_LOCKED_DEPS' in rb.config_mk
+    build.use_locked_deps = '\nlocked-deps = true' in build.config_toml or \
+                            'CFG_ENABLE_LOCKED_DEPS' in build.config_mk
 
-    if 'SUDO_USER' in os.environ and not rb.use_vendored_sources:
+    if 'SUDO_USER' in os.environ and not build.use_vendored_sources:
         if os.environ.get('USER') != os.environ['SUDO_USER']:
-            rb.use_vendored_sources = True
+            build.use_vendored_sources = True
             print('info: looks like you are running this command under `sudo`')
             print('      and so in order to preserve your $HOME this will now')
             print('      use vendored sources by default. Note that if this')
             print('      does not work you should run a normal build first')
             print('      before running a command like `sudo make install`')
 
-    if rb.use_vendored_sources:
+    if build.use_vendored_sources:
         if not os.path.exists('.cargo'):
             os.makedirs('.cargo')
-        with open('.cargo/config', 'w') as f:
-            f.write("""
+        with open('.cargo/config', 'w') as cargo_config:
+            cargo_config.write("""
                 [source.crates-io]
                 replace-with = 'vendored-sources'
                 registry = 'https://example.com'
 
                 [source.vendored-sources]
                 directory = '{}/src/vendor'
-            """.format(rb.rust_root))
+            """.format(build.rust_root))
     else:
         if os.path.exists('.cargo'):
             shutil.rmtree('.cargo')
 
-    data = stage0_data(rb.rust_root)
-    rb._date = data['date']
-    rb._rustc_channel = data['rustc']
-    rb._cargo_channel = data['cargo']
-    if 'dev' in data:
-        rb._download_url = 'https://dev-static.rust-lang.org'
-    else:
-        rb._download_url = 'https://static.rust-lang.org'
+    data = stage0_data(build.rust_root)
+    build.date = data['date']
+    build.rustc_channel = data['rustc']
+    build.cargo_channel = data['cargo']
 
-    rb.update_submodules()
+    if 'dev' in data:
+        build.set_dev_environment()
+
+    build.update_submodules()
 
     # Fetch/build the bootstrap
-    rb.build = args.build or rb.build_triple()
-    rb.download_stage0()
+    build.build = args.build or build.build_triple()
+    build.download_stage0()
     sys.stdout.flush()
-    rb.build_bootstrap()
+    build.build_bootstrap()
     sys.stdout.flush()
 
     # Run the bootstrap
-    args = [rb.bootstrap_binary()]
+    args = [build.bootstrap_binary()]
     args.extend(sys.argv[1:])
     env = os.environ.copy()
-    env["BUILD"] = rb.build
-    env["SRC"] = rb.rust_root
+    env["BUILD"] = build.build
+    env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
-    run(args, env=env, verbose=rb.verbose)
+    run(args, env=env, verbose=build.verbose)
 
 
 def main():
+    """Entry point for the bootstrap process"""
     start_time = time()
     help_triggered = (
         '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
         bootstrap()
         if not help_triggered:
-            print("Build completed successfully in %s" %
-                  format_build_time(time() - start_time))
-    except (SystemExit, KeyboardInterrupt) as e:
-        if hasattr(e, 'code') and isinstance(e.code, int):
-            exit_code = e.code
+            print("Build completed successfully in {}".format(
+                format_build_time(time() - start_time)))
+    except (SystemExit, KeyboardInterrupt) as error:
+        if hasattr(error, 'code') and isinstance(error.code, int):
+            exit_code = error.code
         else:
             exit_code = 1
-            print(e)
+            print(error)
         if not help_triggered:
-            print("Build completed unsuccessfully in %s" %
-                  format_build_time(time() - start_time))
+            print("Build completed unsuccessfully in {}".format(
+                format_build_time(time() - start_time)))
         sys.exit(exit_code)
 
 

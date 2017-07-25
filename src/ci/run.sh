@@ -74,6 +74,12 @@ retry make prepare
 travis_fold end make-prepare
 travis_time_finish
 
+travis_fold start check-bootstrap
+travis_time_start
+make check-bootstrap
+travis_fold end check-bootstrap
+travis_time_finish
+
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     ncpus=$(sysctl -n hw.ncpu)
 else
