@@ -761,6 +761,21 @@ impl From<[u8; 4]> for IpAddr {
     }
 }
 
+#[stable(feature = "ip_from_tuple", since = "1.21.0")]
+impl From<(u8, u8, u8, u8)> for Ipv4Addr {
+    fn from(octets: (u8, u8, u8, u8)) -> Ipv4Addr {
+        Ipv4Addr::new(octets.0, octets.1, octets.2, octets.3)
+    }
+}
+
+#[stable(feature = "ip_from_tuple", since = "1.21.0")]
+impl From<(u8, u8, u8, u8)> for IpAddr {
+    fn from(octets: (u8, u8, u8, u8)) -> IpAddr {
+        IpAddr::V4(Ipv4Addr::from(octets))
+    }
+}
+
+
 impl Ipv6Addr {
     /// Creates a new IPv6 address from eight 16-bit segments.
     ///
@@ -1325,6 +1340,44 @@ impl From<[u16; 8]> for IpAddr {
     }
 }
 
+#[stable(feature = "ip_from_tuple", since = "1.21.0")]
+impl From<(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8)> for Ipv6Addr {
+    fn from(octets: (u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8)) -> Ipv6Addr {
+        let a = ((octets.0 as u16) << 8) | (octets.1 as u16);
+        let b = ((octets.2 as u16) << 8) | (octets.3 as u16);
+        let c = ((octets.4 as u16) << 8) | (octets.5 as u16);
+        let d = ((octets.6 as u16) << 8) | (octets.7 as u16);
+        let e = ((octets.8 as u16) << 8) | (octets.9 as u16);
+        let f = ((octets.10 as u16) << 8) | (octets.11 as u16);
+        let g = ((octets.12 as u16) << 8) | (octets.13 as u16);
+        let h = ((octets.14 as u16) << 8) | (octets.15 as u16);
+        Ipv6Addr::new(a, b, c, d, e, f, g, h)
+    }
+}
+
+#[stable(feature = "ip_from_tuple", since = "1.21.0")]
+impl From<(u16, u16, u16, u16, u16, u16, u16, u16)> for Ipv6Addr {
+    fn from(segments: (u16, u16, u16, u16, u16, u16, u16, u16)) -> Ipv6Addr {
+        let (a, b, c, d, e, f, g, h) = segments;
+        Ipv6Addr::new(a, b, c, d, e, f, g, h)
+    }
+}
+
+#[stable(feature = "ip_from_tuple", since = "1.21.0")]
+impl From<(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8)> for IpAddr {
+    fn from(octets: (u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8)) -> IpAddr {
+        IpAddr::V6(Ipv6Addr::from(octets))
+    }
+}
+
+#[stable(feature = "ip_from_tuple", since = "1.21.0")]
+impl From<(u16, u16, u16, u16, u16, u16, u16, u16)> for IpAddr {
+    fn from(segments: (u16, u16, u16, u16, u16, u16, u16, u16)) -> IpAddr {
+        IpAddr::V6(Ipv6Addr::from(segments))
+    }
+}
+
+
 // Tests for this module
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
@@ -1683,16 +1736,20 @@ mod tests {
 
     #[test]
     fn ipv4_from_octets() {
-        assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1))
+        assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1));
+        assert_eq!(Ipv4Addr::from((127, 0, 0, 1)), Ipv4Addr::new(127, 0, 0, 1));
     }
 
     #[test]
     fn ipv6_from_segments() {
         let from_u16s = Ipv6Addr::from([0x0011, 0x2233, 0x4455, 0x6677,
                                         0x8899, 0xaabb, 0xccdd, 0xeeff]);
+        let from_u16s_tuple = Ipv6Addr::from((0x0011, 0x2233, 0x4455, 0x6677,
+                                              0x8899, 0xaabb, 0xccdd, 0xeeff));
         let new = Ipv6Addr::new(0x0011, 0x2233, 0x4455, 0x6677,
                                 0x8899, 0xaabb, 0xccdd, 0xeeff);
         assert_eq!(new, from_u16s);
+        assert_eq!(new, from_u16s_tuple);
     }
 
     #[test]
@@ -1701,7 +1758,10 @@ mod tests {
                                         0x8899, 0xaabb, 0xccdd, 0xeeff]);
         let from_u8s = Ipv6Addr::from([0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
                                        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]);
+        let from_u8s_tuple = Ipv6Addr::from((0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+                                             0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff));
         assert_eq!(from_u16s, from_u8s);
+        assert_eq!(from_u16s, from_u8s_tuple);
     }
 
     #[test]
