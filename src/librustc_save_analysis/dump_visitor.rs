@@ -30,6 +30,7 @@ use rustc::hir::map::Node;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
+use std::collections::HashSet;
 use std::path::Path;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
@@ -74,6 +75,7 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     // we only write one macro def per unique macro definition, and
     // one macro use per unique callsite span.
     // mac_defs: HashSet<Span>,
+    macro_calls: HashSet<Span>,
 }
 
 impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
@@ -89,6 +91,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             span: span_utils.clone(),
             cur_scope: CRATE_NODE_ID,
             // mac_defs: HashSet::new(),
+            macro_calls: HashSet::new(),
         }
     }
 
@@ -972,10 +975,18 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     /// callsite spans to record macro definition and use data, using the
     /// mac_uses and mac_defs sets to prevent multiples.
     fn process_macro_use(&mut self, span: Span) {
+        let source_span = span.source_callsite();
+        if self.macro_calls.contains(&source_span) {
+            return;
+        }
+        self.macro_calls.insert(source_span);
+
         let data = match self.save_ctxt.get_macro_use_data(span) {
             None => return,
             Some(data) => data,
         };
+
+        self.dumper.macro_use(data);
 
         // FIXME write the macro def
         // let mut hasher = DefaultHasher::new();
@@ -996,7 +1007,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         //         }.lower(self.tcx));
         //     }
         // }
-        self.dumper.macro_use(data);
     }
 
     fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
