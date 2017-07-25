@@ -64,7 +64,7 @@ These types are FFI-safe. They are also DSTs, meaning that they do not implement
 In Rust, pointers to DSTs carry metadata about the object being pointed to.
 For strings and slices this is the length of the buffer, for trait objects this is the object's vtable.
 For extern types the metadata is simply `()`.
-This means that a pointer to an extern type is identical to a raw pointer (ie. it is not a "fat pointer").
+This means that a pointer to an extern type has the same size as a `usize` (ie. it is not a "fat pointer").
 It also means that if we store an extern type at the end of a container (such as a struct or tuple) pointers to that container will also be identical to raw pointers (despite the container as a whole being unsized).
 This is useful to support a pattern found in some C APIs where structs are passed around which have arbitrary data appended to the end of them: eg.
 
