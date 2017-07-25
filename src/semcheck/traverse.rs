@@ -623,7 +623,16 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = if new.is_fn() {
-            infcx.fresh_substs_for_item(DUMMY_SP, new_def_id)
+            let has_self = tcx.generics_of(new_def_id).has_self;
+            Substs::for_item(infcx.tcx, new_def_id, |def, _| {
+                infcx.region_var_for_def(DUMMY_SP, def)
+            }, |def, substs| {
+                if def.index == 0 && has_self { // `Self` is special
+                    tcx.mk_param_from_def(def)
+                } else {
+                    infcx.type_var_for_def(DUMMY_SP, def, substs)
+                }
+            })
         } else {
             Substs::for_item(tcx, new_def_id, |def, _| {
                 tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
@@ -638,21 +647,14 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         let old_param_env =
             translate_param_env(id_mapping, tcx, old_def_id, tcx.param_env(old_def_id));
-        let new_param_env = tcx.param_env(new_def_id);
+        let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
 
         let cause = ObligationCause::dummy();
-
         let mut fulfill_cx = FulfillmentContext::new();
 
         for predicate in new_param_env.caller_bounds.iter() {
             let obligation = Obligation::new(cause.clone(), old_param_env, *predicate);
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
-
-        if let Err(error) = fulfill_cx.select_all_or_error(&infcx) {
-            // println!("old param env: {:?}", old_param_env);
-            // println!("new param env: {:?}", new_param_env);
-            // println!("could not fulfill obligation: {:?}", error);
         }
 
         let error = infcx
@@ -680,6 +682,12 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
                                old_def_id,
                                None);
+        }
+
+        if let Err(error) = fulfill_cx.select_all_or_error(&infcx) {
+            println!("old param env: {:?}", old_param_env);
+            println!("new param env: {:?}", new_param_env);
+            println!("could not fulfill obligation: {:?}", error);
         }
     });
 }
