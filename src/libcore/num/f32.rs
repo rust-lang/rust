@@ -10,8 +10,7 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
-// FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
-#![allow(overflowing_literals)]
+#![cfg_attr(stage0, allow(overflowing_literals))]
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
