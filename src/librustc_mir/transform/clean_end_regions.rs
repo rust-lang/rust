@@ -31,7 +31,6 @@ pub struct CleanEndRegions;
 
 struct GatherBorrowedRegions {
     seen_regions: FxHashSet<CodeExtent>,
-    in_validation_statement: bool,
 }
 
 struct DeleteTrivialEndRegions<'a> {
@@ -44,8 +43,7 @@ impl MirPass for CleanEndRegions {
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
         let mut gather = GatherBorrowedRegions {
-            seen_regions: FxHashSet(),
-            in_validation_statement: false
+            seen_regions: FxHashSet()
         };
         gather.visit_mir(mir);
 
@@ -71,22 +69,15 @@ impl<'tcx> Visitor<'tcx> for GatherBorrowedRegions {
                        block: BasicBlock,
                        statement: &Statement<'tcx>,
                        location: Location) {
-        self.in_validation_statement = match statement.kind {
-            StatementKind::Validate(..) => true,
-            _ => false,
-        };
         self.super_statement(block, statement, location);
-        self.in_validation_statement = false;
     }
 
     fn visit_ty(&mut self, ty: &Ty<'tcx>, _: Lookup) {
-        // Gather regions that occur in types inside AcquireValid/ReleaseValid statements
-        if self.in_validation_statement {
-            for re in ty.walk().flat_map(|t| t.regions()) {
-                match *re {
-                    RegionKind::ReScope(ce) => { self.seen_regions.insert(ce); }
-                    _ => {},
-                }
+        // Gather regions that occur in types
+        for re in ty.walk().flat_map(|t| t.regions()) {
+            match *re {
+                RegionKind::ReScope(ce) => { self.seen_regions.insert(ce); }
+                _ => {},
             }
         }
         self.super_ty(ty);
