@@ -284,3 +284,15 @@ struct Foo {
     // separate
     please_do_not_push_this_comment3: u32, // comment3
 }
+
+// structs with long identifier
+struct Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
+{}
+struct Looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
+{}
+struct Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
+{}
+struct Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
+{
+    x: i32,
+}
