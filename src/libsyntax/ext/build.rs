@@ -774,7 +774,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let expr_loc_ptr = self.expr_addr_of(span, expr_loc_tuple);
         self.expr_call_global(
             span,
-            self.std_path(&["rt", "begin_panic_new"]),
+            self.std_path(&["rt", "begin_panic"]),
             vec![
                 self.expr_str(span, msg),
                 expr_loc_ptr])

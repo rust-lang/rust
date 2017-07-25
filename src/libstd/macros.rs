@@ -46,7 +46,7 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_panic_new($msg, {
+        $crate::rt::begin_panic($msg, {
             // static requires less code at runtime, more constant data
             static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
             &_FILE_LINE_COL
