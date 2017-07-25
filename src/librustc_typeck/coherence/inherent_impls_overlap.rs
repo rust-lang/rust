@@ -12,7 +12,6 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::traits;
-use rustc::traits::IntercrateAmbiguityCause;
 use rustc::ty::{self, TyCtxt};
 
 pub fn crate_inherent_impls_overlap_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -64,17 +63,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
                                    format!("other definition for `{}`", name));
 
                     for cause in &overlap.intercrate_ambiguity_causes {
-                        match cause {
-                            &IntercrateAmbiguityCause::DownstreamCrate(def_id) => {
-                                err.note(&format!("downstream crates may implement `{}`",
-                                                  self.tcx.item_path_str(def_id)));
-                            }
-                            &IntercrateAmbiguityCause::UpstreamCrateUpdate(def_id) => {
-                                err.note(&format!("upstream crates may add new impl for `{}` \
-                                                  in future versions",
-                                                  self.tcx.item_path_str(def_id)));
-                            }
-                        }
+                        cause.add_intercrate_ambiguity_hint(self.tcx, &mut err);
                     }
 
                     err.emit();

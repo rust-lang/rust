@@ -340,17 +340,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                 }
 
                 for cause in &overlap.intercrate_ambiguity_causes {
-                    match cause {
-                        &IntercrateAmbiguityCause::DownstreamCrate(def_id) => {
-                            err.note(&format!("downstream crates may implement `{}`",
-                                              tcx.item_path_str(def_id)));
-                        }
-                        &IntercrateAmbiguityCause::UpstreamCrateUpdate(def_id) => {
-                            err.note(&format!("upstream crates may add new impl for `{}` \
-                                              in future versions",
-                                              tcx.item_path_str(def_id)));
-                        }
-                    }
+                    cause.add_intercrate_ambiguity_hint(tcx, &mut err);
                 }
 
                 err.emit();
