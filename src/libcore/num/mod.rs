@@ -2627,8 +2627,11 @@ try_from_both_bounded!(i32, u16, u8);
 try_from_both_bounded!(i64, u32, u16, u8);
 try_from_both_bounded!(i128, u64, u32, u16, u8);
 
-#[unstable(feature = "try_from", issue = "33417")]
-pub use self::ptr_try_from_impls::*;
+// usize/isize
+try_from_unbounded!(usize, usize);
+try_from_upper_bounded!(usize, isize);
+try_from_lower_bounded!(isize, usize);
+try_from_unbounded!(isize, isize);
 
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
@@ -2636,12 +2639,12 @@ mod ptr_try_from_impls {
     use convert::TryFrom;
 
     try_from_upper_bounded!(usize, u8);
-    try_from_unbounded!(usize, usize, u16, u32, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16, isize);
+    try_from_unbounded!(usize, u16, u32, u64, u128);
+    try_from_upper_bounded!(usize, i8, i16);
     try_from_unbounded!(usize, i32, i64, i128);
 
     try_from_both_bounded!(isize, u8);
-    try_from_lower_bounded!(isize, usize, u16, u32, u64, u128);
+    try_from_lower_bounded!(isize, u16, u32, u64, u128);
     try_from_both_bounded!(isize, i8);
     try_from_unbounded!(isize, i16, i32, i64, i128);
 
@@ -2662,12 +2665,12 @@ mod ptr_try_from_impls {
     use convert::TryFrom;
 
     try_from_upper_bounded!(usize, u8, u16);
-    try_from_unbounded!(usize, usize, u32, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16, i32, isize);
+    try_from_unbounded!(usize, u32, u64, u128);
+    try_from_upper_bounded!(usize, i8, i16, i32);
     try_from_unbounded!(usize, i64, i128);
 
     try_from_both_bounded!(isize, u8, u16);
-    try_from_lower_bounded!(isize, usize, u32, u64, u128);
+    try_from_lower_bounded!(isize, u32, u64, u128);
     try_from_both_bounded!(isize, i8, i16);
     try_from_unbounded!(isize, i32, i64, i128);
 
@@ -2688,12 +2691,12 @@ mod ptr_try_from_impls {
     use convert::TryFrom;
 
     try_from_upper_bounded!(usize, u8, u16, u32);
-    try_from_unbounded!(usize, usize, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16, i32, i64, isize);
+    try_from_unbounded!(usize, u64, u128);
+    try_from_upper_bounded!(usize, i8, i16, i32, i64);
     try_from_unbounded!(usize, i128);
 
     try_from_both_bounded!(isize, u8, u16, u32);
-    try_from_lower_bounded!(isize, usize, u64, u128);
+    try_from_lower_bounded!(isize, u64, u128);
     try_from_both_bounded!(isize, i8, i16, i32);
     try_from_unbounded!(isize, i64, i128);
 
