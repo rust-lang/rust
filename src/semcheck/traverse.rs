@@ -21,7 +21,7 @@ use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
-use semcheck::translate::translate_item_type;
+use semcheck::translate::{translate_item_type, translate_param_env};
 
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
@@ -45,7 +45,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
 
     // third pass
     for (old, new) in id_mapping.items() {
-        diff_bounds(&mut changes, tcx, old.def_id(), new.def_id());
+        diff_bounds(&mut changes, &id_mapping, tcx, old, new);
     }
 
     // fourth pass
@@ -540,12 +540,29 @@ fn diff_generics(changes: &mut ChangeSet,
 // being exported.
 
 /// Given two items, compare the bounds on their type and region parameters.
-fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
-                         _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         _old: DefId,
-                         _new: DefId)
-    -> (Vec<ChangeType<'tcx>>, Vec<(DefId, DefId)>)
-{
+fn diff_bounds<'a, 'tcx>(changes: &mut ChangeSet,
+                         id_mapping: &IdMapping,
+                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         old: Def,
+                         new: Def) {
+    use rustc::hir::def::Def::Macro;
+
+    let old_def_id = old.def_id();
+    let new_def_id = new.def_id();
+
+    if changes.item_breaking(old_def_id) ||
+            id_mapping.get_trait_def(&old_def_id)
+                .map_or(false, |did| changes.trait_item_breaking(did)) {
+        return;
+    }
+
+    if let Macro(_, _) = old {
+        return; // TODO: more cases like this one
+    }
+
+    let old_param_env =
+        translate_param_env(id_mapping, tcx, old_def_id, tcx.param_env(old_def_id));
+
     /* let old_param_env = tcx.param_env(old);
     let res = Default::default();
 
@@ -553,8 +570,6 @@ fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
     let new_preds = tcx.predicates_of(new).predicates;
 
     res */
-
-    Default::default()
 }
 
 // Below functions constitute the fourth and last pass of analysis, in which the types of

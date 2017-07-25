@@ -178,15 +178,15 @@ fn translate_predicate<'a, 'tcx>(id_mapping: &IdMapping,
         },
         Predicate::RegionOutlives(region_outlives_predicate) => {
             Predicate::RegionOutlives(region_outlives_predicate.map_bound(|r_pred| {
-                let l = translate_region(id_mapping, tcx, &r_pred.0);
-                let r = translate_region(id_mapping, tcx, &r_pred.1);
+                let l = translate_region(id_mapping, tcx, r_pred.0);
+                let r = translate_region(id_mapping, tcx, r_pred.1);
                 OutlivesPredicate(l, r)
             }))
         },
         Predicate::TypeOutlives(type_outlives_predicate) => {
             Predicate::TypeOutlives(type_outlives_predicate.map_bound(|r_pred| {
                 let l = translate(id_mapping, tcx, index_map, &r_pred.0);
-                let r = translate_region(id_mapping, tcx, &r_pred.1);
+                let r = translate_region(id_mapping, tcx, r_pred.1);
                 OutlivesPredicate(l, r)
             }))
         },
