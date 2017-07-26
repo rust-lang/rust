@@ -46,10 +46,15 @@ std::mem::swap::|\
 std::mem::uninitialized::|\
 std::ptr::read::|\
 std::panicking::try::do_call::|\
-<std::heap::Heap as std::heap::Alloc>::alloc$|\
+std::slice::from_raw_parts_mut::|\
+<std::heap::Heap as std::heap::Alloc>::|\
 <std::mem::ManuallyDrop<T>><std::heap::AllocErr>::new$|\
+<std::mem::ManuallyDrop<T> as std::ops::DerefMut><std::heap::AllocErr>::deref_mut$|\
 std::sync::atomic::AtomicBool::get_mut$|\
-<std::vec::Vec<T>><[a-zA-Z0-9_]+>::into_boxed_slice$\
+<std::boxed::Box<T>><[a-zA-Z0-9_\\[\\]]+>::from_raw|\
+<[a-zA-Z0-9_:<>]+ as std::slice::SliceIndex<[a-zA-Z0-9_\\[\\]]+>><[a-zA-Z0-9_\\[\\]]+>::get_unchecked_mut$|\
+<alloc::raw_vec::RawVec<T, std::heap::Heap>><[a-zA-Z0-9_\\[\\]]+>::into_box$|\
+<std::vec::Vec<T>><[a-zA-Z0-9_\\[\\]]+>::into_boxed_slice$\
 )").unwrap();
             }
             // Now test
