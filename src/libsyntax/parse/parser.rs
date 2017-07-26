@@ -640,8 +640,18 @@ impl<'a> Parser<'a> {
         match self.token {
             token::Ident(i) => {
                 if self.token.is_reserved_ident() {
-                    self.span_err(self.span, &format!("expected identifier, found {}",
-                                                      self.this_token_descr()));
+                    let desc = self.this_token_descr();
+                    if self.token.is_keyword(keywords::Ref) {
+                        let mut err = self.span_fatal(self.span,
+                                                      &format!("expected identifier, found {}",
+                                                               desc));
+                        err.span_suggestion(self.span,
+                                            "if you want to make a mutable reference, write:",
+                                            "ref mut".to_owned());
+                        err.emit();
+                    } else {
+                        self.span_err(self.span, &format!("expected identifier, found {}", desc));
+                    }
                 }
                 self.bump();
                 Ok(i)
