@@ -6,16 +6,17 @@ terms.
 
 Longer version:
 
-The Rust Project is copyright 2010, The Rust Project
-Developers.
+Copyrights in the Rust project are retained by their contributors. No
+copyright assignment is required to contribute to the Rust project.
 
-Licensed under the Apache License, Version 2.0
-<LICENSE-APACHE or
-http://www.apache.org/licenses/LICENSE-2.0> or the MIT
-license <LICENSE-MIT or http://opensource.org/licenses/MIT>,
-at your option. All files in the project carrying such
-notice may not be copied, modified, or distributed except
-according to those terms.
+Some files include explicit copyright notices and/or license notices.
+For full authorship information, see AUTHORS.txt and the version control
+history.
+
+Except as otherwise noted (below and/or in individual files), Rust is
+licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
+<http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+<LICENSE-MIT> or <http://opensource.org/licenses/MIT>, at your option.
 
 
 The Rust Project includes packages written by third parties.
@@ -282,25 +283,3 @@ their own copyright notices and license terms:
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
     OF SUCH DAMAGE.
-
-* Additional copyright may be retained by contributors other
-  than Mozilla, the Rust Project Developers, or the parties
-  enumerated in this file. Such copyright can be determined
-  on a case-by-case basis by examining the author of each
-  portion of a file in the revision-control commit records
-  of the project, or by consulting representative comments
-  claiming copyright ownership for a file.
-
-  For example, the text:
-
-      "Copyright (c) 2011 Google Inc."
-
-  appears in some files, and these files thereby denote
-  that their author and copyright-holder is Google Inc.
-
-  In all such cases, the absence of explicit licensing text
-  indicates that the contributor chose to license their work
-  for distribution under identical terms to those Mozilla
-  has chosen for the collective work, enumerated at the top
-  of this file. The only difference is the retention of
-  copyright itself, held by the contributor.
