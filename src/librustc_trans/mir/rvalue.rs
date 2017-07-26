@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{Layout, LayoutTyper};
+use rustc::ty::layout::{self, Layout, LayoutTyper, Primitive};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
@@ -20,7 +20,7 @@ use base;
 use builder::Builder;
 use callee;
 use common::{self, val_ty, C_bool, C_null, C_uint};
-use common::{C_integral};
+use common::{C_integral, C_i32};
 use adt;
 use machine;
 use monomorphize;
@@ -93,12 +93,47 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
+                let dest_ty = dest.ty.to_ty(bcx.tcx());
+
+                // No need to inizialize memory of a zero-sized slice
+                if common::type_is_zero_size(bcx.ccx, dest_ty) {
+                    return bcx;
+                }
+
                 let tr_elem = self.trans_operand(&bcx, elem);
                 let size = count.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
+                let align = dest.alignment.to_align();
+
+                if let OperandValue::Immediate(v) = tr_elem.val {
+                    if common::is_const_integral(v) && common::const_to_uint(v) == 0 {
+                        let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
+                        let align = C_i32(bcx.ccx, align as i32);
+                        let ty = type_of::type_of(bcx.ccx, dest_ty);
+                        let size = machine::llsize_of(bcx.ccx, ty);
+                        let fill = C_integral(Type::i8(bcx.ccx), 0, false);
+                        base::call_memset(&bcx, base, fill, size, align, false);
+                        return bcx;
+                    }
+                }
+
+                // Use llvm.memset.p0i8.* to initialize byte arrays
+                let elem_layout = bcx.ccx.layout_of(tr_elem.ty).layout;
+                match *elem_layout {
+                    Layout::Scalar { value: Primitive::Int(layout::I8), .. } |
+                    Layout::CEnum { discr: layout::I8, .. } => {
+                        let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
+                        let align = C_i32(bcx.ccx, align as i32);
+                        let fill = tr_elem.immediate();
+                        base::call_memset(&bcx, base, fill, size, align, false);
+                        return bcx;
+                    }
+                    _ => ()
+                }
+
                 tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot, loop_bb| {
-                    self.store_operand(bcx, llslot, dest.alignment.to_align(), tr_elem);
+                    self.store_operand(bcx, llslot, align, tr_elem);
                     bcx.br(loop_bb);
                 })
             }

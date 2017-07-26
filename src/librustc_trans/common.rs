@@ -372,7 +372,7 @@ pub fn const_to_uint(v: ValueRef) -> u64 {
     }
 }
 
-fn is_const_integral(v: ValueRef) -> bool {
+pub fn is_const_integral(v: ValueRef) -> bool {
     unsafe {
         !llvm::LLVMIsAConstantInt(v).is_null()
     }
