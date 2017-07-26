@@ -989,6 +989,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (translation_items, codegen_units) =
         collect_and_partition_translation_items(&shared_ccx, &exported_symbols);
 
+    assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
+
     let translation_items = Arc::new(translation_items);
 
     let mut all_stats = Stats::default();
@@ -1106,13 +1108,27 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 debuginfo::finalize(&ccx);
             }
 
+            let llvm_module = ModuleLlvm {
+                llcx: ccx.llcx(),
+                llmod: ccx.llmod(),
+            };
+
+            // In LTO mode we inject the allocator shim into the existing
+            // module.
+            if ccx.sess().lto() {
+                if let Some(kind) = ccx.sess().allocator_kind.get() {
+                    time(ccx.sess().time_passes(), "write allocator module", || {
+                        unsafe {
+                            allocator::trans(ccx.tcx(), &llvm_module, kind);
+                        }
+                    });
+                }
+            }
+
             ModuleTranslation {
                 name: cgu_name,
                 symbol_name_hash,
-                source: ModuleSource::Translated(ModuleLlvm {
-                    llcx: ccx.llcx(),
-                    llmod: ccx.llmod(),
-                }),
+                source: ModuleSource::Translated(llvm_module),
                 kind: ModuleKind::Regular,
             }
         };
@@ -1180,13 +1196,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // links in an object file that has allocator functions. When we're
     // compiling a final LTO artifact, though, there's no need to worry about
     // this as we're not working with this dual "rlib/dylib" functionality.
-    let allocator_module = tcx.sess.allocator_kind.get().and_then(|kind| unsafe {
-        if sess.lto() && llvm_modules.len() > 0 {
-            time(tcx.sess.time_passes(), "write allocator module", || {
-                allocator::trans(tcx, &llvm_modules[0], kind)
-            });
-            None
-        } else {
+    let allocator_module = if tcx.sess.lto() {
+        None
+    } else if let Some(kind) = tcx.sess.allocator_kind.get() {
+        unsafe {
             let (llcx, llmod) =
                 context::create_context_and_module(tcx.sess, "allocator");
             let modules = ModuleLlvm {
@@ -1204,7 +1217,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 kind: ModuleKind::Allocator,
             })
         }
-    });
+    } else {
+        None
+    };
 
     let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
 
