@@ -393,3 +393,25 @@ fn issue1749() {
         }
     }
 }
+
+// #1172
+fn newlines_between_list_like_expr() {
+    foo(
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+        zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,
+    );
+
+    vec![
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+        zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,
+    ];
+
+    match x {
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx |
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy |
+        zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz => foo(a, b, c),
+        _ => bar(),
+    };
+}
