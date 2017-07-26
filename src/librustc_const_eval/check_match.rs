@@ -165,8 +165,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
                 arm.pats.iter().map(|pat| {
-                    let substs = self.identity_substs;
-                    let mut patcx = PatternContext::new(self.tcx, self.tables, substs);
+                    let mut patcx = PatternContext::new(self.tcx,
+                                                        self.param_env.and(self.identity_substs),
+                                                        self.tables);
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(pat.span);
@@ -233,8 +234,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn check_irrefutable(&self, pat: &Pat, origin: &str) {
         let module = self.tcx.hir.get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
-            let substs = self.identity_substs;
-            let mut patcx = PatternContext::new(self.tcx, self.tables, substs);
+            let mut patcx = PatternContext::new(self.tcx,
+                                                self.param_env.and(self.identity_substs),
+                                                self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
             let pats : Matrix = vec![vec![

@@ -372,8 +372,8 @@ impl<'tcx> QueryDescription for queries::reachable_set<'tcx> {
 }
 
 impl<'tcx> QueryDescription for queries::const_eval<'tcx> {
-    fn describe(tcx: TyCtxt, (def_id, _): (DefId, &'tcx Substs<'tcx>)) -> String {
-        format!("const-evaluating `{}`", tcx.item_path_str(def_id))
+    fn describe(tcx: TyCtxt, key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>) -> String {
+        format!("const-evaluating `{}`", tcx.item_path_str(key.value.0))
     }
 }
 
@@ -935,7 +935,7 @@ define_maps! { <'tcx>
 
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
-    [] const_eval: const_eval_dep_node((DefId, &'tcx Substs<'tcx>))
+    [] const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
         -> const_val::EvalResult<'tcx>,
 
     /// Performs the privacy check and computes "access levels".
@@ -1032,8 +1032,9 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node<'tcx>((def_id, substs): (DefId, &'tcx Substs<'tcx>))
+fn const_eval_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                              -> DepConstructor<'tcx> {
+    let (def_id, substs) = key.value;
     DepConstructor::ConstEval { def_id, substs }
 }
 

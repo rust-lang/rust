@@ -71,8 +71,8 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         });
 
                         let pattern = Pattern::from_hir(cx.tcx.global_tcx(),
+                                                        cx.param_env.and(cx.identity_substs),
                                                         cx.tables(),
-                                                        cx.identity_substs,
                                                         &local.pat);
                         result.push(StmtRef::Mirror(Box::new(Stmt {
                             span: stmt.span,

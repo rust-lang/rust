@@ -1582,6 +1582,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                          -> impl Iterator<Item=ConstInt> + 'a {
+        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<ConstInt>;
@@ -1589,7 +1590,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
-                match tcx.const_eval((expr_did, substs)) {
+                match tcx.const_eval(param_env.and((expr_did, substs))) {
                     Ok(ConstVal::Integral(v)) => {
                         discr = v;
                     }
@@ -1617,6 +1618,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                     variant_index: usize)
                                     -> ConstInt {
+        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let mut explicit_value = repr_type.initial_discriminant(tcx.global_tcx());
         let mut explicit_index = variant_index;
@@ -1628,7 +1630,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
                 ty::VariantDiscr::Explicit(expr_did) => {
                     let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
-                    match tcx.const_eval((expr_did, substs)) {
+                    match tcx.const_eval(param_env.and((expr_did, substs))) {
                         Ok(ConstVal::Integral(v)) => {
                             explicit_value = v;
                             break;

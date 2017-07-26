@@ -65,7 +65,7 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn const_cx(&self) -> ConstContext<'a, 'gcx> {
-        ConstContext::new(self.tcx, self.tables, self.identity_substs)
+        ConstContext::new(self.tcx, self.param_env.and(self.identity_substs), self.tables)
     }
 
     fn check_const_eval(&self, expr: &'gcx hir::Expr) {

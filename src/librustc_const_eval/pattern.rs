@@ -268,6 +268,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
 
 pub struct PatternContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
     pub substs: &'tcx Substs<'tcx>,
     pub errors: Vec<PatternError<'tcx>>,
@@ -275,10 +276,10 @@ pub struct PatternContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Pattern<'tcx> {
     pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
                     tables: &'a ty::TypeckTables<'tcx>,
-                    substs: &'tcx Substs<'tcx>,
                     pat: &hir::Pat) -> Self {
-        let mut pcx = PatternContext::new(tcx, tables, substs);
+        let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
             span_bug!(pat.span, "encountered errors lowering pattern: {:?}", pcx.errors)
@@ -290,9 +291,15 @@ impl<'a, 'tcx> Pattern<'tcx> {
 
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               tables: &'a ty::TypeckTables<'tcx>,
-               substs: &'tcx Substs<'tcx>) -> Self {
-        PatternContext { tcx, tables, substs, errors: vec![] }
+               param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+               tables: &'a ty::TypeckTables<'tcx>) -> Self {
+        PatternContext {
+            tcx,
+            param_env: param_env_and_substs.param_env,
+            tables,
+            substs: param_env_and_substs.value,
+            errors: vec![]
+        }
     }
 
     pub fn lower_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
@@ -588,7 +595,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
-                match eval::lookup_const_by_id(self.tcx, def_id, substs) {
+                match eval::lookup_const_by_id(self.tcx, self.param_env.and((def_id, substs))) {
                     Some((def_id, substs)) => {
                         // Enter the inlined constant's tables&substs temporarily.
                         let old_tables = self.tables;
@@ -622,7 +629,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     fn lower_lit(&mut self, expr: &hir::Expr) -> PatternKind<'tcx> {
-        let const_cx = eval::ConstContext::new(self.tcx, self.tables, self.substs);
+        let const_cx = eval::ConstContext::new(self.tcx,
+                                               self.param_env.and(self.substs),
+                                               self.tables);
         match const_cx.eval(expr) {
             Ok(value) => {
                 if let ConstVal::Variant(def_id) = value {

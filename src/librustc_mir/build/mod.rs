@@ -514,8 +514,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             if let Some(pattern) = pattern {
                 let pattern = Pattern::from_hir(self.hir.tcx().global_tcx(),
+                                                self.hir.param_env.and(self.hir.identity_substs),
                                                 self.hir.tables(),
-                                                self.hir.identity_substs,
                                                 pattern);
                 scope = self.declare_bindings(scope, ast_body.span, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));

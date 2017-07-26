@@ -37,7 +37,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub param_env: ty::ParamEnv<'gcx>,
 
     /// Identity `Substs` for use with const-evaluation.
     pub identity_substs: &'gcx Substs<'gcx>,
@@ -135,7 +135,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
         let tcx = self.tcx.global_tcx();
-        match ConstContext::new(tcx, self.tables(), self.identity_substs).eval(e) {
+        let const_cx = ConstContext::new(tcx,
+                                         self.param_env.and(self.identity_substs),
+                                         self.tables());
+        match const_cx.eval(e) {
             Ok(value) => Literal::Value { value: value },
             Err(s) => self.fatal_const_eval_err(&s, e.span, "expression")
         }

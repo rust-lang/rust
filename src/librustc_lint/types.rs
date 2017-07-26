@@ -113,7 +113,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             let parent_item = cx.tcx.hir.get_parent(e.id);
                             let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
                             let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-                            let const_cx = ConstContext::new(cx.tcx, cx.tables, substs);
+                            let const_cx = ConstContext::new(cx.tcx,
+                                                             cx.param_env.and(substs),
+                                                             cx.tables);
                             match const_cx.eval(&r) {
                                 Ok(ConstVal::Integral(i)) => {
                                     i.is_negative() ||
