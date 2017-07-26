@@ -52,6 +52,36 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::I32x4,
             definition: Named("llvm.ppc.altivec.vcmpequw")
         },
+        "_vec_cmpgtub" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.ppc.altivec.vcmpgtub")
+        },
+        "_vec_cmpgtuh" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.ppc.altivec.vcmpgtuh")
+        },
+        "_vec_cmpgtuw" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.ppc.altivec.vcmpgtuw")
+        },
+        "_vec_cmpgtsb" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.ppc.altivec.vcmpgtsb")
+        },
+        "_vec_cmpgtsh" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.ppc.altivec.vcmpgtsh")
+        },
+        "_vec_cmpgtsw" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.ppc.altivec.vcmpgtsw")
+        },
         _ => return None,
     })
 }

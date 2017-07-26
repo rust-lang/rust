@@ -4,9 +4,11 @@
     "llvm_prefix": "llvm.ppc.altivec.",
     "number_info": {
         "unsigned": {
+            "kind" : "u",
             "data_type_short": { "8": "b", "16": "h", "32": "w", "64": "d" }
         },
         "signed": {
+            "kind" : "s",
             "data_type_short": { "8": "b", "16": "h", "32": "w", "64": "d" }
         },
         "float": {}
@@ -42,6 +44,20 @@
             "llvm": "vcmpequ{0.data_type_short}",
             "ret": "s(8-32)",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "cmpgt{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vcmpgt{1.kind}{1.data_type_short}",
+            "ret": "s(8-32)",
+            "args": ["0u", "1"]
+        },
+        {
+            "intrinsic": "cmpgt{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vcmpgt{1.kind}{1.data_type_short}",
+            "ret": "s(8-32)",
+            "args": ["0", "1"]
         }
     ]
 }
