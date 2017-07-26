@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type Alias = ();
-use Alias::*;
-//~^ ERROR unresolved import `Alias` [E0432]
-//~| Not a module `Alias`
-use std::io::Result::*;
-//~^ ERROR unresolved import `std::io::Result` [E0432]
-//~| Not a module `Result`
+// compile-flags:--test
 
-trait T {}
-use T::*; //~ ERROR items in traits are not importable
+// rustdoc should not panic when target crate has compilation errors
 
-fn main() {}
+fn main() { 0 }

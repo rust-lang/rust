@@ -104,7 +104,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             };
 
             RawVec {
-                ptr: Unique::new(ptr as *mut _),
+                ptr: Unique::new_unchecked(ptr as *mut _),
                 cap: cap,
                 a: a,
             }
@@ -159,7 +159,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// If the ptr and capacity come from a RawVec created via `a`, then this is guaranteed.
     pub unsafe fn from_raw_parts_in(ptr: *mut T, cap: usize, a: A) -> Self {
         RawVec {
-            ptr: Unique::new(ptr),
+            ptr: Unique::new_unchecked(ptr),
             cap: cap,
             a: a,
         }
@@ -176,7 +176,7 @@ impl<T> RawVec<T, Heap> {
     /// If the ptr and capacity come from a RawVec, then this is guaranteed.
     pub unsafe fn from_raw_parts(ptr: *mut T, cap: usize) -> Self {
         RawVec {
-            ptr: Unique::new(ptr),
+            ptr: Unique::new_unchecked(ptr),
             cap: cap,
             a: Heap,
         }

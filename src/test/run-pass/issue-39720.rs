@@ -8,16 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {}
+#![feature(repr_simd, platform_intrinsics)]
 
-macro_rules! m {
-    () => {
-        use a::$crate; //~ ERROR unresolved import `a::$crate`
-        use a::$crate::b; //~ ERROR unresolved import `a::$crate`
-        type A = a::$crate; //~ ERROR cannot find type `$crate` in module `a`
-    }
+#[repr(C)]
+#[repr(simd)]
+#[derive(Copy, Clone, Debug)]
+pub struct char3(pub i8, pub i8, pub i8);
+
+#[repr(C)]
+#[repr(simd)]
+#[derive(Copy, Clone, Debug)]
+pub struct short3(pub i16, pub i16, pub i16);
+
+extern "platform-intrinsic" {
+    fn simd_cast<T, U>(x: T) -> U;
 }
 
-m!();
+fn main() {
+    let cast: short3 = unsafe { simd_cast(char3(10, -3, -9)) };
 
-fn main() {}
+    println!("{:?}", cast);
+}

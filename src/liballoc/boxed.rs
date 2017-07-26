@@ -297,6 +297,37 @@ impl<T: ?Sized> Box<T> {
     pub fn into_raw(b: Box<T>) -> *mut T {
         unsafe { mem::transmute(b) }
     }
+
+    /// Consumes the `Box`, returning the wrapped pointer as `Unique<T>`.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Box`. In particular, the
+    /// caller should properly destroy `T` and release the memory. The
+    /// proper way to do so is to convert the raw pointer back into a
+    /// `Box` with the [`Box::from_raw`] function.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::into_unique(b)` instead of `b.into_unique()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique)]
+    ///
+    /// fn main() {
+    ///     let x = Box::new(5);
+    ///     let ptr = Box::into_unique(x);
+    /// }
+    /// ```
+    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
+               issue = "27730")]
+    #[inline]
+    pub fn into_unique(b: Box<T>) -> Unique<T> {
+        unsafe { mem::transmute(b) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

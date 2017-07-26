@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type Alias = ();
-use Alias::*;
-//~^ ERROR unresolved import `Alias` [E0432]
-//~| Not a module `Alias`
-use std::io::Result::*;
-//~^ ERROR unresolved import `std::io::Result` [E0432]
-//~| Not a module `Result`
+#![feature(associated_consts)]
 
-trait T {}
-use T::*; //~ ERROR items in traits are not importable
+trait VecN {
+    const DIM: usize;
+}
+trait Mat {
+    type Row: VecN;
+}
 
-fn main() {}
+fn m<M: Mat>() {
+    let a = [3; M::Row::DIM]; //~ ERROR associated type `Row` not found for `M`
+}
+fn main() {
+}

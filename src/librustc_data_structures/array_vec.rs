@@ -146,7 +146,7 @@ impl<A: Array> ArrayVec<A> {
                 tail_start: end,
                 tail_len: len - end,
                 iter: range_slice.iter(),
-                array_vec: Shared::new(self as *mut _),
+                array_vec: Shared::from(self),
             }
         }
     }

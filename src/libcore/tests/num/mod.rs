@@ -279,7 +279,7 @@ test_impl_try_from_always_ok! { test_try_u64u64, u64, u64 }
 test_impl_try_from_always_ok! { test_try_u64u128, u64, u128 }
 test_impl_try_from_always_ok! { test_try_u64i128, u64, i128 }
 
-test_impl_try_from_always_ok! { test_try_u128, u128, u128 }
+test_impl_try_from_always_ok! { test_try_u128u128, u128, u128 }
 
 test_impl_try_from_always_ok! { test_try_i8i8, i8, i8 }
 test_impl_try_from_always_ok! { test_try_i8i16, i8, i16 }
@@ -301,8 +301,12 @@ test_impl_try_from_always_ok! { test_try_i64i128, i64, i128 }
 
 test_impl_try_from_always_ok! { test_try_i128i128, i128, i128 }
 
+test_impl_try_from_always_ok! { test_try_usizeusize, usize, usize }
+test_impl_try_from_always_ok! { test_try_isizeisize, isize, isize }
+
 assume_usize_width! {
     test_impl_try_from_always_ok! { test_try_u8usize, u8, usize }
+    test_impl_try_from_always_ok! { test_try_u8isize, u8, isize }
     test_impl_try_from_always_ok! { test_try_i8isize, i8, isize }
 
     test_impl_try_from_always_ok! { test_try_u16usize, u16, usize }
@@ -317,19 +321,27 @@ assume_usize_width! {
 
     cfg_block!(
         #[cfg(target_pointer_width = "16")] {
-            test_impl_try_from_always_ok! { test_try_u16usize, u16, usize }
-            test_impl_try_from_always_ok! { test_try_i16isize, i16, isize }
+            test_impl_try_from_always_ok! { test_try_usizeu16, usize, u16 }
+            test_impl_try_from_always_ok! { test_try_isizei16, isize, i16 }
+            test_impl_try_from_always_ok! { test_try_usizeu32, usize, u32 }
+            test_impl_try_from_always_ok! { test_try_usizei32, usize, i32 }
+            test_impl_try_from_always_ok! { test_try_isizei32, isize, i32 }
+            test_impl_try_from_always_ok! { test_try_usizei64, usize, i64 }
         }
 
         #[cfg(target_pointer_width = "32")] {
+            test_impl_try_from_always_ok! { test_try_u16isize, u16, isize }
             test_impl_try_from_always_ok! { test_try_usizeu32, usize, u32 }
             test_impl_try_from_always_ok! { test_try_isizei32, isize, i32 }
             test_impl_try_from_always_ok! { test_try_u32usize, u32, usize }
             test_impl_try_from_always_ok! { test_try_i32isize, i32, isize }
+            test_impl_try_from_always_ok! { test_try_usizei64, usize, i64 }
         }
 
         #[cfg(target_pointer_width = "64")] {
+            test_impl_try_from_always_ok! { test_try_u16isize, u16, isize }
             test_impl_try_from_always_ok! { test_try_u32usize, u32, usize }
+            test_impl_try_from_always_ok! { test_try_u32isize, u32, isize }
             test_impl_try_from_always_ok! { test_try_i32isize, i32, isize }
             test_impl_try_from_always_ok! { test_try_u64usize, u64, usize }
             test_impl_try_from_always_ok! { test_try_i64isize, i64, isize }
@@ -451,8 +463,8 @@ assume_usize_width! {
 
     cfg_block!(
         #[cfg(target_pointer_width = "16")] {
+            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u16isize, u16, isize }
             test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32isize, u32, isize }
-            test_impl_try_from_unsigned_to_signed_upper_err! { test_try_u32isize, u64, isize }
         }
 
         #[cfg(target_pointer_width = "32")] {

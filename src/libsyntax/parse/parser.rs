@@ -2243,9 +2243,9 @@ impl<'a> Parser<'a> {
                         attrs);
                 }
                 if self.is_catch_expr() {
+                    let lo = self.span;
                     assert!(self.eat_keyword(keywords::Do));
                     assert!(self.eat_keyword(keywords::Catch));
-                    let lo = self.prev_span;
                     return self.parse_catch_expr(lo, attrs);
                 }
                 if self.eat_keyword(keywords::Return) {

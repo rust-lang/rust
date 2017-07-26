@@ -1126,7 +1126,7 @@ impl<T> Vec<T> {
                 tail_start: end,
                 tail_len: len - end,
                 iter: range_slice.iter(),
-                vec: Shared::new(self as *mut _),
+                vec: Shared::from(self),
             }
         }
     }
@@ -1727,7 +1727,7 @@ impl<T> IntoIterator for Vec<T> {
             let cap = self.buf.cap();
             mem::forget(self);
             IntoIter {
-                buf: Shared::new(begin),
+                buf: Shared::new_unchecked(begin),
                 cap: cap,
                 ptr: begin,
                 end: end,
@@ -1962,6 +1962,12 @@ impl<T> Vec<T> {
 
 }
 
+/// Extend implementation that copies elements out of references before pushing them onto the Vec.
+///
+/// This implementation is specialized for slice iterators, where it uses [`copy_from_slice`] to
+/// append the entire slice at once.
+///
+/// [`copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
