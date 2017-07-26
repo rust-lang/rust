@@ -467,7 +467,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn read_discriminant_value(&self, adt_ptr: MemoryPointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
-        trace!("read_discriminant_value {:#?}", adt_layout);
+        //trace!("read_discriminant_value {:#?}", adt_layout);
 
         let discr_val = match *adt_layout {
             General { discr, .. } | CEnum { discr, signed: false, .. } => {

@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
-use memory::{MemoryPointer, Kind};
+use memory::{MemoryPointer, LockInfo, AccessKind, Kind};
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
@@ -51,6 +51,30 @@ pub enum EvalError<'tcx> {
         required: u64,
         has: u64,
     },
+    MemoryLockViolation {
+        ptr: MemoryPointer,
+        len: u64,
+        frame: usize,
+        access: AccessKind,
+        lock: LockInfo,
+    },
+    MemoryAcquireConflict {
+        ptr: MemoryPointer,
+        len: u64,
+        kind: AccessKind,
+        lock: LockInfo,
+    },
+    InvalidMemoryLockRelease {
+        ptr: MemoryPointer,
+        len: u64,
+        frame: usize,
+        lock: LockInfo,
+    },
+    DeallocatedLockedMemory {
+        ptr: MemoryPointer,
+        lock: LockInfo,
+    },
+    ValidationFailure(String),
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
@@ -97,6 +121,16 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "pointer offset outside bounds of allocation",
             InvalidNullPointerUsage =>
                 "invalid use of NULL pointer",
+            MemoryLockViolation { .. } =>
+                "memory access conflicts with lock",
+            MemoryAcquireConflict { .. } =>
+                "new memory lock conflicts with existing lock",
+            ValidationFailure(..) =>
+                "type validation failed",
+            InvalidMemoryLockRelease { .. } =>
+                "invalid attempt to release write lock",
+            DeallocatedLockedMemory { .. } =>
+                "tried to deallocate memory in conflict with a lock",
             ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             ReadBytesAsPointer =>
@@ -196,6 +230,25 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                        if access { "memory access" } else { "pointer computed" },
                        ptr.offset, ptr.alloc_id, allocation_size)
             },
+            MemoryLockViolation { ptr, len, frame, access, ref lock } => {
+                write!(f, "{:?} access by frame {} at {:?}, size {}, is in conflict with lock {:?}",
+                       access, frame, ptr, len, lock)
+            }
+            MemoryAcquireConflict { ptr, len, kind, ref lock } => {
+                write!(f, "new {:?} lock at {:?}, size {}, is in conflict with lock {:?}",
+                       kind, ptr, len, lock)
+            }
+            InvalidMemoryLockRelease { ptr, len, frame, ref lock } => {
+                write!(f, "frame {} tried to release memory write lock at {:?}, size {}, but cannot release lock {:?}",
+                       frame, ptr, len, lock)
+            }
+            DeallocatedLockedMemory { ptr, ref lock } => {
+                write!(f, "tried to deallocate memory at {:?} in conflict with lock {:?}",
+                       ptr, lock)
+            }
+            ValidationFailure(ref err) => {
+                write!(f, "type validation failed: {}", err)
+            }
             NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             FunctionPointerTyMismatch(sig, got) =>
                 write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),

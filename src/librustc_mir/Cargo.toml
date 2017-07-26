@@ -32,6 +32,8 @@ env_logger = "0.3.3"
 log = "0.3.6"
 log_settings = "0.1.1"
 cargo_metadata = "0.2"
+regex = "0.2.2"
+lazy_static = "0.2.8"
 
 [dev-dependencies]
 compiletest_rs = "0.2.6"

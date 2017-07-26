@@ -1,14 +1,102 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{fmt, iter, ptr, mem, io};
+use std::{fmt, iter, ptr, mem, io, ops};
 
 use rustc::ty;
 use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
+use rustc::middle::region::CodeExtent;
 
 use error::{EvalError, EvalResult};
 use value::{PrimVal, Pointer};
-use eval_context::EvalContext;
+use eval_context::{EvalContext, DynamicLifetime};
+
+////////////////////////////////////////////////////////////////////////////////
+// Locks
+////////////////////////////////////////////////////////////////////////////////
+
+mod range {
+    use super::*;
+
+    // The derived `Ord` impl sorts first by the first field, then, if the fields are the same,
+    // by the second field.
+    // This is exactly what we need for our purposes, since a range query on a BTReeSet/BTreeMap will give us all
+    // `MemoryRange`s whose `start` is <= than the one we're looking for, but not > the end of the range we're checking.
+    // At the same time the `end` is irrelevant for the sorting and range searching, but used for the check.
+    // This kind of search breaks, if `end < start`, so don't do that!
+    #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+    pub struct MemoryRange {
+        start: u64,
+        end: u64,
+    }
+
+    impl MemoryRange {
+        #[allow(dead_code)]
+        // FIXME(@RalfJung): validation branch
+        pub fn new(offset: u64, len: u64) -> MemoryRange {
+            assert!(len > 0);
+            MemoryRange {
+                start: offset,
+                end: offset + len,
+            }
+        }
+
+        pub fn range(offset: u64, len: u64) -> ops::Range<MemoryRange> {
+            assert!(len > 0);
+            // We select all elements that are within
+            // the range given by the offset into the allocation and the length.
+            // This is sound if "self.contains() || self.overlaps() == true" implies that self is in-range.
+            let left = MemoryRange {
+                start: 0,
+                end: offset,
+            };
+            let right = MemoryRange {
+                start: offset + len + 1,
+                end: 0,
+            };
+            left..right
+        }
+
+        #[allow(dead_code)]
+        // FIXME(@RalfJung): validation branch
+        pub fn contained_in(&self, offset: u64, len: u64) -> bool {
+            assert!(len > 0);
+            offset <= self.start && self.end <= (offset + len)
+        }
+
+        pub fn overlaps(&self, offset: u64, len: u64) -> bool {
+            assert!(len > 0);
+            //let non_overlap = (offset + len) <= self.start || self.end <= offset;
+            (offset + len) > self.start && self.end > offset
+        }
+    }
+}
+use self::range::*;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AccessKind {
+    Read,
+    Write,
+}
+
+/// Information about a lock that is currently held.
+#[derive(Clone, Debug)]
+pub enum LockInfo {
+    WriteLock(DynamicLifetime),
+    ReadLock(Vec<DynamicLifetime>), // This should never be empty -- that would be a read lock held and nobody there to release it...
+}
+use self::LockInfo::*;
+
+impl LockInfo {
+    fn access_permitted(&self, frame: Option<usize>, access: AccessKind) -> bool {
+        use self::AccessKind::*;
+        match (self, access) {
+            (&ReadLock(_), Read) => true, // Read access to read-locked region is okay, no matter who's holding the read lock.
+            (&WriteLock(ref lft), _) if Some(lft.frame) == frame => true, // All access is okay when we hold the write lock.
+            _ => false, // Nothing else is okay.
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
@@ -41,6 +129,35 @@ pub struct Allocation {
     /// allocation is modified or deallocated in the future.
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
     pub kind: Kind,
+    /// Memory regions that are locked by some function
+    locks: BTreeMap<MemoryRange, LockInfo>,
+}
+
+impl Allocation {
+    fn iter_locks<'a>(&'a self, offset: u64, len: u64) -> impl Iterator<Item=(&'a MemoryRange, &'a LockInfo)> + 'a {
+        self.locks.range(MemoryRange::range(offset, len))
+            .filter(move |&(range, _)| range.overlaps(offset, len))
+    }
+
+    #[allow(dead_code)]
+    // FIXME(@RalfJung): validation branch
+    fn iter_locks_mut<'a>(&'a mut self, offset: u64, len: u64) -> impl Iterator<Item=(&'a MemoryRange, &'a mut LockInfo)> + 'a {
+        self.locks.range_mut(MemoryRange::range(offset, len))
+            .filter(move |&(range, _)| range.overlaps(offset, len))
+    }
+
+    fn check_locks<'tcx>(&self, frame: Option<usize>, offset: u64, len: u64, access: AccessKind) -> Result<(), LockInfo> {
+        if len == 0 {
+            return Ok(())
+        }
+        for (_, lock) in self.iter_locks(offset, len) {
+            // Check if the lock is in conflict with the access.
+            if !lock.access_permitted(frame, access) {
+                return Err(lock.clone());
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -96,6 +213,10 @@ impl<'tcx> MemoryPointer {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Top-level interpreter memory
+////////////////////////////////////////////////////////////////////////////////
+
 pub type TlsKey = usize;
 
 #[derive(Copy, Clone, Debug)]
@@ -103,10 +224,6 @@ pub struct TlsEntry<'tcx> {
     data: Pointer, // Will eventually become a map from thread IDs to `Pointer`s, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Top-level interpreter memory
-////////////////////////////////////////////////////////////////////////////////
 
 pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
@@ -151,6 +268,9 @@ pub struct Memory<'a, 'tcx> {
     /// alignment checking is currently enforced for read and/or write accesses.
     reads_are_aligned: bool,
     writes_are_aligned: bool,
+
+    /// The current stack frame.  Used to check accesses against locks.
+    cur_frame: usize,
 }
 
 impl<'a, 'tcx> Memory<'a, 'tcx> {
@@ -169,6 +289,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             next_thread_local: 0,
             reads_are_aligned: true,
             writes_are_aligned: true,
+            cur_frame: usize::max_value(),
         }
     }
 
@@ -220,6 +341,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             align,
             kind,
             mutable: Mutability::Mutable,
+            locks: BTreeMap::new(),
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -257,6 +379,14 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             None => return Err(EvalError::DoubleFree),
         };
 
+        // It is okay for us to still holds locks on deallocation -- for example, we could store data we own
+        // in a local, and the local could be deallocated (from StorageDead) before the function returns.
+        // However, we should check *something*.  For now, we make sure that there is no conflicting write
+        // lock by another frame.  We *have* to permit deallocation if we hold a read lock.
+        // TODO: Figure out the exact rules here.
+        alloc.check_locks(Some(self.cur_frame), 0, alloc.bytes.len() as u64, AccessKind::Read)
+            .map_err(|lock| EvalError::DeallocatedLockedMemory { ptr, lock })?;
+
         if alloc.kind != kind {
             return Err(EvalError::DeallocatedWrongMemoryKind(alloc.kind, kind));
         }
@@ -280,7 +410,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.layout.endian
     }
 
-    /// Check that the pointer is aligned and non-NULL
+    /// Check that the pointer is aligned AND non-NULL.
     pub fn check_align(&self, ptr: Pointer, align: u64) -> EvalResult<'tcx> {
         let offset = match ptr.into_inner_primval() {
             PrimVal::Ptr(ptr) => {
@@ -319,6 +449,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             return Err(EvalError::PointerOutOfBounds { ptr, access, allocation_size });
         }
         Ok(())
+    }
+
+    pub(crate) fn set_cur_frame(&mut self, cur_frame: usize) {
+        self.cur_frame = cur_frame;
     }
 
     pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
@@ -397,6 +531,129 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     }
 }
 
+/// Locking
+impl<'a, 'tcx> Memory<'a, 'tcx> {
+    pub(crate) fn check_locks(&self, ptr: MemoryPointer, len: u64, access: AccessKind) -> EvalResult<'tcx> {
+        if len == 0 {
+            return Ok(())
+        }
+        let alloc = self.get(ptr.alloc_id)?;
+        let frame = self.cur_frame;
+        alloc.check_locks(Some(frame), ptr.offset, len, access)
+            .map_err(|lock| EvalError::MemoryLockViolation { ptr, len, frame, access, lock })
+    }
+
+    #[allow(dead_code)]
+    // FIXME(@RalfJung): validation branch
+    /// Acquire the lock for the given lifetime
+    pub(crate) fn acquire_lock(&mut self, ptr: MemoryPointer, len: u64, region: Option<CodeExtent>, kind: AccessKind) -> EvalResult<'tcx> {
+        use std::collections::btree_map::Entry::*;
+
+        let frame = self.cur_frame;
+        assert!(len > 0);
+        trace!("Frame {} acquiring {:?} lock at {:?}, size {} for region {:?}", frame, kind, ptr, len, region);
+        self.check_bounds(ptr.offset(len, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
+
+        // Check if this conflicts with other locks
+        alloc.check_locks(None, ptr.offset, len, kind)
+            .map_err(|lock| EvalError::MemoryAcquireConflict { ptr, len, kind, lock })?;
+
+        let lifetime = DynamicLifetime { frame, region };
+        match (alloc.locks.entry(MemoryRange::new(ptr.offset, len)), kind) {
+            (Vacant(entry), AccessKind::Read) => { entry.insert(ReadLock(vec![lifetime])); },
+            (Vacant(entry), AccessKind::Write) => { entry.insert(WriteLock(lifetime)); },
+            (Occupied(mut entry), AccessKind::Read) =>
+                match *entry.get_mut() {
+                    ReadLock(ref mut lifetimes) => lifetimes.push(lifetime),
+                    WriteLock(_) => bug!("We already checked that there is no conflicting write lock"),
+                },
+            (Occupied(_), AccessKind::Write) => bug!("We already checked that there is no conflicting lock"),
+        };
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    // FIXME(@RalfJung): validation branch
+    /// Release a write lock prematurely. If there's a read lock or someone else's lock, fail.
+    pub(crate) fn release_write_lock(&mut self, ptr: MemoryPointer, len: u64) -> EvalResult<'tcx> {
+        assert!(len > 0);
+        let cur_frame = self.cur_frame;
+        let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
+
+        let mut remove_list : Vec<MemoryRange> = Vec::new();
+        for (range, lock) in alloc.iter_locks_mut(ptr.offset, len) {
+            match *lock {
+                WriteLock(ref lft) => {
+                    // Make sure we can release this lock
+                    if lft.frame != cur_frame {
+                        return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
+                    }
+                    if !range.contained_in(ptr.offset, len) {
+                        return Err(EvalError::Unimplemented(format!("miri does not support releasing part of a write-locked region")));
+                    }
+                    // Release it later.  We cannot do this now.
+                    remove_list.push(*range);
+                }
+                ReadLock(_) => {
+                    // Abort here and bubble the error outwards so that we do not even register a suspension.
+                    return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
+                },
+            }
+        }
+
+        for range in remove_list {
+            trace!("Releasing {:?}", alloc.locks[&range]);
+            alloc.locks.remove(&range);
+        }
+
+        // TODO: Test that we actually released a write lock for the entire covered region.
+
+        Ok(())
+    }
+
+    pub(crate) fn locks_lifetime_ended(&mut self, ending_region: Option<CodeExtent>) {
+        let cur_frame = self.cur_frame;
+        trace!("Releasing frame {} locks that expire at {:?}", cur_frame, ending_region);
+        let has_ended =  |lifetime: &DynamicLifetime| -> bool {
+            if lifetime.frame != cur_frame {
+                return false;
+            }
+            match ending_region {
+                None => true, // When a function ends, we end *all* its locks. It's okay for a function to still have lifetime-related locks
+                              // when it returns, that can happen e.g. with NLL when a lifetime can, but does not have to, extend beyond the
+                              // end of a function.  Same for a function still having recoveries.
+                Some(ending_region) => lifetime.region == Some(ending_region),
+            }
+        };
+
+        for alloc in self.alloc_map.values_mut() {
+            // Collect things for removal as we cannot remove while iterating
+            let mut remove_list : Vec<MemoryRange> = Vec::new();
+            for (range, lock) in alloc.locks.iter_mut() {
+                // Delete everything that ends now -- i.e., keep only all the other lifetimes.
+                match *lock {
+                    WriteLock(ref lft) => {
+                        if has_ended(lft) {
+                            remove_list.push(*range);
+                        }
+                    }
+                    ReadLock(ref mut lfts) => {
+                        lfts.retain(|lft| !has_ended(lft));
+                        if lfts.is_empty() {
+                            remove_list.push(*range);
+                        }
+                    },
+                }
+            }
+            // Perform delayed removal
+            for range in remove_list {
+                alloc.locks.remove(&range);
+            }
+        }
+    }
+}
+
 /// Allocation accessors
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
@@ -408,18 +665,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
     }
-
-    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+    
+    fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
         match self.alloc_map.get_mut(&id) {
-            Some(alloc) => if alloc.mutable == Mutability::Mutable {
-                Ok(alloc)
-            } else {
-                Err(EvalError::ModifiedConstantMemory)
-            },
+            Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
                 Some(_) => Err(EvalError::DerefFunctionPointer),
                 None => Err(EvalError::DanglingPointerDeref),
             }
+        }
+    }
+
+    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+        let alloc = self.get_mut_unchecked(id)?;
+        if alloc.mutable == Mutability::Mutable {
+            Ok(alloc)
+        } else {
+            Err(EvalError::ModifiedConstantMemory)
         }
     }
 
@@ -540,6 +802,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&[]);
         }
+        self.check_locks(ptr, size, AccessKind::Read)?;
         self.check_bounds(ptr.offset(size, self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -556,6 +819,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         if size == 0 {
             return Ok(&mut []);
         }
+        self.check_locks(ptr, size, AccessKind::Write)?;
         self.check_bounds(ptr.offset(size, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut(ptr.alloc_id)?;
         assert_eq!(ptr.offset as usize as u64, ptr.offset);
@@ -694,6 +958,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     return Err(EvalError::ReadPointerAsBytes);
                 }
                 self.check_defined(ptr, (size + 1) as u64)?;
+                self.check_locks(ptr, (size + 1) as u64, AccessKind::Read)?;
                 Ok(&alloc.bytes[offset..offset + size])
             },
             None => Err(EvalError::UnterminatedCString(ptr)),

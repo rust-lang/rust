@@ -4,6 +4,7 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::ConstVal;
+use rustc::middle::region::CodeExtent;
 use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
@@ -21,6 +22,7 @@ use memory::{Memory, MemoryPointer, TlsKey, HasMemory};
 use memory::Kind as MemoryKind;
 use operator;
 use value::{PrimVal, PrimValKind, Value, Pointer};
+use validation::ValidationQuery;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -28,6 +30,11 @@ pub struct EvalContext<'a, 'tcx: 'a> {
 
     /// The virtual memory system.
     pub(crate) memory: Memory<'a, 'tcx>,
+
+    #[allow(dead_code)]
+    // FIXME(@RalfJung): validation branch
+    /// Lvalues that were suspended by the validation subsystem, and will be recovered later
+    pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 
     /// Precomputed statics, constants and promoteds.
     pub(crate) globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
@@ -112,6 +119,12 @@ pub enum StackPopCleanup {
     None,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct DynamicLifetime {
+    pub frame: usize,
+    pub region: Option<CodeExtent>, // "None" indicates "until the function ends"
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct ResourceLimits {
     pub memory_size: u64,
@@ -134,6 +147,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         EvalContext {
             tcx,
             memory: Memory::new(&tcx.data_layout, limits.memory_size),
+            suspended: HashMap::new(),
             globals: HashMap::new(),
             stack: Vec::new(),
             stack_limit: limits.stack_limit,
@@ -167,6 +181,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub fn stack(&self) -> &[Frame<'tcx>] {
         &self.stack
+    }
+
+    #[inline]
+    pub fn cur_frame(&self) -> usize {
+        assert!(self.stack.len() > 0);
+        self.stack.len() - 1
     }
 
     /// Returns true if the current frame or any parent frame is part of a ctfe.
@@ -336,6 +356,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             stmt: 0,
         });
 
+        let cur_frame = self.cur_frame();
+        self.memory.set_cur_frame(cur_frame);
+
         if self.stack.len() > self.stack_limit {
             Err(EvalError::StackFrameLimitReached)
         } else {
@@ -345,7 +368,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
+        self.memory.locks_lifetime_ended(None);
         let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
+        if !self.stack.is_empty() {
+            // TODO: IS this the correct time to start considering these accesses as originating from the returned-to stack frame?
+            let cur_frame = self.cur_frame();
+            self.memory.set_cur_frame(cur_frame);
+        }
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue {
                 let global_value = self.globals.get_mut(&id)
@@ -1551,9 +1580,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         if let Lvalue::Local { frame, local } = lvalue {
             let mut allocs = Vec::new();
             let mut msg = format!("{:?}", local);
-            let last_frame = self.stack.len() - 1;
-            if frame != last_frame {
-                write!(msg, " ({} frames up)", last_frame - frame).unwrap();
+            if frame != self.cur_frame() {
+                write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
             }
             write!(msg, ":").unwrap();
 

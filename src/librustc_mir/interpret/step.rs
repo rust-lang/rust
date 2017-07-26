@@ -7,8 +7,9 @@ use rustc::hir;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir;
 use rustc::traits::Reveal;
+use rustc::ty;
 use rustc::ty::layout::Layout;
-use rustc::ty::{subst, self};
+use rustc::ty::subst::Substs;
 
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
@@ -116,7 +117,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // Mark locals as dead or alive.
             StorageLive(ref lvalue) | StorageDead(ref lvalue)=> {
                 let (frame, local) = match self.eval_lvalue(lvalue)? {
-                    Lvalue::Local{ frame, local } if self.stack.len() == frame+1 => (frame, local),
+                    Lvalue::Local{ frame, local } if self.cur_frame() == frame => (frame, local),
                     _ => return Err(EvalError::Unimplemented("Storage annotations must refer to locals of the topmost stack frame.".to_owned())) // FIXME maybe this should get its own error type
                 };
                 let old_val = match stmt.kind {
@@ -127,8 +128,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.deallocate_local(old_val)?;
             }
 
-            // Just a borrowck thing
-            EndRegion(..) => {}
+            // NOPs for now.
+            EndRegion(_ce) => {}
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
@@ -167,7 +168,7 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     fn global_item(
         &mut self,
         def_id: DefId,
-        substs: &'tcx subst::Substs<'tcx>,
+        substs: &'tcx Substs<'tcx>,
         span: Span,
         mutability: Mutability,
     ) {

@@ -1,6 +1,7 @@
 #![feature(
     i128_type,
     rustc_private,
+    conservative_impl_trait,
 )]
 
 // From rustc.
@@ -15,12 +16,16 @@ extern crate syntax;
 
 // From crates.io.
 extern crate byteorder;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 
 mod cast;
 mod const_eval;
 mod error;
 mod eval_context;
 mod lvalue;
+mod validation;
 mod memory;
 mod operator;
 mod step;

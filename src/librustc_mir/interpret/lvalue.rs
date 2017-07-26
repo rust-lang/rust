@@ -7,7 +7,7 @@ use syntax::ast::Mutability;
 use error::{EvalError, EvalResult};
 use eval_context::EvalContext;
 use memory::MemoryPointer;
-use value::{PrimVal, Value, Pointer};
+use value::{PrimVal, Pointer, Value};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Lvalue<'tcx> {
@@ -211,7 +211,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
-            Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local },
+            Local(local) => Lvalue::Local { frame: self.cur_frame(), local },
 
             Static(ref static_) => {
                 let instance = ty::Instance::mono(self.tcx, static_.def_id);
@@ -349,7 +349,33 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Lvalue::Ptr { ptr, extra, aligned: aligned && !packed })
     }
 
-    fn eval_lvalue_projection(
+    pub(super) fn val_to_lvalue(&mut self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
+        Ok(match self.tcx.struct_tail(ty).sty {
+            ty::TyDynamic(..) => {
+                let (ptr, vtable) = val.into_ptr_vtable_pair(&mut self.memory)?;
+                Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable), aligned: true }
+            },
+            ty::TyStr | ty::TySlice(_) => {
+                let (ptr, len) = val.into_slice(&mut self.memory)?;
+                Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len), aligned: true }
+            },
+            _ => Lvalue::Ptr { ptr: val.into_ptr(&mut self.memory)?, extra: LvalueExtra::None, aligned: true },
+        })
+    }
+
+    pub(super) fn lvalue_index(&mut self, base: Lvalue<'tcx>, outer_ty: Ty<'tcx>, n: u64) -> EvalResult<'tcx, Lvalue<'tcx>> {
+        // Taking the outer type here may seem odd; it's needed because for array types, the outer type gives away the length.
+        let base = self.force_allocation(base)?;
+        let (base_ptr, _, aligned) = base.to_ptr_extra_aligned();
+
+        let (elem_ty, len) = base.elem_ty_and_len(outer_ty);
+        let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
+        assert!(n < len, "Tried to access element {} of array/slice with length {}", n, len);
+        let ptr = base_ptr.offset(n * elem_size, self.memory.layout)?;
+        Ok(Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned })
+    }
+
+    pub(super) fn eval_lvalue_projection(
         &mut self,
         base: Lvalue<'tcx>,
         base_ty: Ty<'tcx>,
@@ -388,32 +414,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 trace!("deref to {} on {:?}", pointee_type, val);
 
-                match self.tcx.struct_tail(pointee_type).sty {
-                    ty::TyDynamic(..) => {
-                        let (ptr, vtable) = val.into_ptr_vtable_pair(&mut self.memory)?;
-                        (ptr, LvalueExtra::Vtable(vtable), true)
-                    },
-                    ty::TyStr | ty::TySlice(_) => {
-                        let (ptr, len) = val.into_slice(&mut self.memory)?;
-                        (ptr, LvalueExtra::Length(len), true)
-                    },
-                    _ => (val.into_ptr(&mut self.memory)?, LvalueExtra::None, true),
-                }
+                return self.val_to_lvalue(val, pointee_type);
             }
 
             Index(ref operand) => {
                 // FIXME(solson)
-                let base = self.force_allocation(base)?;
-                let (base_ptr, _, aligned) = base.to_ptr_extra_aligned();
-
-                let (elem_ty, len) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
                 let n_ptr = self.eval_operand(operand)?;
                 let usize = self.tcx.types.usize;
                 let n = self.value_to_primval(n_ptr, usize)?.to_u64()?;
-                assert!(n < len, "Tried to access element {} of array/slice with length {}", n, len);
-                let ptr = base_ptr.offset(n * elem_size, &self)?;
-                (ptr, LvalueExtra::None, aligned)
+                return self.lvalue_index(base, base_ty, n);
             }
 
             ConstantIndex { offset, min_length, from_end } => {
