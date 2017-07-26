@@ -37,8 +37,6 @@ pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
     /// The virtual memory system.
     pub memory: Memory<'a, 'tcx, M>,
 
-    #[allow(dead_code)]
-    // FIXME(@RalfJung): validation branch
     /// Lvalues that were suspended by the validation subsystem, and will be recovered later
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 

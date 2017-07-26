@@ -202,6 +202,7 @@ fn main() {
 
     // for auxilary builds in unit tests
     args.push("-Zalways-encode-mir".to_owned());
+    args.push("-Zmir-emit-validate".to_owned());
 
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls(RustcDefaultCalls), None, None);
 }
