@@ -1498,6 +1498,23 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         early_error(error_format, "Value for codegen units must be a positive nonzero integer");
     }
 
+    // It's possible that we have `codegen_units > 1` but only one item in
+    // `trans.modules`.  We could theoretically proceed and do LTO in that
+    // case, but it would be confusing to have the validity of
+    // `-Z lto -C codegen-units=2` depend on details of the crate being
+    // compiled, so we complain regardless.
+    if cg.lto && cg.codegen_units > 1 {
+        // This case is impossible to handle because LTO expects to be able
+        // to combine the entire crate and all its dependencies into a
+        // single compilation unit, but each codegen unit is in a separate
+        // LLVM context, so they can't easily be combined.
+        early_error(error_format, "can't perform LTO when using multiple codegen units");
+    }
+
+    if cg.lto && debugging_opts.incremental.is_some() {
+        early_error(error_format, "can't perform LTO when compiling incrementally");
+    }
+
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::TargetCPUs);
