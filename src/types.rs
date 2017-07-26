@@ -44,12 +44,11 @@ pub fn rewrite_path(
 ) -> Option<String> {
     let skip_count = qself.map_or(0, |x| x.position);
 
-    let mut result =
-        if path.is_global() && qself.is_none() && path_context != PathContext::Import {
-            "::".to_owned()
-        } else {
-            String::new()
-        };
+    let mut result = if path.is_global() && qself.is_none() && path_context != PathContext::Import {
+        "::".to_owned()
+    } else {
+        String::new()
+    };
 
     let mut span_lo = path.span.lo;
 

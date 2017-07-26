@@ -2734,9 +2734,7 @@ fn format_generics(
     let shape = Shape::legacy(context.budget(used_width + offset.width()), offset);
     let mut result = try_opt!(rewrite_generics(context, generics, shape, span));
 
-    let same_line_brace = if !generics.where_clause.predicates.is_empty() ||
-        result.contains('\n')
-    {
+    let same_line_brace = if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
         let budget = context
             .config
             .max_width()

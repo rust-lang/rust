@@ -334,8 +334,7 @@ pub fn format_expr(
             shape,
         ),
         ast::ExprKind::Catch(ref block) => {
-            if let rewrite @ Some(_) =
-                rewrite_single_line_block(context, "do catch ", block, shape)
+            if let rewrite @ Some(_) = rewrite_single_line_block(context, "do catch ", block, shape)
             {
                 return rewrite;
             }
@@ -826,8 +825,7 @@ fn rewrite_empty_block(
     block: &ast::Block,
     shape: Shape,
 ) -> Option<String> {
-    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) &&
-        shape.width >= 2
+    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) && shape.width >= 2
     {
         return Some("{}".to_owned());
     }

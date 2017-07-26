@@ -12,8 +12,7 @@ fn main() {
                 foo
             }
             if ai_timer.elapsed_time().as_microseconds() > ai_time.as_microseconds() {
-                if ball.position().y + ball_radius >
-                    right_paddle.position().y + paddle_size.y / 2.
+                if ball.position().y + ball_radius > right_paddle.position().y + paddle_size.y / 2.
                 {
                     foo
                 }
