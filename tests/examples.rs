@@ -100,6 +100,7 @@ macro_rules! test {
 test!(addition, "tests/cases/addition");
 test!(addition_path, "tests/cases/addition_path");
 test!(addition_use, "tests/cases/addition_use");
+test!(bounds, "tests/cases/bounds");
 test!(enums, "tests/cases/enums");
 test!(func, "tests/cases/func");
 test!(infer, "tests/cases/infer");

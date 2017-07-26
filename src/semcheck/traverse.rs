@@ -328,8 +328,6 @@ fn diff_adts(changes: &mut ChangeSet,
     for items in variants.values() {
         match *items {
             (Some(old), Some(new)) => {
-                id_mapping.add_subitem(old_def_id, old.did, new.did);
-
                 for field in &old.fields {
                     fields.entry(field.name).or_insert((None, None)).0 = Some(field);
                 }
@@ -650,12 +648,6 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
 
         let cause = ObligationCause::dummy();
-        let mut fulfill_cx = FulfillmentContext::new();
-
-        for predicate in new_param_env.caller_bounds.iter() {
-            let obligation = Obligation::new(cause.clone(), old_param_env, *predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
 
         let error = infcx
             .at(&cause, new_param_env)
@@ -684,10 +676,38 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                None);
         }
 
-        if let Err(error) = fulfill_cx.select_all_or_error(&infcx) {
-            println!("old param env: {:?}", old_param_env);
-            println!("new param env: {:?}", new_param_env);
-            println!("could not fulfill obligation: {:?}", error);
+        let mut fulfill_cx = FulfillmentContext::new();
+
+        for predicate in new_param_env.caller_bounds.iter() {
+            let obligation = Obligation::new(cause.clone(), old_param_env, *predicate);
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
+
+        if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
+            for err in &errors {
+                let err_type = BoundsTightened {
+                    error: err.obligation.predicate.lift_to_tcx(tcx).unwrap()
+                };
+
+                changes.add_change(err_type, old_def_id, None);
+            }
+        } else {
+            let mut fulfill_cx_rev = FulfillmentContext::new();
+
+            for predicate in old_param_env.caller_bounds.iter() {
+                let obligation = Obligation::new(cause.clone(), new_param_env, *predicate);
+                fulfill_cx_rev.register_predicate_obligation(&infcx, obligation);
+            }
+
+            if let Err(errors) = fulfill_cx_rev.select_all_or_error(&infcx) {
+                for err in &errors {
+                    let err_type = BoundsLoosened {
+                        error: err.obligation.predicate.lift_to_tcx(tcx).unwrap()
+                    };
+
+                    changes.add_change(err_type, old_def_id, None);
+                }
+            }
         }
     });
 }

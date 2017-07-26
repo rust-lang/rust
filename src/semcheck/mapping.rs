@@ -91,7 +91,7 @@ impl IdMapping {
 
     /// Add any other item's old and new `DefId`s, together with a parent entry.
     pub fn add_subitem(&mut self, parent: DefId, old: DefId, new: DefId) {
-        // NB: we rely on the assers in `add_internal_item` here.
+        // NB: we rely on the asserts in `add_internal_item` here.
         self.add_internal_item(old, new);
         self.child_mapping
             .entry(parent)
