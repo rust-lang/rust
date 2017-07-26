@@ -370,56 +370,37 @@ where
     LHS: Rewrite,
     RHS: Rewrite,
 {
-    // Get "full width" rhs and see if it fits on the current line. This
-    // usually works fairly well since it tends to place operands of
-    // operations with high precendence close together.
-    // Note that this is non-conservative, but its just to see if it's even
-    // worth trying to put everything on one line.
-    let rhs_shape = try_opt!(shape.sub_width(suffix.len()));
-    let rhs_orig_result = rhs.rewrite(context, rhs_shape);
+    let sep = if infix.ends_with(' ') { " " } else { "" };
+    let infix = infix.trim_right();
+    let lhs_overhead = shape.used_width() + prefix.len() + infix.len();
+    let lhs_shape = Shape {
+        width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
+        ..shape
+    };
+    let lhs_result = try_opt!(
+        lhs.rewrite(context, lhs_shape)
+            .map(|lhs_str| format!("{}{}{}", prefix, lhs_str, infix))
+    );
 
+    // Try to the both lhs and rhs on the same line.
+    let rhs_orig_result = shape
+        .offset_left(last_line_width(&lhs_result) + suffix.len() + sep.len())
+        .and_then(|rhs_shape| rhs.rewrite(context, rhs_shape));
     if let Some(ref rhs_result) = rhs_orig_result {
-        // This is needed in case of line break not caused by a
-        // shortage of space, but by end-of-line comments, for example.
-        if !rhs_result.contains('\n') {
-            let lhs_shape =
-                try_opt!(try_opt!(shape.offset_left(prefix.len())).sub_width(infix.len()));
-            let lhs_result = lhs.rewrite(context, lhs_shape);
-            if let Some(lhs_result) = lhs_result {
-                let mut result = format!("{}{}{}", prefix, lhs_result, infix);
-
-                let remaining_width = shape
-                    .width
-                    .checked_sub(last_line_width(&result) + suffix.len())
-                    .unwrap_or(0);
-
-                if rhs_result.len() <= remaining_width {
-                    result.push_str(&rhs_result);
-                    result.push_str(suffix);
-                    return Some(result);
-                }
-
-                // Try rewriting the rhs into the remaining space.
-                let rhs_shape = shape.offset_left(last_line_width(&result) + suffix.len());
-                if let Some(rhs_shape) = rhs_shape {
-                    if let Some(rhs_result) = rhs.rewrite(context, rhs_shape) {
-                        // FIXME this should always hold.
-                        if rhs_result.len() <= remaining_width {
-                            result.push_str(&rhs_result);
-                            result.push_str(suffix);
-                            return Some(result);
-                        }
-                    }
-                }
-            }
+        // If the rhs looks like block expression, we allow it to stay on the same line
+        // with the lhs even if it is multi-lined.
+        let allow_same_line = rhs_result
+            .lines()
+            .next()
+            .map(|first_line| first_line.ends_with('{'))
+            .unwrap_or(false);
+        if !rhs_result.contains('\n') || allow_same_line {
+            return Some(format!("{}{}{}{}", lhs_result, sep, rhs_result, suffix));
         }
     }
 
     // We have to use multiple lines.
-
     // Re-evaluate the rhs because we have more space now:
-    let sep = if infix.ends_with(' ') { " " } else { "" };
-    let infix = infix.trim_right();
     let rhs_shape = match context.config.control_style() {
         Style::Legacy => {
             try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
@@ -434,26 +415,6 @@ where
         }
     };
     let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
-    let lhs_overhead = shape.used_width() + prefix.len() + infix.len();
-    let lhs_shape = Shape {
-        width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
-        ..shape
-    };
-    let lhs_result = try_opt!(
-        lhs.rewrite(context, lhs_shape)
-            .map(|lhs_str| format!("{}{}{}", prefix, lhs_str, infix))
-    );
-    if let Some(ref rhs_str) = rhs_orig_result {
-        if rhs_str.lines().count() <= rhs_result.lines().count() &&
-            rhs_str
-                .lines()
-                .next()
-                .map_or(false, |first_line| first_line.ends_with('{')) &&
-            last_line_width(&lhs_result) + sep.len() + first_line_width(rhs_str) <= shape.width
-        {
-            return Some(format!("{}{}{}{}", lhs_result, sep, rhs_str, suffix));
-        }
-    }
     Some(format!(
         "{}\n{}{}{}",
         lhs_result,
