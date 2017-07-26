@@ -23,7 +23,6 @@
 //!     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
 //!     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-use super::OngoingCrateTranslation;
 use super::ModuleLlvm;
 use super::ModuleSource;
 use super::ModuleTranslation;
@@ -33,6 +32,7 @@ use assert_module_sources;
 use back::link;
 use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
+use back::write::OngoingCrateTranslation;
 use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use metadata;

@@ -10,23 +10,25 @@
 
 use back::lto;
 use back::link::{self, get_linker, remove};
+use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
+use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
                              AllPasses, Sanitizer};
 use rustc::session::Session;
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
-use {CrateTranslation, OngoingCrateTranslation, ModuleSource, ModuleTranslation,
-     CompiledModule, ModuleKind};
+use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr};
-use rustc::util::fs::link_or_copy;
+use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
 use errors::emitter::{Emitter};
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
+use syntax_pos::symbol::Symbol;
 use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
@@ -816,7 +818,7 @@ pub fn run_passes(sess: &Session,
     }
 
     loop {
-        shared_emitter_main.check(sess);
+        shared_emitter_main.check(sess, false);
 
         match trans_worker_receive.recv() {
             Err(_) => {
@@ -837,7 +839,7 @@ pub fn run_passes(sess: &Session,
     let compiled_modules = coordinator_thread.join().unwrap();
 
     // Just in case, check this on the way out.
-    shared_emitter_main.check(sess);
+    shared_emitter_main.check(sess, false);
     sess.diagnostic().abort_if_errors();
 
     // If in incr. comp. mode, preserve the `.o` files for potential re-use
@@ -1516,9 +1518,21 @@ impl Emitter for SharedEmitter {
 }
 
 impl SharedEmitterMain {
-    pub fn check(&self, sess: &Session) {
+    pub fn check(&self, sess: &Session, blocking: bool) {
         loop {
-            match self.receiver.try_recv() {
+            let message = if blocking {
+                match self.receiver.recv() {
+                    Ok(message) => Ok(message),
+                    Err(_) => Err(()),
+                }
+            } else {
+                match self.receiver.try_recv() {
+                    Ok(message) => Ok(message),
+                    Err(_) => Err(()),
+                }
+            };
+
+            match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let handler = sess.diagnostic();
                     match diag.code {
@@ -1553,5 +1567,64 @@ impl SharedEmitterMain {
             }
 
         }
+    }
+}
+
+pub struct OngoingCrateTranslation {
+    pub crate_name: Symbol,
+    pub link: LinkMeta,
+    pub metadata: EncodedMetadata,
+    pub exported_symbols: Arc<ExportedSymbols>,
+    pub no_builtins: bool,
+    pub windows_subsystem: Option<String>,
+    pub linker_info: LinkerInfo,
+    pub no_integrated_as: bool,
+
+    // This will be replaced by a Future.
+    pub result: ::std::cell::RefCell<Option<CompiledModules>>,
+}
+
+impl OngoingCrateTranslation {
+    pub fn join(self,
+                sess: &Session,
+                outputs: &OutputFilenames)
+                -> CrateTranslation {
+
+        let result = self.result.borrow_mut().take().unwrap();
+
+        let trans = CrateTranslation {
+            crate_name: self.crate_name,
+            link: self.link,
+            metadata: self.metadata,
+            exported_symbols: self.exported_symbols,
+            no_builtins: self.no_builtins,
+            windows_subsystem: self.windows_subsystem,
+            linker_info: self.linker_info,
+
+            modules: result.modules,
+            metadata_module: result.metadata_module,
+            allocator_module: result.allocator_module,
+        };
+
+        if self.no_integrated_as {
+            run_assembler(sess, outputs);
+
+            // HACK the linker expects the object file to be named foo.0.o but
+            // `run_assembler` produces an object named just foo.o. Rename it if we
+            // are going to build an executable
+            if sess.opts.output_types.contains_key(&OutputType::Exe) {
+                let f = outputs.path(OutputType::Object);
+                rename_or_copy_remove(&f,
+                         f.with_file_name(format!("{}.0.o",
+                                                  f.file_stem().unwrap().to_string_lossy()))).unwrap();
+            }
+
+            // Remove assembly source, unless --save-temps was specified
+            if !sess.opts.cg.save_temps {
+                fs::remove_file(&outputs.temp_path(OutputType::Assembly, None)).unwrap();
+            }
+        }
+
+        trans
     }
 }

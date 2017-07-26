@@ -35,11 +35,7 @@
 #![feature(conservative_impl_trait)]
 
 use rustc::dep_graph::WorkProduct;
-use rustc::session::Session;
-use rustc::session::config::{OutputType, OutputFilenames};
-use rustc::util::fs::rename_or_copy_remove;
 use syntax_pos::symbol::Symbol;
-use std::fs;
 use std::sync::Arc;
 
 extern crate flate2;
@@ -227,65 +223,6 @@ pub struct CrateTranslation {
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo
-}
-
-pub struct OngoingCrateTranslation {
-    pub crate_name: Symbol,
-    pub link: rustc::middle::cstore::LinkMeta,
-    pub metadata: rustc::middle::cstore::EncodedMetadata,
-    pub exported_symbols: Arc<back::symbol_export::ExportedSymbols>,
-    pub no_builtins: bool,
-    pub windows_subsystem: Option<String>,
-    pub linker_info: back::linker::LinkerInfo,
-    pub no_integrated_as: bool,
-
-    // This will be replaced by a Future.
-    pub result: ::std::cell::RefCell<Option<back::write::CompiledModules>>,
-}
-
-impl OngoingCrateTranslation {
-    pub fn join(self,
-                sess: &Session,
-                outputs: &OutputFilenames)
-                -> CrateTranslation {
-
-        let result = self.result.borrow_mut().take().unwrap();
-
-        let trans = CrateTranslation {
-            crate_name: self.crate_name,
-            link: self.link,
-            metadata: self.metadata,
-            exported_symbols: self.exported_symbols,
-            no_builtins: self.no_builtins,
-            windows_subsystem: self.windows_subsystem,
-            linker_info: self.linker_info,
-
-            modules: result.modules,
-            metadata_module: result.metadata_module,
-            allocator_module: result.allocator_module,
-        };
-
-        if self.no_integrated_as {
-            back::write::run_assembler(sess, outputs);
-
-            // HACK the linker expects the object file to be named foo.0.o but
-            // `run_assembler` produces an object named just foo.o. Rename it if we
-            // are going to build an executable
-            if sess.opts.output_types.contains_key(&OutputType::Exe) {
-                let f = outputs.path(OutputType::Object);
-                rename_or_copy_remove(&f,
-                         f.with_file_name(format!("{}.0.o",
-                                                  f.file_stem().unwrap().to_string_lossy()))).unwrap();
-            }
-
-            // Remove assembly source, unless --save-temps was specified
-            if !sess.opts.cg.save_temps {
-                fs::remove_file(&outputs.temp_path(OutputType::Assembly, None)).unwrap();
-            }
-        }
-
-        trans
-    }
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

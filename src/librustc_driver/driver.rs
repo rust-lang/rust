@@ -1053,7 +1053,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: &IncrementalHashesMap,
                                            output_filenames: &OutputFilenames)
-                                           -> trans::OngoingCrateTranslation {
+                                           -> write::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
@@ -1071,7 +1071,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
-                               trans: trans::OngoingCrateTranslation,
+                               trans: write::OngoingCrateTranslation,
                                outputs: &OutputFilenames)
                                -> (CompileResult, trans::CrateTranslation) {
     let trans = trans.join(sess, outputs);
