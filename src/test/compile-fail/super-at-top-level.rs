@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::f; //~ ERROR unresolved import `super::f` [E0432]
+use super::f; //~ ERROR unresolved import `super` [E0432]
               //~^ There are too many initial `super`s.
 
 fn main() {
