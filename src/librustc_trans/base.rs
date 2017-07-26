@@ -962,7 +962,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        !tcx.sess.opts.output_types.should_trans() {
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
-        let ongoing_translation = write::run_passes(
+        let ongoing_translation = write::start_async_translation(
             tcx.sess,
             output_filenames,
             tcx.crate_name(LOCAL_CRATE),
@@ -1012,7 +1012,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          (output_filenames.outputs.contains_key(&OutputType::Object) ||
           output_filenames.outputs.contains_key(&OutputType::Exe)));
 
-    let ongoing_translation = write::run_passes(
+    let ongoing_translation = write::start_async_translation(
         tcx.sess,
         output_filenames,
         tcx.crate_name(LOCAL_CRATE),

@@ -341,7 +341,7 @@ pub struct CodegenContext {
     // compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
-    pub coordinator_send: Sender<Message>,
+    coordinator_send: Sender<Message>,
 }
 
 impl CodegenContext {
@@ -660,17 +660,17 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
     sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
-pub fn run_passes(sess: &Session,
-                  crate_output: &OutputFilenames,
-                  crate_name: Symbol,
-                  link: LinkMeta,
-                  metadata: EncodedMetadata,
-                  exported_symbols: Arc<ExportedSymbols>,
-                  no_builtins: bool,
-                  windows_subsystem: Option<String>,
-                  linker_info: LinkerInfo,
-                  no_integrated_as: bool)
-                  -> OngoingCrateTranslation {
+pub fn start_async_translation(sess: &Session,
+                               crate_output: &OutputFilenames,
+                               crate_name: Symbol,
+                               link: LinkMeta,
+                               metadata: EncodedMetadata,
+                               exported_symbols: Arc<ExportedSymbols>,
+                               no_builtins: bool,
+                               windows_subsystem: Option<String>,
+                               linker_info: LinkerInfo,
+                               no_integrated_as: bool)
+                               -> OngoingCrateTranslation {
     let output_types_override = if no_integrated_as {
         OutputTypes::new(&[(OutputType::Assembly, None)])
     } else {
@@ -1061,7 +1061,7 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
 }
 
 #[derive(Debug)]
-pub enum Message {
+enum Message {
     Token(io::Result<Acquired>),
     Done { result: Result<CompiledModule, ()> },
     WorkItem(WorkItem),
@@ -1069,8 +1069,7 @@ pub enum Message {
     TranslationDone,
 }
 
-
-pub struct Diagnostic {
+struct Diagnostic {
     msg: String,
     code: Option<String>,
     lvl: Level,
@@ -1519,14 +1518,14 @@ impl SharedEmitterMain {
 }
 
 pub struct OngoingCrateTranslation {
-    pub crate_name: Symbol,
-    pub link: LinkMeta,
-    pub metadata: EncodedMetadata,
-    pub exported_symbols: Arc<ExportedSymbols>,
-    pub no_builtins: bool,
-    pub windows_subsystem: Option<String>,
-    pub linker_info: LinkerInfo,
-    pub no_integrated_as: bool,
+    crate_name: Symbol,
+    link: LinkMeta,
+    metadata: EncodedMetadata,
+    exported_symbols: Arc<ExportedSymbols>,
+    no_builtins: bool,
+    windows_subsystem: Option<String>,
+    linker_info: LinkerInfo,
+    no_integrated_as: bool,
 
     output_filenames: OutputFilenames,
     regular_module_config: ModuleConfig,
