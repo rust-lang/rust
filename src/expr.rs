@@ -1211,15 +1211,10 @@ impl<'a> ControlFlow<'a> {
 
         let pat_expr_string = match self.cond {
             Some(cond) => {
-                let mut cond_shape = match context.config.control_style() {
+                let cond_shape = match context.config.control_style() {
                     Style::Legacy => try_opt!(constr_shape.shrink_left(offset)),
                     Style::Rfc => try_opt!(constr_shape.offset_left(offset)),
                 };
-                if context.config.control_brace_style() != ControlBraceStyle::AlwaysNextLine {
-                    // 2 = " {".len()
-                    cond_shape = try_opt!(cond_shape.sub_width(2));
-                }
-
                 try_opt!(rewrite_pat_expr(
                     context,
                     self.pat,
@@ -1233,8 +1228,20 @@ impl<'a> ControlFlow<'a> {
             None => String::new(),
         };
 
+        let brace_overhead =
+            if context.config.control_brace_style() != ControlBraceStyle::AlwaysNextLine {
+                // 2 = ` {`
+                2
+            } else {
+                0
+            };
+        let one_line_budget = context
+            .config
+            .max_width()
+            .checked_sub(constr_shape.used_width() + offset + brace_overhead)
+            .unwrap_or(0);
         let force_newline_brace = context.config.control_style() == Style::Rfc &&
-            pat_expr_string.contains('\n') &&
+            (pat_expr_string.contains('\n') || pat_expr_string.len() > one_line_budget) &&
             !last_line_extendable(&pat_expr_string);
 
         // Try to format if-else on single line.
