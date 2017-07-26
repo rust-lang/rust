@@ -1156,12 +1156,23 @@ impl<'a> ControlFlow<'a> {
         shape: Shape,
         alt_block_sep: &str,
     ) -> Option<(String, usize)> {
+        // Do not take the rhs overhead from the upper expressions into account
+        // when rewriting pattern.
+        let new_width = context
+            .config
+            .max_width()
+            .checked_sub(shape.used_width())
+            .unwrap_or(0);
+        let fresh_shape = Shape {
+            width: new_width,
+            ..shape
+        };
         let constr_shape = if self.nested_if {
             // We are part of an if-elseif-else chain. Our constraints are tightened.
             // 7 = "} else " .len()
-            try_opt!(shape.offset_left(7))
+            try_opt!(fresh_shape.offset_left(7))
         } else {
-            shape
+            fresh_shape
         };
 
         let label_string = rewrite_label(self.label);
