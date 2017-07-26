@@ -656,6 +656,11 @@ pub struct CompiledModules {
     pub allocator_module: Option<CompiledModule>,
 }
 
+fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
+    sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
+    sess.opts.output_types.contains_key(&OutputType::Exe)
+}
+
 pub fn run_passes(sess: &Session,
                   trans: &OngoingCrateTranslation,
                   modules: Vec<ModuleTranslation>,
@@ -723,12 +728,7 @@ pub fn run_passes(sess: &Session,
     // Emit bitcode files for the crate if we're emitting an rlib.
     // Whenever an rlib is created, the bitcode is inserted into the
     // archive in order to allow LTO against it.
-    let needs_crate_bitcode =
-            sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
-            sess.opts.output_types.contains_key(&OutputType::Exe);
-    let needs_crate_object =
-            sess.opts.output_types.contains_key(&OutputType::Exe);
-    if needs_crate_bitcode {
+    if need_crate_bitcode_for_rlib(sess) {
         modules_config.emit_bc = true;
     }
 
@@ -842,7 +842,26 @@ pub fn run_passes(sess: &Session,
     shared_emitter_main.check(sess, false);
     sess.diagnostic().abort_if_errors();
 
-    // If in incr. comp. mode, preserve the `.o` files for potential re-use
+    copy_module_artifacts_into_incr_comp_cache(sess, &compiled_modules, crate_output);
+
+    produce_final_output_artifacts(sess, &compiled_modules, crate_output);
+
+    // FIXME: time_llvm_passes support - does this use a global context or
+    // something?
+    if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
+        unsafe { llvm::LLVMRustPrintPassTimings(); }
+    }
+
+    *trans.result.borrow_mut() = Some(compiled_modules);
+}
+
+fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
+                                              compiled_modules: &CompiledModules,
+                                              crate_output: &OutputFilenames) {
+    if sess.opts.incremental.is_none() {
+        return;
+    }
+
     for module in compiled_modules.modules.iter() {
         let mut files = vec![];
 
@@ -858,86 +877,88 @@ pub fn run_passes(sess: &Session,
 
         save_trans_partition(sess, &module.name, module.symbol_name_hash, &files);
     }
+}
 
+fn produce_final_output_artifacts(sess: &Session,
+                                  compiled_modules: &CompiledModules,
+                                  crate_output: &OutputFilenames) {
     let mut user_wants_bitcode = false;
     let mut user_wants_objects = false;
-    {
-        // Produce final compile outputs.
-        let copy_gracefully = |from: &Path, to: &Path| {
-            if let Err(e) = fs::copy(from, to) {
-                sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
-            }
-        };
 
-        let copy_if_one_unit = |output_type: OutputType,
-                                keep_numbered: bool| {
-            if compiled_modules.modules.len() == 1 {
-                // 1) Only one codegen unit.  In this case it's no difficulty
-                //    to copy `foo.0.x` to `foo.x`.
-                let module_name = Some(&compiled_modules.modules[0].name[..]);
-                let path = crate_output.temp_path(output_type, module_name);
-                copy_gracefully(&path,
-                                &crate_output.path(output_type));
-                if !sess.opts.cg.save_temps && !keep_numbered {
-                    // The user just wants `foo.x`, not `foo.#module-name#.x`.
-                    remove(sess, &path);
-                }
+    // Produce final compile outputs.
+    let copy_gracefully = |from: &Path, to: &Path| {
+        if let Err(e) = fs::copy(from, to) {
+            sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
+        }
+    };
+
+    let copy_if_one_unit = |output_type: OutputType,
+                            keep_numbered: bool| {
+        if compiled_modules.modules.len() == 1 {
+            // 1) Only one codegen unit.  In this case it's no difficulty
+            //    to copy `foo.0.x` to `foo.x`.
+            let module_name = Some(&compiled_modules.modules[0].name[..]);
+            let path = crate_output.temp_path(output_type, module_name);
+            copy_gracefully(&path,
+                            &crate_output.path(output_type));
+            if !sess.opts.cg.save_temps && !keep_numbered {
+                // The user just wants `foo.x`, not `foo.#module-name#.x`.
+                remove(sess, &path);
+            }
+        } else {
+            let ext = crate_output.temp_path(output_type, None)
+                                  .extension()
+                                  .unwrap()
+                                  .to_str()
+                                  .unwrap()
+                                  .to_owned();
+
+            if crate_output.outputs.contains_key(&output_type) {
+                // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
+                //    no good solution for this case, so warn the user.
+                sess.warn(&format!("ignoring emit path because multiple .{} files \
+                                    were produced", ext));
+            } else if crate_output.single_output_file.is_some() {
+                // 3) Multiple codegen units, with `-o some_name`.  We have
+                //    no good solution for this case, so warn the user.
+                sess.warn(&format!("ignoring -o because multiple .{} files \
+                                    were produced", ext));
             } else {
-                let ext = crate_output.temp_path(output_type, None)
-                                      .extension()
-                                      .unwrap()
-                                      .to_str()
-                                      .unwrap()
-                                      .to_owned();
-
-                if crate_output.outputs.contains_key(&output_type) {
-                    // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
-                    //    no good solution for this case, so warn the user.
-                    sess.warn(&format!("ignoring emit path because multiple .{} files \
-                                        were produced", ext));
-                } else if crate_output.single_output_file.is_some() {
-                    // 3) Multiple codegen units, with `-o some_name`.  We have
-                    //    no good solution for this case, so warn the user.
-                    sess.warn(&format!("ignoring -o because multiple .{} files \
-                                        were produced", ext));
-                } else {
-                    // 4) Multiple codegen units, but no explicit name.  We
-                    //    just leave the `foo.0.x` files in place.
-                    // (We don't have to do any work in this case.)
-                }
-            }
-        };
-
-        // Flag to indicate whether the user explicitly requested bitcode.
-        // Otherwise, we produced it only as a temporary output, and will need
-        // to get rid of it.
-        for output_type in output_types.keys() {
-            match *output_type {
-                OutputType::Bitcode => {
-                    user_wants_bitcode = true;
-                    // Copy to .bc, but always keep the .0.bc.  There is a later
-                    // check to figure out if we should delete .0.bc files, or keep
-                    // them for making an rlib.
-                    copy_if_one_unit(OutputType::Bitcode, true);
-                }
-                OutputType::LlvmAssembly => {
-                    copy_if_one_unit(OutputType::LlvmAssembly, false);
-                }
-                OutputType::Assembly => {
-                    copy_if_one_unit(OutputType::Assembly, false);
-                }
-                OutputType::Object => {
-                    user_wants_objects = true;
-                    copy_if_one_unit(OutputType::Object, true);
-                }
-                OutputType::Mir |
-                OutputType::Metadata |
-                OutputType::Exe |
-                OutputType::DepInfo => {}
+                // 4) Multiple codegen units, but no explicit name.  We
+                //    just leave the `foo.0.x` files in place.
+                // (We don't have to do any work in this case.)
             }
         }
+    };
+
+    // Flag to indicate whether the user explicitly requested bitcode.
+    // Otherwise, we produced it only as a temporary output, and will need
+    // to get rid of it.
+    for output_type in crate_output.outputs.keys() {
+        match *output_type {
+            OutputType::Bitcode => {
+                user_wants_bitcode = true;
+                // Copy to .bc, but always keep the .0.bc.  There is a later
+                // check to figure out if we should delete .0.bc files, or keep
+                // them for making an rlib.
+                copy_if_one_unit(OutputType::Bitcode, true);
+            }
+            OutputType::LlvmAssembly => {
+                copy_if_one_unit(OutputType::LlvmAssembly, false);
+            }
+            OutputType::Assembly => {
+                copy_if_one_unit(OutputType::Assembly, false);
+            }
+            OutputType::Object => {
+                user_wants_objects = true;
+                copy_if_one_unit(OutputType::Object, true);
+            }
+            OutputType::Mir |
+            OutputType::Metadata |
+            OutputType::Exe |
+            OutputType::DepInfo => {}
+        }
     }
-    let user_wants_bitcode = user_wants_bitcode;
 
     // Clean up unwanted temporary files.
 
@@ -969,6 +990,9 @@ pub fn run_passes(sess: &Session,
         // If you change how this works, also update back::link::link_rlib,
         // where .#module-name#.bc files are (maybe) deleted after making an
         // rlib.
+        let needs_crate_bitcode = need_crate_bitcode_for_rlib(sess);
+        let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
+
         let keep_numbered_bitcode = needs_crate_bitcode ||
                 (user_wants_bitcode && sess.opts.cg.codegen_units > 1);
 
@@ -1009,14 +1033,6 @@ pub fn run_passes(sess: &Session,
     //  - #crate#.crate.metadata.o
     //  - #crate#.bc
     // These are used in linking steps and will be cleaned up afterward.
-
-    // FIXME: time_llvm_passes support - does this use a global context or
-    // something?
-    if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
-        unsafe { llvm::LLVMRustPrintPassTimings(); }
-    }
-
-    *trans.result.borrow_mut() = Some(compiled_modules);
 }
 
 pub fn dump_incremental_data(trans: &CrateTranslation) {
