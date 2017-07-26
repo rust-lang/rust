@@ -12,9 +12,9 @@ fn main() {
         // Just comments
     }
 
-    'a: while loooooooooooooooooooooooooooooooooong_variable_name + another_value >
-        some_other_value
-    {}
+    'a: while loooooooooooooooooooooooooooooooooong_variable_name + another_value > some_other_value
+    {
+    }
 
     while aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {
     }
@@ -22,8 +22,7 @@ fn main() {
     while aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {
     }
 
-    'b: for xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx in
-        some_iter(arg1, arg2)
+    'b: for xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx in some_iter(arg1, arg2)
     {
         // do smth
     }

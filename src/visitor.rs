@@ -328,8 +328,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Trait(..) => {
                 self.format_missing_with_indent(item.span.lo);
-                if let Some(trait_str) =
-                    format_trait(&self.get_context(), item, self.block_indent)
+                if let Some(trait_str) = format_trait(&self.get_context(), item, self.block_indent)
                 {
                     self.buffer.push_str(&trait_str);
                     self.last_pos = source!(self, item.span).hi;

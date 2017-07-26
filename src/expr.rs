@@ -334,8 +334,7 @@ pub fn format_expr(
             shape,
         ),
         ast::ExprKind::Catch(ref block) => {
-            if let rewrite @ Some(_) =
-                rewrite_single_line_block(context, "do catch ", block, shape)
+            if let rewrite @ Some(_) = rewrite_single_line_block(context, "do catch ", block, shape)
             {
                 return rewrite;
             }
@@ -371,56 +370,37 @@ where
     LHS: Rewrite,
     RHS: Rewrite,
 {
-    // Get "full width" rhs and see if it fits on the current line. This
-    // usually works fairly well since it tends to place operands of
-    // operations with high precendence close together.
-    // Note that this is non-conservative, but its just to see if it's even
-    // worth trying to put everything on one line.
-    let rhs_shape = try_opt!(shape.sub_width(suffix.len()));
-    let rhs_orig_result = rhs.rewrite(context, rhs_shape);
+    let sep = if infix.ends_with(' ') { " " } else { "" };
+    let infix = infix.trim_right();
+    let lhs_overhead = shape.used_width() + prefix.len() + infix.len();
+    let lhs_shape = Shape {
+        width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
+        ..shape
+    };
+    let lhs_result = try_opt!(
+        lhs.rewrite(context, lhs_shape)
+            .map(|lhs_str| format!("{}{}{}", prefix, lhs_str, infix))
+    );
 
+    // Try to the both lhs and rhs on the same line.
+    let rhs_orig_result = shape
+        .offset_left(last_line_width(&lhs_result) + suffix.len() + sep.len())
+        .and_then(|rhs_shape| rhs.rewrite(context, rhs_shape));
     if let Some(ref rhs_result) = rhs_orig_result {
-        // This is needed in case of line break not caused by a
-        // shortage of space, but by end-of-line comments, for example.
-        if !rhs_result.contains('\n') {
-            let lhs_shape =
-                try_opt!(try_opt!(shape.offset_left(prefix.len())).sub_width(infix.len()));
-            let lhs_result = lhs.rewrite(context, lhs_shape);
-            if let Some(lhs_result) = lhs_result {
-                let mut result = format!("{}{}{}", prefix, lhs_result, infix);
-
-                let remaining_width = shape
-                    .width
-                    .checked_sub(last_line_width(&result) + suffix.len())
-                    .unwrap_or(0);
-
-                if rhs_result.len() <= remaining_width {
-                    result.push_str(&rhs_result);
-                    result.push_str(suffix);
-                    return Some(result);
-                }
-
-                // Try rewriting the rhs into the remaining space.
-                let rhs_shape = shape.offset_left(last_line_width(&result) + suffix.len());
-                if let Some(rhs_shape) = rhs_shape {
-                    if let Some(rhs_result) = rhs.rewrite(context, rhs_shape) {
-                        // FIXME this should always hold.
-                        if rhs_result.len() <= remaining_width {
-                            result.push_str(&rhs_result);
-                            result.push_str(suffix);
-                            return Some(result);
-                        }
-                    }
-                }
-            }
+        // If the rhs looks like block expression, we allow it to stay on the same line
+        // with the lhs even if it is multi-lined.
+        let allow_same_line = rhs_result
+            .lines()
+            .next()
+            .map(|first_line| first_line.ends_with('{'))
+            .unwrap_or(false);
+        if !rhs_result.contains('\n') || allow_same_line {
+            return Some(format!("{}{}{}{}", lhs_result, sep, rhs_result, suffix));
         }
     }
 
     // We have to use multiple lines.
-
     // Re-evaluate the rhs because we have more space now:
-    let sep = if infix.ends_with(' ') { " " } else { "" };
-    let infix = infix.trim_right();
     let rhs_shape = match context.config.control_style() {
         Style::Legacy => {
             try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
@@ -435,26 +415,6 @@ where
         }
     };
     let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
-    let lhs_overhead = shape.used_width() + prefix.len() + infix.len();
-    let lhs_shape = Shape {
-        width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
-        ..shape
-    };
-    let lhs_result = try_opt!(
-        lhs.rewrite(context, lhs_shape)
-            .map(|lhs_str| format!("{}{}{}", prefix, lhs_str, infix))
-    );
-    if let Some(ref rhs_str) = rhs_orig_result {
-        if rhs_str.lines().count() <= rhs_result.lines().count() &&
-            rhs_str
-                .lines()
-                .next()
-                .map_or(false, |first_line| first_line.ends_with('{')) &&
-            last_line_width(&lhs_result) + sep.len() + first_line_width(rhs_str) <= shape.width
-        {
-            return Some(format!("{}{}{}{}", lhs_result, sep, rhs_str, suffix));
-        }
-    }
     Some(format!(
         "{}\n{}{}{}",
         lhs_result,
@@ -697,8 +657,8 @@ fn rewrite_closure(
         }
 
         // Figure out if the block is necessary.
-        let needs_block = block.rules != ast::BlockCheckMode::Default ||
-            block.stmts.len() > 1 || context.inside_macro ||
+        let needs_block = block.rules != ast::BlockCheckMode::Default || block.stmts.len() > 1 ||
+            context.inside_macro ||
             block_contains_comment(block, context.codemap) ||
             prefix.contains('\n');
 
@@ -826,8 +786,7 @@ fn rewrite_empty_block(
     block: &ast::Block,
     shape: Shape,
 ) -> Option<String> {
-    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) &&
-        shape.width >= 2
+    if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) && shape.width >= 2
     {
         return Some("{}".to_owned());
     }
@@ -1197,12 +1156,23 @@ impl<'a> ControlFlow<'a> {
         shape: Shape,
         alt_block_sep: &str,
     ) -> Option<(String, usize)> {
+        // Do not take the rhs overhead from the upper expressions into account
+        // when rewriting pattern.
+        let new_width = context
+            .config
+            .max_width()
+            .checked_sub(shape.used_width())
+            .unwrap_or(0);
+        let fresh_shape = Shape {
+            width: new_width,
+            ..shape
+        };
         let constr_shape = if self.nested_if {
             // We are part of an if-elseif-else chain. Our constraints are tightened.
             // 7 = "} else " .len()
-            try_opt!(shape.offset_left(7))
+            try_opt!(fresh_shape.offset_left(7))
         } else {
-            shape
+            fresh_shape
         };
 
         let label_string = rewrite_label(self.label);
@@ -1211,15 +1181,10 @@ impl<'a> ControlFlow<'a> {
 
         let pat_expr_string = match self.cond {
             Some(cond) => {
-                let mut cond_shape = match context.config.control_style() {
+                let cond_shape = match context.config.control_style() {
                     Style::Legacy => try_opt!(constr_shape.shrink_left(offset)),
                     Style::Rfc => try_opt!(constr_shape.offset_left(offset)),
                 };
-                if context.config.control_brace_style() != ControlBraceStyle::AlwaysNextLine {
-                    // 2 = " {".len()
-                    cond_shape = try_opt!(cond_shape.sub_width(2));
-                }
-
                 try_opt!(rewrite_pat_expr(
                     context,
                     self.pat,
@@ -1233,8 +1198,20 @@ impl<'a> ControlFlow<'a> {
             None => String::new(),
         };
 
+        let brace_overhead =
+            if context.config.control_brace_style() != ControlBraceStyle::AlwaysNextLine {
+                // 2 = ` {`
+                2
+            } else {
+                0
+            };
+        let one_line_budget = context
+            .config
+            .max_width()
+            .checked_sub(constr_shape.used_width() + offset + brace_overhead)
+            .unwrap_or(0);
         let force_newline_brace = context.config.control_style() == Style::Rfc &&
-            pat_expr_string.contains('\n') &&
+            (pat_expr_string.contains('\n') || pat_expr_string.len() > one_line_budget) &&
             !last_line_extendable(&pat_expr_string);
 
         // Try to format if-else on single line.
@@ -2304,10 +2281,10 @@ fn rewrite_last_closure(
         let body_shape = try_opt!(shape.offset_left(extra_offset));
         // When overflowing the closure which consists of a single control flow expression,
         // force to use block if its condition uses multi line.
-        if rewrite_cond(context, body, body_shape)
-            .map(|cond| cond.contains('\n'))
-            .unwrap_or(false)
-        {
+        let is_multi_lined_cond = rewrite_cond(context, body, body_shape)
+            .map(|cond| cond.contains('\n') || cond.len() > body_shape.width)
+            .unwrap_or(false);
+        if is_multi_lined_cond {
             return rewrite_closure_with_block(context, body_shape, &prefix, body);
         }
 

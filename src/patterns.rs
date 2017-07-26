@@ -291,17 +291,17 @@ fn rewrite_tuple_pat(
     }
 
     let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
-    let (pat_vec, span) =
-        if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2 {
-            let new_item_count = 1 + pat_vec.len() - wildcard_suffix_len;
-            let sp = pat_vec[new_item_count - 1].span();
-            let snippet = context.snippet(sp);
-            let lo = sp.lo + BytePos(snippet.find_uncommented("_").unwrap() as u32);
-            pat_vec[new_item_count - 1] = TuplePatField::Dotdot(mk_sp(lo, lo + BytePos(1)));
-            (&pat_vec[..new_item_count], mk_sp(span.lo, lo + BytePos(1)))
-        } else {
-            (&pat_vec[..], span)
-        };
+    let (pat_vec, span) = if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2
+    {
+        let new_item_count = 1 + pat_vec.len() - wildcard_suffix_len;
+        let sp = pat_vec[new_item_count - 1].span();
+        let snippet = context.snippet(sp);
+        let lo = sp.lo + BytePos(snippet.find_uncommented("_").unwrap() as u32);
+        pat_vec[new_item_count - 1] = TuplePatField::Dotdot(mk_sp(lo, lo + BytePos(1)));
+        (&pat_vec[..new_item_count], mk_sp(span.lo, lo + BytePos(1)))
+    } else {
+        (&pat_vec[..], span)
+    };
 
     // add comma if `(x,)`
     let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
