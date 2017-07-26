@@ -46,6 +46,7 @@ std::mem::swap::|\
 std::mem::uninitialized::|\
 std::ptr::read::|\
 std::panicking::try::do_call::|\
+std::sync::atomic::AtomicBool::get_mut$|\
 <std::vec::Vec<T>><[a-zA-Z0-9_]+>::into_boxed_slice$\
 )").unwrap();
             }
@@ -320,10 +321,8 @@ std::panicking::try::do_call::|\
                 Ok(())
             }
             TyAdt(adt, subst) => {
-                if Some(adt.did) == self.tcx.lang_items.unsafe_cell_type() /*&& query.mutbl == MutImmutable*/ {
+                if Some(adt.did) == self.tcx.lang_items.unsafe_cell_type() && query.mutbl == MutImmutable {
                     // No locks for shared unsafe cells.  Also no other validation, the only field is private anyway.
-                    // FIXME: For now we also don't acquire locks for mutable UnsafeCell, because this gets violated a lot
-                    // by unsafe code.
                     return Ok(());
                 }
 
