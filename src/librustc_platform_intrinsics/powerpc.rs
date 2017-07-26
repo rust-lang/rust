@@ -32,6 +32,11 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::I16x8,
             definition: Named("llvm.ppc.altivec.vmhraddshs")
         },
+        "_vec_cmpb" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.ppc.altivec.vcmpbfp")
+        },
         _ => return None,
     })
 }

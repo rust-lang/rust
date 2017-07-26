@@ -4,7 +4,8 @@
     "llvm_prefix": "llvm.ppc.altivec.",
     "number_info": {
         "unsigned": {},
-        "signed": {}
+        "signed": {},
+        "float": {}
     },
     "width_info": {
         "128": { "width": "" }
@@ -23,6 +24,13 @@
             "llvm": "vmhraddshs",
             "ret": "s16",
             "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "cmpb",
+            "width": [128],
+            "llvm": "vcmpbfp",
+            "ret": "s32",
+            "args": ["f32", "f32"]
         }
     ]
 }
