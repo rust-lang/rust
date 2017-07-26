@@ -34,7 +34,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(discriminant_value)]
 #![feature(specialization)]
-#![feature(manually_drop)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]

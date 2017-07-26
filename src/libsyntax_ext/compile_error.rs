@@ -12,7 +12,6 @@
 
 use syntax::ext::base::*;
 use syntax::ext::base;
-use syntax::feature_gate;
 use syntax_pos::Span;
 use syntax::tokenstream;
 
@@ -20,15 +19,6 @@ pub fn expand_compile_error<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[tokenstream::TokenTree])
                               -> Box<base::MacResult + 'cx> {
-    if !cx.ecfg.enable_compile_error() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       "compile_error",
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_COMPILE_ERROR);
-        return DummyResult::expr(sp);
-    }
-
     let var = match get_single_str_from_tts(cx, sp, tts, "compile_error!") {
         None => return DummyResult::expr(sp),
         Some(v) => v,

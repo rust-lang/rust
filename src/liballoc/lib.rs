@@ -79,11 +79,9 @@
 
 #![cfg_attr(test, allow(deprecated))] // rand
 #![cfg_attr(test, feature(placement_in))]
-#![cfg_attr(not(test), feature(char_escape_debug))]
 #![cfg_attr(not(test), feature(core_float))]
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![cfg_attr(not(test), feature(slice_rotate))]
-#![cfg_attr(not(test), feature(str_checked_slicing))]
 #![cfg_attr(test, feature(rand, test))]
 #![feature(allow_internal_unstable)]
 #![feature(box_patterns)]
@@ -102,7 +100,6 @@
 #![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(lang_items)]
-#![feature(manually_drop)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]
 #![feature(offset_to)]
@@ -117,7 +114,6 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(str_internals)]
-#![feature(str_mut_extras)]
 #![feature(trusted_len)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
