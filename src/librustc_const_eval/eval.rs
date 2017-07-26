@@ -94,11 +94,13 @@ pub struct ConstContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
-    pub fn with_tables(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &'a ty::TypeckTables<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               tables: &'a ty::TypeckTables<'tcx>,
+               substs: &'tcx Substs<'tcx>) -> Self {
         ConstContext {
-            tcx: tcx,
-            tables: tables,
-            substs: tcx.intern_substs(&[]),
+            tcx,
+            tables,
+            substs,
             fn_args: None
         }
     }
@@ -118,14 +120,7 @@ type CastResult<'tcx> = Result<ConstVal<'tcx>, ErrKind<'tcx>>;
 fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                                      e: &Expr) -> EvalResult<'tcx> {
     let tcx = cx.tcx;
-    let ety = cx.tables.expr_ty(e);
-
-    // Avoid applying substitutions if they're empty, that'd ICE.
-    let ety = if cx.substs.is_empty() {
-        ety
-    } else {
-        ety.subst(tcx, cx.substs)
-    };
+    let ety = cx.tables.expr_ty(e).subst(tcx, cx.substs);
 
     let result = match e.node {
       hir::ExprUnary(hir::UnNeg, ref inner) => {
@@ -269,14 +264,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       }
       hir::ExprCast(ref base, _) => {
         let base_val = cx.eval(base)?;
-        let base_ty = cx.tables.expr_ty(base);
-
-        // Avoid applying substitutions if they're empty, that'd ICE.
-        let base_ty = if cx.substs.is_empty() {
-            base_ty
-        } else {
-            base_ty.subst(tcx, cx.substs)
-        };
+        let base_ty = cx.tables.expr_ty(base).subst(tcx, cx.substs);
         if ety == base_ty {
             base_val
         } else {
@@ -287,15 +275,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }
       }
       hir::ExprPath(ref qpath) => {
-        let substs = cx.tables.node_substs(e.id);
-
-        // Avoid applying substitutions if they're empty, that'd ICE.
-        let substs = if cx.substs.is_empty() {
-            substs
-        } else {
-            substs.subst(tcx, cx.substs)
-        };
-
+        let substs = cx.tables.node_substs(e.id).subst(tcx, cx.substs);
           match cx.tables.qpath_def(qpath, e.id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
@@ -538,7 +518,10 @@ fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 match ac {
                     // FIXME(eddyb) Use proper Instance resolution to
                     // get the correct Substs returned from here.
-                    Some(ic) => Some((ic.def_id, Substs::empty())),
+                    Some(ic) => {
+                        let substs = Substs::identity_for_item(tcx, ic.def_id);
+                        Some((ic.def_id, substs))
+                    }
                     None => {
                         if trait_item.defaultness.has_value() {
                             Some((def_id, substs))
@@ -789,18 +772,12 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         });
     };
 
-    let cx = ConstContext {
-        tcx,
-        tables: tcx.typeck_tables_of(def_id),
-        substs: substs,
-        fn_args: None
-    };
-
+    let tables = tcx.typeck_tables_of(def_id);
     let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
         tcx.mir_const_qualif(def_id);
         tcx.hir.body(tcx.hir.body_owned_by(id))
     } else {
         tcx.sess.cstore.item_body(tcx, def_id)
     };
-    cx.eval(&body.value)
+    ConstContext::new(tcx, tables, substs).eval(&body.value)
 }

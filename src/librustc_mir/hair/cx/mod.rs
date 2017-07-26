@@ -26,6 +26,7 @@ use rustc::middle::region::RegionMaps;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
@@ -35,7 +36,12 @@ use std::rc::Rc;
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+
     pub param_env: ty::ParamEnv<'tcx>,
+
+    /// Identity `Substs` for use with const-evaluation.
+    pub identity_substs: &'gcx Substs<'gcx>,
+
     pub region_maps: Rc<RegionMaps>,
     pub tables: &'a ty::TypeckTables<'gcx>,
 
@@ -66,10 +72,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let src_id = src.item_id();
         let src_def_id = tcx.hir.local_def_id(src_id);
 
-        let param_env = tcx.param_env(src_def_id);
-        let region_maps = tcx.region_maps(src_def_id);
-        let tables = tcx.typeck_tables_of(src_def_id);
-
         let attrs = tcx.hir.attrs(src_id);
 
         // Some functions always have overflow checks enabled,
@@ -84,7 +86,17 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Constants and const fn's always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
-        Cx { tcx, infcx, param_env, region_maps, tables, constness, src, check_overflow }
+        Cx {
+            tcx,
+            infcx,
+            param_env: tcx.param_env(src_def_id),
+            identity_substs: Substs::identity_for_item(tcx.global_tcx(), src_def_id),
+            region_maps: tcx.region_maps(src_def_id),
+            tables: tcx.typeck_tables_of(src_def_id),
+            constness,
+            src,
+            check_overflow,
+        }
     }
 }
 
@@ -123,13 +135,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
         let tcx = self.tcx.global_tcx();
-        match ConstContext::with_tables(tcx, self.tables()).eval(e) {
+        match ConstContext::new(tcx, self.tables(), self.identity_substs).eval(e) {
             Ok(value) => Literal::Value { value: value },
             Err(s) => self.fatal_const_eval_err(&s, e.span, "expression")
         }
     }
 
-    pub fn fatal_const_eval_err(&self,
+    pub fn fatal_const_eval_err(&mut self,
         err: &ConstEvalErr<'tcx>,
         primary_span: Span,
         primary_kind: &str)

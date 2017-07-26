@@ -466,7 +466,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprRepeat(ref v, count) => {
             let c = &cx.tcx.hir.body(count).value;
             let def_id = cx.tcx.hir.body_owner_def_id(count);
-            let substs = Substs::empty();
+            let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let count = match cx.tcx.at(c.span).const_eval((def_id, substs)) {
                 Ok(ConstVal::Integral(ConstInt::Usize(u))) => u,
                 Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
@@ -604,7 +604,9 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
-        patterns: arm.pats.iter().map(|p| Pattern::from_hir(cx.tcx, cx.tables(), p)).collect(),
+        patterns: arm.pats.iter().map(|p| {
+            Pattern::from_hir(cx.tcx.global_tcx(), cx.tables(), cx.identity_substs, p)
+        }).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }

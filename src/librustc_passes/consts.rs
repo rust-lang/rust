@@ -39,6 +39,7 @@ use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeSet;
@@ -58,13 +59,17 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
     promotable: bool,
     mut_rvalue_borrows: NodeSet,
     param_env: ty::ParamEnv<'tcx>,
+    identity_substs: &'tcx Substs<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
+    fn const_cx(&self) -> ConstContext<'a, 'gcx> {
+        ConstContext::new(self.tcx, self.tables, self.identity_substs)
+    }
+
     fn check_const_eval(&self, expr: &'gcx hir::Expr) {
-        let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-        if let Err(err) = const_cx.eval(expr) {
+        if let Err(err) = self.const_cx().eval(expr) {
             match err.kind {
                 UnimplementedConstVal(_) => {}
                 IndexOpFeatureGated => {}
@@ -121,24 +126,25 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
 
         let item_id = self.tcx.hir.body_owner(body_id);
+        let item_def_id = self.tcx.hir.local_def_id(item_id);
 
         let outer_in_fn = self.in_fn;
+        let outer_tables = self.tables;
+        let outer_param_env = self.param_env;
+        let outer_identity_substs = self.identity_substs;
+
         self.in_fn = match MirSource::from_node(self.tcx, item_id) {
             MirSource::Fn(_) => true,
             _ => false
         };
-
-        let outer_tables = self.tables;
-        let item_def_id = self.tcx.hir.local_def_id(item_id);
         self.tables = self.tcx.typeck_tables_of(item_def_id);
+        self.param_env = self.tcx.param_env(item_def_id);
+        self.identity_substs = Substs::identity_for_item(self.tcx, item_def_id);
 
         let body = self.tcx.hir.body(body_id);
         if !self.in_fn {
             self.check_const_eval(&body.value);
         }
-
-        let outer_penv = self.param_env;
-        self.param_env = self.tcx.param_env(item_def_id);
 
         let tcx = self.tcx;
         let param_env = self.param_env;
@@ -148,9 +154,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
         self.visit_body(body);
 
-        self.param_env = outer_penv;
-        self.tables = outer_tables;
         self.in_fn = outer_in_fn;
+        self.tables = outer_tables;
+        self.param_env = outer_param_env;
+        self.identity_substs = outer_identity_substs;
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
@@ -159,8 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                 self.check_const_eval(lit);
             }
             PatKind::Range(ref start, ref end, RangeEnd::Excluded) => {
-                let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-                match const_cx.compare_lit_exprs(p.span, start, end) {
+                match self.const_cx().compare_lit_exprs(p.span, start, end) {
                     Ok(Ordering::Less) => {}
                     Ok(Ordering::Equal) |
                     Ok(Ordering::Greater) => {
@@ -173,8 +179,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                 }
             }
             PatKind::Range(ref start, ref end, RangeEnd::Included) => {
-                let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-                match const_cx.compare_lit_exprs(p.span, start, end) {
+                match self.const_cx().compare_lit_exprs(p.span, start, end) {
                     Ok(Ordering::Less) |
                     Ok(Ordering::Equal) => {}
                     Ok(Ordering::Greater) => {
@@ -240,8 +245,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
 
         if self.in_fn && self.promotable {
-            let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-            match const_cx.eval(ex) {
+            match self.const_cx().eval(ex) {
                 Ok(_) => {}
                 Err(ConstEvalErr { kind: UnimplementedConstVal(_), .. }) |
                 Err(ConstEvalErr { kind: MiscCatchAll, .. }) |
@@ -472,6 +476,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+        identity_substs: Substs::empty(),
     }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }

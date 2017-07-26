@@ -21,6 +21,7 @@ use rustc::middle::mem_categorization::{cmt};
 use rustc::middle::region::RegionMaps;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
 use rustc::lint;
 use rustc_errors::{Diagnostic, Level, DiagnosticBuilder};
 
@@ -51,7 +52,8 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
             region_maps: &self.tcx.region_maps(def_id),
-            param_env: self.tcx.param_env(def_id)
+            param_env: self.tcx.param_env(def_id),
+            identity_substs: Substs::identity_for_item(self.tcx, def_id),
         }.visit_body(self.tcx.hir.body(b));
     }
 }
@@ -69,6 +71,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    identity_substs: &'tcx Substs<'tcx>,
     region_maps: &'a RegionMaps,
 }
 
@@ -110,7 +113,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
@@ -162,7 +165,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
                 arm.pats.iter().map(|pat| {
-                    let mut patcx = PatternContext::new(self.tcx, self.tables);
+                    let substs = self.identity_substs;
+                    let mut patcx = PatternContext::new(self.tcx, self.tables, substs);
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(pat.span);
@@ -229,7 +233,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn check_irrefutable(&self, pat: &Pat, origin: &str) {
         let module = self.tcx.hir.get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
-            let mut patcx = PatternContext::new(self.tcx, self.tables);
+            let substs = self.identity_substs;
+            let mut patcx = PatternContext::new(self.tcx, self.tables, substs);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
             let pats : Matrix = vec![vec![

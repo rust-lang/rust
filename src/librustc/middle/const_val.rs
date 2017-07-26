@@ -229,7 +229,7 @@ pub fn eval_length(tcx: TyCtxt,
 {
     let count_expr = &tcx.hir.body(count).value;
     let count_def_id = tcx.hir.body_owner_def_id(count);
-    let substs = Substs::empty();
+    let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
     match tcx.at(count_expr.span).const_eval((count_def_id, substs)) {
         Ok(Integral(Usize(count))) => {
             let val = count.as_u64(tcx.sess.target.uint_type);

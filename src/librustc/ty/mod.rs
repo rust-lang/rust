@@ -1588,7 +1588,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.variants.iter().map(move |v| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
             if let VariantDiscr::Explicit(expr_did) = v.discr {
-                let substs = Substs::empty();
+                let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                 match tcx.const_eval((expr_did, substs)) {
                     Ok(ConstVal::Integral(v)) => {
                         discr = v;
@@ -1627,7 +1627,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     explicit_index -= distance;
                 }
                 ty::VariantDiscr::Explicit(expr_did) => {
-                    let substs = Substs::empty();
+                    let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                     match tcx.const_eval((expr_did, substs)) {
                         Ok(ConstVal::Integral(v)) => {
                             explicit_value = v;
