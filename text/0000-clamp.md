@@ -19,7 +19,7 @@ else if input < min {
 }
 ```
 
-Likely locations would be in std::cmp::clamp implemented for all Ord types, and a special version implemented for f32 and f64.
+Likely locations would be on the Ord trait, and a special version implemented for f32 and f64.
 The f32 and f64 versions could live either in std::cmp or in the primitive types themselves.  There are good arguments for either
 location.
 
