@@ -334,7 +334,8 @@ impl<'test> TestCx<'test> {
                              self.props.exec_env.clone(),
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
-                             Some(src))
+                             Some(src),
+                             None)
     }
 
     fn make_pp_args(&self,
@@ -509,6 +510,7 @@ actual:\n\
                                  self.config.adb_test_dir.clone()
                              ],
                              Vec::new(),
+                             None,
                              None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -521,6 +523,7 @@ actual:\n\
                                  "tcp:5039".to_owned()
                              ],
                              Vec::new(),
+                             None,
                              None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -543,6 +546,7 @@ actual:\n\
                                                               adb_arg.clone()
                                                           ],
                                                           Vec::new(),
+                                                          None,
                                                           None)
                     .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
 
@@ -579,6 +583,7 @@ actual:\n\
                                  None,
                                  &debugger_opts,
                                  Vec::new(),
+                                 None,
                                  None)
                     .expect(&format!("failed to exec `{:?}`", gdb_path));
                 let cmdline = {
@@ -685,6 +690,7 @@ actual:\n\
                     self.compose_and_run(proc_args,
                                          environment,
                                          self.config.run_lib_path.to_str().unwrap(),
+                                         None,
                                          None,
                                          None);
             }
@@ -1231,15 +1237,21 @@ actual:\n\
                                      env,
                                      self.config.run_lib_path.to_str().unwrap(),
                                      Some(aux_dir.to_str().unwrap()),
+                                     None,
                                      None)
             }
             _ => {
                 let aux_dir = self.aux_output_dir_name();
+                let working_dir =
+                    Some(self.output_base_name()
+                             .parent().unwrap()
+                             .to_str().unwrap().to_owned());
                 self.compose_and_run(self.make_run_args(),
                                      env,
                                      self.config.run_lib_path.to_str().unwrap(),
                                      Some(aux_dir.to_str().unwrap()),
-                                     None)
+                                     None,
+                                     working_dir)
             }
         }
     }
@@ -1317,6 +1329,7 @@ actual:\n\
                                                 Vec::new(),
                                                 aux_cx.config.compile_lib_path.to_str().unwrap(),
                                                 Some(aux_dir.to_str().unwrap()),
+                                                None,
                                                 None);
             if !auxres.status.success() {
                 self.fatal_proc_rec(
@@ -1330,7 +1343,8 @@ actual:\n\
                              self.props.rustc_env.clone(),
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
-                             input)
+                             input,
+                             None)
     }
 
     fn compose_and_run(&self,
@@ -1338,8 +1352,9 @@ actual:\n\
                        procenv: Vec<(String, String)> ,
                        lib_path: &str,
                        aux_path: Option<&str>,
-                       input: Option<String>) -> ProcRes {
-        self.program_output(lib_path, prog, aux_path, args, procenv, input)
+                       input: Option<String>,
+                       working_dir: Option<String>) -> ProcRes {
+        self.program_output(lib_path, prog, aux_path, args, procenv, input, working_dir)
     }
 
     fn make_compile_args(&self,
@@ -1532,7 +1547,8 @@ actual:\n\
                       aux_path: Option<&str>,
                       args: Vec<String>,
                       env: Vec<(String, String)>,
-                      input: Option<String>)
+                      input: Option<String>,
+                      working_dir: Option<String>)
                       -> ProcRes {
         let cmdline =
         {
@@ -1542,6 +1558,7 @@ actual:\n\
             logv(self.config, format!("executing {}", cmdline));
             cmdline
         };
+
         let procsrv::Result {
             out,
             err,
@@ -1551,7 +1568,8 @@ actual:\n\
                          aux_path,
                          &args,
                          env,
-                         input).expect(&format!("failed to exec `{}`", prog));
+                         input,
+                         working_dir).expect(&format!("failed to exec `{}`", prog));
         self.dump_output(&out, &err);
         ProcRes {
             status: status,
@@ -1715,7 +1733,7 @@ actual:\n\
             args: vec![format!("-input-file={}", irfile.to_str().unwrap()),
                        self.testpaths.file.to_str().unwrap().to_owned()]
         };
-        self.compose_and_run(proc_args, Vec::new(), "", None, None)
+        self.compose_and_run(proc_args, Vec::new(), "", None, None, None)
     }
 
     fn run_codegen_test(&self) {

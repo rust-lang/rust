@@ -19,7 +19,6 @@ RUN sh /scripts/dumb-init.sh
 # emscripten
 COPY scripts/emscripten.sh /scripts/
 RUN bash /scripts/emscripten.sh
-COPY disabled/wasm32/node.sh /usr/local/bin/node
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -27,6 +26,7 @@ RUN sh /scripts/sccache.sh
 ENV PATH=$PATH:/emsdk-portable
 ENV PATH=$PATH:/emsdk-portable/clang/e1.37.13_64bit/
 ENV PATH=$PATH:/emsdk-portable/emscripten/1.37.13/
+ENV PATH=$PATH:/node-v8.0.0-linux-x64/bin/
 ENV EMSCRIPTEN=/emsdk-portable/emscripten/1.37.13/
 ENV BINARYEN_ROOT=/emsdk-portable/clang/e1.37.13_64bit/binaryen/
 ENV EM_CONFIG=/emsdk-portable/.emscripten
