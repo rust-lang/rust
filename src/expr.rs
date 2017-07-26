@@ -527,6 +527,7 @@ where
         },
         shape: nested_shape,
         ends_with_newline: ends_with_newline,
+        preserve_newline: false,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&items, &fmt));
@@ -602,6 +603,7 @@ fn rewrite_closure_fn_decl(
         trailing_separator: SeparatorTactic::Never,
         shape: arg_shape,
         ends_with_newline: false,
+        preserve_newline: true,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&item_vec, &fmt));
@@ -1673,6 +1675,7 @@ fn rewrite_match_pattern(
         trailing_separator: SeparatorTactic::Never,
         shape: pat_shape,
         ends_with_newline: false,
+        preserve_newline: false,
         config: context.config,
     };
     let pats_str = try_opt!(write_list(&items, &fmt));
@@ -2165,6 +2168,7 @@ where
         },
         shape: shape,
         ends_with_newline: context.use_block_indent() && tactic == DefinitiveListTactic::Vertical,
+        preserve_newline: false,
         config: context.config,
     };
 
@@ -2760,6 +2764,7 @@ where
         trailing_separator: SeparatorTactic::Never,
         shape: shape,
         ends_with_newline: false,
+        preserve_newline: false,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&item_vec, &fmt));
