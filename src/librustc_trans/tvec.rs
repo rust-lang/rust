@@ -30,8 +30,8 @@ pub fn slice_for_each<'a, 'tcx, F>(
     };
 
     let body_bcx = bcx.build_sibling_block("slice_loop_body");
-    let next_bcx = bcx.build_sibling_block("slice_loop_next");
     let header_bcx = bcx.build_sibling_block("slice_loop_header");
+    let next_bcx = bcx.build_sibling_block("slice_loop_next");
 
     let start = if zst {
         C_uint(bcx.ccx, 0usize)
