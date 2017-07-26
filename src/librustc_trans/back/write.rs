@@ -678,7 +678,6 @@ pub fn run_passes(sess: &Session,
     };
 
     // Figure out what we actually need to build.
-
     let mut modules_config = ModuleConfig::new(sess, sess.opts.cg.passes.clone());
     let mut metadata_config = ModuleConfig::new(sess, vec![]);
     let mut allocator_config = ModuleConfig::new(sess, vec![]);
@@ -1614,5 +1613,9 @@ impl OngoingCrateTranslation {
 
     pub fn signal_translation_done(&self) {
         drop(self.coordinator_send.send(Message::TranslationDone));
+    }
+
+    pub fn check_for_errors(&self, sess: &Session) {
+        self.shared_emitter_main.check(sess, false);
     }
 }

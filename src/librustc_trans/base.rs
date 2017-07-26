@@ -1024,24 +1024,34 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         linker_info,
         no_integrated_as);
 
+    ongoing_translation.submit_translated_module_to_llvm(tcx.sess, metadata_module);
+
     let translation_items = Arc::new(translation_items);
 
     let mut all_stats = Stats::default();
-    let modules: Vec<ModuleTranslation> = codegen_units
-        .into_iter()
-        .map(|cgu| {
-            let dep_node = cgu.work_product_dep_node();
-            let ((stats, module), _) =
-                tcx.dep_graph.with_task(dep_node,
-                                        AssertDepGraphSafe(&shared_ccx),
-                                        AssertDepGraphSafe((cgu,
-                                                            translation_items.clone(),
-                                                            exported_symbols.clone())),
-                                        module_translation);
-            all_stats.extend(stats);
-            module
-        })
-        .collect();
+    let mut module_dispositions = tcx.sess.opts.incremental.as_ref().map(|_| Vec::new());
+
+    for cgu in codegen_units.into_iter() {
+        ongoing_translation.check_for_errors(tcx.sess);
+        let dep_node = cgu.work_product_dep_node();
+        let ((stats, module), _) =
+            tcx.dep_graph.with_task(dep_node,
+                                    AssertDepGraphSafe(&shared_ccx),
+                                    AssertDepGraphSafe((cgu,
+                                                        translation_items.clone(),
+                                                        exported_symbols.clone())),
+                                    module_translation);
+        all_stats.extend(stats);
+
+        if let Some(ref mut module_dispositions) = module_dispositions {
+            module_dispositions.push(module.disposition());
+        }
+        ongoing_translation.submit_translated_module_to_llvm(tcx.sess, module);
+    }
+
+    if let Some(module_dispositions) = module_dispositions {
+        assert_module_sources::assert_module_sources(tcx, &module_dispositions);
+    }
 
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
@@ -1175,8 +1185,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         (lcx.into_stats(), module)
     }
 
-    assert_module_sources::assert_module_sources(tcx, &modules);
-
     symbol_names_test::report_symbol_names(tcx);
 
     if shared_ccx.sess().trans_stats() {
@@ -1206,8 +1214,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             println!("{:7} {}", *v, *k);
         }
     }
-
-    let sess = shared_ccx.sess();
 
     // Translate an allocator shim, if any
     //
@@ -1244,23 +1250,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         None
     };
 
+    if let Some(allocator_module) = allocator_module {
+        ongoing_translation.submit_translated_module_to_llvm(tcx.sess, allocator_module);
+    }
+
+    ongoing_translation.check_for_errors(tcx.sess);
+    ongoing_translation.signal_translation_done();
+
     assert_and_save_dep_graph(tcx,
                               incremental_hashes_map,
                               metadata_incr_hashes,
                               link_meta);
-
-    ongoing_translation.submit_translated_module_to_llvm(sess, metadata_module);
-
-    for mtrans in modules {
-        ongoing_translation.submit_translated_module_to_llvm(sess, mtrans);
-    }
-
-    if let Some(allocator_module) = allocator_module {
-        ongoing_translation.submit_translated_module_to_llvm(sess, allocator_module);
-    }
-
-    ongoing_translation.signal_translation_done();
-
     ongoing_translation
 }
 
