@@ -32,7 +32,7 @@ use assert_module_sources;
 use back::link;
 use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
-use back::write::OngoingCrateTranslation;
+use back::write::{self, OngoingCrateTranslation};
 use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use metadata;
@@ -963,27 +963,21 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        !tcx.sess.opts.output_types.should_trans() {
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
-        let crate_translation = OngoingCrateTranslation {
-            crate_name: tcx.crate_name(LOCAL_CRATE),
-            link: link_meta,
-            metadata: metadata,
-            exported_symbols: Arc::new(empty_exported_symbols),
-            no_builtins: no_builtins,
-            linker_info: linker_info,
-            windows_subsystem: None,
-            no_integrated_as: false,
-            result: ::std::cell::RefCell::new(None),
-        };
+        return write::run_passes(tcx.sess,
+                                 vec![],
+                                 metadata_module,
+                                 None,
+                                 &output_filenames.outputs,
+                                 output_filenames,
 
-        ::back::write::run_passes(tcx.sess,
-                                  &crate_translation,
-                                  vec![],
-                                  metadata_module,
-                                  None,
-                                  &output_filenames.outputs,
-                                  output_filenames);
-
-        return crate_translation;
+                                 tcx.crate_name(LOCAL_CRATE),
+                                 link_meta,
+                                 metadata,
+                                 Arc::new(empty_exported_symbols),
+                                 no_builtins,
+                                 None,
+                                 linker_info,
+                                 false);
     }
 
     let exported_symbols = Arc::new(ExportedSymbols::compute(tcx,
@@ -1231,19 +1225,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          (outputs.outputs.contains_key(&OutputType::Object) ||
           outputs.outputs.contains_key(&OutputType::Exe)));
 
-    let crate_translation = OngoingCrateTranslation {
-        crate_name: tcx.crate_name(LOCAL_CRATE),
-        link: link_meta,
-        metadata: metadata,
-        exported_symbols,
-        no_builtins,
-        linker_info,
-        windows_subsystem,
-        no_integrated_as,
-
-        result: ::std::cell::RefCell::new(None),
-    };
-
     time(sess.time_passes(),
          "assert dep graph",
          || rustc_incremental::assert_dep_graph(tcx));
@@ -1252,34 +1233,48 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          "serialize dep graph",
          || rustc_incremental::save_dep_graph(tcx,
                                               incremental_hashes_map,
-                                              &crate_translation.metadata.hashes,
-                                              crate_translation.link.crate_hash));
+                                              &metadata.hashes,
+                                              link_meta.crate_hash));
     // ---
 
     if no_integrated_as {
         let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
         time(sess.time_passes(),
              "LLVM passes",
-             || ::back::write::run_passes(sess,
-                                          &crate_translation,
-                                          modules,
-                                          metadata_module,
-                                          allocator_module,
-                                          &output_types,
-                                          outputs))
+             || write::run_passes(sess,
+                                  modules,
+                                  metadata_module,
+                                  allocator_module,
+                                  &output_types,
+                                  outputs,
+
+                                  tcx.crate_name(LOCAL_CRATE),
+                                  link_meta,
+                                  metadata,
+                                  exported_symbols,
+                                  no_builtins,
+                                  windows_subsystem,
+                                  linker_info,
+                                  no_integrated_as))
     } else {
         time(sess.time_passes(),
              "LLVM passes",
-             || ::back::write::run_passes(sess,
-                                          &crate_translation,
-                                          modules,
-                                          metadata_module,
-                                          allocator_module,
-                                          &sess.opts.output_types,
-                                          outputs))
-    };
+             || write::run_passes(sess,
+                                  modules,
+                                  metadata_module,
+                                  allocator_module,
+                                  &sess.opts.output_types,
+                                  outputs,
 
-    crate_translation
+                                  tcx.crate_name(LOCAL_CRATE),
+                                  link_meta,
+                                  metadata,
+                                  exported_symbols,
+                                  no_builtins,
+                                  windows_subsystem,
+                                  linker_info,
+                                  no_integrated_as))
+    }
 }
 
 #[inline(never)] // give this a place in the profiler

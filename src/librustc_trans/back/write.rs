@@ -259,10 +259,10 @@ impl ModuleConfig {
         }
     }
 
-    fn set_flags(&mut self, sess: &Session, trans: &OngoingCrateTranslation) {
+    fn set_flags(&mut self, sess: &Session, no_builtins: bool) {
         self.no_verify = sess.no_verify();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
-        self.no_builtins = trans.no_builtins;
+        self.no_builtins = no_builtins;
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
@@ -662,12 +662,21 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
 }
 
 pub fn run_passes(sess: &Session,
-                  trans: &OngoingCrateTranslation,
                   modules: Vec<ModuleTranslation>,
                   metadata_module: ModuleTranslation,
                   allocator_module: Option<ModuleTranslation>,
-                  output_types: &OutputTypes,
-                  crate_output: &OutputFilenames) {
+                  output_types_override: &OutputTypes,
+                  crate_output: &OutputFilenames,
+
+                  crate_name: Symbol,
+                  link: LinkMeta,
+                  metadata: EncodedMetadata,
+                  exported_symbols: Arc<ExportedSymbols>,
+                  no_builtins: bool,
+                  windows_subsystem: Option<String>,
+                  linker_info: LinkerInfo,
+                  no_integrated_as: bool)
+                  -> OngoingCrateTranslation {
     // It's possible that we have `codegen_units > 1` but only one item in
     // `trans.modules`.  We could theoretically proceed and do LTO in that
     // case, but it would be confusing to have the validity of
@@ -732,7 +741,7 @@ pub fn run_passes(sess: &Session,
         modules_config.emit_bc = true;
     }
 
-    for output_type in output_types.keys() {
+    for output_type in output_types_override.keys() {
         match *output_type {
             OutputType::Bitcode => { modules_config.emit_bc = true; }
             OutputType::LlvmAssembly => { modules_config.emit_ir = true; }
@@ -758,9 +767,9 @@ pub fn run_passes(sess: &Session,
         }
     }
 
-    modules_config.set_flags(sess, trans);
-    metadata_config.set_flags(sess, trans);
-    allocator_config.set_flags(sess, trans);
+    modules_config.set_flags(sess, no_builtins);
+    metadata_config.set_flags(sess, no_builtins);
+    allocator_config.set_flags(sess, no_builtins);
 
 
     // Populate a buffer with a list of codegen threads.  Items are processed in
@@ -797,12 +806,8 @@ pub fn run_passes(sess: &Session,
         Client::new(num_workers).expect("failed to create jobserver")
     });
 
-    drop(modules_config);
-    drop(metadata_config);
-    drop(allocator_config);
-
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
-    let (trans_worker_send, trans_worker_receive) = channel();
+    let (trans_worker_send, _trans_worker_receive) = channel();
     let (coordinator_send, coordinator_receive) = channel();
 
     let coordinator_thread = start_executing_work(sess,
@@ -812,47 +817,24 @@ pub fn run_passes(sess: &Session,
                                                   coordinator_send.clone(),
                                                   coordinator_receive,
                                                   client,
-                                                  trans.exported_symbols.clone());
+                                                  exported_symbols.clone());
     for work_item in work_items {
         coordinator_send.send(Message::WorkItem(work_item)).unwrap();
     }
 
-    loop {
-        shared_emitter_main.check(sess, false);
+    OngoingCrateTranslation {
+        crate_name,
+        link,
+        metadata,
+        exported_symbols,
+        no_builtins,
+        windows_subsystem,
+        linker_info,
+        no_integrated_as,
 
-        match trans_worker_receive.recv() {
-            Err(_) => {
-                // An `Err` here means that all senders for this channel have
-                // been closed. This could happen because all work has
-                // completed successfully or there has been some error.
-                // At this point we don't care which it is.
-                break
-            }
-
-            Ok(Message::CheckErrorMessages) => continue,
-            Ok(msg) => {
-                bug!("unexpected message {:?}", msg);
-            }
-        }
+        shared_emitter_main,
+        future: coordinator_thread
     }
-
-    let compiled_modules = coordinator_thread.join().unwrap();
-
-    // Just in case, check this on the way out.
-    shared_emitter_main.check(sess, false);
-    sess.diagnostic().abort_if_errors();
-
-    copy_module_artifacts_into_incr_comp_cache(sess, &compiled_modules, crate_output);
-
-    produce_final_output_artifacts(sess, &compiled_modules, crate_output);
-
-    // FIXME: time_llvm_passes support - does this use a global context or
-    // something?
-    if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
-        unsafe { llvm::LLVMRustPrintPassTimings(); }
-    }
-
-    *trans.result.borrow_mut() = Some(compiled_modules);
 }
 
 fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
@@ -1596,8 +1578,8 @@ pub struct OngoingCrateTranslation {
     pub linker_info: LinkerInfo,
     pub no_integrated_as: bool,
 
-    // This will be replaced by a Future.
-    pub result: ::std::cell::RefCell<Option<CompiledModules>>,
+    shared_emitter_main: SharedEmitterMain,
+    future: thread::JoinHandle<CompiledModules>,
 }
 
 impl OngoingCrateTranslation {
@@ -1605,8 +1587,19 @@ impl OngoingCrateTranslation {
                 sess: &Session,
                 outputs: &OutputFilenames)
                 -> CrateTranslation {
+        self.shared_emitter_main.check(sess, true);
+        let compiled_modules = self.future.join().unwrap();
 
-        let result = self.result.borrow_mut().take().unwrap();
+        sess.abort_if_errors();
+
+        copy_module_artifacts_into_incr_comp_cache(sess, &compiled_modules, outputs);
+        produce_final_output_artifacts(sess, &compiled_modules, outputs);
+
+        // FIXME: time_llvm_passes support - does this use a global context or
+        // something?
+        if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
+            unsafe { llvm::LLVMRustPrintPassTimings(); }
+        }
 
         let trans = CrateTranslation {
             crate_name: self.crate_name,
@@ -1617,9 +1610,9 @@ impl OngoingCrateTranslation {
             windows_subsystem: self.windows_subsystem,
             linker_info: self.linker_info,
 
-            modules: result.modules,
-            metadata_module: result.metadata_module,
-            allocator_module: result.allocator_module,
+            modules: compiled_modules.modules,
+            metadata_module: compiled_modules.metadata_module,
+            allocator_module: compiled_modules.allocator_module,
         };
 
         if self.no_integrated_as {
