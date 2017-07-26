@@ -804,7 +804,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 // code references on its own.
 // See #26591, #27438
 fn create_imps(sess: &Session,
-               llvm_modules: &[ModuleLlvm]) {
+               llvm_module: &ModuleLlvm) {
     // The x86 ABI seems to require that leading underscores are added to symbol
     // names, so we need an extra underscore on 32-bit. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
@@ -815,28 +815,26 @@ fn create_imps(sess: &Session,
         "\x01__imp_"
     };
     unsafe {
-        for ll in llvm_modules {
-            let exported: Vec<_> = iter_globals(ll.llmod)
-                                       .filter(|&val| {
-                                           llvm::LLVMRustGetLinkage(val) ==
-                                           llvm::Linkage::ExternalLinkage &&
-                                           llvm::LLVMIsDeclaration(val) == 0
-                                       })
-                                       .collect();
+        let exported: Vec<_> = iter_globals(llvm_module.llmod)
+                                   .filter(|&val| {
+                                       llvm::LLVMRustGetLinkage(val) ==
+                                       llvm::Linkage::ExternalLinkage &&
+                                       llvm::LLVMIsDeclaration(val) == 0
+                                   })
+                                   .collect();
 
-            let i8p_ty = Type::i8p_llcx(ll.llcx);
-            for val in exported {
-                let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                let mut imp_name = prefix.as_bytes().to_vec();
-                imp_name.extend(name.to_bytes());
-                let imp_name = CString::new(imp_name).unwrap();
-                let imp = llvm::LLVMAddGlobal(ll.llmod,
-                                              i8p_ty.to_ref(),
-                                              imp_name.as_ptr() as *const _);
-                let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
-                llvm::LLVMSetInitializer(imp, init);
-                llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
-            }
+        let i8p_ty = Type::i8p_llcx(llvm_module.llcx);
+        for val in exported {
+            let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
+            let mut imp_name = prefix.as_bytes().to_vec();
+            imp_name.extend(name.to_bytes());
+            let imp_name = CString::new(imp_name).unwrap();
+            let imp = llvm::LLVMAddGlobal(llvm_module.llmod,
+                                          i8p_ty.to_ref(),
+                                          imp_name.as_ptr() as *const _);
+            let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
+            llvm::LLVMSetInitializer(imp, init);
+            llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }
 }
@@ -1125,6 +1123,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
 
+            // Adjust exported symbols for MSVC dllimport
+            if ccx.sess().target.target.options.is_like_msvc &&
+               ccx.sess().crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
+                create_imps(ccx.sess(), &llvm_module);
+            }
+
             ModuleTranslation {
                 name: cgu_name,
                 symbol_name_hash,
@@ -1169,22 +1173,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let sess = shared_ccx.sess();
-
-    // Get the list of llvm modules we created. We'll do a few wacky
-    // transforms on them now.
-
-    let llvm_modules: Vec<_> =
-        modules.iter()
-               .filter_map(|module| match module.source {
-                   ModuleSource::Translated(llvm) => Some(llvm),
-                   _ => None,
-               })
-               .collect();
-
-    if sess.target.target.options.is_like_msvc &&
-       sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-        create_imps(sess, &llvm_modules);
-    }
 
     // Translate an allocator shim, if any
     //
