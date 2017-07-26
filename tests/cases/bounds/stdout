@@ -7,7 +7,13 @@ warning: breaking changes in `Abc`
 3 | | }
   | |_^
   |
-  = warning: tightened bounds (breaking)
+warning: tightened bounds (breaking)
+ --> $REPO_PATH/tests/cases/bounds/old.rs:1:1
+  |
+1 | / pub struct Abc<A> {
+2 | |     pub a: A,
+3 | | }
+  | |_^
 
 warning: technically breaking changes in `Def`
  --> $REPO_PATH/tests/cases/bounds/new.rs:5:1
@@ -17,7 +23,13 @@ warning: technically breaking changes in `Def`
 7 | | }
   | |_^
   |
-  = note: loosened bounds (technically breaking)
+note: loosened bounds (technically breaking)
+ --> $REPO_PATH/tests/cases/bounds/old.rs:5:1
+  |
+5 | / pub struct Def<A: Clone> {
+6 | |     pub d: A,
+7 | | }
+  | |_^
 
 warning: breaking changes in `abc`
  --> $REPO_PATH/tests/cases/bounds/new.rs:9:1
@@ -25,7 +37,11 @@ warning: breaking changes in `abc`
 9 | pub fn abc<A: Clone>(_: A) {}
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = warning: tightened bounds (breaking)
+warning: tightened bounds (breaking)
+ --> $REPO_PATH/tests/cases/bounds/old.rs:9:1
+  |
+9 | pub fn abc<A>(_: A) {}
+  | ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: technically breaking changes in `def`
   --> $REPO_PATH/tests/cases/bounds/new.rs:11:1
@@ -33,5 +49,9 @@ warning: technically breaking changes in `def`
 11 | pub fn def<A>(_: A) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: loosened bounds (technically breaking)
+note: loosened bounds (technically breaking)
+  --> $REPO_PATH/tests/cases/bounds/old.rs:11:1
+   |
+11 | pub fn def<A: Clone>(_: A) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

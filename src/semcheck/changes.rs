@@ -10,7 +10,6 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
-use rustc::ty::Predicate;
 use rustc::ty::error::TypeError;
 
 use semver::Version;
@@ -205,9 +204,9 @@ pub enum ChangeType<'tcx> {
     /// A field in a struct or enum has changed it's type.
     TypeChanged { error: TypeError<'tcx> },
     /// An item's bounds have been tightened.
-    BoundsTightened { error: Predicate<'tcx> },
+    BoundsTightened,
     /// An item's bounds have been loosened.
-    BoundsLoosened { error: Predicate<'tcx> },
+    BoundsLoosened,
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
@@ -235,11 +234,11 @@ impl<'tcx> ChangeType<'tcx> {
             TraitItemAdded { defaulted: false } |
             TraitItemRemoved { .. } |
             TraitUnsafetyChanged { .. } |
-            BoundsTightened { .. } |
+            BoundsTightened |
             Unknown => Breaking,
             MethodSelfChanged { now_self: true } |
             TraitItemAdded { defaulted: true } |
-            BoundsLoosened { .. } |
+            BoundsLoosened |
             ItemMadePublic => TechnicallyBreaking,
             TypeParameterAdded { defaulted: true } |
             FnConstChanged { now_const: true } => NonBreaking,
@@ -296,9 +295,8 @@ impl<'a> fmt::Display for ChangeType<'a> {
             TraitUnsafetyChanged { now_unsafe: true } => "trait made unsafe",
             TraitUnsafetyChanged { now_unsafe: false } => "trait no longer unsafe",
             TypeChanged { ref error } => return write!(f, "type error: {}", error),
-            // TODO: print bounds
-            BoundsTightened { .. } => return write!(f, "tightened bounds"),
-            BoundsLoosened { .. } => return write!(f, "loosened bounds"),
+            BoundsTightened => "tightened bounds",
+            BoundsLoosened => "loosened bounds",
             Unknown => "unknown change",
         };
         write!(f, "{}", desc)
@@ -374,8 +372,8 @@ impl<'tcx> Change<'tcx> {
                 TypeParameterAdded { .. } |
                 TraitUnsafetyChanged { .. } |
                 FnConstChanged { now_const: true } |
-                BoundsTightened { .. } |
-                BoundsLoosened { .. } => (),
+                BoundsTightened |
+                BoundsLoosened => (),
             }
         }
 

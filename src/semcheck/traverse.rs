@@ -683,14 +683,8 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
-            for err in &errors {
-                let err_type = BoundsTightened {
-                    error: err.obligation.predicate.lift_to_tcx(tcx).unwrap()
-                };
-
-                changes.add_change(err_type, old_def_id, None);
-            }
+        if fulfill_cx.select_all_or_error(&infcx).is_err() {
+            changes.add_change(BoundsTightened, old_def_id, Some(tcx.def_span(old_def_id)));
         } else {
             let mut fulfill_cx_rev = FulfillmentContext::new();
 
@@ -699,14 +693,8 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 fulfill_cx_rev.register_predicate_obligation(&infcx, obligation);
             }
 
-            if let Err(errors) = fulfill_cx_rev.select_all_or_error(&infcx) {
-                for err in &errors {
-                    let err_type = BoundsLoosened {
-                        error: err.obligation.predicate.lift_to_tcx(tcx).unwrap()
-                    };
-
-                    changes.add_change(err_type, old_def_id, None);
-                }
+            if fulfill_cx_rev.select_all_or_error(&infcx).is_err() {
+                changes.add_change(BoundsLoosened, old_def_id, Some(tcx.def_span(old_def_id)));
             }
         }
     });
