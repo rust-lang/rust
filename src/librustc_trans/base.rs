@@ -963,20 +963,22 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        !tcx.sess.opts.output_types.should_trans() {
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
-        return write::run_passes(tcx.sess,
-                                 vec![],
-                                 metadata_module,
-                                 None,
-                                 output_filenames,
+        let ongoing_translation = write::run_passes(
+            tcx.sess,
+            output_filenames,
+            1,
+            tcx.crate_name(LOCAL_CRATE),
+            link_meta,
+            metadata,
+            Arc::new(empty_exported_symbols),
+            no_builtins,
+            None,
+            linker_info,
+            false);
 
-                                 tcx.crate_name(LOCAL_CRATE),
-                                 link_meta,
-                                 metadata,
-                                 Arc::new(empty_exported_symbols),
-                                 no_builtins,
-                                 None,
-                                 linker_info,
-                                 false);
+        ongoing_translation.submit_translated_module_to_llvm(tcx.sess, metadata_module);
+
+        return ongoing_translation;
     }
 
     let exported_symbols = Arc::new(ExportedSymbols::compute(tcx,
@@ -1236,22 +1238,33 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               link_meta.crate_hash));
     // ---
 
-    time(sess.time_passes(),
-         "LLVM passes",
-         || write::run_passes(sess,
-                              modules,
-                              metadata_module,
-                              allocator_module,
-                              outputs,
+    let total_module_count = modules.len() + 1 +
+        if allocator_module.is_some() { 1 } else { 0 };
 
-                              tcx.crate_name(LOCAL_CRATE),
-                              link_meta,
-                              metadata,
-                              exported_symbols,
-                              no_builtins,
-                              windows_subsystem,
-                              linker_info,
-                              no_integrated_as))
+    let ongoing_translation = write::run_passes(
+        sess,
+        outputs,
+        total_module_count,
+        tcx.crate_name(LOCAL_CRATE),
+        link_meta,
+        metadata,
+        exported_symbols,
+        no_builtins,
+        windows_subsystem,
+        linker_info,
+        no_integrated_as);
+
+    ongoing_translation.submit_translated_module_to_llvm(sess, metadata_module);
+
+    for mtrans in modules {
+        ongoing_translation.submit_translated_module_to_llvm(sess, mtrans);
+    }
+
+    if let Some(allocator_module) = allocator_module {
+        ongoing_translation.submit_translated_module_to_llvm(sess, allocator_module);
+    }
+
+    ongoing_translation
 }
 
 #[inline(never)] // give this a place in the profiler

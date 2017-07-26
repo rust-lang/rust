@@ -662,11 +662,8 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
 }
 
 pub fn run_passes(sess: &Session,
-                  modules: Vec<ModuleTranslation>,
-                  metadata_module: ModuleTranslation,
-                  allocator_module: Option<ModuleTranslation>,
                   crate_output: &OutputFilenames,
-
+                  total_work_item_count: usize,
                   crate_name: Symbol,
                   link: LinkMeta,
                   metadata: EncodedMetadata,
@@ -694,12 +691,6 @@ pub fn run_passes(sess: &Session,
     } else {
         sess.opts.output_types.clone()
     };
-
-    // Sanity check
-    assert!(modules.len() == sess.opts.cg.codegen_units ||
-            sess.opts.debugging_opts.incremental.is_some() ||
-            !sess.opts.output_types.should_trans() ||
-            sess.opts.debugging_opts.no_trans);
 
     // Figure out what we actually need to build.
 
@@ -776,38 +767,11 @@ pub fn run_passes(sess: &Session,
     metadata_config.set_flags(sess, no_builtins);
     allocator_config.set_flags(sess, no_builtins);
 
-
-    // Populate a buffer with a list of codegen threads.  Items are processed in
-    // LIFO order, just because it's a tiny bit simpler that way.  (The order
-    // doesn't actually matter.)
-    let mut work_items = Vec::with_capacity(1 + modules.len());
-
-    {
-        let work = build_work_item(metadata_module,
-                                   metadata_config.clone(sess),
-                                   crate_output.clone());
-        work_items.push(work);
-    }
-
-    if let Some(allocator) = allocator_module {
-        let work = build_work_item(allocator,
-                                   allocator_config.clone(sess),
-                                   crate_output.clone());
-        work_items.push(work);
-    }
-
-    for mtrans in modules {
-        let work = build_work_item(mtrans,
-                                   modules_config.clone(sess),
-                                   crate_output.clone());
-        work_items.push(work);
-    }
-
     let client = sess.jobserver_from_env.clone().unwrap_or_else(|| {
         // Pick a "reasonable maximum" if we don't otherwise have a jobserver in
         // our environment, capping out at 32 so we don't take everything down
         // by hogging the process run queue.
-        let num_workers = cmp::min(work_items.len() - 1, 32);
+        let num_workers = cmp::min(total_work_item_count - 1, 32);
         Client::new(num_workers).expect("failed to create jobserver")
     });
 
@@ -816,16 +780,13 @@ pub fn run_passes(sess: &Session,
     let (coordinator_send, coordinator_receive) = channel();
 
     let coordinator_thread = start_executing_work(sess,
-                                                  work_items.len(),
+                                                  total_work_item_count,
                                                   shared_emitter,
                                                   trans_worker_send,
                                                   coordinator_send.clone(),
                                                   coordinator_receive,
                                                   client,
                                                   exported_symbols.clone());
-    for work_item in work_items {
-        coordinator_send.send(Message::WorkItem(work_item)).unwrap();
-    }
 
     OngoingCrateTranslation {
         crate_name,
@@ -837,6 +798,12 @@ pub fn run_passes(sess: &Session,
         linker_info,
         no_integrated_as,
 
+        regular_module_config: modules_config,
+        metadata_module_config: metadata_config,
+        allocator_module_config: allocator_config,
+
+        output_filenames: crate_output.clone(),
+        coordinator_send,
         shared_emitter_main,
         future: coordinator_thread
     }
@@ -1583,22 +1550,29 @@ pub struct OngoingCrateTranslation {
     pub linker_info: LinkerInfo,
     pub no_integrated_as: bool,
 
+    output_filenames: OutputFilenames,
+    regular_module_config: ModuleConfig,
+    metadata_module_config: ModuleConfig,
+    allocator_module_config: ModuleConfig,
+
+    coordinator_send: Sender<Message>,
     shared_emitter_main: SharedEmitterMain,
     future: thread::JoinHandle<CompiledModules>,
 }
 
 impl OngoingCrateTranslation {
-    pub fn join(self,
-                sess: &Session,
-                outputs: &OutputFilenames)
-                -> CrateTranslation {
+    pub fn join(self, sess: &Session) -> CrateTranslation {
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = self.future.join().unwrap();
 
         sess.abort_if_errors();
 
-        copy_module_artifacts_into_incr_comp_cache(sess, &compiled_modules, outputs);
-        produce_final_output_artifacts(sess, &compiled_modules, outputs);
+        copy_module_artifacts_into_incr_comp_cache(sess,
+                                                   &compiled_modules,
+                                                   &self.output_filenames);
+        produce_final_output_artifacts(sess,
+                                       &compiled_modules,
+                                       &self.output_filenames);
 
         // FIXME: time_llvm_passes support - does this use a global context or
         // something?
@@ -1621,24 +1595,41 @@ impl OngoingCrateTranslation {
         };
 
         if self.no_integrated_as {
-            run_assembler(sess, outputs);
+            run_assembler(sess,  &self.output_filenames);
 
             // HACK the linker expects the object file to be named foo.0.o but
             // `run_assembler` produces an object named just foo.o. Rename it if we
             // are going to build an executable
             if sess.opts.output_types.contains_key(&OutputType::Exe) {
-                let f = outputs.path(OutputType::Object);
+                let f =  self.output_filenames.path(OutputType::Object);
                 rename_or_copy_remove(&f,
-                         f.with_file_name(format!("{}.0.o",
-                                                  f.file_stem().unwrap().to_string_lossy()))).unwrap();
+                    f.with_file_name(format!("{}.0.o",
+                                             f.file_stem().unwrap().to_string_lossy()))).unwrap();
             }
 
             // Remove assembly source, unless --save-temps was specified
             if !sess.opts.cg.save_temps {
-                fs::remove_file(&outputs.temp_path(OutputType::Assembly, None)).unwrap();
+                fs::remove_file(&self.output_filenames
+                                     .temp_path(OutputType::Assembly, None)).unwrap();
             }
         }
 
         trans
+    }
+
+    pub fn submit_translated_module_to_llvm(&self,
+                                            sess: &Session,
+                                            mtrans: ModuleTranslation) {
+        let module_config = match mtrans.kind {
+            ModuleKind::Regular => self.regular_module_config.clone(sess),
+            ModuleKind::Metadata => self.metadata_module_config.clone(sess),
+            ModuleKind::Allocator => self.allocator_module_config.clone(sess),
+        };
+
+        let work_item = build_work_item(mtrans,
+                                        module_config,
+                                        self.output_filenames.clone());
+
+        drop(self.coordinator_send.send(Message::WorkItem(work_item)));
     }
 }

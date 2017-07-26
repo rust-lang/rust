@@ -229,7 +229,7 @@ pub fn compile_input(sess: &Session,
         sess.code_stats.borrow().print_type_sizes();
     }
 
-    let (phase5_result, trans) = phase_5_run_llvm_passes(sess, trans, &outputs);
+    let (phase5_result, trans) = phase_5_run_llvm_passes(sess, trans);
 
     controller_entry_point!(after_llvm,
                             sess,
@@ -1071,10 +1071,9 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
-                               trans: write::OngoingCrateTranslation,
-                               outputs: &OutputFilenames)
+                               trans: write::OngoingCrateTranslation)
                                -> (CompileResult, trans::CrateTranslation) {
-    let trans = trans.join(sess, outputs);
+    let trans = trans.join(sess);
 
     if sess.opts.debugging_opts.incremental_info {
         write::dump_incremental_data(&trans);
