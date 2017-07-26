@@ -654,11 +654,6 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             .eq(old, new)
             .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
 
-        let region_maps = RegionMaps::new();
-        let mut free_regions = FreeRegionMap::new();
-        free_regions.relate_free_regions_from_predicates(new_param_env.caller_bounds);
-        infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
-
         let mut folder = BottomUpRegionFolder {
             tcx: infcx.tcx,
             fldop_t: |ty| {
@@ -680,6 +675,11 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         };
 
         if let Err(err) = error {
+            let region_maps = RegionMaps::new();
+            let mut free_regions = FreeRegionMap::new();
+            free_regions.relate_free_regions_from_predicates(new_param_env.caller_bounds);
+            infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
+
             let err = infcx.resolve_type_vars_if_possible(&err);
             let err = err.fold_with(&mut folder).lift_to_tcx(tcx).unwrap();
 
