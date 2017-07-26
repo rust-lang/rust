@@ -361,6 +361,7 @@ where
         },
         shape: list_shape,
         ends_with_newline: tactic.ends_with_newline(context.config.fn_call_style()),
+        preserve_newline: true,
         config: context.config,
     };
 

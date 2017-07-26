@@ -478,6 +478,7 @@ fn rewrite_use_list(
         },
         shape: nested_shape,
         ends_with_newline: ends_with_newline,
+        preserve_newline: true,
         config: context.config,
     };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));

@@ -229,6 +229,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         trailing_separator: context.config.trailing_comma(),
         shape: item_shape,
         ends_with_newline: true,
+        preserve_newline: true,
         config: context.config,
     };
     write_list(&items, &fmt)

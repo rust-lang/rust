@@ -820,6 +820,7 @@ impl Rewrite for ast::MetaItem {
                     trailing_separator: SeparatorTactic::Never,
                     shape: item_shape,
                     ends_with_newline: false,
+                    preserve_newline: false,
                     config: context.config,
                 };
                 format!("{}({})", name, try_opt!(write_list(&item_vec, &fmt)))

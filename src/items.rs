@@ -477,6 +477,7 @@ impl<'a> FmtVisitor<'a> {
             trailing_separator: self.config.trailing_comma(),
             shape: shape,
             ends_with_newline: true,
+            preserve_newline: true,
             config: self.config,
         };
 
@@ -2252,6 +2253,7 @@ fn rewrite_args(
         },
         shape: Shape::legacy(budget, indent),
         ends_with_newline: tactic.ends_with_newline(context.config.fn_args_layout()),
+        preserve_newline: true,
         config: context.config,
     };
 
@@ -2425,6 +2427,7 @@ where
         },
         shape: shape,
         ends_with_newline: tactic.ends_with_newline(context.config.generics_indent()),
+        preserve_newline: true,
         config: context.config,
     };
 
@@ -2538,6 +2541,7 @@ fn rewrite_where_clause_rfc_style(
         trailing_separator: comma_tactic,
         shape: clause_shape,
         ends_with_newline: true,
+        preserve_newline: true,
         config: context.config,
     };
     let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
@@ -2639,6 +2643,7 @@ fn rewrite_where_clause(
         trailing_separator: comma_tactic,
         shape: Shape::legacy(budget, offset),
         ends_with_newline: tactic.ends_with_newline(context.config.where_pred_indent()),
+        preserve_newline: true,
         config: context.config,
     };
     let preds_str = try_opt!(write_list(&item_vec, &fmt));

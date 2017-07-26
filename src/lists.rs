@@ -65,6 +65,8 @@ pub struct ListFormatting<'a> {
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
     pub ends_with_newline: bool,
+    // Remove newlines between list elements for expressions.
+    pub preserve_newline: bool,
     pub config: &'a Config,
 }
 
@@ -342,7 +344,9 @@ where
             item_max_width = None;
         }
 
-        if !last && tactic == DefinitiveListTactic::Vertical && item.new_lines {
+        if formatting.preserve_newline && !last && tactic == DefinitiveListTactic::Vertical &&
+            item.new_lines
+        {
             item_max_width = None;
             result.push('\n');
         }
@@ -675,6 +679,7 @@ pub fn struct_lit_formatting<'a>(
         },
         shape: shape,
         ends_with_newline: ends_with_newline,
+        preserve_newline: true,
         config: context.config,
     }
 }
