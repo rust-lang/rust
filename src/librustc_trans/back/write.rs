@@ -665,7 +665,6 @@ pub fn run_passes(sess: &Session,
                   modules: Vec<ModuleTranslation>,
                   metadata_module: ModuleTranslation,
                   allocator_module: Option<ModuleTranslation>,
-                  output_types_override: &OutputTypes,
                   crate_output: &OutputFilenames,
 
                   crate_name: Symbol,
@@ -689,6 +688,12 @@ pub fn run_passes(sess: &Session,
         // LLVM context, so they can't easily be combined.
         sess.fatal("can't perform LTO when using multiple codegen units");
     }
+
+    let output_types_override = if no_integrated_as {
+        OutputTypes::new(&[(OutputType::Assembly, None)])
+    } else {
+        sess.opts.output_types.clone()
+    };
 
     // Sanity check
     assert!(modules.len() == sess.opts.cg.codegen_units ||

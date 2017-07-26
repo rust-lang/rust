@@ -44,7 +44,7 @@ use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, OutputTypes};
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc_incremental::{self, IncrementalHashesMap};
 use abi;
@@ -967,7 +967,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  vec![],
                                  metadata_module,
                                  None,
-                                 &output_filenames.outputs,
                                  output_filenames,
 
                                  tcx.crate_name(LOCAL_CRATE),
@@ -1237,44 +1236,22 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               link_meta.crate_hash));
     // ---
 
-    if no_integrated_as {
-        let output_types = OutputTypes::new(&[(OutputType::Assembly, None)]);
-        time(sess.time_passes(),
-             "LLVM passes",
-             || write::run_passes(sess,
-                                  modules,
-                                  metadata_module,
-                                  allocator_module,
-                                  &output_types,
-                                  outputs,
+    time(sess.time_passes(),
+         "LLVM passes",
+         || write::run_passes(sess,
+                              modules,
+                              metadata_module,
+                              allocator_module,
+                              outputs,
 
-                                  tcx.crate_name(LOCAL_CRATE),
-                                  link_meta,
-                                  metadata,
-                                  exported_symbols,
-                                  no_builtins,
-                                  windows_subsystem,
-                                  linker_info,
-                                  no_integrated_as))
-    } else {
-        time(sess.time_passes(),
-             "LLVM passes",
-             || write::run_passes(sess,
-                                  modules,
-                                  metadata_module,
-                                  allocator_module,
-                                  &sess.opts.output_types,
-                                  outputs,
-
-                                  tcx.crate_name(LOCAL_CRATE),
-                                  link_meta,
-                                  metadata,
-                                  exported_symbols,
-                                  no_builtins,
-                                  windows_subsystem,
-                                  linker_info,
-                                  no_integrated_as))
-    }
+                              tcx.crate_name(LOCAL_CRATE),
+                              link_meta,
+                              metadata,
+                              exported_symbols,
+                              no_builtins,
+                              windows_subsystem,
+                              linker_info,
+                              no_integrated_as))
 }
 
 #[inline(never)] // give this a place in the profiler
