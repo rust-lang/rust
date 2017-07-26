@@ -167,7 +167,7 @@ fn test_set_memory() {
 #[test]
 fn test_unsized_unique() {
     let xs: &[i32] = &[1, 2, 3];
-    let ptr = unsafe { Unique::new(xs as *const [i32] as *mut [i32]) };
+    let ptr = unsafe { Unique::new_unchecked(xs as *const [i32] as *mut [i32]) };
     let ys = unsafe { ptr.as_ref() };
     let zs: &[i32] = &[1, 2, 3];
     assert!(ys == zs);

@@ -892,7 +892,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
-            unsafe { self.alloc(k).map(|p| Unique::new(p as *mut T)) }
+            unsafe { self.alloc(k).map(|p| Unique::new_unchecked(p as *mut T)) }
         } else {
             Err(AllocErr::invalid_input("zero-sized type invalid for alloc_one"))
         }
@@ -963,7 +963,7 @@ pub unsafe trait Alloc {
                 unsafe {
                     self.alloc(layout.clone())
                         .map(|p| {
-                            Unique::new(p as *mut T)
+                            Unique::new_unchecked(p as *mut T)
                         })
                 }
             }
@@ -1012,7 +1012,7 @@ pub unsafe trait Alloc {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new), ptr.as_ptr()) {
             (Some(ref k_old), Some(ref k_new), ptr) if k_old.size() > 0 && k_new.size() > 0 => {
                 self.realloc(ptr as *mut u8, k_old.clone(), k_new.clone())
-                    .map(|p|Unique::new(p as *mut T))
+                    .map(|p|Unique::new_unchecked(p as *mut T))
             }
             _ => {
                 Err(AllocErr::invalid_input("invalid layout for realloc_array"))

@@ -303,18 +303,16 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        unsafe {
-            Rc {
-                // there is an implicit weak pointer owned by all the strong
-                // pointers, which ensures that the weak destructor never frees
-                // the allocation while the strong destructor is running, even
-                // if the weak pointer is stored inside the strong one.
-                ptr: Shared::new(Box::into_raw(box RcBox {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value: value,
-                })),
-            }
+        Rc {
+            // there is an implicit weak pointer owned by all the strong
+            // pointers, which ensures that the weak destructor never frees
+            // the allocation while the strong destructor is running, even
+            // if the weak pointer is stored inside the strong one.
+            ptr: Shared::from(Box::into_unique(box RcBox {
+                strong: Cell::new(1),
+                weak: Cell::new(1),
+                value: value,
+            })),
         }
     }
 
@@ -418,7 +416,7 @@ impl<T> Rc<T> {
 
         let ptr = (ptr as *const u8).offset(-offset_of!(RcBox<T>, value));
         Rc {
-            ptr: Shared::new(ptr as *mut u8 as *mut _)
+            ptr: Shared::new_unchecked(ptr as *mut u8 as *mut _)
         }
     }
 }
@@ -443,7 +441,7 @@ impl Rc<str> {
             // Combine the allocation address and the string length into a fat pointer to `RcBox`.
             let rcbox_ptr: *mut RcBox<str> = mem::transmute([ptr as usize, value.len()]);
             assert!(aligned_len * size_of::<usize>() == size_of_val(&*rcbox_ptr));
-            Rc { ptr: Shared::new(rcbox_ptr) }
+            Rc { ptr: Shared::new_unchecked(rcbox_ptr) }
         }
     }
 }
@@ -476,7 +474,7 @@ impl<T> Rc<[T]> {
             // Free the original allocation without freeing its (moved) contents.
             box_free(Box::into_raw(value));
 
-            Rc { ptr: Shared::new(ptr as *mut _) }
+            Rc { ptr: Shared::new_unchecked(ptr as *mut _) }
         }
     }
 }
@@ -1016,7 +1014,7 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Shared::new(Box::into_raw(box RcBox {
+                ptr: Shared::from(Box::into_unique(box RcBox {
                     strong: Cell::new(0),
                     weak: Cell::new(1),
                     value: uninitialized(),
