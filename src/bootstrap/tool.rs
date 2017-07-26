@@ -249,6 +249,9 @@ impl Step for Rustdoc {
         let build_compiler = if target_compiler.stage == 0 {
             target_compiler
         } else {
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+            // compilers, which isn't what we want.
             builder.compiler(target_compiler.stage - 1, target_compiler.host)
         };
 
