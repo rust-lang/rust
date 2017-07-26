@@ -11,6 +11,7 @@
 // ignore-arm
 // ignore-aarch64
 // ignore-powerpc
+// ignore-aarch64
 // ignore-wasm
 // ignore-emscripten
 // ignore-windows

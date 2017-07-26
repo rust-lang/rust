@@ -490,6 +490,7 @@ valopt musl-root-armhf "" "arm-unknown-linux-musleabihf install directory"
 valopt musl-root-armv7 "" "armv7-unknown-linux-musleabihf install directory"
 valopt extra-filename "" "Additional data that is hashed and passed to the -C extra-filename flag"
 valopt qemu-armhf-rootfs "" "rootfs in qemu testing, you probably don't want to use this"
+valopt qemu-aarch64-rootfs "" "rootfs in qemu testing, you probably don't want to use this"
 valopt experimental-targets "" "experimental LLVM targets to build"
 
 if [ -e ${CFG_SRC_DIR}.git ]
