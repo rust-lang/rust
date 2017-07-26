@@ -14,14 +14,14 @@ use rustc::hir::def_id::DefId;
 use rustc::traits::{FulfillmentContext, Obligation, ObligationCause};
 use rustc::ty::{AssociatedItem, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
+use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs};
 
 use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
-use semcheck::translate::{translate_item_type, translate_param_env};
+use semcheck::translate::{BottomUpRegionFolder, translate_item_type, translate_param_env};
 
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
@@ -654,14 +654,14 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             .eq(old, new)
             .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
 
-        if let Err(err) = error {
-            let region_maps = RegionMaps::new();
-            let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(new_param_env.caller_bounds);
-            infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
+        let region_maps = RegionMaps::new();
+        let mut free_regions = FreeRegionMap::new();
+        free_regions.relate_free_regions_from_predicates(new_param_env.caller_bounds);
+        infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
 
-            let err = infcx.resolve_type_vars_if_possible(&err);
-            let err = err.fold_with(&mut BottomUpFolder { tcx: infcx.tcx, fldop: |ty| {
+        let mut folder = BottomUpRegionFolder {
+            tcx: infcx.tcx,
+            fldop_t: |ty| {
                 match ty.sty {
                     TyRef(region, tm) if region.needs_infer() => {
                         infcx.tcx.mk_ref(tcx.types.re_erased, tm)
@@ -669,11 +669,21 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                     TyInfer(_) => tcx.mk_ty(TyError),
                     _ => ty,
                 }
-            }});
+            },
+            fldop_r: |reg| {
+                if reg.needs_infer() {
+                    tcx.types.re_erased
+                } else {
+                    reg
+                }
+            },
+        };
 
-            changes.add_change(TypeChanged { error: err.lift_to_tcx(tcx).unwrap() },
-                               old_def_id,
-                               None);
+        if let Err(err) = error {
+            let err = infcx.resolve_type_vars_if_possible(&err);
+            let err = err.fold_with(&mut folder).lift_to_tcx(tcx).unwrap();
+
+            changes.add_change(TypeChanged { error: err }, old_def_id, None);
         }
 
         let mut fulfill_cx = FulfillmentContext::new();
@@ -683,8 +693,17 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        if fulfill_cx.select_all_or_error(&infcx).is_err() {
-            changes.add_change(BoundsTightened, old_def_id, Some(tcx.def_span(old_def_id)));
+        if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
+            for err in &errors {
+                let pred = infcx.resolve_type_vars_if_possible(&err.obligation.predicate);
+                let pred = pred.fold_with(&mut folder);
+
+                let err_type = BoundsTightened {
+                    pred: pred.lift_to_tcx(tcx).unwrap(),
+                };
+
+                changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
+            }
         } else {
             let mut fulfill_cx_rev = FulfillmentContext::new();
 
@@ -693,8 +712,17 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 fulfill_cx_rev.register_predicate_obligation(&infcx, obligation);
             }
 
-            if fulfill_cx_rev.select_all_or_error(&infcx).is_err() {
-                changes.add_change(BoundsLoosened, old_def_id, Some(tcx.def_span(old_def_id)));
+            if let Err(errors) = fulfill_cx_rev.select_all_or_error(&infcx) {
+                for err in &errors {
+                    let pred = infcx.resolve_type_vars_if_possible(&err.obligation.predicate);
+                    let pred = pred.fold_with(&mut folder);
+
+                    let err_type = BoundsLoosened {
+                        pred: pred.lift_to_tcx(tcx).unwrap(),
+                    };
+
+                    changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
+                }
             }
         }
     });

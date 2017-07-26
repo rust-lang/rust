@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::{ParamEnv, Predicate, Region, Ty, TyCtxt};
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
+use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
@@ -238,5 +238,32 @@ pub fn translate_param_env<'a, 'tcx>(id_mapping: &IdMapping,
     ParamEnv {
         caller_bounds: tcx.intern_predicates(&res),
         reveal: param_env.reveal,
+    }
+}
+
+/// A simple closure folder for regions and types.
+pub struct BottomUpRegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G>
+    where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+          G: FnMut(Region<'tcx>) -> Region<'tcx>,
+{
+    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub fldop_t: F,
+    pub fldop_r: G,
+}
+
+impl<'a, 'gcx, 'tcx, F, G> TypeFolder<'gcx, 'tcx> for BottomUpRegionFolder<'a, 'gcx, 'tcx, F, G>
+    where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
+          G: FnMut(Region<'tcx>) -> Region<'tcx>,
+{
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let t1 = ty.super_fold_with(self);
+        (self.fldop_t)(t1)
+    }
+
+    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
+        let r1 = r.super_fold_with(self);
+        (self.fldop_r)(r1)
     }
 }
