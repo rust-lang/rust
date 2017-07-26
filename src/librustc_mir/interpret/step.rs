@@ -128,15 +128,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.deallocate_local(old_val)?;
             }
 
-            // Validity checks.
-            Validate(op, ref lvalues) => {
-                for operand in lvalues {
-                    self.validation_op(op, operand)?;
-                }
-            }
-            EndRegion(ce) => {
-                self.end_region(ce)?;
-            }
+            // NOPs for now.
+            EndRegion(_ce) => {}
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.

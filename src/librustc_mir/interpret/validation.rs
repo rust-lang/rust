@@ -1,6 +1,9 @@
+// code for @RalfJung's validation branch is dead for now
+#![allow(dead_code)]
+
 use rustc::hir::Mutability;
 use rustc::hir::Mutability::*;
-use rustc::mir::{self, ValidationOp, ValidationOperand};
+use rustc::mir;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
@@ -12,6 +15,23 @@ use eval_context::{EvalContext, DynamicLifetime};
 use memory::{AccessKind, LockInfo};
 use value::{PrimVal, Value};
 use lvalue::{Lvalue, LvalueExtra};
+
+// FIXME remove this once it lands in rustc
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum ValidationOp {
+    Acquire,
+    Release,
+    Suspend(CodeExtent),
+}
+
+#[derive(Clone, Debug)]
+pub struct ValidationOperand<'tcx, T> {
+    pub lval: T,
+    pub ty: Ty<'tcx>,
+    pub re: Option<CodeExtent>,
+    pub mutbl: Mutability,
+}
+// FIXME end
 
 pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue<'tcx>>;
 

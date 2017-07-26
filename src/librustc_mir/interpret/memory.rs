@@ -31,6 +31,8 @@ mod range {
     }
 
     impl MemoryRange {
+        #[allow(dead_code)]
+        // FIXME(@RalfJung): validation branch
         pub fn new(offset: u64, len: u64) -> MemoryRange {
             assert!(len > 0);
             MemoryRange {
@@ -55,6 +57,8 @@ mod range {
             left..right
         }
 
+        #[allow(dead_code)]
+        // FIXME(@RalfJung): validation branch
         pub fn contained_in(&self, offset: u64, len: u64) -> bool {
             assert!(len > 0);
             offset <= self.start && self.end <= (offset + len)
@@ -135,6 +139,8 @@ impl Allocation {
             .filter(move |&(range, _)| range.overlaps(offset, len))
     }
 
+    #[allow(dead_code)]
+    // FIXME(@RalfJung): validation branch
     fn iter_locks_mut<'a>(&'a mut self, offset: u64, len: u64) -> impl Iterator<Item=(&'a MemoryRange, &'a mut LockInfo)> + 'a {
         self.locks.range_mut(MemoryRange::range(offset, len))
             .filter(move |&(range, _)| range.overlaps(offset, len))
@@ -537,6 +543,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             .map_err(|lock| EvalError::MemoryLockViolation { ptr, len, frame, access, lock })
     }
 
+    #[allow(dead_code)]
+    // FIXME(@RalfJung): validation branch
     /// Acquire the lock for the given lifetime
     pub(crate) fn acquire_lock(&mut self, ptr: MemoryPointer, len: u64, region: Option<CodeExtent>, kind: AccessKind) -> EvalResult<'tcx> {
         use std::collections::btree_map::Entry::*;
@@ -565,6 +573,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(())
     }
 
+    #[allow(dead_code)]
+    // FIXME(@RalfJung): validation branch
     /// Release a write lock prematurely. If there's a read lock or someone else's lock, fail.
     pub(crate) fn release_write_lock(&mut self, ptr: MemoryPointer, len: u64) -> EvalResult<'tcx> {
         assert!(len > 0);
