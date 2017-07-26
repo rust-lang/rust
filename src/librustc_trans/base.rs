@@ -38,7 +38,7 @@ use llvm;
 use metadata;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::LinkMeta;
@@ -729,7 +729,8 @@ fn contains_null(s: &str) -> bool {
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                             link_meta: &LinkMeta,
                             exported_symbols: &NodeSet)
-                            -> (ContextRef, ModuleRef, EncodedMetadata) {
+                            -> (ContextRef, ModuleRef,
+                                EncodedMetadata, EncodedMetadataHashes) {
     use std::io::Write;
     use flate2::Compression;
     use flate2::write::DeflateEncoder;
@@ -759,15 +760,18 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     }).max().unwrap();
 
     if kind == MetadataKind::None {
-        return (metadata_llcx, metadata_llmod, EncodedMetadata::new());
+        return (metadata_llcx,
+                metadata_llmod,
+                EncodedMetadata::new(),
+                EncodedMetadataHashes::new());
     }
 
     let cstore = &tcx.sess.cstore;
-    let metadata = cstore.encode_metadata(tcx,
-                                          &link_meta,
-                                          exported_symbols);
+    let (metadata, hashes) = cstore.encode_metadata(tcx,
+                                                    &link_meta,
+                                                    exported_symbols);
     if kind == MetadataKind::Uncompressed {
-        return (metadata_llcx, metadata_llmod, metadata);
+        return (metadata_llcx, metadata_llmod, metadata, hashes);
     }
 
     assert!(kind == MetadataKind::Compressed);
@@ -795,7 +799,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let directive = CString::new(directive).unwrap();
         llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return (metadata_llcx, metadata_llmod, metadata);
+    return (metadata_llcx, metadata_llmod, metadata, hashes);
 }
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
@@ -919,7 +923,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              analysis: ty::CrateAnalysis,
-                             incremental_hashes_map: &IncrementalHashesMap,
+                             incremental_hashes_map: IncrementalHashesMap,
                              output_filenames: &OutputFilenames)
                              -> OngoingCrateTranslation {
     // Be careful with this krate: obviously it gives access to the
@@ -927,19 +931,16 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // `TransCrate`, you need to be careful to register "reads" of the
     // particular items that will be processed.
     let krate = tcx.hir.krate();
-
     let ty::CrateAnalysis { reachable, .. } = analysis;
-
     let check_overflow = tcx.sess.overflow_checks();
-
-    let link_meta = link::build_link_meta(incremental_hashes_map);
-
+    let link_meta = link::build_link_meta(&incremental_hashes_map);
     let exported_symbol_node_ids = find_exported_symbols(tcx, &reachable);
+
     let shared_ccx = SharedCrateContext::new(tcx,
                                              check_overflow,
                                              output_filenames);
     // Translate the metadata.
-    let (metadata_llcx, metadata_llmod, metadata) =
+    let (metadata_llcx, metadata_llmod, metadata, metadata_incr_hashes) =
         time(tcx.sess.time_passes(), "write metadata", || {
             write_metadata(tcx, &link_meta, &exported_symbol_node_ids)
         });
@@ -976,6 +977,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ongoing_translation.submit_translated_module_to_llvm(tcx.sess, metadata_module);
         ongoing_translation.signal_translation_done();
 
+        assert_and_save_dep_graph(tcx,
+                                  incremental_hashes_map,
+                                  metadata_incr_hashes,
+                                  link_meta);
+
         return ongoing_translation;
     }
 
@@ -988,6 +994,35 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         collect_and_partition_translation_items(&shared_ccx, &exported_symbols);
 
     assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
+
+    let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
+    let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
+                                                       "windows_subsystem");
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != "windows" && subsystem != "console" {
+            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
+                                     `windows` and `console` are allowed",
+                                    subsystem));
+        }
+        subsystem.to_string()
+    });
+
+    let no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
+        (tcx.sess.target.target.options.no_integrated_as &&
+         (output_filenames.outputs.contains_key(&OutputType::Object) ||
+          output_filenames.outputs.contains_key(&OutputType::Exe)));
+
+    let ongoing_translation = write::run_passes(
+        tcx.sess,
+        output_filenames,
+        tcx.crate_name(LOCAL_CRATE),
+        link_meta,
+        metadata,
+        exported_symbols.clone(),
+        no_builtins,
+        windows_subsystem,
+        linker_info,
+        no_integrated_as);
 
     let translation_items = Arc::new(translation_items);
 
@@ -1209,48 +1244,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         None
     };
 
-    let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
-
-    let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
-                                                       "windows_subsystem");
-    let windows_subsystem = subsystem.map(|subsystem| {
-        if subsystem != "windows" && subsystem != "console" {
-            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
-                                     `windows` and `console` are allowed",
-                                    subsystem));
-        }
-        subsystem.to_string()
-    });
-
-    let outputs = output_filenames;
-
-    let no_integrated_as = sess.opts.cg.no_integrated_as ||
-        (sess.target.target.options.no_integrated_as &&
-         (outputs.outputs.contains_key(&OutputType::Object) ||
-          outputs.outputs.contains_key(&OutputType::Exe)));
-
-    time(sess.time_passes(),
-         "assert dep graph",
-         || rustc_incremental::assert_dep_graph(tcx));
-
-    time(sess.time_passes(),
-         "serialize dep graph",
-         || rustc_incremental::save_dep_graph(tcx,
-                                              incremental_hashes_map,
-                                              &metadata.hashes,
-                                              link_meta.crate_hash));
-    // ---
-    let ongoing_translation = write::run_passes(
-        sess,
-        outputs,
-        tcx.crate_name(LOCAL_CRATE),
-        link_meta,
-        metadata,
-        exported_symbols,
-        no_builtins,
-        windows_subsystem,
-        linker_info,
-        no_integrated_as);
+    assert_and_save_dep_graph(tcx,
+                              incremental_hashes_map,
+                              metadata_incr_hashes,
+                              link_meta);
 
     ongoing_translation.submit_translated_module_to_llvm(sess, metadata_module);
 
@@ -1265,6 +1262,22 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ongoing_translation.signal_translation_done();
 
     ongoing_translation
+}
+
+fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       incremental_hashes_map: IncrementalHashesMap,
+                                       metadata_incr_hashes: EncodedMetadataHashes,
+                                       link_meta: LinkMeta) {
+    time(tcx.sess.time_passes(),
+         "assert dep graph",
+         || rustc_incremental::assert_dep_graph(tcx));
+
+    time(tcx.sess.time_passes(),
+         "serialize dep graph",
+         || rustc_incremental::save_dep_graph(tcx,
+                                              incremental_hashes_map,
+                                              &metadata_incr_hashes,
+                                              link_meta.crate_hash));
 }
 
 #[inline(never)] // give this a place in the profiler
