@@ -314,8 +314,8 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
             &line[opener.trim_right().len()..]
         }
     } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!") ||
-        line.starts_with("///") ||
-        line.starts_with("** ") || line.starts_with("/*!") ||
+        line.starts_with("///") || line.starts_with("** ") ||
+        line.starts_with("/*!") ||
         (line.starts_with("/**") && !line.starts_with("/**/"))
     {
         &line[3..]

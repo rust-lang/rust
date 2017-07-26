@@ -657,8 +657,8 @@ fn rewrite_closure(
         }
 
         // Figure out if the block is necessary.
-        let needs_block = block.rules != ast::BlockCheckMode::Default ||
-            block.stmts.len() > 1 || context.inside_macro ||
+        let needs_block = block.rules != ast::BlockCheckMode::Default || block.stmts.len() > 1 ||
+            context.inside_macro ||
             block_contains_comment(block, context.codemap) ||
             prefix.contains('\n');
 

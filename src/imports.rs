@@ -482,18 +482,18 @@ fn rewrite_use_list(
     };
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
-    let result =
-        if list_str.contains('\n') && context.config.imports_indent() == IndentStyle::Block {
-            format!(
-                "{}{{\n{}{}\n{}}}",
-                path_str,
-                nested_shape.indent.to_string(context.config),
-                list_str,
-                shape.indent.to_string(context.config)
-            )
-        } else {
-            format!("{}{{{}}}", path_str, list_str)
-        };
+    let result = if list_str.contains('\n') && context.config.imports_indent() == IndentStyle::Block
+    {
+        format!(
+            "{}{{\n{}{}\n{}}}",
+            path_str,
+            nested_shape.indent.to_string(context.config),
+            list_str,
+            shape.indent.to_string(context.config)
+        )
+    } else {
+        format!("{}{{{}}}", path_str, list_str)
+    };
     Some(result)
 }
 
