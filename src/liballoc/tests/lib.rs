@@ -26,6 +26,7 @@
 #![feature(splice)]
 #![feature(str_checked_slicing)]
 #![feature(str_escape)]
+#![feature(string_retain)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]

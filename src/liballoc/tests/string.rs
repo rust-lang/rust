@@ -333,6 +333,26 @@ fn remove_bad() {
 }
 
 #[test]
+fn test_retain() {
+    let mut s = String::from("α_β_γ");
+
+    s.retain(|_| true);
+    assert_eq!(s, "α_β_γ");
+
+    s.retain(|c| c != '_');
+    assert_eq!(s, "αβγ");
+
+    s.retain(|c| c != 'β');
+    assert_eq!(s, "αγ");
+
+    s.retain(|c| c == 'α');
+    assert_eq!(s, "α");
+
+    s.retain(|_| false);
+    assert_eq!(s, "");
+}
+
+#[test]
 fn insert() {
     let mut s = "foobar".to_string();
     s.insert(0, 'ệ');

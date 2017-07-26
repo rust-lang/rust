@@ -1031,6 +1031,57 @@ impl String {
         ch
     }
 
+    /// Retains only the characters specified by the predicate.
+    ///
+    /// In other words, remove all characters `c` such that `f(c)` returns `false`.
+    /// This method operates in place and preserves the order of the retained
+    /// characters.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_retain)]
+    ///
+    /// let mut s = String::from("f_o_ob_ar");
+    ///
+    /// s.retain(|c| c != '_');
+    ///
+    /// assert_eq!(s, "foobar");
+    /// ```
+    #[inline]
+    #[unstable(feature = "string_retain", issue = "43874")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(char) -> bool
+    {
+        let len = self.len();
+        let mut del_bytes = 0;
+        let mut idx = 0;
+
+        while idx < len {
+            let ch = unsafe {
+                self.slice_unchecked(idx, len).chars().next().unwrap()
+            };
+            let ch_len = ch.len_utf8();
+
+            if !f(ch) {
+                del_bytes += ch_len;
+            } else if del_bytes > 0 {
+                unsafe {
+                    ptr::copy(self.vec.as_ptr().offset(idx as isize),
+                              self.vec.as_mut_ptr().offset((idx - del_bytes) as isize),
+                              ch_len);
+                }
+            }
+
+            // Point idx to the next char
+            idx += ch_len;
+        }
+
+        if del_bytes > 0 {
+            unsafe { self.vec.set_len(len - del_bytes); }
+        }
+    }
+
     /// Inserts a character into this `String` at a byte position.
     ///
     /// This is an `O(n)` operation as it requires copying every element in the
