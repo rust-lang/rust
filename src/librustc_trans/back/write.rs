@@ -33,7 +33,6 @@ use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
-use std::cmp;
 use std::ffi::CString;
 use std::fmt;
 use std::fs;
@@ -663,7 +662,6 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
 
 pub fn run_passes(sess: &Session,
                   crate_output: &OutputFilenames,
-                  total_work_item_count: usize,
                   crate_name: Symbol,
                   link: LinkMeta,
                   metadata: EncodedMetadata,
@@ -758,8 +756,7 @@ pub fn run_passes(sess: &Session,
         // Pick a "reasonable maximum" if we don't otherwise have a jobserver in
         // our environment, capping out at 32 so we don't take everything down
         // by hogging the process run queue.
-        let num_workers = cmp::min(total_work_item_count - 1, 32);
-        Client::new(num_workers).expect("failed to create jobserver")
+        Client::new(32).expect("failed to create jobserver")
     });
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
@@ -767,14 +764,12 @@ pub fn run_passes(sess: &Session,
     let (coordinator_send, coordinator_receive) = channel();
 
     let coordinator_thread = start_executing_work(sess,
-                                                  total_work_item_count,
                                                   shared_emitter,
                                                   trans_worker_send,
                                                   coordinator_send.clone(),
                                                   coordinator_receive,
                                                   client,
                                                   exported_symbols.clone());
-
     OngoingCrateTranslation {
         crate_name,
         link,
@@ -1072,6 +1067,7 @@ pub enum Message {
     Done { result: Result<CompiledModule, ()> },
     WorkItem(WorkItem),
     CheckErrorMessages,
+    TranslationDone,
 }
 
 
@@ -1082,7 +1078,6 @@ pub struct Diagnostic {
 }
 
 fn start_executing_work(sess: &Session,
-                        total_work_item_count: usize,
                         shared_emitter: SharedEmitter,
                         trans_worker_send: Sender<Message>,
                         coordinator_send: Sender<Message>,
@@ -1104,9 +1099,6 @@ fn start_executing_work(sess: &Session,
     let helper = jobserver.into_helper_thread(move |token| {
         drop(coordinator_send2.send(Message::Token(token)));
     }).expect("failed to spawn helper thread");
-    for _ in 0..total_work_item_count - 1 {
-        helper.request_token();
-    }
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(sess, &mut |cnum, path| {
@@ -1193,29 +1185,25 @@ fn start_executing_work(sess: &Session,
         let mut compiled_metadata_module = None;
         let mut compiled_allocator_module = None;
 
-        let mut work_items_left = total_work_item_count;
-        let mut work_items = Vec::with_capacity(total_work_item_count);
+        let mut translation_done = false;
+        let mut work_items = Vec::new();
         let mut tokens = Vec::new();
         let mut running = 0;
-        while work_items_left > 0 || running > 0 {
+        while !translation_done || work_items.len() > 0 || running > 0 {
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while work_items_left > 0 && running < tokens.len() + 1 {
-                if let Some(item) = work_items.pop() {
-                    work_items_left -= 1;
-                    let worker_index = work_items_left;
+            while work_items.len() > 0 && running < tokens.len() + 1 {
+                let item = work_items.pop().unwrap();
+                let worker_index = work_items.len();
 
-                    let cgcx = CodegenContext {
-                        worker: worker_index,
-                        .. cgcx.clone()
-                    };
+                let cgcx = CodegenContext {
+                    worker: worker_index,
+                    .. cgcx.clone()
+                };
 
-                    spawn_work(cgcx, item);
-                    running += 1;
-                } else {
-                    break
-                }
+                spawn_work(cgcx, item);
+                running += 1;
             }
 
             // Relinquish accidentally acquired extra tokens
@@ -1238,6 +1226,7 @@ fn start_executing_work(sess: &Session,
 
                 Message::WorkItem(work_item) => {
                     work_items.push(work_item);
+                    helper.request_token();
                 }
 
                 // If a thread exits successfully then we drop a token associated
@@ -1272,6 +1261,9 @@ fn start_executing_work(sess: &Session,
                     drop(trans_worker_send.send(Message::CheckErrorMessages));
                     // Exit the coordinator thread
                     panic!()
+                }
+                Message::TranslationDone => {
+                    translation_done = true;
                 }
                 msg @ Message::CheckErrorMessages => {
                     bug!("unexpected message: {:?}", msg);
@@ -1618,5 +1610,9 @@ impl OngoingCrateTranslation {
                                         self.output_filenames.clone());
 
         drop(self.coordinator_send.send(Message::WorkItem(work_item)));
+    }
+
+    pub fn signal_translation_done(&self) {
+        drop(self.coordinator_send.send(Message::TranslationDone));
     }
 }

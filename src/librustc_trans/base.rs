@@ -966,7 +966,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let ongoing_translation = write::run_passes(
             tcx.sess,
             output_filenames,
-            1,
             tcx.crate_name(LOCAL_CRATE),
             link_meta,
             metadata,
@@ -977,6 +976,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             false);
 
         ongoing_translation.submit_translated_module_to_llvm(tcx.sess, metadata_module);
+        ongoing_translation.signal_translation_done();
 
         return ongoing_translation;
     }
@@ -1237,14 +1237,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               &metadata.hashes,
                                               link_meta.crate_hash));
     // ---
-
-    let total_module_count = modules.len() + 1 +
-        if allocator_module.is_some() { 1 } else { 0 };
-
     let ongoing_translation = write::run_passes(
         sess,
         outputs,
-        total_module_count,
         tcx.crate_name(LOCAL_CRATE),
         link_meta,
         metadata,
@@ -1263,6 +1258,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(allocator_module) = allocator_module {
         ongoing_translation.submit_translated_module_to_llvm(sess, allocator_module);
     }
+
+    ongoing_translation.signal_translation_done();
 
     ongoing_translation
 }
