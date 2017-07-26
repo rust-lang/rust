@@ -37,6 +37,21 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::I32x4,
             definition: Named("llvm.ppc.altivec.vcmpbfp")
         },
+        "_vec_cmpeqb" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.ppc.altivec.vcmpequb")
+        },
+        "_vec_cmpeqh" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.ppc.altivec.vcmpequh")
+        },
+        "_vec_cmpeqw" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.ppc.altivec.vcmpequw")
+        },
         _ => return None,
     })
 }
