@@ -46,6 +46,8 @@ std::mem::swap::|\
 std::mem::uninitialized::|\
 std::ptr::read::|\
 std::panicking::try::do_call::|\
+<std::heap::Heap as std::heap::Alloc>::alloc$|\
+<std::mem::ManuallyDrop<T>><std::heap::AllocErr>::new$|\
 std::sync::atomic::AtomicBool::get_mut$|\
 <std::vec::Vec<T>><[a-zA-Z0-9_]+>::into_boxed_slice$\
 )").unwrap();
@@ -125,7 +127,18 @@ std::sync::atomic::AtomicBool::get_mut$|\
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = val.into_ptr(&mut self.memory)?;
-        match self.memory.check_align(ptr, align) {
+        self.memory.check_align(ptr, align)?;
+
+        // Recurse
+        let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
+        self.validate(ValidationQuery { lval: pointee_lvalue, ty: pointee_ty, re, mutbl }, mode)
+    }
+
+    /// Validate the lvalue at the given type. If `acquire` is false, just do a release of all write locks
+    #[inline]
+    fn validate(&mut self, query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
+    {
+        match self.try_validate(query, mode) {
             // HACK: If, during releasing, we hit memory we cannot use, we just ignore that.
             // This can happen because releases are added before drop elaboration.
             // TODO: Fix the MIR so that these releases do not happen.
@@ -136,15 +149,10 @@ std::sync::atomic::AtomicBool::get_mut$|\
                 res
             }
             res => res,
-        }?;
-
-        // Recurse
-        let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
-        self.validate(ValidationQuery { lval: pointee_lvalue, ty: pointee_ty, re, mutbl }, mode)
+        }
     }
 
-    /// Validate the lvalue at the given type. If `acquire` is false, just do a release of all write locks
-    fn validate(&mut self, mut query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
+    fn try_validate(&mut self, mut query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
     {
         use rustc::ty::TypeVariants::*;
         use rustc::ty::RegionKind::*;
