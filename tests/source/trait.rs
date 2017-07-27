@@ -38,7 +38,7 @@ trait Test {
 
 trait T<> {}
 
-trait Foo { type Bar: Baz;}
+trait Foo { type Bar: Baz; type Inner: Foo   = Box< Foo >; }
 
 trait ConstCheck<T>:Foo   where   T: Baz { 
         const   J:   i32;
