@@ -34,6 +34,10 @@ script:
  - cp clippy_tests/target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
  - PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy
  - cd clippy_lints && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
+ - cd clippy_workspace_tests && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ..
+ - cd clippy_workspace_tests/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ../..
+ - cd clippy_workspace_tests/subcrate && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ../..
+ - cd clippy_workspace_tests/subcrate/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy && cd ../../..
  - set +e
 
 after_success: |
