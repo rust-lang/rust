@@ -153,9 +153,9 @@ pub fn translate_item_type<'a, 'tcx>(id_mapping: &IdMapping,
 
 /// Translate all old `DefId`s in the predicate to their new counterparts, if possible.
 fn translate_predicate<'a, 'tcx>(id_mapping: &IdMapping,
-                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     index_map: &HashMap<u32, DefId>,
-                                     predicate: Predicate<'tcx>) -> Predicate<'tcx> {
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 index_map: &HashMap<u32, DefId>,
+                                 predicate: Predicate<'tcx>) -> Predicate<'tcx> {
     use rustc::ty::{EquatePredicate, OutlivesPredicate, ProjectionPredicate, ProjectionTy,
                     SubtypePredicate, TraitPredicate, TraitRef};
 

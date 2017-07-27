@@ -25,7 +25,7 @@ pub struct IdMapping {
     toplevel_mapping: HashMap<DefId, (Def, Def)>,
     /// The set of toplevel items that have been removed.
     removed_items: HashSet<DefId>,
-    /// Trait items' old `DefId` mapped to old and new `Def`.
+    /// Trait items' old `DefId` mapped to old and new `Def`, and the enclosing trait's `DefId`.
     trait_item_mapping: HashMap<DefId, (Def, Def, DefId)>,
     /// Other items' old `DefId` mapped to new `DefId`.
     internal_mapping: HashMap<DefId, DefId>,

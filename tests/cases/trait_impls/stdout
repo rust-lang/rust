@@ -1,0 +1,2 @@
+impl breaks: DefId { krate: CrateNum(12), node: DefIndex(7) => old/8cd878b::{{impl}}[2] }
+version bump: 1.0.0 -> (patch) -> 1.0.1

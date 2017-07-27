@@ -116,4 +116,5 @@ test!(removal_use, "tests/cases/removal_use");
 test!(structs, "tests/cases/structs");
 test!(swap, "tests/cases/swap");
 test!(traits, "tests/cases/traits");
+test!(trait_impls, "tests/cases/trait_impls");
 test!(ty_alias, "tests/cases/ty_alias");

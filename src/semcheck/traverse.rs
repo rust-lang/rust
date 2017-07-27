@@ -51,6 +51,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     // fourth pass
     for (old, new) in id_mapping.items() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
+        diff_trait_impls(&mut changes, &id_mapping, tcx, old, new);
     }
 
     changes
@@ -601,6 +602,37 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 }
 
+/// Given two traits, compare their implementations.
+fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                              id_mapping: &IdMapping,
+                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              old: Def,
+                              new: Def) {
+    use rustc::hir::def::Def::Trait;
+
+    if let (Trait(old_def_id), Trait(new_def_id)) = (old, new) {
+        if changes.trait_item_breaking(old_def_id) {
+            return;
+        }
+
+        tcx.trait_def(old_def_id).for_each_impl(tcx, |old_impl_def_id| {
+            let mut matching = false;
+
+            for new_impl_def_id in tcx.trait_impls_of(new_def_id).iter() {
+                matching |= cmp_impls(id_mapping, tcx, old_impl_def_id, new_impl_def_id);
+
+                if matching {
+                    break;
+                }
+            }
+
+            if !matching {
+                println!("impl breaks: {:?}", old_impl_def_id);
+            }
+        });
+    }
+}
+
 /// Compare two types and possibly register the error.
 fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        id_mapping: &IdMapping,
@@ -609,12 +641,12 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        new_def_id: DefId,
                        old: Ty<'tcx>,
                        new: Ty<'tcx>) {
-    use syntax_pos::DUMMY_SP;
     use rustc::infer::InferOk;
     use rustc::middle::free_region::FreeRegionMap;
     use rustc::middle::region::RegionMaps;
     use rustc::ty::{Lift, ReEarlyBound};
     use rustc::ty::TypeVariants::*;
+    use syntax_pos::DUMMY_SP;
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
     let old = translate_item_type(id_mapping, tcx, old_def_id, old).subst(tcx, substs);
@@ -726,4 +758,75 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             }
         }
     });
+}
+
+/// Compare two implementations and indicate whether the new one is compatible with the old one.
+fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
+                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       old_def_id: DefId,
+                       new_def_id: DefId) -> bool {
+    use rustc::infer::InferOk;
+    use syntax_pos::DUMMY_SP;
+
+    let old = tcx
+        .impl_trait_ref(old_def_id)
+        .and_then(|trait_ref| trait_ref.substs.get(0))
+        .and_then(|kind| kind.as_type())
+        .unwrap();
+    let new = tcx
+        .impl_trait_ref(new_def_id)
+        .and_then(|trait_ref| trait_ref.substs.get(0))
+        .and_then(|kind| kind.as_type())
+        .unwrap();
+
+    let substs = Substs::identity_for_item(tcx, new_def_id);
+
+    if substs.len() < Substs::identity_for_item(tcx, old_def_id).len() {
+        // type parameters have been removed, so this can't match.
+        // FIXME: very ugly, find a better way if possible
+        return false;
+    }
+
+    let old = translate_item_type(id_mapping, tcx, old_def_id, old).subst(tcx, substs);
+
+    tcx.infer_ctxt().enter(|infcx| {
+        let new_substs = {
+            Substs::for_item(infcx.tcx, new_def_id, |def, _| {
+                infcx.region_var_for_def(DUMMY_SP, def)
+            }, |def, substs| {
+                // TODO: strictly speaking, this shouldn't happen.
+                if def.index == 0 { // `Self` is special
+                    tcx.mk_param_from_def(def)
+                } else {
+                    infcx.type_var_for_def(DUMMY_SP, def, substs)
+                }
+            })
+        };
+
+        let new = new.subst(infcx.tcx, new_substs);
+
+        let old_param_env =
+            translate_param_env(id_mapping, tcx, old_def_id, tcx.param_env(old_def_id));
+        let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
+
+        let cause = ObligationCause::dummy();
+
+        let error = infcx
+            .at(&cause, new_param_env)
+            .eq(old, new)
+            .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
+
+        if error.is_err() {
+            return false;
+        }
+
+        let mut fulfill_cx = FulfillmentContext::new();
+
+        for predicate in new_param_env.caller_bounds.iter() {
+            let obligation = Obligation::new(cause.clone(), old_param_env, *predicate);
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
+
+        fulfill_cx.select_all_or_error(&infcx).is_ok()
+    })
 }
