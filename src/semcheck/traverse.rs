@@ -23,7 +23,7 @@ use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 use semcheck::translate::{BottomUpRegionFolder, translate_item_type, translate_param_env};
 
-use std::collections::{BTreeMap, HashSet, VecDeque};
+use std::collections::{BTreeSet, BTreeMap, HashMap, HashSet, VecDeque};
 
 use syntax::symbol::Symbol;
 
@@ -35,6 +35,8 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
 {
     let mut changes = Default::default();
     let mut id_mapping = IdMapping::new(old.krate, new.krate);
+
+    // TODO: deriving(Trait) ?
 
     // first pass
     diff_structure(&mut changes, &mut id_mapping, tcx, old, new);
@@ -53,8 +55,9 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     // fourth pass
     for (old, new) in id_mapping.items() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
-        diff_trait_impls(&mut changes, &id_mapping, tcx, old, new);
     }
+
+    diff_trait_impls(&mut changes, &id_mapping, tcx);
 
     changes
 }
@@ -604,42 +607,49 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 }
 
-/// Given two traits, compare their implementations.
+/// Compare the implementations of traits.
 fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                               id_mapping: &IdMapping,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              old: Def,
-                              new: Def) {
-    use rustc::hir::def::Def::Trait;
+                              tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    let mut new_impls = HashMap::new();
+    let all_impls = tcx.sess.cstore.implementations_of_trait(None);
 
-    if let (Trait(old_def_id), Trait(new_def_id)) = (old, new) {
-        if changes.trait_item_breaking(old_def_id) {
-            return;
+    // construct a set of implementations for each trait outside of the old crate.
+    for new_impl_def_id in all_impls.iter().filter(|&did| !id_mapping.in_old_crate(*did)) {
+        new_impls
+            .entry(tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id)
+            .or_insert_with(BTreeSet::new)
+            .insert(*new_impl_def_id);
+    }
+
+    // for each implementation in the old crate, ... 
+    for old_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_old_crate(*did)) {
+        // ... compute trait `DefId`s, ...
+        let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
+        let new_trait_def_id = id_mapping.get_new_id(old_trait_def_id);
+
+        let mut matched = false;
+
+        // ... and try to match them up with new or outside impls.
+        for new_impl_def_id in &new_impls[&new_trait_def_id] {
+            matched |= cmp_impls(id_mapping, tcx, *old_impl_def_id, *new_impl_def_id);
+
+            if matched {
+                break;
+            }
         }
 
-        tcx.trait_def(old_def_id).for_each_impl(tcx, |old_impl_def_id| {
-            let mut matching = false;
+        if !matched {
+            let impl_span = tcx.def_span(*old_impl_def_id);
 
-            for new_impl_def_id in tcx.trait_impls_of(new_def_id).iter() {
-                matching |= cmp_impls(id_mapping, tcx, old_impl_def_id, new_impl_def_id);
-
-                if matching {
-                    break;
-                }
-            }
-
-            let impl_span = tcx.def_span(old_impl_def_id);
-
-            if !matching {
-                changes.new_change(old_def_id,
-                                   new_def_id,
-                                   Symbol::intern("impl"),
-                                   impl_span,
-                                   impl_span,
-                                   true);
-                changes.add_change(TraitImplTightened, old_def_id, None);
-            }
-        });
+            changes.new_change(*old_impl_def_id,
+                               *old_impl_def_id,
+                               Symbol::intern("impl"),
+                               impl_span,
+                               impl_span,
+                               true);
+            changes.add_change(TraitImplTightened, *old_impl_def_id, None);
+        }
     }
 }
 
@@ -789,14 +799,15 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
         .and_then(|kind| kind.as_type())
         .unwrap();
 
-    let substs = Substs::identity_for_item(tcx, new_def_id);
+    let old_generics = tcx.generics_of(old_def_id);
+    let new_generics = tcx.generics_of(new_def_id);
 
-    if substs.len() < Substs::identity_for_item(tcx, old_def_id).len() {
-        // type parameters have been removed, so this can't match.
-        // FIXME: very ugly, find a better way if possible
+    if old_generics.regions.len() > new_generics.regions.len() ||
+            old_generics.types.len() > new_generics.types.len() {
         return false;
     }
 
+    let substs = Substs::identity_for_item(tcx, new_def_id);
     let old = translate_item_type(id_mapping, tcx, old_def_id, old).subst(tcx, substs);
 
     tcx.infer_ctxt().enter(|infcx| {

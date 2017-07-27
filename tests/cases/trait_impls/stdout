@@ -2,8 +2,20 @@ version bump: 1.0.0 -> (breaking) -> 2.0.0
 warning: breaking changes in `impl`
  --> $REPO_PATH/tests/cases/trait_impls/old.rs:9:1
   |
-9 | impl<T> Abc for Box<T> { }
+9 | impl<T> Abc for Vec<T> { }
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = warning: trait impl specialized or removed (breaking)
+
+warning: breaking changes in `impl`
+  --> $REPO_PATH/tests/cases/trait_impls/old.rs:11:1
+   |
+11 | / impl Clone for Def {
+12 | |     fn clone(&self) -> Def {
+13 | |         Def
+14 | |     }
+15 | | }
+   | |_^
+   |
+   = warning: trait impl specialized or removed (breaking)
 

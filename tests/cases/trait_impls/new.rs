@@ -8,4 +8,4 @@ impl Abc for Def { }
 
 impl<T: Clone> Abc for Box<T> { }
 
-impl Abc for Box<Abc> { }
+impl Abc for Box<Def> { }
