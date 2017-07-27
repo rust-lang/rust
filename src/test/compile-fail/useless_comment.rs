@@ -11,17 +11,17 @@
 #![deny(unused_doc_comment)]
 
 fn foo() {
-    /// a //~ ERROR unused doc comment
+    /// a //~ ERROR doc comment not used by rustdoc
     let x = 12;
 
-    /// b //~ ERROR unused doc comment
+    /// b //~ doc comment not used by rustdoc
     match x {
-        /// c //~ ERROR unused doc comment
+        /// c //~ ERROR doc comment not used by rustdoc
         1 => {},
         _ => {}
     }
 
-    /// foo //~ ERROR unused doc comment
+    /// foo //~ ERROR doc comment not used by rustdoc
     unsafe {}
 }
 
