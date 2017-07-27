@@ -11,7 +11,7 @@ use super::{
     EvalError, EvalResult, EvalErrorKind,
     EvalContext, DynamicLifetime,
     AccessKind, LockInfo,
-    PrimVal, Value,
+    Value,
     Lvalue, LvalueExtra,
     Machine,
 };
@@ -181,16 +181,11 @@ std::sync::atomic::AtomicBool::get_mut$|\
         // HACK: For now, bail out if we hit a dead local during recovery (can happen because sometimes we have
         // StorageDead before EndRegion).
         // TODO: We should rather fix the MIR.
-        // HACK: Releasing on dead/undef local variables is a NOP.  This can happen because of releases being added
-        // before drop elaboration.
-        // TODO: Fix the MIR so that these releases do not happen.
         match query.lval {
             Lvalue::Local { frame, local } => {
                 let res = self.stack[frame].get_local(local);
                 match (res, mode) {
-                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) |
-                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Release) |
-                    (Ok(Value::ByVal(PrimVal::Undef)), ValidationMode::Release) => {
+                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) => {
                         return Ok(());
                     }
                     _ => {},
