@@ -192,7 +192,7 @@ impl Step for TheBook {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(TheBook {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
             name: "book",
         });
@@ -296,7 +296,7 @@ impl Step for Standalone {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Standalone {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }

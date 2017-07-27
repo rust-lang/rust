@@ -247,17 +247,17 @@ impl Step for Rustdoc {
     fn run(self, builder: &Builder) -> PathBuf {
         let target_compiler = self.target_compiler;
         let build_compiler = if target_compiler.stage == 0 {
-            target_compiler
+            builder.compiler(0, builder.build.build)
         } else {
             // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
             // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
             // compilers, which isn't what we want.
-            builder.compiler(target_compiler.stage - 1, target_compiler.host)
+            builder.compiler(target_compiler.stage - 1, builder.build.build)
         };
 
         let tool_rustdoc = builder.ensure(ToolBuild {
             compiler: build_compiler,
-            target: build_compiler.host,
+            target: target_compiler.host,
             tool: "rustdoc",
             mode: Mode::Librustc,
         });

@@ -119,7 +119,7 @@ impl Step for Linkcheck {
     }
 
     fn make_run(run: RunConfig) {
-        run.builder.ensure(Linkcheck { host: run.host });
+        run.builder.ensure(Linkcheck { host: run.target });
     }
 }
 
@@ -140,7 +140,7 @@ impl Step for Cargotest {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargotest {
             stage: run.builder.top_stage,
-            host: run.host,
+            host: run.target,
         });
     }
 
