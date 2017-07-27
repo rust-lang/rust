@@ -211,7 +211,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_ty(&mut self,
                         ty: & $($mutability)* Ty<'tcx>,
-                        _: PositionalInfo) {
+                        _: Lookup) {
                 self.super_ty(ty);
             }
 
@@ -269,7 +269,11 @@ macro_rules! make_mir_visitor {
                     self.visit_visibility_scope_data(scope);
                 }
 
-                self.visit_ty(&$($mutability)* mir.return_ty, PositionalInfo::Span(mir.span));
+                let lookup = Lookup::Src(SourceInfo {
+                    span: mir.span,
+                    scope: ARGUMENT_VISIBILITY_SCOPE,
+                });
+                self.visit_ty(&$($mutability)* mir.return_ty, lookup);
 
                 for local_decl in &$($mutability)* mir.local_decls {
                     self.visit_local_decl(local_decl);
@@ -388,7 +392,7 @@ macro_rules! make_mir_visitor {
                                                 ref values,
                                                 ref targets } => {
                         self.visit_operand(discr, source_location);
-                        self.visit_ty(switch_ty, PositionalInfo::Location(source_location));
+                        self.visit_ty(switch_ty, Lookup::Loc(source_location));
                         for value in &values[..] {
                             self.visit_const_int(value, source_location);
                         }
@@ -492,7 +496,7 @@ macro_rules! make_mir_visitor {
                                  ref $($mutability)* operand,
                                  ref $($mutability)* ty) => {
                         self.visit_operand(operand, location);
-                        self.visit_ty(ty, PositionalInfo::Location(location));
+                        self.visit_ty(ty, Lookup::Loc(location));
                     }
 
                     Rvalue::BinaryOp(_bin_op,
@@ -514,7 +518,7 @@ macro_rules! make_mir_visitor {
                     }
 
                     Rvalue::NullaryOp(_op, ref $($mutability)* ty) => {
-                        self.visit_ty(ty, PositionalInfo::Location(location));
+                        self.visit_ty(ty, Lookup::Loc(location));
                     }
 
                     Rvalue::Aggregate(ref $($mutability)* kind,
@@ -522,7 +526,7 @@ macro_rules! make_mir_visitor {
                         let kind = &$($mutability)* **kind;
                         match *kind {
                             AggregateKind::Array(ref $($mutability)* ty) => {
-                                self.visit_ty(ty, PositionalInfo::Location(location));
+                                self.visit_ty(ty, Lookup::Loc(location));
                             }
                             AggregateKind::Tuple => {
                             }
@@ -584,7 +588,7 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* ty,
                 } = *static_;
                 self.visit_def_id(def_id, location);
-                self.visit_ty(ty, PositionalInfo::Location(location));
+                self.visit_ty(ty, Lookup::Loc(location));
             }
 
             fn super_projection(&mut self,
@@ -614,7 +618,7 @@ macro_rules! make_mir_visitor {
                     ProjectionElem::Subslice { from: _, to: _ } => {
                     }
                     ProjectionElem::Field(_field, ref $($mutability)* ty) => {
-                        self.visit_ty(ty, PositionalInfo::Location(location));
+                        self.visit_ty(ty, Lookup::Loc(location));
                     }
                     ProjectionElem::Index(ref $($mutability)* operand) => {
                         self.visit_operand(operand, location);
@@ -638,7 +642,7 @@ macro_rules! make_mir_visitor {
                     is_user_variable: _,
                 } = *local_decl;
 
-                self.visit_ty(ty, PositionalInfo::SourceInfo(*source_info));
+                self.visit_ty(ty, Lookup::Src(*source_info));
                 self.visit_source_info(source_info);
             }
 
@@ -661,7 +665,7 @@ macro_rules! make_mir_visitor {
                 } = *constant;
 
                 self.visit_span(span);
-                self.visit_ty(ty, PositionalInfo::Location(location));
+                self.visit_ty(ty, Lookup::Loc(location));
                 self.visit_literal(literal, location);
             }
 
@@ -737,10 +741,9 @@ macro_rules! make_mir_visitor {
 make_mir_visitor!(Visitor,);
 make_mir_visitor!(MutVisitor,mut);
 
-pub enum PositionalInfo {
-    Location(Location),
-    SourceInfo(SourceInfo),
-    Span(Span),
+pub enum Lookup {
+    Loc(Location),
+    Src(SourceInfo),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

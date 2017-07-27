@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
-use rustc::mir::visit::{MutVisitor, PositionalInfo};
+use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
@@ -143,7 +143,7 @@ struct GlobalizeMir<'a, 'gcx: 'a> {
 }
 
 impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: PositionalInfo) {
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: Lookup) {
         if let Some(lifted) = self.tcx.lift(ty) {
             *ty = lifted;
         } else {
