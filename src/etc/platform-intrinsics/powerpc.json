@@ -65,6 +65,13 @@
             "llvm": "vmax{0.kind}{0.data_type_short}",
             "ret": "i(8-32)",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "min{0.kind}{0.data_type_short}",
+            "width": [128],
+            "llvm": "vmin{0.kind}{0.data_type_short}",
+            "ret": "i(8-32)",
+            "args": ["0", "0"]
         }
     ]
 }
