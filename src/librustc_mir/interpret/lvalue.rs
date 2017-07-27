@@ -295,6 +295,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             _ => bug!("field access on non-product type: {:?}", base_layout),
         };
+        //trace!("Field {} of {:?} is at offset {}{}", field_index, base_ty, offset.bytes(),
+        //    if packed { " (packed)" } else { "" });
 
         // Do not allocate in trivial cases
         let (base_ptr, base_extra, aligned) = match base {

@@ -609,7 +609,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+                                let (offset, ty, _packed) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+                                // TODO: The packed flag is ignored
 
                                 // FIXME(solson)
                                 let dest = self.force_allocation(dest)?.to_ptr()?;
@@ -702,7 +703,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
-
                 self.write_value(val, dest, dest_ty)?;
             }
 
@@ -826,7 +826,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         nndiscr: u64,
         discrfield: &[u32],
-    ) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
+    ) -> EvalResult<'tcx, (Size, Ty<'tcx>, bool)> {
         // Skip the constant 0 at the start meant for LLVM GEP and the outer non-null variant
         let path = discrfield.iter().skip(2).map(|&i| i as usize);
 
@@ -849,16 +849,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         mut offset: Size,
         mut ty: Ty<'tcx>,
         path: I,
-    ) -> EvalResult<'tcx, (Size, Ty<'tcx>)> {
+    ) -> EvalResult<'tcx, (Size, Ty<'tcx>, bool)> {
         // Skip the initial 0 intended for LLVM GEP.
+        let mut packed = false;
         for field_index in path {
             let field_offset = self.get_field_offset(ty, field_index)?;
             trace!("field_path_offset_and_ty: {}, {}, {:?}, {:?}", field_index, ty, field_offset, offset);
-            ty = self.get_field_ty(ty, field_index)?;
+            let field_ty = self.get_field_ty(ty, field_index)?;
+            ty = field_ty.0;
+            packed = packed || field_ty.1;
             offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
         }
 
-        Ok((offset, ty))
+        Ok((offset, ty, packed))
     }
     fn get_fat_field(&self, pointee_ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
         match (field_index, &self.tcx.struct_tail(pointee_ty).sty) {
@@ -870,33 +873,46 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
+    /// Returns the field type and whether the field is packed
+    pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, (Ty<'tcx>, bool)> {
         match ty.sty {
-            ty::TyAdt(adt_def, _) if adt_def.is_box() => self.get_fat_field(ty.boxed_ty(), field_index),
+            ty::TyAdt(adt_def, _) if adt_def.is_box() =>
+                Ok((self.get_fat_field(ty.boxed_ty(), field_index)?, false)),
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
-                    RawNullablePointer { nndiscr, .. } |
-                    StructWrappedNullablePointer { nndiscr, .. } => Ok(adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs)),
+                    RawNullablePointer { nndiscr, .. } =>
+                        Ok((adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs), false)),
+                    StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
+                        let ty = adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs);
+                        Ok((ty, nonnull.packed))
+                    },
                     _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle enum type: {:?}, {:?}", ty, ty.sty))),
                 }
             }
             ty::TyAdt(adt_def, substs) => {
-                Ok(adt_def.struct_variant().fields[field_index].ty(self.tcx, substs))
+                let variant_def = adt_def.struct_variant();
+                use rustc::ty::layout::Layout::*;
+                match *self.type_layout(ty)? {
+                    Univariant { ref variant, .. } =>
+                        Ok((variant_def.fields[field_index].ty(self.tcx, substs), variant.packed)),
+                    _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle struct type: {:?}, {:?}", ty, ty.sty))),
+                }
             }
 
-            ty::TyTuple(fields, _) => Ok(fields[field_index]),
+            ty::TyTuple(fields, _) => Ok((fields[field_index], false)),
 
             ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) => self.get_fat_field(tam.ty, field_index),
+            ty::TyRawPtr(ref tam) => Ok((self.get_fat_field(tam.ty, field_index)?, false)),
 
-            ty::TyArray(ref inner, _) => Ok(inner),
+            ty::TyArray(ref inner, _) => Ok((inner, false)),
 
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }
     }
 
     fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Size> {
+        // Also see lvalue_field in lvalue.rs, which handles more cases but needs an actual value at the given type
         let layout = self.type_layout(ty)?;
 
         use rustc::ty::layout::Layout::*;
@@ -1236,20 +1252,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ptr: MemoryPointer,
         mut ty: Ty<'tcx>
     ) -> EvalResult<'tcx> {
+        let mut packed = false;
         while self.get_field_count(ty)? == 1 {
-            ty = self.get_field_ty(ty, 0)?;
+            let field = self.get_field_ty(ty, 0)?;
+            ty = field.0;
+            packed = packed || field.1;
         }
         assert_eq!(self.get_field_count(ty)?, 2);
-        let field_0 = self.get_field_offset(ty, 0)?.bytes();
-        let field_1 = self.get_field_offset(ty, 1)?.bytes();
+        let field_0 = self.get_field_offset(ty, 0)?;
+        let field_1 = self.get_field_offset(ty, 1)?;
         let field_0_ty = self.get_field_ty(ty, 0)?;
         let field_1_ty = self.get_field_ty(ty, 1)?;
-        let field_0_size = self.type_size(field_0_ty)?.expect("pair element type must be sized");
-        let field_1_size = self.type_size(field_1_ty)?.expect("pair element type must be sized");
-        let field_0_ptr = ptr.offset(field_0, &self)?.into();
-        let field_1_ptr = ptr.offset(field_1, &self)?.into();
-        self.memory.write_primval(field_0_ptr, a, field_0_size)?;
-        self.memory.write_primval(field_1_ptr, b, field_1_size)?;
+        // The .1 components say whether the field is packed
+        assert_eq!(field_0_ty.1, field_1_ty.1, "the two fields must agree on being packed");
+        packed = packed || field_0_ty.1;
+        let field_0_size = self.type_size(field_0_ty.0)?.expect("pair element type must be sized");
+        let field_1_size = self.type_size(field_1_ty.0)?.expect("pair element type must be sized");
+        let field_0_ptr = ptr.offset(field_0.bytes(), &self)?.into();
+        let field_1_ptr = ptr.offset(field_1.bytes(), &self)?.into();
+        self.write_maybe_aligned(!packed,
+            |ectx| ectx.memory.write_primval(field_0_ptr, a, field_0_size))?;
+        self.write_maybe_aligned(!packed,
+            |ectx| ectx.memory.write_primval(field_1_ptr, b, field_1_size))?;
         Ok(())
     }
 
@@ -1529,8 +1553,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     return self.unsize_into_ptr(src, src_ty, dest, dest_ty, src_ty.boxed_ty(), dest_ty.boxed_ty());
                 }
                 if self.ty_to_primval_kind(src_ty).is_ok() {
-                    let sty = self.get_field_ty(src_ty, 0)?;
-                    let dty = self.get_field_ty(dest_ty, 0)?;
+                    // TODO: We ignore the packed flag here
+                    let sty = self.get_field_ty(src_ty, 0)?.0;
+                    let dty = self.get_field_ty(dest_ty, 0)?.0;
                     return self.unsize_into(src, sty, dest, dty);
                 }
                 // unsizing of generic struct with pointer fields

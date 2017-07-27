@@ -40,7 +40,8 @@ fn test_unsizing() {
 
     let arr = [1, 2, 3];
     let arr_unaligned: UnalignedPtr<[i32; 3]> = UnalignedPtr { data: &arr };
-    let _uns: UnalignedPtr<[i32]> = arr_unaligned;
+    let arr_unaligned: UnalignedPtr<[i32]> = arr_unaligned;
+    let _unused = &arr_unaligned; // forcing an allocation, which could also yield "unaligned write"-errors
 }
 
 fn main() {

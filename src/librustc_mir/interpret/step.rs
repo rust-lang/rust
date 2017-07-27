@@ -11,12 +11,14 @@ use rustc::ty;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 
+use syntax::codemap::Span;
+use syntax::ast::Mutability;
+
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
-use syntax::codemap::Span;
-use syntax::ast::Mutability;
+use memory::HasMemory;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
@@ -101,12 +103,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                         if variant_index as u64 != nndiscr {
-                            let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+                            let (offset, ty, packed) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
                             let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(offset.bytes(), &self)?;
                             trace!("struct wrapped nullable pointer type: {}", ty);
                             // only the pointer part of a fat pointer is used for this space optimization
                             let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
-                            self.memory.write_uint(nonnull, 0, discr_size)?;
+                            self.write_maybe_aligned(!packed, |ectx| ectx.memory.write_uint(nonnull, 0, discr_size))?;
                         }
                     },
 

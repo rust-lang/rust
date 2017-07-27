@@ -9,7 +9,7 @@ use syntax::abi::Abi;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited, self};
 use lvalue::Lvalue;
-use memory::{MemoryPointer, TlsKey, Kind};
+use memory::{MemoryPointer, TlsKey, Kind, HasMemory};
 use value::{PrimVal, Value};
 use rustc_data_structures::indexed_vec::Idx;
 use const_eval;
@@ -402,7 +402,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
                 let mut arg_operands = arg_operands.to_vec();
                 let ty = self.operand_ty(&arg_operands[0]);
-                let ty = self.get_field_ty(ty, 0)?;
+                let ty = self.get_field_ty(ty, 0)?.0; // TODO: packed flag is ignored
                 match arg_operands[0] {
                     mir::Operand::Consume(ref mut lval) => *lval = lval.clone().field(mir::Field::new(0), ty),
                     _ => bug!("virtual call first arg cannot be a constant"),
@@ -464,7 +464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(false)
     }
 
-    pub fn read_discriminant_value(&self, adt_ptr: MemoryPointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+    pub fn read_discriminant_value(&mut self, adt_ptr: MemoryPointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
         //trace!("read_discriminant_value {:#?}", adt_layout);
@@ -487,12 +487,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                let (offset, ty) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
-                let nonnull = adt_ptr.offset(offset.bytes(), self)?;
+                let (offset, ty, packed) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
+                let nonnull = adt_ptr.offset(offset.bytes(), &*self)?;
                 trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization
                 let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
-                self.read_nonnull_discriminant_value(nonnull, nndiscr as u128, discr_size)?
+                self.read_maybe_aligned(!packed,
+                    |ectx| ectx.read_nonnull_discriminant_value(nonnull, nndiscr as u128, discr_size))?
             }
 
             // The discriminant_value intrinsic returns 0 for non-sum types.

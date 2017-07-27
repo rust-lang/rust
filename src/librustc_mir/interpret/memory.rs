@@ -1402,20 +1402,20 @@ pub(crate) trait HasMemory<'a, 'tcx> {
     fn read_maybe_aligned<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
         where F: FnOnce(&mut Self) -> EvalResult<'tcx, T>
     {
-        assert!(self.memory_mut().reads_are_aligned, "Unaligned reads must not be nested");
-        self.memory_mut().reads_are_aligned = aligned;
+        let old = self.memory_mut().reads_are_aligned;
+        self.memory_mut().reads_are_aligned = old && aligned;
         let t = f(self);
-        self.memory_mut().reads_are_aligned = true;
+        self.memory_mut().reads_are_aligned = old;
         t
     }
 
     fn write_maybe_aligned<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
         where F: FnOnce(&mut Self) -> EvalResult<'tcx, T>
     {
-        assert!(self.memory_mut().writes_are_aligned, "Unaligned writes must not be nested");
-        self.memory_mut().writes_are_aligned = aligned;
+        let old = self.memory_mut().writes_are_aligned;
+        self.memory_mut().writes_are_aligned = old && aligned;
         let t = f(self);
-        self.memory_mut().writes_are_aligned = true;
+        self.memory_mut().writes_are_aligned = old;
         t
     }
 }
