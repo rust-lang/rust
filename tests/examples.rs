@@ -1,5 +1,5 @@
 // FIXME: rustc doesn't generate expansion info for `cfg!` anymore
-#![allow(logic-bug)]
+#![allow(logic_bug)]
 
 #[macro_use]
 extern crate duct;
