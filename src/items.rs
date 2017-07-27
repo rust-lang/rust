@@ -26,9 +26,9 @@ use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, L
             ListItem, ListTactic, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::join_bounds;
-use utils::{colon_spaces, contains_skip, end_typaram, format_mutability, format_unsafety,
-            format_visibility, last_line_width, mk_sp, semicolon_for_expr, stmt_expr,
-            trim_newlines, trimmed_last_line_width, wrap_str};
+use utils::{colon_spaces, contains_skip, end_typaram, format_defaultness, format_mutability,
+            format_unsafety, format_visibility, last_line_width, mk_sp, semicolon_for_expr,
+            stmt_expr, trim_newlines, trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -695,7 +695,7 @@ fn format_impl_ref_and_type(
     if let ast::ItemKind::Impl(
         unsafety,
         polarity,
-        _,
+        defaultness,
         ref generics,
         ref trait_ref,
         ref self_ty,
@@ -705,6 +705,7 @@ fn format_impl_ref_and_type(
         let mut result = String::new();
 
         result.push_str(&format_visibility(&item.vis));
+        result.push_str(&format_defaultness(defaultness));
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
