@@ -1,11 +1,11 @@
+// FIXME: rustc doesn't generate expansion info for `cfg!` anymore
+#![allow(logic-bug)]
+
 #[macro_use]
 extern crate duct;
 
 use std::io::{BufRead, BufReader};
 use std::fs::File;
-
-// FIXME: rustc doesn't generate expansion info for `cfg!` anymore
-#![allow(logic-bug)]
 
 #[test]
 fn examples() {
