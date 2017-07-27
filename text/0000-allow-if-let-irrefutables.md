@@ -50,5 +50,8 @@ It allows programmers to manually write the line `if let _ = expr { } else { }` 
 # Alternatives
 [alternatives]: #alternatives
 
+* The trivial alternative: Do nothing. As your motivation explains, this only matters for macros anyways plus there already is an acceptable workaround (match). Code that needs this frequently can just package this workaround in its own macro and be done.
+* Turn the error into a lint that errors by default. Unreachable match arms are usually wrong except in some macros and that's why you can disable the warning there with #[allow(unreachable_patterns)]. The same goes for irrefutable if/while-let patterns, so it only seems natural to apply a similar solution. This also means that `#[allow]` statements need to be allowed.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
