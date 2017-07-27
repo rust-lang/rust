@@ -57,6 +57,14 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
 }
 
 #[inline]
+pub fn format_defaultness(defaultness: ast::Defaultness) -> &'static str {
+    match defaultness {
+        ast::Defaultness::Default => "default ",
+        ast::Defaultness::Final => "",
+    }
+}
+
+#[inline]
 pub fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
     match unsafety {
         ast::Unsafety::Unsafe => "unsafe ",

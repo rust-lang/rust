@@ -26,3 +26,8 @@ where
     T: Clone,
 {
 }
+
+// #1823
+default impl Trait for X {}
+default unsafe impl Trait for Y {}
+pub default unsafe impl Trait for Z {}
