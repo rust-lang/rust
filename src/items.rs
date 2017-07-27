@@ -962,8 +962,14 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 .checked_sub(last_line_width(&result))
         );
         let pos_before_where = if type_param_bounds.is_empty() {
-            // We do not use this, so it does not matter
-            generics.span.hi
+            if generics.where_clause.predicates.is_empty() {
+                // We do not use this, so it does not matter
+                item.span.lo
+            } else {
+                let snippet = context.snippet(item.span);
+                let where_pos = snippet.find_uncommented("where");
+                item.span.lo + where_pos.map_or(BytePos(0), |p| BytePos(p as u32))
+            }
         } else {
             type_param_bounds[type_param_bounds.len() - 1].span().hi
         };
@@ -974,7 +980,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             Shape::legacy(where_budget, offset.block_only()),
             where_density,
             "{",
-            !has_body,
+            false,
             trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
             None,
             item.span,
