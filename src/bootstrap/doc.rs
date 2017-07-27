@@ -21,13 +21,12 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io;
 use std::path::{PathBuf, Path};
-use std::process::Command;
 
 use Mode;
 use build_helper::up_to_date;
 
 use util::{cp_r, symlink_dir};
-use builder::{Builder, RunConfig, ShouldRun, Step};
+use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use tool::Tool;
 use compile;
 use cache::{INTERNER, Interned};
@@ -177,6 +176,7 @@ impl Step for RustbookSrc {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct TheBook {
+    compiler: Compiler,
     target: Interned<String>,
     name: &'static str,
 }
@@ -192,6 +192,7 @@ impl Step for TheBook {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(TheBook {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
             name: "book",
         });
@@ -224,7 +225,7 @@ impl Step for TheBook {
         // build the index page
         let index = format!("{}/index.md", name);
         println!("Documenting book index ({})", target);
-        invoke_rustdoc(builder, target, &index);
+        invoke_rustdoc(builder, self.compiler, target, &index);
 
         // build the redirect pages
         println!("Documenting book redirect pages ({})", target);
@@ -233,20 +234,16 @@ impl Step for TheBook {
             let path = file.path();
             let path = path.to_str().unwrap();
 
-            invoke_rustdoc(builder, target, path);
+            invoke_rustdoc(builder, self.compiler, target, path);
         }
     }
 }
 
-fn invoke_rustdoc(builder: &Builder, target: Interned<String>, markdown: &str) {
+fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String>, markdown: &str) {
     let build = builder.build;
     let out = build.doc_out(target);
 
-    let compiler = builder.compiler(0, build.build);
-
     let path = build.src.join("src/doc").join(markdown);
-
-    let rustdoc = builder.rustdoc(compiler);
 
     let favicon = build.src.join("src/doc/favicon.inc");
     let footer = build.src.join("src/doc/footer.inc");
@@ -263,9 +260,7 @@ fn invoke_rustdoc(builder: &Builder, target: Interned<String>, markdown: &str) {
         t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
     }
 
-    let mut cmd = Command::new(&rustdoc);
-
-    builder.add_rustc_lib_path(compiler, &mut cmd);
+    let mut cmd = builder.rustdoc_cmd(compiler);
 
     let out = out.join("book");
 
@@ -286,6 +281,7 @@ fn invoke_rustdoc(builder: &Builder, target: Interned<String>, markdown: &str) {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Standalone {
+    compiler: Compiler,
     target: Interned<String>,
 }
 
@@ -300,6 +296,7 @@ impl Step for Standalone {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Standalone {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -315,11 +312,10 @@ impl Step for Standalone {
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let target = self.target;
+        let compiler = self.compiler;
         println!("Documenting standalone ({})", target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
-
-        let compiler = builder.compiler(0, build.build);
 
         let favicon = build.src.join("src/doc/favicon.inc");
         let footer = build.src.join("src/doc/footer.inc");
@@ -357,8 +353,7 @@ impl Step for Standalone {
                 continue
             }
 
-            let mut cmd = Command::new(&rustdoc);
-            builder.add_rustc_lib_path(compiler, &mut cmd);
+            let mut cmd = builder.rustdoc_cmd(compiler);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
@@ -413,6 +408,7 @@ impl Step for Std {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
+        let rustdoc = builder.rustdoc(compiler);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -422,7 +418,6 @@ impl Step for Std {
         builder.ensure(compile::Std { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Libstd)
                            .join(target).join("doc");
-        let rustdoc = builder.rustdoc(compiler);
 
         // Here what we're doing is creating a *symlink* (directory junction on
         // Windows) to the final output location. This is not done as an
@@ -498,6 +493,7 @@ impl Step for Test {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
+        let rustdoc = builder.rustdoc(compiler);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -510,7 +506,6 @@ impl Step for Test {
         builder.ensure(compile::Test { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Libtest)
                            .join(target).join("doc");
-        let rustdoc = builder.rustdoc(compiler);
 
         // See docs in std above for why we symlink
         let my_out = build.crate_doc_out(target);
@@ -559,6 +554,7 @@ impl Step for Rustc {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
+        let rustdoc = builder.rustdoc(compiler);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -571,7 +567,6 @@ impl Step for Rustc {
         builder.ensure(compile::Rustc { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Librustc)
                            .join(target).join("doc");
-        let rustdoc = builder.rustdoc(compiler);
 
         // See docs in std above for why we symlink
         let my_out = build.crate_doc_out(target);

@@ -1192,7 +1192,8 @@ actual:\n\
                             self.testpaths.file.to_str().unwrap().to_owned()];
         args.extend(self.props.compile_flags.iter().cloned());
         let args = ProcArgs {
-            prog: self.config.rustdoc_path.to_str().unwrap().to_owned(),
+            prog: self.config.rustdoc_path
+                .as_ref().expect("--rustdoc-path passed").to_str().unwrap().to_owned(),
             args: args,
         };
         self.compose_and_run_compiler(args, None)
@@ -2163,7 +2164,8 @@ actual:\n\
            .env("S", src_root)
            .env("RUST_BUILD_STAGE", &self.config.stage_id)
            .env("RUSTC", cwd.join(&self.config.rustc_path))
-           .env("RUSTDOC", cwd.join(&self.config.rustdoc_path))
+           .env("RUSTDOC",
+               cwd.join(&self.config.rustdoc_path.as_ref().expect("--rustdoc-path passed")))
            .env("TMPDIR", &tmpdir)
            .env("LD_LIB_PATH_ENVVAR", procsrv::dylib_env_var())
            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))

@@ -719,15 +719,6 @@ impl Step for Assemble {
         let _ = fs::remove_file(&compiler);
         copy(&rustc, &compiler);
 
-        // See if rustdoc exists to link it into place
-        let rustdoc = exe("rustdoc", &*host);
-        let rustdoc_src = out_dir.join(&rustdoc);
-        let rustdoc_dst = bindir.join(&rustdoc);
-        if fs::metadata(&rustdoc_src).is_ok() {
-            let _ = fs::remove_file(&rustdoc_dst);
-            copy(&rustdoc_src, &rustdoc_dst);
-        }
-
         target_compiler
     }
 }

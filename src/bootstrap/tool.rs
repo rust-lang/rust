@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fs;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
@@ -15,17 +16,17 @@ use std::process::Command;
 use Mode;
 use Compiler;
 use builder::{Step, RunConfig, ShouldRun, Builder};
-use util::{exe, add_lib_path};
+use util::{copy, exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
 use channel::GitInfo;
 use cache::Interned;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct CleanTools {
-    pub stage: u32,
-    pub target: Interned<String>,
-    pub mode: Mode,
+struct CleanTools {
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: Mode,
 }
 
 impl Step for CleanTools {
@@ -41,11 +42,9 @@ impl Step for CleanTools {
     /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder) {
         let build = builder.build;
-        let stage = self.stage;
+        let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
-
-        let compiler = builder.compiler(stage, build.build);
 
         let stamp = match mode {
             Mode::Libstd => libstd_stamp(build, compiler, target),
@@ -59,11 +58,11 @@ impl Step for CleanTools {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct ToolBuild {
-    pub stage: u32,
-    pub target: Interned<String>,
-    pub tool: &'static str,
-    pub mode: Mode,
+struct ToolBuild {
+    compiler: Compiler,
+    target: Interned<String>,
+    tool: &'static str,
+    mode: Mode,
 }
 
 impl Step for ToolBuild {
@@ -79,12 +78,11 @@ impl Step for ToolBuild {
     /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
-        let stage = self.stage;
+        let compiler = self.compiler;
         let target = self.target;
         let tool = self.tool;
 
-        let compiler = builder.compiler(stage, build.build);
-        builder.ensure(CleanTools { stage, target, mode: self.mode });
+        builder.ensure(CleanTools { compiler, target, mode: self.mode });
         match self.mode {
             Mode::Libstd => builder.ensure(compile::Std { compiler, target }),
             Mode::Libtest => builder.ensure(compile::Test { compiler, target }),
@@ -92,8 +90,8 @@ impl Step for ToolBuild {
             Mode::Tool => panic!("unexpected Mode::Tool for tool build")
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-{}", stage, tool));
-        println!("Building stage{} tool {} ({})", stage, tool, target);
+        let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
+        println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
         let dir = build.src.join("src/tools").join(tool);
@@ -141,7 +139,7 @@ macro_rules! tool {
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            stage: 0,
+                            compiler: self.compiler(0, self.build.build),
                             target: self.build.build,
                         }),
                     )+
@@ -152,7 +150,7 @@ macro_rules! tool {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            pub stage: u32,
+            pub compiler: Compiler,
             pub target: Interned<String>,
         }
 
@@ -165,14 +163,14 @@ macro_rules! tool {
 
             fn make_run(run: RunConfig) {
                 run.builder.ensure($name {
-                    stage: run.builder.top_stage,
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
                     target: run.target,
                 });
             }
 
             fn run(self, builder: &Builder) -> PathBuf {
                 builder.ensure(ToolBuild {
-                    stage: self.stage,
+                    compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
                     mode: $mode,
@@ -198,7 +196,7 @@ tool!(
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RemoteTestServer {
-    pub stage: u32,
+    pub compiler: Compiler,
     pub target: Interned<String>,
 }
 
@@ -211,14 +209,14 @@ impl Step for RemoteTestServer {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(RemoteTestServer {
-            stage: run.builder.top_stage,
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
 
     fn run(self, builder: &Builder) -> PathBuf {
         builder.ensure(ToolBuild {
-            stage: self.stage,
+            compiler: self.compiler,
             target: self.target,
             tool: "remote-test-server",
             mode: Mode::Libstd,
@@ -227,8 +225,61 @@ impl Step for RemoteTestServer {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Rustdoc {
+    pub target_compiler: Compiler,
+}
+
+impl Step for Rustdoc {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/rustdoc")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustdoc {
+            target_compiler: run.builder.compiler(run.builder.top_stage, run.host),
+        });
+    }
+
+    fn run(self, builder: &Builder) -> PathBuf {
+        let target_compiler = self.target_compiler;
+        let build_compiler = if target_compiler.stage == 0 {
+            builder.compiler(0, builder.build.build)
+        } else {
+            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
+            // compilers, which isn't what we want.
+            builder.compiler(target_compiler.stage - 1, builder.build.build)
+        };
+
+        let tool_rustdoc = builder.ensure(ToolBuild {
+            compiler: build_compiler,
+            target: target_compiler.host,
+            tool: "rustdoc",
+            mode: Mode::Librustc,
+        });
+
+        // don't create a stage0-sysroot/bin directory.
+        if target_compiler.stage > 0 {
+            let sysroot = builder.sysroot(target_compiler);
+            let bindir = sysroot.join("bin");
+            t!(fs::create_dir_all(&bindir));
+            let bin_rustdoc = bindir.join(exe("rustdoc", &*target_compiler.host));
+            let _ = fs::remove_file(&bin_rustdoc);
+            copy(&tool_rustdoc, &bin_rustdoc);
+            bin_rustdoc
+        } else {
+            tool_rustdoc
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
-    pub stage: u32,
+    pub compiler: Compiler,
     pub target: Interned<String>,
 }
 
@@ -244,7 +295,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargo {
-            stage: run.builder.top_stage,
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -256,11 +307,11 @@ impl Step for Cargo {
         // Cargo depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
-            compiler: builder.compiler(self.stage, builder.build.build),
+            compiler: self.compiler,
             target: builder.build.build,
         });
         builder.ensure(ToolBuild {
-            stage: self.stage,
+            compiler: self.compiler,
             target: self.target,
             tool: "cargo",
             mode: Mode::Librustc,
@@ -270,7 +321,7 @@ impl Step for Cargo {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rls {
-    pub stage: u32,
+    pub compiler: Compiler,
     pub target: Interned<String>,
 }
 
@@ -286,7 +337,7 @@ impl Step for Rls {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rls {
-            stage: run.builder.top_stage,
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -298,11 +349,11 @@ impl Step for Rls {
         // RLS depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
-            compiler: builder.compiler(self.stage, builder.build.build),
+            compiler: self.compiler,
             target: builder.build.build,
         });
         builder.ensure(ToolBuild {
-            stage: self.stage,
+            compiler: self.compiler,
             target: self.target,
             tool: "rls",
             mode: Mode::Librustc,

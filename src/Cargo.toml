@@ -16,6 +16,7 @@ members = [
   "tools/remote-test-server",
   "tools/rust-installer",
   "tools/cargo",
+  "tools/rustdoc",
   "tools/rls",
   # FIXME(https://github.com/rust-lang/cargo/issues/4089): move these to exclude
   "tools/rls/test_data/borrow_error",

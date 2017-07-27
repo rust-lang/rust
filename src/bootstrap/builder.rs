@@ -256,7 +256,7 @@ impl<'a> Builder<'a> {
                 compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
                 tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
-                tool::RustInstaller, tool::Cargo, tool::Rls),
+                tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc),
             Kind::Test => describe!(check::Tidy, check::Bootstrap, check::DefaultCompiletest,
                 check::HostCompiletest, check::Crate, check::CrateLibrustc, check::Linkcheck,
                 check::Cargotest, check::Cargo, check::Rls, check::Docs, check::ErrorIndex,
@@ -412,12 +412,23 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// Get the `rustdoc` executable next to the specified compiler
     pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        let mut rustdoc = self.rustc(compiler);
-        rustdoc.pop();
-        rustdoc.push(exe("rustdoc", &compiler.host));
-        rustdoc
+        self.ensure(tool::Rustdoc { target_compiler: compiler })
+    }
+
+    pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
+        let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
+        cmd
+            .env("RUSTC_STAGE", compiler.stage.to_string())
+            .env("RUSTC_SYSROOT", if compiler.is_snapshot(&self.build) {
+                INTERNER.intern_path(self.build.rustc_snapshot_libdir())
+            } else {
+                self.sysroot(compiler)
+            })
+            .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
+            .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
+            .env("RUSTDOC_REAL", self.rustdoc(compiler));
+        cmd
     }
 
     /// Prepares an invocation of `cargo` to be run.
@@ -469,7 +480,11 @@ impl<'a> Builder<'a> {
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
-             .env("RUSTDOC_REAL", self.rustdoc(compiler))
+             .env("RUSTDOC_REAL", if cmd == "doc" || cmd == "test" {
+                 self.rustdoc(compiler)
+             } else {
+                 PathBuf::from("/path/to/nowhere/rustdoc/not/required")
+             })
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
         if mode != Mode::Tool {
@@ -559,6 +574,9 @@ impl<'a> Builder<'a> {
         //
         // FIXME: should update code to not require this env var
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
+
+        // Set this for all builds to make sure doc builds also get it.
+        cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.channel);
 
         if self.is_verbose() {
             cargo.arg("-v");

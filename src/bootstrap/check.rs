@@ -119,7 +119,7 @@ impl Step for Linkcheck {
     }
 
     fn make_run(run: RunConfig) {
-        run.builder.ensure(Linkcheck { host: run.host });
+        run.builder.ensure(Linkcheck { host: run.target });
     }
 }
 
@@ -140,7 +140,7 @@ impl Step for Cargotest {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Cargotest {
             stage: run.builder.top_stage,
-            host: run.host,
+            host: run.target,
         });
     }
 
@@ -194,7 +194,7 @@ impl Step for Cargo {
         let build = builder.build;
         let compiler = builder.compiler(self.stage, self.host);
 
-        builder.ensure(tool::Cargo { stage: self.stage, target: self.host });
+        builder.ensure(tool::Cargo { compiler, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/cargo/Cargo.toml"));
         if !build.fail_fast {
@@ -240,7 +240,7 @@ impl Step for Rls {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rls { stage: self.stage, target: self.host });
+        builder.ensure(tool::Rls { compiler, target: self.host });
         let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
         cargo.arg("--manifest-path").arg(build.src.join("src/tools/rls/Cargo.toml"));
 
@@ -562,7 +562,12 @@ impl Step for Compiletest {
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
-        cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
+
+        // Avoid depending on rustdoc when we don't need it.
+        if mode == "rustdoc" || mode == "run-make" {
+            cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
+        }
+
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(build, compiler.host).join(suite));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
@@ -809,8 +814,7 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     }
 
     println!("doc tests for: {}", markdown.display());
-    let mut cmd = Command::new(builder.rustdoc(compiler));
-    builder.add_rustc_lib_path(compiler, &mut cmd);
+    let mut cmd = builder.rustdoc_cmd(compiler);
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
@@ -1165,7 +1169,7 @@ impl Step for RemoteCopyLibs {
         println!("REMOTE copy libs to emulator ({})", target);
         t!(fs::create_dir_all(build.out.join("tmp")));
 
-        let server = builder.ensure(tool::RemoteTestServer { stage: compiler.stage, target });
+        let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
