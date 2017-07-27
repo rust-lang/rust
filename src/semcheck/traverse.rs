@@ -25,6 +25,8 @@ use semcheck::translate::{BottomUpRegionFolder, translate_item_type, translate_p
 
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
+use syntax::symbol::Symbol;
+
 /// The main entry point to our analysis passes.
 ///
 /// Set up the necessary data structures and run the analysis passes.
@@ -626,8 +628,16 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 }
             }
 
+            let impl_span = tcx.def_span(old_impl_def_id);
+
             if !matching {
-                println!("impl breaks: {:?}", old_impl_def_id);
+                changes.new_change(old_def_id,
+                                   new_def_id,
+                                   Symbol::intern("impl"),
+                                   impl_span,
+                                   impl_span,
+                                   true);
+                changes.add_change(TraitImplTightened, old_def_id, None);
             }
         });
     }

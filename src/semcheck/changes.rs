@@ -208,6 +208,10 @@ pub enum ChangeType<'tcx> {
     BoundsTightened { pred: Predicate<'tcx> },
     /// An item's bounds have been loosened.
     BoundsLoosened { pred: Predicate<'tcx> },
+    /// A trait impl has been specialized or removed for some types.
+    TraitImplTightened,
+    /// A trait impl has been generalized or newly added for some types.
+    TraitImplLoosened,
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
@@ -236,10 +240,12 @@ impl<'tcx> ChangeType<'tcx> {
             TraitItemRemoved { .. } |
             TraitUnsafetyChanged { .. } |
             BoundsTightened { .. } |
+            TraitImplTightened |
             Unknown => Breaking,
             MethodSelfChanged { now_self: true } |
             TraitItemAdded { defaulted: true } |
             BoundsLoosened { .. } |
+            TraitImplLoosened |
             ItemMadePublic => TechnicallyBreaking,
             TypeParameterAdded { defaulted: true } |
             FnConstChanged { now_const: true } => NonBreaking,
@@ -298,6 +304,8 @@ impl<'a> fmt::Display for ChangeType<'a> {
             TypeChanged { ref error } => return write!(f, "type error: {}", error),
             BoundsTightened { ref pred } => return write!(f, "added bound: `{}`", pred),
             BoundsLoosened { ref pred } => return write!(f, "removed bound: `{}`", pred),
+            TraitImplTightened => "trait impl specialized or removed",
+            TraitImplLoosened => "trait impl generalized or newly added",
             Unknown => "unknown change",
         };
         write!(f, "{}", desc)
@@ -374,7 +382,9 @@ impl<'tcx> Change<'tcx> {
                 TraitUnsafetyChanged { .. } |
                 FnConstChanged { now_const: true } |
                 BoundsTightened { .. } |
-                BoundsLoosened { .. } => (),
+                BoundsLoosened { .. } |
+                TraitImplTightened |
+                TraitImplLoosened => (),
             }
         }
 

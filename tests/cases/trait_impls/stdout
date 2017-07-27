@@ -1,2 +1,9 @@
-impl breaks: DefId { krate: CrateNum(12), node: DefIndex(7) => old/8cd878b::{{impl}}[2] }
-version bump: 1.0.0 -> (patch) -> 1.0.1
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: breaking changes in `impl`
+ --> $REPO_PATH/tests/cases/trait_impls/old.rs:9:1
+  |
+9 | impl<T> Abc for Box<T> { }
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: trait impl specialized or removed (breaking)
+
