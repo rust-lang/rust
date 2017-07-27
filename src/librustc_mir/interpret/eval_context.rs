@@ -1161,7 +1161,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_maybe_aligned(aligned,
+                self.write_maybe_aligned_mut(aligned,
                     |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty))
             }
 
@@ -1193,7 +1193,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
             // knew for certain that there were no outstanding pointers to this allocation.
-            self.write_maybe_aligned(aligned,
+            self.write_maybe_aligned_mut(aligned,
                 |ectx| ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty))?;
 
         } else if let Value::ByRef(src_ptr, aligned) = src_val {
@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // It is a valid optimization to attempt reading a primitive value out of the
             // source and write that into the destination without making an allocation, so
             // we do so here.
-            self.read_maybe_aligned(aligned, |ectx| {
+            self.read_maybe_aligned_mut(aligned, |ectx| {
                 if let Ok(Some(src_val)) = ectx.try_read_value(src_ptr, dest_ty) {
                     write_dest(ectx, src_val)?;
                 } else {
@@ -1235,7 +1235,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     ) -> EvalResult<'tcx> {
         match value {
             Value::ByRef(ptr, aligned) => {
-                self.read_maybe_aligned(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
+                self.read_maybe_aligned_mut(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
             },
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
@@ -1270,9 +1270,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let field_1_size = self.type_size(field_1_ty.0)?.expect("pair element type must be sized");
         let field_0_ptr = ptr.offset(field_0.bytes(), &self)?.into();
         let field_1_ptr = ptr.offset(field_1.bytes(), &self)?.into();
-        self.write_maybe_aligned(!packed,
+        self.write_maybe_aligned_mut(!packed,
             |ectx| ectx.memory.write_primval(field_0_ptr, a, field_0_size))?;
-        self.write_maybe_aligned(!packed,
+        self.write_maybe_aligned_mut(!packed,
             |ectx| ectx.memory.write_primval(field_1_ptr, b, field_1_size))?;
         Ok(())
     }
@@ -1376,7 +1376,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if let Some(val) = self.try_read_value(ptr, ty)? {
             Ok(val)
         } else {
@@ -1400,7 +1400,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn try_read_value(&mut self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+    fn try_read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
 
         let val = match ty.sty {
@@ -1512,7 +1512,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                let ptr = src.into_ptr(&mut self.memory)?;
+                let ptr = src.into_ptr(&self.memory)?;
                 // u64 cast is from usize to u64, which is always good
                 self.write_value(ptr.to_value_with_len(length as u64), dest, dest_ty)
             }
@@ -1526,7 +1526,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                 let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
-                let ptr = src.into_ptr(&mut self.memory)?;
+                let ptr = src.into_ptr(&self.memory)?;
                 self.write_value(ptr.to_value_with_vtable(vtable), dest, dest_ty)
             },
 

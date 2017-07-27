@@ -351,17 +351,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Lvalue::Ptr { ptr, extra, aligned: aligned && !packed })
     }
 
-    pub(super) fn val_to_lvalue(&mut self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
+    pub(super) fn val_to_lvalue(&self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Lvalue<'tcx>> {
         Ok(match self.tcx.struct_tail(ty).sty {
             ty::TyDynamic(..) => {
-                let (ptr, vtable) = val.into_ptr_vtable_pair(&mut self.memory)?;
+                let (ptr, vtable) = val.into_ptr_vtable_pair(&self.memory)?;
                 Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable), aligned: true }
             },
             ty::TyStr | ty::TySlice(_) => {
-                let (ptr, len) = val.into_slice(&mut self.memory)?;
+                let (ptr, len) = val.into_slice(&self.memory)?;
                 Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len), aligned: true }
             },
-            _ => Lvalue::Ptr { ptr: val.into_ptr(&mut self.memory)?, extra: LvalueExtra::None, aligned: true },
+            _ => Lvalue::Ptr { ptr: val.into_ptr(&self.memory)?, extra: LvalueExtra::None, aligned: true },
         })
     }
 

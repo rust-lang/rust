@@ -108,7 +108,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             trace!("struct wrapped nullable pointer type: {}", ty);
                             // only the pointer part of a fat pointer is used for this space optimization
                             let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
-                            self.write_maybe_aligned(!packed, |ectx| ectx.memory.write_uint(nonnull, 0, discr_size))?;
+                            self.write_maybe_aligned_mut(!packed, |ectx| ectx.memory.write_uint(nonnull, 0, discr_size))?;
                         }
                     },
 

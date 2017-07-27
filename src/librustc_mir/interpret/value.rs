@@ -167,7 +167,7 @@ impl<'a, 'tcx: 'a> Value {
 
     /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
     /// this may have to perform a load.
-    pub(super) fn into_ptr(&self, mem: &mut Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
+    pub(super) fn into_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef(ptr, aligned) => {
@@ -179,7 +179,7 @@ impl<'a, 'tcx: 'a> Value {
 
     pub(super) fn into_ptr_vtable_pair(
         &self,
-        mem: &mut Memory<'a, 'tcx>
+        mem: &Memory<'a, 'tcx>
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         use self::Value::*;
         match *self {
@@ -197,11 +197,11 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn into_slice(&self, mem: &mut Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
+    pub(super) fn into_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
             ByRef(ref_ptr, aligned) => {
-                mem.write_maybe_aligned(aligned, |mem| {
+                mem.read_maybe_aligned(aligned, |mem| {
                     let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
                     let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
                     Ok((ptr, len))

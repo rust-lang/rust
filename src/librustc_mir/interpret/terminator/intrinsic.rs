@@ -45,7 +45,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "arith_offset" => {
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_ptr(dest, result_ptr, dest_ty)?;
             }
@@ -61,7 +61,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_load_acq" |
             "volatile_load" => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 self.write_value(Value::by_ref(ptr), dest, ty)?;
             }
 
@@ -70,7 +70,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_store_rel" |
             "volatile_store" => {
                 let ty = substs.type_at(0);
-                let dest = arg_vals[0].into_ptr(&mut self.memory)?;
+                let dest = arg_vals[0].into_ptr(&self.memory)?;
                 self.write_value_to_ptr(arg_vals[1], dest, ty)?;
             }
 
@@ -80,7 +80,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
@@ -94,7 +94,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 let expect_old = self.value_to_primval(arg_vals[1], ty)?;
                 let change = self.value_to_primval(arg_vals[2], ty)?;
                 let old = self.read_value(ptr, ty)?;
@@ -115,7 +115,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_xadd" | "atomic_xadd_acq" | "atomic_xadd_rel" | "atomic_xadd_acqrel" | "atomic_xadd_relaxed" |
             "atomic_xsub" | "atomic_xsub_acq" | "atomic_xsub_rel" | "atomic_xsub_acqrel" | "atomic_xsub_relaxed" => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
@@ -148,8 +148,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
                     // Also see the write_bytes intrinsic.
                     let elem_align = self.type_align(elem_ty)?;
-                    let src = arg_vals[0].into_ptr(&mut self.memory)?;
-                    let dest = arg_vals[1].into_ptr(&mut self.memory)?;
+                    let src = arg_vals[0].into_ptr(&self.memory)?;
+                    let dest = arg_vals[1].into_ptr(&self.memory)?;
                     self.memory.copy(src, dest, count * elem_size, elem_align, intrinsic_name.ends_with("_nonoverlapping"))?;
                 }
             }
@@ -176,7 +176,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
-                let adt_ptr = arg_vals[0].into_ptr(&mut self.memory)?.to_ptr()?;
+                let adt_ptr = arg_vals[0].into_ptr(&self.memory)?.to_ptr()?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
             }
@@ -297,7 +297,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "move_val_init" => {
                 let ty = substs.type_at(0);
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 self.write_value_to_ptr(arg_vals[1], ptr, ty)?;
             }
 
@@ -310,7 +310,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "offset" => {
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_ptr(dest, result_ptr, dest_ty)?;
             }
@@ -399,7 +399,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "transmute" => {
                 let src_ty = substs.type_at(0);
                 let ptr = self.force_allocation(dest)?.to_ptr()?;
-                self.write_maybe_aligned(/*aligned*/false, |ectx| {
+                self.write_maybe_aligned_mut(/*aligned*/false, |ectx| {
                     ectx.write_value_to_ptr(arg_vals[0], ptr.into(), src_ty)
                 })?;
             }
@@ -464,7 +464,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ty_align = self.type_align(ty)?;
                 let val_byte = self.value_to_primval(arg_vals[1], u8)?.to_u128()? as u8;
                 let size = self.type_size(ty)?.expect("write_bytes() type must be sized");
-                let ptr = arg_vals[0].into_ptr(&mut self.memory)?;
+                let ptr = arg_vals[0].into_ptr(&self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
                 if count > 0 {
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
@@ -550,7 +550,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Ok((size, align.abi()))
                 }
                 ty::TyDynamic(..) => {
-                    let (_, vtable) = value.into_ptr_vtable_pair(&mut self.memory)?;
+                    let (_, vtable) = value.into_ptr_vtable_pair(&self.memory)?;
                     // the second entry in the vtable is the dynamic size of the object.
                     self.read_size_and_align_from_vtable(vtable)
                 }
@@ -558,7 +558,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ty::TySlice(_) | ty::TyStr => {
                     let elem_ty = ty.sequence_element_type(self.tcx);
                     let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized") as u64;
-                    let (_, len) = value.into_slice(&mut self.memory)?;
+                    let (_, len) = value.into_slice(&self.memory)?;
                     let align = self.type_align(elem_ty)?;
                     Ok((len * elem_size, align as u64))
                 }

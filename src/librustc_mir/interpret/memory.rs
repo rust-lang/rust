@@ -1,6 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr, mem, io, ops};
+use std::cell::Cell;
 
 use rustc::ty;
 use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
@@ -266,8 +267,8 @@ pub struct Memory<'a, 'tcx> {
 
     /// To avoid having to pass flags to every single memory access, we have some global state saying whether
     /// alignment checking is currently enforced for read and/or write accesses.
-    reads_are_aligned: bool,
-    writes_are_aligned: bool,
+    reads_are_aligned: Cell<bool>,
+    writes_are_aligned: Cell<bool>,
 
     /// The current stack frame.  Used to check accesses against locks.
     cur_frame: usize,
@@ -287,8 +288,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             literal_alloc_cache: HashMap::new(),
             thread_local: BTreeMap::new(),
             next_thread_local: 0,
-            reads_are_aligned: true,
-            writes_are_aligned: true,
+            reads_are_aligned: Cell::new(true),
+            writes_are_aligned: Cell::new(true),
             cur_frame: usize::max_value(),
         }
     }
@@ -796,7 +797,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     fn get_bytes_unchecked(&self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
-        if self.reads_are_aligned {
+        if self.reads_are_aligned.get() {
             self.check_align(ptr.into(), align)?;
         }
         if size == 0 {
@@ -813,7 +814,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     fn get_bytes_unchecked_mut(&mut self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &mut [u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
-        if self.writes_are_aligned {
+        if self.writes_are_aligned.get() {
             self.check_align(ptr.into(), align)?;
         }
         if size == 0 {
@@ -909,10 +910,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: u64, align: u64, nonoverlapping: bool) -> EvalResult<'tcx> {
         if size == 0 {
             // Empty accesses don't need to be valid pointers, but they should still be aligned
-            if self.reads_are_aligned {
+            if self.reads_are_aligned.get() {
                 self.check_align(src, align)?;
             }
-            if self.writes_are_aligned {
+            if self.writes_are_aligned.get() {
                 self.check_align(dest, align)?;
             }
             return Ok(());
@@ -968,7 +969,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn read_bytes(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
         if size == 0 {
             // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-            if self.reads_are_aligned {
+            if self.reads_are_aligned.get() {
                 self.check_align(ptr, 1)?;
             }
             return Ok(&[]);
@@ -979,7 +980,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
         if src.is_empty() {
             // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-            if self.writes_are_aligned {
+            if self.writes_are_aligned.get() {
                 self.check_align(ptr, 1)?;
             }
             return Ok(());
@@ -992,7 +993,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
         if count == 0 {
             // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-            if self.writes_are_aligned {
+            if self.writes_are_aligned.get() {
                 self.check_align(ptr, 1)?;
             }
             return Ok(());
@@ -1399,23 +1400,36 @@ pub(crate) trait HasMemory<'a, 'tcx> {
     fn memory(&self) -> &Memory<'a, 'tcx>;
 
     // These are not supposed to be overriden.
-    fn read_maybe_aligned<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
-        where F: FnOnce(&mut Self) -> EvalResult<'tcx, T>
+    fn read_maybe_aligned<F, T>(&self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+        where F: FnOnce(&Self) -> EvalResult<'tcx, T>
     {
-        let old = self.memory_mut().reads_are_aligned;
-        self.memory_mut().reads_are_aligned = old && aligned;
+        let old = self.memory().reads_are_aligned.get();
+        // Do alignment checking if *all* nested calls say it has to be aligned.
+        self.memory().reads_are_aligned.set(old && aligned);
         let t = f(self);
-        self.memory_mut().reads_are_aligned = old;
+        self.memory().reads_are_aligned.set(old);
         t
     }
 
-    fn write_maybe_aligned<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+    fn read_maybe_aligned_mut<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
         where F: FnOnce(&mut Self) -> EvalResult<'tcx, T>
     {
-        let old = self.memory_mut().writes_are_aligned;
-        self.memory_mut().writes_are_aligned = old && aligned;
+        let old = self.memory().reads_are_aligned.get();
+        // Do alignment checking if *all* nested calls say it has to be aligned.
+        self.memory().reads_are_aligned.set(old && aligned);
         let t = f(self);
-        self.memory_mut().writes_are_aligned = old;
+        self.memory().reads_are_aligned.set(old);
+        t
+    }
+
+    fn write_maybe_aligned_mut<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+        where F: FnOnce(&mut Self) -> EvalResult<'tcx, T>
+    {
+        let old = self.memory().writes_are_aligned.get();
+        // Do alignment checking if *all* nested calls say it has to be aligned.
+        self.memory().writes_are_aligned.set(old && aligned);
+        let t = f(self);
+        self.memory().writes_are_aligned.set(old);
         t
     }
 }
