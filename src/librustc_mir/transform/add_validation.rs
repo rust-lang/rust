@@ -171,42 +171,83 @@ impl MirPass for AddValidation {
         }
 
         // PART 3
-        // Add ReleaseValid/AcquireValid around Ref.  Again an iterator does not seem very suited
+        // Add ReleaseValid/AcquireValid around Ref and Cast.  Again an iterator does not seem very
+        // suited
         // as we need to add new statements before and after each Ref.
         for block_data in mir.basic_blocks_mut() {
             // We want to insert statements around Ref commands as we iterate.  To this end, we
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
-                let (dest_lval, re, src_lval) = match block_data.statements[i].kind {
-                    StatementKind::Assign(ref dest_lval, Rvalue::Ref(re, _, ref src_lval)) => {
-                        (dest_lval.clone(), re, src_lval.clone())
-                    },
-                    _ => continue,
-                };
-                // So this is a ref, and we got all the data we wanted.
-                // Do an acquire of the result -- but only what it points to, so add a Deref
-                // projection.
-                let dest_lval = Projection { base: dest_lval, elem: ProjectionElem::Deref };
-                let dest_lval = Lvalue::Projection(Box::new(dest_lval));
-                let acquire_stmt = Statement {
-                    source_info: block_data.statements[i].source_info,
-                    kind: StatementKind::Validate(ValidationOp::Acquire,
-                            vec![lval_to_operand(dest_lval)]),
-                };
-                block_data.statements.insert(i+1, acquire_stmt);
+                match block_data.statements[i].kind {
+                    // When the borrow of this ref expires, we need to recover validation.
+                    StatementKind::Assign(_, Rvalue::Ref(_, _, _)) => {
+                        // Due to a lack of NLL; we can't capture anything directly here.
+                        // Instead, we have to re-match and clone there.
+                        let (dest_lval, re, src_lval) = match block_data.statements[i].kind {
+                            StatementKind::Assign(ref dest_lval,
+                                                  Rvalue::Ref(re, _, ref src_lval)) => {
+                                (dest_lval.clone(), re, src_lval.clone())
+                            },
+                            _ => bug!("We already matched this."),
+                        };
+                        // So this is a ref, and we got all the data we wanted.
+                        // Do an acquire of the result -- but only what it points to, so add a Deref
+                        // projection.
+                        let dest_lval = Projection { base: dest_lval, elem: ProjectionElem::Deref };
+                        let dest_lval = Lvalue::Projection(Box::new(dest_lval));
+                        let acquire_stmt = Statement {
+                            source_info: block_data.statements[i].source_info,
+                            kind: StatementKind::Validate(ValidationOp::Acquire,
+                                    vec![lval_to_operand(dest_lval)]),
+                        };
+                        block_data.statements.insert(i+1, acquire_stmt);
 
-                // The source is released until the region of the borrow ends.
-                let op = match re {
-                    &RegionKind::ReScope(ce) => ValidationOp::Suspend(ce),
-                    &RegionKind::ReErased =>
-                        bug!("AddValidation pass must be run before erasing lifetimes"),
-                    _ => ValidationOp::Release,
-                };
-                let release_stmt = Statement {
-                    source_info: block_data.statements[i].source_info,
-                    kind: StatementKind::Validate(op, vec![lval_to_operand(src_lval)]),
-                };
-                block_data.statements.insert(i, release_stmt);
+                        // The source is released until the region of the borrow ends.
+                        let op = match re {
+                            &RegionKind::ReScope(ce) => ValidationOp::Suspend(ce),
+                            &RegionKind::ReErased =>
+                                bug!("AddValidation pass must be run before erasing lifetimes"),
+                            _ => ValidationOp::Release,
+                        };
+                        let release_stmt = Statement {
+                            source_info: block_data.statements[i].source_info,
+                            kind: StatementKind::Validate(op, vec![lval_to_operand(src_lval)]),
+                        };
+                        block_data.statements.insert(i, release_stmt);
+                    }
+                    // Casts can change what validation does (e.g. unsizing)
+                    StatementKind::Assign(_, Rvalue::Cast(kind, Operand::Consume(_), _))
+                        if kind != CastKind::Misc =>
+                    {
+                        // Due to a lack of NLL; we can't capture anything directly here.
+                        // Instead, we have to re-match and clone there.
+                        let (dest_lval, src_lval) = match block_data.statements[i].kind {
+                            StatementKind::Assign(ref dest_lval,
+                                    Rvalue::Cast(_, Operand::Consume(ref src_lval), _)) =>
+                            {
+                                (dest_lval.clone(), src_lval.clone())
+                            },
+                            _ => bug!("We already matched this."),
+                        };
+
+                        // Acquire of the result
+                        let acquire_stmt = Statement {
+                            source_info: block_data.statements[i].source_info,
+                            kind: StatementKind::Validate(ValidationOp::Acquire,
+                                    vec![lval_to_operand(dest_lval)]),
+                        };
+                        block_data.statements.insert(i+1, acquire_stmt);
+
+                        // Release of the input
+                        let release_stmt = Statement {
+                            source_info: block_data.statements[i].source_info,
+                            kind: StatementKind::Validate(ValidationOp::Release,
+                                                            vec![lval_to_operand(src_lval)]),
+                        };
+                        block_data.statements.insert(i, release_stmt);
+                    }
+                    _ => {},
+                }
             }
         }
     }
