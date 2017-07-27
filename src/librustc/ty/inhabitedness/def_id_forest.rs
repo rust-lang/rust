@@ -110,7 +110,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
             where I: IntoIterator<Item=DefIdForest>
     {
         let mut ret = DefIdForest::empty();
-        let mut next_ret = SmallVec::new();
+        let mut next_ret: SmallVec<[DefId; 1]> = SmallVec::new();
         for next_forest in iter {
             for id in ret.root_ids.drain(..) {
                 if !next_forest.contains(tcx, id) {

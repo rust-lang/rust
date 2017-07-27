@@ -368,6 +368,26 @@ fn test_binary_search() {
 }
 
 #[test]
+fn test_contains() {
+    assert!([5, 4, 3, 2, 1].contains(&2));
+    let empty: &[i32] = &[][..];
+    assert!(!empty.contains(&1));
+
+    // Tests that Borrow functions.
+    let string_slice = [String::from("abc"), String::from("def")];
+    assert!(string_slice.contains(&String::from("abc")));
+    assert!(!string_slice.contains(&String::from("ab")));
+    assert!(string_slice.contains("abc"));
+    assert!(!string_slice.contains("ab"));
+
+    let vecu8_slice = [b"abc".to_vec(), b"def".to_vec()];
+    assert!(vecu8_slice.contains(&b"abc".to_vec()));
+    assert!(!vecu8_slice.contains(&b"ab".to_vec()));
+    assert!(vecu8_slice.contains(&b"abc"[..]));
+    assert!(!vecu8_slice.contains(&b"ab"[..]));
+}
+
+#[test]
 fn test_reverse() {
     let mut v = vec![10, 20];
     assert_eq!(v[0], 10);
