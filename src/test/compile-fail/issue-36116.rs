@@ -14,10 +14,10 @@ struct Foo<T> {
 
 fn main() {
     let f = Some(Foo { _a: 42 }).map(|a| a as Foo::<i32>);
-    //~^ ERROR unexpected token: `::`
-    //~| HELP use `<...>` instead of `::<...>` if you meant to specify type arguments
+    //~^ ERROR unnecessary path disambiguator
+    //~| NOTE try removing `::`
 
     let g: Foo::<i32> = Foo { _a: 42 };
-    //~^ ERROR unexpected token: `::`
-    //~| HELP use `<...>` instead of `::<...>` if you meant to specify type arguments
+    //~^ ERROR unnecessary path disambiguator
+    //~| NOTE try removing `::`
 }

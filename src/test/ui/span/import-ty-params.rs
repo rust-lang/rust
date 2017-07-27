@@ -8,12 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! m {
-    ($p: path) => (pub(in $p) struct Z;)
+mod a {
+    pub mod b {
+        pub mod c {
+            pub struct S<T>(T);
+        }
+    }
 }
 
-struct S<T>(T);
-m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
-//~^ ERROR expected module, found struct `S`
+macro_rules! import {
+    ($p: path) => (use $p;);
+}
+
+fn f1() {
+    import! { a::b::c::S<u8> } //~ ERROR generic arguments in import path
+}
+fn f2() {
+    import! { a::b::c::S<> } //~ ERROR generic arguments in import path
+}
 
 fn main() {}

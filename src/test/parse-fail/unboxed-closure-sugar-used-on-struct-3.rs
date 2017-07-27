@@ -24,7 +24,7 @@ fn bar() {
     let b = Box::Bar::<isize,usize>::new(); // OK
 
     let b = Box::Bar::()::new();
-    //~^ ERROR expected identifier, found `(`
+    //~^ ERROR `::` is not supported before parenthesized generic arguments
 }
 
 fn main() { }

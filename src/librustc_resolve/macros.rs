@@ -385,15 +385,21 @@ impl<'a> Resolver<'a> {
 
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                             -> Result<Def, Determinacy> {
-        let ast::Path { ref segments, span } = *path;
-        if segments.iter().any(|segment| segment.parameters.is_some()) {
-            let kind =
-                if segments.last().unwrap().parameters.is_some() { "macro" } else { "module" };
-            let msg = format!("type parameters are not allowed on {}s", kind);
-            self.session.span_err(path.span, &msg);
-            return Err(Determinacy::Determined);
+        let def = self.resolve_macro_to_def_inner(scope, path, kind, force);
+        if def != Err(Determinacy::Undetermined) {
+            // Do not report duplicated errors on every undetermined resolution.
+            path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
+                self.session.span_err(segment.parameters.as_ref().unwrap().span(),
+                                      "generic arguments in macro path");
+            });
         }
+        def
+    }
 
+    fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path,
+                                  kind: MacroKind, force: bool)
+                                  -> Result<Def, Determinacy> {
+        let ast::Path { ref segments, span } = *path;
         let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.identifier)).collect();
         let invocation = self.invocations[&scope];
         self.current_module = invocation.module.get();

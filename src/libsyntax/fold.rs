@@ -471,10 +471,11 @@ pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedP
                                                            fld: &mut T)
                                                            -> AngleBracketedParameterData
 {
-    let AngleBracketedParameterData { lifetimes, types, bindings } = data;
+    let AngleBracketedParameterData { lifetimes, types, bindings, span } = data;
     AngleBracketedParameterData { lifetimes: fld.fold_lifetimes(lifetimes),
                                   types: types.move_map(|ty| fld.fold_ty(ty)),
-                                  bindings: bindings.move_map(|b| fld.fold_ty_binding(b)) }
+                                  bindings: bindings.move_map(|b| fld.fold_ty_binding(b)),
+                                  span: fld.new_span(span) }
 }
 
 pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedParameterData,

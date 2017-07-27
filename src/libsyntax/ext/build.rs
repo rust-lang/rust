@@ -312,7 +312,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
     }
     fn path_all(&self,
-                sp: Span,
+                span: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
                 lifetimes: Vec<ast::Lifetime>,
@@ -322,28 +322,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
         if global {
-            segments.push(ast::PathSegment::crate_root(sp));
+            segments.push(ast::PathSegment::crate_root(span));
         }
 
-        segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, sp)));
-        let parameters = if lifetimes.is_empty() && types.is_empty() && bindings.is_empty() {
-            None
+        segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, span)));
+        let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
+            ast::AngleBracketedParameterData { lifetimes, types, bindings, span }.into()
         } else {
-            Some(P(ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
-                lifetimes: lifetimes,
-                types: types,
-                bindings: bindings,
-            })))
+            None
         };
-        segments.push(ast::PathSegment {
-            identifier: last_identifier,
-            span: sp,
-            parameters: parameters
-        });
-        ast::Path {
-            span: sp,
-            segments: segments,
-        }
+        segments.push(ast::PathSegment { identifier: last_identifier, span, parameters });
+        ast::Path { span, segments }
     }
 
     /// Constructs a qualified path.
@@ -369,15 +358,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
-        let parameters = ast::AngleBracketedParameterData {
-            lifetimes: lifetimes,
-            types: types,
-            bindings: bindings,
+        let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
+            ast::AngleBracketedParameterData { lifetimes, types, bindings, span: ident.span }.into()
+        } else {
+            None
         };
         path.segments.push(ast::PathSegment {
             identifier: ident.node,
             span: ident.span,
-            parameters: Some(P(ast::PathParameters::AngleBracketed(parameters))),
+            parameters: parameters,
         });
 
         (ast::QSelf {

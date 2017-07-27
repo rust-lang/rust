@@ -120,12 +120,11 @@ pub struct PathSegment {
     pub span: Span,
 
     /// Type/lifetime parameters attached to this path. They come in
-    /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
-    /// this is more than just simple syntactic sugar; the use of
-    /// parens affects the region binding rules, so we preserve the
-    /// distinction.
-    /// The `Option<P<..>>` wrapper is purely a size optimization;
-    /// `None` is used to represent both `Path` and `Path<>`.
+    /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`.
+    /// `None` means that no parameter list is supplied (`Path`),
+    /// `Some` means that parameter list is supplied (`Path<X, Y>`)
+    /// but it can be empty (`Path<>`).
+    /// `P` is used as a size optimization for the common case with no parameters.
     pub parameters: Option<P<PathParameters>>,
 }
 
@@ -153,9 +152,20 @@ pub enum PathParameters {
     Parenthesized(ParenthesizedParameterData),
 }
 
+impl PathParameters {
+    pub fn span(&self) -> Span {
+        match *self {
+            AngleBracketed(ref data) => data.span,
+            Parenthesized(ref data) => data.span,
+        }
+    }
+}
+
 /// A path like `Foo<'a, T>`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Default)]
 pub struct AngleBracketedParameterData {
+    /// Overall span
+    pub span: Span,
     /// The lifetime parameters for this path segment.
     pub lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
@@ -168,8 +178,13 @@ pub struct AngleBracketedParameterData {
 
 impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
     fn into(self) -> Option<P<PathParameters>> {
-        let empty = self.lifetimes.is_empty() && self.types.is_empty() && self.bindings.is_empty();
-        if empty { None } else { Some(P(PathParameters::AngleBracketed(self))) }
+        Some(P(PathParameters::AngleBracketed(self)))
+    }
+}
+
+impl Into<Option<P<PathParameters>>> for ParenthesizedParameterData {
+    fn into(self) -> Option<P<PathParameters>> {
+        Some(P(PathParameters::Parenthesized(self)))
     }
 }
 

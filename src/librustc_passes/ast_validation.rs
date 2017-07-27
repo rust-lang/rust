@@ -195,10 +195,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match item.node {
             ItemKind::Use(ref view_path) => {
                 let path = view_path.node.path();
-                if path.segments.iter().any(|segment| segment.parameters.is_some()) {
-                    self.err_handler()
-                        .span_err(path.span, "type or lifetime parameters in import path");
-                }
+                path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
+                    self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+                                                "generic arguments in import path");
+                });
             }
             ItemKind::Impl(.., Some(..), _, ref impl_items) => {
                 self.invalid_visibility(&item.vis, item.span, None);
@@ -297,10 +297,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_vis(&mut self, vis: &'a Visibility) {
         match *vis {
             Visibility::Restricted { ref path, .. } => {
-                if !path.segments.iter().all(|segment| segment.parameters.is_none()) {
-                    self.err_handler()
-                        .span_err(path.span, "type or lifetime parameters in visibility path");
-                }
+                path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
+                    self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+                                                "generic arguments in visibility path");
+                });
             }
             _ => {}
         }
