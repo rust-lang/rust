@@ -69,6 +69,7 @@ use mir;
 use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit};
 use symbol_names_test;
+use time_graph;
 use trans_item::{TransItem, DefPathBasedNames};
 use type_::Type;
 use type_of;
@@ -956,6 +957,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+    let time_graph = if tcx.sess.opts.debugging_opts.trans_time_graph {
+        Some(time_graph::TimeGraph::new())
+    } else {
+        None
+    };
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
@@ -965,6 +971,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let ongoing_translation = write::start_async_translation(
             tcx.sess,
             output_filenames,
+            time_graph.clone(),
             tcx.crate_name(LOCAL_CRATE),
             link_meta,
             metadata,
@@ -1015,6 +1022,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ongoing_translation = write::start_async_translation(
         tcx.sess,
         output_filenames,
+        time_graph.clone(),
         tcx.crate_name(LOCAL_CRATE),
         link_meta,
         metadata,
@@ -1033,6 +1041,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for cgu in codegen_units.into_iter() {
         ongoing_translation.check_for_errors(tcx.sess);
+
+        let _timing_guard = time_graph
+            .as_ref()
+            .map(|time_graph| time_graph.start(write::TRANS_WORKER_TIMELINE,
+                                               write::TRANS_WORK_PACKAGE_KIND));
+
         let dep_node = cgu.work_product_dep_node();
         let ((stats, module), _) =
             tcx.dep_graph.with_task(dep_node,

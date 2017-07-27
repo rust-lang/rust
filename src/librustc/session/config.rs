@@ -1059,6 +1059,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "choose which RELRO level to use"),
     nll: bool = (false, parse_bool, [UNTRACKED],
                  "run the non-lexical lifetimes MIR pass"),
+    trans_time_graph: bool = (false, parse_bool, [UNTRACKED],
+        "generate a graphical HTML report of time spent in trans and LLVM"),
 }
 
 pub fn default_lib_output() -> CrateType {

@@ -17,6 +17,7 @@ use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
                              AllPasses, Sanitizer};
 use rustc::session::Session;
+use time_graph::{self, TimeGraph};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
@@ -342,6 +343,9 @@ pub struct CodegenContext {
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
     coordinator_send: Sender<Message>,
+    // A reference to the TimeGraph so we can register timings. None means that
+    // measuring is disabled.
+    time_graph: Option<TimeGraph>,
 }
 
 impl CodegenContext {
@@ -662,6 +666,7 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
 
 pub fn start_async_translation(sess: &Session,
                                crate_output: &OutputFilenames,
+                               time_graph: Option<TimeGraph>,
                                crate_name: Symbol,
                                link: LinkMeta,
                                metadata: EncodedMetadata,
@@ -768,6 +773,7 @@ pub fn start_async_translation(sess: &Session,
                                                   coordinator_send.clone(),
                                                   coordinator_receive,
                                                   client,
+                                                  time_graph.clone(),
                                                   exported_symbols.clone());
     OngoingCrateTranslation {
         crate_name,
@@ -783,6 +789,7 @@ pub fn start_async_translation(sess: &Session,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
 
+        time_graph,
         output_filenames: crate_output.clone(),
         coordinator_send,
         shared_emitter_main,
@@ -1084,6 +1091,7 @@ fn start_executing_work(sess: &Session,
                         coordinator_send: Sender<Message>,
                         coordinator_receive: Receiver<Message>,
                         jobserver: Client,
+                        time_graph: Option<TimeGraph>,
                         exported_symbols: Arc<ExportedSymbols>)
                         -> thread::JoinHandle<CompiledModules> {
     // First up, convert our jobserver into a helper thread so we can use normal
@@ -1123,6 +1131,7 @@ fn start_executing_work(sess: &Session,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
         coordinator_send: coordinator_send,
         diag_emitter: shared_emitter.clone(),
+        time_graph,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1295,10 +1304,22 @@ fn start_executing_work(sess: &Session,
     })
 }
 
+pub const TRANS_WORKER_ID: usize = ::std::usize::MAX;
+pub const TRANS_WORKER_TIMELINE: time_graph::TimelineId =
+    time_graph::TimelineId(TRANS_WORKER_ID);
+pub const TRANS_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
+    time_graph::WorkPackageKind(&["#DE9597", "#FED1D3", "#FDC5C7", "#B46668", "#88494B"]);
+const LLVM_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
+    time_graph::WorkPackageKind(&["#7DB67A", "#C6EEC4", "#ACDAAA", "#579354", "#3E6F3C"]);
+
 fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
     let depth = time_depth();
 
     thread::spawn(move || {
+        let _timing_guard = cgcx.time_graph
+                                .as_ref()
+                                .map(|tg| tg.start(time_graph::TimelineId(cgcx.worker),
+                                                   LLVM_WORK_PACKAGE_KIND));
         set_time_depth(depth);
 
         // Set up a destructor which will fire off a message that we're done as
@@ -1555,6 +1576,7 @@ pub struct OngoingCrateTranslation {
     metadata_module_config: ModuleConfig,
     allocator_module_config: ModuleConfig,
 
+    time_graph: Option<TimeGraph>,
     coordinator_send: Sender<Message>,
     shared_emitter_main: SharedEmitterMain,
     future: thread::JoinHandle<CompiledModules>,
@@ -1566,6 +1588,10 @@ impl OngoingCrateTranslation {
         let compiled_modules = self.future.join().unwrap();
 
         sess.abort_if_errors();
+
+        if let Some(time_graph) = self.time_graph {
+            time_graph.dump(&format!("{}-timings", self.crate_name));
+        }
 
         copy_module_artifacts_into_incr_comp_cache(sess,
                                                    &compiled_modules,
