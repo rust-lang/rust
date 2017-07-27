@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use core::iter::*;
-use core::{i8, i16, isize};
-use core::usize;
+use core::{i8, i16, isize, u16, usize, i128, u128};
 
 #[test]
 fn test_lt() {
@@ -1080,20 +1079,41 @@ fn test_range() {
 fn test_range_inclusive_exhaustion() {
     let mut r = 10...10;
     assert_eq!(r.next(), Some(10));
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 11...10);
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 11...10);
 
     let mut r = 10...10;
     assert_eq!(r.next_back(), Some(10));
+    assert_eq!(r, 10...9);
+    assert_eq!(r.next_back(), None);
+    assert_eq!(r, 10...9);
+
+    let mut r = 0_u32...0;
+    assert_eq!(r.next_back(), Some(0));
+    assert_eq!(r, 1...0);
+    assert_eq!(r.next_back(), None);
     assert_eq!(r, 1...0);
 
     let mut r = 10...12;
     assert_eq!(r.nth(2), Some(12));
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 13...12);
 
     let mut r = 10...12;
     assert_eq!(r.nth(5), None);
-    assert_eq!(r, 1...0);
+    assert_eq!(r, 13...12);
 
+    let mut r = 127_i8...127;
+    assert_eq!(r.next(), Some(127));
+    assert_eq!(r, 127...126);
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 127...126);
+
+    let mut r = 255_u8...255;
+    assert_eq!(r.next(), Some(255));
+    assert_eq!(r, 255...254);
+    assert_eq!(r.next(), None);
+    assert_eq!(r, 255...254);
 }
 
 #[test]
@@ -1142,7 +1162,25 @@ fn test_range_inclusive_nth() {
     assert_eq!(r.is_empty(), false);
     assert_eq!(r.nth(10), None);
     assert_eq!(r.is_empty(), true);
-    assert_eq!(r, 1...0);  // We may not want to document/promise this detail
+    assert_eq!(r, 21...20);
+}
+
+#[test]
+fn test_range_len() {
+    assert_eq!((0..10_u8).len(), 10);
+    assert_eq!((9..10_u8).len(), 1);
+    assert_eq!((10..10_u8).len(), 0);
+    assert_eq!((11..10_u8).len(), 0);
+    assert_eq!((100..10_u8).len(), 0);
+}
+
+#[test]
+fn test_range_inclusive_len() {
+    assert_eq!((0...10_u8).len(), 11);
+    assert_eq!((9...10_u8).len(), 2);
+    assert_eq!((10...10_u8).len(), 1);
+    assert_eq!((11...10_u8).len(), 0);
+    assert_eq!((100...10_u8).len(), 0);
 }
 
 #[test]
@@ -1166,6 +1204,18 @@ fn test_range_step() {
     assert_eq!((i8::MIN..i8::MAX).step_by(-(i8::MIN as i32) as usize).size_hint(), (2, Some(2)));
     assert_eq!((i16::MIN..i16::MAX).step_by(i16::MAX as usize).size_hint(), (3, Some(3)));
     assert_eq!((isize::MIN..isize::MAX).step_by(1).size_hint(), (usize::MAX, Some(usize::MAX)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_from_next_overflow() {
+    (255u8..).next();
+}
+
+#[test]
+#[should_panic]
+fn test_range_from_nth_overflow() {
+    (200u8..).nth(55);
 }
 
 #[test]
@@ -1251,40 +1301,83 @@ fn test_chain_fold() {
 }
 
 #[test]
-fn test_step_replace_unsigned() {
-    let mut x = 4u32;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
+fn test_steps_between() {
+    assert_eq!(Step::steps_between(&20_u8, &200_u8), Some(180_usize));
+    assert_eq!(Step::steps_between(&-20_i8, &80_i8), Some(100_usize));
+    assert_eq!(Step::steps_between(&-120_i8, &80_i8), Some(200_usize));
 
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
+    assert_eq!(Step::steps_between(&20_u16, &40_100_u16), Some(40_080_usize));
+    assert_eq!(Step::steps_between(&-20_i16, &80_i16), Some(100_usize));
+    assert_eq!(Step::steps_between(&-20_030_i16, &20_050_i16), Some(40_080_usize));
+
+    assert_eq!(Step::steps_between(&20_u32, &4_000_100_u32), Some(4_000_080_usize));
+    assert_eq!(Step::steps_between(&-20_i32, &80_i32), Some(100_usize));
+    assert_eq!(Step::steps_between(&-2_000_030_i32, &2_000_050_i32), Some(4_000_080_usize));
+
+    // Skip u64 / i64 to avoid dealing with 32-bit vs 64-bit platforms.
+
+    assert_eq!(Step::steps_between(&20_u128, &200_u128), Some(180_usize));
+    assert_eq!(Step::steps_between(&-20_i128, &80_i128), Some(100_usize));
+    if cfg!(target_pointer_width = "64") {
+        assert_eq!(Step::steps_between(&20_u128, &0x1_0000_0000_0000_0019_u128), Some(usize::MAX));
+        assert_eq!(Step::steps_between(&20_i128, &0x1_0000_0000_0000_0019_i128), Some(usize::MAX));
+    }
+    assert_eq!(Step::steps_between(&20_u128, &0x1_0000_0000_0000_0020_u128), None);
+    assert_eq!(Step::steps_between(&20_i128, &0x1_0000_0000_0000_0020_i128), None);
+    assert_eq!(Step::steps_between(&-0x1_0000_0000_0000_0000_i128, &0x1_0000_0000_0000_0000_i128),
+               None);
 }
 
 #[test]
-fn test_step_replace_signed() {
-    let mut x = 4i32;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
+fn test_step_forward() {
+    assert_eq!((55_u8).forward(200_usize), Some(255_u8));
+    assert_eq!((252_u8).forward(200_usize), None);
+    assert_eq!((0_u8).forward(256_usize), None);
+    assert_eq!((-110_i8).forward(200_usize), Some(90_i8));
+    assert_eq!((-110_i8).forward(248_usize), None);
+    assert_eq!((-126_i8).forward(256_usize), None);
 
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
+    assert_eq!((35_u16).forward(100_usize), Some(135_u16));
+    assert_eq!((35_u16).forward(65500_usize), Some(u16::MAX));
+    assert_eq!((36_u16).forward(65500_usize), None);
+    assert_eq!((-110_i16).forward(200_usize), Some(90_i16));
+    assert_eq!((-20_030_i16).forward(50_050_usize), Some(30_020_i16));
+    assert_eq!((-10_i16).forward(40_000_usize), None);
+    assert_eq!((-10_i16).forward(70_000_usize), None);
+
+    assert_eq!((10_u128).forward(70_000_usize), Some(70_010_u128));
+    assert_eq!((10_i128).forward(70_030_usize), Some(70_020_i128));
+    assert_eq!((0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128).forward(0xff_usize),
+               Some(u128::MAX));
+    assert_eq!((0xffff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_u128).forward(0x100_usize), None);
+    assert_eq!((0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).forward(0xff_usize),
+               Some(i128::MAX));
+    assert_eq!((0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).forward(0x100_usize), None);
 }
 
 #[test]
-fn test_step_replace_no_between() {
-    let mut x = 4u128;
-    let y = x.replace_zero();
-    assert_eq!(x, 0);
-    assert_eq!(y, 4);
+fn test_step_backward() {
+    assert_eq!((255_u8).backward(200_usize), Some(55_u8));
+    assert_eq!((100_u8).backward(200_usize), None);
+    assert_eq!((255_u8).backward(256_usize), None);
+    assert_eq!((90_i8).backward(200_usize), Some(-110_i8));
+    assert_eq!((110_i8).backward(248_usize), None);
+    assert_eq!((127_i8).backward(256_usize), None);
 
-    x = 5;
-    let y = x.replace_one();
-    assert_eq!(x, 1);
-    assert_eq!(y, 5);
+    assert_eq!((135_u16).backward(100_usize), Some(35_u16));
+    assert_eq!((u16::MAX).backward(65500_usize), Some(35_u16));
+    assert_eq!((10_u16).backward(11_usize), None);
+    assert_eq!((90_i16).backward(200_usize), Some(-110_i16));
+    assert_eq!((30_020_i16).backward(50_050_usize), Some(-20_030_i16));
+    assert_eq!((-10_i16).backward(40_000_usize), None);
+    assert_eq!((-10_i16).backward(70_000_usize), None);
+
+    assert_eq!((70_010_u128).backward(70_000_usize), Some(10_u128));
+    assert_eq!((70_020_i128).backward(70_030_usize), Some(10_i128));
+    assert_eq!((10_u128).backward(7_usize), Some(3_u128));
+    assert_eq!((10_u128).backward(11_usize), None);
+    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xfe_usize),
+               Some(i128::MIN));
+    assert_eq!((-0x7fff_ffff_ffff_ffff__ffff_ffff_ffff_ff00_i128).backward(0xff_usize),
+               Some(i128::MIN));
 }
