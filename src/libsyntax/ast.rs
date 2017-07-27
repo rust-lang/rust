@@ -321,6 +321,7 @@ impl Default for Generics {
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: Vec::new(),
+                span: DUMMY_SP,
             },
             span: DUMMY_SP,
         }
@@ -332,6 +333,7 @@ impl Default for Generics {
 pub struct WhereClause {
     pub id: NodeId,
     pub predicates: Vec<WherePredicate>,
+    pub span: Span,
 }
 
 /// A single predicate in a `where` clause
