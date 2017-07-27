@@ -76,8 +76,6 @@ impl<'a> CheckAttrVisitor<'a> {
         };
 
         let mut conflicting_reprs = 0;
-        let mut found_packed = false;
-        let mut found_align = false;
 
         for word in words {
 
@@ -106,7 +104,6 @@ impl<'a> CheckAttrVisitor<'a> {
                                 ("attribute should be applied to struct or union",
                                  "a struct or union")
                     } else {
-                        found_packed = true;
                         continue
                     }
                 }
@@ -120,7 +117,6 @@ impl<'a> CheckAttrVisitor<'a> {
                     }
                 }
                 "align" => {
-                    found_align = true;
                     if target != Target::Struct &&
                             target != Target::Union {
                         ("attribute should be applied to struct or union",
@@ -149,10 +145,6 @@ impl<'a> CheckAttrVisitor<'a> {
         if conflicting_reprs > 1 {
             span_warn!(self.sess, attr.span, E0566,
                        "conflicting representation hints");
-        }
-        if found_align && found_packed {
-            struct_span_err!(self.sess, attr.span, E0587,
-                             "conflicting packed and align representation hints").emit();
         }
     }
 }
