@@ -3457,6 +3457,56 @@ impl Foo for i32 {
 ```
 "##,
 
+E0436: r##"
+The functional record update syntax is only allowed for structs. (Struct-like
+enum variants don't qualify, for example.)
+
+Erroneous code example:
+
+```compile_fail,E0436
+enum PublicationFrequency {
+    Weekly,
+    SemiMonthly { days: (u8, u8), annual_special: bool },
+}
+
+fn one_up_competitor(competitor_frequency: PublicationFrequency)
+                     -> PublicationFrequency {
+    match competitor_frequency {
+        PublicationFrequency::Weekly => PublicationFrequency::SemiMonthly {
+            days: (1, 15), annual_special: false
+        },
+        c @ PublicationFrequency::SemiMonthly{ .. } =>
+            PublicationFrequency::SemiMonthly {
+                annual_special: true, ..c // error: functional record update
+                                          //        syntax requires a struct
+        }
+    }
+}
+```
+
+Rewrite the expression without functional record update syntax:
+
+```
+enum PublicationFrequency {
+    Weekly,
+    SemiMonthly { days: (u8, u8), annual_special: bool },
+}
+
+fn one_up_competitor(competitor_frequency: PublicationFrequency)
+                     -> PublicationFrequency {
+    match competitor_frequency {
+        PublicationFrequency::Weekly => PublicationFrequency::SemiMonthly {
+            days: (1, 15), annual_special: false
+        },
+        PublicationFrequency::SemiMonthly{ days, .. } =>
+            PublicationFrequency::SemiMonthly {
+                days, annual_special: true // ok!
+        }
+    }
+}
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -4655,7 +4705,6 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0436, // functional record update requires a struct
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
     E0563, // cannot determine a type for this `impl Trait`: {}
