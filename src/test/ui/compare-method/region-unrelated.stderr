@@ -1,4 +1,4 @@
-error[E0276]: impl has stricter requirements than trait
+error: impl has stricter requirements than trait
   --> $DIR/region-unrelated.rs:19:5
    |
 14 |     fn foo() where T: 'a;

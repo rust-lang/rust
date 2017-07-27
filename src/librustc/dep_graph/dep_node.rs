@@ -521,6 +521,7 @@ define_dep_nodes!( <'tcx>
     [] IsAllocator(DefId),
     [] IsPanicRuntime(DefId),
     [] ExternCrate(DefId),
+    [] LintLevels,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

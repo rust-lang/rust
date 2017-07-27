@@ -625,8 +625,6 @@ for ty::TypeckTables<'tcx> {
 
             ref cast_kinds,
 
-            // FIXME(#41184): This is still ignored at the moment.
-            lints: _,
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,

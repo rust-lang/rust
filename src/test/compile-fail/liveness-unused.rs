@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(unused)]
 #![deny(unused_variables)]
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types, trivial_numeric_casts)]

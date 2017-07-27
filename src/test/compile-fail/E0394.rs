@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(warnings)]
+
 static A: u32 = 0;
 static B: u32 = A;
 //~^ ERROR E0394

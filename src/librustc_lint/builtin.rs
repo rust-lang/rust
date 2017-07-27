@@ -36,7 +36,7 @@ use rustc::ty::{self, Ty};
 use rustc::traits::{self, Reveal};
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
-use lint::{Level, LateContext, LintContext, LintArray};
+use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
 use std::collections::HashSet;
@@ -876,16 +876,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             let mut db = cx.struct_span_lint(UNCONDITIONAL_RECURSION,
                                              sp,
                                              "function cannot return without recurring");
-
             // FIXME #19668: these could be span_lint_note's instead of this manual guard.
-            if cx.current_level(UNCONDITIONAL_RECURSION) != Level::Allow {
-                // offer some help to the programmer.
-                for call in &self_call_spans {
-                    db.span_note(*call, "recursive call site");
-                }
-                db.help("a `loop` may express intention \
-                         better if this is on purpose");
+            // offer some help to the programmer.
+            for call in &self_call_spans {
+                db.span_note(*call, "recursive call site");
             }
+            db.help("a `loop` may express intention \
+                     better if this is on purpose");
             db.emit();
         }
 

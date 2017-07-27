@@ -10,6 +10,7 @@
 
 #![feature(box_syntax)]
 #![feature(const_fn)]
+#![allow(warnings)]
 
 use std::cell::RefCell;
 

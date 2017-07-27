@@ -12,6 +12,7 @@ use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
+use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference};
 use middle::privacy::AccessLevels;
@@ -506,6 +507,12 @@ impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::lint_levels<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("computing the lint levels for items in this crate")
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -988,6 +995,8 @@ define_maps! { <'tcx>
     [] is_panic_runtime: IsPanicRuntime(DefId) -> bool,
 
     [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
+
+    [] lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1058,4 +1067,8 @@ fn needs_drop_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstruct
 
 fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
     DepConstructor::Layout
+}
+
+fn lint_levels<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::LintLevels
 }

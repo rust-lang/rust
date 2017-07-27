@@ -11,10 +11,13 @@
 //! A test to ensure that helpful `note` messages aren't emitted more often
 //! than necessary.
 
-// Although there are three errors, we should only get two "lint level defined
-// here" notes pointing at the `warnings` span, one for each error type.
-#![deny(warnings)]
+#![feature(rustc_attrs)]
 
+// Although there are three warnings, we should only get two "lint level defined
+// here" notes pointing at the `warnings` span, one for each error type.
+#![warn(unused)]
+
+#[rustc_error]
 fn main() {
     let theTwo = 2;
     let theOtherTwo = 2;

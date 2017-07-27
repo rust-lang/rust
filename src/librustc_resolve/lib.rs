@@ -2552,9 +2552,10 @@ impl<'a> Resolver<'a> {
                                 = self.struct_constructors.get(&def_id).cloned() {
                             if is_expected(ctor_def) && self.is_accessible(ctor_vis) {
                                 let lint = lint::builtin::LEGACY_CONSTRUCTOR_VISIBILITY;
-                                self.session.add_lint(lint, id, span,
+                                self.session.buffer_lint(lint, id, span,
                                     "private struct constructors are not usable through \
-                                     reexports in outer modules".to_string());
+                                     reexports in outer modules",
+                                );
                                 res = Some(PathResolution::new(ctor_def));
                             }
                         }
@@ -2748,7 +2749,7 @@ impl<'a> Resolver<'a> {
             };
             if result.base_def() == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-                self.session.add_lint(lint, id, span, "unnecessary qualification".to_string());
+                self.session.buffer_lint(lint, id, span, "unnecessary qualification")
             }
         }
 
@@ -3486,7 +3487,7 @@ impl<'a> Resolver<'a> {
                 span.push_span_label(b1.span, msg1);
                 span.push_span_label(b2.span, msg2);
                 let msg = format!("`{}` is ambiguous", name);
-                self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
+                self.session.buffer_lint(lint::builtin::LEGACY_IMPORTS, id, span, &msg);
             } else {
                 let mut err =
                     self.session.struct_span_err(span, &format!("`{}` is ambiguous", name));
@@ -3607,8 +3608,8 @@ impl<'a> Resolver<'a> {
 
     fn warn_legacy_self_import(&self, directive: &'a ImportDirective<'a>) {
         let (id, span) = (directive.id, directive.span);
-        let msg = "`self` no longer imports values".to_string();
-        self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
+        let msg = "`self` no longer imports values";
+        self.session.buffer_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
     }
 
     fn check_proc_macro_attrs(&mut self, attrs: &[ast::Attribute]) {

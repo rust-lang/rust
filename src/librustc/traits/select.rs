@@ -512,11 +512,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             if raise_warning {
-                tcx.sess.add_lint(lint::builtin::RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
-                                  obligation.cause.body_id,
-                                  obligation.cause.span,
-                                  format!("code relies on type inference rules which are likely \
-                                           to change"));
+                tcx.lint_node(lint::builtin::RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
+                              obligation.cause.body_id,
+                              obligation.cause.span,
+                              &format!("code relies on type inference rules which are likely \
+                                        to change"));
             }
         }
         Ok(ret)

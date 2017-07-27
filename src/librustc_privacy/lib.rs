@@ -1345,11 +1345,11 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
                                     "private trait can't be public"))
                         .emit();
                 } else {
-                    self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                           node_id,
-                                           self.span,
-                                           format!("private trait `{}` in public \
-                                                    interface (error E0445)", trait_ref));
+                    self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC,
+                                       node_id,
+                                       self.span,
+                                       &format!("private trait `{}` in public \
+                                                 interface (error E0445)", trait_ref));
                 }
             }
         }
@@ -1393,11 +1393,11 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                         err.span_label(self.span, "can't leak private type");
                         err.emit();
                     } else {
-                        self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                               node_id,
-                                               self.span,
-                                               format!("private type `{}` in public \
-                                                        interface (error E0446)", ty));
+                        self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC,
+                                           node_id,
+                                           self.span,
+                                           &format!("private type `{}` in public \
+                                                     interface (error E0446)", ty));
                     }
                 }
             }

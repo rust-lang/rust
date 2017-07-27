@@ -11,6 +11,7 @@
 #![feature(associated_consts)]
 #![feature(conservative_impl_trait)]
 #![feature(decl_macro)]
+#![allow(warnings)]
 
 mod m {
     fn priv_fn() {}

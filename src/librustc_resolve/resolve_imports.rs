@@ -745,8 +745,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                    (error E0365), consider declaring with `pub`",
                                    ident);
-                self.session.add_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-                                      directive.id, directive.span, msg);
+                self.session.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+                                         directive.id,
+                                         directive.span,
+                                         &msg);
             } else if ns == TypeNS {
                 struct_span_err!(self.session, directive.span, E0365,
                                  "`{}` is private, and cannot be reexported", ident)
