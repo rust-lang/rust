@@ -981,13 +981,14 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             linker_info,
             false);
 
-        ongoing_translation.submit_translated_module_to_llvm(tcx.sess, metadata_module);
-        ongoing_translation.signal_translation_done();
+        ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
 
         assert_and_save_dep_graph(tcx,
                                   incremental_hashes_map,
                                   metadata_incr_hashes,
                                   link_meta);
+
+        ongoing_translation.check_for_errors(tcx.sess);
 
         return ongoing_translation;
     }
@@ -1032,35 +1033,87 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         linker_info,
         no_integrated_as);
 
-    ongoing_translation.submit_translated_module_to_llvm(tcx.sess, metadata_module);
+    // Translate an allocator shim, if any
+    //
+    // If LTO is enabled and we've got some previous LLVM module we translated
+    // above, then we can just translate directly into that LLVM module. If not,
+    // however, we need to create a separate module and trans into that. Note
+    // that the separate translation is critical for the standard library where
+    // the rlib's object file doesn't have allocator functions but the dylib
+    // links in an object file that has allocator functions. When we're
+    // compiling a final LTO artifact, though, there's no need to worry about
+    // this as we're not working with this dual "rlib/dylib" functionality.
+    let allocator_module = if tcx.sess.lto() {
+        None
+    } else if let Some(kind) = tcx.sess.allocator_kind.get() {
+        unsafe {
+            let (llcx, llmod) =
+                context::create_context_and_module(tcx.sess, "allocator");
+            let modules = ModuleLlvm {
+                llmod: llmod,
+                llcx: llcx,
+            };
+            time(tcx.sess.time_passes(), "write allocator module", || {
+                allocator::trans(tcx, &modules, kind)
+            });
+
+            Some(ModuleTranslation {
+                name: link::ALLOCATOR_MODULE_NAME.to_string(),
+                symbol_name_hash: 0, // we always rebuild allocator shims
+                source: ModuleSource::Translated(modules),
+                kind: ModuleKind::Allocator,
+            })
+        }
+    } else {
+        None
+    };
+
+    if let Some(allocator_module) = allocator_module {
+        ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, allocator_module, false);
+    }
+
+    let codegen_unit_count = codegen_units.len();
+    ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess,
+                                                             metadata_module,
+                                                             codegen_unit_count == 0);
 
     let translation_items = Arc::new(translation_items);
 
     let mut all_stats = Stats::default();
     let mut module_dispositions = tcx.sess.opts.incremental.as_ref().map(|_| Vec::new());
 
-    for cgu in codegen_units.into_iter() {
+    for (cgu_index, cgu) in codegen_units.into_iter().enumerate() {
+        ongoing_translation.wait_for_signal_to_translate_item();
         ongoing_translation.check_for_errors(tcx.sess);
 
-        let _timing_guard = time_graph
-            .as_ref()
-            .map(|time_graph| time_graph.start(write::TRANS_WORKER_TIMELINE,
-                                               write::TRANS_WORK_PACKAGE_KIND));
+        let module = {
+            let _timing_guard = time_graph
+                .as_ref()
+                .map(|time_graph| time_graph.start(write::TRANS_WORKER_TIMELINE,
+                                                   write::TRANS_WORK_PACKAGE_KIND));
+            let dep_node = cgu.work_product_dep_node();
+            let ((stats, module), _) =
+                tcx.dep_graph.with_task(dep_node,
+                                        AssertDepGraphSafe(&shared_ccx),
+                                        AssertDepGraphSafe((cgu,
+                                                            translation_items.clone(),
+                                                            exported_symbols.clone())),
+                                        module_translation);
+            all_stats.extend(stats);
 
-        let dep_node = cgu.work_product_dep_node();
-        let ((stats, module), _) =
-            tcx.dep_graph.with_task(dep_node,
-                                    AssertDepGraphSafe(&shared_ccx),
-                                    AssertDepGraphSafe((cgu,
-                                                        translation_items.clone(),
-                                                        exported_symbols.clone())),
-                                    module_translation);
-        all_stats.extend(stats);
+            if let Some(ref mut module_dispositions) = module_dispositions {
+                module_dispositions.push(module.disposition());
+            }
 
-        if let Some(ref mut module_dispositions) = module_dispositions {
-            module_dispositions.push(module.disposition());
-        }
-        ongoing_translation.submit_translated_module_to_llvm(tcx.sess, module);
+            module
+        };
+
+        let is_last_cgu = (cgu_index + 1) == codegen_unit_count;
+
+        ongoing_translation.submit_translated_module_to_llvm(tcx.sess,
+                                                             module,
+                                                             is_last_cgu);
+        ongoing_translation.check_for_errors(tcx.sess);
     }
 
     if let Some(module_dispositions) = module_dispositions {
@@ -1229,47 +1282,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    // Translate an allocator shim, if any
-    //
-    // If LTO is enabled and we've got some previous LLVM module we translated
-    // above, then we can just translate directly into that LLVM module. If not,
-    // however, we need to create a separate module and trans into that. Note
-    // that the separate translation is critical for the standard library where
-    // the rlib's object file doesn't have allocator functions but the dylib
-    // links in an object file that has allocator functions. When we're
-    // compiling a final LTO artifact, though, there's no need to worry about
-    // this as we're not working with this dual "rlib/dylib" functionality.
-    let allocator_module = if tcx.sess.lto() {
-        None
-    } else if let Some(kind) = tcx.sess.allocator_kind.get() {
-        unsafe {
-            let (llcx, llmod) =
-                context::create_context_and_module(tcx.sess, "allocator");
-            let modules = ModuleLlvm {
-                llmod: llmod,
-                llcx: llcx,
-            };
-            time(tcx.sess.time_passes(), "write allocator module", || {
-                allocator::trans(tcx, &modules, kind)
-            });
-
-            Some(ModuleTranslation {
-                name: link::ALLOCATOR_MODULE_NAME.to_string(),
-                symbol_name_hash: 0, // we always rebuild allocator shims
-                source: ModuleSource::Translated(modules),
-                kind: ModuleKind::Allocator,
-            })
-        }
-    } else {
-        None
-    };
-
-    if let Some(allocator_module) = allocator_module {
-        ongoing_translation.submit_translated_module_to_llvm(tcx.sess, allocator_module);
-    }
-
     ongoing_translation.check_for_errors(tcx.sess);
-    ongoing_translation.signal_translation_done();
 
     assert_and_save_dep_graph(tcx,
                               incremental_hashes_map,

@@ -764,7 +764,7 @@ pub fn start_async_translation(sess: &Session,
     });
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
-    let (trans_worker_send, _trans_worker_receive) = channel();
+    let (trans_worker_send, trans_worker_receive) = channel();
     let (coordinator_send, coordinator_receive) = channel();
 
     let coordinator_thread = start_executing_work(sess,
@@ -792,6 +792,7 @@ pub fn start_async_translation(sess: &Session,
         time_graph,
         output_filenames: crate_output.clone(),
         coordinator_send,
+        trans_worker_receive,
         shared_emitter_main,
         future: coordinator_thread
     }
@@ -987,7 +988,7 @@ pub fn dump_incremental_data(trans: &CrateTranslation) {
     eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
 }
 
-pub struct WorkItem {
+struct WorkItem {
     mtrans: ModuleTranslation,
     config: ModuleConfig,
     output_names: OutputFilenames
@@ -1074,15 +1075,24 @@ enum Message {
         result: Result<CompiledModule, ()>,
         worker_id: usize,
     },
-    WorkItem(WorkItem),
-    CheckErrorMessages,
-    TranslationDone,
+    TranslationDone {
+        llvm_work_item: WorkItem,
+        is_last: bool
+    },
+    TranslateItem,
 }
 
 struct Diagnostic {
     msg: String,
     code: Option<String>,
     lvl: Level,
+}
+
+#[derive(PartialEq, Clone, Copy, Debug)]
+enum TransWorkerState {
+    Idle,
+    Translating,
+    LLVMing,
 }
 
 fn start_executing_work(sess: &Session,
@@ -1189,7 +1199,6 @@ fn start_executing_work(sess: &Session,
     // Before that work finishes, however, we may acquire a token. In that case
     // we actually wastefully acquired the token, so we relinquish it back to
     // the jobserver.
-
     thread::spawn(move || {
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
@@ -1211,13 +1220,74 @@ fn start_executing_work(sess: &Session,
         let mut work_items = Vec::new();
         let mut tokens = Vec::new();
 
+        let mut trans_worker_state = TransWorkerState::Idle;
         let mut running = 0;
 
-        while !translation_done || work_items.len() > 0 || running > 0 {
+        while !translation_done ||
+              work_items.len() > 0 ||
+              running > 0 ||
+              trans_worker_state != TransWorkerState::Idle {
+
+            if !translation_done {
+                if trans_worker_state == TransWorkerState::Idle {
+                    // Translation is not done yet, so there are two things the
+                    // translation worker could do:
+                    //
+                    // (1) Translate another CGU
+                    // (2) Run an already translated CGU through LLVM
+                    //
+                    // Option (2) makes sense if there's already enough work for
+                    // all the other workers. In that case it's better to run
+                    // a CGU through LLVM, so its resources can be freed.
+                    //
+                    // However, it's not trivial to determines what "enough work
+                    // for all the other workers" means because:
+                    //
+                    // (1) We don't know how long the currently working workers
+                    //     will need to finish their work package, and
+                    // (2) we don't know how many idle workers would be available
+                    //     because that is dynamically decided by the jobserver.
+                    //
+                    // TODO: Come up with a useful heuristic.
+                    if work_items.len() <= 4 {
+                        trans_worker_send.send(Message::TranslateItem).unwrap();
+                        trans_worker_state = TransWorkerState::Translating;
+                    } else {
+                        let item = work_items.pop().unwrap();
+                        let cgcx = CodegenContext {
+                            worker: TRANS_WORKER_ID,
+                            .. cgcx.clone()
+                        };
+                        trans_worker_state = TransWorkerState::LLVMing;
+                        spawn_work(cgcx, item);
+                    }
+                }
+            } else {
+                match trans_worker_state {
+                    TransWorkerState::Idle => {
+                        if let Some(item) = work_items.pop() {
+                            let cgcx = CodegenContext {
+                                worker: TRANS_WORKER_ID,
+                                .. cgcx.clone()
+                            };
+
+                            trans_worker_state = TransWorkerState::LLVMing;
+                            spawn_work(cgcx, item);
+                        }
+                    }
+                    TransWorkerState::Translating => {
+                        bug!("trans worker should not be translating after \
+                              translation was already completed")
+                    }
+                    TransWorkerState::LLVMing => {
+                        // Already making good use of that token
+                    }
+                }
+            }
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while work_items.len() > 0 && running < tokens.len() + 1 {
+            while work_items.len() > 0 && running < tokens.len() {
                 let item = work_items.pop().unwrap();
                 let worker_id = get_worker_id(&mut free_worker_ids);
 
@@ -1231,7 +1301,7 @@ fn start_executing_work(sess: &Session,
             }
 
             // Relinquish accidentally acquired extra tokens
-            tokens.truncate(running.saturating_sub(1));
+            tokens.truncate(running);
 
             match coordinator_receive.recv().unwrap() {
                 // Save the token locally and the next turn of the loop will use
@@ -1242,15 +1312,25 @@ fn start_executing_work(sess: &Session,
                         tokens.push(token);
                     } else {
                         shared_emitter.fatal("failed to acquire jobserver token");
-                        drop(trans_worker_send.send(Message::CheckErrorMessages));
                         // Exit the coordinator thread
                         panic!()
                     }
                 }
 
-                Message::WorkItem(work_item) => {
-                    work_items.push(work_item);
-                    helper.request_token();
+                Message::TranslationDone { llvm_work_item, is_last } => {
+                    work_items.insert(0, llvm_work_item);
+
+                    if is_last {
+                        // If this is the last, don't request a token because
+                        // the trans worker thread will be free to handle this
+                        // immediately.
+                        translation_done = true;
+                    } else {
+                        helper.request_token();
+                    }
+
+                    assert_eq!(trans_worker_state, TransWorkerState::Translating);
+                    trans_worker_state = TransWorkerState::Idle;
                 }
 
                 // If a thread exits successfully then we drop a token associated
@@ -1262,10 +1342,14 @@ fn start_executing_work(sess: &Session,
                 // Note that if the thread failed that means it panicked, so we
                 // abort immediately.
                 Message::Done { result: Ok(compiled_module), worker_id } => {
-                    drop(tokens.pop());
-                    running -= 1;
-                    free_worker_ids.push(worker_id);
-                    drop(trans_worker_send.send(Message::CheckErrorMessages));
+                    if worker_id == TRANS_WORKER_ID {
+                        assert_eq!(trans_worker_state, TransWorkerState::LLVMing);
+                        trans_worker_state = TransWorkerState::Idle;
+                    } else {
+                        drop(tokens.pop());
+                        running -= 1;
+                        free_worker_ids.push(worker_id);
+                    }
 
                     match compiled_module.kind {
                         ModuleKind::Regular => {
@@ -1283,15 +1367,11 @@ fn start_executing_work(sess: &Session,
                 }
                 Message::Done { result: Err(()), worker_id: _ } => {
                     shared_emitter.fatal("aborting due to worker thread panic");
-                    drop(trans_worker_send.send(Message::CheckErrorMessages));
                     // Exit the coordinator thread
                     panic!()
                 }
-                Message::TranslationDone => {
-                    translation_done = true;
-                }
-                msg @ Message::CheckErrorMessages => {
-                    bug!("unexpected message: {:?}", msg);
+                Message::TranslateItem => {
+                    bug!("the coordinator should not receive translation requests")
                 }
             }
         }
@@ -1316,10 +1396,6 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
     let depth = time_depth();
 
     thread::spawn(move || {
-        let _timing_guard = cgcx.time_graph
-                                .as_ref()
-                                .map(|tg| tg.start(time_graph::TimelineId(cgcx.worker),
-                                                   LLVM_WORK_PACKAGE_KIND));
         set_time_depth(depth);
 
         // Set up a destructor which will fire off a message that we're done as
@@ -1362,7 +1438,13 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // we just ignore the result and then send off our message saying that
         // we're done, which if `execute_work_item` failed is unlikely to be
         // seen by the main thread, but hey we might as well try anyway.
-        bomb.result = Some(execute_work_item(&cgcx, work).unwrap());
+        bomb.result = {
+            let _timing_guard = cgcx.time_graph
+                                .as_ref()
+                                .map(|tg| tg.start(time_graph::TimelineId(cgcx.worker),
+                                                   LLVM_WORK_PACKAGE_KIND));
+            Some(execute_work_item(&cgcx, work).unwrap())
+        };
     });
 }
 
@@ -1578,6 +1660,7 @@ pub struct OngoingCrateTranslation {
 
     time_graph: Option<TimeGraph>,
     coordinator_send: Sender<Message>,
+    trans_worker_receive: Receiver<Message>,
     shared_emitter_main: SharedEmitterMain,
     future: thread::JoinHandle<CompiledModules>,
 }
@@ -1645,25 +1728,49 @@ impl OngoingCrateTranslation {
 
     pub fn submit_translated_module_to_llvm(&self,
                                             sess: &Session,
-                                            mtrans: ModuleTranslation) {
+                                            mtrans: ModuleTranslation,
+                                            is_last: bool) {
         let module_config = match mtrans.kind {
             ModuleKind::Regular => self.regular_module_config.clone(sess),
             ModuleKind::Metadata => self.metadata_module_config.clone(sess),
             ModuleKind::Allocator => self.allocator_module_config.clone(sess),
         };
 
-        let work_item = build_work_item(mtrans,
-                                        module_config,
-                                        self.output_filenames.clone());
+        let llvm_work_item = build_work_item(mtrans,
+                                             module_config,
+                                             self.output_filenames.clone());
 
-        drop(self.coordinator_send.send(Message::WorkItem(work_item)));
+        drop(self.coordinator_send.send(Message::TranslationDone {
+            llvm_work_item,
+            is_last
+        }));
     }
 
-    pub fn signal_translation_done(&self) {
-        drop(self.coordinator_send.send(Message::TranslationDone));
+    pub fn submit_pre_translated_module_to_llvm(&self,
+                                                sess: &Session,
+                                                mtrans: ModuleTranslation,
+                                                is_last: bool) {
+        self.wait_for_signal_to_translate_item();
+        self.check_for_errors(sess);
+        self.submit_translated_module_to_llvm(sess, mtrans, is_last);
     }
 
     pub fn check_for_errors(&self, sess: &Session) {
         self.shared_emitter_main.check(sess, false);
+    }
+
+    pub fn wait_for_signal_to_translate_item(&self) {
+        match self.trans_worker_receive.recv() {
+            Ok(Message::TranslateItem) => {
+                // Nothing to do
+            }
+            Ok(message) => {
+                panic!("unexpected message: {:?}", message)
+            }
+            Err(_) => {
+                // One of the LLVM threads must have panicked, fall through so
+                // error handling can be reached.
+            }
+        }
     }
 }
