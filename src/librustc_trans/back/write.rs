@@ -1063,7 +1063,10 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
 #[derive(Debug)]
 enum Message {
     Token(io::Result<Acquired>),
-    Done { result: Result<CompiledModule, ()> },
+    Done {
+        result: Result<CompiledModule, ()>,
+        worker_id: usize,
+    },
     WorkItem(WorkItem),
     CheckErrorMessages,
     TranslationDone,
@@ -1179,6 +1182,18 @@ fn start_executing_work(sess: &Session,
     // the jobserver.
 
     thread::spawn(move || {
+        let mut worker_id_counter = 0;
+        let mut free_worker_ids = Vec::new();
+        let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {
+            if let Some(id) = free_worker_ids.pop() {
+                id
+            } else {
+                let id = worker_id_counter;
+                worker_id_counter += 1;
+                id
+            }
+        };
+
         let mut compiled_modules = vec![];
         let mut compiled_metadata_module = None;
         let mut compiled_allocator_module = None;
@@ -1186,17 +1201,19 @@ fn start_executing_work(sess: &Session,
         let mut translation_done = false;
         let mut work_items = Vec::new();
         let mut tokens = Vec::new();
+
         let mut running = 0;
+
         while !translation_done || work_items.len() > 0 || running > 0 {
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
             while work_items.len() > 0 && running < tokens.len() + 1 {
                 let item = work_items.pop().unwrap();
-                let worker_index = work_items.len();
+                let worker_id = get_worker_id(&mut free_worker_ids);
 
                 let cgcx = CodegenContext {
-                    worker: worker_index,
+                    worker: worker_id,
                     .. cgcx.clone()
                 };
 
@@ -1235,9 +1252,10 @@ fn start_executing_work(sess: &Session,
                 //
                 // Note that if the thread failed that means it panicked, so we
                 // abort immediately.
-                Message::Done { result: Ok(compiled_module) } => {
+                Message::Done { result: Ok(compiled_module), worker_id } => {
                     drop(tokens.pop());
                     running -= 1;
+                    free_worker_ids.push(worker_id);
                     drop(trans_worker_send.send(Message::CheckErrorMessages));
 
                     match compiled_module.kind {
@@ -1254,7 +1272,7 @@ fn start_executing_work(sess: &Session,
                         }
                     }
                 }
-                Message::Done { result: Err(()) } => {
+                Message::Done { result: Err(()), worker_id: _ } => {
                     shared_emitter.fatal("aborting due to worker thread panic");
                     drop(trans_worker_send.send(Message::CheckErrorMessages));
                     // Exit the coordinator thread
@@ -1288,6 +1306,7 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         struct Bomb {
             coordinator_send: Sender<Message>,
             result: Option<CompiledModule>,
+            worker_id: usize,
         }
         impl Drop for Bomb {
             fn drop(&mut self) {
@@ -1296,13 +1315,17 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
                     None => Err(())
                 };
 
-                drop(self.coordinator_send.send(Message::Done { result }));
+                drop(self.coordinator_send.send(Message::Done {
+                    result,
+                    worker_id: self.worker_id,
+                }));
             }
         }
 
         let mut bomb = Bomb {
             coordinator_send: cgcx.coordinator_send.clone(),
             result: None,
+            worker_id: cgcx.worker,
         };
 
         // Execute the work itself, and if it finishes successfully then flag
