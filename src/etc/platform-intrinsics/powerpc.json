@@ -58,6 +58,13 @@
             "llvm": "vcmpgt{1.kind}{1.data_type_short}",
             "ret": "s(8-32)",
             "args": ["0", "1"]
+        },
+        {
+            "intrinsic": "max{0.kind}{0.data_type_short}",
+            "width": [128],
+            "llvm": "vmax{0.kind}{0.data_type_short}",
+            "ret": "i(8-32)",
+            "args": ["0", "0"]
         }
     ]
 }
