@@ -181,20 +181,14 @@ extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
   TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const FeatureBitset &Bits = MCInfo->getFeatureBits();
-  const llvm::SubtargetFeatureKV *FeatureEntry;
+#if LLVM_VERSION_GE(4, 0)
+  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
 
-#define SUBTARGET(x)                                                           \
-  if (MCInfo->isCPUStringValid(x##SubTypeKV[0].Key)) {                         \
-    FeatureEntry = x##FeatureKV;                                               \
-  } else
-
-  GEN_SUBTARGETS { return false; }
-#undef SUBTARGET
-
-  while (strcmp(Feature, FeatureEntry->Key) != 0)
-    FeatureEntry++;
-
-  return (Bits & FeatureEntry->Value) == FeatureEntry->Value;
+  for (auto &FeatureEntry : FeatTable)
+    if (!strcmp(FeatureEntry.Key, Feature))
+      return (Bits & FeatureEntry.Value) == FeatureEntry.Value;
+#endif
+  return false;
 }
 
 enum class LLVMRustCodeModel {
