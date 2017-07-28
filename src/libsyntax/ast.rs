@@ -1149,6 +1149,8 @@ pub struct TraitItem {
     pub attrs: Vec<Attribute>,
     pub node: TraitItemKind,
     pub span: Span,
+    /// See `Item::tokens` for what this is
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1168,6 +1170,8 @@ pub struct ImplItem {
     pub attrs: Vec<Attribute>,
     pub node: ImplItemKind,
     pub span: Span,
+    /// See `Item::tokens` for what this is
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1812,6 +1816,15 @@ pub struct Item {
     pub node: ItemKind,
     pub vis: Visibility,
     pub span: Span,
+
+    /// Original tokens this item was parsed from. This isn't necessarily
+    /// available for all items, although over time more and more items should
+    /// have this be `Some`. Right now this is primarily used for procedural
+    /// macros, notably custom attributes.
+    ///
+    /// Note that the tokens here do not include the outer attributes, but will
+    /// include inner attributes.
+    pub tokens: Option<TokenStream>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

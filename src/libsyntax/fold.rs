@@ -957,7 +957,8 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
                 TraitItemKind::Macro(folder.fold_mac(mac))
             }
         },
-        span: folder.new_span(i.span)
+        span: folder.new_span(i.span),
+        tokens: i.tokens,
     })
 }
 
@@ -980,7 +981,8 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
             ast::ImplItemKind::Type(ty) => ast::ImplItemKind::Type(folder.fold_ty(ty)),
             ast::ImplItemKind::Macro(mac) => ast::ImplItemKind::Macro(folder.fold_mac(mac))
         },
-        span: folder.new_span(i.span)
+        span: folder.new_span(i.span),
+        tokens: i.tokens,
     })
 }
 
@@ -1000,6 +1002,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         vis: ast::Visibility::Public,
         span: span,
         node: ast::ItemKind::Mod(module),
+        tokens: None,
     })).into_iter();
 
     let (module, attrs, span) = match items.next() {
@@ -1032,7 +1035,7 @@ pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVector<P<It
 }
 
 // fold one item into exactly one item
-pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}: Item,
+pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span, tokens}: Item,
                                         folder: &mut T) -> Item {
     Item {
         id: folder.new_id(id),
@@ -1040,7 +1043,11 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
         node: folder.fold_item_kind(node),
-        span: folder.new_span(span)
+        span: folder.new_span(span),
+
+        // FIXME: if this is replaced with a call to `folder.fold_tts` it causes
+        //        an ICE during resolve... odd!
+        tokens: tokens,
     }
 }
 

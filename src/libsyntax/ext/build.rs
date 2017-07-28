@@ -979,7 +979,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             node: node,
             vis: ast::Visibility::Inherited,
-            span: span
+            span: span,
+            tokens: None,
         })
     }
 
@@ -1147,7 +1148,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             attrs: vec![],
             node: ast::ItemKind::Use(vp),
             vis: vis,
-            span: sp
+            span: sp,
+            tokens: None,
         })
     }
 
