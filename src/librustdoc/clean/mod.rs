@@ -1548,6 +1548,7 @@ pub enum PrimitiveType {
     Tuple,
     RawPointer,
     Reference,
+    Fn,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1583,6 +1584,7 @@ impl Type {
             Tuple(..) => Some(PrimitiveType::Tuple),
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
+            BareFunction(..) => Some(PrimitiveType::Fn),
             _ => None,
         }
     }
@@ -1636,6 +1638,7 @@ impl PrimitiveType {
             "tuple" => Some(PrimitiveType::Tuple),
             "pointer" => Some(PrimitiveType::RawPointer),
             "reference" => Some(PrimitiveType::Reference),
+            "fn" => Some(PrimitiveType::Fn),
             _ => None,
         }
     }
@@ -1665,6 +1668,7 @@ impl PrimitiveType {
             Tuple => "tuple",
             RawPointer => "pointer",
             Reference => "reference",
+            Fn => "fn",
         }
     }
 
@@ -2561,6 +2565,7 @@ fn build_deref_target_impls(cx: &DocContext,
             Tuple => None,
             RawPointer => tcx.lang_items.const_ptr_impl(),
             Reference => None,
+            Fn => None,
         };
         if let Some(did) = did {
             if !did.is_local() {
