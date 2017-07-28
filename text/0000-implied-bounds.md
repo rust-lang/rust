@@ -233,7 +233,7 @@ fn debug_foo<U, T: Foo<Item = U>>(arg: U) {
 # Reference-Level Explanation
 [reference]: #reference
 
-This design has already been experimented on [Chalk](https://github.com/nikomatsakis/chalk), to some extent. The current design has been driven by issue [#12], it is a good read to understand why we *need* to expand where clauses as described below.
+This is the fully-detailed design and you probably don't need to read everything. This design has already been experimented on [Chalk](https://github.com/nikomatsakis/chalk), to some extent. The current design has been driven by issue [#12], it is a good read to understand why we *need* to expand where clauses as described below.
 
 We'll use the grammar from [RFC 1214] to detail the rules:
 ```
