@@ -106,7 +106,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 false
                             }
                         } else {
-                            let const_cx = ConstContext::with_tables(cx.tcx, cx.tables);
+                            // HACK(eddyb) This might be quite inefficient.
+                            // This would be better left to MIR constant propagation,
+                            // perhaps even at trans time (like is the case already
+                            // when the value being shifted is *also* constant).
+                            let parent_item = cx.tcx.hir.get_parent(e.id);
+                            let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+                            let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+                            let const_cx = ConstContext::new(cx.tcx,
+                                                             cx.param_env.and(substs),
+                                                             cx.tables);
                             match const_cx.eval(&r) {
                                 Ok(ConstVal::Integral(i)) => {
                                     i.is_negative() ||

@@ -59,6 +59,7 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
+use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
@@ -550,6 +551,7 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         variants: &[hir::Variant]) {
+    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
     let initial = repr_type.initial_discriminant(tcx);
@@ -560,8 +562,8 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
-            let substs = Substs::empty();
-            let result = tcx.at(variant.span).const_eval((expr_did, substs));
+            let substs = Substs::identity_for_item(tcx, expr_did);
+            let result = tcx.at(variant.span).const_eval(param_env.and((expr_did, substs)));
 
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error

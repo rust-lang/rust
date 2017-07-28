@@ -14,7 +14,8 @@ pub use rustc_const_math::ConstInt;
 use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
-use ty::{TyCtxt, layout};
+use traits::Reveal;
+use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
 use util::common::ErrorReported;
 use rustc_const_math::*;
@@ -229,8 +230,9 @@ pub fn eval_length(tcx: TyCtxt,
 {
     let count_expr = &tcx.hir.body(count).value;
     let count_def_id = tcx.hir.body_owner_def_id(count);
-    let substs = Substs::empty();
-    match tcx.at(count_expr.span).const_eval((count_def_id, substs)) {
+    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+    let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
+    match tcx.at(count_expr.span).const_eval(param_env.and((count_def_id, substs))) {
         Ok(Integral(Usize(count))) => {
             let val = count.as_u64(tcx.sess.target.uint_type);
             assert_eq!(val as usize as u64, val);
