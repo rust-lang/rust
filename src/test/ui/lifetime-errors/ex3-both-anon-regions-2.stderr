@@ -1,0 +1,10 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-2.rs:12:9
+   |
+11 | fn foo((v, w): (&u8, &u8), x: &u8) {
+   |                 ---           --- these references must have the same lifetime
+12 |     v = x;
+   |         ^ data from `x` flows here
+
+error: aborting due to previous error
+
