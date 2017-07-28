@@ -39,7 +39,6 @@ use syntax_pos::symbol::Symbol;
 use std::sync::Arc;
 
 extern crate flate2;
-extern crate crossbeam;
 extern crate libc;
 extern crate owning_ref;
 #[macro_use] extern crate rustc;
@@ -55,6 +54,7 @@ extern crate rustc_const_math;
 extern crate rustc_bitflags;
 extern crate rustc_demangle;
 extern crate jobserver;
+extern crate num_cpus;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

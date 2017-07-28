@@ -80,6 +80,7 @@ use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::str;
 use std::sync::Arc;
+use std::time::Instant;
 use std::i32;
 use syntax_pos::Span;
 use syntax::attr;
@@ -1082,9 +1083,21 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut all_stats = Stats::default();
     let mut module_dispositions = tcx.sess.opts.incremental.as_ref().map(|_| Vec::new());
 
+    // We sort the codegen units by size. This way we can schedule work for LLVM
+    // a bit more efficiently. Note that "size" is defined rather crudely at the
+    // moment as it is just the number of TransItems in the CGU, not taking into
+    // account the size of each TransItem.
+    let codegen_units = {
+        let mut codegen_units = codegen_units;
+        codegen_units.sort_by_key(|cgu| -(cgu.items().len() as isize));
+        codegen_units
+    };
+
     for (cgu_index, cgu) in codegen_units.into_iter().enumerate() {
         ongoing_translation.wait_for_signal_to_translate_item();
         ongoing_translation.check_for_errors(tcx.sess);
+
+        let start_time = Instant::now();
 
         let module = {
             let _timing_guard = time_graph
@@ -1108,10 +1121,18 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             module
         };
 
+        let time_to_translate = Instant::now().duration_since(start_time);
+
+        // We assume that the cost to run LLVM on a CGU is proportional to
+        // the time we needed for translating it.
+        let cost = time_to_translate.as_secs() * 1_000_000_000 +
+                   time_to_translate.subsec_nanos() as u64;
+
         let is_last_cgu = (cgu_index + 1) == codegen_unit_count;
 
         ongoing_translation.submit_translated_module_to_llvm(tcx.sess,
                                                              module,
+                                                             cost,
                                                              is_last_cgu);
         ongoing_translation.check_for_errors(tcx.sess);
     }
