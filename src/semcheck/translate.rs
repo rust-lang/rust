@@ -8,25 +8,63 @@ use semcheck::mapping::IdMapping;
 
 use std::collections::HashMap;
 
-struct TranslationContext<'a, 'tcx, F1, F2, F3>
-    where 'tcx: 'a,
-          F1: Fn(&IdMapping, DefId) -> bool,
+pub struct TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
+    where 'gcx: 'tcx + 'a,
+          'tcx: 'a,
+          /* F1: Fn(&IdMapping, DefId) -> bool,
           F2: Fn(&IdMapping, DefId) -> DefId,
-          F3: Fn(&IdMapping, DefId, DefId) -> DefId,
+          F3: Fn(&IdMapping, DefId, DefId) -> DefId, */
 {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     id_mapping: &'a IdMapping,
-    needs_translation: F1,
-    translate_orig: F2,
-    translate_orig_trait: F3,
+    needs_translation: fn(&IdMapping, DefId) -> bool, // F1,
+    translate_orig: fn(&IdMapping, DefId) -> DefId, // F2,
+    translate_orig_trait: fn(&IdMapping, DefId, DefId) -> DefId, // F3,
 }
 
-impl<'a, 'tcx, F1, F2, F3> TranslationContext<'a, 'tcx, F1, F2, F3>
-    where 'tcx: 'a,
-          F1: Fn(&IdMapping, DefId) -> bool,
+impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
+          /* F1: Fn(&IdMapping, DefId) -> bool,
           F2: Fn(&IdMapping, DefId) -> DefId,
-          F3: Fn(&IdMapping, DefId, DefId) -> DefId,
+          F3: Fn(&IdMapping, DefId, DefId) -> DefId,*/
 {
+    // TODO: check whether the function pointers force us to use dynamic dispatch
+    pub fn to_new(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping)
+        -> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
+    {
+        TranslationContext {
+            tcx: tcx,
+            id_mapping: id_mapping,
+            needs_translation: |id_mapping, orig_def_id| {
+                id_mapping.in_old_crate(orig_def_id)
+            },
+            translate_orig: |id_mapping, orig_def_id| {
+                id_mapping.get_new_id(orig_def_id)
+            },
+            translate_orig_trait: |id_mapping, orig_def_id, trait_def_id| {
+                id_mapping.get_new_trait_item_id(orig_def_id, trait_def_id)
+            },
+        }
+    }
+
+    // TODO: check whether the function pointers force us to use dynamic dispatch
+    pub fn to_old(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping)
+        -> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
+    {
+        TranslationContext {
+            tcx: tcx,
+            id_mapping: id_mapping,
+            needs_translation: |id_mapping, orig_def_id| {
+                id_mapping.in_new_crate(orig_def_id)
+            },
+            translate_orig: |id_mapping, orig_def_id| {
+                id_mapping.get_old_id(orig_def_id)
+            },
+            translate_orig_trait: |id_mapping, orig_def_id, trait_def_id| {
+                id_mapping.get_old_trait_item_id(orig_def_id, trait_def_id)
+            },
+        }
+    }
+
     fn construct_index_map(&self, orig_def_id: DefId) -> HashMap<u32, DefId> {
         let mut index_map = HashMap::new();
         let orig_generics = self.tcx.generics_of(orig_def_id);
@@ -234,6 +272,13 @@ impl<'a, 'tcx, F1, F2, F3> TranslationContext<'a, 'tcx, F1, F2, F3>
         }
     }
 
+    pub fn translate_predicates(&self, orig_def_id: DefId, orig_preds: Vec<Predicate<'tcx>>)
+        -> Vec<Predicate<'tcx>>
+    {
+        let index_map = self.construct_index_map(orig_def_id);
+        orig_preds.iter().map(|p| self.translate_predicate(&index_map, *p)).collect()
+    }
+
     pub fn translate_param_env(&self, orig_def_id: DefId, param_env: ParamEnv<'tcx>)
         -> ParamEnv<'tcx>
     {
@@ -248,239 +293,6 @@ impl<'a, 'tcx, F1, F2, F3> TranslationContext<'a, 'tcx, F1, F2, F3>
             caller_bounds: self.tcx.intern_predicates(&res),
             reveal: param_env.reveal,
         }
-    }
-}
-
-/// Construct an parameter index map for an item.
-fn construct_index_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, orig_def_id: DefId)
-    -> HashMap<u32, DefId>
-{
-    let mut index_map = HashMap::new();
-    let orig_generics = tcx.generics_of(orig_def_id);
-
-    for type_ in &orig_generics.types {
-        index_map.insert(type_.index, type_.def_id);
-    }
-
-    if let Some(did) = orig_generics.parent {
-        let parent_generics = tcx.generics_of(did);
-
-        for type_ in &parent_generics.types {
-            index_map.insert(type_.index, type_.def_id);
-        }
-    }
-
-    index_map
-}
-
-/// Translate all original `DefId`s in the object to their target counterparts, if possible.
-fn translate<'a, 'tcx, T>(id_mapping: &IdMapping,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          index_map: &HashMap<u32, DefId>,
-                          orig: &T) -> T
-    where T: TypeFoldable<'tcx>
-{
-    use rustc::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
-    use rustc::ty::ExistentialPredicate::*;
-    use rustc::ty::TypeVariants::*;
-
-    orig.fold_with(&mut BottomUpFolder { tcx: tcx, fldop: |ty| {
-        match ty.sty {
-            TyAdt(&AdtDef { ref did, .. }, substs) if id_mapping.in_old_crate(*did) => {
-                let target_def_id = id_mapping.get_new_id(*did);
-                let target_adt = tcx.adt_def(target_def_id);
-                tcx.mk_adt(target_adt, substs)
-            },
-            TyRef(region, type_and_mut) => {
-                tcx.mk_ref(translate_region(id_mapping, tcx, region), type_and_mut)
-            },
-            TyFnDef(did, substs) => {
-                tcx.mk_fn_def(id_mapping.get_new_id(did), substs)
-            },
-            TyDynamic(preds, region) => {
-                let target_preds = tcx.mk_existential_predicates(preds.iter().map(|p| {
-                    match *p.skip_binder() {
-                        Trait(ExistentialTraitRef { def_id: did, substs }) => {
-                            let target_def_id = id_mapping.get_new_id(did);
-
-                            Trait(ExistentialTraitRef {
-                                def_id: target_def_id,
-                                substs: substs
-                            })
-                        },
-                        Projection(ExistentialProjection { item_def_id, substs, ty }) => {
-                            let target_def_id = id_mapping.get_new_id(item_def_id);
-
-                            Projection(ExistentialProjection {
-                                item_def_id: target_def_id,
-                                substs: substs,
-                                ty: ty,
-                            })
-                        },
-                        AutoTrait(did) => {
-                            AutoTrait(id_mapping.get_new_id(did))
-                        },
-                    }
-                }));
-
-                tcx.mk_dynamic(Binder(target_preds), region)
-            },
-            TyProjection(proj) => {
-                let trait_def_id = tcx.associated_item(proj.item_def_id).container.id();
-                let target_def_id =
-                    id_mapping.get_new_trait_item_id(proj.item_def_id, trait_def_id);
-
-                tcx.mk_projection(target_def_id, proj.substs)
-            },
-            TyAnon(did, substs) => {
-                tcx.mk_anon(id_mapping.get_new_id(did), substs)
-            },
-            TyParam(param) => {
-                if param.idx != 0 { // `Self` is special
-                    let orig_def_id = index_map[&param.idx];
-                    if id_mapping.in_old_crate(orig_def_id) {
-                        let target_def_id = id_mapping.get_new_id(orig_def_id);
-                        tcx.mk_param_from_def(&id_mapping.get_type_param(&target_def_id))
-                    } else {
-                        tcx.mk_ty(TyParam(param))
-                    }
-                } else {
-                    tcx.mk_ty(TyParam(param))
-                }
-            },
-            _ => ty,
-        }
-    }})
-}
-
-/// Translate all original `DefId`s in the region to their target counterparts, if possible.
-fn translate_region<'a, 'tcx>(id_mapping: &IdMapping,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              region: Region<'tcx>) -> Region<'tcx> {
-    use rustc::ty::{EarlyBoundRegion, FreeRegion};
-    use rustc::ty::BoundRegion::BrNamed;
-    use rustc::ty::RegionKind::*;
-
-    tcx.mk_region(match *region {
-        ReEarlyBound(early) => {
-            let target_early = EarlyBoundRegion {
-                def_id: id_mapping.get_new_id(early.def_id),
-                index: early.index,
-                name: early.name,
-            };
-
-            ReEarlyBound(target_early)
-        },
-        ReFree(FreeRegion { scope, bound_region }) => {
-            ReFree(FreeRegion {
-                scope: id_mapping.get_new_id(scope),
-                bound_region: match bound_region {
-                    BrNamed(def_id, name) => BrNamed(id_mapping.get_new_id(def_id), name),
-                    reg => reg,
-                },
-            })
-        },
-        reg => reg,
-    })
-}
-
-/// Translate all original `DefId`s in the type to their target counterparts, if possible.
-///
-/// This computes the mapping of type parameters needed as well.
-pub fn translate_item_type<'a, 'tcx>(id_mapping: &IdMapping,
-                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     orig_def_id: DefId,
-                                     orig: Ty<'tcx>) -> Ty<'tcx> {
-    translate(id_mapping, tcx, &construct_index_map(tcx, orig_def_id), &orig)
-}
-
-/// Translate all original `DefId`s in the predicate to their target counterparts, if possible.
-fn translate_predicate<'a, 'tcx>(id_mapping: &IdMapping,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 index_map: &HashMap<u32, DefId>,
-                                 predicate: Predicate<'tcx>) -> Predicate<'tcx> {
-    use rustc::ty::{EquatePredicate, OutlivesPredicate, ProjectionPredicate, ProjectionTy,
-                    SubtypePredicate, TraitPredicate, TraitRef};
-
-    match predicate {
-        Predicate::Trait(trait_predicate) => {
-            Predicate::Trait(trait_predicate.map_bound(|t_pred| {
-                TraitPredicate {
-                    trait_ref: TraitRef {
-                        def_id: id_mapping.get_new_id(t_pred.trait_ref.def_id),
-                        substs: t_pred.trait_ref.substs,
-                    }
-                }
-            }))
-        },
-        Predicate::Equate(equate_predicate) => {
-            Predicate::Equate(equate_predicate.map_bound(|e_pred| {
-                let l = translate(id_mapping, tcx, index_map, &e_pred.0);
-                let r = translate(id_mapping, tcx, index_map, &e_pred.1);
-                EquatePredicate(l, r)
-            }))
-        },
-        Predicate::RegionOutlives(region_outlives_predicate) => {
-            Predicate::RegionOutlives(region_outlives_predicate.map_bound(|r_pred| {
-                let l = translate_region(id_mapping, tcx, r_pred.0);
-                let r = translate_region(id_mapping, tcx, r_pred.1);
-                OutlivesPredicate(l, r)
-            }))
-        },
-        Predicate::TypeOutlives(type_outlives_predicate) => {
-            Predicate::TypeOutlives(type_outlives_predicate.map_bound(|r_pred| {
-                let l = translate(id_mapping, tcx, index_map, &r_pred.0);
-                let r = translate_region(id_mapping, tcx, r_pred.1);
-                OutlivesPredicate(l, r)
-            }))
-        },
-        Predicate::Projection(projection_predicate) => {
-            Predicate::Projection(projection_predicate.map_bound(|p_pred| {
-                ProjectionPredicate {
-                    projection_ty: ProjectionTy {
-                        substs: p_pred.projection_ty.substs, // TODO: maybe this needs handling
-                        item_def_id: id_mapping.get_new_id(p_pred.projection_ty.item_def_id),
-                    },
-                    ty: translate(id_mapping, tcx, index_map, &p_pred.ty),
-                }
-            }))
-        },
-        Predicate::WellFormed(ty) =>
-            Predicate::WellFormed(translate(id_mapping, tcx, index_map, &ty)),
-        Predicate::ObjectSafe(did) => Predicate::ObjectSafe(id_mapping.get_new_id(did)),
-        Predicate::ClosureKind(did, kind) =>
-            Predicate::ClosureKind(id_mapping.get_new_id(did), kind),
-        Predicate::Subtype(subtype_predicate) => {
-            Predicate::Subtype(subtype_predicate.map_bound(|s_pred| {
-                let l = translate(id_mapping, tcx, index_map, &s_pred.a);
-                let r = translate(id_mapping, tcx, index_map, &s_pred.b);
-                SubtypePredicate {
-                    a_is_expected: s_pred.a_is_expected,
-                    a: l,
-                    b: r,
-                }
-            }))
-        },
-    }
-}
-
-/// Translate all original `DefId`s in the `ParamEnv` to their target counterparts, if possible.
-///
-/// This computes the mapping of type parameters needed as well.
-pub fn translate_param_env<'a, 'tcx>(id_mapping: &IdMapping,
-                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     orig_def_id: DefId,
-                                     param_env: ParamEnv<'tcx>) -> ParamEnv<'tcx> {
-    let index_map = construct_index_map(tcx, orig_def_id);
-    let res = param_env
-        .caller_bounds
-        .iter()
-        .map(|p| translate_predicate(id_mapping, tcx, &index_map, *p))
-        .collect::<AccumulateVec<[_; 8]>>();
-
-    ParamEnv {
-        caller_bounds: tcx.intern_predicates(&res),
-        reveal: param_env.reveal,
     }
 }
 

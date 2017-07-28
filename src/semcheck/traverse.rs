@@ -11,8 +11,9 @@
 
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
+use rustc::infer::InferCtxt;
 use rustc::traits::{FulfillmentContext, Obligation, ObligationCause};
-use rustc::ty::{AssociatedItem, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, ParamEnv, Predicate, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs};
@@ -21,7 +22,7 @@ use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
-use semcheck::translate::{BottomUpRegionFolder, translate_item_type, translate_param_env};
+use semcheck::translate::{BottomUpRegionFolder, TranslationContext};
 
 use std::collections::{BTreeSet, BTreeMap, HashMap, HashSet, VecDeque};
 
@@ -668,8 +669,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     use rustc::ty::TypeVariants::*;
     use syntax_pos::DUMMY_SP;
 
+    let to_new = TranslationContext::to_new(tcx, id_mapping);
+
     let substs = Substs::identity_for_item(tcx, new_def_id);
-    let old = translate_item_type(id_mapping, tcx, old_def_id, old).subst(tcx, substs);
+    let old = to_new.translate_item_type(old_def_id, old).subst(tcx, substs);
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = if new.is_fn() {
@@ -695,8 +698,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         let new = new.subst(infcx.tcx, new_substs);
 
-        let old_param_env =
-            translate_param_env(id_mapping, tcx, old_def_id, tcx.param_env(old_def_id));
+        let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
         let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
 
         let cause = ObligationCause::dummy();
@@ -740,10 +742,13 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         let mut fulfill_cx = FulfillmentContext::new();
 
-        for predicate in new_param_env.caller_bounds.iter() {
-            let obligation = Obligation::new(cause.clone(), old_param_env, *predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
+        register_bounds(&infcx,
+                        new_param_env,
+                        old_param_env,
+                        &mut fulfill_cx,
+                        new_def_id,
+                        new_substs,
+                        None);
 
         if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
             for err in &errors {
@@ -758,11 +763,16 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             }
         } else {
             let mut fulfill_cx_rev = FulfillmentContext::new();
+            let to_old = TranslationContext::to_old(infcx.tcx, id_mapping);
+            let to_new = TranslationContext::to_new(infcx.tcx, id_mapping);
 
-            for predicate in old_param_env.caller_bounds.iter() {
-                let obligation = Obligation::new(cause.clone(), new_param_env, *predicate);
-                fulfill_cx_rev.register_predicate_obligation(&infcx, obligation);
-            }
+            register_bounds(&infcx,
+                            old_param_env,
+                            new_param_env,
+                            &mut fulfill_cx_rev,
+                            old_def_id,
+                            substs,
+                            Some(&to_new));
 
             if let Err(errors) = fulfill_cx_rev.select_all_or_error(&infcx) {
                 for err in &errors {
@@ -788,6 +798,8 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
     use rustc::infer::InferOk;
     use syntax_pos::DUMMY_SP;
 
+    let to_new = TranslationContext::to_new(tcx, id_mapping);
+
     let old = tcx
         .impl_trait_ref(old_def_id)
         .and_then(|trait_ref| trait_ref.substs.get(0))
@@ -808,7 +820,7 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
     }
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
-    let old = translate_item_type(id_mapping, tcx, old_def_id, old).subst(tcx, substs);
+    let old = to_new.translate_item_type(old_def_id, old).subst(tcx, substs);
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = {
@@ -826,8 +838,7 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
 
         let new = new.subst(infcx.tcx, new_substs);
 
-        let old_param_env =
-            translate_param_env(id_mapping, tcx, old_def_id, tcx.param_env(old_def_id));
+        let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
         let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
 
         let cause = ObligationCause::dummy();
@@ -842,12 +853,45 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
         }
 
         let mut fulfill_cx = FulfillmentContext::new();
-
-        for predicate in new_param_env.caller_bounds.iter() {
-            let obligation = Obligation::new(cause.clone(), old_param_env, *predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
+        register_bounds(&infcx,
+                        new_param_env,
+                        old_param_env,
+                        &mut fulfill_cx,
+                        new_def_id,
+                        substs,
+                        None);
 
         fulfill_cx.select_all_or_error(&infcx).is_ok()
     })
+}
+
+fn register_bounds<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                   current_param_env: ParamEnv<'tcx>,
+                                   given_param_env: ParamEnv<'tcx>,
+                                   fulfill_cx: &mut FulfillmentContext<'tcx>,
+                                   def_id: DefId,
+                                   substs: &Substs<'tcx>,
+                                   trans_ctx: Option<&TranslationContext<'a, 'gcx, 'tcx>>) {
+    use rustc::traits::{normalize, Normalized, SelectionContext};
+
+    let mut selcx = SelectionContext::new(infcx);
+    let predicates = infcx.tcx.predicates_of(def_id).instantiate(infcx.tcx, substs);
+    let cause = ObligationCause::dummy();
+    let Normalized { value, obligations } =
+        normalize(&mut selcx, current_param_env, cause.clone(), &predicates);
+
+    for obligation in obligations {
+        fulfill_cx.register_predicate_obligation(infcx, obligation);
+    }
+
+    let predicates = if let Some(trans_ctx) = trans_ctx {
+        trans_ctx.translate_predicates(def_id, value.predicates)
+    } else {
+        value.predicates
+    };
+
+    for predicate in predicates {
+        let obligation = Obligation::new(cause.clone(), given_param_env, predicate);
+        fulfill_cx.register_predicate_obligation(infcx, obligation);
+    }
 }
