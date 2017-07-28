@@ -6,7 +6,7 @@ use syntax::abi::Abi;
 
 use super::{
     EvalError, EvalResult,
-    EvalContext, StackPopCleanup, eval_context, TyAndPacked,
+    EvalContext, eval_context, TyAndPacked,
     Lvalue,
     MemoryPointer,
     PrimVal, Value,
@@ -233,7 +233,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                if self.eval_fn_call_inner(
+                if M::eval_fn_call(
+                    self,
                     instance,
                     destination,
                     arg_operands,
@@ -276,7 +277,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
 
                 // Push the stack frame, and potentially be entirely done if the call got hooked
-                if self.eval_fn_call_inner(
+                if M::eval_fn_call(
+                    self,
                     instance,
                     destination,
                     arg_operands,
@@ -369,7 +371,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                if self.eval_fn_call_inner(
+                if M::eval_fn_call(
+                    self,
                     instance,
                     destination,
                     arg_operands,
@@ -414,48 +417,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 )
             },
         }
-    }
-
-    /// Returns Ok(true) when the function was handled completely due to mir not being available
-    fn eval_fn_call_inner(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
-        span: Span,
-        sig: ty::FnSig<'tcx>,
-    ) -> EvalResult<'tcx, bool> {
-        trace!("eval_fn_call_inner: {:#?}, {:#?}", instance, destination);
-
-        // Only trait methods can have a Self parameter.
-
-        let mir = match self.load_mir(instance.def) {
-            Ok(mir) => mir,
-            Err(EvalError::NoMirFor(path)) => {
-                M::call_missing_fn(self, instance, destination, arg_operands, sig, path)?;
-                return Ok(true);
-            },
-            Err(other) => return Err(other),
-        };
-
-        if !self.tcx.is_const_fn(instance.def_id()) {
-            M::check_non_const_fn_call(instance)?;
-        }
-        
-        let (return_lvalue, return_to_block) = match destination {
-            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
-            None => (Lvalue::undef(), StackPopCleanup::None),
-        };
-
-        self.push_stack_frame(
-            instance,
-            span,
-            mir,
-            return_lvalue,
-            return_to_block,
-        )?;
-
-        Ok(false)
     }
 
     pub fn read_discriminant_value(&self, adt_ptr: MemoryPointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {

@@ -3,6 +3,7 @@ use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::mir;
 
 use syntax::ast::Mutability;
+use syntax::codemap::Span;
 
 use super::{
     EvalResult, EvalError,
@@ -127,16 +128,39 @@ impl Error for ConstEvalError {
 impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     type Data = ();
     type MemoryData = ();
-    fn call_missing_fn<'a>(
-        _ecx: &mut EvalContext<'a, 'tcx, Self>,
-        _instance: ty::Instance<'tcx>,
-        _destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+    fn eval_fn_call<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         _arg_operands: &[mir::Operand<'tcx>],
+        span: Span,
         _sig: ty::FnSig<'tcx>,
-        path: String,
-    ) -> EvalResult<'tcx> {
-        // some simple things like `malloc` might get accepted in the future
-        Err(ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path)).into())
+    ) -> EvalResult<'tcx, bool> {
+        if !ecx.tcx.is_const_fn(instance.def_id()) {
+            return Err(ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into());
+        }
+        let mir = match ecx.load_mir(instance.def) {
+            Ok(mir) => mir,
+            Err(EvalError::NoMirFor(path)) => {
+                // some simple things like `malloc` might get accepted in the future
+                return Err(ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path)).into());
+            },
+            Err(other) => return Err(other),
+        };
+        let (return_lvalue, return_to_block) = match destination {
+            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
+            None => (Lvalue::undef(), StackPopCleanup::None),
+        };
+
+        ecx.push_stack_frame(
+            instance,
+            span,
+            mir,
+            return_lvalue,
+            return_to_block,
+        )?;
+
+        Ok(false)
     }
 
     fn ptr_op<'a>(
@@ -148,9 +172,5 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         _right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
         Err(ConstEvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()).into())
-    }
-
-    fn check_non_const_fn_call(instance: ty::Instance<'tcx>) -> EvalResult<'tcx> {
-        return Err(ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into());
     }
 }

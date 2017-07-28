@@ -17,6 +17,8 @@ use rustc::ty::{self, TyCtxt};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 
+use syntax::codemap::Span;
+
 use std::collections::{
     HashMap,
     BTreeMap,
@@ -25,10 +27,10 @@ use std::collections::{
 extern crate rustc_miri;
 pub use rustc_miri::interpret::*;
 
-mod missing_fns;
+mod fn_call;
 mod operator;
 
-use missing_fns::EvalContextExt as MissingFnsEvalContextExt;
+use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
 
 pub fn eval_main<'a, 'tcx: 'a>(
@@ -272,17 +274,19 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
 impl<'tcx> Machine<'tcx> for Evaluator {
     type Data = EvaluatorData;
     type MemoryData = MemoryData<'tcx>;
+
     /// Returns Ok() when the function was handled, fail otherwise
-    fn call_missing_fn<'a>(
+    fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
+        span: Span,
         sig: ty::FnSig<'tcx>,
-        path: String,
-    ) -> EvalResult<'tcx> {
-        ecx.call_missing_fn(instance, destination, arg_operands, sig, path)
+    ) -> EvalResult<'tcx, bool> {
+        ecx.eval_fn_call(instance, destination, arg_operands, span, sig)
     }
+
     fn ptr_op<'a>(
         ecx: &rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
         bin_op: mir::BinOp,
@@ -292,9 +296,5 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         right_ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
         ecx.ptr_op(bin_op, left, left_ty, right, right_ty)
-    }
-
-    fn check_non_const_fn_call(_instance: ty::Instance<'tcx>) -> EvalResult<'tcx> {
-        Ok(())
     }
 }

@@ -10,6 +10,7 @@ use super::{
 };
 
 use rustc::{mir, ty};
+use syntax::codemap::Span;
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
@@ -20,16 +21,20 @@ pub trait Machine<'tcx>: Sized {
     /// Additional data that can be accessed via the Memory
     type MemoryData;
 
-    /// Called when a function's MIR is not found.
-    /// This will happen for `extern "C"` functions.
-    fn call_missing_fn<'a>(
+    /// Entry point to all function calls.
+    ///
+    /// Returns Ok(true) when the function was handled completely
+    /// e.g. due to missing mir or 
+    ///
+    /// Returns Ok(false) if a new stack frame was pushed
+    fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
+        span: Span,
         sig: ty::FnSig<'tcx>,
-        path: String,
-    ) -> EvalResult<'tcx>;
+    ) -> EvalResult<'tcx, bool>;
 
     /// Called when operating on the value of pointers.
     ///
@@ -45,10 +50,5 @@ pub trait Machine<'tcx>: Sized {
         right: PrimVal,
         right_ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>>;
-
-    /// Called when adding a frame for a function that's not `const fn`
-    ///
-    /// Const eval returns `Err`, miri returns `Ok`
-    fn check_non_const_fn_call(instance: ty::Instance<'tcx>) -> EvalResult<'tcx>;
 }
 
