@@ -154,6 +154,14 @@ impl Step for Llvm {
             let host = build.llvm_out(build.build).join("bin/llvm-tblgen");
             cfg.define("CMAKE_CROSSCOMPILING", "True")
                .define("LLVM_TABLEGEN", &host);
+
+            if target.contains("netbsd") {
+               cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
+            } else if target.contains("freebsd") {
+               cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
+            }
+
+            cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.build).join("build"));
         }
 
         let sanitize_cc = |cc: &Path| {
