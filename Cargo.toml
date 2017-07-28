@@ -35,4 +35,4 @@ compiletest_rs = "0.2.6"
 
 [workspace]
 members = ["src/librustc_mir"]
-exclude = ["xargo"]
+exclude = ["xargo", "cargo-miri-test"]
