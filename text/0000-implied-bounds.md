@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Eliminate the need for “redundant” bounds on functions and impls where those bounds can be inferred from the input types. For example, in this simple program, the impl would no longer require a bound, because it can be inferred from the `Foo<T>` type:
+Eliminate the need for “redundant” bounds on functions and impls where those bounds can be inferred from the input types and other trait bounds. For example, in this simple program, the impl would no longer require a bound, because it can be inferred from the `Foo<T>` type:
 
 ```rust
 struct Foo<T: Debug> { .. }
@@ -15,7 +15,7 @@ impl<T: Debug> Foo<T> {
   ...
 }
 ```
-Hence, simply writing `impl<T> Foo<T> { ... }` would suffice. We currently support implied bounds for super traits, projections and lifetimes. We propose to extend this to all where clauses on traits and types, as was already discussed [here][niko].
+Hence, simply writing `impl<T> Foo<T> { ... }` would suffice. We currently support implied bounds for lifetime bounds, super traits and projections. We propose to extend this to all where clauses on traits and types, as was already discussed [here][niko].
 
 # Motivation
 [motivation]: #motivation
