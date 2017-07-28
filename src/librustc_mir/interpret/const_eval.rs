@@ -128,6 +128,7 @@ impl Error for ConstEvalError {
 impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     type Data = ();
     type MemoryData = ();
+    type MemoryKinds = !;
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
@@ -184,5 +185,16 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         _right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
         Err(ConstEvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()).into())
+    }
+
+    fn mark_static_initialized(m: !) -> EvalResult<'tcx> {
+        m
+    }
+
+    fn box_alloc<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _ty: ty::Ty<'tcx>,
+    ) -> EvalResult<'tcx, PrimVal> {
+        Err(ConstEvalError::NeedsRfc("Heap allocations via `box` keyword".to_string()).into())
     }
 }

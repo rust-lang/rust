@@ -32,6 +32,7 @@ mod fn_call;
 mod operator;
 mod intrinsic;
 mod helpers;
+mod memory;
 
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
@@ -278,6 +279,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
 impl<'tcx> Machine<'tcx> for Evaluator {
     type Data = EvaluatorData;
     type MemoryData = MemoryData<'tcx>;
+    type MemoryKinds = memory::Kind;
 
     /// Returns Ok() when the function was handled, fail otherwise
     fn eval_fn_call<'a>(
@@ -312,5 +314,29 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         right_ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
         ecx.ptr_op(bin_op, left, left_ty, right, right_ty)
+    }
+
+    fn mark_static_initialized(m: memory::Kind) -> EvalResult<'tcx> {
+        use memory::Kind::*;
+        match m {
+            // FIXME: This could be allowed, but not for env vars set during miri execution
+            Env => Err(EvalError::Unimplemented("statics can't refer to env vars".to_owned())),
+            _ => Ok(()),
+        }
+    }
+
+    fn box_alloc<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ty: ty::Ty<'tcx>,
+    ) -> EvalResult<'tcx, PrimVal> {
+        let size = ecx.type_size(ty)?.expect("box only works with sized types");
+        let align = ecx.type_align(ty)?;
+        if size == 0 {
+            Ok(PrimVal::Bytes(align.into()))
+        } else {
+            ecx.memory
+                .allocate(size, align, Kind::Machine(memory::Kind::Rust))
+                .map(PrimVal::Ptr)
+        }
     }
 }

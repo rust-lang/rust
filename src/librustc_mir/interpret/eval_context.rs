@@ -782,17 +782,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
-                // FIXME(CTFE): don't allow heap allocations in const eval
-                // FIXME: call the `exchange_malloc` lang item if available
-                let size = self.type_size(ty)?.expect("box only works with sized types");
-                if size == 0 {
-                    let align = self.type_align(ty)?;
-                    self.write_primval(dest, PrimVal::Bytes(align.into()), dest_ty)?;
-                } else {
-                    let align = self.type_align(ty)?;
-                    let ptr = self.memory.allocate(size, align, MemoryKind::Rust)?;
-                    self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
-                }
+                let ptr = M::box_alloc(self, ty)?;
+                self.write_primval(dest, ptr, dest_ty)?;
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {

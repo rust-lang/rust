@@ -21,6 +21,9 @@ pub trait Machine<'tcx>: Sized {
     /// Additional data that can be accessed via the Memory
     type MemoryData;
 
+    /// Additional memory kinds a machine wishes to distinguish from the builtin ones
+    type MemoryKinds: ::std::fmt::Debug + PartialEq + Copy + Clone;
+
     /// Entry point to all function calls.
     ///
     /// Returns Ok(true) when the function was handled completely
@@ -61,5 +64,16 @@ pub trait Machine<'tcx>: Sized {
         right: PrimVal,
         right_ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>>;
+
+    /// Called when trying to mark machine defined `MemoryKinds` as static
+    fn mark_static_initialized(m: Self::MemoryKinds) -> EvalResult<'tcx>;
+
+    /// Heap allocations via the `box` keyword
+    ///
+    /// Returns a pointer to the allocated memory
+    fn box_alloc<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ty: ty::Ty<'tcx>,
+    ) -> EvalResult<'tcx, PrimVal>;
 }
 

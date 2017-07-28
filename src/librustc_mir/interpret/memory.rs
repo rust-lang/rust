@@ -116,7 +116,7 @@ impl fmt::Display for AllocId {
 }
 
 #[derive(Debug)]
-pub struct Allocation {
+pub struct Allocation<M> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
@@ -132,12 +132,12 @@ pub struct Allocation {
     /// Use the `mark_static_initalized` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified or deallocated in the future.
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
-    pub kind: Kind,
+    pub kind: Kind<M>,
     /// Memory regions that are locked by some function
     locks: BTreeMap<MemoryRange, LockInfo>,
 }
 
-impl Allocation {
+impl<M> Allocation<M> {
     fn iter_locks<'a>(&'a self, offset: u64, len: u64) -> impl Iterator<Item=(&'a MemoryRange, &'a LockInfo)> + 'a {
         self.locks.range(MemoryRange::range(offset, len))
             .filter(move |&(range, _)| range.overlaps(offset, len))
@@ -165,11 +165,7 @@ impl Allocation {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Kind {
-    /// Error if deallocated any other way than `rust_deallocate`
-    Rust,
-    /// Error if deallocated any other way than `free`
-    C,
+pub enum Kind<T> {
     /// Error if deallocated except during a stack pop
     Stack,
     /// Static in the process of being initialized.
@@ -179,8 +175,8 @@ pub enum Kind {
     UninitializedStatic,
     /// May never be deallocated
     Static,
-    /// Part of env var emulation
-    Env,
+    /// Additional memory kinds a machine wishes to distinguish from the builtin ones
+    Machine(T),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -226,7 +222,7 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
     pub data: M::MemoryData,
 
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
-    alloc_map: HashMap<AllocId, Allocation>,
+    alloc_map: HashMap<AllocId, Allocation<M::MemoryKinds>>,
 
     /// The AllocId to assign to the next new allocation. Always incremented, never gets smaller.
     next_id: AllocId,
@@ -285,7 +281,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation> {
+    pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation<M::MemoryKinds>> {
         self.alloc_map.iter()
     }
 
@@ -313,7 +309,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(ptr)
     }
 
-    pub fn allocate(&mut self, size: u64, align: u64, kind: Kind) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn allocate(
+        &mut self,
+        size: u64,
+        align: u64,
+        kind: Kind<M::MemoryKinds>,
+    ) -> EvalResult<'tcx, MemoryPointer> {
         assert_ne!(align, 0);
         assert!(align.is_power_of_two());
 
@@ -341,7 +342,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(MemoryPointer::new(id, 0))
     }
 
-    pub fn reallocate(&mut self, ptr: MemoryPointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64, kind: Kind) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn reallocate(
+        &mut self,
+        ptr: MemoryPointer,
+        old_size: u64,
+        old_align: u64,
+        new_size: u64,
+        new_align: u64,
+        kind: Kind<M::MemoryKinds>,
+    ) -> EvalResult<'tcx, MemoryPointer> {
         use std::cmp::min;
 
         if ptr.offset != 0 {
@@ -349,7 +358,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
         if let Ok(alloc) = self.get(ptr.alloc_id) {
             if alloc.kind != kind {
-                return Err(EvalError::ReallocatedWrongMemoryKind(alloc.kind, kind));
+                return Err(EvalError::ReallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
             }
         }
 
@@ -361,7 +370,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(new_ptr)
     }
 
-    pub fn deallocate(&mut self, ptr: MemoryPointer, size_and_align: Option<(u64, u64)>, kind: Kind) -> EvalResult<'tcx> {
+    pub fn deallocate(
+        &mut self,
+        ptr: MemoryPointer,
+        size_and_align: Option<(u64, u64)>,
+        kind: Kind<M::MemoryKinds>,
+    ) -> EvalResult<'tcx> {
         if ptr.offset != 0 {
             return Err(EvalError::DeallocateNonBasePtr);
         }
@@ -380,7 +394,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             .map_err(|lock| EvalError::DeallocatedLockedMemory { ptr, lock })?;
 
         if alloc.kind != kind {
-            return Err(EvalError::DeallocatedWrongMemoryKind(alloc.kind, kind));
+            return Err(EvalError::DeallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
         }
         if let Some((size, align)) = size_and_align {
             if size != alloc.bytes.len() as u64 || align != alloc.align {
@@ -573,7 +587,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
 /// Allocation accessors
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
-    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
+    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::MemoryKinds>> {
         match self.alloc_map.get(&id) {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
@@ -583,7 +597,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
     
-    fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+    fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
         match self.alloc_map.get_mut(&id) {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
@@ -593,7 +607,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
         let alloc = self.get_mut_unchecked(id)?;
         if alloc.mutable == Mutability::Mutable {
             Ok(alloc)
@@ -663,13 +677,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             }
 
             let immutable = match (alloc.kind, alloc.mutable) {
-                (Kind::UninitializedStatic, _) => " (static in the process of initialization)",
-                (Kind::Static, Mutability::Mutable) => " (static mut)",
-                (Kind::Static, Mutability::Immutable) => " (immutable)",
-                (Kind::Env, _) => " (env var)",
-                (Kind::C, _) => " (malloc)",
-                (Kind::Rust, _) => " (heap)",
-                (Kind::Stack, _) => " (stack)",
+                (Kind::UninitializedStatic, _) => " (static in the process of initialization)".to_owned(),
+                (Kind::Static, Mutability::Mutable) => " (static mut)".to_owned(),
+                (Kind::Static, Mutability::Immutable) => " (immutable)".to_owned(),
+                (Kind::Machine(m), _) => format!(" ({:?})", m),
+                (Kind::Stack, _) => " (stack)".to_owned(),
             };
             trace!("{}({} bytes, alignment {}){}", msg, alloc.bytes.len(), alloc.align, immutable);
 
@@ -793,17 +805,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                     // E.g. `const Foo: &u32 = &1;` refers to the temp local that stores the `1`
                     Kind::Stack |
                     // The entire point of this function
-                    Kind::UninitializedStatic |
-                    // In the future const eval will allow heap allocations so we'll need to protect them
-                    // from deallocation, too
-                    Kind::Rust |
-                    Kind::C => {},
+                    Kind::UninitializedStatic => {},
+                    Kind::Machine(m) => M::mark_static_initialized(m)?,
                     Kind::Static => {
                         trace!("mark_static_initalized: skipping already initialized static referred to by static currently being initialized");
                         return Ok(());
                     },
-                    // FIXME: This could be allowed, but not for env vars set during miri execution
-                    Kind::Env => return Err(EvalError::Unimplemented("statics can't refer to env vars".to_owned())),
                 }
                 *kind = Kind::Static;
                 *mutable = mutability;
