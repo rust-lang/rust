@@ -487,6 +487,27 @@ impl<'a> Linker for MsvcLinker<'a> {
         // This will cause the Microsoft linker to generate a PDB file
         // from the CodeView line tables in the object files.
         self.cmd.arg("/DEBUG");
+
+        // This will cause the Microsoft linker to embed .natvis info into the the PDB file
+        let sysroot = self.sess.sysroot();
+        let natvis_dir_path = sysroot.join("lib\\rustlib\\etc");
+        if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
+            for entry in natvis_dir {
+                match entry {
+                    Ok(entry) => {
+                        let path = entry.path();
+                        if path.extension() == Some("natvis".as_ref()) {
+                            let mut arg = OsString::from("/NATVIS:");
+                            arg.push(path);
+                            self.cmd.arg(arg);
+                        }
+                    },
+                    Err(err) => {
+                        self.sess.warn(&format!("error enumerating natvis directory: {}", err));
+                    },
+                }
+            }
+        }
     }
 
     // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
