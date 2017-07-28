@@ -1,5 +1,5 @@
 use rustc::traits::Reveal;
-use rustc::ty::{self, TyCtxt, Ty, Instance};
+use rustc::ty::{self, TyCtxt, Ty, Instance, layout};
 use rustc::mir;
 
 use syntax::ast::Mutability;
@@ -161,6 +161,18 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         )?;
 
         Ok(false)
+    }
+
+    fn call_intrinsic<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[mir::Operand<'tcx>],
+        _dest: Lvalue<'tcx>,
+        _dest_ty: Ty<'tcx>,
+        _dest_layout: &'tcx layout::Layout,
+        _target: mir::BasicBlock,
+    ) -> EvalResult<'tcx> {
+        Err(ConstEvalError::NeedsRfc("calling intrinsics".to_string()).into())
     }
 
     fn ptr_op<'a>(

@@ -18,7 +18,6 @@ use super::eval_context::IntegerExt;
 use rustc_data_structures::indexed_vec::Idx;
 
 mod drop;
-mod intrinsic;
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn goto_block(&mut self, target: mir::BasicBlock) {
@@ -222,7 +221,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     return Err(EvalError::Unreachable);
                 }
                 let layout = self.type_layout(ty)?;
-                self.call_intrinsic(instance, arg_operands, ret, ty, layout, target)?;
+                M::call_intrinsic(self, instance, arg_operands, ret, ty, layout, target)?;
                 self.dump_local(ret);
                 Ok(())
             },

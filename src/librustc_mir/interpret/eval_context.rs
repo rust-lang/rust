@@ -211,7 +211,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         false
     }
 
-    pub(crate) fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
+    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         let ptr = self.memory.allocate_cached(s.as_bytes())?;
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
     }
@@ -369,11 +369,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.tcx.normalize_associated_type(&f.ty(self.tcx, param_substs))
     }
 
-    pub(super) fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
+    pub fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
         self.type_size_with_substs(ty, self.substs())
     }
 
-    pub(super) fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
+    pub fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         self.type_align_with_substs(ty, self.substs())
     }
 
@@ -1022,39 +1022,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub(super) fn wrapping_pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
-        // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-        let offset = offset.overflowing_mul(pointee_size).0;
-        ptr.wrapping_signed_offset(offset, self)
-    }
-
-    pub fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
-        // This function raises an error if the offset moves the pointer outside of its allocation.  We consider
-        // ZSTs their own huge allocation that doesn't overlap with anything (and nothing moves in there because the size is 0).
-        // We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
-        // allocation.
-
-        if ptr.is_null()? { // NULL pointers must only be offset by 0
-            return if offset == 0 { Ok(ptr) } else { Err(EvalError::InvalidNullPointerUsage) };
-        }
-        // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-        return if let Some(offset) = offset.checked_mul(pointee_size) {
-            let ptr = ptr.signed_offset(offset, self)?;
-            // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
-            if let PrimVal::Ptr(ptr) = ptr.into_inner_primval() {
-                self.memory.check_bounds(ptr, false)?;
-            } else if ptr.is_null()? {
-                // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
-                return Err(EvalError::InvalidNullPointerUsage);
-            }
-            Ok(ptr)
-        } else {
-            Err(EvalError::OverflowingMath)
-        }
-    }
-
     pub(super) fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
         let value = self.eval_operand(op)?;
         let ty = self.operand_ty(op);
@@ -1103,7 +1070,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub(super) fn force_allocation(
+    pub fn force_allocation(
         &mut self,
         lvalue: Lvalue<'tcx>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
@@ -1297,7 +1264,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub(super) fn write_value_to_ptr(
+    pub fn write_value_to_ptr(
         &mut self,
         value: Value,
         dest: Pointer,
@@ -1315,7 +1282,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub(super) fn write_pair_to_ptr(
+    pub fn write_pair_to_ptr(
         &mut self,
         a: PrimVal,
         b: PrimVal,
@@ -1445,7 +1412,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub(super) fn read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if let Some(val) = self.try_read_value(ptr, ty)? {
             Ok(val)
         } else {

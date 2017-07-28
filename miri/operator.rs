@@ -3,6 +3,8 @@ use rustc::mir;
 
 use rustc_miri::interpret::*;
 
+use helpers::EvalContextExt as HelperEvalContextExt;
+
 pub trait EvalContextExt<'tcx> {
     fn ptr_op(
         &self,

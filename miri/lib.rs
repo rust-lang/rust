@@ -14,6 +14,7 @@ extern crate rustc_data_structures;
 extern crate syntax;
 
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::layout::Layout;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 
@@ -29,9 +30,12 @@ pub use rustc_miri::interpret::*;
 
 mod fn_call;
 mod operator;
+mod intrinsic;
+mod helpers;
 
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
+use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -285,6 +289,18 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         ecx.eval_fn_call(instance, destination, arg_operands, span, sig)
+    }
+
+    fn call_intrinsic<'a>(
+        ecx: &mut rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        dest: Lvalue<'tcx>,
+        dest_ty: ty::Ty<'tcx>,
+        dest_layout: &'tcx Layout,
+        target: mir::BasicBlock,
+    ) -> EvalResult<'tcx> {
+        ecx.call_intrinsic(instance, args, dest, dest_ty, dest_layout, target)
     }
 
     fn ptr_op<'a>(

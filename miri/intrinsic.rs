@@ -3,17 +3,30 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::Layout;
 use rustc::ty::{self, Ty};
 
-use interpret::{
+use rustc_miri::interpret::{
     EvalError, EvalResult,
-    EvalContext,
     Lvalue, LvalueExtra,
     PrimVal, PrimValKind, Value, Pointer,
     HasMemory,
-    Machine,
+    EvalContext,
 };
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
-    pub(super) fn call_intrinsic(
+use helpers::EvalContextExt as HelperEvalContextExt;
+
+pub trait EvalContextExt<'tcx> {
+    fn call_intrinsic(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        dest: Lvalue<'tcx>,
+        dest_ty: Ty<'tcx>,
+        dest_layout: &'tcx Layout,
+        target: mir::BasicBlock,
+    ) -> EvalResult<'tcx>;
+}
+
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+    fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
@@ -495,7 +508,7 @@ fn numeric_intrinsic<'tcx>(
 ) -> EvalResult<'tcx, PrimVal> {
     macro_rules! integer_intrinsic {
         ($method:ident) => ({
-            use interpret::PrimValKind::*;
+            use rustc_miri::interpret::PrimValKind::*;
             let result_bytes = match kind {
                 I8 => (bytes as i8).$method() as u128,
                 U8 => (bytes as u8).$method() as u128,

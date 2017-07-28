@@ -40,10 +40,10 @@ pub use self::memory::{
     Memory,
     MemoryPointer,
     Kind,
+    HasMemory,
 };
 
 use self::memory::{
-    HasMemory,
     PointerArithmetic,
     LockInfo,
     AccessKind,

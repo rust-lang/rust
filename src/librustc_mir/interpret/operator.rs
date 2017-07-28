@@ -34,7 +34,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
     /// and a boolean signifying the potential overflow to the destination.
-    pub(super) fn intrinsic_with_overflow(
+    pub fn intrinsic_with_overflow(
         &mut self,
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,
@@ -49,7 +49,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     /// Applies the binary operation `op` to the arguments and writes the result to the
     /// destination. Returns `true` if the operation overflowed.
-    pub(super) fn intrinsic_overflowing(
+    pub fn intrinsic_overflowing(
         &mut self,
         op: mir::BinOp,
         left: &mir::Operand<'tcx>,

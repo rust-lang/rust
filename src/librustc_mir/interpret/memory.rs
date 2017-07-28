@@ -434,7 +434,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    pub(crate) fn check_bounds(&self, ptr: MemoryPointer, access: bool) -> EvalResult<'tcx> {
+    pub fn check_bounds(&self, ptr: MemoryPointer, access: bool) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset > allocation_size {
@@ -1311,7 +1311,7 @@ fn bit_index(bits: u64) -> (usize, usize) {
 // Unaligned accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) trait HasMemory<'a, 'tcx, M: Machine<'tcx>> {
+pub trait HasMemory<'a, 'tcx, M: Machine<'tcx>> {
     fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M>;
     fn memory(&self) -> &Memory<'a, 'tcx, M>;
 

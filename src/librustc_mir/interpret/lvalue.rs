@@ -73,7 +73,7 @@ impl<'tcx> Lvalue<'tcx> {
         Self::from_primval_ptr(PrimVal::Undef.into())
     }
 
-    pub(crate) fn from_primval_ptr(ptr: Pointer) -> Self {
+    pub fn from_primval_ptr(ptr: Pointer) -> Self {
         Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true }
     }
 
@@ -89,7 +89,7 @@ impl<'tcx> Lvalue<'tcx> {
         }
     }
 
-    pub(super) fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
         let (ptr, extra, _aligned) = self.to_ptr_extra_aligned();
         // At this point, we forget about the alignment information -- the lvalue has been turned into a reference,
         // and no matter where it came from, it now must be aligned.

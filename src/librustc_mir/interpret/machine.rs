@@ -36,6 +36,17 @@ pub trait Machine<'tcx>: Sized {
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool>;
 
+    /// directly process an intrinsic without pushing a stack frame.
+    fn call_intrinsic<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        dest: Lvalue<'tcx>,
+        dest_ty: ty::Ty<'tcx>,
+        dest_layout: &'tcx ty::layout::Layout,
+        target: mir::BasicBlock,
+    ) -> EvalResult<'tcx>;
+
     /// Called when operating on the value of pointers.
     ///
     /// Returns `None` if the operation should be handled by the integer

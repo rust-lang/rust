@@ -64,7 +64,7 @@ impl<'tcx> Pointer {
         self.primval
     }
 
-    pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
@@ -88,7 +88,7 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
@@ -165,7 +165,7 @@ pub enum PrimValKind {
 
 impl<'a, 'tcx: 'a> Value {
     #[inline]
-    pub(super) fn by_ref(ptr: Pointer) -> Self {
+    pub fn by_ref(ptr: Pointer) -> Self {
         Value::ByRef { ptr, aligned: true }
     }
 
