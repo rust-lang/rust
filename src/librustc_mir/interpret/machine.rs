@@ -24,7 +24,7 @@ pub trait Machine<'tcx>: Sized {
     /// Entry point to all function calls.
     ///
     /// Returns Ok(true) when the function was handled completely
-    /// e.g. due to missing mir or 
+    /// e.g. due to missing mir
     ///
     /// Returns Ok(false) if a new stack frame was pushed
     fn eval_fn_call<'a>(
