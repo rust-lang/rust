@@ -164,7 +164,7 @@ impl Step for Cargotest {
         try_run(build, cmd.arg(&build.initial_cargo)
                           .arg(&out_dir)
                           .env("RUSTC", builder.rustc(compiler))
-                          .env("RUSTDOC", builder.rustdoc(compiler)));
+                          .env("RUSTDOC", builder.rustdoc(compiler.host)));
     }
 }
 
@@ -565,7 +565,7 @@ impl Step for Compiletest {
 
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc" || mode == "run-make" {
-            cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
+            cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
         }
 
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
@@ -814,7 +814,7 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     }
 
     println!("doc tests for: {}", markdown.display());
-    let mut cmd = builder.rustdoc_cmd(compiler);
+    let mut cmd = builder.rustdoc_cmd(compiler.host);
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);

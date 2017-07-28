@@ -226,7 +226,7 @@ impl Step for RemoteTestServer {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
-    pub target_compiler: Compiler,
+    pub host: Interned<String>,
 }
 
 impl Step for Rustdoc {
@@ -240,30 +240,32 @@ impl Step for Rustdoc {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rustdoc {
-            target_compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            host: run.host,
         });
     }
 
     fn run(self, builder: &Builder) -> PathBuf {
-        let target_compiler = self.target_compiler;
-        let build_compiler = if target_compiler.stage == 0 {
+        // Always build rustdoc at the top stage; otherwise we rebuild it twice (or more).
+        let stage = builder.top_stage;
+        let build_compiler = if stage == 0 {
             builder.compiler(0, builder.build.build)
         } else {
             // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
             // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
             // compilers, which isn't what we want.
-            builder.compiler(target_compiler.stage - 1, builder.build.build)
+            builder.compiler(stage - 1, builder.build.build)
         };
 
         let tool_rustdoc = builder.ensure(ToolBuild {
             compiler: build_compiler,
-            target: target_compiler.host,
+            target: self.host,
             tool: "rustdoc",
             mode: Mode::Librustc,
         });
 
         // don't create a stage0-sysroot/bin directory.
-        if target_compiler.stage > 0 {
+        if stage > 0 {
+            let target_compiler = builder.compiler(build_compiler.stage + 1, self.host);
             let sysroot = builder.sysroot(target_compiler);
             let bindir = sysroot.join("bin");
             t!(fs::create_dir_all(&bindir));
