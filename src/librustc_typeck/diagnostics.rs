@@ -1636,45 +1636,6 @@ fn bar(foo: Foo) -> u32 {
 ```
 "##,
 
-E0182: r##"
-You bound an associated type in an expression path which is not
-allowed.
-
-Erroneous code example:
-
-```compile_fail,E0182
-trait Foo {
-    type A;
-    fn bar() -> isize;
-}
-
-impl Foo for isize {
-    type A = usize;
-    fn bar() -> isize { 42 }
-}
-
-// error: unexpected binding of associated item in expression path
-let x: isize = Foo::<A=usize>::bar();
-```
-
-To give a concrete type when using the Universal Function Call Syntax,
-use "Type as Trait". Example:
-
-```
-trait Foo {
-    type A;
-    fn bar() -> isize;
-}
-
-impl Foo for isize {
-    type A = usize;
-    fn bar() -> isize { 42 }
-}
-
-let x: isize = <isize as Foo>::bar(); // ok!
-```
-"##,
-
 E0184: r##"
 Explicitly implementing both Drop and Copy for a type is currently disallowed.
 This feature can make some sense in theory, but the current implementation is
@@ -2358,21 +2319,6 @@ impl Foo {
 ```
 "##,
      */
-
-E0214: r##"
-A generic type was described using parentheses rather than angle brackets. For
-example:
-
-```compile_fail,E0214
-fn main() {
-    let v: Vec(&str) = vec!["foo"];
-}
-```
-
-This is not currently supported: `v` should be defined as `Vec<&str>`.
-Parentheses are currently only used with generic types when defining parameters
-for `Fn`-family traits.
-"##,
 
 E0220: r##"
 You used an associated type which isn't defined in the trait.
@@ -4721,6 +4667,7 @@ register_diagnostics! {
 //  E0172, // non-trait found in a type sum, moved to resolve
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
+//  E0182, // merged into E0229
     E0183,
 //  E0187, // can't infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer

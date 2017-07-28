@@ -133,22 +133,12 @@ impl_stable_hash_for!(struct hir::PathSegment {
     parameters
 });
 
-impl_stable_hash_for!(enum hir::PathParameters {
-    AngleBracketedParameters(data),
-    ParenthesizedParameters(data)
-});
-
-impl_stable_hash_for!(struct hir::AngleBracketedParameterData {
+impl_stable_hash_for!(struct hir::PathParameters {
     lifetimes,
     types,
     infer_types,
-    bindings
-});
-
-impl_stable_hash_for!(struct hir::ParenthesizedParameterData {
-    span,
-    inputs,
-    output
+    bindings,
+    parenthesized
 });
 
 impl_stable_hash_for!(enum hir::TyParamBound {

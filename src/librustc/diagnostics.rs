@@ -687,6 +687,21 @@ attributes:
 See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
 "##,
 
+E0214: r##"
+A generic type was described using parentheses rather than angle brackets. For
+example:
+
+```compile_fail,E0214
+fn main() {
+    let v: Vec(&str) = vec!["foo"];
+}
+```
+
+This is not currently supported: `v` should be defined as `Vec<&str>`.
+Parentheses are currently only used with generic types when defining parameters
+for `Fn`-family traits.
+"##,
+
 E0261: r##"
 When using a lifetime like `'a` in a type, it must be declared before being
 used.

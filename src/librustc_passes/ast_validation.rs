@@ -140,14 +140,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span);
             }
-            ExprKind::MethodCall(ref segment, ..) => {
-                if let Some(ref params) = segment.parameters {
-                    if let PathParameters::Parenthesized(..) = **params {
-                        self.err_handler().span_err(expr.span,
-                            "parenthesized parameters cannot be used on method calls");
-                    }
-                }
-            }
             _ => {}
         }
 

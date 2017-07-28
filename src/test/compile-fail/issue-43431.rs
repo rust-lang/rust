@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that parentheses form doesn't work with struct types appearing in argument types.
+#![feature(fn_traits)]
 
-struct Bar<A> {
-    f: A
+trait CallSingle<A, B> {
+    fn call(&self, a: A) -> B where Self: Fn(A) -> B;
 }
 
-fn foo(b: Box<Bar()>) {
-    //~^ ERROR parenthesized parameters may only be used with a trait
-    //~| ERROR the type placeholder `_` is not allowed within types on item signatures
+impl<A, B, F: Fn(A) -> B> CallSingle<A, B> for F {
+    fn call(&self, a: A) -> B {
+        <Self as Fn(A) -> B>::call(self, (a,))
+        //~^ ERROR associated type bindings are not allowed here
+    }
 }
 
-fn main() { }
+fn main() {}
