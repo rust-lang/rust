@@ -48,6 +48,8 @@
 
 #![feature(const_fn)]
 #![feature(i128_type)]
+#![feature(slice_patterns)]
+#![feature(try_from)]
 
 #[macro_use]
 extern crate rustc_bitflags;
