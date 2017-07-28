@@ -36,8 +36,6 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     let mut changes = Default::default();
     let mut id_mapping = IdMapping::new(old.krate, new.krate);
 
-    // TODO: deriving(Trait) ?
-
     // first pass
     diff_structure(&mut changes, &mut id_mapping, tcx, old, new);
 
@@ -268,7 +266,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
             changes.new_path_change(n_def_id, o.ident.name, tcx.def_span(n_def_id));
             changes.add_path_removal(n_def_id, o.span);
         } else {
-            id_mapping.add_removal(o_def_id);
+            id_mapping.add_non_mapped(o_def_id);
             changes.new_path_change(o_def_id, o.ident.name, tcx.def_span(o_def_id));
             changes.add_path_removal(o_def_id, o.span);
         }
@@ -521,10 +519,12 @@ fn diff_generics(changes: &mut ChangeSet,
                 }
 
                 id_mapping.add_internal_item(old_type.def_id, new_type.def_id);
+                id_mapping.add_type_param(*old_type);
                 id_mapping.add_type_param(*new_type);
             },
             (Some(old_type), None) => {
                 found.push(TypeParameterRemoved { defaulted: old_type.has_default });
+                id_mapping.add_type_param(*old_type);
             },
             (None, Some(new_type)) => { // FIXME: is_fn could be used in a more elegant fashion
                 found.push(TypeParameterAdded { defaulted: new_type.has_default || is_fn });
@@ -686,7 +686,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         } else {
             Substs::for_item(tcx, new_def_id, |def, _| {
                 tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-            }, |def, _| if id_mapping.is_defaulted_type_param(&def.def_id) {
+            }, |def, _| if id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
                 tcx.type_of(def.def_id)
             } else {
                 tcx.mk_param_from_def(def)

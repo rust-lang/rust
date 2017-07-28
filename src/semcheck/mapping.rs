@@ -23,14 +23,17 @@ pub struct IdMapping {
     new_crate: CrateNum,
     /// Toplevel items' old `DefId` mapped to old and new `Def`.
     toplevel_mapping: HashMap<DefId, (Def, Def)>,
-    /// The set of toplevel items that have been removed.
-    removed_items: HashSet<DefId>,
+    /// The set of items that have been removed or added and thus have no corresponding item in
+    /// the other crate.
+    non_mapped_items: HashSet<DefId>,
     /// Trait items' old `DefId` mapped to old and new `Def`, and the enclosing trait's `DefId`.
     trait_item_mapping: HashMap<DefId, (Def, Def, DefId)>,
     /// Other items' old `DefId` mapped to new `DefId`.
     internal_mapping: HashMap<DefId, DefId>,
     /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
     child_mapping: HashMap<DefId, BTreeSet<DefId>>,
+    /// New `DefId`s mapped to their old counterparts.
+    reverse_mapping: HashMap<DefId, DefId>,
     /// Map of type parameters' `DefId`s and their definitions.
     type_params: HashMap<DefId, TypeParameterDef>,
 }
@@ -41,15 +44,17 @@ impl IdMapping {
             old_crate: old_crate,
             new_crate: new_crate,
             toplevel_mapping: HashMap::new(),
-            removed_items: HashSet::new(),
+            non_mapped_items: HashSet::new(),
             trait_item_mapping: HashMap::new(),
             internal_mapping: HashMap::new(),
             child_mapping: HashMap::new(),
+            reverse_mapping: HashMap::new(),
             type_params: HashMap::new(),
         }
     }
 
     /// Register two exports representing the same item across versions.
+    // TODO
     pub fn add_export(&mut self, old: Def, new: Def) -> bool {
         let old_def_id = old.def_id();
 
@@ -57,24 +62,25 @@ impl IdMapping {
             return false;
         }
 
-        self.toplevel_mapping
-            .insert(old_def_id, (old, new));
+        self.toplevel_mapping.insert(old_def_id, (old, new));
+        self.reverse_mapping.insert(new.def_id(), old_def_id);
 
         true
     }
 
     /// Register that an old item has no corresponding new item.
-    pub fn add_removal(&mut self, old: DefId) {
-        self.removed_items.insert(old);
+    pub fn add_non_mapped(&mut self, def_id: DefId) {
+        self.non_mapped_items.insert(def_id);
     }
 
     /// Add any trait item's old and new `DefId`s.
-    pub fn add_trait_item(&mut self, old: Def, new: Def, trait_def_id: DefId) {
+    pub fn add_trait_item(&mut self, old: Def, new: Def, old_trait: DefId) {
         let old_def_id = old.def_id();
 
         assert!(self.in_old_crate(old_def_id));
 
-        self.trait_item_mapping.insert(old_def_id, (old, new, trait_def_id));
+        self.trait_item_mapping.insert(old_def_id, (old, new, old_trait));
+        self.reverse_mapping.insert(new.def_id(), old_def_id);
     }
 
     /// Add any other item's old and new `DefId`s.
@@ -85,24 +91,25 @@ impl IdMapping {
                 self.internal_mapping[&old],
                 new);
         assert!(self.in_old_crate(old));
+        assert!(self.in_new_crate(new));
 
         self.internal_mapping.insert(old, new);
+        self.reverse_mapping.insert(new, old);
     }
 
     /// Add any other item's old and new `DefId`s, together with a parent entry.
-    pub fn add_subitem(&mut self, parent: DefId, old: DefId, new: DefId) {
+    pub fn add_subitem(&mut self, old_parent: DefId, old: DefId, new: DefId) {
         // NB: we rely on the asserts in `add_internal_item` here.
         self.add_internal_item(old, new);
         self.child_mapping
-            .entry(parent)
+            .entry(old_parent)
             .or_insert_with(Default::default)
             .insert(old);
     }
 
-    /// Record that a `DefId` represents a new type parameter.
-    pub fn add_type_param(&mut self, new: TypeParameterDef) {
-        assert!(self.in_new_crate(new.def_id));
-        self.type_params.insert(new.def_id, new);
+    /// Record that a `DefId` represents a type parameter.
+    pub fn add_type_param(&mut self, param: TypeParameterDef) {
+        self.type_params.insert(param.def_id, param);
     }
 
     /// Get the type parameter represented by a given `DefId`.
@@ -110,18 +117,17 @@ impl IdMapping {
         self.type_params[did]
     }
 
-    /// Check whether a `DefId` represents a newly added defaulted type parameter.
-    pub fn is_defaulted_type_param(&self, new: &DefId) -> bool {
-        self.type_params
-            .get(new)
-            .map_or(false, |def| def.has_default)
+    /// Check whether a `DefId` represents a non-mapped defaulted type parameter.
+    pub fn is_non_mapped_defaulted_type_param(&self, new: &DefId) -> bool {
+        self.non_mapped_items.contains(new) &&
+            self.type_params.get(new).map_or(false, |def| def.has_default)
     }
 
     /// Get the new `DefId` associated with the given old one.
     pub fn get_new_id(&self, old: DefId) -> DefId {
         assert!(!self.in_new_crate(old));
 
-        if self.in_old_crate(old) && !self.removed_items.contains(&old) {
+        if self.in_old_crate(old) && !self.non_mapped_items.contains(&old) {
             if let Some(new) = self.toplevel_mapping.get(&old) {
                 new.1.def_id()
             } else if let Some(new) = self.trait_item_mapping.get(&old) {
@@ -134,12 +140,24 @@ impl IdMapping {
         }
     }
 
+    /// Get the old `DefId` associated with the given new one.
+    pub fn get_old_id(&self, new: DefId) -> DefId {
+        assert!(!self.in_old_crate(new));
+
+        if self.in_new_crate(new) && !self.non_mapped_items.contains(&new) {
+            self.reverse_mapping[&new]
+        } else {
+            new
+        }
+    }
+
     /// Get the new `DefId` associated with the given old one, respecting possibly removed
     /// traits that are a parent of the given `DefId`.
+    // TODO: write a reverse equivalent...
     pub fn get_new_trait_item_id(&self, old: DefId, trait_id: DefId) -> DefId {
         assert!(!self.in_new_crate(trait_id));
 
-        if !self.removed_items.contains(&trait_id) {
+        if !self.non_mapped_items.contains(&trait_id) {
             self.get_new_id(old)
         } else {
             old
@@ -147,11 +165,13 @@ impl IdMapping {
     }
 
     /// Return the `DefId` of the trait a given item belongs to.
+    // TODO
     pub fn get_trait_def(&self, item_def_id: &DefId) -> Option<DefId> {
         self.trait_item_mapping.get(item_def_id).map(|t| t.2)
     }
 
     /// Check whether a `DefId` is present in the mappings.
+    // TODO
     pub fn contains_id(&self, old: DefId) -> bool {
         self.toplevel_mapping.contains_key(&old) ||
             self.trait_item_mapping.contains_key(&old) ||
@@ -175,6 +195,7 @@ impl IdMapping {
     }
 
     /// Iterate over the item pairs of all children of a given item.
+    // TODO
     pub fn children_of<'a>(&'a self, parent: DefId)
         -> Option<impl Iterator<Item = (DefId, DefId)> + 'a>
     {
