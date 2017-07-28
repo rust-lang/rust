@@ -279,7 +279,8 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_closure_substs(&mut self,
-                            substs: &ClosureSubsts<'tcx>) {
+                            substs: &ClosureSubsts<'tcx>,
+                            _: Location) {
         self.record("ClosureSubsts", substs);
         self.super_closure_substs(substs);
     }
