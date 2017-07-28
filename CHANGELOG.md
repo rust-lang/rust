@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.146
+* Update to *rustc 1.21.0-nightly (52a330969 2017-07-27)*
+* Fixes false positives in `inline_always`
+* Fixes false negatives in `panic_params`
+
 ## 0.0.145
 * Update to *rustc 1.20.0-nightly (afe145d22 2017-07-23)*
 
