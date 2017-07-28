@@ -1013,8 +1013,9 @@ pub enum Expr_ {
     ///
     /// The final span is the span of the argument block `|...|`
     ///
-    /// This may also be a generator literal, in that case there is an GeneratorClause.
-    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, IsGenerator),
+    /// This may also be a generator literal, indicated by the final boolean,
+    /// in that case there is an GeneratorClause.
+    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, bool),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1188,12 +1189,6 @@ pub struct Destination {
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
     pub target_id: ScopeTarget,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum IsGenerator {
-    Yes,
-    No,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

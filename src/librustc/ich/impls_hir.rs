@@ -688,11 +688,6 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::M
     }
 }
 
-impl_stable_hash_for!(enum hir::IsGenerator {
-    Yes,
-    No
-});
-
 impl_stable_hash_for!(enum hir::CaptureClause {
     CaptureByValue,
     CaptureByRef

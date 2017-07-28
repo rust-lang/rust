@@ -560,7 +560,7 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Generator(ref $($mutability)* def_id,
                                                    ref $($mutability)* closure_substs) => {
                                 self.visit_def_id(def_id, location);
-                                self.visit_closure_substs(closure_substs);
+                                self.visit_closure_substs(closure_substs, location);
                             }
                         }
 

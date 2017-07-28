@@ -92,7 +92,7 @@ pub struct LoweringContext<'a> {
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
 
-    is_generator: hir::IsGenerator,
+    is_generator: bool,
 
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
@@ -146,7 +146,7 @@ pub fn lower_crate(sess: &Session,
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
         item_local_id_counters: NodeMap(),
         node_id_to_hir_id: IndexVec::new(),
-        is_generator: hir::IsGenerator::No,
+        is_generator: false,
     }.lower_crate(krate)
 }
 
@@ -371,7 +371,7 @@ impl<'a> LoweringContext<'a> {
             arguments: decl.map_or(hir_vec![], |decl| {
                 decl.inputs.iter().map(|x| self.lower_arg(x)).collect()
             }),
-            is_generator: self.is_generator == hir::IsGenerator::Yes,
+            is_generator: self.is_generator,
             value,
         };
         let id = body.id();
@@ -432,7 +432,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_body<F>(&mut self, decl: Option<&FnDecl>, f: F) -> hir::BodyId
         where F: FnOnce(&mut LoweringContext) -> hir::Expr
     {
-        let prev = mem::replace(&mut self.is_generator, hir::IsGenerator::No);
+        let prev = mem::replace(&mut self.is_generator, false);
         let result = f(self);
         let r = self.record_body(result, decl);
         self.is_generator = prev;
@@ -1940,13 +1940,13 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Closure(capture_clause, ref decl, ref body, fn_decl_span) => {
                 self.with_new_scopes(|this| {
                     this.with_parent_def(e.id, |this| {
-                        let mut gen = hir::IsGenerator::No;
+                        let mut is_generator = false;
                         let body_id = this.lower_body(Some(decl), |this| {
                             let e = this.lower_expr(body);
-                            gen = this.is_generator;
+                            is_generator = this.is_generator;
                             e
                         });
-                        if gen == hir::IsGenerator::Yes && !decl.inputs.is_empty() {
+                        if is_generator && !decl.inputs.is_empty() {
                             span_err!(this.sess, fn_decl_span, E0625,
                                       "generators cannot have explicit arguments");
                             this.sess.abort_if_errors();
@@ -1955,7 +1955,7 @@ impl<'a> LoweringContext<'a> {
                                          this.lower_fn_decl(decl),
                                          body_id,
                                          fn_decl_span,
-                                         gen)
+                                         is_generator)
                     })
                 })
             }
@@ -2092,7 +2092,7 @@ impl<'a> LoweringContext<'a> {
             }
 
             ExprKind::Yield(ref opt_expr) => {
-                self.is_generator = hir::IsGenerator::Yes;
+                self.is_generator = true;
                 let expr = opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| {
                     self.expr(e.span, hir::ExprTup(hir_vec![]), ThinVec::new())
                 });
