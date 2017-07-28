@@ -2235,6 +2235,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 _ => false,
             };
             fmt_impl_for_trait_page(&implementor.impl_, w, use_absolute)?;
+            for it in &implementor.impl_.items {
+                if let clean::TypedefItem(ref tydef, _) = it.inner {
+                    write!(w, "<span class=\"where fmt-newline\">  ")?;
+                    assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
+                    write!(w, ";</span>")?;
+                }
+            }
             writeln!(w, "</code></li>")?;
         }
     }
