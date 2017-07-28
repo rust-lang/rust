@@ -409,7 +409,7 @@ impl<'a> SpanUtils<'a> {
 
         // Otherwise, a generated span is deemed invalid if it is not a sub-span of the root
         // callsite. This filters out macro internal variables and most malformed spans.
-        !parent.source_callsite().contains(parent)
+        !parent.source_callsite().contains(sub_span.unwrap())
     }
 }
 
