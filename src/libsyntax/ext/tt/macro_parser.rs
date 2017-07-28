@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This is an Earley-like parser, without support for in-grammar nonterminals,
-//! only by calling out to the main rust parser for named nonterminals (which it
-//! commits to fully when it hits one in a grammar). This means that there are no
-//! completer or predictor rules, and therefore no need to store one column per
-//! token: instead, there's a set of current Earley items and a set of next
-//! ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
-//! pathological cases, is worse than traditional Earley parsing, but it's an
-//! easier fit for Macro-by-Example-style rules, and I think the overhead is
-//! lower. (In order to prevent the pathological case, we'd need to lazily
-//! construct the resulting `NamedMatch`es at the very end. It'd be a pain,
-//! and require more memory to keep around old items, but it would also save
-//! overhead)
+//! This is an NFA-based parser, which calls out to the main rust parser for named nonterminals
+//! (which it commits to fully when it hits one in a grammar). There's a set of current NFA threads
+//! and a set of next ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
+//! pathological cases, is worse than traditional use of NFA or Earley parsing, but it's an easier
+//! fit for Macro-by-Example-style rules.
+//!
+//! (In order to prevent the pathological case, we'd need to lazily construct the resulting
+//! `NamedMatch`es at the very end. It'd be a pain, and require more memory to keep around old
+//! items, but it would also save overhead)
+//!
+//! We don't say this parser uses the Earley algorithm, because it's unnecessarily innacurate.
+//! The macro parser restricts itself to the features of finite state automata. Earley parsers
+//! can be described as an extension of NFAs with completion rules, prediction rules, and recursion.
 //!
 //! Quick intro to how the parser works:
 //!
@@ -27,14 +28,15 @@
 //! dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
 //!
 //! The parser walks through the input a character at a time, maintaining a list
-//! of items consistent with the current position in the input string: `cur_eis`.
+//! of threads consistent with the current position in the input string: `cur_items`.
 //!
-//! As it processes them, it fills up `eof_eis` with items that would be valid if
-//! the macro invocation is now over, `bb_eis` with items that are waiting on
-//! a Rust nonterminal like `$e:expr`, and `next_eis` with items that are waiting
+//! As it processes them, it fills up `eof_items` with threads that would be valid if
+//! the macro invocation is now over, `bb_items` with threads that are waiting on
+//! a Rust nonterminal like `$e:expr`, and `next_items` with threads that are waiting
 //! on a particular token. Most of the logic concerns moving the · through the
-//! repetitions indicated by Kleene stars. It only advances or calls out to the
-//! real Rust parser when no `cur_eis` items remain
+//! repetitions indicated by Kleene stars. The rules for moving the · without
+//! consuming any input are called epsilon transitions. It only advances or calls
+//! out to the real Rust parser when no `cur_items` threads remain.
 //!
 //! Example:
 //!
@@ -42,7 +44,7 @@
 //! Start parsing a a a a b against [· a $( a )* a b].
 //!
 //! Remaining input: a a a a b
-//! next_eis: [· a $( a )* a b]
+//! next: [· a $( a )* a b]
 //!
 //! - - - Advance over an a. - - -
 //!
@@ -54,23 +56,23 @@
 //! - - - Advance over an a. - - -
 //!
 //! Remaining input: a a b
-//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-//! Finish/Repeat (first item)
+//! cur: [a $( a · )* a b]  [a $( a )* a · b]
+//! Follow epsilon transition: Finish/Repeat (first item)
 //! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
 //! - - - Advance over an a. - - - (this looks exactly like the last step)
 //!
 //! Remaining input: a b
-//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-//! Finish/Repeat (first item)
+//! cur: [a $( a · )* a b]  [a $( a )* a · b]
+//! Follow epsilon transition: Finish/Repeat (first item)
 //! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
 //! - - - Advance over an a. - - - (this looks exactly like the last step)
 //!
 //! Remaining input: b
-//! cur: [a $( a · )* a b]  next: [a $( a )* a · b]
-//! Finish/Repeat (first item)
-//! next: [a $( a )* · a b]  [a $( · a )* a b]
+//! cur: [a $( a · )* a b]  [a $( a )* a · b]
+//! Follow epsilon transition: Finish/Repeat (first item)
+//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
 //! - - - Advance over a b. - - -
 //!
@@ -289,94 +291,94 @@ fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
 }
 
 fn inner_parse_loop(sess: &ParseSess,
-                    cur_eis: &mut SmallVector<Box<MatcherPos>>,
-                    next_eis: &mut Vec<Box<MatcherPos>>,
-                    eof_eis: &mut SmallVector<Box<MatcherPos>>,
-                    bb_eis: &mut SmallVector<Box<MatcherPos>>,
+                    cur_items: &mut SmallVector<Box<MatcherPos>>,
+                    next_items: &mut Vec<Box<MatcherPos>>,
+                    eof_items: &mut SmallVector<Box<MatcherPos>>,
+                    bb_items: &mut SmallVector<Box<MatcherPos>>,
                     token: &Token,
                     span: syntax_pos::Span)
                     -> ParseResult<()> {
-    while let Some(mut ei) = cur_eis.pop() {
+    while let Some(mut item) = cur_items.pop() {
         // When unzipped trees end, remove them
-        while ei.idx >= ei.top_elts.len() {
-            match ei.stack.pop() {
+        while item.idx >= item.top_elts.len() {
+            match item.stack.pop() {
                 Some(MatcherTtFrame { elts, idx }) => {
-                    ei.top_elts = elts;
-                    ei.idx = idx + 1;
+                    item.top_elts = elts;
+                    item.idx = idx + 1;
                 }
                 None => break
             }
         }
 
-        let idx = ei.idx;
-        let len = ei.top_elts.len();
+        let idx = item.idx;
+        let len = item.top_elts.len();
 
         // at end of sequence
         if idx >= len {
             // We are repeating iff there is a parent
-            if ei.up.is_some() {
+            if item.up.is_some() {
                 // Disregarding the separator, add the "up" case to the tokens that should be
                 // examined.
                 // (remove this condition to make trailing seps ok)
                 if idx == len {
-                    let mut new_pos = ei.up.clone().unwrap();
+                    let mut new_pos = item.up.clone().unwrap();
 
                     // update matches (the MBE "parse tree") by appending
                     // each tree as a subtree.
 
                     // Only touch the binders we have actually bound
-                    for idx in ei.match_lo..ei.match_hi {
-                        let sub = ei.matches[idx].clone();
-                        new_pos.push_match(idx, MatchedSeq(sub, Span { lo: ei.sp_lo, ..span }));
+                    for idx in item.match_lo..item.match_hi {
+                        let sub = item.matches[idx].clone();
+                        new_pos.push_match(idx, MatchedSeq(sub, Span { lo: item.sp_lo, ..span }));
                     }
 
-                    new_pos.match_cur = ei.match_hi;
+                    new_pos.match_cur = item.match_hi;
                     new_pos.idx += 1;
-                    cur_eis.push(new_pos);
+                    cur_items.push(new_pos);
                 }
 
                 // Check if we need a separator
-                if idx == len && ei.sep.is_some() {
+                if idx == len && item.sep.is_some() {
                     // We have a separator, and it is the current token.
-                    if ei.sep.as_ref().map(|sep| token_name_eq(token, sep)).unwrap_or(false) {
-                        ei.idx += 1;
-                        next_eis.push(ei);
+                    if item.sep.as_ref().map(|sep| token_name_eq(token, sep)).unwrap_or(false) {
+                        item.idx += 1;
+                        next_items.push(item);
                     }
                 } else { // we don't need a separator
-                    ei.match_cur = ei.match_lo;
-                    ei.idx = 0;
-                    cur_eis.push(ei);
+                    item.match_cur = item.match_lo;
+                    item.idx = 0;
+                    cur_items.push(item);
                 }
             } else {
                 // We aren't repeating, so we must be potentially at the end of the input.
-                eof_eis.push(ei);
+                eof_items.push(item);
             }
         } else {
-            match ei.top_elts.get_tt(idx) {
+            match item.top_elts.get_tt(idx) {
                 /* need to descend into sequence */
                 TokenTree::Sequence(sp, seq) => {
                     if seq.op == quoted::KleeneOp::ZeroOrMore {
                         // Examine the case where there are 0 matches of this sequence
-                        let mut new_ei = ei.clone();
-                        new_ei.match_cur += seq.num_captures;
-                        new_ei.idx += 1;
-                        for idx in ei.match_cur..ei.match_cur + seq.num_captures {
-                            new_ei.push_match(idx, MatchedSeq(Rc::new(vec![]), sp));
+                        let mut new_item = item.clone();
+                        new_item.match_cur += seq.num_captures;
+                        new_item.idx += 1;
+                        for idx in item.match_cur..item.match_cur + seq.num_captures {
+                            new_item.push_match(idx, MatchedSeq(Rc::new(vec![]), sp));
                         }
-                        cur_eis.push(new_ei);
+                        cur_items.push(new_item);
                     }
 
                     // Examine the case where there is at least one match of this sequence
-                    let matches = create_matches(ei.matches.len());
-                    cur_eis.push(Box::new(MatcherPos {
+                    let matches = create_matches(item.matches.len());
+                    cur_items.push(Box::new(MatcherPos {
                         stack: vec![],
                         sep: seq.separator.clone(),
                         idx: 0,
                         matches: matches,
-                        match_lo: ei.match_cur,
-                        match_cur: ei.match_cur,
-                        match_hi: ei.match_cur + seq.num_captures,
-                        up: Some(ei),
+                        match_lo: item.match_cur,
+                        match_cur: item.match_cur,
+                        match_hi: item.match_cur + seq.num_captures,
+                        up: Some(item),
                         sp_lo: sp.lo,
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     }));
@@ -390,22 +392,22 @@ fn inner_parse_loop(sess: &ParseSess,
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
                     if may_begin_with(&*id.name.as_str(), token) {
-                        bb_eis.push(ei);
+                        bb_items.push(item);
                     }
                 }
                 seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
-                    let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
-                    let idx = ei.idx;
-                    ei.stack.push(MatcherTtFrame {
+                    let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
+                    let idx = item.idx;
+                    item.stack.push(MatcherTtFrame {
                         elts: lower_elts,
                         idx: idx,
                     });
-                    ei.idx = 0;
-                    cur_eis.push(ei);
+                    item.idx = 0;
+                    cur_items.push(item);
                 }
                 TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
-                    ei.idx += 1;
-                    next_eis.push(ei);
+                    item.idx += 1;
+                    next_items.push(item);
                 }
                 TokenTree::Token(..) | TokenTree::MetaVar(..) => {}
             }
@@ -422,38 +424,38 @@ pub fn parse(sess: &ParseSess,
              recurse_into_modules: bool)
              -> NamedParseResult {
     let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
-    let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
-    let mut next_eis = Vec::new(); // or proceed normally
+    let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
+    let mut next_items = Vec::new(); // or proceed normally
 
     loop {
-        let mut bb_eis = SmallVector::new(); // black-box parsed by parser.rs
-        let mut eof_eis = SmallVector::new();
-        assert!(next_eis.is_empty());
+        let mut bb_items = SmallVector::new(); // black-box parsed by parser.rs
+        let mut eof_items = SmallVector::new();
+        assert!(next_items.is_empty());
 
-        match inner_parse_loop(sess, &mut cur_eis, &mut next_eis, &mut eof_eis, &mut bb_eis,
+        match inner_parse_loop(sess, &mut cur_items, &mut next_items, &mut eof_items, &mut bb_items,
                                &parser.token, parser.span) {
             Success(_) => {},
             Failure(sp, tok) => return Failure(sp, tok),
             Error(sp, msg) => return Error(sp, msg),
         }
 
-        // inner parse loop handled all cur_eis, so it's empty
-        assert!(cur_eis.is_empty());
+        // inner parse loop handled all cur_items, so it's empty
+        assert!(cur_items.is_empty());
 
         /* error messages here could be improved with links to orig. rules */
         if token_name_eq(&parser.token, &token::Eof) {
-            if eof_eis.len() == 1 {
-                let matches = eof_eis[0].matches.iter_mut().map(|mut dv| {
+            if eof_items.len() == 1 {
+                let matches = eof_items[0].matches.iter_mut().map(|mut dv| {
                     Rc::make_mut(dv).pop().unwrap()
                 });
                 return nameize(sess, ms, matches);
-            } else if eof_eis.len() > 1 {
+            } else if eof_items.len() > 1 {
                 return Error(parser.span, "ambiguity: multiple successful parses".to_string());
             } else {
                 return Failure(parser.span, token::Eof);
             }
-        } else if (!bb_eis.is_empty() && !next_eis.is_empty()) || bb_eis.len() > 1 {
-            let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
+        } else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+            let nts = bb_items.iter().map(|item| match item.top_elts.get_tt(item.idx) {
                 TokenTree::MetaVarDecl(_, bind, name) => {
                     format!("{} ('{}')", name, bind)
                 }
@@ -462,33 +464,33 @@ pub fn parse(sess: &ParseSess,
 
             return Error(parser.span, format!(
                 "local ambiguity: multiple parsing options: {}",
-                match next_eis.len() {
+                match next_items.len() {
                     0 => format!("built-in NTs {}.", nts),
                     1 => format!("built-in NTs {} or 1 other option.", nts),
                     n => format!("built-in NTs {} or {} other options.", nts, n),
                 }
             ));
-        } else if bb_eis.is_empty() && next_eis.is_empty() {
+        } else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(parser.span, parser.token);
-        } else if !next_eis.is_empty() {
+        } else if !next_items.is_empty() {
             /* Now process the next token */
-            cur_eis.extend(next_eis.drain(..));
+            cur_items.extend(next_items.drain(..));
             parser.bump();
-        } else /* bb_eis.len() == 1 */ {
-            let mut ei = bb_eis.pop().unwrap();
-            if let TokenTree::MetaVarDecl(span, _, ident) = ei.top_elts.get_tt(ei.idx) {
-                let match_cur = ei.match_cur;
-                ei.push_match(match_cur,
+        } else /* bb_items.len() == 1 */ {
+            let mut item = bb_items.pop().unwrap();
+            if let TokenTree::MetaVarDecl(span, _, ident) = item.top_elts.get_tt(item.idx) {
+                let match_cur = item.match_cur;
+                item.push_match(match_cur,
                     MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.name.as_str()))));
-                ei.idx += 1;
-                ei.match_cur += 1;
+                item.idx += 1;
+                item.match_cur += 1;
             } else {
                 unreachable!()
             }
-            cur_eis.push(ei);
+            cur_items.push(item);
         }
 
-        assert!(!cur_eis.is_empty());
+        assert!(!cur_items.is_empty());
     }
 }
 
