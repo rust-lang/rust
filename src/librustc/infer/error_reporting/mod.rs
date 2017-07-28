@@ -76,7 +76,9 @@ use errors::{DiagnosticBuilder, DiagnosticStyledString};
 mod note;
 
 mod need_type_info;
+mod util;
 mod named_anon_conflict;
+mod anon_anon_conflict;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
@@ -270,29 +272,34 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         for error in errors {
             debug!("report_region_errors: error = {:?}", error);
 
-            if !self.try_report_named_anon_conflict(&error) {
-                match error.clone() {
-                    // These errors could indicate all manner of different
-                    // problems with many different solutions. Rather
-                    // than generate a "one size fits all" error, what we
-                    // attempt to do is go through a number of specific
-                    // scenarios and try to find the best way to present
-                    // the error. If all of these fails, we fall back to a rather
-                    // general bit of code that displays the error information
-                    ConcreteFailure(origin, sub, sup) => {
-                        self.report_concrete_failure(origin, sub, sup).emit();
-                    }
-                    GenericBoundFailure(kind, param_ty, sub) => {
-                        self.report_generic_bound_failure(kind, param_ty, sub);
-                    }
-                    SubSupConflict(var_origin,
-                                 sub_origin, sub_r,
-                                 sup_origin, sup_r) => {
+            if !self.try_report_named_anon_conflict(&error) &&
+               !self.try_report_anon_anon_conflict(&error) {
+
+               match error.clone() {
+                  // These errors could indicate all manner of different
+                  // problems with many different solutions. Rather
+                  // than generate a "one size fits all" error, what we
+                  // attempt to do is go through a number of specific
+                  // scenarios and try to find the best way to present
+                  // the error. If all of these fails, we fall back to a rather
+                  // general bit of code that displays the error information
+                  ConcreteFailure(origin, sub, sup) => {
+
+                      self.report_concrete_failure(origin, sub, sup).emit();
+                  }
+
+                  GenericBoundFailure(kind, param_ty, sub) => {
+                      self.report_generic_bound_failure(kind, param_ty, sub);
+                  }
+
+                  SubSupConflict(var_origin, sub_origin, sub_r, sup_origin, sup_r) => {
                         self.report_sub_sup_conflict(var_origin,
-                                                     sub_origin, sub_r,
-                                                     sup_origin, sup_r);
-                    }
-                }
+                                                     sub_origin,
+                                                     sub_r,
+                                                     sup_origin,
+                                                     sup_r);
+                  }
+               }
             }
         }
     }
