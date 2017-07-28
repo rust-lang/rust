@@ -191,12 +191,14 @@ pub fn main() {
                 process::exit(101);
             };
 
-        let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
+        let manifest_path = manifest_path_arg.map(|arg| Path::new(&arg["--manifest-path=".len()..])
+            .canonicalize().expect("manifest path could not be canonicalized"));
 
         let package_index = {
-                if let Some(ref manifest_path) = manifest_path {
+                if let Some(manifest_path) = manifest_path {
                     metadata.packages.iter().position(|package| {
-                        let package_manifest_path = Path::new(&package.manifest_path);
+                        let package_manifest_path = Path::new(&package.manifest_path)
+                            .canonicalize().expect("package manifest path could not be canonicalized");
                         package_manifest_path == manifest_path
                     })
                 } else {
