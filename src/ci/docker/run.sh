@@ -67,6 +67,13 @@ else
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
 fi
 
+# Run containers as privileged as it should give them access to some more
+# syscalls such as ptrace and whatnot. In the upgrade to LLVM 5.0 it was
+# discovered that the leak sanitizer apparently needs these syscalls nowadays so
+# we'll need `--privileged` for at least the `x86_64-gnu` builder, so this just
+# goes ahead and sets it for all builders.
+args="$args --privileged"
+
 exec docker \
   run \
   --volume "$root_dir:/checkout:ro" \
