@@ -299,7 +299,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     // Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, ast::Name, Option<ty::Issue32330>),
+    EarlyBoundRegion(Span, ast::Name),
 
     // Region variables created for bound regions
     // in a function or method that is called
@@ -989,7 +989,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               span: Span,
                               def: &ty::RegionParameterDef)
                               -> ty::Region<'tcx> {
-        self.next_region_var(EarlyBoundRegion(span, def.name, def.issue_32330))
+        self.next_region_var(EarlyBoundRegion(span, def.name))
     }
 
     /// Create a type inference variable for the given
@@ -1278,14 +1278,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                            -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>>
     {
         let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref(self.tcx), p.ty));
-        let span = cause.span;
         let trace = TypeTrace {
             cause,
             values: TraitRefs(ExpectedFound::new(true, match_pair.skip_binder().0, match_b))
         };
 
         let mut combine = self.combine_fields(trace, param_env);
-        let result = combine.higher_ranked_match(span, &match_pair, &match_b, true)?;
+        let result = combine.higher_ranked_match(&match_pair, &match_b, true)?;
         Ok(InferOk { value: result, obligations: combine.obligations })
     }
 

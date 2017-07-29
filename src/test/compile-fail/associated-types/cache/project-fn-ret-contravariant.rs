@@ -43,23 +43,19 @@ fn baz<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
     (a, b)
 }
 
-// FIXME(#32330)
-//#[cfg(transmute)] // one instantiations: BAD
-//fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
-//    bar(foo, x) //[transmute] ERROR E0495
-//}
+#[cfg(transmute)] // one instantiations: BAD
+fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
+   bar(foo, x) //[transmute]~ ERROR E0495
+}
 
-// FIXME(#32330)
-//#[cfg(krisskross)] // two instantiations, mixing and matching: BAD
-//fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
-//    let a = bar(foo, y); //[krisskross] ERROR E0495
-//    let b = bar(foo, x); //[krisskross] ERROR E0495
-//    (a, b)
-//}
+#[cfg(krisskross)] // two instantiations, mixing and matching: BAD
+fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
+   let a = bar(foo, y); //[krisskross]~ ERROR E0495
+   let b = bar(foo, x); //[krisskross]~ ERROR E0495
+   (a, b)
+}
 
 #[rustc_error]
 fn main() { }
 //[ok]~^ ERROR compilation successful
 //[oneuse]~^^ ERROR compilation successful
-//[transmute]~^^^ ERROR compilation successful
-//[krisskross]~^^^^ ERROR compilation successful
