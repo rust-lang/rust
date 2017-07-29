@@ -326,7 +326,7 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until thread death
 /// somehow.
-#[derive(Clone, Hash, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
     string: &'static str,
 }
