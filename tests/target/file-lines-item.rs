@@ -1,6 +1,8 @@
-// rustfmt-file_lines: [{"file":"tests/source/file-lines-item.rs","range":[5,7]}]
+// rustfmt-file_lines: [{"file":"tests/source/file-lines-item.rs","range":[7,9]}]
+// rustfmt-reorder_imports: true
 
 use foo::{c, b, a};
+use bar;
 
 fn foo() {
     bar();

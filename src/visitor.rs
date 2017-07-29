@@ -661,7 +661,19 @@ impl<'a> FmtVisitor<'a> {
                     })
                     .count();
                 let (use_items, rest) = items_left.split_at(use_item_length);
-                self.format_imports(use_items);
+
+                let at_least_one_in_file_lines = use_items
+                    .iter()
+                    .any(|item| !out_of_file_lines_range!(self, item.span));
+
+                if at_least_one_in_file_lines {
+                    self.format_imports(use_items);
+                } else {
+                    for item in use_items {
+                        self.push_rewrite(item.span, None);
+                    }
+                }
+
                 items_left = rest;
             } else {
                 // `unwrap()` is safe here because we know `items_left`
