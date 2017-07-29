@@ -1605,7 +1605,7 @@ pub fn rewrite_associated_type(
                 indent.block_only(),
             ),
         ));
-        Some(format!("{} = {};", prefix, ty_str))
+        Some(format!("{}{} = {};", prefix, type_bounds_str, ty_str))
     } else {
         Some(format!("{}{};", prefix, type_bounds_str))
     }

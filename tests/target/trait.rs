@@ -43,6 +43,7 @@ trait T {}
 
 trait Foo {
     type Bar: Baz;
+    type Inner: Foo = Box<Foo>;
 }
 
 trait ConstCheck<T>: Foo
