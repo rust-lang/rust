@@ -2241,6 +2241,7 @@ fn rewrite_args(
     let tactic = definitive_tactic(
         &arg_items,
         context.config.fn_args_density().to_list_tactic(),
+        2,
         one_line_budget,
     );
     let budget = match tactic {
@@ -2423,7 +2424,12 @@ where
 {
     let item_vec = items.collect::<Vec<_>>();
 
-    let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, one_line_budget);
+    let tactic = definitive_tactic(
+        &item_vec,
+        ListTactic::HorizontalVertical,
+        2,
+        one_line_budget,
+    );
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
@@ -2636,7 +2642,7 @@ fn rewrite_where_clause(
     let item_vec = items.collect::<Vec<_>>();
     // FIXME: we don't need to collect here if the where_layout isn't
     // HorizontalVertical.
-    let tactic = definitive_tactic(&item_vec, context.config.where_layout(), budget);
+    let tactic = definitive_tactic(&item_vec, context.config.where_layout(), 2, budget);
 
     let mut comma_tactic = context.config.trailing_comma();
     // Kind of a hack because we don't usually have trailing commas in where clauses.

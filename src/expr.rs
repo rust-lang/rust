@@ -485,7 +485,7 @@ where
                 Some(width) => {
                     let tactic =
                         ListTactic::LimitedHorizontalVertical(context.config.array_width());
-                    definitive_tactic(&items, tactic, width)
+                    definitive_tactic(&items, tactic, 2, width)
                 }
                 None => DefinitiveListTactic::Vertical,
             }
@@ -494,6 +494,7 @@ where
             definitive_tactic(
                 &items,
                 ListTactic::LimitedHorizontalVertical(context.config.array_width()),
+                2,
                 nested_shape.width,
             )
         } else {
@@ -591,7 +592,12 @@ fn rewrite_closure_fn_decl(
         .width
         .checked_sub(ret_str.len() + 1)
         .unwrap_or(0);
-    let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, horizontal_budget);
+    let tactic = definitive_tactic(
+        &item_vec,
+        ListTactic::HorizontalVertical,
+        2,
+        horizontal_budget,
+    );
     let arg_shape = match tactic {
         DefinitiveListTactic::Horizontal => try_opt!(arg_shape.sub_width(ret_str.len() + 1)),
         _ => arg_shape,
@@ -1668,7 +1674,7 @@ fn rewrite_match_pattern(
     );
 
     let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, pat_shape.width);
+    let tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, 3, pat_shape.width);
     let fmt = ListFormatting {
         tactic: tactic,
         separator: " |",
@@ -2216,6 +2222,7 @@ where
     let tactic = definitive_tactic(
         &*item_vec,
         ListTactic::LimitedHorizontalVertical(args_max_width),
+        2,
         one_line_width,
     );
 
@@ -2756,6 +2763,7 @@ where
     let tactic = definitive_tactic(
         &item_vec,
         ListTactic::HorizontalVertical,
+        2,
         nested_shape.width,
     );
     let fmt = ListFormatting {

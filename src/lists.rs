@@ -135,7 +135,12 @@ impl DefinitiveListTactic {
     }
 }
 
-pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> DefinitiveListTactic
+pub fn definitive_tactic<I, T>(
+    items: I,
+    tactic: ListTactic,
+    sep_len: usize,
+    width: usize,
+) -> DefinitiveListTactic
 where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
@@ -155,7 +160,6 @@ where
     };
 
     let (sep_count, total_width) = calculate_width(items.clone());
-    let sep_len = ", ".len(); // FIXME: make more generic?
     let total_sep_len = sep_len * sep_count.checked_sub(1).unwrap_or(0);
     let real_total = total_width + total_sep_len;
 
@@ -640,7 +644,7 @@ pub fn struct_lit_tactic(
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
             _ => context.config.struct_lit_multiline_style().to_list_tactic(),
         };
-        definitive_tactic(items, prelim_tactic, h_shape.width)
+        definitive_tactic(items, prelim_tactic, 2, h_shape.width)
     } else {
         DefinitiveListTactic::Vertical
     }

@@ -348,7 +348,7 @@ where
 
     let item_vec: Vec<_> = items.collect();
 
-    let tactic = definitive_tactic(&*item_vec, ListTactic::HorizontalVertical, budget);
+    let tactic = definitive_tactic(&*item_vec, ListTactic::HorizontalVertical, 2, budget);
 
     let fmt = ListFormatting {
         tactic: tactic,

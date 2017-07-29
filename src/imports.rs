@@ -451,6 +451,7 @@ fn rewrite_use_list(
     let tactic = definitive_tactic(
         &items[first_index..],
         context.config.imports_layout(),
+        2,
         remaining_width,
     );
 

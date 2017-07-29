@@ -221,7 +221,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         span.hi,
     ).collect::<Vec<_>>();
 
-    let tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, one_line_width);
+    let tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, 2, one_line_width);
 
     let fmt = ListFormatting {
         tactic: tactic,
