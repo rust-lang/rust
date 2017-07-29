@@ -1,4 +1,4 @@
-error[E0624]: borrow may still be in use when generator yields
+error[E0626]: borrow may still be in use when generator yields
   --> $DIR/yield-while-iterating.rs:22:19
    |
 22 |         for p in &x { //~ ERROR

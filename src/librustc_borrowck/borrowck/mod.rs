@@ -821,7 +821,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     debug!("err_out_of_scope: opt_yield_span = {:?}", yield_span);
                     struct_span_err!(self.tcx.sess,
                                      error_span,
-                                     E0624,
+                                     E0626,
                                      "borrow may still be in use when generator yields")
                         .span_label(yield_span, "possible yield occurs here")
                         .emit();

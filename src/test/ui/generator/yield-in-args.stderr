@@ -1,4 +1,4 @@
-error[E0624]: borrow may still be in use when generator yields
+error[E0626]: borrow may still be in use when generator yields
   --> $DIR/yield-in-args.rs:18:14
    |
 18 |         foo(&b, yield); //~ ERROR

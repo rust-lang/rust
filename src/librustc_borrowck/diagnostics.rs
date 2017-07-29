@@ -1183,11 +1183,11 @@ x.x = Some(&y);
 ```
 "##,
 
-E0624: r##"
+E0626: r##"
 This error occurs because a borrow in a generator persists across a
 yield point.
 
-```compile_fail,E0624
+```compile_fail,E0626
 # #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
@@ -1222,7 +1222,7 @@ in those cases, something like the `Rc` or `Arc` types may be useful.
 
 This error also frequently arises with iteration:
 
-```compile_fail,E0624
+```compile_fail,E0626
 # #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
