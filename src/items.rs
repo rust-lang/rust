@@ -17,7 +17,7 @@ use syntax::ast::ImplItem;
 use syntax::codemap::{BytePos, Span};
 
 use {Indent, Shape, Spanned};
-use codemap::SpanUtils;
+use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, recover_comment_removed, rewrite_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
@@ -50,6 +50,9 @@ impl Rewrite for ast::Local {
             shape.width,
             shape.indent
         );
+
+        skip_out_of_file_lines_range!(context, self.span);
+
         let mut result = "let ".to_owned();
 
         // 4 = "let ".len()
