@@ -1041,6 +1041,7 @@ impl<'a> State<'a> {
                     where_clause: ast::WhereClause {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
+                        span: syntax_pos::DUMMY_SP,
                     },
                     span: syntax_pos::DUMMY_SP,
                 };
@@ -2983,6 +2984,7 @@ impl<'a> State<'a> {
             where_clause: ast::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),
+                span: syntax_pos::DUMMY_SP,
             },
             span: syntax_pos::DUMMY_SP,
         };
