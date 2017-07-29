@@ -1050,11 +1050,8 @@ impl Step for Crate {
         dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-        if target.contains("emscripten") || build.remote_tested(target) {
-            cargo.arg("--no-run");
-        }
-
         cargo.arg("--");
+        cargo.args(&build.flags.cmd.test_args());
 
         if build.config.quiet_tests {
             cargo.arg("--quiet");
@@ -1063,75 +1060,24 @@ impl Step for Crate {
         let _time = util::timeit();
 
         if target.contains("emscripten") {
-            build.run(&mut cargo);
-            krate_emscripten(build, compiler, target, mode);
+            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
+                      build.config.nodejs.as_ref().expect("nodejs not configured"));
         } else if build.remote_tested(target) {
-            build.run(&mut cargo);
-            krate_remote(builder, compiler, target, mode);
-        } else {
-            cargo.args(&build.flags.cmd.test_args());
-            try_run(build, &mut cargo);
+            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
+                      format!("{} run",
+                              builder.tool_exe(Tool::RemoteTestClient).display()));
         }
+        try_run(build, &mut cargo);
     }
 }
 
-fn krate_emscripten(build: &Build,
-                    compiler: Compiler,
-                    target: Interned<String>,
-                    mode: Mode) {
-    let out_dir = build.cargo_out(compiler, mode, target);
-    let tests = find_tests(&out_dir.join("deps"), target);
-
-    let nodejs = build.config.nodejs.as_ref().expect("nodejs not configured");
-    for test in tests {
-        println!("running {}", test.display());
-        let mut cmd = Command::new(nodejs);
-        cmd.arg(&test);
-        if build.config.quiet_tests {
-            cmd.arg("--quiet");
+fn envify(s: &str) -> String {
+    s.chars().map(|c| {
+        match c {
+            '-' => '_',
+            c => c,
         }
-        try_run(build, &mut cmd);
-    }
-}
-
-fn krate_remote(builder: &Builder,
-                compiler: Compiler,
-                target: Interned<String>,
-                mode: Mode) {
-    let build = builder.build;
-    let out_dir = build.cargo_out(compiler, mode, target);
-    let tests = find_tests(&out_dir.join("deps"), target);
-
-    let tool = builder.tool_exe(Tool::RemoteTestClient);
-    for test in tests {
-        let mut cmd = Command::new(&tool);
-        cmd.arg("run")
-           .arg(&test);
-        if build.config.quiet_tests {
-            cmd.arg("--quiet");
-        }
-        cmd.args(&build.flags.cmd.test_args());
-        try_run(build, &mut cmd);
-    }
-}
-
-fn find_tests(dir: &Path, target: Interned<String>) -> Vec<PathBuf> {
-    let mut dst = Vec::new();
-    for e in t!(dir.read_dir()).map(|e| t!(e)) {
-        let file_type = t!(e.file_type());
-        if !file_type.is_file() {
-            continue
-        }
-        let filename = e.file_name().into_string().unwrap();
-        if (target.contains("windows") && filename.ends_with(".exe")) ||
-           (!target.contains("windows") && !filename.contains(".")) ||
-           (target.contains("emscripten") &&
-            filename.ends_with(".js") &&
-            !filename.ends_with(".asm.js")) {
-            dst.push(e.path());
-        }
-    }
-    dst
+    }).flat_map(|c| c.to_uppercase()).collect()
 }
 
 /// Some test suites are run inside emulators or on remote devices, and most
