@@ -24,4 +24,6 @@ fn main() {
     //~^ ERROR field expressions may not have generic arguments
     f.x::<>;
     //~^ ERROR field expressions may not have generic arguments
+    f.x::();
+    //~^ ERROR field expressions may not have generic arguments
 }

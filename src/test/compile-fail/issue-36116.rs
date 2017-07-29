@@ -8,16 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Unnecessary path disambiguator is ok
+
+#![feature(rustc_attrs)]
+#![allow(unused)]
+
 struct Foo<T> {
     _a: T,
 }
 
-fn main() {
+fn f() {
     let f = Some(Foo { _a: 42 }).map(|a| a as Foo::<i32>);
-    //~^ ERROR unnecessary path disambiguator
-    //~| NOTE try removing `::`
-
     let g: Foo::<i32> = Foo { _a: 42 };
-    //~^ ERROR unnecessary path disambiguator
-    //~| NOTE try removing `::`
 }
+
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

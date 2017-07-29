@@ -84,7 +84,7 @@ pub enum PathStyle {
     Expr,
     /// In other contexts, notably in types, no ambiguity exists and paths can be written
     /// without the disambiguator, e.g. `x<y>` - unambiguously a path.
-    /// Paths with disambiguators are rejected for now, but may be allowed in the future.
+    /// Paths with disambiguators are still accepted, `x::<Y>` - unambiguously a path too.
     Type,
     /// A path with generic arguments disallowed, e.g. `foo::bar::Baz`, used in imports,
     /// visibilities or attributes.
@@ -1835,18 +1835,7 @@ impl<'a> Parser<'a> {
                                       && self.look_ahead(1, |t| is_args_start(t)) {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
             let lo = self.span;
-            if self.eat(&token::ModSep) {
-                // These errors are not strictly necessary and may be removed in the future.
-                if style == PathStyle::Type {
-                    let mut err = self.diagnostic().struct_span_err(self.prev_span,
-                        "unnecessary path disambiguator");
-                    err.span_label(self.prev_span, "try removing `::`");
-                    err.emit();
-                } else if self.token == token::OpenDelim(token::Paren) {
-                    self.diagnostic().span_err(self.prev_span,
-                        "`::` is not supported before parenthesized generic arguments")
-                }
-            }
+            self.eat(&token::ModSep);
 
             let parameters = if self.eat_lt() {
                 // `<'a, T, A = U>`

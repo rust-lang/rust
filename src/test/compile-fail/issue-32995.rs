@@ -19,15 +19,11 @@ fn main() {
     //~^ ERROR parenthesized parameters may only be used with a trait
     //~| WARN previously accepted
 
-    macro_rules! pathexpr {
-        ($p:path) => { $p }
-    }
-
-    let p = pathexpr!(::std::str()::from_utf8)(b"foo").unwrap();
+    let p = ::std::str::()::from_utf8(b"foo").unwrap();
     //~^ ERROR parenthesized parameters may only be used with a trait
     //~| WARN previously accepted
 
-    let p = pathexpr!(::std::str::from_utf8())(b"foo").unwrap();
+    let p = ::std::str::from_utf8::()(b"foo").unwrap();
     //~^ ERROR parenthesized parameters may only be used with a trait
     //~| WARN previously accepted
 
