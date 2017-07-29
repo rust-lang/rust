@@ -10,3 +10,11 @@ impl Drop for Context {
      fn drop(&mut self) {
     }
 }
+
+impl Bar for Baz {
+    fn foo() {
+        bar(
+            baz, // Who knows?
+        )
+    }
+}

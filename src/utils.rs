@@ -343,6 +343,7 @@ macro_rules! skip_out_of_file_lines_range {
 macro_rules! skip_out_of_file_lines_range_visitor {
     ($self:ident, $span:expr) => {
         if out_of_file_lines_range!($self, $span) {
+            $self.push_rewrite($span, None);
             return;
         }
     }
