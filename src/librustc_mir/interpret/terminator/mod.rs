@@ -7,7 +7,7 @@ use syntax::attr;
 use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
-use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited, self};
+use eval_context::{EvalContext, IntegerExt, StackPopCleanup, TyAndPacked, is_inhabited, self};
 use lvalue::Lvalue;
 use memory::{MemoryPointer, TlsKey, Kind, HasMemory};
 use value::{PrimVal, Value};
@@ -313,10 +313,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             if self.frame().mir.args_iter().count() == fields.len() + 1 {
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
                                 match arg_val {
-                                    Value::ByRef(ptr, aligned) => {
+                                    Value::ByRef { ptr, aligned } => {
                                         assert!(aligned, "Unaligned ByRef-values cannot occur as function arguments");
                                         for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
-                                            let arg = Value::ByRef(ptr.offset(offset, &self)?, true);
+                                            let arg = Value::ByRef { ptr: ptr.offset(offset, &self)?, aligned: true};
                                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                                             trace!("writing arg {:?} to {:?} (type: {})", arg, dest, ty);
                                             self.write_value(arg, dest, ty)?;
@@ -402,7 +402,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
                 let mut arg_operands = arg_operands.to_vec();
                 let ty = self.operand_ty(&arg_operands[0]);
-                let ty = self.get_field_ty(ty, 0)?.0; // TODO: packed flag is ignored
+                let ty = self.get_field_ty(ty, 0)?.ty; // TODO: packed flag is ignored
                 match arg_operands[0] {
                     mir::Operand::Consume(ref mut lval) => *lval = lval.clone().field(mir::Field::new(0), ty),
                     _ => bug!("virtual call first arg cannot be a constant"),
@@ -487,7 +487,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                let (offset, ty, packed) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
+                let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield)?;
                 let nonnull = adt_ptr.offset(offset.bytes(), &*self)?;
                 trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization

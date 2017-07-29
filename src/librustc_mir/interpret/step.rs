@@ -15,7 +15,7 @@ use syntax::codemap::Span;
 use syntax::ast::Mutability;
 
 use error::{EvalResult, EvalError};
-use eval_context::{EvalContext, StackPopCleanup};
+use eval_context::{EvalContext, StackPopCleanup, TyAndPacked};
 use lvalue::{Global, GlobalId, Lvalue};
 use value::{Value, PrimVal};
 use memory::HasMemory;
@@ -103,7 +103,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                         if variant_index as u64 != nndiscr {
-                            let (offset, ty, packed) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+                            let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
                             let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(offset.bytes(), &self)?;
                             trace!("struct wrapped nullable pointer type: {}", ty);
                             // only the pointer part of a fat pointer is used for this space optimization

@@ -85,7 +85,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
                     Value::ByVal(val) => val,
-                    Value::ByRef(..) => bug!("just read the value, can't be byref"),
+                    Value::ByRef { .. } => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
                 };
                 self.write_primval(dest, old, ty)?;
@@ -100,7 +100,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
                     Value::ByVal(val) => val,
-                    Value::ByRef(..) => bug!("just read the value, can't be byref"),
+                    Value::ByRef { .. } => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
                 };
                 let (val, _) = self.binary_op(mir::BinOp::Eq, old, ty, expect_old, ty)?;
@@ -120,7 +120,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
                     Value::ByVal(val) => val,
-                    Value::ByRef(..) => bug!("just read the value, can't be byref"),
+                    Value::ByRef { .. } => bug!("just read the value, can't be byref"),
                     Value::ByValPair(..) => bug!("atomic_xadd_relaxed doesn't work with nonprimitives"),
                 };
                 self.write_primval(dest, old, ty)?;
@@ -251,10 +251,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = self.type_size(dest_ty)?.expect("cannot zero unsized value");
                 let init = |this: &mut Self, val: Value| {
                     let zero_val = match val {
-                        Value::ByRef(ptr, aligned) => {
+                        Value::ByRef { ptr, aligned } => {
                             // These writes have no alignment restriction anyway.
                             this.memory.write_repeat(ptr, 0, size)?;
-                            Value::ByRef(ptr, aligned)
+                            Value::ByRef { ptr, aligned }
                         },
                         // TODO(solson): Revisit this, it's fishy to check for Undef here.
                         Value::ByVal(PrimVal::Undef) => match this.ty_to_primval_kind(dest_ty) {
@@ -442,9 +442,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let size = dest_layout.size(&self.tcx.data_layout).bytes();
                 let uninit = |this: &mut Self, val: Value| {
                     match val {
-                        Value::ByRef(ptr, aligned) => {
+                        Value::ByRef { ptr, aligned } => {
                             this.memory.mark_definedness(ptr, size, false)?;
-                            Ok(Value::ByRef(ptr, aligned))
+                            Ok(Value::ByRef { ptr, aligned })
                         },
                         _ => Ok(Value::ByVal(PrimVal::Undef)),
                     }

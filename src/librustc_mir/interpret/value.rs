@@ -32,7 +32,7 @@ pub(super) fn f64_to_bytes(f: f64) -> u128 {
 /// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug)]
 pub enum Value {
-    ByRef(Pointer, bool),
+    ByRef { ptr: Pointer, aligned: bool},
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
 }
@@ -162,7 +162,7 @@ pub enum PrimValKind {
 impl<'a, 'tcx: 'a> Value {
     #[inline]
     pub(super) fn by_ref(ptr: Pointer) -> Self {
-        Value::ByRef(ptr, true)
+        Value::ByRef { ptr, aligned: true }
     }
 
     /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
@@ -170,7 +170,7 @@ impl<'a, 'tcx: 'a> Value {
     pub(super) fn into_ptr(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
-            ByRef(ptr, aligned) => {
+            ByRef { ptr, aligned } => {
                 mem.read_maybe_aligned(aligned, |mem| mem.read_ptr(ptr.to_ptr()?) )
             },
             ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr.into()),
@@ -183,7 +183,7 @@ impl<'a, 'tcx: 'a> Value {
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         use self::Value::*;
         match *self {
-            ByRef(ref_ptr, aligned) => {
+            ByRef { ptr: ref_ptr, aligned } => {
                 mem.read_maybe_aligned(aligned, |mem| {
                     let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
                     let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
@@ -200,7 +200,7 @@ impl<'a, 'tcx: 'a> Value {
     pub(super) fn into_slice(&self, mem: &Memory<'a, 'tcx>) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
-            ByRef(ref_ptr, aligned) => {
+            ByRef { ptr: ref_ptr, aligned } => {
                 mem.read_maybe_aligned(aligned, |mem| {
                     let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
                     let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;

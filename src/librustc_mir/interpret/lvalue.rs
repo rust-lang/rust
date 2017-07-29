@@ -196,7 +196,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match lvalue {
             Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
-                Ok(Value::ByRef(ptr, aligned))
+                Ok(Value::ByRef { ptr, aligned })
             }
             Lvalue::Local { frame, local } => {
                 self.stack[frame].get_local(local)
@@ -307,7 +307,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
                     return Ok(base);
                 },
-                Value::ByRef(..) |
+                Value::ByRef{..} |
                 Value::ByValPair(..) |
                 Value::ByVal(_) => self.force_allocation(base)?.to_ptr_extra_aligned(),
             },
@@ -317,7 +317,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
                     return Ok(base);
                 },
-                Value::ByRef(..) |
+                Value::ByRef{..} |
                 Value::ByValPair(..) |
                 Value::ByVal(_) => self.force_allocation(base)?.to_ptr_extra_aligned(),
             },

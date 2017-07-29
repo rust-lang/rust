@@ -142,6 +142,12 @@ impl Default for ResourceLimits {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct TyAndPacked<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub packed: bool,
+}
+
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, limits: ResourceLimits) -> Self {
         EvalContext {
@@ -381,7 +387,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     .expect("global should have been cached (static)");
                 match global_value.value {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
-                    Value::ByRef(ptr, _aligned) =>
+                    Value::ByRef { ptr, aligned: _aligned } =>
                         // Alignment does not matter for this call
                         self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
@@ -439,7 +445,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn deallocate_local(&mut self, local: Option<Value>) -> EvalResult<'tcx> {
-        if let Some(Value::ByRef(ptr, _aligned)) = local {
+        if let Some(Value::ByRef { ptr, aligned: _ }) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
@@ -609,7 +615,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                let (offset, ty, _packed) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+                                let (offset, TyAndPacked { ty, packed: _}) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
                                 // TODO: The packed flag is ignored
 
                                 // FIXME(solson)
@@ -745,7 +751,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let src_ty = self.operand_ty(operand);
                         if self.type_is_fat_ptr(src_ty) {
                             match (src, self.type_is_fat_ptr(dest_ty)) {
-                                (Value::ByRef(..), _) |
+                                (Value::ByRef{..}, _) |
                                 (Value::ByValPair(..), true) => {
                                     self.write_value(src, dest, dest_ty)?;
                                 },
@@ -826,7 +832,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty: Ty<'tcx>,
         nndiscr: u64,
         discrfield: &[u32],
-    ) -> EvalResult<'tcx, (Size, Ty<'tcx>, bool)> {
+    ) -> EvalResult<'tcx, (Size, TyAndPacked<'tcx>)> {
         // Skip the constant 0 at the start meant for LLVM GEP and the outer non-null variant
         let path = discrfield.iter().skip(2).map(|&i| i as usize);
 
@@ -849,19 +855,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         mut offset: Size,
         mut ty: Ty<'tcx>,
         path: I,
-    ) -> EvalResult<'tcx, (Size, Ty<'tcx>, bool)> {
+    ) -> EvalResult<'tcx, (Size, TyAndPacked<'tcx>)> {
         // Skip the initial 0 intended for LLVM GEP.
         let mut packed = false;
         for field_index in path {
             let field_offset = self.get_field_offset(ty, field_index)?;
             trace!("field_path_offset_and_ty: {}, {}, {:?}, {:?}", field_index, ty, field_offset, offset);
             let field_ty = self.get_field_ty(ty, field_index)?;
-            ty = field_ty.0;
-            packed = packed || field_ty.1;
+            ty = field_ty.ty;
+            packed = packed || field_ty.packed;
             offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
         }
 
-        Ok((offset, ty, packed))
+        Ok((offset, TyAndPacked { ty, packed }))
     }
     fn get_fat_field(&self, pointee_ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
         match (field_index, &self.tcx.struct_tail(pointee_ty).sty) {
@@ -874,18 +880,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     /// Returns the field type and whether the field is packed
-    pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, (Ty<'tcx>, bool)> {
+    pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, TyAndPacked<'tcx>> {
         match ty.sty {
             ty::TyAdt(adt_def, _) if adt_def.is_box() =>
-                Ok((self.get_fat_field(ty.boxed_ty(), field_index)?, false)),
+                Ok(TyAndPacked { ty: self.get_fat_field(ty.boxed_ty(), field_index)?, packed: false }),
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
                     RawNullablePointer { nndiscr, .. } =>
-                        Ok((adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs), false)),
+                        Ok(TyAndPacked { ty: adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs), packed: false }),
                     StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
                         let ty = adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs);
-                        Ok((ty, nonnull.packed))
+                        Ok(TyAndPacked { ty, packed: nonnull.packed })
                     },
                     _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle enum type: {:?}, {:?}", ty, ty.sty))),
                 }
@@ -895,17 +901,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
                     Univariant { ref variant, .. } =>
-                        Ok((variant_def.fields[field_index].ty(self.tcx, substs), variant.packed)),
+                        Ok(TyAndPacked { ty: variant_def.fields[field_index].ty(self.tcx, substs), packed: variant.packed }),
                     _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle struct type: {:?}, {:?}", ty, ty.sty))),
                 }
             }
 
-            ty::TyTuple(fields, _) => Ok((fields[field_index], false)),
+            ty::TyTuple(fields, _) => Ok(TyAndPacked { ty: fields[field_index], packed: false }),
 
             ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) => Ok((self.get_fat_field(tam.ty, field_index)?, false)),
+            ty::TyRawPtr(ref tam) => Ok(TyAndPacked { ty: self.get_fat_field(tam.ty, field_index)?, packed: false }),
 
-            ty::TyArray(ref inner, _) => Ok((inner, false)),
+            ty::TyArray(ref inner, _) => Ok(TyAndPacked { ty: inner, packed: false }),
 
             _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }
@@ -1042,7 +1048,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // -1 since we don't store the return value
                 match self.stack[frame].locals[local.index() - 1] {
                     None => return Err(EvalError::DeadLocal),
-                    Some(Value::ByRef(ptr, aligned)) => {
+                    Some(Value::ByRef { ptr, aligned }) => {
                         Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None }
                     },
                     Some(val) => {
@@ -1060,7 +1066,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Lvalue::Global(cid) => {
                 let global_val = self.globals.get(&cid).expect("global not cached").clone();
                 match global_val.value {
-                    Value::ByRef(ptr, aligned) =>
+                    Value::ByRef { ptr, aligned } =>
                         Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None },
                     _ => {
                         let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.instance.substs)?;
@@ -1086,7 +1092,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     /// ensures this Value is not a ByRef
     pub(super) fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
-            Value::ByRef(ptr, aligned) => {
+            Value::ByRef { ptr, aligned } => {
                 self.read_maybe_aligned(aligned, |ectx| ectx.read_value(ptr, ty))
             }
             other => Ok(other),
@@ -1095,7 +1101,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub(super) fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match self.follow_by_ref_value(value, ty)? {
-            Value::ByRef(..) => bug!("follow_by_ref_value can't result in `ByRef`"),
+            Value::ByRef{..} => bug!("follow_by_ref_value can't result in `ByRef`"),
 
             Value::ByVal(primval) => {
                 self.ensure_valid_value(primval, ty)?;
@@ -1185,7 +1191,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         old_dest_val: Value,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        if let Value::ByRef(dest_ptr, aligned) = old_dest_val {
+        if let Value::ByRef { ptr: dest_ptr, aligned } = old_dest_val {
             // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
             // other pointers into the allocation. These other pointers are logically
@@ -1196,7 +1202,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             self.write_maybe_aligned_mut(aligned,
                 |ectx| ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty))?;
 
-        } else if let Value::ByRef(src_ptr, aligned) = src_val {
+        } else if let Value::ByRef { ptr: src_ptr, aligned } = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
             // and we can simply overwrite the `Value` in the locals array directly.
             //
@@ -1234,7 +1240,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         match value {
-            Value::ByRef(ptr, aligned) => {
+            Value::ByRef { ptr, aligned } => {
                 self.read_maybe_aligned_mut(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
             },
             Value::ByVal(primval) => {
@@ -1255,19 +1261,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let mut packed = false;
         while self.get_field_count(ty)? == 1 {
             let field = self.get_field_ty(ty, 0)?;
-            ty = field.0;
-            packed = packed || field.1;
+            ty = field.ty;
+            packed = packed || field.packed;
         }
         assert_eq!(self.get_field_count(ty)?, 2);
         let field_0 = self.get_field_offset(ty, 0)?;
         let field_1 = self.get_field_offset(ty, 1)?;
         let field_0_ty = self.get_field_ty(ty, 0)?;
         let field_1_ty = self.get_field_ty(ty, 1)?;
-        // The .1 components say whether the field is packed
-        assert_eq!(field_0_ty.1, field_1_ty.1, "the two fields must agree on being packed");
-        packed = packed || field_0_ty.1;
-        let field_0_size = self.type_size(field_0_ty.0)?.expect("pair element type must be sized");
-        let field_1_size = self.type_size(field_1_ty.0)?.expect("pair element type must be sized");
+        assert_eq!(field_0_ty.packed, field_1_ty.packed, "the two fields must agree on being packed");
+        packed = packed || field_0_ty.packed;
+        let field_0_size = self.type_size(field_0_ty.ty)?.expect("pair element type must be sized");
+        let field_1_size = self.type_size(field_1_ty.ty)?.expect("pair element type must be sized");
         let field_0_ptr = ptr.offset(field_0.bytes(), &self)?.into();
         let field_1_ptr = ptr.offset(field_1.bytes(), &self)?.into();
         self.write_maybe_aligned_mut(!packed,
@@ -1554,8 +1559,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 if self.ty_to_primval_kind(src_ty).is_ok() {
                     // TODO: We ignore the packed flag here
-                    let sty = self.get_field_ty(src_ty, 0)?.0;
-                    let dty = self.get_field_ty(dest_ty, 0)?.0;
+                    let sty = self.get_field_ty(src_ty, 0)?.ty;
+                    let dty = self.get_field_ty(dest_ty, 0)?.ty;
                     return self.unsize_into(src, sty, dest, dty);
                 }
                 // unsizing of generic struct with pointer fields
@@ -1570,7 +1575,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 //let src = adt::MaybeSizedValue::sized(src);
                 //let dst = adt::MaybeSizedValue::sized(dst);
                 let src_ptr = match src {
-                    Value::ByRef(ptr, true) => ptr,
+                    Value::ByRef { ptr, aligned: true } => ptr,
                     // TODO: Is it possible for unaligned pointers to occur here?
                     _ => bug!("expected aligned pointer, got {:?}", src),
                 };
@@ -1617,7 +1622,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Err(err) => {
                     panic!("Failed to access local: {:?}", err);
                 }
-                Ok(Value::ByRef(ptr, aligned)) => match ptr.into_inner_primval() {
+                Ok(Value::ByRef { ptr, aligned }) => match ptr.into_inner_primval() {
                     PrimVal::Ptr(ptr) => {
                         write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " }).unwrap();
                         allocs.push(ptr.alloc_id);
