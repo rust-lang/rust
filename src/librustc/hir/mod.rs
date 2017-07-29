@@ -892,6 +892,13 @@ impl Decl_ {
             DeclItem(_) => &[]
         }
     }
+
+    pub fn is_local(&self) -> bool {
+        match *self {
+            Decl_::DeclLocal(_) => true,
+            _ => false,
+        }
+    }
 }
 
 /// represents one arm of a 'match'
@@ -1679,7 +1686,7 @@ pub struct Item {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
-    /// An`extern crate` item, with optional original crate name,
+    /// An `extern crate` item, with optional original crate name,
     ///
     /// e.g. `extern crate foo` or `extern crate foo_bar as foo`
     ItemExternCrate(Option<Name>),

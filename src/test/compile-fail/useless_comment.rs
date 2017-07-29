@@ -8,11 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![allow(warnings)]
+#![deny(unused_doc_comment)]
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
-    /// crash
-    let x = 0;
+fn foo() {
+    /// a //~ ERROR doc comment not used by rustdoc
+    let x = 12;
+
+    /// b //~ doc comment not used by rustdoc
+    match x {
+        /// c //~ ERROR doc comment not used by rustdoc
+        1 => {},
+        _ => {}
+    }
+
+    /// foo //~ ERROR doc comment not used by rustdoc
+    unsafe {}
+}
+
+fn main() {
+    foo();
 }

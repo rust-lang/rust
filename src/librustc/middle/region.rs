@@ -458,10 +458,10 @@ impl<'tcx> RegionMaps {
                                    -> CodeExtent {
         if scope_a == scope_b { return scope_a; }
 
-        /// [1] The initial values for `a_buf` and `b_buf` are not used.
-        /// The `ancestors_of` function will return some prefix that
-        /// is re-initialized with new values (or else fallback to a
-        /// heap-allocated vector).
+        // [1] The initial values for `a_buf` and `b_buf` are not used.
+        // The `ancestors_of` function will return some prefix that
+        // is re-initialized with new values (or else fallback to a
+        // heap-allocated vector).
         let mut a_buf: [CodeExtent; 32] = [scope_a /* [1] */; 32];
         let mut a_vec: Vec<CodeExtent> = vec![];
         let mut b_buf: [CodeExtent; 32] = [scope_b /* [1] */; 32];

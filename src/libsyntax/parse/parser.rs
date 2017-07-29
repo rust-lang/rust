@@ -2074,14 +2074,14 @@ impl<'a> Parser<'a> {
                 } else {
                     Ok(self.mk_expr(span, ExprKind::Tup(es), attrs))
                 }
-            },
+            }
             token::OpenDelim(token::Brace) => {
                 return self.parse_block_expr(lo, BlockCheckMode::Default, attrs);
-            },
-            token::BinOp(token::Or) |  token::OrOr => {
+            }
+            token::BinOp(token::Or) | token::OrOr => {
                 let lo = self.span;
                 return self.parse_lambda_expr(lo, CaptureBy::Ref, attrs);
-            },
+            }
             token::OpenDelim(token::Bracket) => {
                 self.bump();
 
@@ -2329,7 +2329,6 @@ impl<'a> Parser<'a> {
     pub fn parse_block_expr(&mut self, lo: Span, blk_mode: BlockCheckMode,
                             outer_attrs: ThinVec<Attribute>)
                             -> PResult<'a, P<Expr>> {
-
         self.expect(&token::OpenDelim(token::Brace))?;
 
         let mut attrs = outer_attrs;
