@@ -147,22 +147,13 @@ pub trait FromIterator<A>: Sized {
 ///
 /// ```
 /// let v = vec![1, 2, 3];
-///
 /// let mut iter = v.into_iter();
 ///
-/// let n = iter.next();
-/// assert_eq!(Some(1), n);
-///
-/// let n = iter.next();
-/// assert_eq!(Some(2), n);
-///
-/// let n = iter.next();
-/// assert_eq!(Some(3), n);
-///
-/// let n = iter.next();
-/// assert_eq!(None, n);
+/// assert_eq!(Some(1), iter.next());
+/// assert_eq!(Some(2), iter.next());
+/// assert_eq!(Some(3), iter.next());
+/// assert_eq!(None, iter.next());
 /// ```
-///
 /// Implementing `IntoIterator` for your type:
 ///
 /// ```
@@ -227,20 +218,12 @@ pub trait IntoIterator {
     ///
     /// ```
     /// let v = vec![1, 2, 3];
-    ///
     /// let mut iter = v.into_iter();
     ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(1), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(2), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(3), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(None, n);
+    /// assert_eq!(Some(1), iter.next());
+    /// assert_eq!(Some(2), iter.next());
+    /// assert_eq!(Some(3), iter.next());
+    /// assert_eq!(None, iter.next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::IntoIter;
