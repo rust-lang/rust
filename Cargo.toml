@@ -20,9 +20,13 @@ name = "rustfmt"
 [[bin]]
 name = "cargo-fmt"
 
+[[bin]]
+name = "rustfmt-format-diff"
+
 [features]
-default = ["cargo-fmt"]
+default = ["cargo-fmt", "rustfmt-format-diff"]
 cargo-fmt = []
+rustfmt-format-diff = []
 
 [dependencies]
 toml = "0.4"
