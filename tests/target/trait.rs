@@ -54,13 +54,13 @@ where
 
 trait Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttt<T>
 where
-    T: Foo
+    T: Foo,
 {
 }
 
 trait Ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt<T>
 where
-    T: Foo
+    T: Foo,
 {
 }
 
@@ -75,6 +75,6 @@ where
 trait WhereList<T, J>
 where
     T: Foo,
-    J: Bar
+    J: Bar,
 {
 }

@@ -110,6 +110,6 @@ where
         + Display
         + Write
         + Read
-        + FromStr
+        + FromStr,
 {
 }
