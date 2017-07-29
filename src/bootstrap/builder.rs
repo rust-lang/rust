@@ -28,6 +28,7 @@ use check;
 use flags::Subcommand;
 use doc;
 use tool;
+use native;
 
 pub use Compiler;
 
@@ -256,7 +257,8 @@ impl<'a> Builder<'a> {
                 compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
                 tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
-                tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc),
+                tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc,
+                native::Llvm),
             Kind::Test => describe!(check::Tidy, check::Bootstrap, check::DefaultCompiletest,
                 check::HostCompiletest, check::Crate, check::CrateLibrustc, check::Linkcheck,
                 check::Cargotest, check::Cargo, check::Rls, check::Docs, check::ErrorIndex,
