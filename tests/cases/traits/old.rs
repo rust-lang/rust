@@ -30,3 +30,9 @@ mod fgh {
         fn fgh(&self) -> bool;
     }
 }
+
+pub trait Ghi {
+    type A;
+}
+
+pub trait Hij { }

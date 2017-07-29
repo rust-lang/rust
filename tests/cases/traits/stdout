@@ -98,3 +98,29 @@ warning: breaking changes in `Efg`
    |
    = warning: type parameter removed (breaking)
 
+warning: breaking changes in `Ghi`
+  --> $REPO_PATH/tests/cases/traits/new.rs:36:1
+   |
+36 | pub trait Ghi { }
+   | ^^^^^^^^^^^^^^^^^
+   |
+warning: removed item from trait (breaking)
+  --> $REPO_PATH/tests/cases/traits/old.rs:35:5
+   |
+35 |     type A;
+   |     ^^^^^^^
+
+warning: breaking changes in `Hij`
+  --> $REPO_PATH/tests/cases/traits/new.rs:38:1
+   |
+38 | / pub trait Hij {
+39 | |     type A;
+40 | | }
+   | |_^
+   |
+warning: added item to trait (breaking)
+  --> $REPO_PATH/tests/cases/traits/new.rs:39:5
+   |
+39 |     type A;
+   |     ^^^^^^^
+

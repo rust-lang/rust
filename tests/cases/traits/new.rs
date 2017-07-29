@@ -32,3 +32,9 @@ mod fgh {
         fn fgh(&self) -> u8;
     }
 }
+
+pub trait Ghi { }
+
+pub trait Hij {
+    type A;
+}
