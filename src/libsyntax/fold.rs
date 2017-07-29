@@ -737,14 +737,15 @@ pub fn noop_fold_generics<T: Folder>(Generics {ty_params, lifetimes, where_claus
 }
 
 pub fn noop_fold_where_clause<T: Folder>(
-                              WhereClause {id, predicates}: WhereClause,
+                              WhereClause {id, predicates, span}: WhereClause,
                               fld: &mut T)
                               -> WhereClause {
     WhereClause {
         id: fld.new_id(id),
         predicates: predicates.move_map(|predicate| {
             fld.fold_where_predicate(predicate)
-        })
+        }),
+        span: span,
     }
 }
 
