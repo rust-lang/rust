@@ -12,8 +12,8 @@
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::traits::{FulfillmentContext, Obligation, ObligationCause};
-use rustc::ty::{AssociatedItem, ParamEnv, Predicate, Ty, TyCtxt};
+use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
+use rustc::ty::{AssociatedItem, ParamEnv, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs};
@@ -56,6 +56,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
+    // fourth pass still
     diff_trait_impls(&mut changes, &id_mapping, tcx);
 
     changes
@@ -69,6 +70,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
 /// Traverse the two root modules in an interleaved manner, matching up pairs of modules
 /// from the two crate versions and compare for changes. Matching children get processed
 /// in the same fashion.
+// TODO: clean up and simplify.
 fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             id_mapping: &mut IdMapping,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -80,10 +82,11 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
     let mut visited = HashSet::new();
     let mut children = NameMapping::default();
     let mut mod_queue = VecDeque::new();
-    // Removals are processed with a delay to avoid creating multiple path change entries.
-    // This is necessary, since the order in which added or removed paths are found wrt each
-    // other and their item's definition can't be relied upon.
+    // Additions and removals are processed with a delay to avoid creating multiple path change
+    // entries. This is necessary, since the order in which added or removed paths are found wrt
+    // each other and their item's definition can't be relied upon.
     let mut removals = Vec::new();
+    let mut additions = Vec::new();
 
     mod_queue.push_back((old, new, Public, Public));
 
@@ -248,8 +251,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                     let n_def_id = n.def.def_id();
 
                     if new_vis == Public && cstore.visibility(n_def_id) == Public {
-                        changes.new_path_change(n_def_id, n.ident.name, tcx.def_span(n_def_id));
-                        changes.add_path_addition(n_def_id, n.span);
+                        // delay the handling of additions until the id mapping is complete
+                        additions.push(n);
                     }
                 }
                 (None, None) => unreachable!(),
@@ -257,12 +260,23 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
         }
     }
 
-    // finally, process item removals
-    for o in removals.drain(..) {
+    // finally, process item additions and removals
+    for n in additions {
+        let n_def_id = n.def.def_id();
+
+        if !id_mapping.contains_new_id(n_def_id) {
+            id_mapping.add_non_mapped(n_def_id);
+        }
+
+        changes.new_path_change(n_def_id, n.ident.name, tcx.def_span(n_def_id));
+        changes.add_path_addition(n_def_id, n.span);
+    }
+
+    for o in removals {
         let o_def_id = o.def.def_id();
 
         // reuse an already existing path change entry, if possible
-        if id_mapping.contains_id(o_def_id) {
+        if id_mapping.contains_old_id(o_def_id) {
             let n_def_id = id_mapping.get_new_id(o_def_id);
             changes.new_path_change(n_def_id, o.ident.name, tcx.def_span(n_def_id));
             changes.add_path_removal(n_def_id, o.span);
@@ -526,10 +540,12 @@ fn diff_generics(changes: &mut ChangeSet,
             (Some(old_type), None) => {
                 found.push(TypeParameterRemoved { defaulted: old_type.has_default });
                 id_mapping.add_type_param(*old_type);
+                id_mapping.add_non_mapped(old_type.def_id);
             },
             (None, Some(new_type)) => { // FIXME: is_fn could be used in a more elegant fashion
                 found.push(TypeParameterAdded { defaulted: new_type.has_default || is_fn });
                 id_mapping.add_type_param(*new_type);
+                id_mapping.add_non_mapped(new_type.def_id);
             },
             (None, None) => unreachable!(),
         }
@@ -670,6 +686,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     use syntax_pos::DUMMY_SP;
 
     let to_new = TranslationContext::to_new(tcx, id_mapping);
+    let to_old = TranslationContext::to_old(tcx, id_mapping);
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
     let old = to_new.translate_item_type(old_def_id, old).subst(tcx, substs);
@@ -700,6 +717,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
         let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
+        let new_param_env_trans =
+            to_old
+                .translate_param_env(new_def_id, tcx.param_env(new_def_id))
+                .subst(infcx.tcx, new_substs);
 
         let cause = ObligationCause::dummy();
 
@@ -740,17 +761,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(TypeChanged { error: err }, old_def_id, None);
         }
 
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut bound_cx = BoundContext::new(&infcx, old_param_env);
+        bound_cx.register(new_def_id, new_substs);
 
-        register_bounds(&infcx,
-                        new_param_env,
-                        old_param_env,
-                        &mut fulfill_cx,
-                        new_def_id,
-                        new_substs,
-                        None);
-
-        if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
+        if let Some(errors) = bound_cx.get_errors() {
             for err in &errors {
                 let pred = infcx.resolve_type_vars_if_possible(&err.obligation.predicate);
                 let pred = pred.fold_with(&mut folder);
@@ -762,19 +776,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
             }
         } else {
-            let mut fulfill_cx_rev = FulfillmentContext::new();
-            let to_old = TranslationContext::to_old(infcx.tcx, id_mapping);
-            let to_new = TranslationContext::to_new(infcx.tcx, id_mapping);
+            let mut rev_bound_cx = BoundContext::new(&infcx, new_param_env_trans);
+            rev_bound_cx.register(old_def_id, substs);
 
-            register_bounds(&infcx,
-                            old_param_env,
-                            new_param_env,
-                            &mut fulfill_cx_rev,
-                            old_def_id,
-                            substs,
-                            Some(&to_new));
-
-            if let Err(errors) = fulfill_cx_rev.select_all_or_error(&infcx) {
+            if let Some(errors) = rev_bound_cx.get_errors() {
                 for err in &errors {
                     let pred = infcx.resolve_type_vars_if_possible(&err.obligation.predicate);
                     let pred = pred.fold_with(&mut folder);
@@ -852,46 +857,62 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
             return false;
         }
 
-        let mut fulfill_cx = FulfillmentContext::new();
-        register_bounds(&infcx,
-                        new_param_env,
-                        old_param_env,
-                        &mut fulfill_cx,
-                        new_def_id,
-                        substs,
-                        None);
-
-        fulfill_cx.select_all_or_error(&infcx).is_ok()
+        let mut bound_cx = BoundContext::new(&infcx, old_param_env);
+        bound_cx.register(new_def_id, substs);
+        bound_cx.get_errors().is_none()
     })
 }
 
-fn register_bounds<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                   current_param_env: ParamEnv<'tcx>,
-                                   given_param_env: ParamEnv<'tcx>,
-                                   fulfill_cx: &mut FulfillmentContext<'tcx>,
-                                   def_id: DefId,
-                                   substs: &Substs<'tcx>,
-                                   trans_ctx: Option<&TranslationContext<'a, 'gcx, 'tcx>>) {
-    use rustc::traits::{normalize, Normalized, SelectionContext};
+/// The context in which bounds analysis happens.
+pub struct BoundContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    /// The inference context to use.
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    /// The fulfillment context to use.
+    fulfill_cx: FulfillmentContext<'tcx>,
+    /// The param env to be assumed.
+    given_param_env: ParamEnv<'tcx>,
+}
 
-    let mut selcx = SelectionContext::new(infcx);
-    let predicates = infcx.tcx.predicates_of(def_id).instantiate(infcx.tcx, substs);
-    let cause = ObligationCause::dummy();
-    let Normalized { value, obligations } =
-        normalize(&mut selcx, current_param_env, cause.clone(), &predicates);
-
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(infcx, obligation);
+impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
+    /// Construct a new bound context.
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, given_param_env: ParamEnv<'tcx>) -> Self {
+        BoundContext {
+            infcx: infcx,
+            fulfill_cx: FulfillmentContext::new(),
+            given_param_env: given_param_env,
+        }
     }
 
-    let predicates = if let Some(trans_ctx) = trans_ctx {
-        trans_ctx.translate_predicates(def_id, value.predicates)
-    } else {
-        value.predicates
-    };
+    /// Register the bounds of an item.
+    pub fn register(&mut self, checked_def_id: DefId, substs: &Substs<'tcx>) {
+        use rustc::traits::{normalize, Normalized, SelectionContext};
 
-    for predicate in predicates {
-        let obligation = Obligation::new(cause.clone(), given_param_env, predicate);
-        fulfill_cx.register_predicate_obligation(infcx, obligation);
+        let cause = ObligationCause::dummy();
+        let mut selcx = SelectionContext::new(self.infcx);
+        let predicates =
+            self.infcx
+                .tcx
+                .predicates_of(checked_def_id)
+                .instantiate(self.infcx.tcx, substs);
+        let Normalized { value, obligations } =
+            normalize(&mut selcx, self.given_param_env, cause.clone(), &predicates);
+
+        for obligation in obligations {
+            self.fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+        }
+
+        for predicate in value.predicates {
+            let obligation = Obligation::new(cause.clone(), self.given_param_env, predicate);
+            self.fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+        }
+    }
+
+    /// Return inference errors, if any.
+    pub fn get_errors(&mut self) -> Option<Vec<FulfillmentError<'tcx>>> {
+        if let Err(err) = self.fulfill_cx.select_all_or_error(self.infcx) {
+            Some(err)
+        } else {
+            None
+        }
     }
 }

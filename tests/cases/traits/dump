@@ -13,3 +13,11 @@
 <eddyb> so for impls: for every old impl, e.g. impl Trait for X, check that X: Trait still holds,
  after translating (both X and Trait) to the new
  it's the same fulfillment context thing as making sure the bounds are satisfied
+
+given param_env: ParamEnv { caller_bounds: Slice([Binder(TraitPredicate(<Self as old::Abc>))]), reveal: UserFacing }
+predicates: [Binder(TraitPredicate(<Self as old::Abc>))]
+obligations: []
+
+given param_env: ParamEnv { caller_bounds: Slice([Binder(TraitPredicate(<<Self as old::Abc>::A as std::marker::Sized>)), Binder(TraitPredicate(<Self as old::Abc>))]), reveal: UserFacing }
+predicates: [Binder(TraitPredicate(<Self as old::Abc>)), Binder(TraitPredicate(<_#0t as std::marker::Sized>))]
+obligations: [Obligation(predicate=Binder(TraitPredicate(<Self as old::Abc>)),depth=0)]

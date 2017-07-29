@@ -15,7 +15,7 @@ use syntax::ast::Name;
 ///
 /// Definitions and simple `DefId` mappings are kept separate to record both kinds of
 /// correspondence losslessly. The *access* to the stored data happens through the same API,
-/// however.
+/// however. A reverse mapping is also included, but only for `DefId` lookup.
 pub struct IdMapping {
     /// The old crate.
     old_crate: CrateNum,
@@ -39,6 +39,7 @@ pub struct IdMapping {
 }
 
 impl IdMapping {
+    /// Construct a new mapping with the given crate information.
     pub fn new(old_crate: CrateNum, new_crate: CrateNum) -> IdMapping {
         IdMapping {
             old_crate: old_crate,
@@ -54,7 +55,6 @@ impl IdMapping {
     }
 
     /// Register two exports representing the same item across versions.
-    // TODO
     pub fn add_export(&mut self, old: Def, new: Def) -> bool {
         let old_def_id = old.def_id();
 
@@ -118,9 +118,9 @@ impl IdMapping {
     }
 
     /// Check whether a `DefId` represents a non-mapped defaulted type parameter.
-    pub fn is_non_mapped_defaulted_type_param(&self, new: &DefId) -> bool {
-        self.non_mapped_items.contains(new) &&
-            self.type_params.get(new).map_or(false, |def| def.has_default)
+    pub fn is_non_mapped_defaulted_type_param(&self, def_id: &DefId) -> bool {
+        self.non_mapped_items.contains(def_id) &&
+            self.type_params.get(def_id).map_or(false, |def| def.has_default)
     }
 
     /// Get the new `DefId` associated with the given old one.
@@ -142,7 +142,6 @@ impl IdMapping {
 
     /// Get the old `DefId` associated with the given new one.
     pub fn get_old_id(&self, new: DefId) -> DefId {
-        println!("new: {:?}", new);
         assert!(!self.in_old_crate(new));
 
         if self.in_new_crate(new) && !self.non_mapped_items.contains(&new) {
@@ -181,12 +180,16 @@ impl IdMapping {
         self.trait_item_mapping.get(item_def_id).map(|t| t.2)
     }
 
-    /// Check whether a `DefId` is present in the mappings.
-    // TODO
-    pub fn contains_id(&self, old: DefId) -> bool {
+    /// Check whether an old `DefId` is present in the mappings.
+    pub fn contains_old_id(&self, old: DefId) -> bool {
         self.toplevel_mapping.contains_key(&old) ||
             self.trait_item_mapping.contains_key(&old) ||
             self.internal_mapping.contains_key(&old)
+    }
+
+    /// Check whether a new `DefId` is present in the mappings.
+    pub fn contains_new_id(&self, new: DefId) -> bool {
+        self.reverse_mapping.contains_key(&new)
     }
 
     /// Construct a queue of toplevel item pairs' `DefId`s.
@@ -206,7 +209,6 @@ impl IdMapping {
     }
 
     /// Iterate over the item pairs of all children of a given item.
-    // TODO
     pub fn children_of<'a>(&'a self, parent: DefId)
         -> Option<impl Iterator<Item = (DefId, DefId)> + 'a>
     {

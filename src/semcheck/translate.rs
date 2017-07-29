@@ -8,25 +8,22 @@ use semcheck::mapping::IdMapping;
 
 use std::collections::HashMap;
 
-pub struct TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
-    where 'gcx: 'tcx + 'a,
-          'tcx: 'a,
-          /* F1: Fn(&IdMapping, DefId) -> bool,
-          F2: Fn(&IdMapping, DefId) -> DefId,
-          F3: Fn(&IdMapping, DefId, DefId) -> DefId, */
-{
+/// The context in which `DefId` translation happens.
+pub struct TranslationContext<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
+    /// The type context to use.
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    /// The id mapping to use.
     id_mapping: &'a IdMapping,
-    needs_translation: fn(&IdMapping, DefId) -> bool, // F1,
-    translate_orig: fn(&IdMapping, DefId) -> DefId, // F2,
-    translate_orig_trait: fn(&IdMapping, DefId, DefId) -> DefId, // F3,
+    /// Elementary operation to decide whether to translate a `DefId`.
+    needs_translation: fn(&IdMapping, DefId) -> bool,
+    /// Elementary operation to translate a `DefId`.
+    translate_orig: fn(&IdMapping, DefId) -> DefId,
+    /// Elementary operation to translate a `DefId` of a trait item.
+    translate_orig_trait: fn(&IdMapping, DefId, DefId) -> DefId,
 }
 
-impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
-          /* F1: Fn(&IdMapping, DefId) -> bool,
-          F2: Fn(&IdMapping, DefId) -> DefId,
-          F3: Fn(&IdMapping, DefId, DefId) -> DefId,*/
-{
+impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
+    /// Construct a translation context translating to the new crate's `DefId`s.
     // TODO: check whether the function pointers force us to use dynamic dispatch
     pub fn to_new(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping)
         -> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
@@ -46,6 +43,7 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
         }
     }
 
+    /// Construct a translation context translating to the old crate's `DefId`s.
     // TODO: check whether the function pointers force us to use dynamic dispatch
     pub fn to_old(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping)
         -> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
@@ -65,6 +63,7 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
         }
     }
 
+    /// Construct a type parameter index map for translation.
     fn construct_index_map(&self, orig_def_id: DefId) -> HashMap<u32, DefId> {
         let mut index_map = HashMap::new();
         let orig_generics = self.tcx.generics_of(orig_def_id);
@@ -84,18 +83,22 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
         index_map
     }
 
+    /// Check whether a `DefId` needs translation.
     fn needs_translation(&self, def_id: DefId) -> bool {
         (self.needs_translation)(self.id_mapping, def_id)
     }
 
+    /// Translate a `DefId`.
     fn translate_orig(&self, def_id: DefId) -> DefId {
         (self.translate_orig)(self.id_mapping, def_id)
     }
 
+    /// Translate a `DefId` of a trait item.
     fn translate_orig_trait(&self, item_def_id: DefId, trait_def_id: DefId) -> DefId {
         (self.translate_orig_trait)(self.id_mapping, item_def_id, trait_def_id)
     }
 
+    /// Fold a structure, translating all `DefId`s reachable by the folder.
     fn translate<T: TypeFoldable<'tcx>>(&self, index_map: &HashMap<u32, DefId>, orig: &T) -> T {
         use rustc::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
         use rustc::ty::ExistentialPredicate::*;
@@ -171,6 +174,7 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
         }})
     }
 
+    /// Translate a region.
     fn translate_region(&self, region: Region<'tcx>) -> Region<'tcx> {
         use rustc::ty::{EarlyBoundRegion, FreeRegion};
         use rustc::ty::BoundRegion::BrNamed;
@@ -199,10 +203,12 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
         })
     }
 
+    /// Translate an item's type.
     pub fn translate_item_type(&self, orig_def_id: DefId, orig: Ty<'tcx>) -> Ty<'tcx> {
         self.translate(&self.construct_index_map(orig_def_id), &orig)
     }
 
+    /// Translate a predicate.
     fn translate_predicate(&self, index_map: &HashMap<u32, DefId>, predicate: Predicate<'tcx>)
         -> Predicate<'tcx>
     {
@@ -215,7 +221,7 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
                     TraitPredicate {
                         trait_ref: TraitRef {
                             def_id: self.translate_orig(t_pred.trait_ref.def_id),
-                            substs: t_pred.trait_ref.substs,
+                            substs: self.translate(index_map, &t_pred.trait_ref.substs),
                         }
                     }
                 }))
@@ -245,8 +251,7 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
                 Predicate::Projection(projection_predicate.map_bound(|p_pred| {
                     ProjectionPredicate {
                         projection_ty: ProjectionTy {
-                            // TODO: maybe this needs handling
-                            substs: p_pred.projection_ty.substs,
+                            substs: self.translate(index_map, &p_pred.projection_ty.substs),
                             item_def_id: self.translate_orig(p_pred.projection_ty.item_def_id),
                         },
                         ty: self.translate(index_map, &p_pred.ty),
@@ -272,6 +277,7 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
         }
     }
 
+    /// Translate a vector of predicates.
     pub fn translate_predicates(&self, orig_def_id: DefId, orig_preds: Vec<Predicate<'tcx>>)
         -> Vec<Predicate<'tcx>>
     {
@@ -279,6 +285,7 @@ impl<'a, 'gcx, 'tcx/*, F1, F2, F3*/> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2
         orig_preds.iter().map(|p| self.translate_predicate(&index_map, *p)).collect()
     }
 
+    /// Translate a `ParamEnv`.
     pub fn translate_param_env(&self, orig_def_id: DefId, param_env: ParamEnv<'tcx>)
         -> ParamEnv<'tcx>
     {

@@ -186,7 +186,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
         };
 
         if let Some((old_def_id, new_def_id)) = matching {
-            if !self.id_mapping.contains_id(old_def_id) &&
+            if !self.id_mapping.contains_old_id(old_def_id) &&
                     self.id_mapping.in_old_crate(old_def_id) {
                 self.id_mapping.add_internal_item(old_def_id, new_def_id);
                 self.item_queue.push_back((old_def_id, new_def_id));
