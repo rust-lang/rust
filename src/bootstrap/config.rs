@@ -290,7 +290,6 @@ impl Config {
         config.docs = true;
         config.rust_rpath = true;
         config.rust_codegen_units = 1;
-        config.build = flags.build;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
         config.rust_dist_src = true;
@@ -319,6 +318,11 @@ impl Config {
 
         let build = toml.build.clone().unwrap_or(Build::default());
         set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
+        set(&mut config.build, flags.build);
+        if config.build.is_empty() {
+            // set by bootstrap.py
+            config.build = INTERNER.intern_str(&env::var("BUILD").unwrap());
+        }
         config.hosts.push(config.build.clone());
         for host in build.host.iter() {
             let host = INTERNER.intern_str(host);
