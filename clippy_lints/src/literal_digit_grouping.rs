@@ -278,33 +278,38 @@ impl LiteralDigitGrouping {
 
             // Lint integral and fractional parts separately, and then check consistency of digit
             // groups if both pass.
-            if let Some(integral_group_size) = LiteralDigitGrouping::do_lint(digits[0], cx, &lit.span) {
-                if digits.len() > 1 {
-                    // Lint the fractional part of literal just like integral part, but reversed.
-                    let fractional_part = &digits[1].chars().rev().collect::<String>();
-                    if let Some(fractional_group_size) = LiteralDigitGrouping::do_lint(fractional_part, cx, &lit.span) {
-                        let consistent = match (integral_group_size, fractional_group_size) {
-                            // No groups on either side of decimal point - good to go.
-                            (0, 0) => true,
-                            // Integral part has grouped digits, fractional part does not.
-                            (_, 0) => digits[1].len() <= integral_group_size,
-                            // Fractional part has grouped digits, integral part does not.
-                            (0, _) => digits[0].len() <= fractional_group_size,
-                            // Both parts have grouped digits. Groups should be the same size.
-                            (_, _) => integral_group_size == fractional_group_size,
-                        };
-
-                        if !consistent {
-                            span_help_and_lint(cx, INCONSISTENT_DIGIT_GROUPING, lit.span,
-                                           "digits grouped inconsistently by underscores",
-                                           "consider making each group three or four digits");
-                        }
+            let _ = LiteralDigitGrouping::do_lint(parts[0])
+                .map(|integral_group_size| {
+                    if parts.len() > 1 {
+                        // Lint the fractional part of literal just like integral part, but reversed.
+                        let fractional_part = &parts[1].chars().rev().collect::<String>();
+                        let _ = LiteralDigitGrouping::do_lint(fractional_part)
+                            .map(|fractional_group_size| {
+                                let consistent = LiteralDigitGrouping::parts_consistent(integral_group_size, fractional_group_size, parts[0].len(), parts[1].len());
+                                if !consistent {
+                                    WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(), cx, &lit.span);
+                                }
+                            })
+                            .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(), cx, &lit.span));
                     }
-                }
-            }
+                })
+                .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(), cx, &lit.span));
         }}
     }
 
+    /// Given the sizes of the digit groups of both integral and fractional
+    /// parts, and the length
+    /// of both parts, determine if the digits have been grouped consistently.
+    fn parts_consistent(int_group_size: usize, frac_group_size: usize, int_size: usize, frac_size: usize) -> bool {
+        match (int_group_size, frac_group_size) {
+            // No groups on either side of decimal point - trivially consistent.
+            (0, 0) => true,
+            // Integral part has grouped digits, fractional part does not.
+            (_, 0) => frac_size <= int_group_size,
+            // Fractional part has grouped digits, integral part does not.
+            (0, _) => int_size <= frac_group_size,
+            // Both parts have grouped digits. Groups should be the same size.
+            (_, _) => int_group_size == frac_group_size,
         }
     }
 
