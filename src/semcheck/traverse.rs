@@ -24,7 +24,7 @@ use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 use semcheck::translate::{BottomUpRegionFolder, TranslationContext};
 
-use std::collections::{BTreeSet, BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 use syntax::symbol::Symbol;
 
@@ -853,6 +853,7 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
 
         let predicate = Predicate::Trait(Binder(TraitPredicate {
             trait_ref: checked_trait_ref,
+        }));
         let obligation =
             Obligation::new(ObligationCause::dummy(), self.given_param_env, predicate);
         self.fulfill_cx.register_predicate_obligation(self.infcx, obligation);
