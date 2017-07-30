@@ -331,28 +331,23 @@ impl LiteralDigitGrouping {
         digits
     }
 
-    /// Performs lint on `digits` (no decimal point) and returns the group size. `None` is
-    /// returned when emitting a warning.
-    fn do_lint(digits: &str, cx: &EarlyContext, span: &syntax_pos::Span) -> Option<usize> {
+    /// Performs lint on `digits` (no decimal point) and returns the group
+    /// size on success or `WarningType` when emitting a warning.
+    fn do_lint(digits: &str) -> Result<usize, WarningType> {
         // Grab underscore indices with respect to the units digit.
-        let underscore_positions: Vec<usize> = digits.chars().rev().enumerate()
-            .filter_map(|(idx, digit)|
-                if digit == '_' {
-                    Some(idx)
-                } else {
-                    None
-                })
+        let underscore_positions: Vec<usize> = digits
+            .chars()
+            .rev()
+            .enumerate()
+            .filter_map(|(idx, digit)| if digit == '_' { Some(idx) } else { None })
             .collect();
 
         if underscore_positions.is_empty() {
             // Check if literal needs underscores.
             if digits.len() > 4 {
-                span_help_and_lint(cx, UNREADABLE_LITERAL, *span,
-                                   "long literal lacking separators",
-                                   "consider using underscores to make literal more readable");
-                return None;
+                return Err(WarningType::UnreadableLiteral);
             } else {
-                return Some(0);
+                return Ok(0);
             }
         } else {
             // Check consistency and the sizes of the groups.
@@ -364,17 +359,11 @@ impl LiteralDigitGrouping {
                 && (digits.len() - underscore_positions.last().unwrap() <= group_size + 1);
 
             if !consistent {
-                span_help_and_lint(cx, INCONSISTENT_DIGIT_GROUPING, *span,
-                                   "digits grouped inconsistently by underscores",
-                                   "consider making each group three or four digits");
-                return None;
+                return Err(WarningType::InconsistentDigitGrouping);
             } else if group_size > 4 {
-                span_help_and_lint(cx, LARGE_DIGIT_GROUPS, *span,
-                                   "digit groups should be smaller",
-                                   "consider using groups of three or four digits");
-                return None;
+                return Err(WarningType::LargeDigitGroups);
             }
-            return Some(group_size);
+            return Ok(group_size);
         }
     }
 }
