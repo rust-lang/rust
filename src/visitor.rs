@@ -67,14 +67,6 @@ impl<'a> FmtVisitor<'a> {
             self.codemap.lookup_char_pos(stmt.span.hi)
         );
 
-        // FIXME(#434): Move this check to somewhere more central, eg Rewrite.
-        if !self.config
-            .file_lines()
-            .intersects(&self.codemap.lookup_line_range(stmt.span))
-        {
-            return;
-        }
-
         match stmt.node {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
@@ -264,6 +256,8 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn visit_item(&mut self, item: &ast::Item) {
+        skip_out_of_file_lines_range_visitor!(self, item.span);
+
         // This is where we bail out if there is a skip attribute. This is only
         // complex in the module case. It is complex because the module could be
         // in a separate file and there might be attributes in both files, but
@@ -465,6 +459,8 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+        skip_out_of_file_lines_range_visitor!(self, ti.span);
+
         if self.visit_attrs(&ti.attrs, ast::AttrStyle::Outer) {
             self.push_rewrite(ti.span, None);
             return;
@@ -517,6 +513,8 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+        skip_out_of_file_lines_range_visitor!(self, ii.span);
+
         if self.visit_attrs(&ii.attrs, ast::AttrStyle::Outer) {
             self.push_rewrite(ii.span, None);
             return;
@@ -565,6 +563,8 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn visit_mac(&mut self, mac: &ast::Mac, ident: Option<ast::Ident>, pos: MacroPosition) {
+        skip_out_of_file_lines_range_visitor!(self, mac.span);
+
         // 1 = ;
         let shape = Shape::indented(self.block_indent, self.config)
             .sub_width(1)

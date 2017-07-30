@@ -323,6 +323,31 @@ pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
     }
 }
 
+// Return true if the given span does not intersect with file lines.
+macro_rules! out_of_file_lines_range {
+    ($self:ident, $span:expr) => {
+        !$self.config
+            .file_lines()
+            .intersects(&$self.codemap.lookup_line_range($span))
+    }
+}
+
+macro_rules! skip_out_of_file_lines_range {
+    ($self:ident, $span:expr) => {
+        if out_of_file_lines_range!($self, $span) {
+            return None;
+        }
+    }
+}
+
+macro_rules! skip_out_of_file_lines_range_visitor {
+    ($self:ident, $span:expr) => {
+        if out_of_file_lines_range!($self, $span) {
+            return;
+        }
+    }
+}
+
 // Wraps string-like values in an Option. Returns Some when the string adheres
 // to the Rewrite constraints defined for the Rewrite trait and else otherwise.
 pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S> {

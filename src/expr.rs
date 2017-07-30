@@ -18,7 +18,7 @@ use syntax::parse::classify;
 
 use {Indent, Shape, Spanned};
 use chains::rewrite_chain;
-use codemap::SpanUtils;
+use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, recover_comment_removed, rewrite_comment, FindUncommented};
 use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
 use items::{span_hi_for_arg, span_lo_for_arg};
@@ -111,9 +111,12 @@ pub fn format_expr(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
+    skip_out_of_file_lines_range!(context, expr.span);
+
     if contains_skip(&*expr.attrs) {
         return Some(context.snippet(expr.span()));
     }
+
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
             expr_vec.iter().map(|e| &**e),
@@ -898,6 +901,8 @@ impl Rewrite for ast::Block {
 
 impl Rewrite for ast::Stmt {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        skip_out_of_file_lines_range!(context, self.span());
+
         let result = match self.node {
             ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
             ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
