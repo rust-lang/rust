@@ -12,7 +12,7 @@ use rustc::ty::TypeFoldable;
 use rustc::ty::subst::Substs;
 use rustc::ty::{Ty, TyCtxt, ClosureSubsts};
 use rustc::mir::{Mir, Location, Rvalue, BasicBlock, Statement, StatementKind};
-use rustc::mir::visit::MutVisitor;
+use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::infer::{self, InferCtxt};
 use syntax_pos::Span;
@@ -20,11 +20,11 @@ use syntax_pos::Span;
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: InferCtxt<'a, 'gcx, 'tcx>,
-    source: Mir<'tcx>
+    source: &'a Mir<'tcx>
 }
 
 impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, source: Mir<'tcx>) -> Self {
+    pub fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, source: &'a Mir<'tcx>) -> Self {
         NLLVisitor {
             infcx: infcx,
             source: source,
@@ -38,28 +38,29 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
     }
 }
 
-fn span_from_location<'tcx>(source: Mir<'tcx>, location: Location) -> Span {
+fn span_from_location<'tcx>(source: &Mir<'tcx>, location: Location) -> Span {
     source[location.block].statements[location.statement_index].source_info.span
 }
 
 impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>) {
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, lookup: Lookup) {
         let old_ty = *ty;
-        // FIXME: Nashenas88 - span should be narrowed down
-        *ty = self.renumber_regions(&old_ty, self.source.span);
+        let span = match lookup {
+            Lookup::Loc(location) => span_from_location(self.source, location),
+            Lookup::Src(source_info) => source_info.span,
+        };
+        *ty = self.renumber_regions(&old_ty, span);
     }
 
-    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
-        // FIXME: Nashenas88 - span should be narrowed down
-        *substs = self.renumber_regions(&{*substs}, self.source.span);
+    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, location: Location) {
+        *substs = self.renumber_regions(&{*substs}, span_from_location(self.source, location));
     }
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
         match *rvalue {
             Rvalue::Ref(ref mut r, _, _) => {
-                let span = span_from_location(location);
                 let old_r = *r;
-                *r = self.renumber_regions(&old_r, span);
+                *r = self.renumber_regions(&old_r, span_from_location(self.source, location));
             }
             Rvalue::Use(..) |
             Rvalue::Repeat(..) |
@@ -78,9 +79,9 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_closure_substs(&mut self,
-                            substs: &mut ClosureSubsts<'tcx>) {
-        // FIXME: Nashenas88 - span should be narrowed down
-        *substs = self.renumber_regions(substs, self.source.span);
+                            substs: &mut ClosureSubsts<'tcx>,
+                            location: Location) {
+        *substs = self.renumber_regions(substs, span_from_location(self.source, location));
     }
 
     fn visit_statement(&mut self,
@@ -107,11 +108,15 @@ impl MirPass for NLL {
         }
 
         tcx.infer_ctxt().enter(|infcx| {
-            let mut visitor = NLLVisitor::new(infcx, mir.clone());
             // Clone mir so we can mutate it without disturbing the rest
             // of the compiler
-            let mut mir = mir.clone();
-            visitor.visit_mir(&mut mir);
+            let mut renumbered_mir = mir.clone();
+
+            // Note that we're using the passed-in mir for the visitor. This is
+            // so we can lookup locations during traversal without worrying about
+            // maintaing both a mutable and immutable reference to the same object
+            let mut visitor = NLLVisitor::new(infcx, &mir);
+            visitor.visit_mir(&mut renumbered_mir);
         })
     }
 }
