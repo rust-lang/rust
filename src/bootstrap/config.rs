@@ -334,21 +334,11 @@ impl Config {
             }
         }
         config.hosts = if !flags.host.is_empty() {
-            for host in flags.host.iter() {
-                if !config.hosts.contains(host) {
-                    panic!("specified host `{}` is not in configuration", host);
-                }
-            }
             flags.host
         } else {
             config.hosts
         };
         config.targets = if !flags.target.is_empty() {
-            for target in flags.target.iter() {
-                if !config.targets.contains(target) {
-                    panic!("specified target `{}` is not in configuration", target);
-                }
-            }
             flags.target
         } else {
             config.targets
