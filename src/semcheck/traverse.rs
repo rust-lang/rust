@@ -535,6 +535,9 @@ fn diff_generics(changes: &mut ChangeSet,
                     found.push(TypeParameterAdded { defaulted: true });
                 }
 
+                debug!("in item {:?} / {:?}:\n  type param pair: {:?}, {:?}",
+                       old, new, old_type, new_type);
+
                 id_mapping.add_internal_item(old_type.def_id, new_type.def_id);
                 id_mapping.add_type_param(*old_type);
                 id_mapping.add_type_param(*new_type);
@@ -691,6 +694,8 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     use rustc::ty::TypeVariants::*;
     use syntax_pos::DUMMY_SP;
 
+    info!("comparing types of {:?} / {:?}:\n  {:?} / {:?}", old_def_id, new_def_id, old, new);
+
     let to_new = TranslationContext::to_new(tcx, id_mapping);
     let to_old = TranslationContext::to_old(tcx, id_mapping);
 
@@ -724,9 +729,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
         let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
         let new_param_env_trans =
-            to_old
-                .translate_param_env(new_def_id, tcx.param_env(new_def_id))
-                .subst(infcx.tcx, new_substs);
+            to_old.translate_param_env(new_def_id, tcx.param_env(new_def_id));
 
         let cause = ObligationCause::dummy();
 
@@ -830,8 +833,13 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
         return false;
     }
 
+    debug!("old env: {:?}", tcx.param_env(old_def_id));
+    debug!("new env: {:?}", tcx.param_env(new_def_id));
+
     let substs = Substs::identity_for_item(tcx, new_def_id);
-    let old = to_new.translate_item_type(old_def_id, old).subst(tcx, substs);
+    debug!("to translate: {:?}", old);
+    // debug!("translated: {:?}", to_new.translate_item_type(old_def_id, old));
+    // let old = to_new.translate_item_type(old_def_id, old).subst(tcx, substs);
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = {
@@ -847,12 +855,12 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
             })
         };
 
-        let new = new.subst(infcx.tcx, new_substs);
+        // let new = new.subst(infcx.tcx, new_substs);
 
         let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
-        let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
+        // let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
 
-        let cause = ObligationCause::dummy();
+        /* let cause = ObligationCause::dummy();
 
         let error = infcx
             .at(&cause, new_param_env)
@@ -861,7 +869,7 @@ fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
 
         if error.is_err() {
             return false;
-        }
+        } */
 
         let mut bound_cx = BoundContext::new(&infcx, old_param_env);
         bound_cx.register(new_def_id, substs);

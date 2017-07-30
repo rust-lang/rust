@@ -91,7 +91,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     /// Translate a `DefId`.
     fn translate_orig(&self, def_id: DefId) -> DefId {
         (self.translate_orig)(self.id_mapping, def_id).unwrap_or_else(|| {
-            warn!("not mapped: {:?}", def_id);
+            info!("not mapped: {:?}", def_id);
             def_id
         })
     }
@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     fn translate_orig_trait(&self, item_def_id: DefId, trait_def_id: DefId) -> DefId {
         (self.translate_orig_trait)(self.id_mapping, item_def_id, trait_def_id)
             .unwrap_or_else(|| {
-                warn!("not mapped: {:?} / {:?}", item_def_id, trait_def_id);
+                info!("not mapped: {:?} / {:?}", item_def_id, trait_def_id);
                 item_def_id
             })
     }
@@ -167,13 +167,15 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                         let orig_def_id = index_map[&param.idx];
                         if self.needs_translation(orig_def_id) {
                             let target_def_id = self.translate_orig(orig_def_id);
+                            debug!("translating type param: {:?}", param);
                             let type_param = self.id_mapping.get_type_param(&target_def_id);
+                            debug!("translated type param: {:?}", type_param);
                             self.tcx.mk_param_from_def(&type_param)
                         } else {
-                            self.tcx.mk_ty(TyParam(param))
+                            ty
                         }
                     } else {
-                        self.tcx.mk_ty(TyParam(param))
+                        ty
                     }
                 },
                 _ => ty,
