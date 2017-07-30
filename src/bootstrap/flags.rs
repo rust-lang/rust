@@ -34,6 +34,7 @@ pub struct Flags {
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
     pub build: Interned<String>,
+
     pub host: Vec<Interned<String>>,
     pub target: Vec<Interned<String>>,
     pub config: Option<PathBuf>,
@@ -66,6 +67,14 @@ pub enum Subcommand {
     Install {
         paths: Vec<PathBuf>,
     },
+}
+
+impl Default for Subcommand {
+    fn default() -> Subcommand {
+        Subcommand::Build {
+            paths: vec![PathBuf::from("nowhere")],
+        }
+    }
 }
 
 impl Flags {
@@ -243,10 +252,8 @@ Arguments:
 
         // All subcommands can have an optional "Available paths" section
         if matches.opt_present("verbose") {
-            let flags = Flags::parse(&["build".to_string()]);
-            let mut config = Config::parse(&flags.build, cfg_file.clone());
-            config.build = flags.build.clone();
-            let mut build = Build::new(flags, config);
+            let config = Config::parse(&["build".to_string()]);
+            let mut build = Build::new(config);
             metadata::build(&mut build);
 
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());

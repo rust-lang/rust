@@ -120,28 +120,21 @@ impl StepDescription {
     fn maybe_run(&self, builder: &Builder, path: Option<&Path>) {
         let build = builder.build;
         let hosts = if self.only_build_targets || self.only_build {
-            &build.config.host[..1]
+            build.build_triple()
         } else {
             &build.hosts
         };
 
-        // Determine the actual targets participating in this rule.
-        // NOTE: We should keep the full projection from build triple to
-        // the hosts for the dist steps, now that the hosts array above is
-        // truncated to avoid duplication of work in that case. Therefore
-        // the original non-shadowed hosts array is used below.
+        // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            // If --target was specified but --host wasn't specified,
-            // don't run any host-only tests. Also, respect any `--host`
-            // overrides as done for `hosts`.
-            if build.flags.host.len() > 0 {
-                &build.flags.host[..]
-            } else if build.flags.target.len() > 0 {
+            // If --target was specified but --host wasn't specified, don't run
+            // any host-only tests.
+            if build.config.hosts.is_empty() && !build.config.targets.is_empty() {
                 &[]
             } else if self.only_build {
-                &build.config.host[..1]
+                build.build_triple()
             } else {
-                &build.config.host[..]
+                &build.hosts
             }
         } else {
             &build.targets
@@ -288,7 +281,7 @@ impl<'a> Builder<'a> {
 
         let builder = Builder {
             build: build,
-            top_stage: build.flags.stage.unwrap_or(2),
+            top_stage: build.config.stage.unwrap_or(2),
             kind: kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
@@ -307,7 +300,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn run(build: &Build) {
-        let (kind, paths) = match build.flags.cmd {
+        let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
@@ -319,7 +312,7 @@ impl<'a> Builder<'a> {
 
         let builder = Builder {
             build: build,
-            top_stage: build.flags.stage.unwrap_or(2),
+            top_stage: build.config.stage.unwrap_or(2),
             kind: kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
@@ -543,12 +536,12 @@ impl<'a> Builder<'a> {
         // Ignore incremental modes except for stage0, since we're
         // not guaranteeing correctness across builds if the compiler
         // is changing under your feet.`
-        if self.flags.incremental && compiler.stage == 0 {
+        if self.config.incremental && compiler.stage == 0 {
             let incr_dir = self.incremental_dir(compiler);
             cargo.env("RUSTC_INCREMENTAL", incr_dir);
         }
 
-        if let Some(ref on_fail) = self.flags.on_fail {
+        if let Some(ref on_fail) = self.config.on_fail {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 

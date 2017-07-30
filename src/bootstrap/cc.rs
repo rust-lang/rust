@@ -32,6 +32,7 @@
 //! everything.
 
 use std::process::Command;
+use std::iter;
 
 use build_helper::{cc2ar, output};
 use gcc;
@@ -43,47 +44,41 @@ use cache::Interned;
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
-    //
-    // This includes targets that aren't necessarily passed on the commandline
-    // (FIXME: Perhaps it shouldn't?)
-    for target in &build.config.target {
+    for target in build.targets.iter().chain(&build.hosts).cloned().chain(iter::once(build.build)) {
         let mut cfg = gcc::Config::new();
         cfg.cargo_metadata(false).opt_level(0).debug(false)
-           .target(target).host(&build.build);
+           .target(&target).host(&build.build);
 
         let config = build.config.target_config.get(&target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
             cfg.compiler(cc);
         } else {
-            set_compiler(&mut cfg, "gcc", *target, config, build);
+            set_compiler(&mut cfg, "gcc", target, config, build);
         }
 
         let compiler = cfg.get_compiler();
-        let ar = cc2ar(compiler.path(), target);
-        build.verbose(&format!("CC_{} = {:?}", target, compiler.path()));
+        let ar = cc2ar(compiler.path(), &target);
+        build.verbose(&format!("CC_{} = {:?}", &target, compiler.path()));
         if let Some(ref ar) = ar {
-            build.verbose(&format!("AR_{} = {:?}", target, ar));
+            build.verbose(&format!("AR_{} = {:?}", &target, ar));
         }
-        build.cc.insert(*target, (compiler, ar));
+        build.cc.insert(target, (compiler, ar));
     }
 
     // For all host triples we need to find a C++ compiler as well
-    //
-    // This includes hosts that aren't necessarily passed on the commandline
-    // (FIXME: Perhaps it shouldn't?)
-    for host in &build.config.host {
+    for host in build.hosts.iter().cloned().chain(iter::once(build.build)) {
         let mut cfg = gcc::Config::new();
         cfg.cargo_metadata(false).opt_level(0).debug(false).cpp(true)
-           .target(host).host(&build.build);
-        let config = build.config.target_config.get(host);
+           .target(&host).host(&build.build);
+        let config = build.config.target_config.get(&host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
         } else {
-            set_compiler(&mut cfg, "g++", *host, config, build);
+            set_compiler(&mut cfg, "g++", host, config, build);
         }
         let compiler = cfg.get_compiler();
         build.verbose(&format!("CXX_{} = {:?}", host, compiler.path()));
-        build.cxx.insert(*host, compiler);
+        build.cxx.insert(host, compiler);
     }
 }
 

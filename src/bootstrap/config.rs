@@ -19,11 +19,14 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process;
+use std::cmp;
 
 use num_cpus;
 use toml;
 use util::{exe, push_exe_path};
 use cache::{INTERNER, Interned};
+use flags::Flags;
+pub use flags::Subcommand;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -52,6 +55,14 @@ pub struct Config {
     pub sanitizers: bool,
     pub profiler: bool,
 
+    pub on_fail: Option<String>,
+    pub stage: Option<u32>,
+    pub keep_stage: Option<u32>,
+    pub src: PathBuf,
+    pub jobs: Option<u32>,
+    pub cmd: Subcommand,
+    pub incremental: bool,
+
     // llvm codegen options
     pub llvm_enabled: bool,
     pub llvm_assertions: bool,
@@ -79,8 +90,8 @@ pub struct Config {
     pub rust_dist_src: bool,
 
     pub build: Interned<String>,
-    pub host: Vec<Interned<String>>,
-    pub target: Vec<Interned<String>>,
+    pub hosts: Vec<Interned<String>>,
+    pub targets: Vec<Interned<String>>,
     pub local_rebuild: bool,
 
     // dist misc
@@ -265,7 +276,9 @@ struct TomlTarget {
 }
 
 impl Config {
-    pub fn parse(build: &str, file: Option<PathBuf>) -> Config {
+    pub fn parse(args: &[String]) -> Config {
+        let flags = Flags::parse(&args);
+        let file = flags.config.clone();
         let mut config = Config::default();
         config.llvm_enabled = true;
         config.llvm_optimize = true;
@@ -277,10 +290,18 @@ impl Config {
         config.docs = true;
         config.rust_rpath = true;
         config.rust_codegen_units = 1;
-        config.build = INTERNER.intern_str(build);
+        config.build = flags.build;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
         config.rust_dist_src = true;
+
+        config.on_fail = flags.on_fail;
+        config.stage = flags.stage;
+        config.src = flags.src;
+        config.jobs = flags.jobs;
+        config.cmd = flags.cmd;
+        config.incremental = flags.incremental;
+        config.keep_stage = flags.keep_stage;
 
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));
@@ -298,20 +319,41 @@ impl Config {
 
         let build = toml.build.clone().unwrap_or(Build::default());
         set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
-        config.host.push(config.build.clone());
+        config.hosts.push(config.build.clone());
         for host in build.host.iter() {
             let host = INTERNER.intern_str(host);
-            if !config.host.contains(&host) {
-                config.host.push(host);
+            if !config.hosts.contains(&host) {
+                config.hosts.push(host);
             }
         }
-        for target in config.host.iter().cloned()
+        for target in config.hosts.iter().cloned()
             .chain(build.target.iter().map(|s| INTERNER.intern_str(s)))
         {
-            if !config.target.contains(&target) {
-                config.target.push(target);
+            if !config.targets.contains(&target) {
+                config.targets.push(target);
             }
         }
+        config.hosts = if !flags.host.is_empty() {
+            for host in flags.host.iter() {
+                if !config.hosts.contains(host) {
+                    panic!("specified host `{}` is not in configuration", host);
+                }
+            }
+            flags.host
+        } else {
+            config.hosts
+        };
+        config.targets = if !flags.target.is_empty() {
+            for target in flags.target.iter() {
+                if !config.targets.contains(target) {
+                    panic!("specified target `{}` is not in configuration", target);
+                }
+            }
+            flags.target
+        } else {
+            config.targets
+        };
+
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
@@ -327,6 +369,7 @@ impl Config {
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
         set(&mut config.openssl_static, build.openssl_static);
+        config.verbose = cmp::max(config.verbose, flags.verbose);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
@@ -505,11 +548,11 @@ impl Config {
             match key {
                 "CFG_BUILD" if value.len() > 0 => self.build = INTERNER.intern_str(value),
                 "CFG_HOST" if value.len() > 0 => {
-                    self.host.extend(value.split(" ").map(|s| INTERNER.intern_str(s)));
+                    self.hosts.extend(value.split(" ").map(|s| INTERNER.intern_str(s)));
 
                 }
                 "CFG_TARGET" if value.len() > 0 => {
-                    self.target.extend(value.split(" ").map(|s| INTERNER.intern_str(s)));
+                    self.targets.extend(value.split(" ").map(|s| INTERNER.intern_str(s)));
                 }
                 "CFG_EXPERIMENTAL_TARGETS" if value.len() > 0 => {
                     self.llvm_experimental_targets = Some(value.to_string());
