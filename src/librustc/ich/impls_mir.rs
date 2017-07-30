@@ -258,10 +258,11 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for mir::L
     }
 }
 
-impl<'a, 'gcx, 'tcx, B, V> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for mir::Projection<'tcx, B, V>
+impl<'a, 'gcx, 'tcx, B, V, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+for mir::Projection<'tcx, B, V, T>
     where B: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
-          V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+          V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
+          T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -276,9 +277,10 @@ for mir::Projection<'tcx, B, V>
     }
 }
 
-impl<'a, 'gcx, 'tcx, V> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for mir::ProjectionElem<'tcx, V>
-    where V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+impl<'a, 'gcx, 'tcx, V, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+for mir::ProjectionElem<'tcx, V, T>
+    where V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
+          T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -286,7 +288,7 @@ for mir::ProjectionElem<'tcx, V>
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             mir::ProjectionElem::Deref => {}
-            mir::ProjectionElem::Field(field, ty) => {
+            mir::ProjectionElem::Field(field, ref ty) => {
                 field.hash_stable(hcx, hasher);
                 ty.hash_stable(hcx, hasher);
             }
