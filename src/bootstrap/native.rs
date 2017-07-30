@@ -80,9 +80,6 @@ impl Step for Llvm {
                 return
             }
         }
-        if build.config.llvm_clean_rebuild {
-            drop(fs::remove_dir_all(&out_dir));
-        }
 
         let _folder = build.fold_output(|| "llvm");
         println!("Building LLVM for {}", target);
