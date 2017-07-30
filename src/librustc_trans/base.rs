@@ -844,8 +844,7 @@ fn create_imps(sess: &Session,
             let imp = llvm::LLVMAddGlobal(llvm_module.llmod,
                                           i8p_ty.to_ref(),
                                           imp_name.as_ptr() as *const _);
-            let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
-            llvm::LLVMSetInitializer(imp, init);
+            llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }

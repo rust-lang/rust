@@ -36,6 +36,12 @@ pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
     }
 }
 
+pub fn bitcast(val: ValueRef, ty: Type) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstBitCast(val, ty.to_ref())
+    }
+}
+
 pub fn addr_of_mut(ccx: &CrateContext,
                    cv: ValueRef,
                    align: machine::llalign,
