@@ -131,6 +131,10 @@ macro_rules! int_impl {
         ///
         /// Leading and trailing whitespace represent an error.
         ///
+        /// # Panics
+        ///
+        /// This function panics if `radix` is not in the range from 2 to 36.
+        ///
         /// # Examples
         ///
         /// Basic usage:
