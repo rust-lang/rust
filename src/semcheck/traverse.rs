@@ -277,7 +277,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
         // reuse an already existing path change entry, if possible
         if id_mapping.contains_old_id(o_def_id) {
-            let n_def_id = id_mapping.get_new_id(o_def_id);
+            let n_def_id = id_mapping.get_new_id(o_def_id).unwrap();
             changes.new_path_change(n_def_id, o.ident.name, tcx.def_span(n_def_id));
             changes.add_path_removal(n_def_id, o.span);
         } else {
@@ -481,12 +481,14 @@ fn diff_traits(changes: &mut ChangeSet,
                     defaulted: old_item.defaultness.has_value(),
                 };
                 changes.add_change(change_type, old, Some(tcx.def_span(old_item.def_id)));
+                id_mapping.add_non_mapped(old_item.def_id);
             },
             (None, Some((_, new_item))) => {
                 let change_type = TraitItemAdded {
                     defaulted: new_item.defaultness.has_value(),
                 };
                 changes.add_change(change_type, old, Some(tcx.def_span(new_item.def_id)));
+                id_mapping.add_non_mapped(new_item.def_id);
             },
             (None, None) => unreachable!(),
         }
@@ -643,7 +645,11 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     for old_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_old_crate(*did)) {
         // ... compute trait `DefId`s, ...
         let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
-        let new_trait_def_id = id_mapping.get_new_id(old_trait_def_id);
+        let new_trait_def_id = if let Some(did) = id_mapping.get_new_id(old_trait_def_id) {
+            did
+        } else {
+            continue;
+        };
 
         let mut matched = false;
 

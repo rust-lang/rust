@@ -17,9 +17,9 @@ pub struct TranslationContext<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
     /// Elementary operation to decide whether to translate a `DefId`.
     needs_translation: fn(&IdMapping, DefId) -> bool,
     /// Elementary operation to translate a `DefId`.
-    translate_orig: fn(&IdMapping, DefId) -> DefId,
+    translate_orig: fn(&IdMapping, DefId) -> Option<DefId>,
     /// Elementary operation to translate a `DefId` of a trait item.
-    translate_orig_trait: fn(&IdMapping, DefId, DefId) -> DefId,
+    translate_orig_trait: fn(&IdMapping, DefId, DefId) -> Option<DefId>,
 }
 
 impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
@@ -90,12 +90,13 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
     /// Translate a `DefId`.
     fn translate_orig(&self, def_id: DefId) -> DefId {
-        (self.translate_orig)(self.id_mapping, def_id)
+        (self.translate_orig)(self.id_mapping, def_id).unwrap_or(def_id)
     }
 
     /// Translate a `DefId` of a trait item.
     fn translate_orig_trait(&self, item_def_id: DefId, trait_def_id: DefId) -> DefId {
         (self.translate_orig_trait)(self.id_mapping, item_def_id, trait_def_id)
+            .unwrap_or(item_def_id)
     }
 
     /// Fold a structure, translating all `DefId`s reachable by the folder.
@@ -107,7 +108,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         orig.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
             match ty.sty {
                 TyAdt(&AdtDef { ref did, .. }, substs) if self.needs_translation(*did) => {
-                    let target_def_id = self.id_mapping.get_new_id(*did);
+                    let target_def_id = self.translate_orig(*did);
                     let target_adt = self.tcx.adt_def(target_def_id);
                     self.tcx.mk_adt(target_adt, substs)
                 },

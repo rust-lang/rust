@@ -112,11 +112,15 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
 
                     for field in a_adt.all_fields().filter(|f| f.vis == Public) {
                         let a_field_ty = field.ty(self.tcx, a_substs);
-                        let b_field_ty =
-                            b_fields[&self.id_mapping.get_new_id(field.did)]
-                                .ty(self.tcx, b_substs);
 
-                        let _ = self.relate(&a_field_ty, &b_field_ty)?;
+                        if let Some(b_field) =
+                            self.id_mapping
+                                .get_new_id(field.did)
+                                .and_then(|did| b_fields.get(&did)) {
+                            let b_field_ty = b_field.ty(self.tcx, b_substs);
+
+                            let _ = self.relate(&a_field_ty, &b_field_ty)?;
+                        }
                     }
 
                     Some((a_def.did, b_def.did))

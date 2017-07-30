@@ -124,54 +124,58 @@ impl IdMapping {
     }
 
     /// Get the new `DefId` associated with the given old one.
-    pub fn get_new_id(&self, old: DefId) -> DefId {
+    pub fn get_new_id(&self, old: DefId) -> Option<DefId> {
         assert!(!self.in_new_crate(old));
 
-        if self.in_old_crate(old) && !self.non_mapped_items.contains(&old) {
+        if self.in_old_crate(old) {
             if let Some(new) = self.toplevel_mapping.get(&old) {
-                new.1.def_id()
+                Some(new.1.def_id())
             } else if let Some(new) = self.trait_item_mapping.get(&old) {
-                new.1.def_id()
+                Some(new.1.def_id())
+            } else if let Some(new_def_id) = self.internal_mapping.get(&old) {
+                Some(*new_def_id)
             } else {
-                self.internal_mapping[&old]
+                None
             }
         } else {
-            old
+            Some(old)
         }
     }
 
     /// Get the old `DefId` associated with the given new one.
-    pub fn get_old_id(&self, new: DefId) -> DefId {
+    pub fn get_old_id(&self, new: DefId) -> Option<DefId> {
         assert!(!self.in_old_crate(new));
 
-        if self.in_new_crate(new) && !self.non_mapped_items.contains(&new) {
-            self.reverse_mapping[&new]
+        if self.in_new_crate(new) {
+            self.reverse_mapping.get(&new).map(|did| *did)
         } else {
-            new
+            Some(new)
         }
     }
 
     /// Get the new `DefId` associated with the given old one, respecting possibly removed
     /// traits that are a parent of the given `DefId`.
-    pub fn get_new_trait_item_id(&self, old: DefId, trait_id: DefId) -> DefId {
+    pub fn get_new_trait_item_id(&self, old: DefId, trait_id: DefId) -> Option<DefId> {
         assert!(!self.in_new_crate(trait_id));
 
+        // TODO: this body is now nonsensical. reevaluate.
         if !self.non_mapped_items.contains(&trait_id) {
             self.get_new_id(old)
         } else {
-            old
+            Some(old)
         }
     }
 
     /// Get the old `DefId` associated with the given new one, respecting possibly added
     /// traits that are a parent of the given `DefId`.
-    pub fn get_old_trait_item_id(&self, new: DefId, trait_id: DefId) -> DefId {
+    pub fn get_old_trait_item_id(&self, new: DefId, trait_id: DefId) -> Option<DefId> {
         assert!(!self.in_old_crate(trait_id));
 
+        // TODO: this body is now nonsensical. reevaluate.
         if !self.non_mapped_items.contains(&trait_id) {
             self.get_old_id(new)
         } else {
-            new
+            Some(new)
         }
     }
 
