@@ -62,6 +62,127 @@ declare_lint! {
     "grouping digits into groups that are too large"
 }
 
+#[derive(Debug)]
+enum Radix {
+    Binary,
+    Octal,
+    Decimal,
+    Hexadecimal,
+}
+
+impl Radix {
+    /// Return a reasonable digit group size for this radix.
+    pub fn suggest_grouping(&self) -> usize {
+        match *self {
+            Radix::Binary | Radix::Hexadecimal => 4,
+            Radix::Octal | Radix::Decimal => 3,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct DigitInfo<'a> {
+    /// Characters of a literal between the radix prefix and type suffix.
+    pub digits: &'a str,
+    /// Which radix the literal was represented in.
+    pub radix: Radix,
+    /// The radix prefix, if present.
+    pub prefix: Option<&'a str>,
+    /// The type suffix, including preceding underscore if present.
+    pub suffix: Option<&'a str>,
+    /// True for floating-point literals.
+    pub float: bool,
+}
+
+impl<'a> DigitInfo<'a> {
+    pub fn new(lit: &str, float: bool) -> DigitInfo {
+        // Determine delimiter for radix prefix, if present, and radix.
+        let radix = if lit.starts_with("0x") {
+            Radix::Hexadecimal
+        } else if lit.starts_with("0b") {
+            Radix::Binary
+        } else if lit.starts_with("0o") {
+            Radix::Octal
+        } else {
+            Radix::Decimal
+        };
+
+        // Grab part of the literal after prefix, if present.
+        let (prefix, sans_prefix) = if let Radix::Decimal = radix {
+            (None, lit)
+        } else {
+            let (p, s) = lit.split_at(2);
+            (Some(p), s)
+        };
+
+        let mut last_d = '\0';
+        for (d_idx, d) in sans_prefix.char_indices() {
+            if !float && (d == 'i' || d == 'u') || float && d == 'f' {
+                let suffix_start = if last_d == '_' { d_idx - 1 } else { d_idx };
+                let (digits, suffix) = sans_prefix.split_at(suffix_start);
+                return DigitInfo {
+                    digits: digits,
+                    radix: radix,
+                    prefix: prefix,
+                    suffix: Some(suffix),
+                    float: float,
+                };
+            }
+            last_d = d
+        }
+
+        // No suffix found
+        DigitInfo {
+            digits: sans_prefix,
+            radix: radix,
+            prefix: prefix,
+            suffix: None,
+            float: float,
+        }
+    }
+}
+
+enum WarningType {
+    UnreadableLiteral,
+    InconsistentDigitGrouping,
+    LargeDigitGroups,
+}
+
+
+impl WarningType {
+    pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: &syntax_pos::Span) {
+        match *self {
+            WarningType::UnreadableLiteral => {
+                span_help_and_lint(
+                    cx,
+                    UNREADABLE_LITERAL,
+                    *span,
+                    "long literal lacking separators",
+                    &format!("consider: {}", grouping_hint),
+                )
+            },
+            WarningType::LargeDigitGroups => {
+                span_help_and_lint(
+                    cx,
+                    LARGE_DIGIT_GROUPS,
+                    *span,
+                    "digit groups should be smaller",
+                    &format!("consider: {}", grouping_hint),
+                )
+            },
+            WarningType::InconsistentDigitGrouping => {
+                span_help_and_lint(
+                    cx,
+                    INCONSISTENT_DIGIT_GROUPING,
+                    *span,
+                    "digits grouped inconsistently by underscores",
+                    &format!("consider: {}", grouping_hint),
+                )
+            },
+        };
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct LiteralDigitGrouping;
 
