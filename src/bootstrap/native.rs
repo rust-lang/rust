@@ -48,6 +48,10 @@ impl Step for Llvm {
         run.path("src/llvm")
     }
 
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Llvm { target: run.target })
+    }
+
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) {
         let build = builder.build;
