@@ -368,7 +368,6 @@ for ty::RegionParameterDef {
             name,
             def_id,
             index,
-            issue_32330: _,
             pure_wrt_drop
         } = *self;
 

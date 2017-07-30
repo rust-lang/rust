@@ -979,13 +979,11 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     let regions = early_lifetimes.enumerate().map(|(i, l)| {
-        let issue_32330 = tcx.named_region_map.issue_32330.get(&l.lifetime.id).cloned();
         ty::RegionParameterDef {
             name: l.lifetime.name,
             index: own_start + i as u32,
             def_id: tcx.hir.local_def_id(l.lifetime.id),
             pure_wrt_drop: l.pure_wrt_drop,
-            issue_32330: issue_32330,
         }
     }).collect::<Vec<_>>();
 

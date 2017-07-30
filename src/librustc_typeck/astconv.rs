@@ -1110,46 +1110,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                let bare_fn_ty = self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl);
-
-                // Find any late-bound regions declared in return type that do
-                // not appear in the arguments. These are not wellformed.
-                //
-                // Example:
-                //
-                //     for<'a> fn() -> &'a str <-- 'a is bad
-                //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
-                //
-                // Note that we do this check **here** and not in
-                // `ty_of_bare_fn` because the latter is also used to make
-                // the types for fn items, and we do not want to issue a
-                // warning then. (Once we fix #32330, the regions we are
-                // checking for here would be considered early bound
-                // anyway.)
-                let inputs = bare_fn_ty.inputs();
-                let late_bound_in_args = tcx.collect_constrained_late_bound_regions(
-                    &inputs.map_bound(|i| i.to_owned()));
-                let output = bare_fn_ty.output();
-                let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
-                for br in late_bound_in_ret.difference(&late_bound_in_args) {
-                    let br_name = match *br {
-                        ty::BrNamed(_, name) => name,
-                        _ => {
-                            span_bug!(
-                                bf.decl.output.span(),
-                                "anonymous bound region {:?} in return but not args",
-                                br);
-                        }
-                    };
-                    struct_span_err!(tcx.sess,
-                                     ast_ty.span,
-                                     E0581,
-                                     "return type references lifetime `{}`, \
-                                      which does not appear in the fn input types",
-                                     br_name)
-                        .emit();
-                }
-                tcx.mk_fn_ptr(bare_fn_ty)
+                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
             }
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
@@ -1269,23 +1230,56 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
+        let tcx = self.tcx();
         let input_tys: Vec<Ty> =
             decl.inputs.iter().map(|a| self.ty_of_arg(a, None)).collect();
 
         let output_ty = match decl.output {
             hir::Return(ref output) => self.ast_ty_to_ty(output),
-            hir::DefaultReturn(..) => self.tcx().mk_nil(),
+            hir::DefaultReturn(..) => tcx.mk_nil(),
         };
 
         debug!("ty_of_fn: output_ty={:?}", output_ty);
 
-        ty::Binder(self.tcx().mk_fn_sig(
+        let bare_fn_ty = ty::Binder(tcx.mk_fn_sig(
             input_tys.into_iter(),
             output_ty,
             decl.variadic,
             unsafety,
             abi
-        ))
+        ));
+
+        // Find any late-bound regions declared in return type that do
+        // not appear in the arguments. These are not wellformed.
+        //
+        // Example:
+        //     for<'a> fn() -> &'a str <-- 'a is bad
+        //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
+        let inputs = bare_fn_ty.inputs();
+        let late_bound_in_args = tcx.collect_constrained_late_bound_regions(
+            &inputs.map_bound(|i| i.to_owned()));
+        let output = bare_fn_ty.output();
+        let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
+        for br in late_bound_in_ret.difference(&late_bound_in_args) {
+            let br_name = match *br {
+                ty::BrNamed(_, name) => name,
+                _ => {
+                    span_bug!(
+                        decl.output.span(),
+                        "anonymous bound region {:?} in return but not args",
+                        br);
+                }
+            };
+            struct_span_err!(tcx.sess,
+                             decl.output.span(),
+                             E0581,
+                             "return type references lifetime `{}`, \
+                             which does not appear in the fn input types",
+                             br_name)
+                .emit();
+        }
+
+        bare_fn_ty
     }
 
     pub fn ty_of_closure(&self,

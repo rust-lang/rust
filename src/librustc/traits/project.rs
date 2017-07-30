@@ -479,9 +479,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 
     let obligation = Obligation::with_depth(cause.clone(), depth, param_env, projection_ty);
     match project_type(selcx, &obligation) {
-        Ok(ProjectedTy::Progress(Progress { ty: projected_ty,
-                                            mut obligations,
-                                            cacheable })) => {
+        Ok(ProjectedTy::Progress(Progress { ty: projected_ty, mut obligations })) => {
             // if projection succeeded, then what we get out of this
             // is also non-normalized (consider: it was derived from
             // an impl, where-clause etc) and hence we must
@@ -490,12 +488,10 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             debug!("opt_normalize_projection_type: \
                     projected_ty={:?} \
                     depth={} \
-                    obligations={:?} \
-                    cacheable={:?}",
+                    obligations={:?}",
                    projected_ty,
                    depth,
-                   obligations,
-                   cacheable);
+                   obligations);
 
             let result = if projected_ty.has_projection_types() {
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx,
@@ -520,8 +516,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                     obligations,
                 }
             };
-            infcx.projection_cache.borrow_mut()
-                                  .complete(projection_ty, &result, cacheable);
+            infcx.projection_cache.borrow_mut().complete(projection_ty, &result);
             Some(result)
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
@@ -532,8 +527,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 value: projected_ty,
                 obligations: vec![]
             };
-            infcx.projection_cache.borrow_mut()
-                                  .complete(projection_ty, &result, true);
+            infcx.projection_cache.borrow_mut().complete(projection_ty, &result);
             Some(result)
         }
         Err(ProjectionTyError::TooManyCandidates) => {
@@ -606,7 +600,6 @@ enum ProjectedTy<'tcx> {
 struct Progress<'tcx> {
     ty: Ty<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
-    cacheable: bool,
 }
 
 impl<'tcx> Progress<'tcx> {
@@ -614,7 +607,6 @@ impl<'tcx> Progress<'tcx> {
         Progress {
             ty: tcx.types.err,
             obligations: vec![],
-            cacheable: true
         }
     }
 
@@ -1228,7 +1220,6 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
             Progress {
                 ty: ty_match.value,
                 obligations,
-                cacheable: ty_match.unconstrained_regions.is_empty(),
             }
         }
         Err(e) => {
@@ -1272,7 +1263,6 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
     Progress {
         ty: ty.subst(tcx, substs),
         obligations: nested,
-        cacheable: true
     }
 }
 
@@ -1380,22 +1370,11 @@ impl<'tcx> ProjectionCache<'tcx> {
         Ok(())
     }
 
-    /// Indicates that `key` was normalized to `value`. If `cacheable` is false,
-    /// then this result is sadly not cacheable.
-    fn complete(&mut self,
-                key: ty::ProjectionTy<'tcx>,
-                value: &NormalizedTy<'tcx>,
-                cacheable: bool) {
-        let fresh_key = if cacheable {
-            debug!("ProjectionCacheEntry::complete: adding cache entry: key={:?}, value={:?}",
-                   key, value);
-            self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value.value))
-        } else {
-            debug!("ProjectionCacheEntry::complete: cannot cache: key={:?}, value={:?}",
-                   key, value);
-            !self.map.remove(key)
-        };
-
+    /// Indicates that `key` was normalized to `value`.
+    fn complete(&mut self, key: ty::ProjectionTy<'tcx>, value: &NormalizedTy<'tcx>) {
+        debug!("ProjectionCacheEntry::complete: adding cache entry: key={:?}, value={:?}",
+               key, value);
+        let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value.value));
         assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 

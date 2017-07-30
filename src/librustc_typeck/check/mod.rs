@@ -1607,7 +1607,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn re_infer(&self, span: Span, def: Option<&ty::RegionParameterDef>)
                 -> Option<ty::Region<'tcx>> {
         let v = match def {
-            Some(def) => infer::EarlyBoundRegion(span, def.name, def.issue_32330),
+            Some(def) => infer::EarlyBoundRegion(span, def.name),
             None => infer::MiscVariable(span)
         };
         Some(self.next_region_var(v))

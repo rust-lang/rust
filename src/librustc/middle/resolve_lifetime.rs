@@ -153,10 +153,6 @@ pub struct NamedRegionMap {
     // (b) it DOES appear in the arguments.
     pub late_bound: NodeSet,
 
-    // Contains the node-ids for lifetimes that were (incorrectly) categorized
-    // as late-bound, until #32330 was fixed.
-    pub issue_32330: NodeMap<ty::Issue32330>,
-
     // For each type and trait definition, maps type parameters
     // to the trait object lifetime defaults computed from them.
     pub object_lifetime_defaults: NodeMap<Vec<ObjectLifetimeDefault>>,
@@ -261,7 +257,6 @@ pub fn krate(sess: &Session,
     let mut map = NamedRegionMap {
         defs: NodeMap(),
         late_bound: NodeSet(),
-        issue_32330: NodeMap(),
         object_lifetime_defaults: compute_object_lifetime_defaults(sess, hir_map),
     };
     sess.track_errors(|| {
@@ -303,7 +298,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
             hir::ItemFn(ref decl, _, _, _, ref generics, _) => {
-                self.visit_early_late(item.id, None, decl, generics, |this| {
+                self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });
             }
@@ -355,7 +350,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
         match item.node {
             hir::ForeignItemFn(ref decl, _, ref generics) => {
-                self.visit_early_late(item.id, None, decl, generics, |this| {
+                self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_foreign_item(this, item);
                 })
             }
@@ -406,7 +401,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         if let hir::TraitItemKind::Method(ref sig, _) = trait_item.node {
             self.visit_early_late(
-                trait_item.id,
                 Some(self.hir_map.get_parent(trait_item.id)),
                 &sig.decl, &sig.generics,
                 |this| intravisit::walk_trait_item(this, trait_item))
@@ -418,7 +412,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
             self.visit_early_late(
-                impl_item.id,
                 Some(self.hir_map.get_parent(impl_item.id)),
                 &sig.decl, &sig.generics,
                 |this| intravisit::walk_impl_item(this, impl_item))
@@ -811,18 +804,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// bound lifetimes are resolved by name and associated with a binder id (`binder_id`), so the
     /// ordering is not important there.
     fn visit_early_late<F>(&mut self,
-                           fn_id: ast::NodeId,
                            parent_id: Option<ast::NodeId>,
                            decl: &'tcx hir::FnDecl,
                            generics: &'tcx hir::Generics,
                            walk: F) where
         F: for<'b, 'c> FnOnce(&'b mut LifetimeContext<'c, 'tcx>),
     {
-        let fn_def_id = self.hir_map.local_def_id(fn_id);
-        insert_late_bound_lifetimes(self.map,
-                                    fn_def_id,
-                                    decl,
-                                    generics);
+        insert_late_bound_lifetimes(self.map, decl, generics);
 
         // Find the start of nested early scopes, e.g. in methods.
         let mut index = 0;
@@ -1549,7 +1537,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 /// not amongst the inputs to a projection.  In other words, `<&'a
 /// T as Trait<''b>>::Foo` does not constrain `'a` or `'b`.
 fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
-                               fn_def_id: DefId,
                                decl: &hir::FnDecl,
                                generics: &hir::Generics) {
     debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
@@ -1607,22 +1594,9 @@ fn insert_late_bound_lifetimes(map: &mut NamedRegionMap,
         // any `impl Trait` in the return type? early-bound.
         if appears_in_output.impl_trait { continue; }
 
-        // does not appear in the inputs, but appears in the return
-        // type? eventually this will be early-bound, but for now we
-        // just mark it so we can issue warnings.
-        let constrained_by_input = constrained_by_input.regions.contains(&name);
-        let appears_in_output = appears_in_output.regions.contains(&name);
-        if !constrained_by_input && appears_in_output {
-            debug!("inserting issue_32330 entry for {:?}, {:?} on {:?}",
-                   lifetime.lifetime.id,
-                   name,
-                   fn_def_id);
-            map.issue_32330.insert(
-                lifetime.lifetime.id,
-                ty::Issue32330 {
-                    fn_def_id,
-                    region_name: name,
-                });
+        // does not appear in the inputs, but appears in the return type? early-bound.
+        if !constrained_by_input.regions.contains(&name) &&
+            appears_in_output.regions.contains(&name) {
             continue;
         }
 
