@@ -140,6 +140,49 @@ impl<'a> DigitInfo<'a> {
             float: float,
         }
     }
+
+    /// Returns digits grouped in a sensible way.
+    fn grouping_hint(&self) -> String {
+        let group_size = self.radix.suggest_grouping();
+        if self.digits.contains('.') {
+            let mut parts = self.digits.split(".");
+            let int_part_hint = parts
+                .next()
+                .unwrap()
+                .chars()
+                .rev()
+                .filter(|&c| c != '_')
+                .collect::<Vec<_>>()
+                .chunks(group_size)
+                .map(|chunk| chunk.into_iter().rev().collect())
+                .rev()
+                .collect::<Vec<String>>()
+                .join("_");
+            let frac_part_hint = parts
+                .next()
+                .unwrap()
+                .chars()
+                .filter(|&c| c != '_')
+                .collect::<Vec<_>>()
+                .chunks(group_size)
+                .map(|chunk| chunk.into_iter().collect())
+                .collect::<Vec<String>>()
+                .join("_");
+            format!("{}.{}{}", int_part_hint, frac_part_hint, self.suffix.unwrap_or(""))
+        } else {
+            let hint = self.digits
+                .chars()
+                .rev()
+                .filter(|&c| c != '_')
+                .collect::<Vec<_>>()
+                .chunks(group_size)
+                .map(|chunk| chunk.into_iter().rev().collect())
+                .rev()
+                .collect::<Vec<String>>()
+                .join("_");
+            format!("{}{}{}", self.prefix.unwrap_or(""), hint, self.suffix.unwrap_or(""))
+        }
+    }
 }
 
 enum WarningType {
