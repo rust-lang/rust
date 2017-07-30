@@ -215,6 +215,7 @@ impl Layout {
     /// of each element in the array.
     ///
     /// On arithmetic overflow, returns `None`.
+    #[inline]
     pub fn repeat(&self, n: usize) -> Option<(Self, usize)> {
         let padded_size = match self.size.checked_add(self.padding_needed_for(self.align)) {
             None => return None,
