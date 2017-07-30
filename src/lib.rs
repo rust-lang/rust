@@ -2,6 +2,9 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 
+#[macro_use]
+extern crate log;
+
 #[cfg(test)]
 #[macro_use]
 extern crate quickcheck;

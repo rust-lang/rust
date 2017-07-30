@@ -1,6 +1,7 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 
+extern crate env_logger;
 extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
@@ -141,6 +142,10 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
 /// Find the sysroot before passing our args to the compiler driver, after registering our custom
 /// compiler driver.
 fn main() {
+    if env_logger::init().is_err() {
+        eprintln!("ERROR: could not initialize logger");
+    }
+
     let home = option_env!("RUSTUP_HOME");
     let toolchain = option_env!("RUSTUP_TOOLCHAIN");
     let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
@@ -149,13 +154,13 @@ fn main() {
         option_env!("SYSROOT")
             .map(|s| s.to_owned())
             .or_else(|| {
-                         Command::new("rustc")
-                             .args(&["--print", "sysroot"])
-                             .output()
-                             .ok()
-                             .and_then(|out| String::from_utf8(out.stdout).ok())
-                             .map(|s| s.trim().to_owned())
-                     })
+                Command::new("rustc")
+                    .args(&["--print", "sysroot"])
+                    .output()
+                    .ok()
+                    .and_then(|out| String::from_utf8(out.stdout).ok())
+                    .map(|s| s.trim().to_owned())
+            })
             .expect("need to specify SYSROOT env var during compilation, or use rustup")
     };
 

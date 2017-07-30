@@ -63,7 +63,6 @@ macro_rules! test {
                             "--extern", &format!("old={}", old_rlib.to_str().unwrap()),
                             "--extern", &format!("new={}", new_rlib.to_str().unwrap()),
                             "tests/helper/test.rs"])
-                    .env("RUST_LOG", "debug")
                     .env("RUST_BACKTRACE", "full")
                     .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
                     .stdin(Stdio::null())

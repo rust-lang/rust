@@ -90,13 +90,19 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
     /// Translate a `DefId`.
     fn translate_orig(&self, def_id: DefId) -> DefId {
-        (self.translate_orig)(self.id_mapping, def_id).unwrap_or(def_id)
+        (self.translate_orig)(self.id_mapping, def_id).unwrap_or_else(|| {
+            warn!("not mapped: {:?}", def_id);
+            def_id
+        })
     }
 
     /// Translate a `DefId` of a trait item.
     fn translate_orig_trait(&self, item_def_id: DefId, trait_def_id: DefId) -> DefId {
         (self.translate_orig_trait)(self.id_mapping, item_def_id, trait_def_id)
-            .unwrap_or(item_def_id)
+            .unwrap_or_else(|| {
+                warn!("not mapped: {:?} / {:?}", item_def_id, trait_def_id);
+                item_def_id
+            })
     }
 
     /// Fold a structure, translating all `DefId`s reachable by the folder.
