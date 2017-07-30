@@ -4301,6 +4301,7 @@ impl<'a> Parser<'a> {
                 where_clause: WhereClause {
                     id: ast::DUMMY_NODE_ID,
                     predicates: Vec::new(),
+                    span: syntax_pos::DUMMY_SP,
                 },
                 span: span_lo.to(self.prev_span),
             })
@@ -4368,11 +4369,13 @@ impl<'a> Parser<'a> {
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
+            span: syntax_pos::DUMMY_SP,
         };
 
         if !self.eat_keyword(keywords::Where) {
             return Ok(where_clause);
         }
+        let lo = self.prev_span;
 
         // This is a temporary future proofing.
         //
@@ -4450,6 +4453,7 @@ impl<'a> Parser<'a> {
             }
         }
 
+        where_clause.span = lo.to(self.prev_span);
         Ok(where_clause)
     }
 

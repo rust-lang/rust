@@ -297,6 +297,10 @@ h3.impl > .out-of-band {
 	font-size: 21px;
 }
 
+h4.method > .out-of-band {
+	font-size: 19px;
+}
+
 h4 > code, h3 > code, .invisible > code {
 	position: inherit;
 }
