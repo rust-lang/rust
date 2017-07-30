@@ -256,9 +256,10 @@ impl LiteralDigitGrouping {
             let Some(firstch) = src.chars().next(),
             char::to_digit(firstch, 10).is_some()
         ], {
-            let digits = LiteralDigitGrouping::get_digits(&src, false);
-
-            LiteralDigitGrouping::do_lint(digits, cx, &lit.span);
+            let digit_info = DigitInfo::new(&src, false);
+            let _ = LiteralDigitGrouping::do_lint(digit_info.digits).map_err(|warning_type| {
+                warning_type.display(&digit_info.grouping_hint(), cx, &lit.span)
+            });
         }}
 
         // Lint floating-point literals.
@@ -268,7 +269,10 @@ impl LiteralDigitGrouping {
             let Some(firstch) = src.chars().next(),
             char::to_digit(firstch, 10).is_some()
         ], {
-            let digits: Vec<&str> = LiteralDigitGrouping::get_digits(&src, true)
+            let digit_info = DigitInfo::new(&src, true);
+            // Separate digits into integral and fractional parts.
+            let parts: Vec<&str> = digit_info
+                .digits
                 .split_terminator('.')
                 .collect();
 
@@ -301,34 +305,7 @@ impl LiteralDigitGrouping {
         }}
     }
 
-    /// Returns the digits of an integral or floating-point literal.
-    fn get_digits(lit: &str, float: bool) -> &str {
-        // Determine delimiter for radix prefix, if present.
-        let mb_r = if lit.starts_with("0x") {
-            Some('x')
-        } else if lit.starts_with("0b") {
-            Some('b')
-        } else if lit.starts_with("0o") {
-            Some('o')
-        } else {
-            None
-        };
-
-        let has_suffix = !float && (lit.contains('i') || lit.contains('u')) || float && lit.contains('f');
-
-        // Grab part of literal between the radix prefix and type suffix.
-        let mut digits = if let Some(r) = mb_r {
-            lit.split(|c| c == 'i' || c == 'u' || c == r || (float && c == 'f')).nth(1).unwrap()
-        } else {
-            lit.split(|c| c == 'i' || c == 'u' || (float && c == 'f')).next().unwrap()
-        };
-
-        // If there was an underscore before type suffix, drop it.
-        if has_suffix && digits.chars().last().unwrap() == '_' {
-            digits = digits.split_at(digits.len() - 1).0;
         }
-
-        digits
     }
 
     /// Performs lint on `digits` (no decimal point) and returns the group
