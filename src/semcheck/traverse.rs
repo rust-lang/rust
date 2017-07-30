@@ -13,7 +13,7 @@ use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
-use rustc::ty::{AssociatedItem, ParamEnv, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, ParamEnv, TraitRef, Ty, TyCtxt};
 use rustc::ty::Visibility::Public;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs};
@@ -633,39 +633,15 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                               id_mapping: &IdMapping,
                               tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut new_impls = HashMap::new();
     let all_impls = tcx.sess.cstore.implementations_of_trait(None);
 
-    // construct a set of implementations for each trait outside of the old crate.
-    for new_impl_def_id in all_impls.iter().filter(|&did| !id_mapping.in_old_crate(*did)) {
-        new_impls
-            .entry(tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id)
-            .or_insert_with(BTreeSet::new)
-            .insert(*new_impl_def_id);
-    }
-
-    // for each implementation in the old crate, ... 
     for old_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_old_crate(*did)) {
-        // ... compute trait `DefId`s, ...
         let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
-        let new_trait_def_id = if let Some(did) = id_mapping.get_new_id(old_trait_def_id) {
-            did
-        } else {
+        if id_mapping.get_new_id(old_trait_def_id).is_none() {
             continue;
-        };
-
-        let mut matched = false;
-
-        // ... and try to match them up with new or outside impls.
-        for new_impl_def_id in &new_impls[&new_trait_def_id] {
-            matched |= cmp_impls(id_mapping, tcx, *old_impl_def_id, *new_impl_def_id);
-
-            if matched {
-                break;
-            }
         }
 
-        if !matched {
+        if !match_impl(id_mapping, tcx, *old_impl_def_id) {
             let impl_span = tcx.def_span(*old_impl_def_id);
 
             changes.new_change(*old_impl_def_id,
@@ -805,74 +781,24 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 }
 
 /// Compare two implementations and indicate whether the new one is compatible with the old one.
-fn cmp_impls<'a, 'tcx>(id_mapping: &IdMapping,
-                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       old_def_id: DefId,
-                       new_def_id: DefId) -> bool {
-    use rustc::infer::InferOk;
-    use syntax_pos::DUMMY_SP;
-
+fn match_impl<'a, 'tcx>(id_mapping: &IdMapping,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        old_def_id: DefId) -> bool {
     let to_new = TranslationContext::to_new(tcx, id_mapping);
-
-    let old = tcx
-        .impl_trait_ref(old_def_id)
-        .and_then(|trait_ref| trait_ref.substs.get(0))
-        .and_then(|kind| kind.as_type())
-        .unwrap();
-    let new = tcx
-        .impl_trait_ref(new_def_id)
-        .and_then(|trait_ref| trait_ref.substs.get(0))
-        .and_then(|kind| kind.as_type())
-        .unwrap();
-
-    let old_generics = tcx.generics_of(old_def_id);
-    let new_generics = tcx.generics_of(new_def_id);
-
-    if old_generics.regions.len() > new_generics.regions.len() ||
-            old_generics.types.len() > new_generics.types.len() {
-        return false;
-    }
-
-    debug!("old env: {:?}", tcx.param_env(old_def_id));
-    debug!("new env: {:?}", tcx.param_env(new_def_id));
-
-    let substs = Substs::identity_for_item(tcx, new_def_id);
-    debug!("to translate: {:?}", old);
-    // debug!("translated: {:?}", to_new.translate_item_type(old_def_id, old));
-    // let old = to_new.translate_item_type(old_def_id, old).subst(tcx, substs);
+    debug!("matching: {:?}", old_def_id);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let new_substs = {
-            Substs::for_item(infcx.tcx, new_def_id, |def, _| {
-                infcx.region_var_for_def(DUMMY_SP, def)
-            }, |def, substs| {
-                // TODO: strictly speaking, this shouldn't happen.
-                if def.index == 0 { // `Self` is special
-                    tcx.mk_param_from_def(def)
-                } else {
-                    infcx.type_var_for_def(DUMMY_SP, def, substs)
-                }
-            })
-        };
-
-        // let new = new.subst(infcx.tcx, new_substs);
-
         let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
-        // let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
+        debug!("env: {:?}", old_param_env);
 
-        /* let cause = ObligationCause::dummy();
-
-        let error = infcx
-            .at(&cause, new_param_env)
-            .eq(old, new)
-            .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
-
-        if error.is_err() {
-            return false;
-        } */
+        let old = tcx
+            .impl_trait_ref(old_def_id)
+            .unwrap();
+        debug!("trait ref: {:?}", old);
 
         let mut bound_cx = BoundContext::new(&infcx, old_param_env);
-        bound_cx.register(new_def_id, substs);
+        bound_cx.register_trait_ref(to_new.translate_trait_ref(old_def_id, &old));
+        // bound_cx.register(new_def_id, substs);
         bound_cx.get_errors().is_none()
     })
 }
@@ -921,9 +847,21 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Register the trait bound represented by a `TraitRef`.
+    pub fn register_trait_ref(&mut self, checked_trait_ref: TraitRef<'tcx>) {
+        use rustc::ty::{Binder, Predicate, TraitPredicate};
+
+        let predicate = Predicate::Trait(Binder(TraitPredicate {
+            trait_ref: checked_trait_ref,
+        let obligation =
+            Obligation::new(ObligationCause::dummy(), self.given_param_env, predicate);
+        self.fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+    }
+
     /// Return inference errors, if any.
     pub fn get_errors(&mut self) -> Option<Vec<FulfillmentError<'tcx>>> {
         if let Err(err) = self.fulfill_cx.select_all_or_error(self.infcx) {
+            debug!("err: {:?}", err);
             Some(err)
         } else {
             None

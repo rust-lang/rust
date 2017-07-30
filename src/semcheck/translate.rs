@@ -1,5 +1,5 @@
 use rustc::hir::def_id::DefId;
-use rustc::ty::{ParamEnv, Predicate, Region, Ty, TyCtxt};
+use rustc::ty::{ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -308,6 +308,17 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         ParamEnv {
             caller_bounds: self.tcx.intern_predicates(&res),
             reveal: param_env.reveal,
+        }
+    }
+
+    /// Translate a `TraitRef`.
+    pub fn translate_trait_ref(&self, orig_def_id: DefId, orig_trait_ref: &TraitRef<'tcx>)
+        -> TraitRef<'tcx>
+    {
+        let index_map = self.construct_index_map(orig_def_id);
+        TraitRef {
+            def_id: self.translate_orig(orig_trait_ref.def_id),
+            substs: self.translate(&index_map, &orig_trait_ref.substs),
         }
     }
 }
