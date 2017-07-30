@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc_const_math::ConstInt::*;
-use rustc_const_math::ConstFloat::*;
+use rustc_const_math::ConstFloat;
 use rustc_const_math::{ConstInt, ConstMathErr};
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
@@ -95,8 +95,13 @@ impl<'tcx> Const<'tcx> {
                              -> Const<'tcx> {
         let llty = type_of::type_of(ccx, ty);
         let val = match cv {
-            ConstVal::Float(F32(v)) => C_floating_f64(v as f64, llty),
-            ConstVal::Float(F64(v)) => C_floating_f64(v, llty),
+            ConstVal::Float(v) => {
+                let v_f64 = match v {
+                    ConstFloat::F32(v) => f32::from_bits(v) as f64,
+                    ConstFloat::F64(v) => f64::from_bits(v)
+                };
+                C_floating_f64(v_f64, llty)
+            }
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
