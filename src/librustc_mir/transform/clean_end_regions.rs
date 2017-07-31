@@ -65,13 +65,6 @@ impl<'tcx> Visitor<'tcx> for GatherBorrowedRegions {
         self.super_rvalue(rvalue, location);
     }
 
-    fn visit_statement(&mut self,
-                       block: BasicBlock,
-                       statement: &Statement<'tcx>,
-                       location: Location) {
-        self.super_statement(block, statement, location);
-    }
-
     fn visit_ty(&mut self, ty: &Ty<'tcx>, _: Lookup) {
         // Gather regions that occur in types
         for re in ty.walk().flat_map(|t| t.regions()) {
