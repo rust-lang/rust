@@ -14,7 +14,10 @@
 
 #![deny(warnings)]
 
+extern crate env_logger;
 extern crate getopts;
+#[macro_use]
+extern crate log;
 extern crate regex;
 extern crate serde;
 #[macro_use]
@@ -79,9 +82,10 @@ impl From<io::Error> for FormatDiffError {
 }
 
 fn main() {
+    let _ = env_logger::init();
+
     let mut opts = getopts::Options::new();
     opts.optflag("h", "help", "show this message");
-    opts.optflag("v", "verbose", "use verbose output");
     opts.optopt(
         "p",
         "skip-prefix",
@@ -115,12 +119,9 @@ fn run(opts: &getopts::Options) -> Result<(), FormatDiffError> {
         return Ok(());
     }
 
-    let verbose = matches.opt_present("v");
-
     let filter = matches
         .opt_str("f")
         .unwrap_or_else(|| DEFAULT_PATTERN.into());
-
 
     let skip_prefix = matches
         .opt_str("p")
@@ -129,29 +130,19 @@ fn run(opts: &getopts::Options) -> Result<(), FormatDiffError> {
 
     let (files, ranges) = scan_diff(io::stdin(), skip_prefix, &filter)?;
 
-    run_rustfmt(&files, &ranges, verbose)
+    run_rustfmt(&files, &ranges)
 }
 
-fn run_rustfmt(
-    files: &HashSet<String>,
-    ranges: &[Range],
-    verbose: bool,
-) -> Result<(), FormatDiffError> {
+fn run_rustfmt(files: &HashSet<String>, ranges: &[Range]) -> Result<(), FormatDiffError> {
     if files.is_empty() || ranges.is_empty() {
-        if verbose {
-            println!("No files to format found");
-        }
+        debug!("No files to format found");
         return Ok(());
     }
 
     let ranges_as_json = json::to_string(ranges).unwrap();
-    if verbose {
-        print!("rustfmt");
-        for file in files {
-            print!(" {:?}", file);
-        }
-        print!(" --file-lines {:?}", ranges_as_json);
-    }
+
+    debug!("Files: {:?}", files);
+    debug!("Ranges: {:?}", ranges);
 
     let exit_status = process::Command::new("rustfmt")
         .args(files)
