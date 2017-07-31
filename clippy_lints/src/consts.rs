@@ -225,6 +225,7 @@ pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
         tcx: lcx.tcx,
         tables: lcx.tables,
+        param_env: lcx.param_env,
         needed_resolution: false,
         substs: lcx.tcx.intern_substs(&[]),
     };
@@ -238,6 +239,7 @@ pub fn constant_simple(lcx: &LateContext, e: &Expr) -> Option<Constant> {
 struct ConstEvalLateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     needed_resolution: bool,
     substs: &'tcx Substs<'tcx>,
 }
@@ -292,12 +294,14 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 } else {
                     substs.subst(self.tcx, self.substs)
                 };
-                if let Some((def_id, substs)) = lookup_const_by_id(self.tcx, def_id, substs) {
+                let param_env = self.param_env.and((def_id, substs));
+                if let Some((def_id, substs)) = lookup_const_by_id(self.tcx, param_env) {
                     let mut cx = ConstEvalLateContext {
                         tcx: self.tcx,
                         tables: self.tcx.typeck_tables_of(def_id),
                         needed_resolution: false,
                         substs: substs,
+                        param_env: param_env.param_env,
                     };
                     let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                         self.tcx.mir_const_qualif(def_id);

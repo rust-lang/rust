@@ -4,6 +4,9 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_math::*;
 use rustc::hir::*;
+use rustc::ty;
+use rustc::traits::Reveal;
+use rustc::ty::subst::Substs;
 use utils::span_lint;
 
 /// **What it does:** Checks for C-like enumerations that are
@@ -43,9 +46,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
             for var in &def.variants {
                 let variant = &var.node;
                 if let Some(body_id) = variant.disr_expr {
-                    use rustc_const_eval::*;
-                    let constcx = ConstContext::with_tables(cx.tcx, cx.tcx.body_tables(body_id));
-                    let bad = match constcx.eval(&cx.tcx.hir.body(body_id).value) {
+                    let expr = &cx.tcx.hir.body(body_id).value;
+                    let did = cx.tcx.hir.body_owner_def_id(body_id);
+                    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                    let substs = Substs::identity_for_item(cx.tcx.global_tcx(), did);
+                    let bad = match cx.tcx.at(expr.span).const_eval(param_env.and((did, substs))) {
                         Ok(ConstVal::Integral(Usize(Us64(i)))) => i as u32 as u64 != i,
                         Ok(ConstVal::Integral(Isize(Is64(i)))) => i as i32 as i64 != i,
                         _ => false,

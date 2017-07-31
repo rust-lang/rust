@@ -3,6 +3,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
+use rustc::ty::subst::Substs;
 use std::collections::HashSet;
 use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
@@ -150,7 +151,10 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
 }
 
 fn const_str(cx: &LateContext, e: &Expr) -> Option<InternedString> {
-    match ConstContext::with_tables(cx.tcx, cx.tables).eval(e) {
+    let parent_item = cx.tcx.hir.get_parent(e.id);
+    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+    match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(e) {
         Ok(ConstVal::Str(r)) => Some(r),
         _ => None,
     }

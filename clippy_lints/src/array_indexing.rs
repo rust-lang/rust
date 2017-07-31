@@ -1,6 +1,7 @@
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
+use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::{ConstUsize, ConstIsize, ConstInt};
 use rustc::hir;
@@ -62,7 +63,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
             if let ty::TyArray(_, size) = ty.sty {
                 let size = ConstInt::Usize(ConstUsize::new(size as u64, cx.sess().target.uint_type)
                     .expect("array size is invalid"));
-                let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
+                let parent_item = cx.tcx.hir.get_parent(e.id);
+                let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+                let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+                let constcx = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables);
 
                 // Index is a constant uint
                 let const_index = constcx.eval(index);

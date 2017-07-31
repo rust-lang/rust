@@ -4,6 +4,7 @@ use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
+use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, ExpnFormat};
@@ -389,7 +390,10 @@ fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
 }
 
 fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
-    let res = ConstContext::with_tables(cx.tcx, cx.tables).eval(expr);
+    let parent_item = cx.tcx.hir.get_parent(expr.id);
+    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+    let res = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr);
     if let Ok(ConstVal::Float(val)) = res {
         use std::cmp::Ordering;
         match val {

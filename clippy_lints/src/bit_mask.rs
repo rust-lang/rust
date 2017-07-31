@@ -249,7 +249,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
         ExprPath(ref qpath) => {
             let def = cx.tables.qpath_def(qpath, lit.id);
             if let Def::Const(def_id) = def {
-                lookup_const_by_id(cx.tcx, def_id, Substs::empty()).and_then(|(l, _ty)| {
+                lookup_const_by_id(cx.tcx, cx.param_env.and((def_id, Substs::empty()))).and_then(|(l, _ty)| {
                     let body = if let Some(id) = cx.tcx.hir.as_local_node_id(l) {
                         cx.tcx.mir_const_qualif(def_id);
                         cx.tcx.hir.body(cx.tcx.hir.body_owned_by(id))
