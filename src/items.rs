@@ -23,7 +23,7 @@ use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, ListTactic, SeparatorTactic};
+            ListItem, ListTactic, Separator, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::join_bounds;
 use utils::{colon_spaces, contains_skip, end_typaram, format_defaultness, format_mutability,
@@ -2241,7 +2241,7 @@ fn rewrite_args(
     let tactic = definitive_tactic(
         &arg_items,
         context.config.fn_args_density().to_list_tactic(),
-        2,
+        Separator::Comma,
         one_line_budget,
     );
     let budget = match tactic {
@@ -2427,7 +2427,7 @@ where
     let tactic = definitive_tactic(
         &item_vec,
         ListTactic::HorizontalVertical,
-        2,
+        Separator::Comma,
         one_line_budget,
     );
     let fmt = ListFormatting {
@@ -2642,7 +2642,12 @@ fn rewrite_where_clause(
     let item_vec = items.collect::<Vec<_>>();
     // FIXME: we don't need to collect here if the where_layout isn't
     // HorizontalVertical.
-    let tactic = definitive_tactic(&item_vec, context.config.where_layout(), 2, budget);
+    let tactic = definitive_tactic(
+        &item_vec,
+        context.config.where_layout(),
+        Separator::Comma,
+        budget,
+    );
 
     let mut comma_tactic = context.config.trailing_comma();
     // Kind of a hack because we don't usually have trailing commas in where clauses.

@@ -17,7 +17,7 @@ use Shape;
 use codemap::SpanUtils;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, SeparatorTactic};
+            ListItem, Separator, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::{rewrite_path, PathContext};
 use utils;
@@ -451,7 +451,7 @@ fn rewrite_use_list(
     let tactic = definitive_tactic(
         &items[first_index..],
         context.config.imports_layout(),
-        2,
+        Separator::Comma,
         remaining_width,
     );
 

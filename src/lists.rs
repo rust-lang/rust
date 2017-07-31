@@ -135,10 +135,28 @@ impl DefinitiveListTactic {
     }
 }
 
+/// The type of separator for lists.
+#[derive(Eq, PartialEq, Debug)]
+pub enum Separator {
+    Comma,
+    VerticalBar,
+}
+
+impl Separator {
+    pub fn len(&self) -> usize {
+        match *self {
+            // 2 = `, `
+            Separator::Comma => 2,
+            // 3 = ` | `
+            Separator::VerticalBar => 3,
+        }
+    }
+}
+
 pub fn definitive_tactic<I, T>(
     items: I,
     tactic: ListTactic,
-    sep_len: usize,
+    sep: Separator,
     width: usize,
 ) -> DefinitiveListTactic
 where
@@ -160,7 +178,7 @@ where
     };
 
     let (sep_count, total_width) = calculate_width(items.clone());
-    let total_sep_len = sep_len * sep_count.checked_sub(1).unwrap_or(0);
+    let total_sep_len = sep.len() * sep_count.checked_sub(1).unwrap_or(0);
     let real_total = total_width + total_sep_len;
 
     if real_total <= limit && !pre_line_comments &&
@@ -644,7 +662,7 @@ pub fn struct_lit_tactic(
             (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
             _ => context.config.struct_lit_multiline_style().to_list_tactic(),
         };
-        definitive_tactic(items, prelim_tactic, 2, h_shape.width)
+        definitive_tactic(items, prelim_tactic, Separator::Comma, h_shape.width)
     } else {
         DefinitiveListTactic::Vertical
     }

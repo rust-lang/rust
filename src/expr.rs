@@ -24,7 +24,7 @@ use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, ListTactic, SeparatorTactic};
+            ListItem, ListTactic, Separator, SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
 use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
@@ -485,7 +485,7 @@ where
                 Some(width) => {
                     let tactic =
                         ListTactic::LimitedHorizontalVertical(context.config.array_width());
-                    definitive_tactic(&items, tactic, 2, width)
+                    definitive_tactic(&items, tactic, Separator::Comma, width)
                 }
                 None => DefinitiveListTactic::Vertical,
             }
@@ -494,7 +494,7 @@ where
             definitive_tactic(
                 &items,
                 ListTactic::LimitedHorizontalVertical(context.config.array_width()),
-                2,
+                Separator::Comma,
                 nested_shape.width,
             )
         } else {
@@ -595,7 +595,7 @@ fn rewrite_closure_fn_decl(
     let tactic = definitive_tactic(
         &item_vec,
         ListTactic::HorizontalVertical,
-        2,
+        Separator::Comma,
         horizontal_budget,
     );
     let arg_shape = match tactic {
@@ -1674,7 +1674,12 @@ fn rewrite_match_pattern(
     );
 
     let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, 3, pat_shape.width);
+    let tactic = definitive_tactic(
+        &items,
+        ListTactic::HorizontalVertical,
+        Separator::VerticalBar,
+        pat_shape.width,
+    );
     let fmt = ListFormatting {
         tactic: tactic,
         separator: " |",
@@ -2222,7 +2227,7 @@ where
     let tactic = definitive_tactic(
         &*item_vec,
         ListTactic::LimitedHorizontalVertical(args_max_width),
-        2,
+        Separator::Comma,
         one_line_width,
     );
 
@@ -2763,7 +2768,7 @@ where
     let tactic = definitive_tactic(
         &item_vec,
         ListTactic::HorizontalVertical,
-        2,
+        Separator::Comma,
         nested_shape.width,
     );
     let fmt = ListFormatting {
