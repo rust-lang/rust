@@ -441,6 +441,19 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
                 self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
             }
+            LpExtend(ref base, mc::McInherited, LpDeref(pointer_kind)) |
+            LpExtend(ref base, mc::McDeclared, LpDeref(pointer_kind)) => {
+                match base.kind {
+                    LpVar(_) if pointer_kind != mc::Unique => {
+                        // If you mutate the inside of a ref var, the var itself
+                        // is not used mutably [Issue #25049]
+                        // Unless it's a Box! (mc::Unique)
+                    }
+                    _ => {
+                        self.mark_loan_path_as_mutated(&base);
+                    }
+                }
+            }
             LpDowncast(ref base, _) |
             LpExtend(ref base, mc::McInherited, _) |
             LpExtend(ref base, mc::McDeclared, _) => {
