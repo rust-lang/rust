@@ -955,6 +955,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let variant_def = adt_def.struct_variant();
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
+                    UntaggedUnion { ref variants } => 
+                        Ok(TyAndPacked { ty: variant_def.fields[field_index].ty(self.tcx, substs), packed: variants.packed }),
                     Univariant { ref variant, .. } =>
                         Ok(TyAndPacked { ty: variant_def.fields[field_index].ty(self.tcx, substs), packed: variant.packed }),
                     _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle struct type: {:?}, {:?}", ty, ty.sty))),
@@ -988,8 +990,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             StructWrappedNullablePointer { ref nonnull, .. } => {
                 Ok(nonnull.offsets[field_index])
             }
+            UntaggedUnion { .. } => Ok(Size::from_bytes(0)),
             _ => {
-                let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
+                let msg = format!("get_field_offset: can't handle type: {:?}, with layout: {:?}", ty, layout);
                 Err(EvalError::Unimplemented(msg))
             }
         }
@@ -1006,8 +1009,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Vector { count , .. } |
             Array { count, .. } => Ok(count),
             Scalar { .. } => Ok(0),
+            UntaggedUnion { .. } => Ok(1),
             _ => {
-                let msg = format!("can't handle type: {:?}, with layout: {:?}", ty, layout);
+                let msg = format!("get_field_count: can't handle type: {:?}, with layout: {:?}", ty, layout);
                 Err(EvalError::Unimplemented(msg))
             }
         }
