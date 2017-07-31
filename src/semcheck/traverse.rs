@@ -653,6 +653,25 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(TraitImplTightened, *old_impl_def_id, None);
         }
     }
+
+    for new_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_new_crate(*did)) {
+        let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
+        if id_mapping.get_old_id(new_trait_def_id).is_none() {
+            continue;
+        }
+
+        if !match_impl(id_mapping, tcx, *new_impl_def_id) {
+            let impl_span = tcx.def_span(*new_impl_def_id);
+
+            changes.new_change(*new_impl_def_id,
+                               *new_impl_def_id,
+                               Symbol::intern("impl"),
+                               impl_span,
+                               impl_span,
+                               true);
+            changes.add_change(TraitImplLoosened, *new_impl_def_id, None);
+        }
+    }
 }
 
 /// Compare two types and possibly register the error.
@@ -701,7 +720,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         };
 
         let new = new.subst(infcx.tcx, new_substs);
-        let old = old.subst(infcx.tcx, substs);
+        // let old = old.subst(infcx.tcx, substs);
 
         let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
 
@@ -791,13 +810,21 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 /// Compare two implementations and indicate whether the new one is compatible with the old one.
 fn match_impl<'a, 'tcx>(id_mapping: &IdMapping,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        old_def_id: DefId) -> bool {
-    let to_new = TranslationContext::to_new(tcx, id_mapping, false);
-    debug!("matching: {:?}", old_def_id);
+                        orig_def_id: DefId) -> bool {
+    let trans = if id_mapping.in_old_crate(orig_def_id) {
+        TranslationContext::to_new(tcx, id_mapping, false)
+    } else if id_mapping.in_new_crate(orig_def_id) {
+        TranslationContext::to_old(tcx, id_mapping, false)
+    } else {
+        // not reached, but apparently we don't care.
+        return true;
+    };
+
+    debug!("matching: {:?}", orig_def_id);
 
     tcx.infer_ctxt().enter(|infcx| {
         let old_param_env = if let Some(env) =
-            to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id))
+            trans.translate_param_env(orig_def_id, tcx.param_env(orig_def_id))
         {
             env
         } else {
@@ -807,14 +834,13 @@ fn match_impl<'a, 'tcx>(id_mapping: &IdMapping,
         debug!("env: {:?}", old_param_env);
 
         let old = tcx
-            .impl_trait_ref(old_def_id)
+            .impl_trait_ref(orig_def_id)
             .unwrap();
         debug!("trait ref: {:?}", old);
-        debug!("translated ref: {:?}", to_new.translate_trait_ref(old_def_id, &old));
+        debug!("translated ref: {:?}", trans.translate_trait_ref(orig_def_id, &old));
 
         let mut bound_cx = BoundContext::new(&infcx, old_param_env);
-        bound_cx.register_trait_ref(to_new.translate_trait_ref(old_def_id, &old));
-        // bound_cx.register(new_def_id, substs);
+        bound_cx.register_trait_ref(trans.translate_trait_ref(orig_def_id, &old));
         bound_cx.get_errors().is_none()
     })
 }

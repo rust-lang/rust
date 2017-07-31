@@ -1,3 +1,9 @@
+impl DefId { krate: CrateNum(13), node: DefIndex(7) => new/8cd878b::{{impl}}[1] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
+impl DefId { krate: CrateNum(13), node: DefIndex(8) => new/8cd878b::{{impl}}[2] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
+impl DefId { krate: CrateNum(13), node: DefIndex(10) => new/8cd878b::{{impl}}[4] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
+impl DefId { krate: CrateNum(13), node: DefIndex(11) => new/8cd878b::{{impl}}[5] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
+impl DefId { krate: CrateNum(13), node: DefIndex(9) => new/8cd878b::{{impl}}[3] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
+impl DefId { krate: CrateNum(13), node: DefIndex(6) => new/8cd878b::{{impl}}[0] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 warning: breaking changes in `impl`
  --> $REPO_PATH/tests/cases/trait_impls/old.rs:9:1
@@ -18,4 +24,36 @@ warning: breaking changes in `impl`
    | |_^
    |
    = warning: trait impl specialized or removed (breaking)
+
+warning: technically breaking changes in `impl`
+  --> $REPO_PATH/tests/cases/trait_impls/new.rs:11:1
+   |
+11 | impl<T: Clone> Abc for Box<T> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `impl`
+  --> $REPO_PATH/tests/cases/trait_impls/new.rs:13:1
+   |
+13 | impl Abc for Box<Def> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `impl`
+  --> $REPO_PATH/tests/cases/trait_impls/new.rs:15:1
+   |
+15 | impl Abc for () { }
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `impl`
+  --> $REPO_PATH/tests/cases/trait_impls/new.rs:17:1
+   |
+17 | impl<T> Abc for Cell<(bool, T)> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
 
