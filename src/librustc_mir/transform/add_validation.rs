@@ -163,8 +163,8 @@ impl MirPass for AddValidation {
             ValidationOperand { lval, ty, re, mutbl }
         };
 
-        // Emit an Acquire at the beginning of the given block.  If we are in restricted emission mode
-        // (mir_emit_validate=1), also emit a Release immediately after the Acquire.
+        // Emit an Acquire at the beginning of the given block.  If we are in restricted emission
+        // mode (mir_emit_validate=1), also emit a Release immediately after the Acquire.
         let emit_acquire = |block: &mut BasicBlockData<'tcx>, source_info, operands: Vec<_>| {
             if operands.len() == 0 {
                 return; // Nothing to do
