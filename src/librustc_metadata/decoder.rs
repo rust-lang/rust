@@ -242,7 +242,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            return Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION });
+            return Ok(Span::new(lo, hi, NO_EXPANSION));
         };
 
         let (lo, hi) = if lo > hi {
@@ -289,7 +289,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let lo = (lo - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
         let hi = (hi - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
 
-        Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION })
+        Ok(Span::new(lo, hi, NO_EXPANSION))
     }
 }
 

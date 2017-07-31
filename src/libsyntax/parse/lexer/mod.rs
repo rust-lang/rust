@@ -71,7 +71,7 @@ pub struct StringReader<'a> {
 
 impl<'a> StringReader<'a> {
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
-        unwrap_or!(self.override_span, Span { lo: lo, hi: hi, ctxt: NO_EXPANSION})
+        unwrap_or!(self.override_span, Span::new(lo, hi, NO_EXPANSION))
     }
 
     fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
@@ -190,20 +190,20 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
-        let begin = sess.codemap().lookup_byte_offset(span.lo);
-        let end = sess.codemap().lookup_byte_offset(span.hi);
+        let begin = sess.codemap().lookup_byte_offset(span.lo());
+        let end = sess.codemap().lookup_byte_offset(span.hi());
 
         // Make the range zero-length if the span is invalid.
-        if span.lo > span.hi || begin.fm.start_pos != end.fm.start_pos {
-            span.hi = span.lo;
+        if span.lo() > span.hi() || begin.fm.start_pos != end.fm.start_pos {
+            span = span.with_hi(span.lo());
         }
 
         let mut sr = StringReader::new_raw_internal(sess, begin.fm);
 
         // Seek the lexer to the right byte range.
         sr.save_new_lines_and_multibyte = false;
-        sr.next_pos = span.lo;
-        sr.terminator = Some(span.hi);
+        sr.next_pos = span.lo();
+        sr.terminator = Some(span.hi());
 
         sr.bump();
 
@@ -1745,11 +1745,7 @@ mod tests {
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan {
             tok: token::Ident(id),
-            sp: Span {
-                lo: BytePos(21),
-                hi: BytePos(23),
-                ctxt: NO_EXPANSION,
-            },
+            sp: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
         };
         assert_eq!(tok1, tok2);
         assert_eq!(string_reader.next_token().tok, token::Whitespace);
@@ -1759,11 +1755,7 @@ mod tests {
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan {
             tok: token::Ident(Ident::from_str("main")),
-            sp: Span {
-                lo: BytePos(24),
-                hi: BytePos(28),
-                ctxt: NO_EXPANSION,
-            },
+            sp: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
         };
         assert_eq!(tok3, tok4);
         // the lparen is already read:
@@ -1921,7 +1913,7 @@ mod tests {
         let mut lexer = setup(&cm, &sh, "// test\r\n/// test\r\n".to_string());
         let comment = lexer.next_token();
         assert_eq!(comment.tok, token::Comment);
-        assert_eq!((comment.sp.lo, comment.sp.hi), (BytePos(0), BytePos(7)));
+        assert_eq!((comment.sp.lo(), comment.sp.hi()), (BytePos(0), BytePos(7)));
         assert_eq!(lexer.next_token().tok, token::Whitespace);
         assert_eq!(lexer.next_token().tok,
                    token::DocComment(Symbol::intern("/// test")));

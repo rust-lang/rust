@@ -230,8 +230,8 @@ impl DiagnosticSpan {
                       mut backtrace: vec::IntoIter<MacroBacktrace>,
                       je: &JsonEmitter)
                       -> DiagnosticSpan {
-        let start = je.cm.lookup_char_pos(span.lo);
-        let end = je.cm.lookup_char_pos(span.hi);
+        let start = je.cm.lookup_char_pos(span.lo());
+        let end = je.cm.lookup_char_pos(span.hi());
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site =
                 Self::from_span_full(bt.call_site,
@@ -256,8 +256,8 @@ impl DiagnosticSpan {
         });
         DiagnosticSpan {
             file_name: start.file.name.clone(),
-            byte_start: span.lo.0 - start.file.start_pos.0,
-            byte_end: span.hi.0 - start.file.start_pos.0,
+            byte_start: span.lo().0 - start.file.start_pos.0,
+            byte_end: span.hi().0 - start.file.start_pos.0,
             line_start: start.line,
             line_end: end.line,
             column_start: start.col.0 + 1,

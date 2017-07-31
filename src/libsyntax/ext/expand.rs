@@ -598,7 +598,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         match *ext {
             ProcMacroDerive(ref ext, _) => {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
-                let span = Span { ctxt: self.cx.backtrace(), ..span };
+                let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
                     name: keywords::Invalid.name(),
                     span: DUMMY_SP,
@@ -609,7 +609,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             BuiltinDerive(func) => {
                 expn_info.callee.allow_internal_unstable = true;
                 invoc.expansion_data.mark.set_expn_info(expn_info);
-                let span = Span { ctxt: self.cx.backtrace(), ..span };
+                let span = span.with_ctxt(self.cx.backtrace());
                 let mut items = Vec::new();
                 func(self.cx, span, &attr.meta().unwrap(), &item, &mut |a| items.push(a));
                 kind.expect_from_annotatables(items)
@@ -684,8 +684,8 @@ impl<'a> Parser<'a> {
         if self.token != token::Eof {
             let msg = format!("macro expansion ignores token `{}` and any following",
                               self.this_token_to_string());
-            let mut def_site_span = self.span;
-            def_site_span.ctxt = SyntaxContext::empty(); // Avoid emitting backtrace info twice.
+            // Avoid emitting backtrace info twice.
+            let def_site_span = self.span.with_ctxt(SyntaxContext::empty());
             let mut err = self.diagnostic().struct_span_err(def_site_span, &msg);
             let msg = format!("caused by the macro expansion here; the usage \
                                of `{}!` is likely invalid in {} context",
@@ -1069,9 +1069,8 @@ impl Folder for Marker {
         ident
     }
 
-    fn new_span(&mut self, mut span: Span) -> Span {
-        span.ctxt = span.ctxt.apply_mark(self.0);
-        span
+    fn new_span(&mut self, span: Span) -> Span {
+        span.with_ctxt(span.ctxt().apply_mark(self.0))
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {

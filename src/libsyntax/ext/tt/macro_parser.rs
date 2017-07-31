@@ -329,7 +329,8 @@ fn inner_parse_loop(sess: &ParseSess,
                     // Only touch the binders we have actually bound
                     for idx in item.match_lo..item.match_hi {
                         let sub = item.matches[idx].clone();
-                        new_pos.push_match(idx, MatchedSeq(sub, Span { lo: item.sp_lo, ..span }));
+                        let span = span.with_lo(item.sp_lo);
+                        new_pos.push_match(idx, MatchedSeq(sub, span));
                     }
 
                     new_pos.match_cur = item.match_hi;
@@ -379,7 +380,7 @@ fn inner_parse_loop(sess: &ParseSess,
                         match_cur: item.match_cur,
                         match_hi: item.match_cur + seq.num_captures,
                         up: Some(item),
-                        sp_lo: sp.lo,
+                        sp_lo: sp.lo(),
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     }));
                 }
@@ -424,7 +425,7 @@ pub fn parse(sess: &ParseSess,
              recurse_into_modules: bool)
              -> NamedParseResult {
     let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
-    let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
+    let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo()));
     let mut next_items = Vec::new(); // or proceed normally
 
     loop {

@@ -1371,7 +1371,7 @@ fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_i
             // Deterministically select one of the spans for error reporting
             let span = match (span1, span2) {
                 (Some(span1), Some(span2)) => {
-                    Some(if span1.lo.0 > span2.lo.0 {
+                    Some(if span1.lo().0 > span2.lo().0 {
                         span1
                     } else {
                         span2

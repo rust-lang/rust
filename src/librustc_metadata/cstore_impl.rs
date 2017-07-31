@@ -369,7 +369,7 @@ impl CrateStore for cstore::CStore {
         let source_name = format!("<{} macros>", name);
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
-        let local_span = Span { lo: filemap.start_pos, hi: filemap.end_pos, ctxt: NO_EXPANSION };
+        let local_span = Span::new(filemap.start_pos, filemap.end_pos, NO_EXPANSION);
         let body = filemap_to_stream(&sess.parse_sess, filemap, None);
 
         // Mark the attrs as used

@@ -477,7 +477,7 @@ struct NamePrivacyVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
     // Checks that a field is accessible.
     fn check_field(&mut self, span: Span, def: &'tcx ty::AdtDef, field: &'tcx ty::FieldDef) {
-        let ident = Ident { ctxt: span.ctxt.modern(), ..keywords::Invalid.ident() };
+        let ident = Ident { ctxt: span.ctxt().modern(), ..keywords::Invalid.ident() };
         let def_id = self.tcx.adjust_ident(ident, def.did, self.current_item).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",

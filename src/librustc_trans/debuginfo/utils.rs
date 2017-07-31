@@ -49,7 +49,7 @@ pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
 
 /// Return syntax_pos::Loc corresponding to the beginning of the span
 pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
-    cx.sess().codemap().lookup_char_pos(span.lo)
+    cx.sess().codemap().lookup_char_pos(span.lo())
 }
 
 pub fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u32) {

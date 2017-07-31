@@ -386,7 +386,7 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: String, srdr: &mut R
                 debug!("tok lit: {}", s);
                 literals.push(Literal {
                     lit: s.to_string(),
-                    pos: sp.lo,
+                    pos: sp.lo(),
                 });
             })
         } else {

@@ -91,13 +91,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         use rls_span::{Row, Column};
 
         let cm = self.tcx.sess.codemap();
-        let start = cm.lookup_char_pos(span.lo);
-        let end = cm.lookup_char_pos(span.hi);
+        let start = cm.lookup_char_pos(span.lo());
+        let end = cm.lookup_char_pos(span.hi());
 
         SpanData {
             file_name: start.file.name.clone().into(),
-            byte_start: span.lo.0,
-            byte_end: span.hi.0,
+            byte_start: span.lo().0,
+            byte_end: span.hi().0,
             line_start: Row::new_one_indexed(start.line as u32),
             line_end: Row::new_one_indexed(end.line as u32),
             column_start: Column::new_one_indexed(start.col.0 as u32 + 1),
@@ -117,7 +117,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     continue;
                 }
             };
-            let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo);
+            let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
                 name: self.tcx.sess.cstore.crate_name(n).to_string(),
                 num: n.as_u32(),
@@ -999,7 +999,7 @@ fn escape(s: String) -> String {
 // Helper function to determine if a span came from a
 // macro expansion or syntax extension.
 fn generated_code(span: Span) -> bool {
-    span.ctxt != NO_EXPANSION || span == DUMMY_SP
+    span.ctxt() != NO_EXPANSION || span == DUMMY_SP
 }
 
 // DefId::index is a newtype and so the JSON serialisation is ugly. Therefore

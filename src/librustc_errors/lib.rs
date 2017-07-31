@@ -148,16 +148,12 @@ impl CodeSuggestion {
 
         // Assumption: all spans are in the same file, and all spans
         // are disjoint. Sort in ascending order.
-        primary_spans.sort_by_key(|sp| sp.0.lo);
+        primary_spans.sort_by_key(|sp| sp.0.lo());
 
         // Find the bounding span.
-        let lo = primary_spans.iter().map(|sp| sp.0.lo).min().unwrap();
-        let hi = primary_spans.iter().map(|sp| sp.0.hi).min().unwrap();
-        let bounding_span = Span {
-            lo,
-            hi,
-            ctxt: NO_EXPANSION,
-        };
+        let lo = primary_spans.iter().map(|sp| sp.0.lo()).min().unwrap();
+        let hi = primary_spans.iter().map(|sp| sp.0.hi()).min().unwrap();
+        let bounding_span = Span::new(lo, hi, NO_EXPANSION);
         let lines = cm.span_to_lines(bounding_span).unwrap();
         assert!(!lines.lines.is_empty());
 
@@ -171,14 +167,14 @@ impl CodeSuggestion {
         //
         // Finally push the trailing line segment of the last span
         let fm = &lines.file;
-        let mut prev_hi = cm.lookup_char_pos(bounding_span.lo);
+        let mut prev_hi = cm.lookup_char_pos(bounding_span.lo());
         prev_hi.col = CharPos::from_usize(0);
 
         let mut prev_line = fm.get_line(lines.lines[0].line_index);
         let mut bufs = vec![(String::new(), false); self.substitutions()];
 
         for (sp, substitutes) in primary_spans {
-            let cur_lo = cm.lookup_char_pos(sp.lo);
+            let cur_lo = cm.lookup_char_pos(sp.lo());
             for (&mut (ref mut buf, ref mut underline), substitute) in bufs.iter_mut()
                                                                            .zip(substitutes) {
                 if prev_hi.line == cur_lo.line {
@@ -208,7 +204,7 @@ impl CodeSuggestion {
                 }
                 buf.push_str(substitute);
             }
-            prev_hi = cm.lookup_char_pos(sp.hi);
+            prev_hi = cm.lookup_char_pos(sp.hi());
             prev_line = fm.get_line(prev_hi.line - 1);
         }
         for &mut (ref mut buf, _) in &mut bufs {

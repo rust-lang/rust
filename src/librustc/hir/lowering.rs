@@ -425,8 +425,7 @@ impl<'a> LoweringContext<'a> {
         Symbol::gensym(s)
     }
 
-    fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, mut span: Span)
-        -> Span
+    fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, span: Span) -> Span
     {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(codemap::ExpnInfo {
@@ -438,8 +437,7 @@ impl<'a> LoweringContext<'a> {
                 allow_internal_unsafe: false,
             },
         });
-        span.ctxt = SyntaxContext::empty().apply_mark(mark);
-        span
+        span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }
 
     fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
@@ -613,7 +611,7 @@ impl<'a> LoweringContext<'a> {
             TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
             TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
             TyKind::Rptr(ref region, ref mt) => {
-                let span = Span { hi: t.span.lo, ..t.span };
+                let span = t.span.with_hi(t.span.lo());
                 let lifetime = match *region {
                     Some(ref lt) => self.lower_lifetime(lt),
                     None => self.elided_lifetime(span)
@@ -1237,7 +1235,7 @@ impl<'a> LoweringContext<'a> {
             name: self.lower_ident(match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried) positional field hygiene
-                None => Ident { name: Symbol::intern(&index.to_string()), ctxt: f.span.ctxt },
+                None => Ident { name: Symbol::intern(&index.to_string()), ctxt: f.span.ctxt() },
             }),
             vis: self.lower_visibility(&f.vis, None),
             ty: self.lower_ty(&f.ty),

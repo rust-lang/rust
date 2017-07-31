@@ -253,17 +253,17 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Span {
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let span_hi = if self.hi > self.lo {
+        let span_hi = if self.hi() > self.lo() {
             // We might end up in the middle of a multibyte character here,
             // but that's OK, since we are not trying to decode anything at
             // this position.
-            self.hi - ::syntax_pos::BytePos(1)
+            self.hi() - ::syntax_pos::BytePos(1)
         } else {
-            self.hi
+            self.hi()
         };
 
         {
-            let loc1 = hcx.codemap().byte_pos_to_line_and_col(self.lo);
+            let loc1 = hcx.codemap().byte_pos_to_line_and_col(self.lo());
             let loc1 = loc1.as_ref()
                            .map(|&(ref fm, line, col)| (&fm.name[..], line, col.to_usize()))
                            .unwrap_or(("???", 0, 0));
@@ -296,7 +296,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Span {
             }
         }
 
-        if self.ctxt == SyntaxContext::empty() {
+        if self.ctxt() == SyntaxContext::empty() {
             0u8.hash_stable(hcx, hasher);
         } else {
             1u8.hash_stable(hcx, hasher);

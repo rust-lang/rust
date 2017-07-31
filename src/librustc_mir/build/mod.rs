@@ -364,7 +364,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             builder.args_and_body(block, &arguments, arg_extent, &body.value)
         }));
         // Attribute epilogue to function's closing brace
-        let fn_end = Span { lo: span.hi, ..span };
+        let fn_end = span.with_lo(span.hi());
         let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
         builder.cfg.terminate(block, source_info,

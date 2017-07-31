@@ -340,7 +340,7 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
     .iter()
     .find(|&&(c, _, _)| c == ch)
     .map(|&(_, u_name, ascii_char)| {
-        let span = Span { lo: reader.pos, hi: reader.next_pos, ctxt: NO_EXPANSION };
+        let span = Span::new(reader.pos, reader.next_pos, NO_EXPANSION);
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
                 let msg =

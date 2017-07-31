@@ -237,7 +237,7 @@ impl<'a> Resolver<'a> {
             }
             let module = unwrap_or!(directive.imported_module.get(), return Err(Undetermined));
             let (orig_current_module, mut ident) = (self.current_module, ident.modern());
-            match ident.ctxt.glob_adjust(module.expansion, directive.span.ctxt.modern()) {
+            match ident.ctxt.glob_adjust(module.expansion, directive.span.ctxt().modern()) {
                 Some(Some(def)) => self.current_module = self.macro_def_scope(def),
                 Some(None) => {}
                 None => continue,
@@ -398,7 +398,7 @@ impl<'a> Resolver<'a> {
         for directive in module.glob_importers.borrow_mut().iter() {
             let mut ident = ident.modern();
             let scope = match ident.ctxt.reverse_glob_adjust(module.expansion,
-                                                             directive.span.ctxt.modern()) {
+                                                             directive.span.ctxt().modern()) {
                 Some(Some(def)) => self.macro_def_scope(def),
                 Some(None) => directive.parent,
                 None => continue,
@@ -800,7 +800,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }).collect::<Vec<_>>();
         for ((mut ident, ns), binding) in bindings {
             let scope = match ident.ctxt.reverse_glob_adjust(module.expansion,
-                                                             directive.span.ctxt.modern()) {
+                                                             directive.span.ctxt().modern()) {
                 Some(Some(def)) => self.macro_def_scope(def),
                 Some(None) => self.current_module,
                 None => continue,

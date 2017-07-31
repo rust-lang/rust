@@ -330,7 +330,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 self.set_debug_loc(&bcx, terminator.source_info);
 
                 // Get the location information.
-                let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
+                let loc = bcx.sess().codemap().lookup_char_pos(span.lo());
                 let filename = Symbol::intern(&loc.file.name).as_str();
                 let filename = C_str_slice(bcx.ccx, filename);
                 let line = C_u32(bcx.ccx, loc.line as u32);

@@ -375,7 +375,7 @@ fn find_type_parameters(ty: &ast::Ty,
         }
 
         fn visit_mac(&mut self, mac: &ast::Mac) {
-            let span = Span { ctxt: self.span.ctxt, ..mac.span };
+            let span = mac.span.with_ctxt(self.span.ctxt());
             self.cx.span_err(span, "`derive` cannot be used on items with type macros");
         }
     }
@@ -1464,7 +1464,7 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|v| {
                 let ident = v.node.name;
-                let sp = Span { ctxt: trait_.span.ctxt, ..v.span };
+                let sp = v.span.with_ctxt(trait_.span.ctxt());
                 let summary = trait_.summarise_struct(cx, &v.node.data);
                 (ident, sp, summary)
             })
@@ -1484,7 +1484,7 @@ impl<'a> TraitDef<'a> {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields() {
-            let sp = Span { ctxt: self.span.ctxt, ..field.span };
+            let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
                 Some(ident) => named_idents.push((ident, sp)),
                 _ => just_spans.push(sp),
@@ -1529,7 +1529,7 @@ impl<'a> TraitDef<'a> {
         let mut paths = Vec::new();
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
-            let sp = Span { ctxt: self.span.ctxt, ..struct_field.span };
+            let sp = struct_field.span.with_ctxt(self.span.ctxt());
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned {
                 span: sp,
@@ -1550,7 +1550,7 @@ impl<'a> TraitDef<'a> {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
                         codemap::Spanned {
-                            span: Span { ctxt: self.span.ctxt, ..pat.span },
+                            span: pat.span.with_ctxt(self.span.ctxt()),
                             node: ast::FieldPat {
                                 ident: ident.unwrap(),
                                 pat,
@@ -1582,7 +1582,7 @@ impl<'a> TraitDef<'a> {
          mutbl: ast::Mutability)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
-        let sp = Span { ctxt: self.span.ctxt, ..variant.span };
+        let sp = variant.span.with_ctxt(self.span.ctxt());
         let variant_path = cx.path(sp, vec![enum_ident, variant_ident]);
         self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl)
     }

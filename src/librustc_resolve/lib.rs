@@ -606,9 +606,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
                     if item.span == DUMMY_SP {
-                        let mut span = item.span;
-                        span.hi = span.lo;
-                        self.span = Some(span);
+                        self.span = Some(item.span.with_hi(item.span.lo()));
                         self.found_use = true;
                         return;
                     }
@@ -617,9 +615,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => if self.span.map_or(true, |span| item.span < span ) {
-                    let mut span = item.span;
-                    span.hi = span.lo;
-                    self.span = Some(span);
+                    self.span = Some(item.span.with_hi(item.span.lo()));
                 },
             }
         }
@@ -1732,7 +1728,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
         let mut module = self.get_module(module.normal_ancestor_id);
-        while module.span.ctxt.modern() != *ctxt {
+        while module.span.ctxt().modern() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.macro_def_scope(ctxt.remove_mark()));
             module = self.get_module(parent.normal_ancestor_id);
         }
@@ -2659,8 +2655,8 @@ impl<'a> Resolver<'a> {
                 sp = sp.next_point();
                 if let Ok(snippet) = cm.span_to_snippet(sp.to(sp.next_point())) {
                     debug!("snippet {:?}", snippet);
-                    let line_sp = cm.lookup_char_pos(sp.hi).line;
-                    let line_base_sp = cm.lookup_char_pos(base_span.lo).line;
+                    let line_sp = cm.lookup_char_pos(sp.hi()).line;
+                    let line_base_sp = cm.lookup_char_pos(base_span.lo()).line;
                     debug!("{:?} {:?}", line_sp, line_base_sp);
                     if snippet == ":" {
                         err.span_label(base_span,
@@ -3360,7 +3356,7 @@ impl<'a> Resolver<'a> {
         for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
             let module = binding.module().unwrap();
             let mut ident = ident;
-            if ident.ctxt.glob_adjust(module.expansion, binding.span.ctxt.modern()).is_none() {
+            if ident.ctxt.glob_adjust(module.expansion, binding.span.ctxt().modern()).is_none() {
                 continue
             }
             if self.resolve_ident_in_module_unadjusted(module, ident, ns, false, false, module.span)
@@ -3586,7 +3582,7 @@ impl<'a> Resolver<'a> {
                        new_binding: &NameBinding,
                        old_binding: &NameBinding) {
         // Error on the second of two conflicting names
-        if old_binding.span.lo > new_binding.span.lo {
+        if old_binding.span.lo() > new_binding.span.lo() {
             return self.report_conflict(parent, ident, ns, old_binding, new_binding);
         }
 

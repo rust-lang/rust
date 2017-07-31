@@ -532,7 +532,7 @@ impl Collector {
 
     pub fn get_line(&self) -> usize {
         if let Some(ref codemap) = self.codemap {
-            let line = self.position.lo.to_usize();
+            let line = self.position.lo().to_usize();
             let line = codemap.lookup_char_pos(BytePos(line as u32)).line;
             if line > 0 { line - 1 } else { line }
         } else {

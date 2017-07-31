@@ -790,9 +790,8 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             token::AndAnd => {
-                let span = self.span;
-                let lo = span.lo + BytePos(1);
-                Ok(self.bump_with(token::BinOp(token::And), Span { lo: lo, ..span }))
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                Ok(self.bump_with(token::BinOp(token::And), span))
             }
             _ => self.unexpected()
         }
@@ -824,9 +823,8 @@ impl<'a> Parser<'a> {
                 true
             }
             token::BinOp(token::Shl) => {
-                let span = self.span;
-                let lo = span.lo + BytePos(1);
-                self.bump_with(token::Lt, Span { lo: lo, ..span });
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                self.bump_with(token::Lt, span);
                 true
             }
             _ => false,
@@ -852,19 +850,16 @@ impl<'a> Parser<'a> {
                 Ok(())
             }
             token::BinOp(token::Shr) => {
-                let span = self.span;
-                let lo = span.lo + BytePos(1);
-                Ok(self.bump_with(token::Gt, Span { lo: lo, ..span }))
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                Ok(self.bump_with(token::Gt, span))
             }
             token::BinOpEq(token::Shr) => {
-                let span = self.span;
-                let lo = span.lo + BytePos(1);
-                Ok(self.bump_with(token::Ge, Span { lo: lo, ..span }))
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                Ok(self.bump_with(token::Ge, span))
             }
             token::Ge => {
-                let span = self.span;
-                let lo = span.lo + BytePos(1);
-                Ok(self.bump_with(token::Eq, Span { lo: lo, ..span }))
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                Ok(self.bump_with(token::Eq, span))
             }
             _ => self.unexpected()
         }
@@ -1094,7 +1089,7 @@ impl<'a> Parser<'a> {
     /// Advance the parser using provided token as a next one. Use this when
     /// consuming a part of a token. For example a single `<` from `<<`.
     pub fn bump_with(&mut self, next: token::Token, span: Span) {
-        self.prev_span = Span { hi: span.lo, ..self.span };
+        self.prev_span = self.span.with_hi(span.lo());
         // It would be incorrect to record the kind of the current token, but
         // fortunately for tokens currently using `bump_with`, the
         // prev_token_kind will be of no use anyway.
@@ -1356,7 +1351,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::RArrow) {
             Ok(FunctionRetTy::Ty(self.parse_ty_no_plus()?))
         } else {
-            Ok(FunctionRetTy::Default(Span { hi: self.span.lo, ..self.span }))
+            Ok(FunctionRetTy::Default(self.span.with_hi(self.span.lo())))
         }
     }
 
@@ -2532,7 +2527,7 @@ impl<'a> Parser<'a> {
 
     pub fn process_potential_macro_variable(&mut self) {
         let ident = match self.token {
-            token::Dollar if self.span.ctxt != syntax_pos::hygiene::SyntaxContext::empty() &&
+            token::Dollar if self.span.ctxt() != syntax_pos::hygiene::SyntaxContext::empty() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
                 let name = match self.token { token::Ident(ident) => ident, _ => unreachable!() };
@@ -2734,8 +2729,8 @@ impl<'a> Parser<'a> {
                         err.span_label(self.span,
                                        "expecting a type here because of type ascription");
                         let cm = self.sess.codemap();
-                        let cur_pos = cm.lookup_char_pos(self.span.lo);
-                        let op_pos = cm.lookup_char_pos(cur_op_span.hi);
+                        let cur_pos = cm.lookup_char_pos(self.span.lo());
+                        let op_pos = cm.lookup_char_pos(cur_op_span.hi());
                         if cur_pos.line != op_pos.line {
                             err.span_suggestion_short(cur_op_span,
                                                       "did you mean to use `;` here?",
@@ -4056,7 +4051,7 @@ impl<'a> Parser<'a> {
                     let mut stmt_span = stmt.span;
                     // expand the span to include the semicolon, if it exists
                     if self.eat(&token::Semi) {
-                        stmt_span.hi = self.prev_span.hi;
+                        stmt_span = stmt_span.with_hi(self.prev_span.hi());
                     }
                     let sugg = pprust::to_string(|s| {
                         use print::pprust::{PrintState, INDENT_UNIT};
@@ -4148,7 +4143,7 @@ impl<'a> Parser<'a> {
             stmt = stmt.add_trailing_semicolon();
         }
 
-        stmt.span.hi = self.prev_span.hi;
+        stmt.span = stmt.span.with_hi(self.prev_span.hi());
         Ok(Some(stmt))
     }
 
