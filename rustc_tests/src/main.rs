@@ -149,11 +149,7 @@ fn main() {
             args.push(Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST").display().to_string());
         }
 
-        // we run the optimization passes inside miri
-        // if we ran them twice we'd get funny failures due to borrowck ElaborateDrops only working on
-        // unoptimized MIR
-        // FIXME: add an after-mir-passes hook to rustc driver
-        args.push("-Zmir-opt-level=0".to_owned());
+        args.push("-Zmir-opt-level=3".to_owned());
         // for auxilary builds in unit tests
         args.push("-Zalways-encode-mir".to_owned());
 
@@ -218,7 +214,7 @@ fn main() {
             }
         }
     }
-    let stderr = std::io::stderr();:{MetaItemKind, NestedMetaItemKind, self};
+    let stderr = std::io::stderr();
     let mut stderr = stderr.lock();
     writeln!(stderr, "{} success, {} no mir, {} crate not found, {} failed, \
                         {} C fn, {} ABI, {} unsupported, {} intrinsic",
