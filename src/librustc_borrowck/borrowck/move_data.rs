@@ -220,6 +220,15 @@ impl<'a, 'tcx> MoveData<'tcx> {
         }
     }
 
+    /// return true if there are no trackable assignments or moves
+    /// in this move data - that means that there is nothing that
+    /// could cause a borrow error.
+    pub fn is_empty(&self) -> bool {
+        self.moves.borrow().is_empty() &&
+            self.path_assignments.borrow().is_empty() &&
+            self.var_assignments.borrow().is_empty()
+    }
+
     pub fn path_loan_path(&self, index: MovePathIndex) -> Rc<LoanPath<'tcx>> {
         (*self.paths.borrow())[index.get()].loan_path.clone()
     }
