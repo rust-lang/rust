@@ -1531,17 +1531,25 @@ fn rewrite_match(
         return None;
     }
 
-    // 6 = `match `, 2 = ` {`
+    // Do not take the rhs overhead from the upper expressions into account
+    // when rewriting match condition.
+    let new_width = try_opt!(context.config.max_width().checked_sub(shape.used_width()));
+    let cond_shape = Shape {
+        width: new_width,
+        ..shape
+    };
+    // 6 = `match `
     let cond_shape = match context.config.control_style() {
-        Style::Legacy => try_opt!(shape.shrink_left(6).and_then(|s| s.sub_width(2))),
-        Style::Rfc => try_opt!(shape.offset_left(6).and_then(|s| s.sub_width(2))),
+        Style::Legacy => try_opt!(cond_shape.shrink_left(6)),
+        Style::Rfc => try_opt!(cond_shape.offset_left(6)),
     };
     let cond_str = try_opt!(cond.rewrite(context, cond_shape));
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let block_sep = match context.config.control_brace_style() {
         ControlBraceStyle::AlwaysNextLine => &alt_block_sep,
         _ if last_line_extendable(&cond_str) => " ",
-        _ if cond_str.contains('\n') => &alt_block_sep,
+        // 2 = ` {`
+        _ if cond_str.contains('\n') || cond_str.len() + 2 > cond_shape.width => &alt_block_sep,
         _ => " ",
     };
 
