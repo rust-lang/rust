@@ -105,6 +105,8 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     }
 
     pub fn simplify(mut self) {
+        self.strip_nops();
+
         loop {
             let mut changed = false;
 
@@ -141,8 +143,6 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
 
             if !changed { break }
         }
-
-        self.strip_nops()
     }
 
     // Collapse a goto chain starting from `start`

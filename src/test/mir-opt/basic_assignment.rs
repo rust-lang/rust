@@ -50,10 +50,10 @@ fn main() {
 //         StorageLive(_5);
 //         StorageLive(_6);
 //         _6 = _4;
-//         replace(_5 <- _6) -> [return: bb1, unwind: bb7];
+//         replace(_5 <- _6) -> [return: bb1, unwind: bb5];
 //     }
 //     bb1: {
-//         drop(_6) -> [return: bb8, unwind: bb5];
+//         drop(_6) -> [return: bb6, unwind: bb4];
 //     }
 //     bb2: {
 //         resume;
@@ -62,27 +62,21 @@ fn main() {
 //         drop(_4) -> bb2;
 //     }
 //     bb4: {
-//         goto -> bb3;
+//         drop(_5) -> bb3;
 //     }
 //     bb5: {
-//         drop(_5) -> bb4;
+//         drop(_6) -> bb4;
 //     }
 //     bb6: {
-//         goto -> bb5;
-//     }
-//     bb7: {
-//         drop(_6) -> bb6;
-//     }
-//     bb8: {
 //         StorageDead(_6);
 //         _0 = ();
-//         drop(_5) -> [return: bb9, unwind: bb3];
+//         drop(_5) -> [return: bb7, unwind: bb3];
 //     }
-//     bb9: {
+//     bb7: {
 //         StorageDead(_5);
-//         drop(_4) -> bb10;
+//         drop(_4) -> bb8;
 //     }
-//     bb10: {
+//     bb8: {
 //         StorageDead(_4);
 //         StorageDead(_2);
 //         StorageDead(_1);
