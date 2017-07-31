@@ -14,6 +14,8 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
+use syntax_pos::Span;
+use syntax::ast::NodeId;
 use rustc::ty::{self, TyCtxt, RegionKind};
 use rustc::hir;
 use rustc::mir::*;
@@ -80,15 +82,78 @@ fn lval_context<'a, 'tcx, D>(
     }
 }
 
+/// Check if this function contains an unsafe block or is an unsafe function.
+fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> bool {
+    use rustc::hir::intravisit::{self, Visitor};
+
+    let fn_node_id = match src {
+        MirSource::Fn(node_id) => node_id,
+        _ => return false, // only functions can have unsafe
+    };
+    let fn_item = tcx.hir.expect_item(fn_node_id);
+
+    struct FindUnsafe<'b, 'tcx> where 'tcx : 'b {
+        map: &'b hir::map::Map<'tcx>,
+        found_unsafe: bool,
+    }
+    let mut finder = FindUnsafe { map: &tcx.hir, found_unsafe: false };
+    finder.visit_item(fn_item);
+
+    impl<'b, 'tcx> Visitor<'tcx> for FindUnsafe<'b, 'tcx> {
+        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+            intravisit::NestedVisitorMap::OnlyBodies(self.map)
+        }
+
+        fn visit_fn(&mut self, fk: intravisit::FnKind<'tcx>, fd: &'tcx hir::FnDecl,
+                    b: hir::BodyId, s: Span, id: NodeId)
+        {
+            assert!(!self.found_unsafe, "We should never see more than one fn");
+            let is_unsafe = match fk {
+                intravisit::FnKind::ItemFn(_, _, unsafety, ..) => unsafety == hir::Unsafety::Unsafe,
+                intravisit::FnKind::Method(_, sig, ..) => sig.unsafety == hir::Unsafety::Unsafe,
+                intravisit::FnKind::Closure(_) => false,
+            };
+            if is_unsafe {
+                // This is unsafe, and we are done.
+                self.found_unsafe = true;
+            } else {
+                // Go on searching.
+                intravisit::walk_fn(self, fk, fd, b, s, id)
+            }
+        }
+
+        fn visit_block(&mut self, b: &'tcx hir::Block) {
+            use rustc::hir::BlockCheckMode::*;
+
+            if self.found_unsafe { return; } // short-circuit
+
+            match b.rules {
+                UnsafeBlock(_) | PushUnsafeBlock(_) => {
+                    // We found an unsafe block.
+                    self.found_unsafe = true;
+                }
+                DefaultBlock | PopUnsafeBlock(_) => {
+                    // No unsafe block here, go on searching.
+                    intravisit::walk_block(self, b);
+                }
+            };
+        }
+    }
+
+    finder.found_unsafe
+}
+
 impl MirPass for AddValidation {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _: MirSource,
-                          mir: &mut Mir<'tcx>) {
-        if !tcx.sess.opts.debugging_opts.mir_emit_validate {
+                          src: MirSource,
+                          mir: &mut Mir<'tcx>)
+    {
+        let emit_validate = tcx.sess.opts.debugging_opts.mir_emit_validate;
+        if emit_validate == 0 {
             return;
         }
-
+        let restricted_validation = emit_validate == 1 && fn_contains_unsafe(tcx, src);
         let local_decls = mir.local_decls.clone(); // FIXME: Find a way to get rid of this clone.
 
         // Convert an lvalue to a validation operand.
@@ -98,22 +163,40 @@ impl MirPass for AddValidation {
             ValidationOperand { lval, ty, re, mutbl }
         };
 
+        // Emit an Acquire at the beginning of the given block.  If we are in restricted emission mode
+        // (mir_emit_validate=1), also emit a Release immediately after the Acquire.
+        let emit_acquire = |block: &mut BasicBlockData<'tcx>, source_info, operands: Vec<_>| {
+            if operands.len() == 0 {
+                return; // Nothing to do
+            }
+            // Emit the release first, to avoid cloning if we do not emit it
+            if restricted_validation {
+                let release_stmt = Statement {
+                    source_info,
+                    kind: StatementKind::Validate(ValidationOp::Release, operands.clone()),
+                };
+                block.statements.insert(0, release_stmt);
+            }
+            // Now, the acquire
+            let acquire_stmt = Statement {
+                source_info,
+                kind: StatementKind::Validate(ValidationOp::Acquire, operands),
+            };
+            block.statements.insert(0, acquire_stmt);
+        };
+
         // PART 1
         // Add an AcquireValid at the beginning of the start block.
-        if mir.arg_count > 0 {
-            let acquire_stmt = Statement {
-                source_info: SourceInfo {
-                    scope: ARGUMENT_VISIBILITY_SCOPE,
-                    span: mir.span, // FIXME: Consider using just the span covering the function
-                                    // argument declaration.
-                },
-                kind: StatementKind::Validate(ValidationOp::Acquire,
-                    // Skip return value, go over all the arguments
-                    mir.local_decls.iter_enumerated().skip(1).take(mir.arg_count)
-                    .map(|(local, _)| lval_to_operand(Lvalue::Local(local))).collect()
-                )
+        {
+            let source_info = SourceInfo {
+                scope: ARGUMENT_VISIBILITY_SCOPE,
+                span: mir.span, // FIXME: Consider using just the span covering the function
+                                // argument declaration.
             };
-            mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, acquire_stmt);
+            // Gather all arguments, skip return value.
+            let operands = mir.local_decls.iter_enumerated().skip(1).take(mir.arg_count)
+                    .map(|(local, _)| lval_to_operand(Lvalue::Local(local))).collect();
+            emit_acquire(&mut mir.basic_blocks_mut()[START_BLOCK], source_info, operands);
         }
 
         // PART 2
@@ -125,18 +208,20 @@ impl MirPass for AddValidation {
                 Some(Terminator { kind: TerminatorKind::Call { ref args, ref destination, .. },
                                   source_info }) => {
                     // Before the call: Release all arguments
-                    let release_stmt = Statement {
-                        source_info,
-                        kind: StatementKind::Validate(ValidationOp::Release,
-                            args.iter().filter_map(|op| {
-                                match op {
-                                    &Operand::Consume(ref lval) =>
-                                        Some(lval_to_operand(lval.clone())),
-                                    &Operand::Constant(..) => { None },
-                                }
-                            }).collect())
-                    };
-                    block_data.statements.push(release_stmt);
+                    if !restricted_validation {
+                        let release_stmt = Statement {
+                            source_info,
+                            kind: StatementKind::Validate(ValidationOp::Release,
+                                args.iter().filter_map(|op| {
+                                    match op {
+                                        &Operand::Consume(ref lval) =>
+                                            Some(lval_to_operand(lval.clone())),
+                                        &Operand::Constant(..) => { None },
+                                    }
+                                }).collect())
+                        };
+                        block_data.statements.push(release_stmt);
+                    }
                     // Remember the return destination for later
                     if let &Some(ref destination) = destination {
                         returns.push((source_info, destination.0.clone(), destination.1));
@@ -147,12 +232,14 @@ impl MirPass for AddValidation {
                 Some(Terminator { kind: TerminatorKind::DropAndReplace { location: ref lval, .. },
                                   source_info }) => {
                     // Before the call: Release all arguments
-                    let release_stmt = Statement {
-                        source_info,
-                        kind: StatementKind::Validate(ValidationOp::Release,
-                                vec![lval_to_operand(lval.clone())]),
-                    };
-                    block_data.statements.push(release_stmt);
+                    if !restricted_validation {
+                        let release_stmt = Statement {
+                            source_info,
+                            kind: StatementKind::Validate(ValidationOp::Release,
+                                    vec![lval_to_operand(lval.clone())]),
+                        };
+                        block_data.statements.push(release_stmt);
+                    }
                     // drop doesn't return anything, so we need no acquire.
                 }
                 _ => {
@@ -162,18 +249,21 @@ impl MirPass for AddValidation {
         }
         // Now we go over the returns we collected to acquire the return values.
         for (source_info, dest_lval, dest_block) in returns {
-            let acquire_stmt = Statement {
+            emit_acquire(
+                &mut mir.basic_blocks_mut()[dest_block],
                 source_info,
-                kind: StatementKind::Validate(ValidationOp::Acquire,
-                        vec![lval_to_operand(dest_lval)]),
-            };
-            mir.basic_blocks_mut()[dest_block].statements.insert(0, acquire_stmt);
+                vec![lval_to_operand(dest_lval)]
+            );
+        }
+
+        if restricted_validation {
+            // No part 3 for us.
+            return;
         }
 
         // PART 3
         // Add ReleaseValid/AcquireValid around Ref and Cast.  Again an iterator does not seem very
-        // suited
-        // as we need to add new statements before and after each Ref.
+        // suited as we need to add new statements before and after each Ref.
         for block_data in mir.basic_blocks_mut() {
             // We want to insert statements around Ref commands as we iterate.  To this end, we
             // iterate backwards using indices.

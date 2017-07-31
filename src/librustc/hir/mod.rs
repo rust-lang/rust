@@ -49,7 +49,7 @@ use rustc_data_structures::indexed_vec;
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// HIR doesn't commit to a concrete storage type and have its own alias for a vector.
+/// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
 /// behavior. Unlike AST, HIR is mostly a static structure, so we can use an owned slice instead
 /// of `Vec` to avoid keeping extra capacity.
@@ -76,14 +76,14 @@ pub mod pat_util;
 pub mod print;
 pub mod svh;
 
-/// A HirId uniquely identifies a node in the HIR of then current crate. It is
+/// A HirId uniquely identifies a node in the HIR of the current crate. It is
 /// composed of the `owner`, which is the DefIndex of the directly enclosing
 /// hir::Item, hir::TraitItem, or hir::ImplItem (i.e. the closest "item-like"),
 /// and the `local_id` which is unique within the given owner.
 ///
 /// This two-level structure makes for more stable values: One can move an item
 /// around within the source code, or add or remove stuff before it, without
-/// the local_id part of the HirId changing, which is a very useful property
+/// the local_id part of the HirId changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,

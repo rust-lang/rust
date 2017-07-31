@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags: -Z verbose -Z mir-emit-validate
+// compile-flags: -Z verbose -Z mir-emit-validate=1
 
 fn main() {
     let _x : Box<[i32]> = Box::new([1, 2, 3]);

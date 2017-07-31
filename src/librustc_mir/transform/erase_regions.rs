@@ -77,7 +77,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
-        if !self.tcx.sess.opts.debugging_opts.mir_emit_validate {
+        // Do NOT delete EndRegion if validation statements are emitted.
+        // Validation needs EndRegion.
+        if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
             if let StatementKind::EndRegion(_) = statement.kind {
                 statement.kind = StatementKind::Nop;
             }
