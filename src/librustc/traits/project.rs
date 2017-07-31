@@ -462,13 +462,19 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             selcx.infcx().report_overflow_error(&obligation, false);
         }
         Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
-            // If we find the value in the cache, then the obligations
-            // have already been returned from the previous entry (and
-            // should therefore have been honored).
+            // If we find the value in the cache, then return it along
+            // with the obligations that went along with it. Note
+            // that, when using a fulfillment context, these
+            // obligations could in principle be ignored: they have
+            // already been registered when the cache entry was
+            // created (and hence the new ones will quickly be
+            // discarded as duplicated). But when doing trait
+            // evaluation this is not the case, and dropping the trait
+            // evaluations can causes ICEs (e.g. #43132).
             debug!("opt_normalize_projection_type: \
                     found normalized ty `{:?}`",
                    ty);
-            return Some(NormalizedTy { value: ty, obligations: vec![] });
+            return Some(ty);
         }
         Err(ProjectionCacheEntry::Error) => {
             debug!("opt_normalize_projection_type: \
@@ -1326,7 +1332,7 @@ enum ProjectionCacheEntry<'tcx> {
     InProgress,
     Ambiguous,
     Error,
-    NormalizedTy(Ty<'tcx>),
+    NormalizedTy(NormalizedTy<'tcx>),
 }
 
 // NB: intentionally not Clone
@@ -1374,7 +1380,7 @@ impl<'tcx> ProjectionCache<'tcx> {
     fn complete(&mut self, key: ty::ProjectionTy<'tcx>, value: &NormalizedTy<'tcx>) {
         debug!("ProjectionCacheEntry::complete: adding cache entry: key={:?}, value={:?}",
                key, value);
-        let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value.value));
+        let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value.clone()));
         assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 
