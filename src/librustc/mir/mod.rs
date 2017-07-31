@@ -877,7 +877,7 @@ pub struct ValidationOperand<'tcx, T> {
 
 impl<'tcx, T: Debug> Debug for ValidationOperand<'tcx, T> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "{:?}@{:?}", self.lval, self.ty)?;
+        write!(fmt, "{:?}: {:?}", self.lval, self.ty)?;
         if let Some(ce) = self.re {
             // (reuse lifetime rendering policy from ppaux.)
             write!(fmt, "/{}", ty::ReScope(ce))?;

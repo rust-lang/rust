@@ -19,9 +19,9 @@ fn main() {
 // START rustc.node4.EraseRegions.after.mir
 // fn main() -> () {
 //     bb1: {
-//         Validate(Release, [_2@std::boxed::Box<[i32; 3]>]);
+//         Validate(Release, [_2: std::boxed::Box<[i32; 3]>]);
 //         _1 = _2 as std::boxed::Box<[i32]> (Unsize);
-//         Validate(Acquire, [_1@std::boxed::Box<[i32]>]);
+//         Validate(Acquire, [_1: std::boxed::Box<[i32]>]);
 //     }
 // }
 // END rustc.node4.EraseRegions.after.mir

@@ -22,7 +22,7 @@ fn main() {
 // START rustc.node4.EraseRegions.after.mir
 // fn foo(_1: &ReErased mut i32) -> () {
 //     bb0: {
-//         Validate(Acquire, [_1@&ReFree(DefId { krate: CrateNum(0), node: DefIndex(3) => validate_1/8cd878b::foo[0] }, BrAnon(0)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(3) => validate_1/8cd878b::foo[0] }, BrAnon(0)) mut i32]);
 //         return;
 //     }
 // }
@@ -30,18 +30,18 @@ fn main() {
 // START rustc.node11.EraseRegions.after.mir
 // fn main() -> () {
 //     bb0: {
-//         Validate(Suspend(ReScope(Misc(NodeId(20)))), [_1@i32]);
+//         Validate(Suspend(ReScope(Misc(NodeId(20)))), [_1: i32]);
 //         _4 = &ReErased mut _1;
-//         Validate(Acquire, [(*_4)@i32/ReScope(Misc(NodeId(20)))]);
-//         Validate(Suspend(ReScope(Misc(NodeId(20)))), [(*_4)@i32/ReScope(Misc(NodeId(20)))]);
+//         Validate(Acquire, [(*_4): i32/ReScope(Misc(NodeId(20)))]);
+//         Validate(Suspend(ReScope(Misc(NodeId(20)))), [(*_4): i32/ReScope(Misc(NodeId(20)))]);
 //         _3 = &ReErased mut (*_4);
-//         Validate(Acquire, [(*_3)@i32/ReScope(Misc(NodeId(20)))]);
-//         Validate(Release, [_3@&ReScope(Misc(NodeId(20))) mut i32]);
+//         Validate(Acquire, [(*_3): i32/ReScope(Misc(NodeId(20)))]);
+//         Validate(Release, [_3: &ReScope(Misc(NodeId(20))) mut i32]);
 //         _2 = const foo(_3) -> bb1;
 //     }
 //
 //     bb1: {
-//         Validate(Acquire, [_2@()]);
+//         Validate(Acquire, [_2: ()]);
 //         EndRegion(ReScope(Misc(NodeId(20))));
 //         return;
 //     }
