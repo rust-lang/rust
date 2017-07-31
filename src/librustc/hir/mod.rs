@@ -10,7 +10,6 @@
 
 // The Rust HIR.
 
-pub use self::BindingMode::*;
 pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
@@ -628,10 +627,28 @@ pub struct FieldPat {
     pub is_shorthand: bool,
 }
 
+/// Explicit binding annotations given in the HIR for a binding. Note
+/// that this is not the final binding *mode* that we infer after type
+/// inference.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum BindingMode {
-    BindByRef(Mutability),
-    BindByValue(Mutability),
+pub enum BindingAnnotation {
+  /// No binding annotation given: this means that the final binding mode
+  /// will depend on whether we have skipped through a `&` reference
+  /// when matching. For example, the `x` in `Some(x)` will have binding
+  /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
+  /// ultimately be inferred to be by-reference.
+  ///
+  /// Note that implicit reference skipping is not implemented yet (#42640).
+  Unannotated,
+
+  /// Annotated with `mut x` -- could be either ref or not, similar to `None`.
+  Mutable,
+
+  /// Annotated as `ref`, like `ref x`
+  Ref,
+
+  /// Annotated as `ref mut x`.
+  RefMut,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -647,7 +664,7 @@ pub enum PatKind {
 
     /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
     /// The `DefId` is for the definition of the variable being bound.
-    Binding(BindingMode, DefId, Spanned<Name>, Option<P<Pat>>),
+    Binding(BindingAnnotation, DefId, Spanned<Name>, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.

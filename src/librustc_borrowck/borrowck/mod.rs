@@ -871,14 +871,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn local_binding_mode(&self, node_id: ast::NodeId) -> hir::BindingMode {
+    fn local_binding_mode(&self, node_id: ast::NodeId) -> ty::BindingMode {
         let pat = match self.tcx.hir.get(node_id) {
             hir_map::Node::NodeLocal(pat) => pat,
             node => bug!("bad node for local: {:?}", node)
         };
 
         match pat.node {
-            hir::PatKind::Binding(mode, ..) => mode,
+            hir::PatKind::Binding(..) =>
+                *self.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode"),
             _ => bug!("local is not a binding: {:?}", pat)
         }
     }
@@ -913,7 +914,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             Some(ImmutabilityBlame::ClosureEnv(_)) => {}
             Some(ImmutabilityBlame::ImmLocal(node_id)) => {
                 let let_span = self.tcx.hir.span(node_id);
-                if let hir::BindingMode::BindByValue(..) = self.local_binding_mode(node_id) {
+                if let ty::BindByValue(..) = self.local_binding_mode(node_id) {
                     if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
                         let (_, is_implicit_self) = self.local_ty(node_id);
                         if is_implicit_self && snippet != "self" {
@@ -930,7 +931,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             Some(ImmutabilityBlame::LocalDeref(node_id)) => {
                 let let_span = self.tcx.hir.span(node_id);
                 match self.local_binding_mode(node_id) {
-                    hir::BindingMode::BindByRef(..) => {
+                    ty::BindByReference(..) => {
                         let snippet = self.tcx.sess.codemap().span_to_snippet(let_span);
                         if let Ok(snippet) = snippet {
                             db.span_label(
@@ -940,7 +941,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             );
                         }
                     }
-                    hir::BindingMode::BindByValue(..) => {
+                    ty::BindByValue(..) => {
                         if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {
                             if let Some(msg) =
                                  self.suggest_mut_for_immutable(local_ty, is_implicit_self) {

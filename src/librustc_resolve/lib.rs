@@ -2277,8 +2277,9 @@ impl<'a> Resolver<'a> {
                                                                       false, pat.span)
                                       .and_then(LexicalScopeBinding::item);
                     let resolution = binding.map(NameBinding::def).and_then(|def| {
+                        let ivmode = BindingMode::ByValue(Mutability::Immutable);
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
-                                             bmode != BindingMode::ByValue(Mutability::Immutable);
+                                             bmode != ivmode;
                         match def {
                             Def::StructCtor(_, CtorKind::Const) |
                             Def::VariantCtor(_, CtorKind::Const) |

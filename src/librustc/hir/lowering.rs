@@ -2191,7 +2191,7 @@ impl<'a> LoweringContext<'a> {
                 let next_ident = self.str_to_ident("__next");
                 let next_pat = self.pat_ident_binding_mode(e.span,
                                                            next_ident,
-                                                           hir::BindByValue(hir::MutMutable));
+                                                           hir::BindingAnnotation::Mutable);
 
                 // `::std::option::Option::Some(val) => next = val`
                 let pat_arm = {
@@ -2215,8 +2215,9 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // `mut iter`
-                let iter_pat = self.pat_ident_binding_mode(e.span, iter,
-                                                           hir::BindByValue(hir::MutMutable));
+                let iter_pat = self.pat_ident_binding_mode(e.span,
+                                                           iter,
+                                                           hir::BindingAnnotation::Mutable);
 
                 // `match ::std::iter::Iterator::next(&mut iter) { ... }`
                 let match_expr = {
@@ -2503,10 +2504,13 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_binding_mode(&mut self, b: &BindingMode) -> hir::BindingMode {
+    fn lower_binding_mode(&mut self, b: &BindingMode) -> hir::BindingAnnotation {
         match *b {
-            BindingMode::ByRef(m) => hir::BindByRef(self.lower_mutability(m)),
-            BindingMode::ByValue(m) => hir::BindByValue(self.lower_mutability(m)),
+            BindingMode::ByValue(Mutability::Immutable) =>
+                hir::BindingAnnotation::Unannotated,
+            BindingMode::ByRef(Mutability::Immutable) => hir::BindingAnnotation::Ref,
+            BindingMode::ByValue(Mutability::Mutable) => hir::BindingAnnotation::Mutable,
+            BindingMode::ByRef(Mutability::Mutable) => hir::BindingAnnotation::RefMut,
         }
     }
 
@@ -2647,7 +2651,7 @@ impl<'a> LoweringContext<'a> {
     fn stmt_let(&mut self, sp: Span, mutbl: bool, ident: Name, ex: P<hir::Expr>)
                 -> (hir::Stmt, NodeId) {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, hir::BindByValue(hir::MutMutable))
+            self.pat_ident_binding_mode(sp, ident, hir::BindingAnnotation::Mutable)
         } else {
             self.pat_ident(sp, ident)
         };
@@ -2703,10 +2707,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn pat_ident(&mut self, span: Span, name: Name) -> P<hir::Pat> {
-        self.pat_ident_binding_mode(span, name, hir::BindByValue(hir::MutImmutable))
+        self.pat_ident_binding_mode(span, name, hir::BindingAnnotation::Unannotated)
     }
 
-    fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingMode)
+    fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingAnnotation)
                               -> P<hir::Pat> {
         let id = self.next_id();
         let parent_def = self.parent_def.unwrap();

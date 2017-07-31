@@ -1651,12 +1651,16 @@ impl<'a> State<'a> {
             PatKind::Wild => self.s.word("_")?,
             PatKind::Binding(binding_mode, _, ref path1, ref sub) => {
                 match binding_mode {
-                    hir::BindByRef(mutbl) => {
+                    hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref")?;
-                        self.print_mutability(mutbl)?;
+                        self.print_mutability(hir::MutImmutable)?;
                     }
-                    hir::BindByValue(hir::MutImmutable) => {}
-                    hir::BindByValue(hir::MutMutable) => {
+                    hir::BindingAnnotation::RefMut => {
+                        self.word_nbsp("ref")?;
+                        self.print_mutability(hir::MutMutable)?;
+                    }
+                    hir::BindingAnnotation::Unannotated => {}
+                    hir::BindingAnnotation::Mutable => {
                         self.word_nbsp("mut")?;
                     }
                 }

@@ -616,6 +616,7 @@ for ty::TypeckTables<'tcx> {
             ref node_types,
             ref node_substs,
             ref adjustments,
+            ref pat_binding_modes,
             ref upvar_capture_map,
             ref closure_tys,
             ref closure_kinds,
@@ -636,6 +637,7 @@ for ty::TypeckTables<'tcx> {
             ich::hash_stable_nodemap(hcx, hasher, node_types);
             ich::hash_stable_nodemap(hcx, hasher, node_substs);
             ich::hash_stable_nodemap(hcx, hasher, adjustments);
+            ich::hash_stable_nodemap(hcx, hasher, pat_binding_modes);
             ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
                 let ty::UpvarId {
                     var_id,
