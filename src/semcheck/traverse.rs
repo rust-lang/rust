@@ -672,11 +672,11 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     info!("comparing types of {:?} / {:?}:\n  {:?} / {:?}", old_def_id, new_def_id, old, new);
 
-    let to_new = TranslationContext::to_new(tcx, id_mapping);
-    let to_old = TranslationContext::to_old(tcx, id_mapping);
+    let to_new = TranslationContext::to_new(tcx, id_mapping, false);
+    let to_old = TranslationContext::to_old(tcx, id_mapping, false);
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
-    let old = to_new.translate_item_type(old_def_id, old).subst(tcx, substs);
+    let old = to_new.translate_item_type(old_def_id, old);
 
     tcx.infer_ctxt().enter(|infcx| {
         let new_substs = if new.is_fn() {
@@ -701,8 +701,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         };
 
         let new = new.subst(infcx.tcx, new_substs);
+        let old = old.subst(infcx.tcx, substs);
 
         let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
+
         let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
         let new_param_env_trans =
             to_old.translate_param_env(new_def_id, tcx.param_env(new_def_id));
@@ -746,6 +748,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(TypeChanged { error: err }, old_def_id, None);
         }
 
+        let old_param_env = if let Some(env) = old_param_env { env } else { return; };
         let mut bound_cx = BoundContext::new(&infcx, old_param_env);
         bound_cx.register(new_def_id, new_substs);
 
@@ -761,6 +764,11 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
             }
         } else {
+            let new_param_env_trans = if let Some(env) = new_param_env_trans {
+                env
+            } else {
+                return;
+            };
             let mut rev_bound_cx = BoundContext::new(&infcx, new_param_env_trans);
             rev_bound_cx.register(old_def_id, substs);
 
@@ -784,17 +792,25 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn match_impl<'a, 'tcx>(id_mapping: &IdMapping,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         old_def_id: DefId) -> bool {
-    let to_new = TranslationContext::to_new(tcx, id_mapping);
+    let to_new = TranslationContext::to_new(tcx, id_mapping, false);
     debug!("matching: {:?}", old_def_id);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
+        let old_param_env = if let Some(env) =
+            to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id))
+        {
+            env
+        } else {
+            return false;
+        };
+
         debug!("env: {:?}", old_param_env);
 
         let old = tcx
             .impl_trait_ref(old_def_id)
             .unwrap();
         debug!("trait ref: {:?}", old);
+        debug!("translated ref: {:?}", to_new.translate_trait_ref(old_def_id, &old));
 
         let mut bound_cx = BoundContext::new(&infcx, old_param_env);
         bound_cx.register_trait_ref(to_new.translate_trait_ref(old_def_id, &old));
