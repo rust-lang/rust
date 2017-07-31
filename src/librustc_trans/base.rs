@@ -650,23 +650,29 @@ pub fn set_link_section(ccx: &CrateContext,
     }
 }
 
+// check for the #[rustc_error] annotation, which forces an
+// error in trans. This is used to write compile-fail tests
+// that actually test that compilation succeeds without
+// reporting an error.
+fn check_for_rustc_errors_attr(tcx: TyCtxt) {
+    if let Some((id, span)) = *tcx.sess.entry_fn.borrow() {
+        let main_def_id = tcx.hir.local_def_id(id);
+
+        if tcx.has_attr(main_def_id, "rustc_error") {
+            tcx.sess.span_fatal(span, "compilation successful");
+        }
+    }
+}
+
 /// Create the `main` function which will initialise the rust runtime and call
 /// users main function.
-pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
+fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
         Some((id, span)) => {
             (ccx.tcx().hir.local_def_id(id), span)
         }
         None => return,
     };
-
-    // check for the #[rustc_error] annotation, which forces an
-    // error in trans. This is used to write compile-fail tests
-    // that actually test that compilation succeeds without
-    // reporting an error.
-    if ccx.tcx().has_attr(main_def_id, "rustc_error") {
-        ccx.tcx().sess.span_fatal(span, "compilation successful");
-    }
 
     let instance = Instance::mono(ccx.tcx(), main_def_id);
 
@@ -928,6 +934,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              incremental_hashes_map: IncrementalHashesMap,
                              output_filenames: &OutputFilenames)
                              -> OngoingCrateTranslation {
+    check_for_rustc_errors_attr(tcx);
+
     // Be careful with this krate: obviously it gives access to the
     // entire contents of the krate. So if you push any subtasks of
     // `TransCrate`, you need to be careful to register "reads" of the
