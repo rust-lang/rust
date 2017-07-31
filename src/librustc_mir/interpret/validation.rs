@@ -151,7 +151,7 @@ std::sync::atomic::AtomicBool::get_mut$|\
     fn validate_ptr(&mut self, val: Value, pointee_ty: Ty<'tcx>, re: Option<CodeExtent>, mutbl: Mutability, mode: ValidationMode) -> EvalResult<'tcx> {
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
-        let ptr = val.into_ptr(&mut self.memory)?;
+        let ptr = val.into_ptr(&self.memory)?;
         self.memory.check_align(ptr, align)?;
 
         // Recurse
@@ -309,7 +309,7 @@ std::sync::atomic::AtomicBool::get_mut$|\
                 self.validate_ptr(val, query.ty.boxed_ty(), query.re, query.mutbl, mode)
             }
             TyFnPtr(_sig) => {
-                let ptr = self.read_lvalue(query.lval)?.into_ptr(&mut self.memory)?.to_ptr()?;
+                let ptr = self.read_lvalue(query.lval)?.into_ptr(&self.memory)?.to_ptr()?;
                 self.memory.get_fn(ptr)?;
                 // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
                 Ok(())
