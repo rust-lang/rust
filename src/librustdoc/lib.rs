@@ -28,7 +28,6 @@
 extern crate arena;
 extern crate getopts;
 extern crate env_logger;
-#[cfg(not(any(stage0, stage1)))]
 extern crate html_diff;
 extern crate libc;
 extern crate rustc;

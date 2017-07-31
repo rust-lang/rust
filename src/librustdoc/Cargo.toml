@@ -12,8 +12,6 @@ path = "lib.rs"
 env_logger = { version = "0.4", default-features = false }
 log = "0.3"
 pulldown-cmark = { version = "0.0.14", default-features = false }
-
-[target.'cfg(not(any(stage0, stage1)))'.dependencies]
 html-diff = "0.0.3"
 
 [build-dependencies]
