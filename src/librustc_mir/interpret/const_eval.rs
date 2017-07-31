@@ -179,12 +179,16 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     fn ptr_op<'a>(
         _ecx: &EvalContext<'a, 'tcx, Self>,
         _bin_op: mir::BinOp,
-        _left: PrimVal,
+        left: PrimVal,
         _left_ty: Ty<'tcx>,
-        _right: PrimVal,
+        right: PrimVal,
         _right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
-        Err(ConstEvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()).into())
+        if left.is_bytes() && right.is_bytes() {
+            Ok(None)
+        } else {
+            Err(ConstEvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()).into())
+        }
     }
 
     fn mark_static_initialized(m: !) -> EvalResult<'tcx> {
