@@ -222,15 +222,24 @@ struct MirConstContext<'a, 'tcx: 'a> {
     substs: &'tcx Substs<'tcx>,
 
     /// Values of locals in a constant or const fn.
-    locals: IndexVec<mir::Local, Option<Const<'tcx>>>
+    locals: IndexVec<mir::Local, Option<Result<Const<'tcx>, ConstEvalErr<'tcx>>>>
 }
 
+fn add_err<'tcx, U, V>(failure: &mut Result<U, ConstEvalErr<'tcx>>,
+                       value: &Result<V, ConstEvalErr<'tcx>>)
+{
+    if let &Err(ref err) = value {
+        if failure.is_ok() {
+            *failure = Err(err.clone());
+        }
+    }
+}
 
 impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn new(ccx: &'a CrateContext<'a, 'tcx>,
            mir: &'a mir::Mir<'tcx>,
            substs: &'tcx Substs<'tcx>,
-           args: IndexVec<mir::Local, Const<'tcx>>)
+           args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
            -> MirConstContext<'a, 'tcx> {
         let mut context = MirConstContext {
             ccx: ccx,
@@ -249,7 +258,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
                  def_id: DefId,
                  substs: &'tcx Substs<'tcx>,
-                 args: IndexVec<mir::Local, Const<'tcx>>)
+                 args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
                  -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
         let instance = monomorphize::resolve(ccx.shared(), def_id, substs);
         let mir = ccx.tcx().instance_mir(instance.def);
@@ -278,10 +287,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::StatementKind::Assign(ref dest, ref rvalue) => {
                         let ty = dest.ty(self.mir, tcx);
                         let ty = self.monomorphize(&ty).to_ty(tcx);
-                        match self.const_rvalue(rvalue, ty, span) {
-                            Ok(value) => self.store(dest, value, span),
-                            Err(err) => if failure.is_ok() { failure = Err(err); }
-                        }
+                        let value = self.const_rvalue(rvalue, ty, span);
+                        add_err(&mut failure, &value);
+                        self.store(dest, value, span);
                     }
                     mir::StatementKind::StorageLive(_) |
                     mir::StatementKind::StorageDead(_) |
@@ -301,9 +309,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 mir::TerminatorKind::Goto { target } => target,
                 mir::TerminatorKind::Return => {
                     failure?;
-                    return Ok(self.locals[mir::RETURN_POINTER].unwrap_or_else(|| {
+                    return self.locals[mir::RETURN_POINTER].clone().unwrap_or_else(|| {
                         span_bug!(span, "no returned value in constant");
-                    }));
+                    });
                 }
 
                 mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, .. } => {
@@ -342,33 +350,30 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                     let mut arg_vals = IndexVec::with_capacity(args.len());
                     for arg in args {
-                        match self.const_operand(arg, span) {
-                            Ok(arg) => { arg_vals.push(arg); },
-                            Err(err) => if failure.is_ok() { failure = Err(err); }
-                        }
+                        let arg_val = self.const_operand(arg, span);
+                        add_err(&mut failure, &arg_val);
+                        arg_vals.push(arg_val);
                     }
                     if let Some((ref dest, target)) = *destination {
-                        if fn_ty.fn_sig(tcx).abi() == Abi::RustIntrinsic {
-                            let value = match &tcx.item_name(def_id).as_str()[..] {
+                        let result = if fn_ty.fn_sig(tcx).abi() == Abi::RustIntrinsic {
+                            match &tcx.item_name(def_id).as_str()[..] {
                                 "size_of" => {
                                     let llval = C_uint(self.ccx,
                                         self.ccx.size_of(substs.type_at(0)));
-                                    Const::new(llval, tcx.types.usize)
+                                    Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 "min_align_of" => {
                                     let llval = C_uint(self.ccx,
                                         self.ccx.align_of(substs.type_at(0)));
-                                    Const::new(llval, tcx.types.usize)
+                                    Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
-                            };
-                            self.store(dest, value, span);
-                        } else {
-                            match MirConstContext::trans_def(self.ccx, def_id, substs, arg_vals) {
-                                Ok(value) => self.store(dest, value, span),
-                                Err(err) => if failure.is_ok() { failure = Err(err); }
                             }
-                        }
+                        } else {
+                            MirConstContext::trans_def(self.ccx, def_id, substs, arg_vals)
+                        };
+                        add_err(&mut failure, &result);
+                        self.store(dest, result, span);
                         target
                     } else {
                         span_bug!(span, "diverging {:?} in constant", terminator.kind);
@@ -379,7 +384,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         }
     }
 
-    fn store(&mut self, dest: &mir::Lvalue<'tcx>, value: Const<'tcx>, span: Span) {
+    fn store(&mut self,
+             dest: &mir::Lvalue<'tcx>,
+             value: Result<Const<'tcx>, ConstEvalErr<'tcx>>,
+             span: Span) {
         if let mir::Lvalue::Local(index) = *dest {
             self.locals[index] = Some(value);
         } else {
@@ -392,9 +400,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         let tcx = self.ccx.tcx();
 
         if let mir::Lvalue::Local(index) = *lvalue {
-            return Ok(self.locals[index].unwrap_or_else(|| {
+            return self.locals[index].clone().unwrap_or_else(|| {
                 span_bug!(span, "{:?} not initialized", lvalue)
-            }).as_lvalue());
+            }).map(|v| v.as_lvalue());
         }
 
         let lvalue = match *lvalue {
