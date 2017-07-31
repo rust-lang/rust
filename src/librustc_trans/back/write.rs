@@ -23,7 +23,7 @@ use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKind};
 use rustc::hir::def_id::CrateNum;
-use rustc::util::common::{time, time_depth, set_time_depth, path2cstr};
+use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
 use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
 use errors::emitter::{Emitter};
@@ -44,6 +44,7 @@ use std::str;
 use std::sync::Arc;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::slice;
+use std::time::Instant;
 use std::thread;
 use libc::{c_uint, c_void, c_char, size_t};
 
@@ -498,9 +499,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         diag_handler.abort_if_errors();
 
         // Finally, run the actual optimization passes
-        time(config.time_passes, &format!("llvm function passes [{}]", cgcx.worker), ||
+        time(config.time_passes, &format!("llvm function passes [{}]", module_name.unwrap()), ||
              llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
-        time(config.time_passes, &format!("llvm module passes [{}]", cgcx.worker), ||
+        time(config.time_passes, &format!("llvm module passes [{}]", module_name.unwrap()), ||
              llvm::LLVMRunPassManager(mpm, llmod));
 
         // Deallocate managers that we're now done with
@@ -563,7 +564,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMWriteBitcodeToFile(llmod, bc_out_c.as_ptr());
     }
 
-    time(config.time_passes, &format!("codegen passes [{}]", cgcx.worker),
+    time(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
          || -> Result<(), FatalError> {
         if config.emit_ir {
             let out = output_names.temp_path(OutputType::LlvmAssembly, module_name);
@@ -755,6 +756,11 @@ pub fn start_async_translation(sess: &Session,
     modules_config.set_flags(sess, no_builtins);
     metadata_config.set_flags(sess, no_builtins);
     allocator_config.set_flags(sess, no_builtins);
+
+    // Exclude metadata and allocator modules from time_passes output, since
+    // they throw off the "LLVM passes" measurement.
+    metadata_config.time_passes = false;
+    allocator_config.time_passes = false;
 
     let client = sess.jobserver_from_env.clone().unwrap_or_else(|| {
         // Pick a "reasonable maximum" if we don't otherwise have a jobserver in
@@ -1266,6 +1272,9 @@ fn start_executing_work(sess: &Session,
     // manner we can ensure that the maximum number of parallel workers is
     // capped at any one point in time.
     return thread::spawn(move || {
+        // We pretend to be within the top-level LLVM time-passes task here:
+        set_time_depth(1);
+
         let max_workers = ::num_cpus::get();
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
@@ -1298,6 +1307,8 @@ fn start_executing_work(sess: &Session,
         let mut main_thread_worker_state = MainThreadWorkerState::Idle;
         let mut running = 0;
 
+        let mut llvm_start_time = None;
+
         // Run the message loop while there's still anything that needs message
         // processing:
         while !translation_done ||
@@ -1323,6 +1334,7 @@ fn start_executing_work(sess: &Session,
                             worker: get_worker_id(&mut free_worker_ids),
                             .. cgcx.clone()
                         };
+                        maybe_start_llvm_timer(&item, &mut llvm_start_time);
                         main_thread_worker_state = MainThreadWorkerState::LLVMing;
                         spawn_work(cgcx, item);
                     }
@@ -1338,7 +1350,7 @@ fn start_executing_work(sess: &Session,
                                 worker: get_worker_id(&mut free_worker_ids),
                                 .. cgcx.clone()
                             };
-
+                            maybe_start_llvm_timer(&item, &mut llvm_start_time);
                             main_thread_worker_state = MainThreadWorkerState::LLVMing;
                             spawn_work(cgcx, item);
                         }
@@ -1357,6 +1369,8 @@ fn start_executing_work(sess: &Session,
             // parallelism slots and work left to spawn.
             while work_items.len() > 0 && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
+
+                maybe_start_llvm_timer(&item, &mut llvm_start_time);
 
                 let cgcx = CodegenContext {
                     worker: get_worker_id(&mut free_worker_ids),
@@ -1465,6 +1479,16 @@ fn start_executing_work(sess: &Session,
             }
         }
 
+        if let Some(llvm_start_time) = llvm_start_time {
+            let total_llvm_time = Instant::now().duration_since(llvm_start_time);
+            // This is the top-level timing for all of LLVM, set the time-depth
+            // to zero.
+            set_time_depth(0);
+            print_time_passes_entry(cgcx.time_passes,
+                                    "LLVM passes",
+                                    total_llvm_time);
+        }
+
         CompiledModules {
             modules: compiled_modules,
             metadata_module: compiled_metadata_module.unwrap(),
@@ -1479,6 +1503,17 @@ fn start_executing_work(sess: &Session,
                          max_workers: usize) -> bool {
         // Tune me, plz.
         items_in_queue >= max_workers.saturating_sub(workers_running / 2)
+    }
+
+    fn maybe_start_llvm_timer(work_item: &WorkItem,
+                              llvm_start_time: &mut Option<Instant>) {
+        // We keep track of the -Ztime-passes output manually,
+        // since the closure-based interface does not fit well here.
+        if work_item.config.time_passes {
+            if llvm_start_time.is_none() {
+                *llvm_start_time = Some(Instant::now());
+            }
+        }
     }
 }
 

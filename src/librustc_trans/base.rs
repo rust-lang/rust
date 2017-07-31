@@ -43,7 +43,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
-use rustc::util::common::time;
+use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
 use rustc::session::Session;
 use rustc_incremental::{self, IncrementalHashesMap};
@@ -80,7 +80,7 @@ use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::str;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::i32;
 use syntax_pos::Span;
 use syntax::attr;
@@ -1093,6 +1093,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         codegen_units
     };
 
+    let mut total_trans_time = Duration::new(0, 0);
+
     for (cgu_index, cgu) in codegen_units.into_iter().enumerate() {
         ongoing_translation.wait_for_signal_to_translate_item();
         ongoing_translation.check_for_errors(tcx.sess);
@@ -1128,6 +1130,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let cost = time_to_translate.as_secs() * 1_000_000_000 +
                    time_to_translate.subsec_nanos() as u64;
 
+        total_trans_time += time_to_translate;
+
         let is_last_cgu = (cgu_index + 1) == codegen_unit_count;
 
         ongoing_translation.submit_translated_module_to_llvm(tcx.sess,
@@ -1136,6 +1140,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                              is_last_cgu);
         ongoing_translation.check_for_errors(tcx.sess);
     }
+
+    // Since the main thread is sometimes blocked during trans, we keep track
+    // -Ztime-passes output manually.
+    print_time_passes_entry(tcx.sess.time_passes(),
+                            "translate to LLVM IR",
+                            total_trans_time);
 
     if let Some(module_dispositions) = module_dispositions {
         assert_module_sources::assert_module_sources(tcx, &module_dispositions);
