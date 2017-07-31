@@ -388,3 +388,23 @@ fn issue525() {
         TaskState::Failed => "failed",
     });
 }
+
+// #1838, #1839
+fn match_with_near_max_width() {
+    let (this_line_uses_99_characters_and_is_formatted_properly, x012345) = match some_expression   {
+        _ => unimplemented!(),
+    };
+
+    let (should_be_formatted_like_the_line_above_using_100_characters, x0) = match some_expression  {
+        _ => unimplemented!(),
+    };
+
+    let (should_put_the_brace_on_the_next_line_using_101_characters, x0000) = match some_expression
+    {
+        _ => unimplemented!(),
+    };
+    match m {
+        Variant::Tag | Variant::Tag2 | Variant::Tag3 | Variant::Tag4 | Variant::Tag5 | Variant::Tag6 =>
+        {}
+    }
+}
