@@ -1,0 +1,6 @@
+[package]
+name = "clippy_workspace_tests"
+version = "0.1.0"
+
+[workspace]
+members = ["subcrate"]
