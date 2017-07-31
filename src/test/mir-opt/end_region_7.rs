@@ -31,18 +31,18 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let mut _0: ();
 //     let _1: D;
 //     let mut _2: ();
-//     let mut _3: ();
-//     let mut _4: [closure@NodeId(22) d:D];
-//     let mut _5: D;
+//     let mut _3: [closure@NodeId(22) d:D];
+//     let mut _4: D;
+//     let mut _5: ();
 //
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
+//         StorageLive(_3);
 //         StorageLive(_4);
-//         StorageLive(_5);
-//         _5 = _1;
-//         _4 = [closure@NodeId(22)] { d: _5 };
-//         drop(_5) -> [return: bb4, unwind: bb3];
+//         _4 = _1;
+//         _3 = [closure@NodeId(22)] { d: _4 };
+//         drop(_4) -> [return: bb4, unwind: bb3];
 //     }
 //     bb1: {
 //         resume;
@@ -51,17 +51,17 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         drop(_1) -> bb1;
 //     }
 //     bb3: {
-//         drop(_4) -> bb2;
+//         drop(_3) -> bb2;
 //     }
 //     bb4: {
-//         StorageDead(_5);
-//         _3 = const foo(_4) -> [return: bb5, unwind: bb3];
+//         StorageDead(_4);
+//         _2 = const foo(_3) -> [return: bb5, unwind: bb3];
 //     }
 //     bb5: {
-//         drop(_4) -> [return: bb6, unwind: bb2];
+//         drop(_3) -> [return: bb6, unwind: bb2];
 //     }
 //     bb6: {
-//         StorageDead(_4);
+//         StorageDead(_3);
 //         _0 = ();
 //         drop(_1) -> bb7;
 //     }
@@ -76,16 +76,16 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // fn main::{{closure}}(_1: [closure@NodeId(22) d:D]) -> i32 {
 //     let mut _0: i32;
 //     let _2: &'14_0rce D;
-//     let mut _3: ();
-//     let mut _4: i32;
+//     let mut _3: i32;
+//     let mut _4: ();
 //
 //     bb0: {
 //         StorageLive(_2);
 //         _2 = &'14_0rce (_1.0: D);
-//         StorageLive(_4);
-//         _4 = ((*_2).0: i32);
-//         _0 = _4;
-//         StorageDead(_4);
+//         StorageLive(_3);
+//         _3 = ((*_2).0: i32);
+//         _0 = _3;
+//         StorageDead(_3);
 //         StorageDead(_2);
 //         EndRegion('14_0rce);
 //         drop(_1) -> bb1;
