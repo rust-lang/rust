@@ -762,7 +762,7 @@ define_print! {
                 }
 
                 ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
+                    write!(f, "ReSkolemized({:?}, {:?})", id, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
