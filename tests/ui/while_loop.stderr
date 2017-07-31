@@ -103,5 +103,12 @@ error: empty `loop {}` detected. You may want to either use `panic!()` or add `s
     |
     = note: `-D empty-loop` implied by `-D warnings`
 
-error: aborting due to 10 previous errors
+error: this loop could be written as a `for` loop
+   --> while_loop.rs:177:9
+    |
+177 | /         while let Some(v) = y.next() {
+178 | |         }
+    | |_________^ help: try: `for v in y { .. }`
+
+error: aborting due to 11 previous errors
 
