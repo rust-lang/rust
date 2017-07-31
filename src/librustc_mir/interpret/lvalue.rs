@@ -379,7 +379,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         base: Lvalue<'tcx>,
         base_ty: Ty<'tcx>,
-        proj_elem: &mir::ProjectionElem<'tcx, mir::Operand<'tcx>>,
+        proj_elem: &mir::ProjectionElem<'tcx, mir::Operand<'tcx>, Ty<'tcx>>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
         use rustc::mir::ProjectionElem::*;
         let (ptr, extra, aligned) = match *proj_elem {
