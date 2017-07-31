@@ -1,7 +1,7 @@
 - Feature Name: refcell-replace
 - Start Date: 2017-06-09
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2057](https://github.com/rust-lang/rfcs/pull/2057)
+- Rust Issue: [rust-lang/rust#43570](https://github.com/rust-lang/rust/issues/43570)
 
 # Summary
 [summary]: #summary
