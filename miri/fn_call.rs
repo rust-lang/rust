@@ -126,7 +126,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "syscall" => {
+                // TODO: read `syscall` ids like `sysconf` ids and
+                // figure out some way to actually process some of them
+                //
+                // libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)
+                // is called if a `HashMap` is created the regular way.
                 match self.value_to_primval(args[0], usize)?.to_u64()? {
+                    318 |
                     511 => return Err(EvalError::Unimplemented("miri does not support random number generators".to_owned())),
                     id => return Err(EvalError::Unimplemented(format!("miri does not support syscall id {}", id))),
                 }
