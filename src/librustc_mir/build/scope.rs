@@ -107,6 +107,9 @@ pub struct Scope<'tcx> {
     /// the extent of this scope within source code.
     extent: CodeExtent,
 
+    /// the span of that extent
+    extent_span: Span,
+
     /// Whether there's anything to do for the cleanup path, that is,
     /// when unwinding through this scope. This includes destructors,
     /// but not StorageDead statements, which don't get emitted at all
@@ -116,7 +119,7 @@ pub struct Scope<'tcx> {
     ///  * pollutting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
-    pub(super) needs_cleanup: bool,
+    needs_cleanup: bool,
 
     /// set of lvalues to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
@@ -282,7 +285,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_opt_scope(opt_extent={:?}, block={:?})", opt_extent, block);
-        if let Some(extent) = opt_extent { self.push_scope(extent.0); }
+        if let Some(extent) = opt_extent { self.push_scope(extent); }
         let rv = unpack!(block = f(self));
         if let Some(extent) = opt_extent {
             unpack!(block = self.pop_scope(extent, block));
@@ -301,7 +304,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        self.push_scope(extent.0);
+        self.push_scope(extent);
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(extent, block));
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
@@ -312,12 +315,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: CodeExtent) {
+    pub fn push_scope(&mut self, extent: (CodeExtent, SourceInfo)) {
         debug!("push_scope({:?})", extent);
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
             visibility_scope: vis_scope,
-            extent: extent,
+            extent: extent.0,
+            extent_span: extent.1.span,
             needs_cleanup: false,
             drops: vec![],
             free: None,
@@ -335,7 +339,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("pop_scope({:?}, {:?})", extent, block);
         // We need to have `cached_block`s available for all the drops, so we call diverge_cleanup
         // to make sure all the `cached_block`s are filled in.
-        self.diverge_cleanup(extent.1.span);
+        self.diverge_cleanup();
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.extent, extent.0);
         unpack!(block = build_scope_drops(&mut self.cfg,
@@ -618,7 +622,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This path terminates in Resume. Returns the start of the path.
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
-    pub fn diverge_cleanup(&mut self, span: Span) -> Option<BasicBlock> {
+    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
         if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
             return None;
         }
@@ -652,7 +656,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut() {
-            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, span, scope, target);
+            target = build_diverge_scope(
+                hir.tcx(), cfg, &unit_temp, scope.extent_span, scope, target);
         }
         Some(target)
     }
@@ -668,7 +673,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup(span);
+        let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Drop {
                                location: location,
@@ -686,7 +691,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                   value: Operand<'tcx>) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup(span);
+        let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::DropAndReplace {
                                location: location,
@@ -709,7 +714,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
 
         let success_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup(span);
+        let cleanup = self.diverge_cleanup();
 
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Assert {
