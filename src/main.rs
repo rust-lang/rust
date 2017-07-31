@@ -15,6 +15,7 @@ extern crate syntax;
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 use rustc::session::{config, Session, CompileIncomplete};
 use rustc::session::config::{Input, ErrorOutputType};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{self, Command};
 use syntax::ast;
@@ -158,12 +159,6 @@ fn show_version() {
     println!("{}", env!("CARGO_PKG_VERSION"));
 }
 
-// FIXME: false positive for needless_lifetimes
-#[allow(needless_lifetimes)]
-fn has_prefix<'a, T: PartialEq, I: Iterator<Item = &'a T>>(v: &'a [T], itr: I) -> bool {
-    v.iter().zip(itr).all(|(a, b)| a == b)
-}
-
 pub fn main() {
     use std::env;
 
@@ -196,46 +191,52 @@ pub fn main() {
                 process::exit(101);
             };
 
-        let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
+        let manifest_path = manifest_path_arg.map(|arg| Path::new(&arg["--manifest-path=".len()..])
+            .canonicalize().expect("manifest path could not be canonicalized"));
 
         let package_index = {
-                let mut iterator = metadata.packages.iter();
-
-                if let Some(ref manifest_path) = manifest_path {
-                    iterator.position(|package| {
-                        let package_manifest_path = Path::new(&package.manifest_path);
+                if let Some(manifest_path) = manifest_path {
+                    metadata.packages.iter().position(|package| {
+                        let package_manifest_path = Path::new(&package.manifest_path)
+                            .canonicalize().expect("package manifest path could not be canonicalized");
                         package_manifest_path == manifest_path
                     })
                 } else {
-                    let current_dir = std::env::current_dir()
-                        .expect("could not read current directory")
-                        .canonicalize()
-                        .expect("current directory cannot be canonicalized");
-                    let current_dir_components = current_dir.components().collect::<Vec<_>>();
-
-                    // This gets the most-recent parent (the one that takes the fewest `cd ..`s to
-                    // reach).
-                    iterator
+                    let package_manifest_paths: HashMap<_, _> =
+                        metadata.packages.iter()
                         .enumerate()
-                        .filter_map(|(i, package)| {
-                            let package_manifest_path = Path::new(&package.manifest_path);
-                            let canonical_path = package_manifest_path
+                        .map(|(i, package)| {
+                            let package_manifest_path = Path::new(&package.manifest_path)
                                 .parent()
                                 .expect("could not find parent directory of package manifest")
                                 .canonicalize()
                                 .expect("package directory cannot be canonicalized");
-
-                            // TODO: We can do this in `O(1)` by combining the `len` and the
-                            //       iteration.
-                            let components = canonical_path.components().collect::<Vec<_>>();
-                            if has_prefix(&current_dir_components, components.iter()) {
-                                Some((i, components.len()))
-                            } else {
-                                None
-                            }
+                            (package_manifest_path, i)
                         })
-                        .max_by_key(|&(_, length)| length)
-                        .map(|(i, _)| i)
+                        .collect();
+
+                    let current_dir = std::env::current_dir()
+                        .expect("could not read current directory")
+                        .canonicalize()
+                        .expect("current directory cannot be canonicalized");
+
+                    let mut current_path: &Path = &current_dir;
+
+                    // This gets the most-recent parent (the one that takes the fewest `cd ..`s to
+                    // reach).
+                    loop {
+                        if let Some(&package_index) = package_manifest_paths.get(current_path) {
+                            break Some(package_index);
+                        }
+                        else {
+                            // We'll never reach the filesystem root, because to get to this point in the code
+                            // the call to `cargo_metadata::metadata` must have succeeded. So it's okay to
+                            // unwrap the current path's parent.
+                            current_path = current_path
+                                .parent()
+                                .unwrap_or_else(|| panic!("could not find parent of path {}", current_path.display()));
+                        }
+                    }
                 }
             }
             .expect("could not find matching package");

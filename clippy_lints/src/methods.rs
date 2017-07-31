@@ -3,6 +3,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::hir::def::Def;
+use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
 use std::borrow::Cow;
 use std::fmt;
@@ -1226,7 +1227,10 @@ fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other:
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
 fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
-    if let Ok(ConstVal::Str(r)) = ConstContext::with_tables(cx.tcx, cx.tables).eval(arg) {
+    let parent_item = cx.tcx.hir.get_parent(arg.id);
+    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+    if let Ok(ConstVal::Str(r)) = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(arg) {
         if r.len() == 1 {
             let hint = snippet(cx, expr.span, "..").replace(&format!("\"{}\"", r), &format!("'{}'", r));
             span_lint_and_then(cx,

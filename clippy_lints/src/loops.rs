@@ -8,7 +8,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::ty::{self, Ty};
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{Subst, Substs};
 use rustc_const_eval::ConstContext;
 use std::collections::{HashMap, HashSet};
 use syntax::ast;
@@ -685,7 +685,10 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
     if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
         // ...and both sides are compile-time constant integers...
-        let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
+        let parent_item = cx.tcx.hir.get_parent(arg.id);
+        let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+        let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+        let constcx = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables);
         if let Ok(start_idx) = constcx.eval(start) {
             if let Ok(end_idx) = constcx.eval(end) {
                 // ...and the start index is greater than the end index,

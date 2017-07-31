@@ -2,11 +2,13 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
+use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
 use std::collections::Bound;
 use syntax::ast::LitKind;
+use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, span_lint_and_sugg, in_external_macro,
@@ -307,7 +309,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 
 fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
     if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
-        let ranges = all_ranges(cx, arms);
+        let ranges = all_ranges(cx, arms, ex.id);
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {
             if let Some((start, end)) = overlapping(&type_ranges) {
@@ -390,8 +392,11 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 }
 
 /// Get all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &[Arm]) -> Vec<SpannedRange<ConstVal<'tcx>>> {
-    let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
+fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &[Arm], id: NodeId) -> Vec<SpannedRange<ConstVal<'tcx>>> {
+    let parent_item = cx.tcx.hir.get_parent(id);
+    let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+    let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+    let constcx = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables);
     arms.iter()
         .flat_map(|arm| {
             if let Arm { ref pats, guard: None, .. } = *arm {
