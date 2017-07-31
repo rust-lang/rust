@@ -1389,21 +1389,25 @@ fn start_executing_work(sess: &Session,
                 // this to spawn a new unit of work, or it may get dropped
                 // immediately if we have no more work to spawn.
                 Message::Token(token) => {
-                    if let Ok(token) = token {
-                        tokens.push(token);
+                    match token {
+                        Ok(token) => {
+                            tokens.push(token);
 
-                        if main_thread_worker_state == MainThreadWorkerState::LLVMing {
-                            // If the main thread token is used for LLVM work
-                            // at the moment, we turn that thread into a regular
-                            // LLVM worker thread, so the main thread is free
-                            // to react to translation demand.
-                            main_thread_worker_state = MainThreadWorkerState::Idle;
-                            running += 1;
+                            if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                                // If the main thread token is used for LLVM work
+                                // at the moment, we turn that thread into a regular
+                                // LLVM worker thread, so the main thread is free
+                                // to react to translation demand.
+                                main_thread_worker_state = MainThreadWorkerState::Idle;
+                                running += 1;
+                            }
                         }
-                    } else {
-                        shared_emitter.fatal("failed to acquire jobserver token");
-                        // Exit the coordinator thread
-                        panic!()
+                        Err(e) => {
+                            let msg = &format!("failed to acquire jobserver token: {}", e);
+                            shared_emitter.fatal(msg);
+                            // Exit the coordinator thread
+                            panic!()
+                        }
                     }
                 }
 
