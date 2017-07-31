@@ -18,6 +18,6 @@ fn main() {
         bar: 0
         //~^ ERROR struct `BuildData` has no field named `bar`
         //~| NOTE `BuildData` does not have this field
-        //~| NOTE available fields are: foo
+        //~| NOTE available fields are: `foo`
     };
 }

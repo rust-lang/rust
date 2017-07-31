@@ -14,7 +14,11 @@ mod submodule {
     pub struct Demo {
         pub favorite_integer: isize,
         secret_integer: isize,
-        pub innocently_misspellable: ()
+        pub innocently_misspellable: (),
+        another_field: bool,
+        yet_another_field: bool,
+        always_more_fields: bool,
+        and_ever: bool,
     }
 
     impl Demo {
@@ -34,6 +38,6 @@ fn main() {
 
     let demo = Demo::default();
     let innocent_field_misaccess = demo.inocently_mispellable;
-    // note shouldn't suggest private `secret_integer` field
+    // note shouldn't suggest private fields
     let egregious_field_misaccess = demo.egregiously_nonexistent_field;
 }

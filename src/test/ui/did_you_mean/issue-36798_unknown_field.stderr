@@ -4,7 +4,7 @@ error[E0609]: no field `zz` on type `Foo`
 17 |     f.zz;
    |       ^^ unknown field
    |
-   = note: available fields are: bar
+   = note: available fields are: `bar`
 
 error: aborting due to previous error
 
