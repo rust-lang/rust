@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.147
+* Update to *rustc 1.21.0-nightly (aac223f4f 2017-07-30)*
+
 ## 0.0.146
 * Update to *rustc 1.21.0-nightly (52a330969 2017-07-27)*
 * Fixes false positives in `inline_always`
