@@ -57,3 +57,5 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     transform::provide(providers);
 }
+
+__build_diagnostic_array! { librustc_mir, DIAGNOSTICS }

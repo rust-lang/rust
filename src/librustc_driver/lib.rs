@@ -1207,6 +1207,10 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_plugin::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_mir::DIAGNOSTICS);
+    all_errors.extend_from_slice(&syntax::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }
