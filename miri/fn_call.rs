@@ -12,8 +12,9 @@ use rustc_miri::interpret::*;
 use super::{
     TlsKey,
     EvalContext,
-    MemoryExt,
 };
+
+use tls::MemoryExt;
 
 use super::memory::Kind;
 
