@@ -825,7 +825,9 @@ pub enum StatementKind<'tcx> {
         inputs: Vec<Operand<'tcx>>
     },
 
-    /// Assert the given lvalues to be valid inhabitants of their type.
+    /// Assert the given lvalues to be valid inhabitants of their type.  These statements are
+    /// currently only interpreted by miri and only generated when "-Z mir-emit-validate" is passed.
+    /// See <https://internals.rust-lang.org/t/types-as-contracts/5562/73> for more details.
     Validate(ValidationOp, Vec<ValidationOperand<'tcx, Lvalue<'tcx>>>),
 
     /// Mark one terminating point of an extent (i.e. static region).
@@ -836,10 +838,19 @@ pub enum StatementKind<'tcx> {
     Nop,
 }
 
+/// The `ValidationOp` describes what happens with each of the operands of a
+/// `Validate` statement.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 pub enum ValidationOp {
+    /// Recursively traverse the lvalue following the type and validate that all type
+    /// invariants are maintained.  Furthermore, acquire exclusive/read-only access to the
+    /// memory reachable from the lvalue.
     Acquire,
+    /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
+    /// access.
     Release,
+    /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
+    /// access *until* the given region ends.  Then, access will be recovered.
     Suspend(CodeExtent),
 }
 
