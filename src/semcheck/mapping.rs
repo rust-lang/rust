@@ -147,7 +147,7 @@ impl IdMapping {
         assert!(!self.in_old_crate(new));
 
         if self.in_new_crate(new) {
-            self.reverse_mapping.get(&new).map(|did| *did)
+            self.reverse_mapping.get(&new).cloned()
         } else {
             Some(new)
         }

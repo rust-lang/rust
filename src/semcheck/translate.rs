@@ -348,7 +348,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                 Predicate::Trait(Binder(if let Some((target_def_id, target_substs)) =
                     self.translate_orig_substs(index_map,
                                                trait_predicate.0.trait_ref.def_id,
-                                               &trait_predicate.0.trait_ref.substs) {
+                                               trait_predicate.0.trait_ref.substs) {
                     TraitPredicate {
                         trait_ref: TraitRef {
                             def_id: target_def_id,
@@ -384,7 +384,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                 Predicate::Projection(Binder(if let Some((target_def_id, target_substs)) =
                     self.translate_orig_substs(index_map,
                                                projection_predicate.0.projection_ty.item_def_id,
-                                               &projection_predicate.0.projection_ty.substs) {
+                                               projection_predicate.0.projection_ty.substs) {
                     ProjectionPredicate {
                         projection_ty: ProjectionTy {
                             substs: target_substs,
