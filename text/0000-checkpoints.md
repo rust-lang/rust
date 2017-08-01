@@ -549,3 +549,6 @@ what kinds of changes we want to allow. Downsides:
   constraints in this RFC, it seems unlikely to ever be worth it.
 
 - Should `rustc` default to the latest checkpoint instead?
+
+- How do we handle macros, particularly procedural macros, that may mix source
+  from multiple checkpoints?
