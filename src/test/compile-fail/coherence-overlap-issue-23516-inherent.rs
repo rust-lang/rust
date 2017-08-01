@@ -19,7 +19,7 @@ struct Cake<X>(X);
 impl<T:Sugar> Cake<T> { fn dummy(&self) { } }
 //~^ ERROR E0592
 //~| NOTE duplicate definitions for `dummy`
-//~| NOTE upstream crates may add new impl for `Sugar` in future versions
+//~| NOTE upstream crates may add new impl of trait `Sugar` for type `std::boxed::Box<_>`
 impl<U:Sugar> Cake<Box<U>> { fn dummy(&self) { } }
 //~^ NOTE other definition for `dummy`
 
