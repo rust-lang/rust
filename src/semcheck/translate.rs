@@ -129,6 +129,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                        orig_substs: &Substs<'tcx>)
         -> Option<(DefId, &'tcx Substs<'tcx>)>
     {
+        debug!("translating w/ substs: did: {:?} (trait did: {:?}), substs: {:?}",
+               orig_def_id, orig_trait_def_id, orig_substs);
+
         use rustc::ty::ReEarlyBound;
         use std::cell::Cell;
 
@@ -164,6 +167,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     self.translate(index_map, &type_)
                 } else if self.id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
                     self.tcx.type_of(def.def_id)
+                } else if self.tcx.generics_of(target_def_id).has_self && def.index == 0 {
+                    self.tcx.mk_param_from_def(def)
                 } else {
                     success.set(false);
                     self.tcx.mk_param_from_def(def)
@@ -193,7 +198,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                         let target_adt = self.tcx.adt_def(target_def_id);
                         self.tcx.mk_adt(target_adt, target_substs)
                     } else {
-                        self.tcx.types.err
+                        ty
                     }
                 },
                 TyRef(region, type_and_mut) => {
@@ -205,7 +210,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     {
                         self.tcx.mk_fn_def(target_def_id, target_substs)
                     } else {
-                        self.tcx.types.err
+                        ty
                     }
                 },
                 TyDynamic(preds, region) => {
@@ -252,7 +257,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     if success {
                         self.tcx.mk_dynamic(Binder(target_preds), region)
                     } else {
-                        self.tcx.types.err
+                        ty
                     }
                 },
                 TyProjection(proj) => {
@@ -264,7 +269,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                                          proj.substs) {
                         self.tcx.mk_projection(target_def_id, target_substs)
                     } else {
-                        self.tcx.types.err
+                        ty
                     }
                 },
                 TyAnon(did, substs) => {
@@ -273,7 +278,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     {
                         self.tcx.mk_anon(target_def_id, target_substs)
                     } else {
-                        self.tcx.types.err
+                        ty
                     }
                 },
                 TyParam(param) => {

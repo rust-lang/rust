@@ -1,9 +1,3 @@
-impl DefId { krate: CrateNum(13), node: DefIndex(7) => new/8cd878b::{{impl}}[1] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
-impl DefId { krate: CrateNum(13), node: DefIndex(8) => new/8cd878b::{{impl}}[2] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
-impl DefId { krate: CrateNum(13), node: DefIndex(10) => new/8cd878b::{{impl}}[4] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
-impl DefId { krate: CrateNum(13), node: DefIndex(11) => new/8cd878b::{{impl}}[5] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
-impl DefId { krate: CrateNum(13), node: DefIndex(9) => new/8cd878b::{{impl}}[3] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
-impl DefId { krate: CrateNum(13), node: DefIndex(6) => new/8cd878b::{{impl}}[0] }, DefId { krate: CrateNum(13), node: DefIndex(5) => new/8cd878b::Abc[0] }
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 warning: breaking changes in `impl`
  --> $REPO_PATH/tests/cases/trait_impls/old.rs:9:1
