@@ -145,7 +145,7 @@ impl<'a> DigitInfo<'a> {
     fn grouping_hint(&self) -> String {
         let group_size = self.radix.suggest_grouping();
         if self.digits.contains('.') {
-            let mut parts = self.digits.split(".");
+            let mut parts = self.digits.split('.');
             let int_part_hint = parts
                 .next()
                 .unwrap()
