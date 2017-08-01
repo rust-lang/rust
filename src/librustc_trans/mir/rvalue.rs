@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{self, Layout, LayoutTyper, Primitive};
+use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
@@ -107,6 +107,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let align = dest.alignment.to_align();
 
                 if let OperandValue::Immediate(v) = tr_elem.val {
+                    // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if common::is_const_integral(v) && common::const_to_uint(v) == 0 {
                         let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
                         let align = C_i32(bcx.ccx, align as i32);
@@ -116,20 +117,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         base::call_memset(&bcx, base, fill, size, align, false);
                         return bcx;
                     }
-                }
 
-                // Use llvm.memset.p0i8.* to initialize byte arrays
-                let elem_layout = bcx.ccx.layout_of(tr_elem.ty).layout;
-                match *elem_layout {
-                    Layout::Scalar { value: Primitive::Int(layout::I8), .. } |
-                    Layout::CEnum { discr: layout::I8, .. } => {
+                    // Use llvm.memset.p0i8.* to initialize byte arrays
+                    if common::val_ty(v) == Type::i8(bcx.ccx) {
                         let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
                         let align = C_i32(bcx.ccx, align as i32);
                         let fill = tr_elem.immediate();
                         base::call_memset(&bcx, base, fill, size, align, false);
                         return bcx;
                     }
-                    _ => ()
                 }
 
                 tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot, loop_bb| {
