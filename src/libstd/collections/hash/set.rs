@@ -260,6 +260,7 @@ impl<T, S> HashSet<T, S>
     /// use std::collections::HashSet;
     /// let mut set: HashSet<i32> = HashSet::new();
     /// set.reserve(10);
+    /// assert!(set.capacity() >= 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
