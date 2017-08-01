@@ -1835,21 +1835,15 @@ fn rewrite_fn_base(
     let ret_str_len = if multi_line_ret_str { 0 } else { ret_str.len() };
 
     // Args.
-    let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =
-        try_opt!(compute_budgets_for_args(
-            context,
-            &result,
-            indent,
-            ret_str_len,
-            newline_brace,
-            has_braces,
-        ));
-
-    if context.config.fn_args_layout() == IndentStyle::Block {
-        arg_indent = indent.block_indent(context.config);
-        // 1 = ","
-        multi_line_budget = context.config.max_width() - (arg_indent.width() + 1);
-    }
+    let (one_line_budget, multi_line_budget, mut arg_indent) = try_opt!(compute_budgets_for_args(
+        context,
+        &result,
+        indent,
+        ret_str_len,
+        newline_brace,
+        has_braces,
+        multi_line_ret_str,
+    ));
 
     debug!(
         "rewrite_fn_base: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
@@ -1885,10 +1879,6 @@ fn rewrite_fn_base(
         result.push(' ')
     }
 
-    if multi_line_ret_str {
-        one_line_budget = 0;
-    }
-
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = generics
         .ty_params
@@ -1917,11 +1907,8 @@ fn rewrite_fn_base(
         generics_str.contains('\n'),
     ));
 
-    let multi_line_arg_str =
-        arg_str.contains('\n') || arg_str.chars().last().map_or(false, |c| c == ',');
-
     let put_args_in_block = match context.config.fn_args_layout() {
-        IndentStyle::Block => multi_line_arg_str || generics_str.contains('\n'),
+        IndentStyle::Block => arg_str.contains('\n') || arg_str.len() > one_line_budget,
         _ => false,
     } && !fd.inputs.is_empty();
 
@@ -1936,6 +1923,12 @@ fn rewrite_fn_base(
         result.push(')');
     } else {
         result.push_str(&arg_str);
+        let used_width = last_line_used_width(&result, indent.width()) + first_line_width(&ret_str);
+        // Put the closing brace on the next line if it overflows the max width.
+        // 1 = `)`
+        if fd.inputs.len() == 0 && used_width + 1 > context.config.max_width() {
+            result.push('\n');
+        }
         if context.config.spaces_within_parens() && fd.inputs.len() > 0 {
             result.push(' ')
         }
@@ -1954,15 +1947,16 @@ fn rewrite_fn_base(
     }
 
     // Return type.
-    if !ret_str.is_empty() {
+    if let ast::FunctionRetTy::Ty(..) = fd.output {
         let ret_should_indent = match context.config.fn_args_layout() {
             // If our args are block layout then we surely must have space.
-            IndentStyle::Block if put_args_in_block => false,
+            IndentStyle::Block if put_args_in_block || fd.inputs.len() == 0 => false,
+            _ if args_last_line_contains_comment => false,
+            _ if result.contains('\n') || multi_line_ret_str => true,
             _ => {
-                // If we've already gone multi-line, or the return type would push over the max
-                // width, then put the return type on a new line. With the +1 for the signature
-                // length an additional space between the closing parenthesis of the argument and
-                // the arrow '->' is considered.
+                // If the return type would push over the max width, then put the return type on
+                // a new line. With the +1 for the signature length an additional space between
+                // the closing parenthesis of the argument and the arrow '->' is considered.
                 let mut sig_length = result.len() + indent.width() + ret_str_len + 1;
 
                 // If there is no where clause, take into account the space after the return type
@@ -1971,10 +1965,7 @@ fn rewrite_fn_base(
                     sig_length += 2;
                 }
 
-                let overlong_sig = sig_length > context.config.max_width();
-
-                (!args_last_line_contains_comment) &&
-                    (result.contains('\n') || multi_line_ret_str || overlong_sig)
+                sig_length > context.config.max_width()
             }
         };
         let ret_indent = if ret_should_indent {
@@ -2276,6 +2267,7 @@ fn compute_budgets_for_args(
     ret_str_len: usize,
     newline_brace: bool,
     has_braces: bool,
+    force_vertical_layout: bool,
 ) -> Option<((usize, usize, Indent))> {
     debug!(
         "compute_budgets_for_args {} {:?}, {}, {}",
@@ -2285,7 +2277,7 @@ fn compute_budgets_for_args(
         newline_brace
     );
     // Try keeping everything on the same line.
-    if !result.contains('\n') {
+    if !result.contains('\n') && !force_vertical_layout {
         // 2 = `()`, 3 = `() `, space is before ret_string.
         let overhead = if ret_str_len == 0 { 2 } else { 3 };
         let mut used_space = indent.width() + result.len() + ret_str_len + overhead;
@@ -2306,31 +2298,45 @@ fn compute_budgets_for_args(
 
         if one_line_budget > 0 {
             // 4 = "() {".len()
-            let multi_line_overhead =
-                indent.width() + result.len() + if newline_brace { 2 } else { 4 };
-            let multi_line_budget =
-                try_opt!(context.config.max_width().checked_sub(multi_line_overhead));
+            let (indent, multi_line_budget) = match context.config.fn_args_layout() {
+                IndentStyle::Block => {
+                    let indent = indent.block_indent(context.config);
+                    let budget =
+                        try_opt!(context.config.max_width().checked_sub(indent.width() + 1));
+                    (indent, budget)
+                }
+                IndentStyle::Visual => {
+                    let indent = indent + result.len() + 1;
+                    let multi_line_overhead =
+                        indent.width() + result.len() + if newline_brace { 2 } else { 4 };
+                    let budget =
+                        try_opt!(context.config.max_width().checked_sub(multi_line_overhead));
+                    (indent, budget)
+                }
+            };
 
-            return Some((
-                one_line_budget,
-                multi_line_budget,
-                indent + result.len() + 1,
-            ));
+            return Some((one_line_budget, multi_line_budget, indent));
         }
     }
 
     // Didn't work. we must force vertical layout and put args on a newline.
     let new_indent = indent.block_indent(context.config);
-    // Account for `)` and possibly ` {`.
-    let used_space = new_indent.width() + if ret_str_len == 0 { 1 } else { 3 };
+    let used_space = match context.config.fn_args_layout() {
+        // 1 = `,`
+        IndentStyle::Block => new_indent.width() + 1,
+        // Account for `)` and possibly ` {`.
+        IndentStyle::Visual => new_indent.width() + if ret_str_len == 0 { 1 } else { 3 },
+    };
     let max_space = try_opt!(context.config.max_width().checked_sub(used_space));
     Some((0, max_space, new_indent))
 }
 
-fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause) -> bool {
-    match config.fn_brace_style() {
-        BraceStyle::AlwaysNextLine => true,
-        BraceStyle::SameLineWhere if !where_clause.predicates.is_empty() => true,
+fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause, has_body: bool) -> bool {
+    match (config.fn_brace_style(), config.where_density()) {
+        (BraceStyle::AlwaysNextLine, _) => true,
+        (_, Density::Compressed) if where_clause.predicates.len() == 1 => false,
+        (_, Density::CompressedIfEmpty) if where_clause.predicates.len() == 1 && !has_body => false,
+        (BraceStyle::SameLineWhere, _) if !where_clause.predicates.is_empty() => true,
         _ => false,
     }
 }
