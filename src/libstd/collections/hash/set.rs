@@ -129,7 +129,7 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let mut set: HashSet<i32> = HashSet::new();
+    /// let set: HashSet<i32> = HashSet::new();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -146,7 +146,7 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let mut set: HashSet<i32> = HashSet::with_capacity(10);
+    /// let set: HashSet<i32> = HashSet::with_capacity(10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
