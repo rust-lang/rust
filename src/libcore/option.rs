@@ -872,7 +872,7 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(mut self) -> IterMut<'a, T> {
+    fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
     }
 }

@@ -909,7 +909,7 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(mut self) -> IterMut<'a, T> {
+    fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
     }
 }

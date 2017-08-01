@@ -211,7 +211,7 @@ pub enum NamedMatch {
 
 fn nameize<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, ms: &[TokenTree], mut res: I)
                                              -> NamedParseResult {
-    fn n_rec<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, m: &TokenTree, mut res: &mut I,
+    fn n_rec<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, m: &TokenTree, res: &mut I,
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>)
              -> Result<(), (syntax_pos::Span, String)> {
         match *m {
@@ -445,7 +445,7 @@ pub fn parse(sess: &ParseSess,
         /* error messages here could be improved with links to orig. rules */
         if token_name_eq(&parser.token, &token::Eof) {
             if eof_items.len() == 1 {
-                let matches = eof_items[0].matches.iter_mut().map(|mut dv| {
+                let matches = eof_items[0].matches.iter_mut().map(|dv| {
                     Rc::make_mut(dv).pop().unwrap()
                 });
                 return nameize(sess, ms, matches);

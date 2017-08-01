@@ -494,7 +494,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             never_obligation.predicate = never_obligation.predicate.map_bound(|mut trait_pred| {
                 // Swap out () with ! so we can check if the trait is impld for !
                 {
-                    let mut trait_ref = &mut trait_pred.trait_ref;
+                    let trait_ref = &mut trait_pred.trait_ref;
                     let unit_substs = trait_ref.substs;
                     let mut never_substs = Vec::with_capacity(unit_substs.len());
                     never_substs.push(From::from(tcx.types.never));

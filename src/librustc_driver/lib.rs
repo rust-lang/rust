@@ -422,7 +422,7 @@ fn show_content_with_pager(content: &String) {
 
     match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
         Ok(mut pager) => {
-            if let Some(mut pipe) = pager.stdin.as_mut() {
+            if let Some(pipe) = pager.stdin.as_mut() {
                 if pipe.write_all(content.as_bytes()).is_err() {
                     fallback_to_println = true;
                 }

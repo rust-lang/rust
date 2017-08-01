@@ -538,7 +538,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // We can't use normalize_associated_types_in as it will pollute the
             // fcx's fulfillment context after this probe is over.
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
-            let mut selcx = &mut traits::SelectionContext::new(self.fcx);
+            let selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, self.param_env, cause, &xform_self_ty);
             debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
@@ -749,7 +749,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // as it will pollute the fcx's fulfillment context after this probe
             // is over.
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
-            let mut selcx = &mut traits::SelectionContext::new(self.fcx);
+            let selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, self.param_env, cause, &xform_self_ty);
 

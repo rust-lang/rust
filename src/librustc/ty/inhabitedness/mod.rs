@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             TyAdt(def, substs) => {
                 {
-                    let mut substs_set = visited.entry(def.did).or_insert(FxHashSet::default());
+                    let substs_set = visited.entry(def.did).or_insert(FxHashSet::default());
                     if !substs_set.insert(substs) {
                         // We are already calculating the inhabitedness of this type.
                         // The type must contain a reference to itself. Break the
@@ -193,7 +193,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                     }
                 }
                 let ret = def.uninhabited_from(visited, tcx, substs);
-                let mut substs_set = visited.get_mut(&def.did).unwrap();
+                let substs_set = visited.get_mut(&def.did).unwrap();
                 substs_set.remove(substs);
                 ret
             },

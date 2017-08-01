@@ -1465,7 +1465,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
                 let mut output = i.to_string(scx.tcx());
                 output.push_str(" @@");
                 let mut empty = Vec::new();
-                let mut cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
+                let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
                 cgus.as_mut_slice().sort_by_key(|&(ref name, _)| name.clone());
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {

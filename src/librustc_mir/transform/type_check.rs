@@ -720,7 +720,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                value,
                obligations);
 
-        let mut fulfill_cx = &mut self.fulfillment_cx;
+        let fulfill_cx = &mut self.fulfillment_cx;
         for obligation in obligations {
             fulfill_cx.register_predicate_obligation(self.infcx, obligation);
         }

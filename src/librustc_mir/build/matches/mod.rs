@@ -206,7 +206,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.schedule_drop(span, extent, &Lvalue::Local(local_id), var_ty);
     }
 
-    pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, mut f: &mut F)
+    pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, f: &mut F)
         where F: FnMut(&mut Self, Mutability, Name, NodeId, Span, Ty<'tcx>)
     {
         match *pattern.kind {

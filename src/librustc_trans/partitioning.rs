@@ -348,7 +348,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                 CodegenUnit::empty(codegen_unit_name.clone())
             };
 
-            let mut codegen_unit = codegen_units.entry(codegen_unit_name.clone())
+            let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
                                                 .or_insert_with(make_codegen_unit);
 
             let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {

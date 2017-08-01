@@ -260,7 +260,7 @@ impl<'a, A: Array> Drop for Drain<'a, A> {
                 let start = source_array_vec.len();
                 let tail = self.tail_start;
                 {
-                    let mut arr = &mut source_array_vec.values as &mut [ManuallyDrop<_>];
+                    let arr = &mut source_array_vec.values as &mut [ManuallyDrop<_>];
                     let src = arr.as_ptr().offset(tail as isize);
                     let dst = arr.as_mut_ptr().offset(start as isize);
                     ptr::copy(src, dst, self.tail_len);

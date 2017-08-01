@@ -1204,7 +1204,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     }
                 }
 
-                if let Some(mut augment_error) = augment_error {
+                if let Some(augment_error) = augment_error {
                     augment_error(&mut db);
                 }
 

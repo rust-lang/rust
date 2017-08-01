@@ -300,7 +300,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           lhs_expr: &'gcx hir::Expr,
                           lhs_ty: Ty<'tcx>,
                           rhs_ty: Ty<'tcx>,
-                          mut err: &mut errors::DiagnosticBuilder) -> bool {
+                          err: &mut errors::DiagnosticBuilder) -> bool {
         // If this function returns true it means a note was printed, so we don't need
         // to print the normal "implementation of `std::ops::Add` might be missing" note
         let mut is_string_addition = false;

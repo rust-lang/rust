@@ -1618,7 +1618,7 @@ impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
-    fn into_iter(mut self) -> IterMut<'a, K, V> {
+    fn into_iter(self) -> IterMut<'a, K, V> {
         self.iter_mut()
     }
 }
