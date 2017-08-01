@@ -26,8 +26,9 @@ use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, L
             ListItem, ListTactic, Separator, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::join_bounds;
-use utils::{colon_spaces, contains_skip, end_typaram, format_defaultness, format_mutability,
-            format_unsafety, format_visibility, last_line_width, mk_sp, semicolon_for_expr,
+use utils::{colon_spaces, contains_skip, end_typaram, first_line_width, format_abi,
+            format_constness, format_defaultness, format_mutability, format_unsafety,
+            format_visibility, last_line_used_width, last_line_width, mk_sp, semicolon_for_expr,
             stmt_expr, trim_newlines, trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -835,11 +836,7 @@ fn rewrite_trait_ref(
     result_len: usize,
 ) -> Option<String> {
     // 1 = space between generics and trait_ref
-    let used_space = 1 + polarity_str.len() + if generics_str.contains('\n') {
-        last_line_width(&generics_str)
-    } else {
-        result_len + generics_str.len()
-    };
+    let used_space = 1 + polarity_str.len() + last_line_used_width(generics_str, result_len);
     let shape = Shape::indented(offset + used_space, context.config);
     if let Some(trait_ref_str) = trait_ref.rewrite(context, shape) {
         if !(retry && trait_ref_str.contains('\n')) {
@@ -1229,11 +1226,7 @@ fn format_tuple_struct(
 
     if fields.is_empty() {
         // 3 = `();`
-        let used_width = if result.contains('\n') {
-            last_line_width(&result) + 3
-        } else {
-            offset.width() + result.len() + 3
-        };
+        let used_width = last_line_used_width(&result, offset.width()) + 3;
         if used_width > context.config.max_width() {
             result.push('\n');
             result.push_str(&offset
@@ -1790,24 +1783,13 @@ fn rewrite_fn_base(
     let where_clause = &generics.where_clause;
 
     let mut result = String::with_capacity(1024);
-    // Vis unsafety abi.
+    // Vis defaultness constness unsafety abi.
     result.push_str(&*format_visibility(vis));
-
-    if let ast::Defaultness::Default = defaultness {
-        result.push_str("default ");
-    }
-
-    if let ast::Constness::Const = constness {
-        result.push_str("const ");
-    }
-
-    result.push_str(::utils::format_unsafety(unsafety));
-
+    result.push_str(format_defaultness(defaultness));
+    result.push_str(format_constness(constness));
+    result.push_str(format_unsafety(unsafety));
     if abi != abi::Abi::Rust {
-        result.push_str(&::utils::format_abi(
-            abi,
-            context.config.force_explicit_abi(),
-        ));
+        result.push_str(&format_abi(abi, context.config.force_explicit_abi()));
     }
 
     // fn foo
@@ -1822,9 +1804,17 @@ fn rewrite_fn_base(
         // 2 = `()`
         2
     };
-    let shape = try_opt!(
-        Shape::indented(indent + last_line_width(&result), context.config).sub_width(overhead)
-    );
+    let used_width = last_line_used_width(&result, indent.width());
+    let one_line_budget = context
+        .config
+        .max_width()
+        .checked_sub(used_width + overhead)
+        .unwrap_or(0);
+    let shape = Shape {
+        width: one_line_budget,
+        indent: indent,
+        offset: used_width,
+    };
     let g_span = mk_sp(span.lo, fd.output.span().lo);
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
     result.push_str(&generics_str);
@@ -2764,7 +2754,7 @@ fn format_generics(
         let budget = context
             .config
             .max_width()
-            .checked_sub(last_line_width(&result))
+            .checked_sub(last_line_used_width(&result, offset.width()))
             .unwrap_or(0);
         let where_clause_str = try_opt!(rewrite_where_clause(
             context,
@@ -2786,11 +2776,7 @@ fn format_generics(
         force_same_line_brace || trimmed_last_line_width(&result) == 1 ||
             brace_style != BraceStyle::AlwaysNextLine
     };
-    let total_used_width = if result.contains('\n') {
-        last_line_width(&result)
-    } else {
-        used_width + result.len()
-    };
+    let total_used_width = last_line_used_width(&result, used_width);
     let remaining_budget = context
         .config
         .max_width()
