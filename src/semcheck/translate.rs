@@ -26,8 +26,9 @@ pub struct TranslationContext<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     /// Construct a translation context translating to the new crate's `DefId`s.
     // TODO: check whether the function pointers force us to use dynamic dispatch
-    pub fn to_new(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping, translate_params: bool)
-        -> TranslationContext<'a, 'gcx, 'tcx>
+    pub fn target_new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                      id_mapping: &'a IdMapping,
+                      translate_params: bool) -> TranslationContext<'a, 'gcx, 'tcx>
     {
         TranslationContext {
             tcx: tcx,
@@ -47,9 +48,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
     /// Construct a translation context translating to the old crate's `DefId`s.
     // TODO: check whether the function pointers force us to use dynamic dispatch
-    pub fn to_old(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping, translate_params: bool)
-        -> TranslationContext<'a, 'gcx, 'tcx/*, F1, F2, F3*/>
-    {
+    pub fn target_old(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                      id_mapping: &'a IdMapping,
+                      translate_params: bool) -> TranslationContext<'a, 'gcx, 'tcx> {
         TranslationContext {
             tcx: tcx,
             id_mapping: id_mapping,
@@ -420,15 +421,15 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Translate a vector of predicates.
-    pub fn translate_predicates(&self, orig_def_id: DefId, orig_preds: Vec<Predicate<'tcx>>)
+    /// Translate a slice of predicates.
+    fn translate_predicates(&self, orig_def_id: DefId, orig_preds: &[Predicate<'tcx>])
         -> Option<Vec<Predicate<'tcx>>>
     {
         let index_map = self.construct_index_map(orig_def_id);
         let mut target_preds = Vec::with_capacity(orig_preds.len());
 
         for orig_pred in orig_preds {
-            if let Some(target_pred) = self.translate_predicate(&index_map, orig_pred) {
+            if let Some(target_pred) = self.translate_predicate(&index_map, *orig_pred) {
                 target_preds.push(target_pred);
             } else {
                 return None;
@@ -442,21 +443,11 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     pub fn translate_param_env(&self, orig_def_id: DefId, param_env: ParamEnv<'tcx>)
         -> Option<ParamEnv<'tcx>>
     {
-        let index_map = self.construct_index_map(orig_def_id);
-        let mut target_preds = Vec::with_capacity(param_env.caller_bounds.len());
-
-        for orig_pred in param_env.caller_bounds {
-            if let Some(target_pred) = self.translate_predicate(&index_map, *orig_pred) {
-                target_preds.push(target_pred);
-            } else {
-                return None;
-            }
-        }
-
-        Some(ParamEnv {
-            caller_bounds: self.tcx.intern_predicates(&target_preds),
-            reveal: param_env.reveal,
-        })
+        self.translate_predicates(orig_def_id, param_env.caller_bounds)
+            .map(|target_preds| ParamEnv {
+                caller_bounds: self.tcx.intern_predicates(&target_preds),
+                reveal: param_env.reveal,
+            })
     }
 
     /// Translate a `TraitRef`.

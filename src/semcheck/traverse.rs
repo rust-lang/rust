@@ -691,8 +691,8 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     info!("comparing types of {:?} / {:?}:\n  {:?} / {:?}", old_def_id, new_def_id, old, new);
 
-    let to_new = TranslationContext::to_new(tcx, id_mapping, false);
-    let to_old = TranslationContext::to_old(tcx, id_mapping, false);
+    let to_new = TranslationContext::target_new(tcx, id_mapping, false);
+    let to_old = TranslationContext::target_old(tcx, id_mapping, false);
 
     let substs = Substs::identity_for_item(tcx, new_def_id);
     let old = to_new.translate_item_type(old_def_id, old);
@@ -812,9 +812,9 @@ fn match_impl<'a, 'tcx>(id_mapping: &IdMapping,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         orig_def_id: DefId) -> bool {
     let trans = if id_mapping.in_old_crate(orig_def_id) {
-        TranslationContext::to_new(tcx, id_mapping, false)
+        TranslationContext::target_new(tcx, id_mapping, false)
     } else if id_mapping.in_new_crate(orig_def_id) {
-        TranslationContext::to_old(tcx, id_mapping, false)
+        TranslationContext::target_old(tcx, id_mapping, false)
     } else {
         // not reached, but apparently we don't care.
         return true;
