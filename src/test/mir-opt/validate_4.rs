@@ -14,6 +14,8 @@
 // Make sure unsafe fns and fns with an unsafe block only get restricted validation.
 
 unsafe fn write_42(x: *mut i32) -> bool {
+    let test_closure = |x: *mut i32| *x = 23;
+    test_closure(x);
     *x = 42;
     true
 }
@@ -43,7 +45,7 @@ fn main() {
 //     }
 // }
 // END rustc.node4.EraseRegions.after.mir
-// START rustc.node17.EraseRegions.after.mir
+// START rustc.node31.EraseRegions.after.mir
 // fn test(_1: &ReErased mut i32) -> () {
 //     bb0: {
 //         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(4) => validate_4/8cd878b::test[0] }, BrAnon(0)) mut i32]);
@@ -55,4 +57,4 @@ fn main() {
 //         Validate(Release, [_3: bool]);
 //     }
 // }
-// END rustc.node17.EraseRegions.after.mir
+// END rustc.node31.EraseRegions.after.mir
