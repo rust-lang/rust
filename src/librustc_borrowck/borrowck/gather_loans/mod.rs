@@ -431,38 +431,45 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             //    }
         // }
     }
-
+    
     pub fn mark_loan_path_as_mutated(&self, loan_path: &LoanPath) {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
 
-        match loan_path.kind {
-            LpVar(local_id) |
-            LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
-                self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
-            }
-            LpExtend(ref base, mc::McInherited, LpDeref(pointer_kind)) |
-            LpExtend(ref base, mc::McDeclared, LpDeref(pointer_kind)) => {
-                match base.kind {
-                    LpVar(_) if pointer_kind != mc::Unique => {
-                        // If you mutate the inside of a ref var, the var itself
-                        // is not used mutably [Issue #25049]
-                        // Unless it's a Box! (mc::Unique)
+        let mut wrapped_path = Some(loan_path);
+        let mut through_borrow = false;
+
+        while let Some(current_path) = wrapped_path {
+            wrapped_path = match current_path.kind {
+                LpVar(local_id) => {
+                    if !through_borrow {
+                        self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
                     }
-                    _ => {
-                        self.mark_loan_path_as_mutated(&base);
-                    }
+                    None
                 }
-            }
-            LpDowncast(ref base, _) |
-            LpExtend(ref base, mc::McInherited, _) |
-            LpExtend(ref base, mc::McDeclared, _) => {
-                self.mark_loan_path_as_mutated(&base);
-            }
-            LpExtend(_, mc::McImmutable, _) => {
-                // Nothing to do.
-            }
+                LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
+                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    None
+                }
+                LpExtend(ref base, mc::McInherited, LpDeref(pointer_kind)) |
+                LpExtend(ref base, mc::McDeclared, LpDeref(pointer_kind)) => {
+                    if pointer_kind != mc::Unique {
+                        through_borrow = true;
+                    }
+                    Some(base)
+                }
+                LpDowncast(ref base, _) |
+                LpExtend(ref base, mc::McInherited, _) |
+                LpExtend(ref base, mc::McDeclared, _) => {
+                    Some(base)
+                }
+                LpExtend(_, mc::McImmutable, _) => {
+                    // Nothing to do.
+                    None
+                }
+            }   
         }
+
     }
 
     pub fn compute_gen_scope(&self,
