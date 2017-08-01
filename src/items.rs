@@ -259,12 +259,12 @@ impl<'a> FmtVisitor<'a> {
         span: Span,
         block: &ast::Block,
     ) -> Option<String> {
-        let mut newline_brace = newline_for_brace(self.config, &generics.where_clause);
         let context = self.get_context();
 
         let block_snippet = self.snippet(mk_sp(block.span.lo, block.span.hi));
         let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty() ||
             !context.config.fn_empty_single_line();
+        let mut newline_brace = newline_for_brace(self.config, &generics.where_clause, has_body);
 
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(
             &context,
@@ -591,6 +591,7 @@ pub fn format_impl(
             "{",
             false,
             last_line_width(&ref_and_type) == 1,
+            false,
             where_span_end,
             item.span,
             self_ty.span.hi,
@@ -983,6 +984,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             "{",
             false,
             trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
+            false,
             None,
             item.span,
             pos_before_where,
@@ -1216,6 +1218,7 @@ fn format_tuple_struct(
                 ";",
                 true,
                 false,
+                false,
                 None,
                 span,
                 body_hi,
@@ -1313,6 +1316,7 @@ pub fn rewrite_type_alias(
         "=",
         true,
         true,
+        false,
         Some(span.hi),
         span,
         generics.span.hi,
@@ -2034,22 +2038,22 @@ fn rewrite_fn_base(
     }
 
     let should_compress_where = match context.config.where_density() {
-        Density::Compressed => !result.contains('\n') || put_args_in_block,
+        Density::Compressed => !result.contains('\n'),
         Density::CompressedIfEmpty => !has_body && !result.contains('\n'),
         _ => false,
-    } || (put_args_in_block && ret_str.is_empty());
+    };
 
     let pos_before_where = match fd.output {
         ast::FunctionRetTy::Default(..) => args_span.hi,
         ast::FunctionRetTy::Ty(ref ty) => ty.span.hi,
     };
+
     if where_clause.predicates.len() == 1 && should_compress_where {
-        let budget = try_opt!(
-            context
-                .config
-                .max_width()
-                .checked_sub(last_line_width(&result))
-        );
+        let budget = context
+            .config
+            .max_width()
+            .checked_sub(last_line_used_width(&result, indent.width()))
+            .unwrap_or(0);
         if let Some(where_clause_str) = rewrite_where_clause(
             context,
             where_clause,
@@ -2057,22 +2061,16 @@ fn rewrite_fn_base(
             Shape::legacy(budget, indent),
             Density::Compressed,
             "{",
-            !has_braces,
-            put_args_in_block && ret_str.is_empty(),
+            true,
+            false, // Force where clause on the next line
+            true,  // Compress where
             Some(span.hi),
             span,
             pos_before_where,
         ) {
-            if !where_clause_str.contains('\n') {
-                if last_line_width(&result) + where_clause_str.len() > context.config.max_width() {
-                    result.push('\n');
-                }
-
-                result.push_str(&where_clause_str);
-
-                force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
-                return Some((result, force_new_line_for_brace));
-            }
+            result.push_str(&where_clause_str);
+            force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
+            return Some((result, force_new_line_for_brace));
         }
     }
 
@@ -2085,6 +2083,7 @@ fn rewrite_fn_base(
         "{",
         !has_braces,
         put_args_in_block && ret_str.is_empty(),
+        false,
         Some(span.hi),
         span,
         pos_before_where,
@@ -2502,6 +2501,8 @@ fn rewrite_where_clause_rfc_style(
     suppress_comma: bool,
     // where clause can be kept on the current line.
     snuggle: bool,
+    // copmressed single where clause
+    compress_where: bool,
     span_end: Option<BytePos>,
     span: Span,
     span_end_before_where: BytePos,
@@ -2568,14 +2569,21 @@ fn rewrite_where_clause_rfc_style(
     } else {
         "\n".to_owned() + &clause_shape.indent.to_string(context.config)
     };
+    let clause_sep = if compress_where && comment_before.is_empty() && comment_after.is_empty() &&
+        !preds_str.contains('\n') && 6 + preds_str.len() <= shape.width
+    {
+        String::from(" ")
+    } else {
+        format!("\n{}", clause_shape.indent.to_string(context.config))
+    };
     Some(format!(
-        "{}{}{}where{}{}\n{}{}",
+        "{}{}{}where{}{}{}{}",
         starting_newline,
         comment_before,
         newline_before_where,
         newline_after_where,
         comment_after,
-        clause_shape.indent.to_string(context.config),
+        clause_sep,
         preds_str
     ))
 }
@@ -2589,6 +2597,7 @@ fn rewrite_where_clause(
     terminator: &str,
     suppress_comma: bool,
     snuggle: bool,
+    compress_where: bool,
     span_end: Option<BytePos>,
     span: Span,
     span_end_before_where: BytePos,
@@ -2605,6 +2614,7 @@ fn rewrite_where_clause(
             terminator,
             suppress_comma,
             snuggle,
+            compress_where,
             span_end,
             span,
             span_end_before_where,
@@ -2771,6 +2781,7 @@ fn format_generics(
             terminator,
             false,
             trimmed_last_line_width(&result) == 1,
+            false,
             Some(span.hi),
             span,
             generics.span.hi,
