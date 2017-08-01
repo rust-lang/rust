@@ -33,9 +33,25 @@ fn should_return_fruit_too() -> Fruit::Apple {
     //~| NOTE not found in this scope
 }
 
+fn foo() -> Ok {
+    //~^ ERROR expected type, found variant `Ok`
+    //~| NOTE not a type
+    //~| HELP there is an enum variant
+    //~| HELP there is an enum variant
+    Ok(())
+}
+
 fn bar() -> Variant3 {
     //~^ ERROR cannot find type `Variant3` in this scope
     //~| NOTE not found in this scope
+}
+
+fn qux() -> Some {
+    //~^ ERROR expected type, found variant `Some`
+    //~| NOTE not a type
+    //~| HELP there is an enum variant
+    //~| HELP there is an enum variant
+    Some(1)
 }
 
 fn main() {}
