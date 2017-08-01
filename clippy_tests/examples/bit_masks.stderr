@@ -10,7 +10,7 @@ error: bit mask could be simplified with a call to `trailing_zeros`
   --> bit_masks.rs:12:5
    |
 12 |     x & 0 == 0;
-   |     ^^^^^^^^^^ help: try `x.trailing_zeros() > 0`
+   |     ^^^^^^^^^^ help: try: `x.trailing_zeros() > 0`
    |
    = note: `-D verbose-bit-mask` implied by `-D warnings`
 
@@ -18,7 +18,7 @@ error: bit mask could be simplified with a call to `trailing_zeros`
   --> bit_masks.rs:14:5
    |
 14 |     x & 1 == 0; //ok, compared with zero
-   |     ^^^^^^^^^^ help: try `x.trailing_zeros() > 1`
+   |     ^^^^^^^^^^ help: try: `x.trailing_zeros() > 1`
 
 error: incompatible bit mask: `_ & 2` can never be equal to `1`
   --> bit_masks.rs:15:5
