@@ -367,12 +367,12 @@ impl MiscEarly {
                     db.span_suggestion(
                         lit.span,
                         "if you mean to use a decimal constant, remove the `0` to remove confusion",
-                        src.trim_left_matches('0').to_string(),
+                        src.trim_left_matches(|c| c == '_' || c == '0').to_string(),
                     );
                     db.span_suggestion(
                         lit.span,
                         "if you mean to use an octal constant, use `0o`",
-                        format!("0o{}", src.trim_left_matches('0')),
+                        format!("0o{}", src.trim_left_matches(|c| c == '_' || c == '0')),
                     );
                 });
             }
