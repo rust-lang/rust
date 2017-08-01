@@ -32,41 +32,41 @@ fn foo(i: i32) {
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     let _1: D;
-//     let _3: i32;
-//     let _4: &'6_2rce i32;
+//     let _2: i32;
+//     let _3: &'6_2rce i32;
 //     let _7: &'6_4rce i32;
-//     let mut _5: ();
-//     let mut _6: i32;
-//
+//     let mut _4: ();
+//     let mut _5: i32;
+//     let mut _6: ();
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
+//         StorageLive(_2);
+//         _2 = const 0i32;
 //         StorageLive(_3);
-//         _3 = const 0i32;
-//         StorageLive(_4);
-//         _4 = &'6_2rce _3;
-//         StorageLive(_6);
-//         _6 = (*_4);
-//         _5 = const foo(_6) -> [return: bb2, unwind: bb3];
+//         _3 = &'6_2rce _2;
+//         StorageLive(_5);
+//         _5 = (*_3);
+//         _4 = const foo(_5) -> [return: bb1, unwind: bb3];
 //     }
 //     bb1: {
-//         resume;
-//     }
-//     bb2: {
-//         StorageDead(_6);
+//         StorageDead(_5);
 //         StorageLive(_7);
-//         _7 = &'6_4rce _3;
+//         _7 = &'6_4rce _2;
 //         _0 = ();
 //         StorageDead(_7);
 //         EndRegion('6_4rce);
-//         StorageDead(_4);
-//         EndRegion('6_2rce);
 //         StorageDead(_3);
+//         EndRegion('6_2rce);
+//         StorageDead(_2);
 //         drop(_1) -> bb4;
+//     }
+//     bb2: {
+//         resume;
 //     }
 //     bb3: {
 //         EndRegion('6_2rce);
-//         drop(_1) -> bb1;
+//         drop(_1) -> bb2;
 //     }
 //     bb4: {
 //         StorageDead(_1);

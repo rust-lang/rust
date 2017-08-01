@@ -29,44 +29,43 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // END RUST SOURCE
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 // fn main() -> () {
-//     let mut _0: ();
-//     let _1: D;
-//     let _3: &'6_1rce D;
-//     let mut _2: ();
-//     let mut _4: ();
-//     let mut _5: [closure@NodeId(22) r:&'6_1rce D];
-//     let mut _6: &'6_1rce D;
-//
-//     bb0: {
-//         StorageLive(_1);
-//         _1 = D::{{constructor}}(const 0i32,);
-//         StorageLive(_3);
-//         _3 = &'6_1rce _1;
-//         StorageLive(_5);
-//         StorageLive(_6);
-//         _6 = _3;
-//         _5 = [closure@NodeId(22)] { r: _6 };
-//         StorageDead(_6);
-//         _4 = const foo(_5) -> [return: bb2, unwind: bb3];
-//     }
-//     bb1: {
-//         resume;
-//     }
-//     bb2: {
-//         StorageDead(_5);
-//         _0 = ();
-//         StorageDead(_3);
-//         EndRegion('6_1rce);
-//         drop(_1) -> bb4;
-//     }
-//     bb3: {
-//         EndRegion('6_1rce);
-//         drop(_1) -> bb1;
-//     }
-//     bb4: {
-//         StorageDead(_1);
-//         return;
-//     }
+//    let mut _0: ();
+//    let _1: D;
+//    let _2: &'6_1rce D;
+//    let mut _3: ();
+//    let mut _4: [closure@NodeId(22) r:&'6_1rce D];
+//    let mut _5: &'6_1rce D;
+//    let mut _6: ();
+//    bb0: {
+//        StorageLive(_1);
+//        _1 = D::{{constructor}}(const 0i32,);
+//        StorageLive(_2);
+//        _2 = &'6_1rce _1;
+//        StorageLive(_4);
+//        StorageLive(_5);
+//        _5 = _2;
+//        _4 = [closure@NodeId(22)] { r: _5 };
+//        StorageDead(_5);
+//        _3 = const foo(_4) -> [return: bb1, unwind: bb3];
+//    }
+//    bb1: {
+//        StorageDead(_4);
+//        _0 = ();
+//        StorageDead(_2);
+//        EndRegion('6_1rce);
+//        drop(_1) -> bb4;
+//    }
+//    bb2: {
+//        resume;
+//    }
+//    bb3: {
+//        EndRegion('6_1rce);
+//        drop(_1) -> bb2;
+//    }
+//    bb4: {
+//        StorageDead(_1);
+//        return;
+//    }
 // }
 // END rustc.node4.SimplifyCfg-qualify-consts.after.mir
 

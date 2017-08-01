@@ -14,7 +14,6 @@ use ty::subst::Substs;
 use ty::{ClosureSubsts, Region, Ty};
 use mir::*;
 use rustc_const_math::ConstUsize;
-use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
 // # The MIR Visitor
@@ -260,9 +259,15 @@ macro_rules! make_mir_visitor {
 
             fn super_mir(&mut self,
                          mir: & $($mutability)* Mir<'tcx>) {
-                for index in 0..mir.basic_blocks().len() {
-                    let block = BasicBlock::new(index);
-                    self.visit_basic_block_data(block, &$($mutability)* mir[block]);
+                // for best performance, we want to use an iterator rather
+                // than a for-loop, to avoid calling Mir::invalidate for
+                // each basic block.
+                macro_rules! basic_blocks {
+                    (mut) => (mir.basic_blocks_mut().iter_enumerated_mut());
+                    () => (mir.basic_blocks().iter_enumerated());
+                };
+                for (bb, data) in basic_blocks!($($mutability)*) {
+                    self.visit_basic_block_data(bb, data);
                 }
 
                 for scope in &$($mutability)* mir.visibility_scopes {

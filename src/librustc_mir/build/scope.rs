@@ -107,6 +107,9 @@ pub struct Scope<'tcx> {
     /// the extent of this scope within source code.
     extent: CodeExtent,
 
+    /// the span of that extent
+    extent_span: Span,
+
     /// Whether there's anything to do for the cleanup path, that is,
     /// when unwinding through this scope. This includes destructors,
     /// but not StorageDead statements, which don't get emitted at all
@@ -116,7 +119,7 @@ pub struct Scope<'tcx> {
     ///  * pollutting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
-    pub(super) needs_cleanup: bool,
+    needs_cleanup: bool,
 
     /// set of lvalues to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
@@ -195,6 +198,15 @@ pub struct BreakableScope<'tcx> {
     /// The destination of the loop/block expression itself (i.e. where to put the result of a
     /// `break` expression)
     pub break_destination: Lvalue<'tcx>,
+}
+
+impl DropKind {
+    fn may_panic(&self) -> bool {
+        match *self {
+            DropKind::Value { .. } => true,
+            DropKind::Storage => false
+        }
+    }
 }
 
 impl<'tcx> Scope<'tcx> {
@@ -282,7 +294,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_opt_scope(opt_extent={:?}, block={:?})", opt_extent, block);
-        if let Some(extent) = opt_extent { self.push_scope(extent.0); }
+        if let Some(extent) = opt_extent { self.push_scope(extent); }
         let rv = unpack!(block = f(self));
         if let Some(extent) = opt_extent {
             unpack!(block = self.pop_scope(extent, block));
@@ -301,7 +313,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        self.push_scope(extent.0);
+        self.push_scope(extent);
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(extent, block));
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
@@ -312,12 +324,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: CodeExtent) {
+    pub fn push_scope(&mut self, extent: (CodeExtent, SourceInfo)) {
         debug!("push_scope({:?})", extent);
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
             visibility_scope: vis_scope,
-            extent: extent,
+            extent: extent.0,
+            extent_span: extent.1.span,
             needs_cleanup: false,
             drops: vec![],
             free: None,
@@ -333,9 +346,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                      mut block: BasicBlock)
                      -> BlockAnd<()> {
         debug!("pop_scope({:?}, {:?})", extent, block);
-        // We need to have `cached_block`s available for all the drops, so we call diverge_cleanup
-        // to make sure all the `cached_block`s are filled in.
-        self.diverge_cleanup(extent.1.span);
+        // If we are emitting a `drop` statement, we need to have the cached
+        // diverge cleanup pads ready in case that drop panics.
+        let may_panic =
+            self.scopes.last().unwrap().drops.iter().any(|s| s.kind.may_panic());
+        if may_panic {
+            self.diverge_cleanup();
+        }
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.extent, extent.0);
         unpack!(block = build_scope_drops(&mut self.cfg,
@@ -366,6 +383,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let len = self.scopes.len();
         assert!(scope_count < len, "should not use `exit_scope` to pop ALL scopes");
         let tmp = self.get_unit_temp();
+
+        // If we are emitting a `drop` statement, we need to have the cached
+        // diverge cleanup pads ready in case that drop panics.
+        let may_panic = self.scopes[(len - scope_count)..].iter()
+            .any(|s| s.drops.iter().any(|s| s.kind.may_panic()));
+        if may_panic {
+            self.diverge_cleanup();
+        }
+
         {
         let mut rest = &mut self.scopes[(len - scope_count)..];
         while let Some((scope, rest_)) = {rest}.split_last_mut() {
@@ -618,7 +644,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This path terminates in Resume. Returns the start of the path.
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
-    pub fn diverge_cleanup(&mut self, span: Span) -> Option<BasicBlock> {
+    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
         if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
             return None;
         }
@@ -652,7 +678,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut() {
-            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, span, scope, target);
+            target = build_diverge_scope(
+                hir.tcx(), cfg, &unit_temp, scope.extent_span, scope, target);
         }
         Some(target)
     }
@@ -668,7 +695,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup(span);
+        let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Drop {
                                location: location,
@@ -686,7 +713,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                   value: Operand<'tcx>) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
-        let diverge_target = self.diverge_cleanup(span);
+        let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::DropAndReplace {
                                location: location,
@@ -709,7 +736,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
 
         let success_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup(span);
+        let cleanup = self.diverge_cleanup();
 
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Assert {
@@ -731,45 +758,48 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            mut block: BasicBlock,
                            arg_count: usize)
                            -> BlockAnd<()> {
+    debug!("build_scope_drops({:?} -> {:?})", block, scope);
     let mut iter = scope.drops.iter().rev().peekable();
     while let Some(drop_data) = iter.next() {
         let source_info = scope.source_info(drop_data.span);
-        if let DropKind::Value { .. } = drop_data.kind {
-            // Try to find the next block with its cached block
-            // for us to diverge into in case the drop panics.
-            let on_diverge = iter.peek().iter().filter_map(|dd| {
-                match dd.kind {
-                    DropKind::Value { cached_block } => cached_block,
-                    DropKind::Storage => None
-                }
-            }).next();
-            // If there’s no `cached_block`s within current scope,
-            // we must look for one in the enclosing scope.
-            let on_diverge = on_diverge.or_else(||{
-                earlier_scopes.iter().rev().flat_map(|s| s.cached_block()).next()
-            });
-            let next = cfg.start_new_block();
-            cfg.terminate(block, source_info, TerminatorKind::Drop {
-                location: drop_data.location.clone(),
-                target: next,
-                unwind: on_diverge
-            });
-            block = next;
-        }
         match drop_data.kind {
-            DropKind::Value { .. } |
-            DropKind::Storage => {
-                // Only temps and vars need their storage dead.
-                match drop_data.location {
-                    Lvalue::Local(index) if index.index() > arg_count => {}
-                    _ => continue
-                }
+            DropKind::Value { .. } => {
+                // Try to find the next block with its cached block
+                // for us to diverge into in case the drop panics.
+                let on_diverge = iter.peek().iter().filter_map(|dd| {
+                    match dd.kind {
+                        DropKind::Value { cached_block: None } =>
+                            span_bug!(drop_data.span, "cached block not present?"),
+                        DropKind::Value { cached_block } => cached_block,
+                        DropKind::Storage => None
+                    }
+                }).next();
+                // If there’s no `cached_block`s within current scope,
+                // we must look for one in the enclosing scope.
+                let on_diverge = on_diverge.or_else(|| {
+                    earlier_scopes.iter().rev().flat_map(|s| s.cached_block()).next()
+                });
+                let next = cfg.start_new_block();
+                cfg.terminate(block, source_info, TerminatorKind::Drop {
+                    location: drop_data.location.clone(),
+                    target: next,
+                    unwind: on_diverge
+                });
+                block = next;
+            }
+            DropKind::Storage => {}
+        }
 
+        // Drop the storage for both value and storage drops.
+        // Only temps and vars need their storage dead.
+        match drop_data.location {
+            Lvalue::Local(index) if index.index() > arg_count => {
                 cfg.push(block, Statement {
                     source_info: source_info,
                     kind: StatementKind::StorageDead(drop_data.location.clone())
                 });
             }
+            _ => continue
         }
     }
     block.unit()
