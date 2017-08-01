@@ -722,3 +722,120 @@ mod prim_isize { }
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }
+
+#[doc(primitive = "reference")]
+//
+/// References, both shared and mutable.
+///
+/// A reference represents a borrow of some owned value. You can get one by using the `&` or `&mut`
+/// operators on a value, or by using a `ref` or `ref mut` pattern.
+///
+/// For those familiar with pointers, a reference is just a pointer that is assumed to not be null.
+/// In fact, `Option<&T>` has the same memory representation as a nullable pointer, and can be
+/// passed across FFI boundaries as such.
+///
+/// In most cases, references can be used much like the original value. Field access, method
+/// calling, and indexing work the same (save for mutability rules, of course). In addition, the
+/// comparison operators transparently defer to the referent's implementation, allowing references
+/// to be compared the same as owned values.
+///
+/// References have a lifetime attached to them, which represents the scope for which the borrow is
+/// valid. A lifetime is said to "outlive" another one if its representative scope is as long or
+/// longer than the other. The `'static` lifetime is the longest lifetime, which represents the
+/// total life of the program. For example, string literals have a `'static` lifetime because the
+/// text data is embedded into the binary of the program, rather than in an allocation that needs
+/// to be dynamically managed.
+///
+/// `&mut T` references can be freely coerced into `&T` references with the same referent type, and
+/// references with longer lifetimes can be freely coerced into references with shorter ones.
+///
+/// For more information on how to use references, see [the book's section on "References and
+/// Borrowing"][book-refs].
+///
+/// [book-refs]: ../book/second-edition/ch04-02-references-and-borrowing.html
+///
+/// The following traits are implemented for all `&T`, regardless of the type of its referent:
+///
+/// * [`Copy`]
+/// * [`Clone`] \(Note that this will not defer to `T`'s `Clone` implementation if it exists!)
+/// * [`Deref`]
+/// * [`Borrow`]
+/// * [`Pointer`]
+///
+/// [`Copy`]: marker/trait.Copy.html
+/// [`Clone`]: clone/trait.Clone.html
+/// [`Deref`]: ops/trait.Deref.html
+/// [`Borrow`]: borrow/trait.Borrow.html
+/// [`Pointer`]: fmt/trait.Pointer.html
+///
+/// `&mut T` references get all of the above except `Copy` and `Clone` (to prevent creating
+/// multiple simultaneous mutable borrows), plus the following, regardless of the type of its
+/// referent:
+///
+/// * [`DerefMut`]
+/// * [`BorrowMut`]
+///
+/// [`DerefMut`]: ops/trait.DerefMut.html
+/// [`BorrowMut`]: borrow/trait.BorrowMut.html
+///
+/// The following traits are implemented on `&T` references if the underlying `T` also implements
+/// that trait:
+///
+/// * All the traits in [`std::fmt`] except [`Pointer`] and [`fmt::Write`]
+/// * [`PartialOrd`]
+/// * [`Ord`]
+/// * [`PartialEq`]
+/// * [`Eq`]
+/// * [`AsRef`]
+/// * [`Fn`] \(in addition, `&T` references get [`FnMut`] and [`FnOnce`] if `T: Fn`)
+/// * [`Hash`]
+/// * [`ToSocketAddrs`]
+///
+/// [`std::fmt`]: fmt/index.html
+/// [`fmt::Write`]: fmt/trait.Write.html
+/// [`PartialOrd`]: cmp/trait.PartialOrd.html
+/// [`Ord`]: cmp/trait.Ord.html
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+/// [`Eq`]: cmp/trait.Eq.html
+/// [`AsRef`]: convert/trait.AsRef.html
+/// [`Fn`]: ops/trait.Fn.html
+/// [`FnMut`]: ops/trait.FnMut.html
+/// [`FnOnce`]: ops/trait.FnOnce.html
+/// [`Hash`]: hash/trait.Hash.html
+/// [`ToSocketAddrs`]: net/trait.ToSocketAddrs.html
+///
+/// `&mut T` references get all of the above except `ToSocketAddrs`, plus the following, if `T`
+/// implements that trait:
+///
+/// * [`AsMut`]
+/// * [`FnMut`] \(in addition, `&mut T` references get [`FnOnce`] if `T: FnMut`)
+/// * [`fmt::Write`]
+/// * [`Iterator`]
+/// * [`DoubleEndedIterator`]
+/// * [`ExactSizeIterator`]
+/// * [`FusedIterator`]
+/// * [`TrustedLen`]
+/// * [`Send`] \(note that `&T` references only get `Send` if `T: Sync`)
+/// * [`io::Write`]
+/// * [`Read`]
+/// * [`Seek`]
+/// * [`BufRead`]
+///
+/// [`AsMut`]: convert/trait.AsMut.html
+/// [`Iterator`]: iter/trait.Iterator.html
+/// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+/// [`ExactSizeIterator`]: iter/trait.ExactSizeIterator.html
+/// [`FusedIterator`]: iter/trait.FusedIterator.html
+/// [`TrustedLen`]: iter/trait.TrustedLen.html
+/// [`Send`]: marker/trait.Send.html
+/// [`io::Write`]: io/trait.Write.html
+/// [`Read`]: io/trait.Read.html
+/// [`Seek`]: io/trait.Seek.html
+/// [`BufRead`]: io/trait.BufRead.html
+///
+/// Note that due to method call deref coercion, simply calling a trait method will act like they
+/// work on references as well as they do on owned values! The implementations described here are
+/// meant for generic contexts, where the final type `T` is a type parameter or otherwise not
+/// locally known.
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_ref { }
