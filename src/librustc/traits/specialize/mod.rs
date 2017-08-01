@@ -340,7 +340,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                 }
 
                 for cause in &overlap.intercrate_ambiguity_causes {
-                    cause.add_intercrate_ambiguity_hint(tcx, &mut err);
+                    cause.add_intercrate_ambiguity_hint(&mut err);
                 }
 
                 err.emit();

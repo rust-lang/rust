@@ -23,6 +23,6 @@ impl<T> Foo for T where T: Remote {}
 impl Foo for i16 {}
 //~^ ERROR E0119
 //~| NOTE conflicting implementation for `i16`
-//~| NOTE upstream crates may add new impl for `coherence_lib::Remote` in future versions
+//~| NOTE upstream crates may add new impl of trait `coherence_lib::Remote` for type `i16`
 
 fn main() {}

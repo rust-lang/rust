@@ -19,6 +19,6 @@ impl<T:Sugar> Sweet for T { }
 impl<U:Sugar> Sweet for Box<U> { }
 //~^ ERROR E0119
 //~| NOTE conflicting implementation for `std::boxed::Box<_>`
-//~| NOTE upstream crates may add new impl for `Sugar` in future versions
+//~| NOTE upstream crates may add new impl of trait `Sugar` for type `std::boxed::Box<_>`
 
 fn main() { }

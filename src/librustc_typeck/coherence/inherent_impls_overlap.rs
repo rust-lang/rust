@@ -63,7 +63,7 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
                                    format!("other definition for `{}`", name));
 
                     for cause in &overlap.intercrate_ambiguity_causes {
-                        cause.add_intercrate_ambiguity_hint(self.tcx, &mut err);
+                        cause.add_intercrate_ambiguity_hint(&mut err);
                     }
 
                     err.emit();

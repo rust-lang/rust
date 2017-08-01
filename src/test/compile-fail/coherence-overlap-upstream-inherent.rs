@@ -21,7 +21,7 @@ struct A<X>(X);
 impl<T> A<T> where T: Remote { fn dummy(&self) { } }
 //~^ ERROR E0592
 //~| NOTE duplicate definitions for `dummy`
-//~| NOTE upstream crates may add new impl for `coherence_lib::Remote` in future versions
+//~| NOTE upstream crates may add new impl of trait `coherence_lib::Remote` for type `i16`
 impl A<i16> { fn dummy(&self) { } }
 //~^ NOTE other definition for `dummy`
 
