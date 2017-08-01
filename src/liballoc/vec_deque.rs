@@ -2558,7 +2558,7 @@ impl<'a, T> Place<T> for PlaceBack<'a, T> {
 impl<'a, T> InPlace<T> for PlaceBack<'a, T> {
     type Owner = &'a mut T;
 
-    unsafe fn finalize(mut self) -> &'a mut T {
+    unsafe fn finalize(self) -> &'a mut T {
         let head = self.vec_deque.head;
         self.vec_deque.head = self.vec_deque.wrap_add(head, 1);
         &mut *(self.vec_deque.ptr().offset(head as isize))
@@ -2605,7 +2605,7 @@ impl<'a, T> Place<T> for PlaceFront<'a, T> {
 impl<'a, T> InPlace<T> for PlaceFront<'a, T> {
     type Owner = &'a mut T;
 
-    unsafe fn finalize(mut self) -> &'a mut T {
+    unsafe fn finalize(self) -> &'a mut T {
         self.vec_deque.tail = self.vec_deque.wrap_sub(self.vec_deque.tail, 1);
         &mut *(self.vec_deque.ptr().offset(self.vec_deque.tail as isize))
     }
