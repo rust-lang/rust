@@ -178,10 +178,10 @@ GEN_SUBTARGETS
 
 extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
                                    const char *Feature) {
+#if LLVM_RUSTLLVM
   TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const FeatureBitset &Bits = MCInfo->getFeatureBits();
-#if LLVM_VERSION_GE(4, 0)
   const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
 
   for (auto &FeatureEntry : FeatTable)
