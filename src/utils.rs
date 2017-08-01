@@ -57,6 +57,14 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
 }
 
 #[inline]
+pub fn format_constness(constness: ast::Constness) -> &'static str {
+    match constness {
+        ast::Constness::Const => "const ",
+        ast::Constness::NotConst => "",
+    }
+}
+
+#[inline]
 pub fn format_defaultness(defaultness: ast::Defaultness) -> &'static str {
     match defaultness {
         ast::Defaultness::Default => "default ",
@@ -104,6 +112,16 @@ pub fn last_line_width(s: &str) -> usize {
     match s.rfind('\n') {
         Some(n) => s.len() - n - 1,
         None => s.len(),
+    }
+}
+
+// The total used width of the last line.
+#[inline]
+pub fn last_line_used_width(s: &str, offset: usize) -> usize {
+    if s.contains('\n') {
+        last_line_width(s)
+    } else {
+        offset + s.len()
     }
 }
 
