@@ -31,7 +31,7 @@ use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableGenerator
 use super::util;
 
 use dep_graph::{DepNodeIndex, DepKind};
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use infer;
 use infer::{InferCtxt, InferOk, TypeFreshener};
 use ty::subst::{Kind, Subst, Substs};
@@ -1069,13 +1069,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
                 let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                 let self_ty = trait_ref.self_ty();
-                let cause = IntercrateAmbiguityCause::UpstreamCrateUpdate {
-                    trait_desc: trait_ref.to_string(),
-                    self_desc: if self_ty.has_concrete_skeleton() {
-                        Some(self_ty.to_string())
-                    } else {
-                        None
-                    },
+                let trait_desc = trait_ref.to_string();
+                let self_desc = if self_ty.has_concrete_skeleton() {
+                    Some(self_ty.to_string())
+                } else {
+                    None
+                };
+                let cause = if
+                    trait_ref.def_id.krate != LOCAL_CRATE &&
+                    !self.tcx().has_attr(trait_ref.def_id, "fundamental") {
+                    IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
+                } else {
+                    IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
                 };
                 self.intercrate_ambiguity_causes.push(cause);
             }
