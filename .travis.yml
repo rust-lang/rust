@@ -27,6 +27,11 @@ script:
 - |
   # and run all tests with full mir
   MIRI_SYSROOT=~/.xargo/HOST cargo test
+- |
+  # test that the rustc_tests binary compiles
+  cd rustc_tests &&
+  cargo build &&
+  cd ..
 notifications:
   email:
     on_success: never
