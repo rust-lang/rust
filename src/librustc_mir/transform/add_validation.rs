@@ -128,7 +128,7 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
                 match tcx.hir.find(cur) {
                     Some(Node::NodeExpr(&hir::Expr { node: hir::ExprBlock(ref block), ..})) => {
                         if block_is_unsafe(&*block) {
-                            // We can bail out here.
+                            // Found an unsafe block, we can bail out here.
                             return true;
                         }
                     }
@@ -138,6 +138,10 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
             // Finally, visit the closure itself.
             finder.visit_expr(item);
         }
+        Some(Node::NodeStructCtor(_)) => {
+            // Auto-generated tuple struct ctor.  Cannot contain unsafe code.
+            return false;
+        },
         Some(_) | None =>
             bug!("Expected function, method or closure, found {}",
                  tcx.hir.node_to_string(fn_node_id)),
