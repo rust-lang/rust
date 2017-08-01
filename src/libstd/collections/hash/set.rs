@@ -215,6 +215,17 @@ impl<T, S> HashSet<T, S>
     /// Returns a reference to the set's [`BuildHasher`].
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// let hasher = RandomState::new();
+    /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
+    /// let hasher: &RandomState = set.hasher();
+    /// ```
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
