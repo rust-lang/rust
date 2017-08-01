@@ -431,7 +431,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             //    }
         // }
     }
-    
+
     pub fn mark_loan_path_as_mutated(&self, loan_path: &LoanPath) {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
@@ -467,7 +467,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     // Nothing to do.
                     None
                 }
-            }   
+            }
         }
 
     }
