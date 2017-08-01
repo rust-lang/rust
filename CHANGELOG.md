@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.148
+* Update to *rustc 1.21.0-nightly (37c7d0ebb 2017-07-31)*
+* New lints: [`unreadable_literal`], [`inconsisten_digit_grouping`], [`large_digit_groups`]
+
 ## 0.0.147
 * Update to *rustc 1.21.0-nightly (aac223f4f 2017-07-30)*
 
@@ -454,6 +458,7 @@ All notable changes to this project will be documented in this file.
 [`if_not_else`]: https://github.com/Manishearth/rust-clippy/wiki#if_not_else
 [`if_same_then_else`]: https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else
 [`ifs_same_cond`]: https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond
+[`inconsistent_digit_grouping`]: https://github.com/Manishearth/rust-clippy/wiki#inconsistent_digit_grouping
 [`indexing_slicing`]: https://github.com/Manishearth/rust-clippy/wiki#indexing_slicing
 [`ineffective_bit_mask`]: https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask
 [`inline_always`]: https://github.com/Manishearth/rust-clippy/wiki#inline_always
@@ -466,6 +471,7 @@ All notable changes to this project will be documented in this file.
 [`iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#iter_nth
 [`iter_skip_next`]: https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next
 [`iterator_step_by_zero`]: https://github.com/Manishearth/rust-clippy/wiki#iterator_step_by_zero
+[`large_digit_groups`]: https://github.com/Manishearth/rust-clippy/wiki#large_digit_groups
 [`large_enum_variant`]: https://github.com/Manishearth/rust-clippy/wiki#large_enum_variant
 [`len_without_is_empty`]: https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty
 [`len_zero`]: https://github.com/Manishearth/rust-clippy/wiki#len_zero
@@ -570,6 +576,7 @@ All notable changes to this project will be documented in this file.
 [`unnecessary_mut_passed`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed
 [`unnecessary_operation`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation
 [`unneeded_field_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern
+[`unreadable_literal`]: https://github.com/Manishearth/rust-clippy/wiki#unreadable_literal
 [`unsafe_removed_from_name`]: https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name
 [`unseparated_literal_suffix`]: https://github.com/Manishearth/rust-clippy/wiki#unseparated_literal_suffix
 [`unstable_as_mut_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice

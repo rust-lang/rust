@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 200 lints included in this crate:
+There are 203 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -249,6 +249,7 @@ name                                                                            
 [if_not_else](https://github.com/Manishearth/rust-clippy/wiki#if_not_else)                                             | allow   | `if` branches that could be swapped so no negation operation is necessary on the condition
 [if_same_then_else](https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else)                                 | warn    | if with the same *then* and *else* blocks
 [ifs_same_cond](https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond)                                         | warn    | consecutive `ifs` with the same condition
+[inconsistent_digit_grouping](https://github.com/Manishearth/rust-clippy/wiki#inconsistent_digit_grouping)             | warn    | integer literals with digits grouped inconsistently
 [indexing_slicing](https://github.com/Manishearth/rust-clippy/wiki#indexing_slicing)                                   | allow   | indexing/slicing usage
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                           | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                         | warn    | use of `#[inline(always)]`
@@ -261,6 +262,7 @@ name                                                                            
 [iter_nth](https://github.com/Manishearth/rust-clippy/wiki#iter_nth)                                                   | warn    | using `.iter().nth()` on a standard library type with O(1) element access
 [iter_skip_next](https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next)                                       | warn    | using `.skip(x).next()` on an iterator
 [iterator_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#iterator_step_by_zero)                         | warn    | using `Iterator::step_by(0)`, which produces an infinite iterator
+[large_digit_groups](https://github.com/Manishearth/rust-clippy/wiki#large_digit_groups)                               | warn    | grouping digits into groups that are too large
 [large_enum_variant](https://github.com/Manishearth/rust-clippy/wiki#large_enum_variant)                               | warn    | large size difference between variants on an enum
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                           | warn    | traits or impls with a public `len` method but no corresponding `is_empty` method
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                                   | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
@@ -362,6 +364,7 @@ name                                                                            
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                       | warn    | an argument passed as a mutable reference although the callee only demands an immutable reference
 [unnecessary_operation](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation)                         | warn    | outer expressions with no effect
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                       | warn    | struct fields bound to a wildcard instead of using `..`
+[unreadable_literal](https://github.com/Manishearth/rust-clippy/wiki#unreadable_literal)                               | warn    | long integer literal without underscores
 [unsafe_removed_from_name](https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name)                   | warn    | `unsafe` removed from API names on import
 [unseparated_literal_suffix](https://github.com/Manishearth/rust-clippy/wiki#unseparated_literal_suffix)               | allow   | literals whose suffix is not separated by an underscore
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                                       | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
