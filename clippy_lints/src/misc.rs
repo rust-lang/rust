@@ -225,11 +225,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         for arg in iter_input_pats(decl, body) {
-            if let PatKind::Binding(BindByRef(_), _, _, _) = arg.pat.node {
-                span_lint(cx,
-                          TOPLEVEL_REF_ARG,
-                          arg.pat.span,
-                          "`ref` directly on a function argument is ignored. Consider using a reference type instead.");
+            match arg.pat.node {
+                PatKind::Binding(BindingAnnotation::Ref, _, _, _) | PatKind::Binding(BindingAnnotation::RefMut, _, _, _) => {
+                    span_lint(cx,
+                              TOPLEVEL_REF_ARG,
+                              arg.pat.span,
+                              "`ref` directly on a function argument is ignored. Consider using a reference type instead.");
+                },
+                _ => {}
             }
         }
     }
@@ -238,33 +241,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_let_chain! {[
             let StmtDecl(ref d, _) = s.node,
             let DeclLocal(ref l) = d.node,
-            let PatKind::Binding(BindByRef(mt), _, i, None) = l.pat.node,
+            let PatKind::Binding(an, _, i, None) = l.pat.node,
             let Some(ref init) = l.init
         ], {
-            let init = Sugg::hir(cx, init, "..");
-            let (mutopt,initref) = if mt == Mutability::MutMutable {
-                ("mut ", init.mut_addr())
-            } else {
-                ("", init.addr())
-            };
-            let tyopt = if let Some(ref ty) = l.ty {
-                format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
-            } else {
-                "".to_owned()
-            };
-            span_lint_and_then(cx,
-                TOPLEVEL_REF_ARG,
-                l.pat.span,
-                "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
-                |db| {
-                    db.span_suggestion(s.span,
-                                       "try",
-                                       format!("let {name}{tyopt} = {initref};",
-                                               name=snippet(cx, i.span, "_"),
-                                               tyopt=tyopt,
-                                               initref=initref));
-                }
-            );
+            if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
+                let init = Sugg::hir(cx, init, "..");
+                let (mutopt,initref) = if an == BindingAnnotation::RefMut {
+                    ("mut ", init.mut_addr())
+                } else {
+                    ("", init.addr())
+                };
+                let tyopt = if let Some(ref ty) = l.ty {
+                    format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
+                } else {
+                    "".to_owned()
+                };
+                span_lint_and_then(cx,
+                    TOPLEVEL_REF_ARG,
+                    l.pat.span,
+                    "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
+                    |db| {
+                        db.span_suggestion(s.span,
+                                           "try",
+                                           format!("let {name}{tyopt} = {initref};",
+                                                   name=snippet(cx, i.span, "_"),
+                                                   tyopt=tyopt,
+                                                   initref=initref));
+                    }
+                );
+            }
         }};
         if_let_chain! {[
             let StmtSemi(ref expr, _) = s.node,
