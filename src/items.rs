@@ -39,7 +39,6 @@ fn type_annotation_separator(config: &Config) -> &str {
     )
 }
 
-
 // Statements of the form
 // let pat: ty = init;
 impl Rewrite for ast::Local {
@@ -591,7 +590,6 @@ pub fn format_impl(
             false,
             last_line_width(&ref_and_type) == 1,
             where_span_end,
-            item.span,
             self_ty.span.hi,
         ));
 
@@ -987,7 +985,6 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             false,
             trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
             None,
-            item.span,
             pos_before_where,
         ));
         // If the where clause cannot fit on the same line,
@@ -1220,7 +1217,6 @@ fn format_tuple_struct(
                 true,
                 false,
                 None,
-                span,
                 body_hi,
             ))
         }
@@ -1321,7 +1317,6 @@ pub fn rewrite_type_alias(
         true,
         true,
         Some(span.hi),
-        span,
         generics.span.hi,
     ));
     result.push_str(&where_clause_str);
@@ -2045,10 +2040,6 @@ fn rewrite_fn_base(
                     force_new_line_for_brace = true;
                 }
             }
-        } else {
-            // FIXME it would be nice to catch comments between the return type
-            // and the where clause, but we don't have a span for the where
-            // clause.
         }
     }
 
@@ -2079,7 +2070,6 @@ fn rewrite_fn_base(
             !has_braces,
             put_args_in_block && ret_str.is_empty(),
             Some(span.hi),
-            span,
             pos_before_where,
         ) {
             if !where_clause_str.contains('\n') {
@@ -2105,7 +2095,6 @@ fn rewrite_fn_base(
         !has_braces,
         put_args_in_block && ret_str.is_empty(),
         Some(span.hi),
-        span,
         pos_before_where,
     ));
 
@@ -2507,13 +2496,12 @@ fn rewrite_where_clause_rfc_style(
     // where clause can be kept on the current line.
     snuggle: bool,
     span_end: Option<BytePos>,
-    span: Span,
     span_end_before_where: BytePos,
 ) -> Option<String> {
     let block_shape = shape.block().with_max_width(context.config);
 
     let (span_before, span_after) =
-        missing_span_before_after_where(context, span.hi, span_end_before_where, where_clause);
+        missing_span_before_after_where(span_end_before_where, where_clause);
     let (comment_before, comment_after) = try_opt!(rewrite_comments_before_after_where(
         context,
         span_before,
@@ -2594,7 +2582,6 @@ fn rewrite_where_clause(
     suppress_comma: bool,
     snuggle: bool,
     span_end: Option<BytePos>,
-    span: Span,
     span_end_before_where: BytePos,
 ) -> Option<String> {
     if where_clause.predicates.is_empty() {
@@ -2610,7 +2597,6 @@ fn rewrite_where_clause(
             suppress_comma,
             snuggle,
             span_end,
-            span,
             span_end_before_where,
         );
     }
@@ -2695,17 +2681,12 @@ fn rewrite_where_clause(
 }
 
 fn missing_span_before_after_where(
-    context: &RewriteContext,
-    item_end: BytePos,
     before_item_span_end: BytePos,
     where_clause: &ast::WhereClause,
 ) -> (Span, Span) {
-    let snippet = context.snippet(mk_sp(before_item_span_end, item_end));
-    let pos_before_where =
-        before_item_span_end + BytePos(snippet.find_uncommented("where").unwrap() as u32);
-    let missing_span_before = mk_sp(before_item_span_end, pos_before_where);
+    let missing_span_before = mk_sp(before_item_span_end, where_clause.span.lo);
     // 5 = `where`
-    let pos_after_where = pos_before_where + BytePos(5);
+    let pos_after_where = where_clause.span.lo + BytePos(5);
     let missing_span_after = mk_sp(pos_after_where, where_clause.predicates[0].span().lo);
     (missing_span_before, missing_span_after)
 }
@@ -2776,7 +2757,6 @@ fn format_generics(
             false,
             trimmed_last_line_width(&result) == 1,
             Some(span.hi),
-            span,
             generics.span.hi,
         ));
         result.push_str(&where_clause_str);
