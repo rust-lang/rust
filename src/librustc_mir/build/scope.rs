@@ -386,8 +386,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
-        let may_panic =
-            self.scopes[(len - scope_count)..].iter().any(|s| s.drops.iter().any(|s| s.kind.may_panic()));
+        let may_panic = self.scopes[(len - scope_count)..].iter()
+            .any(|s| s.drops.iter().any(|s| s.kind.may_panic()));
         if may_panic {
             self.diverge_cleanup();
         }
