@@ -87,6 +87,17 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
     use rustc::hir::intravisit::{self, Visitor};
     use rustc::hir::map::Node;
 
+    fn block_is_unsafe(block: &hir::Block) -> bool {
+        use rustc::hir::BlockCheckMode::*;
+
+        match block.rules {
+            UnsafeBlock(_) | PushUnsafeBlock(_) => true,
+            // For PopUnsafeBlock, we don't actually know -- but we will always also check all
+            // parent blocks, so we can safely declare the PopUnsafeBlock to not be unsafe.
+            DefaultBlock | PopUnsafeBlock(_) => false,
+        }
+    }
+
     let fn_node_id = match src {
         MirSource::Fn(node_id) => node_id,
         _ => return false, // only functions can have unsafe
@@ -101,8 +112,35 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
     match tcx.hir.find(fn_node_id) {
         Some(Node::NodeItem(item)) => finder.visit_item(item),
         Some(Node::NodeImplItem(item)) => finder.visit_impl_item(item),
+        Some(Node::NodeExpr(item)) => {
+            // This is a closure.
+            // We also have to walk up the parents and check that there is no unsafe block
+            // there.
+            let mut cur = fn_node_id;
+            loop {
+                // Go further upwards.
+                let parent = tcx.hir.get_parent_node(cur);
+                if cur == parent {
+                    break;
+                }
+                cur = parent;
+                // Check if this is a a block
+                match tcx.hir.find(cur) {
+                    Some(Node::NodeExpr(&hir::Expr { node: hir::ExprBlock(ref block), ..})) => {
+                        if block_is_unsafe(&*block) {
+                            // We can bail out here.
+                            return true;
+                        }
+                    }
+                    _ => {},
+                }
+            }
+            // Finally, visit the closure itself.
+            finder.visit_expr(item);
+        }
         Some(_) | None =>
-            bug!("Expected method or function, found {}", tcx.hir.node_to_string(fn_node_id)),
+            bug!("Expected function, method or closure, found {}",
+                 tcx.hir.node_to_string(fn_node_id)),
     };
 
     impl<'b, 'tcx> Visitor<'tcx> for FindUnsafe<'b, 'tcx> {
@@ -113,7 +151,7 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
         fn visit_fn(&mut self, fk: intravisit::FnKind<'tcx>, fd: &'tcx hir::FnDecl,
                     b: hir::BodyId, s: Span, id: NodeId)
         {
-            assert!(!self.found_unsafe, "We should never see more than one fn");
+            assert!(!self.found_unsafe, "We should never see a fn when we already saw unsafe");
             let is_unsafe = match fk {
                 intravisit::FnKind::ItemFn(_, _, unsafety, ..) => unsafety == hir::Unsafety::Unsafe,
                 intravisit::FnKind::Method(_, sig, ..) => sig.unsafety == hir::Unsafety::Unsafe,
@@ -129,20 +167,15 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
         }
 
         fn visit_block(&mut self, b: &'tcx hir::Block) {
-            use rustc::hir::BlockCheckMode::*;
-
             if self.found_unsafe { return; } // short-circuit
 
-            match b.rules {
-                UnsafeBlock(_) | PushUnsafeBlock(_) => {
-                    // We found an unsafe block.
-                    self.found_unsafe = true;
-                }
-                DefaultBlock | PopUnsafeBlock(_) => {
-                    // No unsafe block here, go on searching.
-                    intravisit::walk_block(self, b);
-                }
-            };
+            if block_is_unsafe(b) {
+                // We found an unsafe block.  We can stop searching.
+                self.found_unsafe = true;
+            } else {
+                // No unsafe block here, go on searching.
+                intravisit::walk_block(self, b);
+            }
         }
     }
 

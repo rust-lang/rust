@@ -21,7 +21,14 @@ impl Test {
 fn main() {
     let mut x = 0;
     Test.foo(&mut x);
+
+    // Also test closures
+    let c = |x: &mut i32| { let y = &*x; *y };
+    c(&mut x);
 }
+
+// FIXME: Also test code generated inside the closure, make sure it has validation.  Unfortunately,
+// the interesting lines of code also contain name of the source file, so we cannot test for it.
 
 // END RUST SOURCE
 // START rustc.node10.EraseRegions.after.mir
