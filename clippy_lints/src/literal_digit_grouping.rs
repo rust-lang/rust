@@ -147,7 +147,7 @@ impl<'a> DigitInfo<'a> {
         if self.digits.contains('.') {
             let mut parts = self.digits.split('.');
             let int_part_hint = parts.next()
-                .unwrap()
+                .expect("split always returns at least one element")
                 .chars()
                 .rev()
                 .filter(|&c| c != '_')
@@ -158,7 +158,7 @@ impl<'a> DigitInfo<'a> {
                 .collect::<Vec<String>>()
                 .join("_");
             let frac_part_hint = parts.next()
-                .unwrap()
+                .expect("already checked that there is a `.`")
                 .chars()
                 .filter(|&c| c != '_')
                 .collect::<Vec<_>>()
@@ -329,7 +329,7 @@ impl LiteralDigitGrouping {
                 .windows(2)
                 .all(|ps| ps[1] - ps[0] == group_size + 1)
                 // number of digits to the left of the last group cannot be bigger than group size.
-                && (digits.len() - underscore_positions.last().unwrap() <= group_size + 1);
+                && (digits.len() - underscore_positions.last().expect("there's at least one element") <= group_size + 1);
 
             if !consistent {
                 return Err(WarningType::InconsistentDigitGrouping);
