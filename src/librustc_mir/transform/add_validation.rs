@@ -112,6 +112,7 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
     match tcx.hir.find(fn_node_id) {
         Some(Node::NodeItem(item)) => finder.visit_item(item),
         Some(Node::NodeImplItem(item)) => finder.visit_impl_item(item),
+        Some(Node::NodeTraitItem(item)) => finder.visit_trait_item(item),
         Some(Node::NodeExpr(item)) => {
             // This is a closure.
             // We also have to walk up the parents and check that there is no unsafe block
