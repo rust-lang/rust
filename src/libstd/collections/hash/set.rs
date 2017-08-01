@@ -453,6 +453,22 @@ impl<T, S> HashSet<T, S>
     }
 
     /// Clears the set, returning all elements in an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert!(!set.is_empty());
+    ///
+    /// // print 1, 2, 3 in an arbitrary order
+    /// for i in set.drain() {
+    ///     println!("{}", i);
+    /// }
+    ///
+    /// assert!(set.is_empty());
+    /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<T> {
