@@ -1323,13 +1323,16 @@ fn start_executing_work(sess: &Session,
                 if main_thread_worker_state == MainThreadWorkerState::Idle {
                     if !queue_full_enough(work_items.len(), running, max_workers) {
                         // The queue is not full enough, translate more items:
-                        trans_worker_send.send(Message::TranslateItem).unwrap();
+                        if let Err(_) = trans_worker_send.send(Message::TranslateItem) {
+                            panic!("Could not send Message::TranslateItem to main thread")
+                        }
                         main_thread_worker_state = MainThreadWorkerState::Translating;
                     } else {
                         // The queue is full enough to not let the worker
                         // threads starve. Use the implicit Token to do some
                         // LLVM work too.
-                        let (item, _) = work_items.pop().unwrap();
+                        let (item, _) = work_items.pop()
+                            .expect("queue empty - queue_full_enough() broken?");
                         let cgcx = CodegenContext {
                             worker: get_worker_id(&mut free_worker_ids),
                             .. cgcx.clone()
@@ -1406,7 +1409,7 @@ fn start_executing_work(sess: &Session,
                             let msg = &format!("failed to acquire jobserver token: {}", e);
                             shared_emitter.fatal(msg);
                             // Exit the coordinator thread
-                            panic!()
+                            panic!("{}", msg)
                         }
                     }
                 }
@@ -1475,7 +1478,7 @@ fn start_executing_work(sess: &Session,
                 Message::Done { result: Err(()), worker_id: _ } => {
                     shared_emitter.fatal("aborting due to worker thread panic");
                     // Exit the coordinator thread
-                    panic!()
+                    panic!("aborting due to worker thread panic")
                 }
                 Message::TranslateItem => {
                     bug!("the coordinator should not receive translation requests")
@@ -1493,9 +1496,12 @@ fn start_executing_work(sess: &Session,
                                     total_llvm_time);
         }
 
+        let compiled_metadata_module = compiled_metadata_module
+            .expect("Metadata module not compiled?");
+
         CompiledModules {
             modules: compiled_modules,
-            metadata_module: compiled_metadata_module.unwrap(),
+            metadata_module: compiled_metadata_module,
             allocator_module: compiled_allocator_module,
         }
     });
@@ -1506,6 +1512,7 @@ fn start_executing_work(sess: &Session,
                          workers_running: usize,
                          max_workers: usize) -> bool {
         // Tune me, plz.
+        items_in_queue > 0 &&
         items_in_queue >= max_workers.saturating_sub(workers_running / 2)
     }
 
@@ -1805,7 +1812,12 @@ pub struct OngoingCrateTranslation {
 impl OngoingCrateTranslation {
     pub fn join(self, sess: &Session) -> CrateTranslation {
         self.shared_emitter_main.check(sess, true);
-        let compiled_modules = self.future.join().unwrap();
+        let compiled_modules = match self.future.join() {
+            Ok(compiled_modules) => compiled_modules,
+            Err(_) => {
+                sess.fatal("Error during translation/LLVM phase.");
+            }
+        };
 
         sess.abort_if_errors();
 
