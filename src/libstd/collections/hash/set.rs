@@ -325,13 +325,13 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x); // Print 1
     /// }
     ///
-    /// let diff: HashSet<_> = a.difference(&b).cloned().collect();
-    /// assert_eq!(diff, [1].iter().cloned().collect());
+    /// let diff: HashSet<_> = a.difference(&b).collect();
+    /// assert_eq!(diff, [1].iter().collect());
     ///
     /// // Note that difference is not symmetric,
     /// // and `b - a` means something else:
-    /// let diff: HashSet<_> = b.difference(&a).cloned().collect();
-    /// assert_eq!(diff, [4].iter().cloned().collect());
+    /// let diff: HashSet<_> = b.difference(&a).collect();
+    /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
@@ -356,11 +356,11 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let diff1: HashSet<_> = a.symmetric_difference(&b).cloned().collect();
-    /// let diff2: HashSet<_> = b.symmetric_difference(&a).cloned().collect();
+    /// let diff1: HashSet<_> = a.symmetric_difference(&b).collect();
+    /// let diff2: HashSet<_> = b.symmetric_difference(&a).collect();
     ///
     /// assert_eq!(diff1, diff2);
-    /// assert_eq!(diff1, [1, 4].iter().cloned().collect());
+    /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(&'a self,
@@ -384,8 +384,8 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let intersection: HashSet<_> = a.intersection(&b).cloned().collect();
-    /// assert_eq!(intersection, [2, 3].iter().cloned().collect());
+    /// let intersection: HashSet<_> = a.intersection(&b).collect();
+    /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
@@ -410,8 +410,8 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let union: HashSet<_> = a.union(&b).cloned().collect();
-    /// assert_eq!(union, [1, 2, 3, 4].iter().cloned().collect());
+    /// let union: HashSet<_> = a.union(&b).collect();
+    /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
