@@ -27,18 +27,20 @@ fn examples() {
             continue;
         }
         cmd!("touch", &file).run().unwrap();
-        let output = file.with_extension("stderr");
+        let stderr = file.with_extension("stderr");
+        let stdout = file.with_extension("stdout");
         cmd!("cargo", "rustc", "-q", "--example", file.file_stem().unwrap(), "--", "-Dwarnings",
              "-Zremap-path-prefix-from=examples/", "-Zremap-path-prefix-to=",
              "-Zremap-path-prefix-from=examples\\", "-Zremap-path-prefix-to="
              )
             .unchecked()
-            .stderr(&output)
+            .stdout(&stdout)
+            .stderr(&stderr)
             .env("CLIPPY_DISABLE_WIKI_LINKS", "true")
             .dir("clippy_tests")
             .run()
             .unwrap();
-        if cmd!("git", "diff", "--exit-code", output).run().is_err() {
+        if cmd!("git", "diff", "--exit-code", stderr).run().is_err() || cmd!("git", "diff", "--exit-code", stdout).run().is_err() {
             error = true;
             println!("ERROR");
         } else {

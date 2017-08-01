@@ -29,6 +29,7 @@ pub mod paths;
 pub mod sugg;
 pub mod inspector;
 pub mod internal_lints;
+pub mod author;
 pub use self::hir_utils::{SpanlessEq, SpanlessHash};
 
 pub type MethodArgs = HirVec<P<Expr>>;

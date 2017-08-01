@@ -16,7 +16,8 @@ cache:
 env:
  global:
    # TRAVIS_TOKEN_CLIPPY_SERVICE
-   secure: dj8SwwuRGuzbo2wZq5z7qXIf7P3p7cbSGs1I3pvXQmB6a58gkLiRn/qBcIIegdt/nzXs+Z0Nug+DdesYVeUPxk1hIa/eeU8p6mpyTtZ+30H4QVgVzd0VCthB5F/NUiPVxTgpGpEgCM9/p72xMwTn7AAJfsGqk7AJ4FS5ZZKhqFI=
+   - secure: dj8SwwuRGuzbo2wZq5z7qXIf7P3p7cbSGs1I3pvXQmB6a58gkLiRn/qBcIIegdt/nzXs+Z0Nug+DdesYVeUPxk1hIa/eeU8p6mpyTtZ+30H4QVgVzd0VCthB5F/NUiPVxTgpGpEgCM9/p72xMwTn7AAJfsGqk7AJ4FS5ZZKhqFI=
+   - RUST_BACKTRACE=1
 
 install:
   - . $HOME/.nvm/nvm.sh

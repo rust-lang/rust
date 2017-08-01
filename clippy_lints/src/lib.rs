@@ -222,6 +222,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
     reg.register_late_lint_pass(box utils::inspector::Pass);
+    reg.register_late_lint_pass(box utils::author::Pass);
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box booleans::NonminimalBool);
     reg.register_late_lint_pass(box eq_op::EqOp);
@@ -379,6 +380,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         attrs::USELESS_ATTRIBUTE,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
+        bit_mask::VERBOSE_BIT_MASK,
         blacklisted_name::BLACKLISTED_NAME,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
