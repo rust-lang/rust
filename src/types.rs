@@ -22,7 +22,7 @@ use codemap::SpanUtils;
 use config::{IndentStyle, Style, TypeDensity};
 use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens};
 use items::{format_generics_item_list, generics_shape_from_config};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic,
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
             SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{colon_spaces, extra_offset, format_mutability, last_line_width, mk_sp, wrap_str};
@@ -348,7 +348,12 @@ where
 
     let item_vec: Vec<_> = items.collect();
 
-    let tactic = definitive_tactic(&*item_vec, ListTactic::HorizontalVertical, budget);
+    let tactic = definitive_tactic(
+        &*item_vec,
+        ListTactic::HorizontalVertical,
+        Separator::Comma,
+        budget,
+    );
 
     let fmt = ListFormatting {
         tactic: tactic,

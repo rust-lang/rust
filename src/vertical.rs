@@ -20,7 +20,7 @@ use codemap::SpanUtils;
 use comment::contains_comment;
 use expr::rewrite_field;
 use items::{rewrite_struct_field, rewrite_struct_field_prefix};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{contains_skip, mk_sp};
 
@@ -221,7 +221,12 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         span.hi,
     ).collect::<Vec<_>>();
 
-    let tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, one_line_width);
+    let tactic = definitive_tactic(
+        &items,
+        ListTactic::HorizontalVertical,
+        Separator::Comma,
+        one_line_width,
+    );
 
     let fmt = ListFormatting {
         tactic: tactic,

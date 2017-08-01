@@ -24,7 +24,7 @@ use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, ListTactic, SeparatorTactic};
+            ListItem, ListTactic, Separator, SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
 use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
@@ -488,7 +488,7 @@ where
                 Some(width) => {
                     let tactic =
                         ListTactic::LimitedHorizontalVertical(context.config.array_width());
-                    definitive_tactic(&items, tactic, width)
+                    definitive_tactic(&items, tactic, Separator::Comma, width)
                 }
                 None => DefinitiveListTactic::Vertical,
             }
@@ -497,6 +497,7 @@ where
             definitive_tactic(
                 &items,
                 ListTactic::LimitedHorizontalVertical(context.config.array_width()),
+                Separator::Comma,
                 nested_shape.width,
             )
         } else {
@@ -594,7 +595,12 @@ fn rewrite_closure_fn_decl(
         .width
         .checked_sub(ret_str.len() + 1)
         .unwrap_or(0);
-    let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, horizontal_budget);
+    let tactic = definitive_tactic(
+        &item_vec,
+        ListTactic::HorizontalVertical,
+        Separator::Comma,
+        horizontal_budget,
+    );
     let arg_shape = match tactic {
         DefinitiveListTactic::Horizontal => try_opt!(arg_shape.sub_width(ret_str.len() + 1)),
         _ => arg_shape,
@@ -1530,17 +1536,25 @@ fn rewrite_match(
         return None;
     }
 
-    // 6 = `match `, 2 = ` {`
+    // Do not take the rhs overhead from the upper expressions into account
+    // when rewriting match condition.
+    let new_width = try_opt!(context.config.max_width().checked_sub(shape.used_width()));
+    let cond_shape = Shape {
+        width: new_width,
+        ..shape
+    };
+    // 6 = `match `
     let cond_shape = match context.config.control_style() {
-        Style::Legacy => try_opt!(shape.shrink_left(6).and_then(|s| s.sub_width(2))),
-        Style::Rfc => try_opt!(shape.offset_left(6).and_then(|s| s.sub_width(2))),
+        Style::Legacy => try_opt!(cond_shape.shrink_left(6)),
+        Style::Rfc => try_opt!(cond_shape.offset_left(6)),
     };
     let cond_str = try_opt!(cond.rewrite(context, cond_shape));
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let block_sep = match context.config.control_brace_style() {
         ControlBraceStyle::AlwaysNextLine => &alt_block_sep,
         _ if last_line_extendable(&cond_str) => " ",
-        _ if cond_str.contains('\n') => &alt_block_sep,
+        // 2 = ` {`
+        _ if cond_str.contains('\n') || cond_str.len() + 2 > cond_shape.width => &alt_block_sep,
         _ => " ",
     };
 
@@ -1673,7 +1687,12 @@ fn rewrite_match_pattern(
     );
 
     let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = definitive_tactic(&items, ListTactic::HorizontalVertical, pat_shape.width);
+    let tactic = definitive_tactic(
+        &items,
+        ListTactic::HorizontalVertical,
+        Separator::VerticalBar,
+        pat_shape.width,
+    );
     let fmt = ListFormatting {
         tactic: tactic,
         separator: " |",
@@ -2221,6 +2240,7 @@ where
     let tactic = definitive_tactic(
         &*item_vec,
         ListTactic::LimitedHorizontalVertical(args_max_width),
+        Separator::Comma,
         one_line_width,
     );
 
@@ -2761,6 +2781,7 @@ where
     let tactic = definitive_tactic(
         &item_vec,
         ListTactic::HorizontalVertical,
+        Separator::Comma,
         nested_shape.width,
     );
     let fmt = ListFormatting {
