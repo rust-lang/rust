@@ -327,9 +327,9 @@ impl LiteralDigitGrouping {
         if underscore_positions.is_empty() {
             // Check if literal needs underscores.
             if digits.len() > 4 {
-                return Err(WarningType::UnreadableLiteral);
+                Err(WarningType::UnreadableLiteral)
             } else {
-                return Ok(0);
+                Ok(0)
             }
         } else {
             // Check consistency and the sizes of the groups.
@@ -345,7 +345,7 @@ impl LiteralDigitGrouping {
             } else if group_size > 4 {
                 return Err(WarningType::LargeDigitGroups);
             }
-            return Ok(group_size);
+            Ok(group_size)
         }
     }
 }
