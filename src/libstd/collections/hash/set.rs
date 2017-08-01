@@ -147,6 +147,7 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// ```
     /// use std::collections::HashSet;
     /// let set: HashSet<i32> = HashSet::with_capacity(10);
+    /// assert!(set.capacity() >= 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
