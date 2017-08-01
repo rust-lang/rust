@@ -243,7 +243,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
             }
             print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
         },
-        PatKind::Binding(BindByValue(MutImmutable), _, ident, None) => ident.node.to_string(),
+        PatKind::Binding(BindingAnnotation::Unannotated, _, ident, None) => ident.node.to_string(),
         PatKind::Path(ref path) => print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
         _ => return,
     };

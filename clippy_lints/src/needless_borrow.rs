@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::{ExprAddrOf, Expr, MutImmutable, Pat, PatKind, BindingMode};
+use rustc::hir::{ExprAddrOf, Expr, MutImmutable, Pat, PatKind, BindingAnnotation};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjustment, Adjust};
 use utils::{span_lint, in_macro};
@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             return;
         }
         if_let_chain! {[
-            let PatKind::Binding(BindingMode::BindByRef(MutImmutable), _, _, _) = pat.node,
+            let PatKind::Binding(BindingAnnotation::Ref, _, _, _) = pat.node,
             let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
             tam.mutbl == MutImmutable,
             let ty::TyRef(_, ref tam) = tam.ty.sty,

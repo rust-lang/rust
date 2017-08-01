@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc::hir;
+use rustc::hir::BindingAnnotation;
 use syntax_pos::{Span, NO_EXPANSION};
 use utils::{snippet, span_lint_and_then};
 
@@ -94,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 };
 
                 let mutability = match mode {
-                    hir::BindByRef(hir::MutMutable) | hir::BindByValue(hir::MutMutable) => "<mut> ",
+                    BindingAnnotation::RefMut | BindingAnnotation::Mutable => "<mut> ",
                     _ => "",
                 };
 

@@ -123,10 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 !moved_vars.contains(&defid),
             ], {
                 // Note: `toplevel_ref_arg` warns if `BindByRef`
-                let m = match mode {
-                    BindingMode::BindByRef(m) | BindingMode::BindByValue(m) => m,
-                };
-                if m == Mutability::MutMutable {
+                if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
                     continue;
                 }
 

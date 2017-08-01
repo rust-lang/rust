@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::{MutImmutable, Pat, PatKind, BindingMode};
+use rustc::hir::{MutImmutable, Pat, PatKind, BindingAnnotation};
 use rustc::ty;
 use utils::{span_lint, in_macro};
 
@@ -47,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
         if_let_chain! {[
             // Pat is a pattern whose node
             // is a binding which "involves" a immutable reference...
-            let PatKind::Binding(BindingMode::BindByRef(MutImmutable), ..) = pat.node,
+            let PatKind::Binding(BindingAnnotation::Ref, ..) = pat.node,
             // Pattern's type is a reference. Get the type and mutability of referenced value (tam: TypeAndMut).
             let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
             // This is an immutable reference.
