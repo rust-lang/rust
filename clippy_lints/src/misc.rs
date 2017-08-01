@@ -226,13 +226,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         for arg in iter_input_pats(decl, body) {
             match arg.pat.node {
-                PatKind::Binding(BindingAnnotation::Ref, _, _, _) | PatKind::Binding(BindingAnnotation::RefMut, _, _, _) => {
+                PatKind::Binding(BindingAnnotation::Ref, _, _, _) |
+                PatKind::Binding(BindingAnnotation::RefMut, _, _, _) => {
                     span_lint(cx,
                               TOPLEVEL_REF_ARG,
                               arg.pat.span,
-                              "`ref` directly on a function argument is ignored. Consider using a reference type instead.");
+                              "`ref` directly on a function argument is ignored. Consider using a reference type \
+                               instead.");
                 },
-                _ => {}
+                _ => {},
             }
         }
     }
