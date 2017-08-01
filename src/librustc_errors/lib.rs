@@ -399,7 +399,6 @@ impl Handler {
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> FatalError {
         self.emit(&sp.into(), msg, Fatal);
-        self.panic_if_treat_err_as_bug();
         FatalError
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(&self,
@@ -408,12 +407,10 @@ impl Handler {
                                                     code: &str)
                                                     -> FatalError {
         self.emit_with_code(&sp.into(), msg, code, Fatal);
-        self.panic_if_treat_err_as_bug();
         FatalError
     }
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Error);
-        self.panic_if_treat_err_as_bug();
     }
     pub fn mut_span_err<'a, S: Into<MultiSpan>>(&'a self,
                                                 sp: S,
@@ -425,7 +422,6 @@ impl Handler {
     }
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
         self.emit_with_code(&sp.into(), msg, code, Error);
-        self.panic_if_treat_err_as_bug();
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Warning);
@@ -494,6 +490,7 @@ impl Handler {
     }
 
     pub fn bump_err_count(&self) {
+        self.panic_if_treat_err_as_bug();
         self.err_count.set(self.err_count.get() + 1);
     }
 
