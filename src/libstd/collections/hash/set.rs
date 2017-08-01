@@ -123,7 +123,7 @@ pub struct HashSet<T, S = RandomState> {
 }
 
 impl<T: Hash + Eq> HashSet<T, RandomState> {
-    /// Creates an empty HashSet.
+    /// Creates an empty `HashSet`.
     ///
     /// # Examples
     ///
