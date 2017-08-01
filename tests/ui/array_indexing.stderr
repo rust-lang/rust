@@ -1,0 +1,120 @@
+error: const index is out of bounds
+  --> $DIR/array_indexing.rs:12:5
+   |
+12 |     x[4];
+   |     ^^^^
+   |
+   = note: `-D out-of-bounds-indexing` implied by `-D warnings`
+
+error: const index is out of bounds
+  --> $DIR/array_indexing.rs:13:5
+   |
+13 |     x[1 << 3];
+   |     ^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:14:6
+   |
+14 |     &x[1..5];
+   |      ^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:16:6
+   |
+16 |     &x[0...4];
+   |      ^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:17:6
+   |
+17 |     &x[...4];
+   |      ^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:21:6
+   |
+21 |     &x[5..];
+   |      ^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:23:6
+   |
+23 |     &x[..5];
+   |      ^^^^^^
+
+error: indexing may panic
+  --> $DIR/array_indexing.rs:26:5
+   |
+26 |     y[0];
+   |     ^^^^
+   |
+   = note: `-D indexing-slicing` implied by `-D warnings`
+
+error: slicing may panic
+  --> $DIR/array_indexing.rs:27:6
+   |
+27 |     &y[1..2];
+   |      ^^^^^^^
+
+error: slicing may panic
+  --> $DIR/array_indexing.rs:29:6
+   |
+29 |     &y[0...4];
+   |      ^^^^^^^^
+
+error: slicing may panic
+  --> $DIR/array_indexing.rs:30:6
+   |
+30 |     &y[...4];
+   |      ^^^^^^^
+
+error: const index is out of bounds
+  --> $DIR/array_indexing.rs:33:5
+   |
+33 |     empty[0];
+   |     ^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:34:6
+   |
+34 |     &empty[1..5];
+   |      ^^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:35:6
+   |
+35 |     &empty[0...4];
+   |      ^^^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:36:6
+   |
+36 |     &empty[...4];
+   |      ^^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:40:6
+   |
+40 |     &empty[0...0];
+   |      ^^^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:41:6
+   |
+41 |     &empty[...0];
+   |      ^^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:43:6
+   |
+43 |     &empty[1..];
+   |      ^^^^^^^^^^
+
+error: range is out of bounds
+  --> $DIR/array_indexing.rs:44:6
+   |
+44 |     &empty[..4];
+   |      ^^^^^^^^^^
+
+error: aborting due to 19 previous errors
+

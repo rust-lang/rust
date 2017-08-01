@@ -1,0 +1,16 @@
+error: Comparing with null is better expressed by the .is_null() method
+  --> $DIR/cmp_null.rs:11:8
+   |
+11 |     if p == ptr::null() {
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D cmp-null` implied by `-D warnings`
+
+error: Comparing with null is better expressed by the .is_null() method
+  --> $DIR/cmp_null.rs:16:8
+   |
+16 |     if m == ptr::null_mut() {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

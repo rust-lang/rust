@@ -1,4 +1,3 @@
-#![feature(associated_consts)]
 #![feature(plugin)]
 #![plugin(clippy)]
 

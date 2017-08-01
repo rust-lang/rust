@@ -1,0 +1,16 @@
+error: `0 as *const _` detected. Consider using `ptr::null()`
+ --> $DIR/zero_ptr.rs:6:13
+  |
+6 |     let x = 0 as *const usize;
+  |             ^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D zero-ptr` implied by `-D warnings`
+
+error: `0 as *mut _` detected. Consider using `ptr::null_mut()`
+ --> $DIR/zero_ptr.rs:7:13
+  |
+7 |     let y = 0 as *mut f64;
+  |             ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

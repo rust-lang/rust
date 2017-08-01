@@ -1,0 +1,91 @@
+error: inconsistent casing in hexadecimal literal
+  --> $DIR/literals.rs:14:17
+   |
+14 |     let fail1 = 0xabCD;
+   |                 ^^^^^^
+   |
+   = note: `-D mixed-case-hex-literals` implied by `-D warnings`
+
+error: inconsistent casing in hexadecimal literal
+  --> $DIR/literals.rs:15:17
+   |
+15 |     let fail2 = 0xabCD_u32;
+   |                 ^^^^^^^^^^
+
+error: inconsistent casing in hexadecimal literal
+  --> $DIR/literals.rs:16:17
+   |
+16 |     let fail2 = 0xabCD_isize;
+   |                 ^^^^^^^^^^^^
+
+error: integer type suffix should be separated by an underscore
+  --> $DIR/literals.rs:17:27
+   |
+17 |     let fail_multi_zero = 000_123usize;
+   |                           ^^^^^^^^^^^^
+   |
+   = note: `-D unseparated-literal-suffix` implied by `-D warnings`
+
+error: this is a decimal constant
+  --> $DIR/literals.rs:17:27
+   |
+17 |     let fail_multi_zero = 000_123usize;
+   |                           ^^^^^^^^^^^^
+   |
+   = note: `-D zero-prefixed-literal` implied by `-D warnings`
+help: if you mean to use a decimal constant, remove the `0` to remove confusion
+   |
+17 |     let fail_multi_zero = 123usize;
+   |                           ^^^^^^^^
+help: if you mean to use an octal constant, use `0o`
+   |
+17 |     let fail_multi_zero = 0o123usize;
+   |                           ^^^^^^^^^^
+
+error: integer type suffix should be separated by an underscore
+  --> $DIR/literals.rs:22:17
+   |
+22 |     let fail3 = 1234i32;
+   |                 ^^^^^^^
+
+error: integer type suffix should be separated by an underscore
+  --> $DIR/literals.rs:23:17
+   |
+23 |     let fail4 = 1234u32;
+   |                 ^^^^^^^
+
+error: integer type suffix should be separated by an underscore
+  --> $DIR/literals.rs:24:17
+   |
+24 |     let fail5 = 1234isize;
+   |                 ^^^^^^^^^
+
+error: integer type suffix should be separated by an underscore
+  --> $DIR/literals.rs:25:17
+   |
+25 |     let fail6 = 1234usize;
+   |                 ^^^^^^^^^
+
+error: float type suffix should be separated by an underscore
+  --> $DIR/literals.rs:26:17
+   |
+26 |     let fail7 = 1.5f32;
+   |                 ^^^^^^
+
+error: this is a decimal constant
+  --> $DIR/literals.rs:30:17
+   |
+30 |     let fail8 = 0123;
+   |                 ^^^^
+   |
+help: if you mean to use a decimal constant, remove the `0` to remove confusion
+   |
+30 |     let fail8 = 123;
+   |                 ^^^
+help: if you mean to use an octal constant, use `0o`
+   |
+30 |     let fail8 = 0o123;
+   |                 ^^^^^
+
+error: aborting due to 11 previous errors
+

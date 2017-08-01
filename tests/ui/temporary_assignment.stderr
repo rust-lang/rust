@@ -1,0 +1,16 @@
+error: assignment to temporary
+  --> $DIR/temporary_assignment.rs:29:5
+   |
+29 |     Struct { field: 0 }.field = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D temporary-assignment` implied by `-D warnings`
+
+error: assignment to temporary
+  --> $DIR/temporary_assignment.rs:30:5
+   |
+30 |     (0, 0).0 = 1;
+   |     ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

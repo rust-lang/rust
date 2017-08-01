@@ -1,0 +1,20 @@
+error: module has the same name as its containing module
+ --> $DIR/module_inception.rs:7:9
+  |
+7 | /         mod bar {
+8 | |             mod foo {}
+9 | |         }
+  | |_________^
+  |
+  = note: `-D module-inception` implied by `-D warnings`
+
+error: module has the same name as its containing module
+  --> $DIR/module_inception.rs:12:5
+   |
+12 | /     mod foo {
+13 | |         mod bar {}
+14 | |     }
+   | |_____^
+
+error: aborting due to 2 previous errors
+

@@ -14,7 +14,7 @@ repository = "https://github.com/Manishearth/rust-clippy"
 readme = "README.md"
 license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
-workspace = "../clippy_tests"
+workspace = ".."
 
 [dependencies]
 itertools = "0.6.0"

@@ -1,10 +1,10 @@
-warning: This generic shadows the built-in type `u32`
+error: This generic shadows the built-in type `u32`
  --> $DIR/builtin-type-shadow.rs:5:8
   |
 5 | fn foo<u32>(a: u32) -> u32 {
   |        ^^^
   |
-  = note: #[warn(builtin_type_shadow)] on by default
+  = note: `-D builtin-type-shadow` implied by `-D warnings`
 
 error[E0308]: mismatched types
  --> $DIR/builtin-type-shadow.rs:6:5
@@ -15,5 +15,5 @@ error[E0308]: mismatched types
   = note: expected type `u32`
              found type `{integer}`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 

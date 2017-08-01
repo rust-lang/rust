@@ -1,0 +1,30 @@
+error: you probably are missing some parameter in your format string
+ --> $DIR/panic.rs:8:16
+  |
+8 |         panic!("{}");
+  |                ^^^^
+  |
+  = note: `-D panic-params` implied by `-D warnings`
+
+error: you probably are missing some parameter in your format string
+  --> $DIR/panic.rs:10:16
+   |
+10 |         panic!("{:?}");
+   |                ^^^^^^
+
+error: you probably are missing some parameter in your format string
+  --> $DIR/panic.rs:12:23
+   |
+12 |         assert!(true, "here be missing values: {}");
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you probably are missing some parameter in your format string
+  --> $DIR/panic.rs:22:5
+   |
+22 |     assert!("foo bar".contains(&format!("foo {}", "bar")));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate
+
+error: aborting due to 4 previous errors
+

@@ -1,0 +1,138 @@
+error: assign operation detected
+ --> $DIR/assign_ops.rs:8:5
+  |
+8 |     i += 2;
+  |     ^^^^^^ help: replace it with: `i = i + 2`
+  |
+  = note: `-D assign-ops` implied by `-D warnings`
+
+error: assign operation detected
+ --> $DIR/assign_ops.rs:9:5
+  |
+9 |     i += 2 + 17;
+  |     ^^^^^^^^^^^ help: replace it with: `i = i + 2 + 17`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:10:5
+   |
+10 |     i -= 6;
+   |     ^^^^^^ help: replace it with: `i = i - 6`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:11:5
+   |
+11 |     i -= 2 - 1;
+   |     ^^^^^^^^^^ help: replace it with: `i = i - (2 - 1)`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:12:5
+   |
+12 |     i *= 5;
+   |     ^^^^^^ help: replace it with: `i = i * 5`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:13:5
+   |
+13 |     i *= 1+5;
+   |     ^^^^^^^^ help: replace it with: `i = i * (1+5)`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:14:5
+   |
+14 |     i /= 32;
+   |     ^^^^^^^ help: replace it with: `i = i / 32`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:15:5
+   |
+15 |     i /= 32 | 5;
+   |     ^^^^^^^^^^^ help: replace it with: `i = i / (32 | 5)`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:16:5
+   |
+16 |     i /= 32 / 5;
+   |     ^^^^^^^^^^^ help: replace it with: `i = i / (32 / 5)`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:17:5
+   |
+17 |     i %= 42;
+   |     ^^^^^^^ help: replace it with: `i = i % 42`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:18:5
+   |
+18 |     i >>= i;
+   |     ^^^^^^^ help: replace it with: `i = i >> i`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:19:5
+   |
+19 |     i <<= 9 + 6 - 7;
+   |     ^^^^^^^^^^^^^^^ help: replace it with: `i = i << (9 + 6 - 7)`
+
+error: assign operation detected
+  --> $DIR/assign_ops.rs:20:5
+   |
+20 |     i += 1 << 5;
+   |     ^^^^^^^^^^^ help: replace it with: `i = i + (1 << 5)`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:27:5
+   |
+27 |     a = a + 1;
+   |     ^^^^^^^^^ help: replace it with: `a += 1`
+   |
+   = note: `-D assign-op-pattern` implied by `-D warnings`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:28:5
+   |
+28 |     a = 1 + a;
+   |     ^^^^^^^^^ help: replace it with: `a += 1`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:29:5
+   |
+29 |     a = a - 1;
+   |     ^^^^^^^^^ help: replace it with: `a -= 1`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:30:5
+   |
+30 |     a = a * 99;
+   |     ^^^^^^^^^^ help: replace it with: `a *= 99`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:31:5
+   |
+31 |     a = 42 * a;
+   |     ^^^^^^^^^^ help: replace it with: `a *= 42`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:32:5
+   |
+32 |     a = a / 2;
+   |     ^^^^^^^^^ help: replace it with: `a /= 2`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:33:5
+   |
+33 |     a = a % 5;
+   |     ^^^^^^^^^ help: replace it with: `a %= 5`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:34:5
+   |
+34 |     a = a & 1;
+   |     ^^^^^^^^^ help: replace it with: `a &= 1`
+
+error: manual implementation of an assign operation
+  --> $DIR/assign_ops.rs:40:5
+   |
+40 |     s = s + "bla";
+   |     ^^^^^^^^^^^^^ help: replace it with: `s += "bla"`
+
+error: aborting due to 22 previous errors
+

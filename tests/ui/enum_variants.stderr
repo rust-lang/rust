@@ -1,0 +1,101 @@
+error: Variant name ends with the enum's name
+  --> $DIR/enum_variants.rs:14:5
+   |
+14 |     cFoo,
+   |     ^^^^
+   |
+   = note: `-D enum-variant-names` implied by `-D warnings`
+
+error: Variant name starts with the enum's name
+  --> $DIR/enum_variants.rs:25:5
+   |
+25 |     FoodGood,
+   |     ^^^^^^^^
+
+error: Variant name starts with the enum's name
+  --> $DIR/enum_variants.rs:26:5
+   |
+26 |     FoodMiddle,
+   |     ^^^^^^^^^^
+
+error: Variant name starts with the enum's name
+  --> $DIR/enum_variants.rs:27:5
+   |
+27 |     FoodBad,
+   |     ^^^^^^^
+
+error: All variants have the same prefix: `Food`
+  --> $DIR/enum_variants.rs:24:1
+   |
+24 | / enum Food {
+25 | |     FoodGood,
+26 | |     FoodMiddle,
+27 | |     FoodBad,
+28 | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: All variants have the same prefix: `CallType`
+  --> $DIR/enum_variants.rs:34:1
+   |
+34 | / enum BadCallType {
+35 | |     CallTypeCall,
+36 | |     CallTypeCreate,
+37 | |     CallTypeDestroy,
+38 | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: All variants have the same prefix: `Constant`
+  --> $DIR/enum_variants.rs:45:1
+   |
+45 | / enum Consts {
+46 | |     ConstantInt,
+47 | |     ConstantCake,
+48 | |     ConstantLie,
+49 | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: All variants have the same prefix: `With`
+  --> $DIR/enum_variants.rs:78:1
+   |
+78 | / enum Seallll {
+79 | |     WithOutCake,
+80 | |     WithOutTea,
+81 | |     WithOut,
+82 | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: All variants have the same prefix: `Prefix`
+  --> $DIR/enum_variants.rs:84:1
+   |
+84 | / enum NonCaps {
+85 | |     Prefix的,
+86 | |     PrefixTea,
+87 | |     PrefixCake,
+88 | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: All variants have the same prefix: `With`
+  --> $DIR/enum_variants.rs:90:1
+   |
+90 | / pub enum PubSeall {
+91 | |     WithOutCake,
+92 | |     WithOutTea,
+93 | |     WithOut,
+94 | | }
+   | |_^
+   |
+   = note: `-D pub-enum-variant-names` implied by `-D warnings`
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
+error: aborting due to 10 previous errors
+

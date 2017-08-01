@@ -14,7 +14,6 @@ readme = "README.md"
 license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
-workspace = "clippy_tests"
 
 [badges]
 travis-ci = { repository = "Manishearth/rust-clippy" }
@@ -47,3 +46,5 @@ serde = "1.0"
 
 [features]
 debugging = []
+
+[workspace]
