@@ -5,11 +5,39 @@
 
 use rustc::hir::def::{Def, Export};
 use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::ty::TypeParameterDef;
+use rustc::ty::{AssociatedKind, TypeParameterDef};
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 
 use syntax::ast::Name;
+
+/// A description of an item found in an inherent impl.
+// TODO: switch to a derived `Hash` instance
+#[derive(PartialEq, Eq)]
+pub struct InherentEntry {
+    /// The parent item's `DefId`.
+    parent_def_id: DefId,
+    /// The kind of the item.
+    kind: AssociatedKind,
+    /// The item's name.
+    name: Name,
+}
+
+use std::hash::{Hash, Hasher};
+impl Hash for InherentEntry {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.parent_def_id.hash(state);
+        match self.kind {
+            AssociatedKind::Method => 0,
+            AssociatedKind::Type => 1,
+            AssociatedKind::Const => 2,
+        }.hash(state);
+        self.name.hash(state);
+    }
+}
+
+/// A set of pairs of impl- and item `DefId` for inherent associated items.
+pub type InherentImplSet = BTreeSet<(DefId, DefId)>;
 
 /// A mapping from old to new `DefId`s, as well as associated definitions, if applicable.
 ///
@@ -36,6 +64,8 @@ pub struct IdMapping {
     reverse_mapping: HashMap<DefId, DefId>,
     /// Map of type parameters' `DefId`s and their definitions.
     type_params: HashMap<DefId, TypeParameterDef>,
+    /// Map of items from inherent impls' descriptors to the impls they are declared in.
+    inherent_items: HashMap<InherentEntry, InherentImplSet>,
 }
 
 impl IdMapping {
@@ -51,6 +81,7 @@ impl IdMapping {
             child_mapping: HashMap::new(),
             reverse_mapping: HashMap::new(),
             type_params: HashMap::new(),
+            inherent_items: HashMap::new(),
         }
     }
 
@@ -121,6 +152,23 @@ impl IdMapping {
     pub fn is_non_mapped_defaulted_type_param(&self, def_id: &DefId) -> bool {
         self.non_mapped_items.contains(def_id) &&
             self.type_params.get(def_id).map_or(false, |def| def.has_default)
+    }
+
+    /// Record an item from an inherent impl.
+    pub fn add_inherent_item(&mut self,
+                             parent_def_id: DefId,
+                             kind: AssociatedKind,
+                             name: Name,
+                             impl_def_id: DefId,
+                             item_def_id: DefId) {
+        self.inherent_items
+            .entry(InherentEntry {
+                parent_def_id: parent_def_id,
+                kind: kind,
+                name: name,
+            })
+            .or_insert_with(Default::default)
+            .insert((impl_def_id, item_def_id));
     }
 
     /// Get the new `DefId` associated with the given old one.

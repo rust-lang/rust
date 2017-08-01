@@ -420,6 +420,28 @@ fn diff_adts(changes: &mut ChangeSet,
             (None, None) => unreachable!(),
         }
     }
+
+    for impl_def_id in tcx.inherent_impls(old_def_id).iter() {
+        for item_def_id in tcx.associated_item_def_ids(*impl_def_id).iter() {
+            let item = tcx.associated_item(*item_def_id);
+            id_mapping.add_inherent_item(old_def_id,
+                                         item.kind,
+                                         item.name,
+                                         *impl_def_id,
+                                         *item_def_id);
+        }
+    }
+
+    for impl_def_id in tcx.inherent_impls(new_def_id).iter() {
+        for item_def_id in tcx.associated_item_def_ids(*impl_def_id).iter() {
+            let item = tcx.associated_item(*item_def_id);
+            id_mapping.add_inherent_item(new_def_id,
+                                         item.kind,
+                                         item.name,
+                                         *impl_def_id,
+                                         *item_def_id);
+        }
+    }
 }
 
 /// Given two trait items, perform structural checks.
