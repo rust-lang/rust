@@ -85,19 +85,25 @@ fn lval_context<'a, 'tcx, D>(
 /// Check if this function contains an unsafe block or is an unsafe function.
 fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> bool {
     use rustc::hir::intravisit::{self, Visitor};
+    use rustc::hir::map::Node;
 
     let fn_node_id = match src {
         MirSource::Fn(node_id) => node_id,
         _ => return false, // only functions can have unsafe
     };
-    let fn_item = tcx.hir.expect_item(fn_node_id);
 
     struct FindUnsafe<'b, 'tcx> where 'tcx : 'b {
         map: &'b hir::map::Map<'tcx>,
         found_unsafe: bool,
     }
     let mut finder = FindUnsafe { map: &tcx.hir, found_unsafe: false };
-    finder.visit_item(fn_item);
+    // Run the visitor on the NodeId we got.  Seems like there is no uniform way to do that.
+    match tcx.hir.find(fn_node_id) {
+        Some(Node::NodeItem(item)) => finder.visit_item(item),
+        Some(Node::NodeImplItem(item)) => finder.visit_impl_item(item),
+        Some(_) | None =>
+            bug!("Expected method or function, found {}", tcx.hir.node_to_string(fn_node_id)),
+    };
 
     impl<'b, 'tcx> Visitor<'tcx> for FindUnsafe<'b, 'tcx> {
         fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {

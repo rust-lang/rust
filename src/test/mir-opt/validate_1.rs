@@ -11,39 +11,42 @@
 // ignore-tidy-linelength
 // compile-flags: -Z verbose -Z mir-emit-validate=1
 
-fn foo(_x: &mut i32) {}
+struct Test;
+
+impl Test {
+    // Make sure we run the pass on a method, not just on bare functions.
+    fn foo(&self, _x: &mut i32) {}
+}
 
 fn main() {
     let mut x = 0;
-    foo(&mut x);
+    Test.foo(&mut x);
 }
 
 // END RUST SOURCE
-// START rustc.node4.EraseRegions.after.mir
-// fn foo(_1: &ReErased mut i32) -> () {
+// START rustc.node10.EraseRegions.after.mir
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(3) => validate_1/8cd878b::foo[0] }, BrAnon(0)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(5) => validate_1/8cd878b::{{impl}}[0]::foo[0] }, BrAnon(0)) Test, _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(5) => validate_1/8cd878b::{{impl}}[0]::foo[0] }, BrAnon(1)) mut i32]);
 //         return;
 //     }
-// }
-// END rustc.node4.EraseRegions.after.mir
-// START rustc.node11.EraseRegions.after.mir
+// END rustc.node10.EraseRegions.after.mir
+// START rustc.node21.EraseRegions.after.mir
 // fn main() -> () {
 //     bb0: {
-//         Validate(Suspend(ReScope(Misc(NodeId(20)))), [_1: i32]);
-//         _4 = &ReErased mut _1;
-//         Validate(Acquire, [(*_4): i32/ReScope(Misc(NodeId(20)))]);
-//         Validate(Suspend(ReScope(Misc(NodeId(20)))), [(*_4): i32/ReScope(Misc(NodeId(20)))]);
-//         _3 = &ReErased mut (*_4);
-//         Validate(Acquire, [(*_3): i32/ReScope(Misc(NodeId(20)))]);
-//         Validate(Release, [_3: &ReScope(Misc(NodeId(20))) mut i32]);
-//         _2 = const foo(_3) -> bb1;
+//         Validate(Suspend(ReScope(Misc(NodeId(30)))), [_1: i32]);
+//         _6 = &ReErased mut _1;
+//         Validate(Acquire, [(*_6): i32/ReScope(Misc(NodeId(30)))]);
+//         Validate(Suspend(ReScope(Misc(NodeId(30)))), [(*_6): i32/ReScope(Misc(NodeId(30)))]);
+//         _5 = &ReErased mut (*_6);
+//         Validate(Acquire, [(*_5): i32/ReScope(Misc(NodeId(30)))]);
+//         Validate(Release, [_3: &ReScope(Misc(NodeId(30))) Test, _5: &ReScope(Misc(NodeId(30))) mut i32]);
+//         _2 = const Test::foo(_3, _5) -> bb1;
 //     }
 //
 //     bb1: {
 //         Validate(Acquire, [_2: ()]);
-//         EndRegion(ReScope(Misc(NodeId(20))));
+//         EndRegion(ReScope(Misc(NodeId(30))));
 //         return;
 //     }
 // }
-// END rustc.node11.EraseRegions.after.mir
+// END rustc.node21.EraseRegions.after.mir
