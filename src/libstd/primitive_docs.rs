@@ -839,3 +839,104 @@ mod prim_usize { }
 /// locally known.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_ref { }
+
+#[doc(primitive = "fn")]
+//
+/// Function pointers, like `fn(usize) -> bool`.
+///
+/// *See also the traits [`Fn`], [`FnMut`], and [`FnOnce`].*
+///
+/// [`Fn`]: ops/trait.Fn.html
+/// [`FnMut`]: ops/trait.FnMut.html
+/// [`FnOnce`]: ops/trait.FnOnce.html
+///
+/// Plain function pointers are obtained by casting either plain functions, or closures that don't
+/// capture an environment:
+///
+/// ```
+/// fn add_one(x: usize) -> usize {
+///     x + 1
+/// }
+///
+/// let ptr: fn(usize) -> usize = add_one;
+/// assert_eq!(ptr(5), 6);
+///
+/// let clos: fn(usize) -> usize = |x| x + 5;
+/// assert_eq!(clos(5), 10);
+/// ```
+///
+/// In addition to varying based on their signature, function pointers come in two flavors: safe
+/// and unsafe. Plain `fn()` function pointers can only point to safe functions,
+/// while `unsafe fn()` function pointers can point to safe or unsafe functions.
+///
+/// ```
+/// fn add_one(x: usize) -> usize {
+///     x + 1
+/// }
+///
+/// unsafe fn add_one_unsafely(x: usize) -> usize {
+///     x + 1
+/// }
+///
+/// let safe_ptr: fn(usize) -> usize = add_one;
+///
+/// //ERROR: mismatched types: expected normal fn, found unsafe fn
+/// //let bad_ptr: fn(usize) -> usize = add_one_unsafely;
+///
+/// let unsafe_ptr: unsafe fn(usize) -> usize = add_one_unsafely;
+/// let really_safe_ptr: unsafe fn(usize) -> usize = add_one;
+/// ```
+///
+/// On top of that, function pointers can vary based on what ABI they use. This is achieved by
+/// adding the `extern` keyword to the type name, followed by the ABI in question. For example,
+/// `fn()` is different from `extern "C" fn()`, which itself is different from `extern "stdcall"
+/// fn()`, and so on for the various ABIs that Rust supports.  Non-`extern` functions have an ABI
+/// of `"Rust"`, and `extern` functions without an explicit ABI have an ABI of `"C"`. For more
+/// information, see [the nomicon's section on foreign calling conventions][nomicon-abi].
+///
+/// [nomicon-abi]: ../nomicon/ffi.html#foreign-calling-conventions
+///
+/// Extern function declarations with the "C" or "cdecl" ABIs can also be *variadic*, allowing them
+/// to be called with a variable number of arguments. Normal rust functions, even those with an
+/// `extern "ABI"`, cannot be variadic. For more information, see [the nomicon's section on
+/// variadic functions][nomicon-variadic].
+///
+/// [nomicon-variadic]: ../nomicon/ffi.html#variadic-functions
+///
+/// These markers can be combined, so `unsafe extern "stdcall" fn()` is a valid type.
+///
+/// Like references in rust, function pointers are assumed to not be null, so if you want to pass a
+/// function pointer over FFI and be able to accomodate null pointers, make your type
+/// `Option<fn()>` with your required signature.
+///
+/// Function pointers implement the following traits:
+///
+/// * [`Clone`]
+/// * [`PartialEq`]
+/// * [`Eq`]
+/// * [`PartialOrd`]
+/// * [`Ord`]
+/// * [`Hash`]
+/// * [`Pointer`]
+/// * [`Debug`]
+///
+/// [`Clone`]: clone/trait.Clone.html
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+/// [`Eq`]: cmp/trait.Eq.html
+/// [`PartialOrd`]: cmp/trait.PartialOrd.html
+/// [`Ord`]: cmp/trait.Ord.html
+/// [`Hash`]: hash/trait.Hash.html
+/// [`Pointer`]: fmt/trait.Pointer.html
+/// [`Debug`]: fmt/trait.Debug.html
+///
+/// Due to a temporary restriction in Rust's type system, these traits are only implemented on
+/// functions that take 12 arguments or less, with the `"Rust"` and `"C"` ABIs. In the future, this
+/// may change.
+///
+/// In addition, function pointers of *any* signature, ABI, or safety are [`Copy`], and all *safe*
+/// function pointers implement [`Fn`], [`FnMut`], and [`FnOnce`]. This works because these traits
+/// are specially known to the compiler.
+///
+/// [`Copy`]: marker/trait.Copy.html
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_fn { }
