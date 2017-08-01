@@ -1,4 +1,4 @@
-use rustc::ty;
+use rustc::{ty, mir};
 
 use super::{
     TlsKey, TlsEntry,
@@ -6,6 +6,8 @@ use super::{
     Pointer,
     Memory,
     Evaluator,
+    Lvalue,
+    StackPopCleanup, EvalContext,
 };
 
 pub trait MemoryExt<'tcx> {
@@ -14,6 +16,10 @@ pub trait MemoryExt<'tcx> {
     fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer>;
     fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx>;
     fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>>;
+}
+
+pub trait EvalContextExt<'tcx> {
+    fn run_tls_dtors(&mut self) -> EvalResult<'tcx>;
 }
 
 impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
@@ -90,5 +96,38 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
             }
         }
         return Ok(None);
+    }
+}
+
+impl<'a, 'tcx: 'a> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator> {
+    fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
+        let mut dtor = self.memory.fetch_tls_dtor(None)?;
+        // FIXME: replace loop by some structure that works with stepping
+        while let Some((instance, ptr, key)) = dtor {
+            trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
+            // TODO: Potentially, this has to support all the other possible instances?
+            // See eval_fn_call in interpret/terminator/mod.rs
+            let mir = self.load_mir(instance.def)?;
+            self.push_stack_frame(
+                instance,
+                mir.span,
+                mir,
+                Lvalue::undef(),
+                StackPopCleanup::None,
+            )?;
+            let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
+            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+            let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
+            self.write_ptr(dest, ptr, ty)?;
+
+            // step until out of stackframes
+            while self.step()? {}
+
+            dtor = match self.memory.fetch_tls_dtor(Some(key))? {
+                dtor @ Some(_) => dtor,
+                None => self.memory.fetch_tls_dtor(None)?,
+            };
+        }
+        Ok(())
     }
 }

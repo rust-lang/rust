@@ -50,13 +50,13 @@ pub trait Machine<'tcx>: Sized {
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 
-    /// Called when operating on the value of pointers.
+    /// Called for all binary operations except on float types.
     ///
     /// Returns `None` if the operation should be handled by the integer
-    /// op code
+    /// op code in order to share more code between machines
     ///
-    /// Returns a (value, overflowed) pair otherwise
-    fn ptr_op<'a>(
+    /// Returns a (value, overflowed) pair if the operation succeeded
+    fn try_ptr_op<'a>(
         ecx: &EvalContext<'a, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: PrimVal,

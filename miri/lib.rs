@@ -38,7 +38,7 @@ mod tls;
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
-use tls::MemoryExt as TlsMemoryExt;
+use tls::EvalContextExt as TlsEvalContextExt;
 
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -111,7 +111,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         }
 
         while ecx.step()? {}
-        ecx.finish()?;
+        ecx.run_tls_dtors()?;
         if let Some(cleanup_ptr) = cleanup_ptr {
             ecx.memory_mut().deallocate(cleanup_ptr, None, Kind::Stack)?;
         }
@@ -157,43 +157,6 @@ struct MemoryData<'tcx> {
     thread_local: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 }
 
-trait EvalContextExt<'tcx> {
-    fn finish(&mut self) -> EvalResult<'tcx>;
-}
-
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator> {
-    fn finish(&mut self) -> EvalResult<'tcx> {
-        let mut dtor = self.memory.fetch_tls_dtor(None)?;
-        // FIXME: replace loop by some structure that works with stepping
-        while let Some((instance, ptr, key)) = dtor {
-            trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
-            // TODO: Potentially, this has to support all the other possible instances?
-            // See eval_fn_call in interpret/terminator/mod.rs
-            let mir = self.load_mir(instance.def)?;
-            self.push_stack_frame(
-                instance,
-                mir.span,
-                mir,
-                Lvalue::undef(),
-                StackPopCleanup::None,
-            )?;
-            let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
-            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-            let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-            self.write_ptr(dest, ptr, ty)?;
-
-            // step until out of stackframes
-            while self.step()? {}
-
-            dtor = match self.memory.fetch_tls_dtor(Some(key))? {
-                dtor @ Some(_) => dtor,
-                None => self.memory.fetch_tls_dtor(None)?,
-            };
-        }
-        Ok(())
-    }
-}
-
 impl<'tcx> Machine<'tcx> for Evaluator {
     type Data = EvaluatorData;
     type MemoryData = MemoryData<'tcx>;
@@ -223,7 +186,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         ecx.call_intrinsic(instance, args, dest, dest_ty, dest_layout, target)
     }
 
-    fn ptr_op<'a>(
+    fn try_ptr_op<'a>(
         ecx: &rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: PrimVal,

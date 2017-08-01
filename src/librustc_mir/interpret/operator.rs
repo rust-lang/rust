@@ -153,7 +153,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         // I: Handle operations that support pointers
         if !left_kind.is_float() && !right_kind.is_float() {
-            if let Some(handled) = M::ptr_op(self, bin_op, left, left_ty, right, right_ty)? {
+            if let Some(handled) = M::try_ptr_op(self, bin_op, left, left_ty, right, right_ty)? {
                 return Ok(handled);
             }
         }

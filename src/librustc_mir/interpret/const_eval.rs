@@ -176,7 +176,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         Err(ConstEvalError::NeedsRfc("calling intrinsics".to_string()).into())
     }
 
-    fn ptr_op<'a>(
+    fn try_ptr_op<'a>(
         _ecx: &EvalContext<'a, 'tcx, Self>,
         _bin_op: mir::BinOp,
         left: PrimVal,
