@@ -21,16 +21,16 @@ error: inconsistent casing in hexadecimal literal
 error: integer type suffix should be separated by an underscore
   --> literals.rs:17:27
    |
-17 |     let fail_multi_zero = 000123usize;
-   |                           ^^^^^^^^^^^
+17 |     let fail_multi_zero = 000_123usize;
+   |                           ^^^^^^^^^^^^
    |
    = note: `-D unseparated-literal-suffix` implied by `-D warnings`
 
 error: this is a decimal constant
   --> literals.rs:17:27
    |
-17 |     let fail_multi_zero = 000123usize;
-   |                           ^^^^^^^^^^^
+17 |     let fail_multi_zero = 000_123usize;
+   |                           ^^^^^^^^^^^^
    |
    = note: `-D zero-prefixed-literal` implied by `-D warnings`
 help: if you mean to use a decimal constant, remove the `0` to remove confusion

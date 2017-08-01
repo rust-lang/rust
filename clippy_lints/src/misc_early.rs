@@ -108,7 +108,7 @@ declare_lint! {
 /// **What it does:** Warns if an integral constant literal starts with `0`.
 ///
 /// **Why is this bad?** In some languages (including the infamous C language and most of its
-/// familly), this marks an octal constant. In Rust however, this is a decimal constant. This could
+/// family), this marks an octal constant. In Rust however, this is a decimal constant. This could
 /// be confusing for both the writer and a reader of the constant.
 ///
 /// **Known problems:** None.
@@ -367,12 +367,12 @@ impl MiscEarly {
                     db.span_suggestion(
                         lit.span,
                         "if you mean to use a decimal constant, remove the `0` to remove confusion",
-                        src.trim_left_matches('0').to_string(),
+                        src.trim_left_matches(|c| c == '_' || c == '0').to_string(),
                     );
                     db.span_suggestion(
                         lit.span,
                         "if you mean to use an octal constant, use `0o`",
-                        format!("0o{}", src.trim_left_matches('0')),
+                        format!("0o{}", src.trim_left_matches(|c| c == '_' || c == '0')),
                     );
                 });
             }

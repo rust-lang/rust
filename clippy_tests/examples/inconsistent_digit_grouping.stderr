@@ -1,0 +1,45 @@
+error: digits grouped inconsistently by underscores
+ --> inconsistent_digit_grouping.rs:7:16
+  |
+7 |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+  |                ^^^^^^^^
+  |
+  = note: `-D inconsistent-digit-grouping` implied by `-D warnings`
+  = help: consider: 123_456
+
+error: digits grouped inconsistently by underscores
+ --> inconsistent_digit_grouping.rs:7:26
+  |
+7 |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+  |                          ^^^^^^^^^^
+  |
+  = help: consider: 12_345_678
+
+error: digits grouped inconsistently by underscores
+ --> inconsistent_digit_grouping.rs:7:38
+  |
+7 |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+  |                                      ^^^^^^^^
+  |
+  = help: consider: 1_234_567
+
+error: digits grouped inconsistently by underscores
+ --> inconsistent_digit_grouping.rs:7:48
+  |
+7 |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+  |                                                ^^^^^^^^^^^^^^
+  |
+  = help: consider: 1_234.567_8_f32
+
+error: digits grouped inconsistently by underscores
+ --> inconsistent_digit_grouping.rs:7:64
+  |
+7 |     let bad = (1_23_456, 1_234_5678, 1234_567, 1_234.5678_f32, 1.234_5678_f32);
+  |                                                                ^^^^^^^^^^^^^^
+  |
+  = help: consider: 1.234_567_8_f32
+
+error: aborting due to 5 previous errors
+
+
+To learn more, run the command again with --verbose.
