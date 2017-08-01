@@ -14,8 +14,6 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
-use syntax_pos::Span;
-use syntax::ast::NodeId;
 use rustc::ty::{self, TyCtxt, RegionKind};
 use rustc::hir;
 use rustc::mir::*;
@@ -84,9 +82,11 @@ fn lval_context<'a, 'tcx, D>(
 
 /// Check if this function contains an unsafe block or is an unsafe function.
 fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> bool {
-    use rustc::hir::intravisit::{self, Visitor};
+    use rustc::hir::intravisit::{self, Visitor, FnKind};
+    use rustc::hir::map::blocks::FnLikeNode;
     use rustc::hir::map::Node;
 
+    /// Decide if this is an unsafe block
     fn block_is_unsafe(block: &hir::Block) -> bool {
         use rustc::hir::BlockCheckMode::*;
 
@@ -98,77 +98,74 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
         }
     }
 
-    let fn_node_id = match src {
-        MirSource::Fn(node_id) => node_id,
+    /// Decide if this FnLike is a closure
+    fn fn_is_closure<'a>(fn_like: FnLikeNode<'a>) -> bool {
+        match fn_like.kind() {
+            FnKind::Closure(_) => true,
+            FnKind::Method(..) | FnKind::ItemFn(..) => false,
+        }
+    }
+
+    let fn_like = match src {
+        MirSource::Fn(node_id) => {
+            match FnLikeNode::from_node(tcx.hir.get(node_id)) {
+                Some(fn_like) => fn_like,
+                None => return false, // e.g. struct ctor shims -- such auto-generated code cannot
+                                      // contain unsafe.
+            }
+        },
         _ => return false, // only functions can have unsafe
     };
 
-    struct FindUnsafe<'b, 'tcx> where 'tcx : 'b {
-        map: &'b hir::map::Map<'tcx>,
-        found_unsafe: bool,
+    // Test if the function is marked unsafe.
+    if fn_like.unsafety() == hir::Unsafety::Unsafe {
+        return true;
     }
-    let mut finder = FindUnsafe { map: &tcx.hir, found_unsafe: false };
-    // Run the visitor on the NodeId we got.  Seems like there is no uniform way to do that.
-    match tcx.hir.find(fn_node_id) {
-        Some(Node::NodeItem(item)) => finder.visit_item(item),
-        Some(Node::NodeImplItem(item)) => finder.visit_impl_item(item),
-        Some(Node::NodeTraitItem(item)) => finder.visit_trait_item(item),
-        Some(Node::NodeExpr(item)) => {
-            // This is a closure.
-            // We also have to walk up the parents and check that there is no unsafe block
-            // there.
-            let mut cur = fn_node_id;
-            loop {
-                // Go further upwards.
-                let parent = tcx.hir.get_parent_node(cur);
-                if cur == parent {
+
+    // For closures, we need to walk up the parents and see if we are inside an unsafe fn or
+    // unsafe block.
+    if fn_is_closure(fn_like) {
+        let mut cur = fn_like.id();
+        loop {
+            // Go further upwards.
+            let parent = tcx.hir.get_parent_node(cur);
+            if cur == parent {
+                bug!("Closures muts be inside a non-closure fn_like");
+            }
+            cur = parent;
+            // Check if this is an unsafe block
+            match tcx.hir.find(cur) {
+                Some(Node::NodeExpr(&hir::Expr { node: hir::ExprBlock(ref block), ..})) => {
+                    if block_is_unsafe(&*block) {
+                        // Found an unsafe block, we can bail out here.
+                        return true;
+                    }
+                }
+                _ => {},
+            }
+            // Check if this is a non-closure fn_like, at which point we have to stop moving up
+            if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(cur)) {
+                if !fn_is_closure(fn_like) {
+                    if fn_like.unsafety() == hir::Unsafety::Unsafe {
+                        return true;
+                    }
                     break;
                 }
-                cur = parent;
-                // Check if this is a a block
-                match tcx.hir.find(cur) {
-                    Some(Node::NodeExpr(&hir::Expr { node: hir::ExprBlock(ref block), ..})) => {
-                        if block_is_unsafe(&*block) {
-                            // Found an unsafe block, we can bail out here.
-                            return true;
-                        }
-                    }
-                    _ => {},
-                }
             }
-            // Finally, visit the closure itself.
-            finder.visit_expr(item);
         }
-        Some(Node::NodeStructCtor(_)) => {
-            // Auto-generated tuple struct ctor.  Cannot contain unsafe code.
-            return false;
-        },
-        Some(_) | None =>
-            bug!("Expected function, method or closure, found {}",
-                 tcx.hir.node_to_string(fn_node_id)),
-    };
+    }
 
-    impl<'b, 'tcx> Visitor<'tcx> for FindUnsafe<'b, 'tcx> {
+    // Visit the entire body of the function and check for unsafe blocks in there
+    struct FindUnsafe {
+        found_unsafe: bool,
+    }
+    let mut finder = FindUnsafe { found_unsafe: false };
+    // Run the visitor on the NodeId we got.  Seems like there is no uniform way to do that.
+    finder.visit_body(tcx.hir.body(fn_like.body()));
+
+    impl<'tcx> Visitor<'tcx> for FindUnsafe {
         fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-            intravisit::NestedVisitorMap::OnlyBodies(self.map)
-        }
-
-        fn visit_fn(&mut self, fk: intravisit::FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                    b: hir::BodyId, s: Span, id: NodeId)
-        {
-            assert!(!self.found_unsafe, "We should never see a fn when we already saw unsafe");
-            let is_unsafe = match fk {
-                intravisit::FnKind::ItemFn(_, _, unsafety, ..) => unsafety == hir::Unsafety::Unsafe,
-                intravisit::FnKind::Method(_, sig, ..) => sig.unsafety == hir::Unsafety::Unsafe,
-                intravisit::FnKind::Closure(_) => false,
-            };
-            if is_unsafe {
-                // This is unsafe, and we are done.
-                self.found_unsafe = true;
-            } else {
-                // Go on searching.
-                intravisit::walk_fn(self, fk, fd, b, s, id)
-            }
+            intravisit::NestedVisitorMap::None
         }
 
         fn visit_block(&mut self, b: &'tcx hir::Block) {
