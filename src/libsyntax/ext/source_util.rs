@@ -183,13 +183,14 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
 // resolve a file-system path to an absolute file-system path (if it
 // isn't already)
 fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: &Path) -> PathBuf {
-    // NB: relative paths are resolved relative to the compilation unit
+    // Relative paths are resolved relative to the file in which they are found
+    // after macro expansion (that is, they are unhygienic).
     if !arg.is_absolute() {
         let callsite = sp.source_callsite();
-        let mut cu = PathBuf::from(&cx.codemap().span_to_filename(callsite));
-        cu.pop();
-        cu.push(arg);
-        cu
+        let mut path = PathBuf::from(&cx.codemap().span_to_filename(callsite));
+        path.pop();
+        path.push(arg);
+        path
     } else {
         arg.to_path_buf()
     }
