@@ -14,7 +14,7 @@ lintname_re = re.compile(r'''pub\s+([A-Z_][A-Z_0-9]*)''')
 level_re = re.compile(r'''(Forbid|Deny|Warn|Allow)''')
 conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
 confvar_re = re.compile(
-    r'''/// Lint: (\w+). (.*).*\n\s*\("([^"]*)",\s+(?:[^,]*),\s+([^=]*)\s+=>\s+(.*)\),''', re.MULTILINE)
+    r'''/// Lint: (\w+). (.*).*\n\s*\([^,]+,\s+"([^"]+)",\s+([^=\)]+)=>\s+(.*)\),''', re.MULTILINE)
 
 
 def parse_lints(lints, filepath):
