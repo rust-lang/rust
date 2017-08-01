@@ -33,7 +33,7 @@ mod confirm;
 pub mod probe;
 mod suggest;
 
-use self::probe::IsSuggestion;
+use self::probe::{IsSuggestion, ProbeScope};
 
 #[derive(Clone, Copy, Debug)]
 pub struct MethodCallee<'tcx> {
@@ -106,7 +106,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          -> bool {
         let mode = probe::Mode::MethodCall;
         match self.probe_for_name(span, mode, method_name, IsSuggestion(false),
-                                  self_ty, call_expr_id) {
+                                  self_ty, call_expr_id, ProbeScope::TraitsInScope) {
             Ok(..) => true,
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
@@ -142,10 +142,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                call_expr,
                self_expr);
 
-        let mode = probe::Mode::MethodCall;
-        let self_ty = self.resolve_type_vars_if_possible(&self_ty);
-        let pick = self.probe_for_name(span, mode, segment.name, IsSuggestion(false),
-                                       self_ty, call_expr.id)?;
+        let pick = self.lookup_probe(
+            span,
+            segment.name,
+            self_ty,
+            call_expr,
+            ProbeScope::TraitsInScope
+        )?;
 
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
@@ -155,12 +158,53 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.check_stability(pick.item.def_id, call_expr.id, span);
 
-        Ok(self.confirm_method(span,
-                               self_expr,
-                               call_expr,
-                               self_ty,
-                               pick,
-                               segment))
+        let result = self.confirm_method(span,
+                                         self_expr,
+                                         call_expr,
+                                         self_ty,
+                                         pick.clone(),
+                                         segment);
+
+        if result.rerun {
+            // We probe again, taking all traits into account (not only those in scope).
+            if let Ok(new_pick) = self.lookup_probe(span,
+                                                    segment.name,
+                                                    self_ty,
+                                                    call_expr,
+                                                    ProbeScope::AllTraits) {
+                // If we find a different result, the caller probably forgot to import the trait.
+                // We span an error with an appropriate help message.
+                if new_pick != pick {
+                    let error = MethodError::NoMatch(
+                        NoMatchData::new(Vec::new(),
+                                         Vec::new(),
+                                         vec![new_pick.item.container.id()],
+                                         probe::Mode::MethodCall)
+                    );
+                    self.report_method_error(span,
+                                             self_ty,
+                                             segment.name,
+                                             Some(self_expr),
+                                             error,
+                                             None);
+                }
+            }
+        }
+
+        Ok(result.callee)
+    }
+
+    fn lookup_probe(&self,
+                    span: Span,
+                    method_name: ast::Name,
+                    self_ty: ty::Ty<'tcx>,
+                    call_expr: &'gcx hir::Expr,
+                    scope: ProbeScope)
+                    -> probe::PickResult<'tcx> {
+        let mode = probe::Mode::MethodCall;
+        let self_ty = self.resolve_type_vars_if_possible(&self_ty);
+        self.probe_for_name(span, mode, method_name, IsSuggestion(false),
+                            self_ty, call_expr.id, scope)
     }
 
     /// `lookup_method_in_trait` is used for overloaded operators.
@@ -299,7 +343,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         -> Result<Def, MethodError<'tcx>> {
         let mode = probe::Mode::Path;
         let pick = self.probe_for_name(span, mode, method_name, IsSuggestion(false),
-                                       self_ty, expr_id)?;
+                                       self_ty, expr_id, ProbeScope::TraitsInScope)?;
 
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
