@@ -29,8 +29,8 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::Node;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_data_structures::fx::FxHashSet;
 
-use std::collections::HashSet;
 use std::path::Path;
 
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
@@ -75,7 +75,7 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     // we only write one macro def per unique macro definition, and
     // one macro use per unique callsite span.
     // mac_defs: HashSet<Span>,
-    macro_calls: HashSet<Span>,
+    macro_calls: FxHashSet<Span>,
 }
 
 impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
@@ -91,7 +91,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             span: span_utils.clone(),
             cur_scope: CRATE_NODE_ID,
             // mac_defs: HashSet::new(),
-            macro_calls: HashSet::new(),
+            macro_calls: FxHashSet(),
         }
     }
 
