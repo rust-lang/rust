@@ -23,6 +23,11 @@ pub struct DepGraphEdges {
     edges: FxHashSet<(DepNodeIndex, DepNodeIndex)>,
     task_stack: Vec<OpenTask>,
     forbidden_edge: Option<EdgeFilter>,
+
+    // A set to help assert that no two tasks use the same DepNode. This is a
+    // temporary measure. Once we load the previous dep-graph as readonly, this
+    // check will fall out of the graph implementation naturally.
+    opened_once: FxHashSet<DepNode>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -80,6 +85,7 @@ impl DepGraphEdges {
             edges: FxHashSet(),
             task_stack: Vec::new(),
             forbidden_edge,
+            opened_once: FxHashSet(),
         }
     }
 
@@ -97,6 +103,10 @@ impl DepGraphEdges {
     }
 
     pub fn push_task(&mut self, key: DepNode) {
+        if !self.opened_once.insert(key) {
+            bug!("Re-opened node {:?}", key)
+        }
+
         self.task_stack.push(OpenTask::Regular {
             node: key,
             reads: Vec::new(),

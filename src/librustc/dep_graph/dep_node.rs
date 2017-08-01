@@ -394,6 +394,7 @@ define_dep_nodes!( <'tcx>
     // Represents different phases in the compiler.
     [] RegionMaps(DefId),
     [] Coherence,
+    [] CoherenceInherentImplOverlapCheck,
     [] Resolve,
     [] CoherenceCheckTrait(DefId),
     [] PrivacyAccessLevels(CrateNum),
