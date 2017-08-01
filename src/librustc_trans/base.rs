@@ -23,29 +23,30 @@
 //!     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
 //!     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-use super::CrateTranslation;
 use super::ModuleLlvm;
 use super::ModuleSource;
 use super::ModuleTranslation;
+use super::ModuleKind;
 
 use assert_module_sources;
 use back::link;
 use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
+use back::write::{self, OngoingCrateTranslation};
 use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use metadata;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
-use rustc::util::common::time;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
+use rustc::util::common::{time, print_time_passes_entry};
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
 use rustc::session::Session;
-use rustc_incremental::IncrementalHashesMap;
+use rustc_incremental::{self, IncrementalHashesMap};
 use abi;
 use allocator;
 use mir::lvalue::LvalueRef;
@@ -68,6 +69,7 @@ use mir;
 use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit};
 use symbol_names_test;
+use time_graph;
 use trans_item::{TransItem, DefPathBasedNames};
 use type_::Type;
 use type_of;
@@ -78,6 +80,7 @@ use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::str;
 use std::sync::Arc;
+use std::time::{Instant, Duration};
 use std::i32;
 use syntax_pos::Span;
 use syntax::attr;
@@ -647,23 +650,29 @@ pub fn set_link_section(ccx: &CrateContext,
     }
 }
 
+// check for the #[rustc_error] annotation, which forces an
+// error in trans. This is used to write compile-fail tests
+// that actually test that compilation succeeds without
+// reporting an error.
+fn check_for_rustc_errors_attr(tcx: TyCtxt) {
+    if let Some((id, span)) = *tcx.sess.entry_fn.borrow() {
+        let main_def_id = tcx.hir.local_def_id(id);
+
+        if tcx.has_attr(main_def_id, "rustc_error") {
+            tcx.sess.span_fatal(span, "compilation successful");
+        }
+    }
+}
+
 /// Create the `main` function which will initialise the rust runtime and call
 /// users main function.
-pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
+fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
         Some((id, span)) => {
             (ccx.tcx().hir.local_def_id(id), span)
         }
         None => return,
     };
-
-    // check for the #[rustc_error] annotation, which forces an
-    // error in trans. This is used to write compile-fail tests
-    // that actually test that compilation succeeds without
-    // reporting an error.
-    if ccx.tcx().has_attr(main_def_id, "rustc_error") {
-        ccx.tcx().sess.span_fatal(span, "compilation successful");
-    }
 
     let instance = Instance::mono(ccx.tcx(), main_def_id);
 
@@ -728,7 +737,8 @@ fn contains_null(s: &str) -> bool {
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                             link_meta: &LinkMeta,
                             exported_symbols: &NodeSet)
-                            -> (ContextRef, ModuleRef, EncodedMetadata) {
+                            -> (ContextRef, ModuleRef,
+                                EncodedMetadata, EncodedMetadataHashes) {
     use std::io::Write;
     use flate2::Compression;
     use flate2::write::DeflateEncoder;
@@ -758,15 +768,18 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     }).max().unwrap();
 
     if kind == MetadataKind::None {
-        return (metadata_llcx, metadata_llmod, EncodedMetadata::new());
+        return (metadata_llcx,
+                metadata_llmod,
+                EncodedMetadata::new(),
+                EncodedMetadataHashes::new());
     }
 
     let cstore = &tcx.sess.cstore;
-    let metadata = cstore.encode_metadata(tcx,
-                                          &link_meta,
-                                          exported_symbols);
+    let (metadata, hashes) = cstore.encode_metadata(tcx,
+                                                    &link_meta,
+                                                    exported_symbols);
     if kind == MetadataKind::Uncompressed {
-        return (metadata_llcx, metadata_llmod, metadata);
+        return (metadata_llcx, metadata_llmod, metadata, hashes);
     }
 
     assert!(kind == MetadataKind::Compressed);
@@ -794,7 +807,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let directive = CString::new(directive).unwrap();
         llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return (metadata_llcx, metadata_llmod, metadata);
+    return (metadata_llcx, metadata_llmod, metadata, hashes);
 }
 
 // Create a `__imp_<symbol> = &symbol` global for every public static `symbol`.
@@ -803,7 +816,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 // code references on its own.
 // See #26591, #27438
 fn create_imps(sess: &Session,
-               llvm_modules: &[ModuleLlvm]) {
+               llvm_module: &ModuleLlvm) {
     // The x86 ABI seems to require that leading underscores are added to symbol
     // names, so we need an extra underscore on 32-bit. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
@@ -814,28 +827,26 @@ fn create_imps(sess: &Session,
         "\x01__imp_"
     };
     unsafe {
-        for ll in llvm_modules {
-            let exported: Vec<_> = iter_globals(ll.llmod)
-                                       .filter(|&val| {
-                                           llvm::LLVMRustGetLinkage(val) ==
-                                           llvm::Linkage::ExternalLinkage &&
-                                           llvm::LLVMIsDeclaration(val) == 0
-                                       })
-                                       .collect();
+        let exported: Vec<_> = iter_globals(llvm_module.llmod)
+                                   .filter(|&val| {
+                                       llvm::LLVMRustGetLinkage(val) ==
+                                       llvm::Linkage::ExternalLinkage &&
+                                       llvm::LLVMIsDeclaration(val) == 0
+                                   })
+                                   .collect();
 
-            let i8p_ty = Type::i8p_llcx(ll.llcx);
-            for val in exported {
-                let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                let mut imp_name = prefix.as_bytes().to_vec();
-                imp_name.extend(name.to_bytes());
-                let imp_name = CString::new(imp_name).unwrap();
-                let imp = llvm::LLVMAddGlobal(ll.llmod,
-                                              i8p_ty.to_ref(),
-                                              imp_name.as_ptr() as *const _);
-                let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
-                llvm::LLVMSetInitializer(imp, init);
-                llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
-            }
+        let i8p_ty = Type::i8p_llcx(llvm_module.llcx);
+        for val in exported {
+            let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
+            let mut imp_name = prefix.as_bytes().to_vec();
+            imp_name.extend(name.to_bytes());
+            let imp_name = CString::new(imp_name).unwrap();
+            let imp = llvm::LLVMAddGlobal(llvm_module.llmod,
+                                          i8p_ty.to_ref(),
+                                          imp_name.as_ptr() as *const _);
+            let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
+            llvm::LLVMSetInitializer(imp, init);
+            llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }
 }
@@ -920,27 +931,26 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              analysis: ty::CrateAnalysis,
-                             incremental_hashes_map: &IncrementalHashesMap,
+                             incremental_hashes_map: IncrementalHashesMap,
                              output_filenames: &OutputFilenames)
-                             -> CrateTranslation {
+                             -> OngoingCrateTranslation {
+    check_for_rustc_errors_attr(tcx);
+
     // Be careful with this krate: obviously it gives access to the
     // entire contents of the krate. So if you push any subtasks of
     // `TransCrate`, you need to be careful to register "reads" of the
     // particular items that will be processed.
     let krate = tcx.hir.krate();
-
     let ty::CrateAnalysis { reachable, .. } = analysis;
-
     let check_overflow = tcx.sess.overflow_checks();
-
-    let link_meta = link::build_link_meta(incremental_hashes_map);
-
+    let link_meta = link::build_link_meta(&incremental_hashes_map);
     let exported_symbol_node_ids = find_exported_symbols(tcx, &reachable);
+
     let shared_ccx = SharedCrateContext::new(tcx,
                                              check_overflow,
                                              output_filenames);
     // Translate the metadata.
-    let (metadata_llcx, metadata_llmod, metadata) =
+    let (metadata_llcx, metadata_llmod, metadata, metadata_incr_hashes) =
         time(tcx.sess.time_passes(), "write metadata", || {
             write_metadata(tcx, &link_meta, &exported_symbol_node_ids)
         });
@@ -952,27 +962,44 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             llcx: metadata_llcx,
             llmod: metadata_llmod,
         }),
+        kind: ModuleKind::Metadata,
     };
 
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
+    let time_graph = if tcx.sess.opts.debugging_opts.trans_time_graph {
+        Some(time_graph::TimeGraph::new())
+    } else {
+        None
+    };
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
        !tcx.sess.opts.output_types.should_trans() {
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
-        return CrateTranslation {
-            crate_name: tcx.crate_name(LOCAL_CRATE),
-            modules: vec![],
-            metadata_module: metadata_module,
-            allocator_module: None,
-            link: link_meta,
-            metadata: metadata,
-            exported_symbols: empty_exported_symbols,
-            no_builtins: no_builtins,
-            linker_info: linker_info,
-            windows_subsystem: None,
-        };
+        let ongoing_translation = write::start_async_translation(
+            tcx.sess,
+            output_filenames,
+            time_graph.clone(),
+            tcx.crate_name(LOCAL_CRATE),
+            link_meta,
+            metadata,
+            Arc::new(empty_exported_symbols),
+            no_builtins,
+            None,
+            linker_info,
+            false);
+
+        ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
+
+        assert_and_save_dep_graph(tcx,
+                                  incremental_hashes_map,
+                                  metadata_incr_hashes,
+                                  link_meta);
+
+        ongoing_translation.check_for_errors(tcx.sess);
+
+        return ongoing_translation;
     }
 
     let exported_symbols = Arc::new(ExportedSymbols::compute(tcx,
@@ -983,12 +1010,110 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (translation_items, codegen_units) =
         collect_and_partition_translation_items(&shared_ccx, &exported_symbols);
 
+    assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
+
+    let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
+    let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
+                                                       "windows_subsystem");
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != "windows" && subsystem != "console" {
+            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
+                                     `windows` and `console` are allowed",
+                                    subsystem));
+        }
+        subsystem.to_string()
+    });
+
+    let no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
+        (tcx.sess.target.target.options.no_integrated_as &&
+         (output_filenames.outputs.contains_key(&OutputType::Object) ||
+          output_filenames.outputs.contains_key(&OutputType::Exe)));
+
+    let ongoing_translation = write::start_async_translation(
+        tcx.sess,
+        output_filenames,
+        time_graph.clone(),
+        tcx.crate_name(LOCAL_CRATE),
+        link_meta,
+        metadata,
+        exported_symbols.clone(),
+        no_builtins,
+        windows_subsystem,
+        linker_info,
+        no_integrated_as);
+
+    // Translate an allocator shim, if any
+    //
+    // If LTO is enabled and we've got some previous LLVM module we translated
+    // above, then we can just translate directly into that LLVM module. If not,
+    // however, we need to create a separate module and trans into that. Note
+    // that the separate translation is critical for the standard library where
+    // the rlib's object file doesn't have allocator functions but the dylib
+    // links in an object file that has allocator functions. When we're
+    // compiling a final LTO artifact, though, there's no need to worry about
+    // this as we're not working with this dual "rlib/dylib" functionality.
+    let allocator_module = if tcx.sess.lto() {
+        None
+    } else if let Some(kind) = tcx.sess.allocator_kind.get() {
+        unsafe {
+            let (llcx, llmod) =
+                context::create_context_and_module(tcx.sess, "allocator");
+            let modules = ModuleLlvm {
+                llmod: llmod,
+                llcx: llcx,
+            };
+            time(tcx.sess.time_passes(), "write allocator module", || {
+                allocator::trans(tcx, &modules, kind)
+            });
+
+            Some(ModuleTranslation {
+                name: link::ALLOCATOR_MODULE_NAME.to_string(),
+                symbol_name_hash: 0, // we always rebuild allocator shims
+                source: ModuleSource::Translated(modules),
+                kind: ModuleKind::Allocator,
+            })
+        }
+    } else {
+        None
+    };
+
+    if let Some(allocator_module) = allocator_module {
+        ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, allocator_module, false);
+    }
+
+    let codegen_unit_count = codegen_units.len();
+    ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess,
+                                                             metadata_module,
+                                                             codegen_unit_count == 0);
+
     let translation_items = Arc::new(translation_items);
 
     let mut all_stats = Stats::default();
-    let modules: Vec<ModuleTranslation> = codegen_units
-        .into_iter()
-        .map(|cgu| {
+    let mut module_dispositions = tcx.sess.opts.incremental.as_ref().map(|_| Vec::new());
+
+    // We sort the codegen units by size. This way we can schedule work for LLVM
+    // a bit more efficiently. Note that "size" is defined rather crudely at the
+    // moment as it is just the number of TransItems in the CGU, not taking into
+    // account the size of each TransItem.
+    let codegen_units = {
+        let mut codegen_units = codegen_units;
+        codegen_units.sort_by_key(|cgu| -(cgu.items().len() as isize));
+        codegen_units
+    };
+
+    let mut total_trans_time = Duration::new(0, 0);
+
+    for (cgu_index, cgu) in codegen_units.into_iter().enumerate() {
+        ongoing_translation.wait_for_signal_to_translate_item();
+        ongoing_translation.check_for_errors(tcx.sess);
+
+        let start_time = Instant::now();
+
+        let module = {
+            let _timing_guard = time_graph
+                .as_ref()
+                .map(|time_graph| time_graph.start(write::TRANS_WORKER_TIMELINE,
+                                                   write::TRANS_WORK_PACKAGE_KIND));
             let dep_node = cgu.work_product_dep_node();
             let ((stats, module), _) =
                 tcx.dep_graph.with_task(dep_node,
@@ -998,9 +1123,41 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                             exported_symbols.clone())),
                                         module_translation);
             all_stats.extend(stats);
+
+            if let Some(ref mut module_dispositions) = module_dispositions {
+                module_dispositions.push(module.disposition());
+            }
+
             module
-        })
-        .collect();
+        };
+
+        let time_to_translate = Instant::now().duration_since(start_time);
+
+        // We assume that the cost to run LLVM on a CGU is proportional to
+        // the time we needed for translating it.
+        let cost = time_to_translate.as_secs() * 1_000_000_000 +
+                   time_to_translate.subsec_nanos() as u64;
+
+        total_trans_time += time_to_translate;
+
+        let is_last_cgu = (cgu_index + 1) == codegen_unit_count;
+
+        ongoing_translation.submit_translated_module_to_llvm(tcx.sess,
+                                                             module,
+                                                             cost,
+                                                             is_last_cgu);
+        ongoing_translation.check_for_errors(tcx.sess);
+    }
+
+    // Since the main thread is sometimes blocked during trans, we keep track
+    // -Ztime-passes output manually.
+    print_time_passes_entry(tcx.sess.time_passes(),
+                            "translate to LLVM IR",
+                            total_trans_time);
+
+    if let Some(module_dispositions) = module_dispositions {
+        assert_module_sources::assert_module_sources(tcx, &module_dispositions);
+    }
 
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
@@ -1044,7 +1201,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let module = ModuleTranslation {
                 name: cgu_name,
                 symbol_name_hash,
-                source: ModuleSource::Preexisting(buf.clone())
+                source: ModuleSource::Preexisting(buf.clone()),
+                kind: ModuleKind::Regular,
             };
             return (Stats::default(), module);
         }
@@ -1099,20 +1257,39 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 debuginfo::finalize(&ccx);
             }
 
+            let llvm_module = ModuleLlvm {
+                llcx: ccx.llcx(),
+                llmod: ccx.llmod(),
+            };
+
+            // In LTO mode we inject the allocator shim into the existing
+            // module.
+            if ccx.sess().lto() {
+                if let Some(kind) = ccx.sess().allocator_kind.get() {
+                    time(ccx.sess().time_passes(), "write allocator module", || {
+                        unsafe {
+                            allocator::trans(ccx.tcx(), &llvm_module, kind);
+                        }
+                    });
+                }
+            }
+
+            // Adjust exported symbols for MSVC dllimport
+            if ccx.sess().target.target.options.is_like_msvc &&
+               ccx.sess().crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
+                create_imps(ccx.sess(), &llvm_module);
+            }
+
             ModuleTranslation {
                 name: cgu_name,
                 symbol_name_hash,
-                source: ModuleSource::Translated(ModuleLlvm {
-                    llcx: ccx.llcx(),
-                    llmod: ccx.llmod(),
-                })
+                source: ModuleSource::Translated(llvm_module),
+                kind: ModuleKind::Regular,
             }
         };
 
         (lcx.into_stats(), module)
     }
-
-    assert_module_sources::assert_module_sources(tcx, &modules);
 
     symbol_names_test::report_symbol_names(tcx);
 
@@ -1144,85 +1321,29 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let sess = shared_ccx.sess();
+    ongoing_translation.check_for_errors(tcx.sess);
 
-    // Get the list of llvm modules we created. We'll do a few wacky
-    // transforms on them now.
+    assert_and_save_dep_graph(tcx,
+                              incremental_hashes_map,
+                              metadata_incr_hashes,
+                              link_meta);
+    ongoing_translation
+}
 
-    let llvm_modules: Vec<_> =
-        modules.iter()
-               .filter_map(|module| match module.source {
-                   ModuleSource::Translated(llvm) => Some(llvm),
-                   _ => None,
-               })
-               .collect();
+fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       incremental_hashes_map: IncrementalHashesMap,
+                                       metadata_incr_hashes: EncodedMetadataHashes,
+                                       link_meta: LinkMeta) {
+    time(tcx.sess.time_passes(),
+         "assert dep graph",
+         || rustc_incremental::assert_dep_graph(tcx));
 
-    if sess.target.target.options.is_like_msvc &&
-       sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-        create_imps(sess, &llvm_modules);
-    }
-
-    // Translate an allocator shim, if any
-    //
-    // If LTO is enabled and we've got some previous LLVM module we translated
-    // above, then we can just translate directly into that LLVM module. If not,
-    // however, we need to create a separate module and trans into that. Note
-    // that the separate translation is critical for the standard library where
-    // the rlib's object file doesn't have allocator functions but the dylib
-    // links in an object file that has allocator functions. When we're
-    // compiling a final LTO artifact, though, there's no need to worry about
-    // this as we're not working with this dual "rlib/dylib" functionality.
-    let allocator_module = tcx.sess.allocator_kind.get().and_then(|kind| unsafe {
-        if sess.lto() && llvm_modules.len() > 0 {
-            time(tcx.sess.time_passes(), "write allocator module", || {
-                allocator::trans(tcx, &llvm_modules[0], kind)
-            });
-            None
-        } else {
-            let (llcx, llmod) =
-                context::create_context_and_module(tcx.sess, "allocator");
-            let modules = ModuleLlvm {
-                llmod: llmod,
-                llcx: llcx,
-            };
-            time(tcx.sess.time_passes(), "write allocator module", || {
-                allocator::trans(tcx, &modules, kind)
-            });
-
-            Some(ModuleTranslation {
-                name: link::ALLOCATOR_MODULE_NAME.to_string(),
-                symbol_name_hash: 0, // we always rebuild allocator shims
-                source: ModuleSource::Translated(modules),
-            })
-        }
-    });
-
-    let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
-
-    let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
-                                                       "windows_subsystem");
-    let windows_subsystem = subsystem.map(|subsystem| {
-        if subsystem != "windows" && subsystem != "console" {
-            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
-                                     `windows` and `console` are allowed",
-                                    subsystem));
-        }
-        subsystem.to_string()
-    });
-
-    CrateTranslation {
-        crate_name: tcx.crate_name(LOCAL_CRATE),
-        modules: modules,
-        metadata_module: metadata_module,
-        allocator_module: allocator_module,
-        link: link_meta,
-        metadata: metadata,
-        exported_symbols: Arc::try_unwrap(exported_symbols)
-            .expect("There's still a reference to exported_symbols?"),
-        no_builtins: no_builtins,
-        linker_info: linker_info,
-        windows_subsystem: windows_subsystem,
-    }
+    time(tcx.sess.time_passes(),
+         "serialize dep graph",
+         || rustc_incremental::save_dep_graph(tcx,
+                                              incremental_hashes_map,
+                                              &metadata_incr_hashes,
+                                              link_meta.crate_hash));
 }
 
 #[inline(never)] // give this a place in the profiler

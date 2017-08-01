@@ -36,9 +36,9 @@
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
+use std::sync::Arc;
 
 extern crate flate2;
-extern crate crossbeam;
 extern crate libc;
 extern crate owning_ref;
 #[macro_use] extern crate rustc;
@@ -54,6 +54,7 @@ extern crate rustc_const_math;
 extern crate rustc_bitflags;
 extern crate rustc_demangle;
 extern crate jobserver;
+extern crate num_cpus;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -124,13 +125,13 @@ mod mir;
 mod monomorphize;
 mod partitioning;
 mod symbol_names_test;
+mod time_graph;
 mod trans_item;
 mod tvec;
 mod type_;
 mod type_of;
 mod value;
 
-#[derive(Clone)]
 pub struct ModuleTranslation {
     /// The name of the module. When the crate may be saved between
     /// compilations, incremental compilation requires that name be
@@ -140,6 +141,58 @@ pub struct ModuleTranslation {
     pub name: String,
     pub symbol_name_hash: u64,
     pub source: ModuleSource,
+    pub kind: ModuleKind,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ModuleKind {
+    Regular,
+    Metadata,
+    Allocator,
+}
+
+impl ModuleTranslation {
+    pub fn into_compiled_module(self, emit_obj: bool, emit_bc: bool) -> CompiledModule {
+        let pre_existing = match self.source {
+            ModuleSource::Preexisting(_) => true,
+            ModuleSource::Translated(_) => false,
+        };
+
+        CompiledModule {
+            name: self.name.clone(),
+            kind: self.kind,
+            symbol_name_hash: self.symbol_name_hash,
+            pre_existing,
+            emit_obj,
+            emit_bc,
+        }
+    }
+}
+
+impl Drop for ModuleTranslation {
+    fn drop(&mut self) {
+        match self.source {
+            ModuleSource::Preexisting(_) => {
+                // Nothing to dispose.
+            },
+            ModuleSource::Translated(llvm) => {
+                unsafe {
+                    llvm::LLVMDisposeModule(llvm.llmod);
+                    llvm::LLVMContextDispose(llvm.llcx);
+                }
+            },
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct CompiledModule {
+    pub name: String,
+    pub kind: ModuleKind,
+    pub symbol_name_hash: u64,
+    pub pre_existing: bool,
+    pub emit_obj: bool,
+    pub emit_bc: bool,
 }
 
 #[derive(Clone)]
@@ -151,7 +204,7 @@ pub enum ModuleSource {
     Translated(ModuleLlvm),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ModuleLlvm {
     pub llcx: llvm::ContextRef,
     pub llmod: llvm::ModuleRef,
@@ -162,12 +215,12 @@ unsafe impl Sync for ModuleTranslation { }
 
 pub struct CrateTranslation {
     pub crate_name: Symbol,
-    pub modules: Vec<ModuleTranslation>,
-    pub metadata_module: ModuleTranslation,
-    pub allocator_module: Option<ModuleTranslation>,
+    pub modules: Vec<CompiledModule>,
+    pub metadata_module: CompiledModule,
+    pub allocator_module: Option<CompiledModule>,
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
-    pub exported_symbols: back::symbol_export::ExportedSymbols,
+    pub exported_symbols: Arc<back::symbol_export::ExportedSymbols>,
     pub no_builtins: bool,
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo

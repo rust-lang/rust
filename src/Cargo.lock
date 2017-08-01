@@ -1518,11 +1518,11 @@ dependencies = [
 name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
- "crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "jobserver 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc-demangle 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",

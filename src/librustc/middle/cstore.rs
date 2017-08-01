@@ -50,7 +50,7 @@ pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct LinkMeta {
     pub crate_hash: Svh,
 }
@@ -161,15 +161,13 @@ pub struct ExternCrate {
 }
 
 pub struct EncodedMetadata {
-    pub raw_data: Vec<u8>,
-    pub hashes: EncodedMetadataHashes,
+    pub raw_data: Vec<u8>
 }
 
 impl EncodedMetadata {
     pub fn new() -> EncodedMetadata {
         EncodedMetadata {
             raw_data: Vec::new(),
-            hashes: EncodedMetadataHashes::new(),
         }
     }
 }
@@ -294,7 +292,7 @@ pub trait CrateStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> EncodedMetadata;
+                                 -> (EncodedMetadata, EncodedMetadataHashes);
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -424,7 +422,7 @@ impl CrateStore for DummyCrateStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> EncodedMetadata {
+                                 -> (EncodedMetadata, EncodedMetadataHashes) {
         bug!("encode_metadata")
     }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
