@@ -174,29 +174,16 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn compute_symbol_name_hash<'a>(&self,
-                                        scx: &SharedCrateContext<'a, 'tcx>,
-                                        exported_symbols: &ExportedSymbols)
+                                        scx: &SharedCrateContext<'a, 'tcx>)
                                         -> u64 {
         let mut state = IchHasher::new();
-        let exported_symbols = exported_symbols.local_exports();
         let all_items = self.items_in_deterministic_order(scx.tcx());
-        for (item, _) in all_items {
+        for (item, (linkage, visibility)) in all_items {
             let symbol_name = item.symbol_name(scx.tcx());
             symbol_name.len().hash(&mut state);
             symbol_name.hash(&mut state);
-            let exported = match item {
-                TransItem::Fn(ref instance) => {
-                    let node_id =
-                        scx.tcx().hir.as_local_node_id(instance.def_id());
-                    node_id.map(|node_id| exported_symbols.contains(&node_id))
-                        .unwrap_or(false)
-                }
-                TransItem::Static(node_id) => {
-                    exported_symbols.contains(&node_id)
-                }
-                TransItem::GlobalAsm(..) => true,
-            };
-            exported.hash(&mut state);
+            linkage.hash(&mut state);
+            visibility.hash(&mut state);
         }
         state.finish().to_smaller_hash()
     }
