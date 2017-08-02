@@ -39,14 +39,14 @@ impl ArchiveRO {
     ///
     /// If this archive is used with a mutable method, then an error will be
     /// raised.
-    pub fn open(dst: &Path) -> Option<ArchiveRO> {
+    pub fn open(dst: &Path) -> Result<ArchiveRO, String> {
         return unsafe {
             let s = path2cstr(dst);
             let ar = ::LLVMRustOpenArchive(s.as_ptr());
             if ar.is_null() {
-                None
+                Err(::last_error().unwrap_or("failed to open archive".to_string()))
             } else {
-                Some(ArchiveRO { ptr: ar })
+                Ok(ArchiveRO { ptr: ar })
             }
         };
 
