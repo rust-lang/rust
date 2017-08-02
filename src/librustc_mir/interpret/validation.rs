@@ -39,6 +39,14 @@ impl ValidationMode {
 // Validity checks
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
+        // If mir-emit-validate is set to 0 (i.e., disabled), we may still see validation commands
+        // because other crates may have been compiled with mir-emit-validate > 0.  Ignore those
+        // commands.  This makes mir-emit-validate also a flag to control whether miri will do
+        // validation or not.
+        if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
+            return Ok(());
+        }
+
         // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
         // We currently insta-UB on anything passing around uninitialized memory, so we have to whitelist
         // the places that are allowed to do that.
@@ -50,14 +58,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 static ref RE: Regex = Regex::new("^(\
                     std::mem::uninitialized::|\
                     std::mem::forget::|\
-                    <std::heap::Heap as std::heap::Alloc>::|\
+                    <(std|alloc)::heap::Heap as (std::heap|alloc::allocator)::Alloc>::|\
                     <std::mem::ManuallyDrop<T>><.*>::new$|\
                     <std::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
                     std::ptr::read::|\
                     \
                     <std::sync::Arc<T>><.*>::inner$|\
                     <std::sync::Arc<T>><.*>::drop_slow$|\
-                    std::heap::Layout::for_value::|\
+                    (std::heap|alloc::allocator)::Layout::for_value::|\
                     std::mem::(size|align)_of_val::\
                 )").unwrap();
             }
