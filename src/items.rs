@@ -2568,16 +2568,14 @@ fn rewrite_where_clause_rfc_style(
     };
     let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
-    let newline_before_where = if comment_before.is_empty() || comment_before.ends_with('\n') {
+    let comment_separator = |comment: &str, shape: Shape| if comment.is_empty() {
         String::new()
     } else {
-        "\n".to_owned() + &shape.indent.to_string(context.config)
+        format!("\n{}", shape.indent.to_string(context.config))
     };
-    let newline_after_where = if comment_after.is_empty() {
-        String::new()
-    } else {
-        "\n".to_owned() + &clause_shape.indent.to_string(context.config)
-    };
+    let newline_before_where = comment_separator(&comment_before, shape);
+    let newline_after_where = comment_separator(&comment_after, clause_shape);
+
     // 6 = `where `
     let clause_sep = if where_clause_option.compress_where && comment_before.is_empty() &&
         comment_after.is_empty() && !preds_str.contains('\n') &&
