@@ -581,6 +581,7 @@ pub fn format_impl(
                 .checked_sub(last_line_width(&result))
                 .unwrap_or(0)
         };
+        let option = WhereClauseOption::snuggled(&ref_and_type);
         let where_clause_str = try_opt!(rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -588,11 +589,9 @@ pub fn format_impl(
             Shape::legacy(where_budget, offset.block_only()),
             context.config.where_density(),
             "{",
-            false,
-            last_line_width(&ref_and_type) == 1,
-            false,
             where_span_end,
             self_ty.span.hi,
+            option,
         ));
 
         if try_opt!(is_impl_single_line(
@@ -973,6 +972,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         } else {
             type_param_bounds[type_param_bounds.len() - 1].span().hi
         };
+        let option = WhereClauseOption::snuggled(&generics_str);
         let where_clause_str = try_opt!(rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -980,11 +980,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             Shape::legacy(where_budget, offset.block_only()),
             where_density,
             "{",
-            false,
-            trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
-            false,
             None,
             pos_before_where,
+            option,
         ));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
@@ -1206,6 +1204,7 @@ fn format_tuple_struct(
             result.push_str(&generics_str);
 
             let where_budget = context.budget(last_line_width(&result));
+            let option = WhereClauseOption::new(true, false);
             try_opt!(rewrite_where_clause(
                 context,
                 &generics.where_clause,
@@ -1213,11 +1212,9 @@ fn format_tuple_struct(
                 Shape::legacy(where_budget, offset.block_only()),
                 Density::Compressed,
                 ";",
-                true,
-                false,
-                false,
                 None,
                 body_hi,
+                option,
             ))
         }
         None => "".to_owned(),
@@ -1303,6 +1300,7 @@ pub fn rewrite_type_alias(
             .max_width()
             .checked_sub(last_line_width(&result))
     );
+    let option = WhereClauseOption::snuggled(&result);
     let where_clause_str = try_opt!(rewrite_where_clause(
         context,
         &generics.where_clause,
@@ -1310,11 +1308,9 @@ pub fn rewrite_type_alias(
         Shape::legacy(where_budget, indent),
         context.config.where_density(),
         "=",
-        true,
-        true,
-        false,
         Some(span.hi),
         generics.span.hi,
+        option,
     ));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
@@ -2052,11 +2048,9 @@ fn rewrite_fn_base(
             Shape::legacy(budget, indent),
             Density::Compressed,
             "{",
-            true,
-            false, // Force where clause on the next line
-            true,  // Compress where
             Some(span.hi),
             pos_before_where,
+            WhereClauseOption::compressed(),
         ) {
             result.push_str(&where_clause_str);
             force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
@@ -2064,6 +2058,7 @@ fn rewrite_fn_base(
         }
     }
 
+    let option = WhereClauseOption::new(!has_braces, put_args_in_block && ret_str.is_empty());
     let where_clause_str = try_opt!(rewrite_where_clause(
         context,
         where_clause,
@@ -2071,17 +2066,47 @@ fn rewrite_fn_base(
         Shape::indented(indent, context.config),
         Density::Tall,
         "{",
-        !has_braces,
-        put_args_in_block && ret_str.is_empty(),
-        false,
         Some(span.hi),
         pos_before_where,
+        option,
     ));
 
     result.push_str(&where_clause_str);
 
     force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
     return Some((result, force_new_line_for_brace));
+}
+
+struct WhereClauseOption {
+    suppress_comma: bool, // Force no trailing comma
+    snuggle: bool,        // Do not insert newline before `where`
+    compress_where: bool, // Try single line where clause instead of vertical layout
+}
+
+impl WhereClauseOption {
+    pub fn new(suppress_comma: bool, snuggle: bool) -> WhereClauseOption {
+        WhereClauseOption {
+            suppress_comma: suppress_comma,
+            snuggle: snuggle,
+            compress_where: false,
+        }
+    }
+
+    pub fn compressed() -> WhereClauseOption {
+        WhereClauseOption {
+            suppress_comma: true,
+            snuggle: false,
+            compress_where: true,
+        }
+    }
+
+    pub fn snuggled(current: &str) -> WhereClauseOption {
+        WhereClauseOption {
+            suppress_comma: false,
+            snuggle: trimmed_last_line_width(current) == 1,
+            compress_where: false,
+        }
+    }
 }
 
 fn last_line_contains_single_line_comment(s: &str) -> bool {
@@ -2487,13 +2512,9 @@ fn rewrite_where_clause_rfc_style(
     where_clause: &ast::WhereClause,
     shape: Shape,
     terminator: &str,
-    suppress_comma: bool,
-    // where clause can be kept on the current line.
-    snuggle: bool,
-    // copmressed single where clause
-    compress_where: bool,
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
+    where_clause_option: WhereClauseOption,
 ) -> Option<String> {
     let block_shape = shape.block().with_max_width(context.config);
 
@@ -2506,7 +2527,7 @@ fn rewrite_where_clause_rfc_style(
         shape,
     ));
 
-    let starting_newline = if snuggle && comment_before.is_empty() {
+    let starting_newline = if where_clause_option.snuggle && comment_before.is_empty() {
         " ".to_owned()
     } else {
         "\n".to_owned() + &block_shape.indent.to_string(context.config)
@@ -2530,7 +2551,7 @@ fn rewrite_where_clause_rfc_style(
         span_start,
         span_end,
     );
-    let comma_tactic = if suppress_comma {
+    let comma_tactic = if where_clause_option.suppress_comma {
         SeparatorTactic::Never
     } else {
         context.config.trailing_comma()
@@ -2557,8 +2578,10 @@ fn rewrite_where_clause_rfc_style(
     } else {
         "\n".to_owned() + &clause_shape.indent.to_string(context.config)
     };
-    let clause_sep = if compress_where && comment_before.is_empty() && comment_after.is_empty() &&
-        !preds_str.contains('\n') && 6 + preds_str.len() <= shape.width
+    // 6 = `where `
+    let clause_sep = if where_clause_option.compress_where && comment_before.is_empty() &&
+        comment_after.is_empty() && !preds_str.contains('\n') &&
+        6 + preds_str.len() <= shape.width
     {
         String::from(" ")
     } else {
@@ -2583,11 +2606,9 @@ fn rewrite_where_clause(
     shape: Shape,
     density: Density,
     terminator: &str,
-    suppress_comma: bool,
-    snuggle: bool,
-    compress_where: bool,
     span_end: Option<BytePos>,
     span_end_before_where: BytePos,
+    where_clause_option: WhereClauseOption,
 ) -> Option<String> {
     if where_clause.predicates.is_empty() {
         return Some(String::new());
@@ -2599,11 +2620,9 @@ fn rewrite_where_clause(
             where_clause,
             shape,
             terminator,
-            suppress_comma,
-            snuggle,
-            compress_where,
             span_end,
             span_end_before_where,
+            where_clause_option,
         );
     }
 
@@ -2646,7 +2665,7 @@ fn rewrite_where_clause(
 
     let mut comma_tactic = context.config.trailing_comma();
     // Kind of a hack because we don't usually have trailing commas in where clauses.
-    if comma_tactic == SeparatorTactic::Vertical || suppress_comma {
+    if comma_tactic == SeparatorTactic::Vertical || where_clause_option.suppress_comma {
         comma_tactic = SeparatorTactic::Never;
     }
 
@@ -2753,6 +2772,7 @@ fn format_generics(
             .max_width()
             .checked_sub(last_line_used_width(&result, offset.width()))
             .unwrap_or(0);
+        let option = WhereClauseOption::snuggled(&result);
         let where_clause_str = try_opt!(rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -2760,11 +2780,9 @@ fn format_generics(
             Shape::legacy(budget, offset.block_only()),
             Density::Tall,
             terminator,
-            false,
-            trimmed_last_line_width(&result) == 1,
-            false,
             Some(span.hi),
             generics.span.hi,
+            option,
         ));
         result.push_str(&where_clause_str);
         force_same_line_brace || brace_style == BraceStyle::PreferSameLine ||
