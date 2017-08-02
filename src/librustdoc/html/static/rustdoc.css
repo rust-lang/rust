@@ -434,12 +434,6 @@ a {
 	text-decoration: underline;
 }
 
-.content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
-.content span.type, .content a.type, .block a.current.type { color: #e57300; }
-.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
-.content span.union, .content a.union, .block a.current.union { color: #c0c74f; }
-.content span.constant, .content a.constant, .block a.current.constant { color: #c7944f; }
 .block a.current.crate { font-weight: 500; }
 
 .search-input {
