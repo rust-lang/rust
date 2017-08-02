@@ -75,8 +75,9 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         flags.push("-Zmir-opt-level=3".to_owned());
     } else {
         flags.push("-Zmir-opt-level=0".to_owned());
+        // For now, only validate without optimizations.  Inlining breaks validation.
+        flags.push("-Zmir-emit-validate=1".to_owned());
     }
-    flags.push("-Zmir-emit-validate=1".to_owned());
     config.target_rustcflags = Some(flags.join(" "));
     // don't actually execute the final binary, it might be for other targets and we only care
     // about running miri, not the binary.
