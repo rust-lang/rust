@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn downcasting() {
         let mut a = A;
-        let mut a = &mut a as &mut (Error + 'static);
+        let a = &mut a as &mut (Error + 'static);
         assert_eq!(a.downcast_ref::<A>(), Some(&A));
         assert_eq!(a.downcast_ref::<B>(), None);
         assert_eq!(a.downcast_mut::<A>(), Some(&mut A));
