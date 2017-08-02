@@ -20,7 +20,7 @@ use rustc::ty::subst::{Subst, Substs};
 
 use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
-use semcheck::mapping::{IdMapping, NameMapping};
+use semcheck::mapping::{IdMapping, InherentEntry, InherentImplSet, NameMapping};
 use semcheck::mismatch::Mismatch;
 use semcheck::translate::{BottomUpRegionFolder, TranslationContext};
 
@@ -656,13 +656,51 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                  id_mapping: &IdMapping,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for (item, impls) in id_mapping.inherent_impls() {
-        if id_mapping.in_old_crate(item.parent_def_id) {
+    let to_new = TranslationContext::target_new(tcx, id_mapping, false);
+    let to_old = TranslationContext::target_old(tcx, id_mapping, false);
 
-        } else if id_mapping.in_new_crate(item.parent_def_id) {
-
+    for (orig_item, orig_impls) in id_mapping.inherent_impls() {
+        let (trans, err_type) = if id_mapping.in_old_crate(orig_item.parent_def_id) {
+            (&to_new, AssociatedItemRemoved)
+        } else if id_mapping.in_new_crate(orig_item.parent_def_id) {
+            (&to_old, AssociatedItemAdded)
         } else {
-            unreachable!();
+            unreachable!()
+        };
+
+        for &(orig_impl_def_id, orig_item_def_id) in orig_impls {
+            let target_impls = if let Some(impls) = trans
+                .translate_inherent_entry(orig_item)
+                .and_then(|item| id_mapping.get_inherent_impls(&item))
+            {
+                impls
+            } else {
+                continue;
+            };
+
+            let match_found = target_impls
+                .iter()
+                .any(|&(target_impl_def_id, target_item_def_id)| {
+                    match_inherent_impl(id_mapping,
+                                        tcx,
+                                        trans,
+                                        orig_impl_def_id,
+                                        orig_item_def_id,
+                                        target_impl_def_id,
+                                        target_item_def_id)
+                });
+
+            if !match_found {
+                let item_span = tcx.def_span(orig_item_def_id);
+
+                changes.new_change(orig_item_def_id,
+                                   orig_item_def_id,
+                                   orig_item.name,
+                                   item_span,
+                                   item_span,
+                                   true);
+                changes.add_change(err_type.clone(), orig_item_def_id, None);
+            }
         }
     }
 }
@@ -679,7 +717,7 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             continue;
         }
 
-        if !match_impl(id_mapping, tcx, *old_impl_def_id) {
+        if !match_trait_impl(id_mapping, tcx, *old_impl_def_id) {
             let impl_span = tcx.def_span(*old_impl_def_id);
 
             changes.new_change(*old_impl_def_id,
@@ -698,7 +736,7 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             continue;
         }
 
-        if !match_impl(id_mapping, tcx, *new_impl_def_id) {
+        if !match_trait_impl(id_mapping, tcx, *new_impl_def_id) {
             let impl_span = tcx.def_span(*new_impl_def_id);
 
             changes.new_change(*new_impl_def_id,
@@ -845,10 +883,11 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     });
 }
 
-/// Compare two implementations and indicate whether the new one is compatible with the old one.
-fn match_impl<'a, 'tcx>(id_mapping: &IdMapping,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        orig_def_id: DefId) -> bool {
+/// Compare two implementations and indicate whether the target one is compatible with the
+/// original one.
+fn match_trait_impl<'a, 'tcx>(id_mapping: &IdMapping,
+                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              orig_def_id: DefId) -> bool {
     let trans = if id_mapping.in_old_crate(orig_def_id) {
         TranslationContext::target_new(tcx, id_mapping, false)
     } else if id_mapping.in_new_crate(orig_def_id) {
@@ -871,16 +910,28 @@ fn match_impl<'a, 'tcx>(id_mapping: &IdMapping,
 
         debug!("env: {:?}", old_param_env);
 
-        let old = tcx
+        let orig = tcx
             .impl_trait_ref(orig_def_id)
             .unwrap();
-        debug!("trait ref: {:?}", old);
-        debug!("translated ref: {:?}", trans.translate_trait_ref(orig_def_id, &old));
+        debug!("trait ref: {:?}", orig);
+        debug!("translated ref: {:?}", trans.translate_trait_ref(orig_def_id, &orig));
 
         let mut bound_cx = BoundContext::new(&infcx, old_param_env);
-        bound_cx.register_trait_ref(trans.translate_trait_ref(orig_def_id, &old));
+        bound_cx.register_trait_ref(trans.translate_trait_ref(orig_def_id, &orig));
         bound_cx.get_errors().is_none()
     })
+}
+
+/// Compare an item pair in two inherent implementations and indicate whether the target one is
+/// compatible with the original one.
+fn match_inherent_impl<'a, 'tcx>(id_mapping: &IdMapping,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 trans: &TranslationContext<'a, 'tcx, 'tcx>,
+                                 orig_impl_def_id: DefId,
+                                 orig_item_def_id: DefId,
+                                 target_impl_def_id: DefId,
+                                 target_item_def_id: DefId) -> bool {
+    true
 }
 
 /// The context in which bounds analysis happens.

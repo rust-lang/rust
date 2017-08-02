@@ -166,7 +166,7 @@ impl Ord for PathChange {
 }
 
 /// The types of changes we identify between items present in both crate versions.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ChangeType<'tcx> {
     /// An item has been made public.
     ItemMadePublic,
@@ -212,6 +212,10 @@ pub enum ChangeType<'tcx> {
     TraitImplTightened,
     /// A trait impl has been generalized or newly added for some types.
     TraitImplLoosened,
+    /// An associated item has been newly added to some inherent impls.
+    AssociatedItemAdded,
+    /// An associated item has been removed from some inherent impls.
+    AssociatedItemRemoved,
     /// An unknown change is any change we don't yet explicitly handle.
     Unknown,
 }
@@ -241,11 +245,13 @@ impl<'tcx> ChangeType<'tcx> {
             TraitUnsafetyChanged { .. } |
             BoundsTightened { .. } |
             TraitImplTightened |
+            AssociatedItemRemoved |
             Unknown => Breaking,
             MethodSelfChanged { now_self: true } |
             TraitItemAdded { defaulted: true } |
             BoundsLoosened { .. } |
             TraitImplLoosened |
+            AssociatedItemAdded |
             ItemMadePublic => TechnicallyBreaking,
             TypeParameterAdded { defaulted: true } |
             FnConstChanged { now_const: true } => NonBreaking,
@@ -306,6 +312,8 @@ impl<'a> fmt::Display for ChangeType<'a> {
             BoundsLoosened { ref pred } => return write!(f, "removed bound: `{}`", pred),
             TraitImplTightened => "trait impl specialized or removed",
             TraitImplLoosened => "trait impl generalized or newly added",
+            AssociatedItemAdded => "added item in inherent impl",
+            AssociatedItemRemoved => "removed item in inherent impl",
             Unknown => "unknown change",
         };
         write!(f, "{}", desc)
@@ -384,7 +392,9 @@ impl<'tcx> Change<'tcx> {
                 BoundsTightened { .. } |
                 BoundsLoosened { .. } |
                 TraitImplTightened |
-                TraitImplLoosened => (),
+                TraitImplLoosened |
+                AssociatedItemAdded |
+                AssociatedItemRemoved => (),
             }
         }
 

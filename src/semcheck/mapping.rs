@@ -171,6 +171,14 @@ impl IdMapping {
             .insert((impl_def_id, item_def_id));
     }
 
+    /// Get the impl data for an inherent item.
+    pub fn get_inherent_impls(&self, inherent_entry: &InherentEntry)
+        -> Option<&InherentImplSet>
+    {
+        self.inherent_items
+            .get(inherent_entry)
+    }
+
     /// Get the new `DefId` associated with the given old one.
     pub fn get_new_id(&self, old: DefId) -> Option<DefId> {
         assert!(!self.in_new_crate(old));

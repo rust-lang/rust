@@ -3,7 +3,7 @@ use rustc::ty::{ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::Substs;
 
-use semcheck::mapping::IdMapping;
+use semcheck::mapping::{IdMapping, InherentEntry};
 
 use std::collections::HashMap;
 
@@ -459,6 +459,16 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             def_id: self.translate_orig(orig_trait_ref.def_id),
             substs: self.translate(&index_map, &orig_trait_ref.substs),
         }
+    }
+
+    /// Translate an `InherentEntry`.
+    pub fn translate_inherent_entry(&self, orig_entry: &InherentEntry) -> Option<InherentEntry> {
+        (self.translate_orig)(self.id_mapping, orig_entry.parent_def_id)
+            .map(|parent_def_id| InherentEntry {
+                parent_def_id: parent_def_id,
+                kind: orig_entry.kind,
+                name: orig_entry.name,
+            })
     }
 }
 
