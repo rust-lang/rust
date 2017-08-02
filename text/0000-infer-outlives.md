@@ -331,9 +331,12 @@ error[E0309]: the type `T` may not live long enough
 
 Due to the implied bounds rules, it is currently the case that
 removing `where T: 'a` annotations is potentially a breaking
-change. After this RFC, the rule is a bit more subtle: removing a
-field of type `&'a T` could affect the results of inference, and hence
-may be a breaking change. As an example, consider a struct like this:
+change. After this RFC, the rule is a bit more subtle: removing an
+annotation is still potentially a breaking change (even if it would be
+inferred), due to the trait object rules; but also, adding or removing
+a field of type `&'a T` could affect the results of inference, and
+hence may be a breaking change. As an example, consider a struct like
+this:
 
 ```rust
 struct Iter<'a, T> {
