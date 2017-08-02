@@ -200,10 +200,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 }
 
-// WARNING: make sure that any methods implemented on this type don't ever access ecx.stack
-// this includes any method that might access the stack
-// basically don't call anything other than `load_mir`, `alloc_ptr`, `push_stack_frame`
-// The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
+// WARNING: This code pushes new stack frames.  Make sure that any methods implemented on this
+// type don't ever access ecx.stack[ecx.cur_frame()], as that will change. This includes, e.g.,
+// using the current stack frame's substitution.
+// Basically don't call anything other than `load_mir`, `alloc_ptr`, `push_stack_frame`.
 struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b, M: Machine<'tcx> + 'a> {
     span: Span,
     ecx: &'a mut EvalContext<'b, 'tcx, M>,
