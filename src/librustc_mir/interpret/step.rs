@@ -11,16 +11,19 @@ use rustc::ty;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 
+use super::{
+    EvalResult, EvalError,
+    EvalContext, StackPopCleanup, TyAndPacked,
+    Global, GlobalId, Lvalue,
+    Value, PrimVal,
+    HasMemory,
+    Machine,
+};
+
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 
-use error::{EvalResult, EvalError};
-use eval_context::{EvalContext, StackPopCleanup, TyAndPacked};
-use lvalue::{Global, GlobalId, Lvalue};
-use value::{Value, PrimVal};
-use memory::HasMemory;
-
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: u64) -> EvalResult<'tcx> {
         self.steps_remaining = self.steps_remaining.saturating_sub(n);
         if self.steps_remaining > 0 {
@@ -152,83 +155,89 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
         Ok(())
     }
-}
 
-// WARNING: make sure that any methods implemented on this type don't ever access ecx.stack
-// this includes any method that might access the stack
-// basically don't call anything other than `load_mir`, `alloc_ptr`, `push_stack_frame`
-// The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
-struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
-    span: Span,
-    ecx: &'a mut EvalContext<'b, 'tcx>,
-    mir: &'tcx mir::Mir<'tcx>,
-    instance: ty::Instance<'tcx>,
-    new_constants: &'a mut EvalResult<'tcx, u64>,
-}
-
-impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
+    /// returns `true` if a stackframe was pushed
     fn global_item(
         &mut self,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         span: Span,
         mutability: Mutability,
-    ) {
-        let instance = self.ecx.resolve_associated_const(def_id, substs);
+    ) -> EvalResult<'tcx, bool> {
+        let instance = self.resolve_associated_const(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
-        if self.ecx.globals.contains_key(&cid) {
-            return;
+        if self.globals.contains_key(&cid) {
+            return Ok(false);
         }
-        if self.ecx.tcx.has_attr(def_id, "linkage") {
+        if self.tcx.has_attr(def_id, "linkage") {
+            // FIXME: check that it's `#[linkage = "extern_weak"]`
             trace!("Initializing an extern global with NULL");
-            self.ecx.globals.insert(cid, Global::initialized(self.ecx.tcx.type_of(def_id), Value::ByVal(PrimVal::Bytes(0)), mutability));
-            return;
+            self.globals.insert(cid, Global::initialized(self.tcx.type_of(def_id), Value::ByVal(PrimVal::Bytes(0)), mutability));
+            return Ok(false);
         }
-        self.try(|this| {
-            let mir = this.ecx.load_mir(instance.def)?;
-            this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
-            let internally_mutable = !mir.return_ty.is_freeze(
-                    this.ecx.tcx,
-                    ty::ParamEnv::empty(Reveal::All),
-                    span);
-            let mutability = if mutability == Mutability::Mutable || internally_mutable {
-                Mutability::Mutable
-            } else {
-                Mutability::Immutable
-            };
-            let cleanup = StackPopCleanup::MarkStatic(mutability);
-            let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
-            trace!("pushing stack frame for global: {}", name);
-            this.ecx.push_stack_frame(
-                instance,
-                span,
-                mir,
-                Lvalue::Global(cid),
-                cleanup,
-            )
-        });
-    }
-
-    fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx>>(&mut self, f: F) {
-        if let Ok(ref mut n) = *self.new_constants {
-            *n += 1;
+        let mir = self.load_mir(instance.def)?;
+        self.globals.insert(cid, Global::uninitialized(mir.return_ty));
+        let internally_mutable = !mir.return_ty.is_freeze(
+                self.tcx,
+                ty::ParamEnv::empty(Reveal::All),
+                span);
+        let mutability = if mutability == Mutability::Mutable || internally_mutable {
+            Mutability::Mutable
         } else {
-            return;
-        }
-        if let Err(e) = f(self) {
-            *self.new_constants = Err(e);
+            Mutability::Immutable
+        };
+        let cleanup = StackPopCleanup::MarkStatic(mutability);
+        let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
+        trace!("pushing stack frame for global: {}", name);
+        self.push_stack_frame(
+            instance,
+            span,
+            mir,
+            Lvalue::Global(cid),
+            cleanup,
+        )?;
+        Ok(true)
+    }
+}
+
+// WARNING: make sure that any methods implemented on this type don't ever access ecx.stack
+// this includes any method that might access the stack
+// basically don't call anything other than `load_mir`, `alloc_ptr`, `push_stack_frame`
+// The reason for this is, that `push_stack_frame` modifies the stack out of obvious reasons
+struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b, M: Machine<'tcx> + 'a> {
+    span: Span,
+    ecx: &'a mut EvalContext<'b, 'tcx, M>,
+    mir: &'tcx mir::Mir<'tcx>,
+    instance: ty::Instance<'tcx>,
+    new_constants: &'a mut EvalResult<'tcx, u64>,
+}
+
+impl<'a, 'b, 'tcx, M: Machine<'tcx>> ConstantExtractor<'a, 'b, 'tcx, M> {
+    fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, bool>>(&mut self, f: F) {
+        // previous constant errored
+        let n = match *self.new_constants {
+            Ok(n) => n,
+            Err(_) => return,
+        };
+        match f(self) {
+            // everything ok + a new stackframe
+            Ok(true) => *self.new_constants = Ok(n + 1),
+            // constant correctly evaluated, but no new stackframe
+            Ok(false) => {},
+            // constant eval errored
+            Err(err) => *self.new_constants = Err(err),
         }
     }
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx, M> {
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: mir::Location) {
         self.super_constant(constant, location);
         match constant.literal {
             // already computed by rustc
             mir::Literal::Value { .. } => {}
             mir::Literal::Item { def_id, substs } => {
-                self.global_item(def_id, substs, constant.span, Mutability::Immutable);
+                self.try(|this| this.ecx.global_item(def_id, substs, constant.span, Mutability::Immutable));
             },
             mir::Literal::Promoted { index } => {
                 let cid = GlobalId {
@@ -248,7 +257,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                                               mir,
                                               Lvalue::Global(cid),
                                               StackPopCleanup::MarkStatic(Mutability::Immutable),
-                    )
+                    )?;
+                    Ok(true)
                 });
             }
         }
@@ -268,7 +278,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             if let Some(node_item) = self.ecx.tcx.hir.get_if_local(def_id) {
                 if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {
                     if let hir::ItemStatic(_, m, _) = *node {
-                        self.global_item(def_id, substs, span, if m == hir::MutMutable { Mutability::Mutable } else { Mutability::Immutable });
+                        self.try(|this| this.ecx.global_item(def_id, substs, span, if m == hir::MutMutable { Mutability::Mutable } else { Mutability::Immutable }));
                         return;
                     } else {
                         bug!("static def id doesn't point to static");
@@ -279,7 +289,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             } else {
                 let def = self.ecx.tcx.describe_def(def_id).expect("static not found");
                 if let hir::def::Def::Static(_, mutable) = def {
-                    self.global_item(def_id, substs, span, if mutable { Mutability::Mutable } else { Mutability::Immutable });
+                    self.try(|this| this.ecx.global_item(def_id, substs, span, if mutable { Mutability::Mutable } else { Mutability::Immutable }));
                 } else {
                     bug!("static found but isn't a static: {:?}", def);
                 }

@@ -7,7 +7,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::mir;
 use rustc::traits::Reveal;
-use rustc::ty::layout::{self, Layout, Size};
+use rustc::ty::layout::{self, Layout, Size, Align};
 use rustc::ty::subst::{Subst, Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
 use rustc::traits;
@@ -16,20 +16,26 @@ use syntax::codemap::{self, DUMMY_SP, Span};
 use syntax::ast::{self, Mutability};
 use syntax::abi::Abi;
 
-use error::{EvalError, EvalResult};
-use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
-use memory::{Memory, MemoryPointer, TlsKey, HasMemory};
-use memory::Kind as MemoryKind;
-use operator;
-use value::{PrimVal, PrimValKind, Value, Pointer};
-use validation::ValidationQuery;
+use super::{
+    EvalError, EvalResult,
+    Global, GlobalId, Lvalue, LvalueExtra,
+    Memory, MemoryPointer, HasMemory,
+    Kind as MemoryKind,
+    operator,
+    PrimVal, PrimValKind, Value, Pointer,
+    ValidationQuery,
+    Machine,
+};
 
-pub struct EvalContext<'a, 'tcx: 'a> {
+pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
+    /// Stores data required by the `Machine`
+    pub machine_data: M::Data,
+
     /// The results of the type checker, from rustc.
-    pub(crate) tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// The virtual memory system.
-    pub(crate) memory: Memory<'a, 'tcx>,
+    pub memory: Memory<'a, 'tcx, M>,
 
     #[allow(dead_code)]
     // FIXME(@RalfJung): validation branch
@@ -37,7 +43,7 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 
     /// Precomputed statics, constants and promoteds.
-    pub(crate) globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
+    pub globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'tcx>>,
@@ -49,10 +55,6 @@ pub struct EvalContext<'a, 'tcx: 'a> {
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) steps_remaining: u64,
-
-    /// Environment variables set by `setenv`
-    /// Miri does not expose env vars from the host to the emulated program
-    pub(crate) env_vars: HashMap<Vec<u8>, MemoryPointer>,
 }
 
 /// A stack frame.
@@ -110,11 +112,6 @@ pub enum StackPopCleanup {
     /// A regular stackframe added due to a function call will need to get forwarded to the next
     /// block
     Goto(mir::BasicBlock),
-    /// After finishing a tls destructor, find the next one instead of starting from the beginning
-    /// and thus just rerunning the first one until its `data` argument is null
-    ///
-    /// The index is the current tls destructor's index
-    Tls(Option<TlsKey>),
     /// The main function and diverging functions have nowhere to return to
     None,
 }
@@ -148,17 +145,22 @@ pub struct TyAndPacked<'tcx> {
     pub packed: bool,
 }
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, limits: ResourceLimits) -> Self {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+    pub fn new(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        limits: ResourceLimits,
+        machine_data: M::Data,
+        memory_data: M::MemoryData,
+    ) -> Self {
         EvalContext {
+            machine_data,
             tcx,
-            memory: Memory::new(&tcx.data_layout, limits.memory_size),
+            memory: Memory::new(&tcx.data_layout, limits.memory_size, memory_data),
             suspended: HashMap::new(),
             globals: HashMap::new(),
             stack: Vec::new(),
             stack_limit: limits.stack_limit,
             steps_remaining: limits.step_limit,
-            env_vars: HashMap::new(),
         }
     }
 
@@ -177,11 +179,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.memory.allocate(size, align, MemoryKind::Stack)
     }
 
-    pub fn memory(&self) -> &Memory<'a, 'tcx> {
+    pub fn memory(&self) -> &Memory<'a, 'tcx, M> {
         &self.memory
     }
 
-    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M> {
         &mut self.memory
     }
 
@@ -209,7 +211,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         false
     }
 
-    pub(crate) fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
+    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         let ptr = self.memory.allocate_cached(s.as_bytes())?;
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
     }
@@ -275,11 +277,103 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.tcx.erase_regions(&value)
     }
 
-    pub(super) fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
+    pub fn size_and_align_of_dst(
+        &mut self,
+        ty: ty::Ty<'tcx>,
+        value: Value,
+    ) -> EvalResult<'tcx, (u64, u64)> {
+        if let Some(size) = self.type_size(ty)? {
+            Ok((size as u64, self.type_align(ty)? as u64))
+        } else {
+            match ty.sty {
+                ty::TyAdt(def, substs) => {
+                    // First get the size of all statically known fields.
+                    // Don't use type_of::sizing_type_of because that expects t to be sized,
+                    // and it also rounds up to alignment, which we want to avoid,
+                    // as the unsized field's alignment could be smaller.
+                    assert!(!ty.is_simd());
+                    let layout = self.type_layout(ty)?;
+                    debug!("DST {} layout: {:?}", ty, layout);
+
+                    let (sized_size, sized_align) = match *layout {
+                        ty::layout::Layout::Univariant { ref variant, .. } => {
+                            (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align)
+                        }
+                        _ => {
+                            bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
+                                 ty, layout);
+                        }
+                    };
+                    debug!("DST {} statically sized prefix size: {} align: {:?}",
+                           ty, sized_size, sized_align);
+
+                    // Recurse to get the size of the dynamically sized field (must be
+                    // the last field).
+                    let last_field = def.struct_variant().fields.last().unwrap();
+                    let field_ty = self.field_ty(substs, last_field);
+                    let (unsized_size, unsized_align) = self.size_and_align_of_dst(field_ty, value)?;
+
+                    // FIXME (#26403, #27023): We should be adding padding
+                    // to `sized_size` (to accommodate the `unsized_align`
+                    // required of the unsized field that follows) before
+                    // summing it with `sized_size`. (Note that since #26403
+                    // is unfixed, we do not yet add the necessary padding
+                    // here. But this is where the add would go.)
+
+                    // Return the sum of sizes and max of aligns.
+                    let size = sized_size + unsized_size;
+
+                    // Choose max of two known alignments (combined value must
+                    // be aligned according to more restrictive of the two).
+                    let align = sized_align.max(Align::from_bytes(unsized_align, unsized_align).unwrap());
+
+                    // Issue #27023: must add any necessary padding to `size`
+                    // (to make it a multiple of `align`) before returning it.
+                    //
+                    // Namely, the returned size should be, in C notation:
+                    //
+                    //   `size + ((size & (align-1)) ? align : 0)`
+                    //
+                    // emulated via the semi-standard fast bit trick:
+                    //
+                    //   `(size + (align-1)) & -align`
+
+                    let size = Size::from_bytes(size).abi_align(align).bytes();
+                    Ok((size, align.abi()))
+                }
+                ty::TyDynamic(..) => {
+                    let (_, vtable) = value.into_ptr_vtable_pair(&mut self.memory)?;
+                    // the second entry in the vtable is the dynamic size of the object.
+                    self.read_size_and_align_from_vtable(vtable)
+                }
+
+                ty::TySlice(_) | ty::TyStr => {
+                    let elem_ty = ty.sequence_element_type(self.tcx);
+                    let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized") as u64;
+                    let (_, len) = value.into_slice(&mut self.memory)?;
+                    let align = self.type_align(elem_ty)?;
+                    Ok((len * elem_size, align as u64))
+                }
+
+                _ => bug!("size_of_val::<{:?}>", ty),
+            }
+        }
+    }
+
+    /// Returns the normalized type of a struct field
+    fn field_ty(
+        &self,
+        param_substs: &Substs<'tcx>,
+        f: &ty::FieldDef,
+    ) -> ty::Ty<'tcx> {
+        self.tcx.normalize_associated_type(&f.ty(self.tcx, param_substs))
+    }
+
+    pub fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
         self.type_size_with_substs(ty, self.substs())
     }
 
-    pub(super) fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
+    pub fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         self.type_align_with_substs(ty, self.substs())
     }
 
@@ -300,7 +394,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi())
     }
 
-    pub(super) fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
+    pub fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
         self.type_layout_with_substs(ty, self.substs())
     }
 
@@ -412,29 +506,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             StackPopCleanup::Goto(target) => self.goto_block(target),
             StackPopCleanup::None => {},
-            StackPopCleanup::Tls(key) => {
-                // either fetch the next dtor or start new from the beginning, if any are left with a non-null data
-                let dtor = match self.memory.fetch_tls_dtor(key)? {
-                    dtor @ Some(_) => dtor,
-                    None => self.memory.fetch_tls_dtor(None)?,
-                };
-                if let Some((instance, ptr, key)) = dtor {
-                    trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
-                    // TODO: Potentially, this has to support all the other possible instances? See eval_fn_call in terminator/mod.rs
-                    let mir = self.load_mir(instance.def)?;
-                    self.push_stack_frame(
-                        instance,
-                        mir.span,
-                        mir,
-                        Lvalue::undef(),
-                        StackPopCleanup::Tls(Some(key)),
-                    )?;
-                    let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
-                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                    let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                    self.write_ptr(dest, ptr, ty)?;
-                }
-            }
         }
         // deallocate all locals that are backed by an allocation
         for local in frame.locals {
@@ -687,9 +758,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Len(ref lvalue) => {
-                if self.const_env() {
-                    return Err(EvalError::NeedsRfc("computing the length of arrays".to_string()));
-                }
+                // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
@@ -713,25 +782,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
-                if self.const_env() {
-                    return Err(EvalError::NeedsRfc("\"heap\" allocations".to_string()));
-                }
-                // FIXME: call the `exchange_malloc` lang item if available
-                let size = self.type_size(ty)?.expect("box only works with sized types");
-                if size == 0 {
-                    let align = self.type_align(ty)?;
-                    self.write_primval(dest, PrimVal::Bytes(align.into()), dest_ty)?;
-                } else {
-                    let align = self.type_align(ty)?;
-                    let ptr = self.memory.allocate(size, align, MemoryKind::Rust)?;
-                    self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
-                }
+                let ptr = M::box_alloc(self, ty)?;
+                self.write_primval(dest, ptr, dest_ty)?;
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                if self.const_env() {
-                    return Err(EvalError::NeedsRfc("computing the size of types (size_of)".to_string()));
-                }
                 let size = self.type_size(ty)?.expect("SizeOf nullary MIR operator called for unsized type");
                 self.write_primval(dest, PrimVal::from_u128(size as u128), dest_ty)?;
             }
@@ -958,46 +1013,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn wrapping_pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
-        // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-        let offset = offset.overflowing_mul(pointee_size).0;
-        ptr.wrapping_signed_offset(offset, self)
-    }
-
-    pub(super) fn pointer_offset(&self, ptr: Pointer, pointee_ty: Ty<'tcx>, offset: i64) -> EvalResult<'tcx, Pointer> {
-        // This function raises an error if the offset moves the pointer outside of its allocation.  We consider
-        // ZSTs their own huge allocation that doesn't overlap with anything (and nothing moves in there because the size is 0).
-        // We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
-        // allocation.
-
-        if ptr.is_null()? { // NULL pointers must only be offset by 0
-            return if offset == 0 { Ok(ptr) } else { Err(EvalError::InvalidNullPointerUsage) };
-        }
-        // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
-        return if let Some(offset) = offset.checked_mul(pointee_size) {
-            let ptr = ptr.signed_offset(offset, self)?;
-            // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
-            if let PrimVal::Ptr(ptr) = ptr.into_inner_primval() {
-                self.memory.check_bounds(ptr, false)?;
-            } else if ptr.is_null()? {
-                // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
-                return Err(EvalError::InvalidNullPointerUsage);
-            }
-            Ok(ptr)
-        } else {
-            Err(EvalError::OverflowingMath)
-        }
-    }
-
     pub(super) fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
         let value = self.eval_operand(op)?;
         let ty = self.operand_ty(op);
         self.value_to_primval(value, ty)
     }
 
-    pub(super) fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::mir::Operand::*;
         match *op {
             Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
@@ -1028,7 +1050,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
+    pub fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
         self.monomorphize(operand.ty(self.mir(), self.tcx), self.substs())
     }
 
@@ -1039,7 +1061,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub(super) fn force_allocation(
+    pub fn force_allocation(
         &mut self,
         lvalue: Lvalue<'tcx>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
@@ -1099,7 +1121,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    pub fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match self.follow_by_ref_value(value, ty)? {
             Value::ByRef{..} => bug!("follow_by_ref_value can't result in `ByRef`"),
 
@@ -1112,7 +1134,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn write_null(
+    pub fn write_null(
         &mut self,
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
@@ -1120,7 +1142,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
     }
 
-    pub(super) fn write_ptr(
+    pub fn write_ptr(
         &mut self,
         dest: Lvalue<'tcx>,
         val: Pointer,
@@ -1129,7 +1151,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.write_value(val.to_value(), dest, dest_ty)
     }
 
-    pub(super) fn write_primval(
+    pub fn write_primval(
         &mut self,
         dest: Lvalue<'tcx>,
         val: PrimVal,
@@ -1138,7 +1160,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         self.write_value(Value::ByVal(val), dest, dest_ty)
     }
 
-    pub(super) fn write_value(
+    pub fn write_value(
         &mut self,
         src_val: Value,
         dest: Lvalue<'tcx>,
@@ -1233,7 +1255,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    pub(super) fn write_value_to_ptr(
+    pub fn write_value_to_ptr(
         &mut self,
         value: Value,
         dest: Pointer,
@@ -1251,7 +1273,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn write_pair_to_ptr(
+    pub fn write_pair_to_ptr(
         &mut self,
         a: PrimVal,
         b: PrimVal,
@@ -1381,7 +1403,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if let Some(val) = self.try_read_value(ptr, ty)? {
             Ok(val)
         } else {
@@ -1487,7 +1509,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Some(Value::ByVal(val)))
     }
 
-    pub(super) fn frame(&self) -> &Frame<'tcx> {
+    pub fn frame(&self) -> &Frame<'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
@@ -1584,8 +1606,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dest = self.force_allocation(dest)?.to_ptr()?;
                 let iter = src_fields.zip(dst_fields).enumerate();
                 for (i, (src_f, dst_f)) in iter {
-                    let src_fty = monomorphize_field_ty(self.tcx, src_f, substs_a);
-                    let dst_fty = monomorphize_field_ty(self.tcx, dst_f, substs_b);
+                    let src_fty = self.field_ty(substs_a, src_f);
+                    let dst_fty = self.field_ty(substs_b, dst_f);
                     if self.type_size(dst_fty)? == Some(0) {
                         continue;
                     }
@@ -1605,7 +1627,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    pub(super) fn dump_local(&self, lvalue: Lvalue<'tcx>) {
+    pub fn dump_local(&self, lvalue: Lvalue<'tcx>) {
         // Debug output
         if let Lvalue::Local { frame, local } = lvalue {
             let mut allocs = Vec::new();
@@ -1676,6 +1698,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // }
         Ok(())
     }
+
+    pub fn report(&self, e: &EvalError) {
+        if let Some(frame) = self.stack().last() {
+            let block = &frame.mir.basic_blocks()[frame.block];
+            let span = if frame.stmt < block.statements.len() {
+                block.statements[frame.stmt].source_info.span
+            } else {
+                block.terminator().source_info.span
+            };
+            let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
+            for &Frame { instance, span, .. } in self.stack().iter().rev() {
+                if self.tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
+                    err.span_note(span, "inside call to closure");
+                    continue;
+                }
+                err.span_note(span, &format!("inside call to {}", instance));
+            }
+            err.emit();
+        } else {
+            self.tcx.sess.err(&e.to_string());
+        }
+    }
 }
 
 impl<'tcx> Frame<'tcx> {
@@ -1713,117 +1757,6 @@ impl<'tcx> Frame<'tcx> {
     }
 }
 
-pub fn eval_main<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    main_id: DefId,
-    start_wrapper: Option<DefId>,
-    limits: ResourceLimits,
-) {
-    fn run_main<'a, 'tcx: 'a>(
-        ecx: &mut EvalContext<'a, 'tcx>,
-        main_id: DefId,
-        start_wrapper: Option<DefId>,
-    ) -> EvalResult<'tcx> {
-        let main_instance = ty::Instance::mono(ecx.tcx, main_id);
-        let main_mir = ecx.load_mir(main_instance.def)?;
-        let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
-
-        if !main_mir.return_ty.is_nil() || main_mir.arg_count != 0 {
-            return Err(EvalError::Unimplemented("miri does not support main functions without `fn()` type signatures".to_owned()));
-        }
-
-        if let Some(start_id) = start_wrapper {
-            let start_instance = ty::Instance::mono(ecx.tcx, start_id);
-            let start_mir = ecx.load_mir(start_instance.def)?;
-
-            if start_mir.arg_count != 3 {
-                return Err(EvalError::AbiViolation(format!("'start' lang item should have three arguments, but has {}", start_mir.arg_count)));
-            }
-
-            // Return value
-            let ret_ptr = ecx.memory.allocate(ecx.tcx.data_layout.pointer_size.bytes(), ecx.tcx.data_layout.pointer_align.abi(), MemoryKind::Stack)?;
-            cleanup_ptr = Some(ret_ptr);
-
-            // Push our stack frame
-            ecx.push_stack_frame(
-                start_instance,
-                start_mir.span,
-                start_mir,
-                Lvalue::from_ptr(ret_ptr),
-                StackPopCleanup::Tls(None),
-            )?;
-
-            let mut args = ecx.frame().mir.args_iter();
-
-            // First argument: pointer to main()
-            let main_ptr = ecx.memory.create_fn_alloc(main_instance);
-            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
-            let main_ty = main_instance.def.def_ty(ecx.tcx);
-            let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx));
-            ecx.write_value(Value::ByVal(PrimVal::Ptr(main_ptr)), dest, main_ptr_ty)?;
-
-            // Second argument (argc): 0
-            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
-            let ty = ecx.tcx.types.isize;
-            ecx.write_null(dest, ty)?;
-
-            // Third argument (argv): 0
-            let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
-            let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-            ecx.write_null(dest, ty)?;
-        } else {
-            ecx.push_stack_frame(
-                main_instance,
-                main_mir.span,
-                main_mir,
-                Lvalue::undef(),
-                StackPopCleanup::Tls(None),
-            )?;
-        }
-
-        while ecx.step()? {}
-        if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory.deallocate(cleanup_ptr, None, MemoryKind::Stack)?;
-        }
-        return Ok(());
-    }
-
-    let mut ecx = EvalContext::new(tcx, limits);
-    match run_main(&mut ecx, main_id, start_wrapper) {
-        Ok(()) => {
-            let leaks = ecx.memory.leak_report();
-            if leaks != 0 {
-                tcx.sess.err("the evaluated program leaked memory");
-            }
-        }
-        Err(e) => {
-            report(tcx, &ecx, &e);
-        }
-    }
-}
-
-fn report(tcx: TyCtxt, ecx: &EvalContext, e: &EvalError) {
-    if let Some(frame) = ecx.stack().last() {
-        let block = &frame.mir.basic_blocks()[frame.block];
-        let span = if frame.stmt < block.statements.len() {
-            block.statements[frame.stmt].source_info.span
-        } else {
-            block.terminator().source_info.span
-        };
-        let mut err = tcx.sess.struct_span_err(span, &e.to_string());
-        for &Frame { instance, span, .. } in ecx.stack().iter().rev() {
-            if tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
-                err.span_note(span, "inside call to closure");
-                continue;
-            }
-            err.span_note(span, &format!("inside call to {}", instance));
-        }
-        err.emit();
-    } else {
-        tcx.sess.err(&e.to_string());
-    }
-}
-
 // TODO(solson): Upstream these methods into rustc::ty::layout.
 
 pub(super) trait IntegerExt {
@@ -1841,12 +1774,6 @@ impl IntegerExt for layout::Integer {
             I128 => Size::from_bits(128),
         }
     }
-}
-
-
-pub fn monomorphize_field_ty<'a, 'tcx:'a >(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &ty::FieldDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
-    let substituted = f.ty(tcx, substs);
-    tcx.normalize_associated_type(&substituted)
 }
 
 pub fn is_inhabited<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {

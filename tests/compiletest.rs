@@ -130,16 +130,16 @@ fn run_pass_miri() {
 
     for &opt in [false, true].iter() {
         for_all_targets(&sysroot, |target| {
-            miri_pass("../../tests/run-pass", &target, &host, false, opt);
+            miri_pass("tests/run-pass", &target, &host, false, opt);
         });
-        miri_pass("../../tests/run-pass-fullmir", &host, &host, true, opt);
+        miri_pass("tests/run-pass-fullmir", &host, &host, true, opt);
     }
 }
 
 #[test]
 fn run_pass_rustc() {
-    run_pass("../../tests/run-pass");
-    run_pass("../../tests/run-pass-fullmir");
+    run_pass("tests/run-pass");
+    run_pass("tests/run-pass-fullmir");
 }
 
 #[test]
@@ -148,7 +148,7 @@ fn compile_fail_miri() {
     let host = get_host();
 
     for_all_targets(&sysroot, |target| {
-        compile_fail(&sysroot, "../../tests/compile-fail", &target, &host, false);
+        compile_fail(&sysroot, "tests/compile-fail", &target, &host, false);
     });
-    compile_fail(&sysroot, "../../tests/compile-fail-fullmir", &host, &host, true);
+    compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
 }

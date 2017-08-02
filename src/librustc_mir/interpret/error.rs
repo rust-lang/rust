@@ -2,12 +2,19 @@ use std::error::Error;
 use std::fmt;
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
-use memory::{MemoryPointer, LockInfo, AccessKind, Kind};
+
+use super::{
+    MemoryPointer, LockInfo, AccessKind
+};
+
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum EvalError<'tcx> {
+    /// This variant is used by machines to signal their own errors that do not
+    /// match an existing variant
+    MachineError(Box<Error>),
     FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     NoMirFor(String),
     UnterminatedCString(MemoryPointer),
@@ -81,8 +88,8 @@ pub enum EvalError<'tcx> {
     AssumptionNotHeld,
     InlineAsm,
     TypeNotPrimitive(Ty<'tcx>),
-    ReallocatedWrongMemoryKind(Kind, Kind),
-    DeallocatedWrongMemoryKind(Kind, Kind),
+    ReallocatedWrongMemoryKind(String, String),
+    DeallocatedWrongMemoryKind(String, String),
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
     IncorrectAllocationInformation,
@@ -91,8 +98,6 @@ pub enum EvalError<'tcx> {
     HeapAllocNonPowerOfTwoAlignment(u64),
     Unreachable,
     Panic,
-    NeedsRfc(String),
-    NotConst(String),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
 }
@@ -101,8 +106,9 @@ pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
 impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
-        use EvalError::*;
+        use self::EvalError::*;
         match *self {
+            MachineError(ref inner) => inner.description(),
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
             InvalidMemoryAccess =>
@@ -207,10 +213,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "entered unreachable code",
             Panic =>
                 "the evaluated program panicked",
-            NeedsRfc(_) =>
-                "this feature needs an rfc before being allowed inside constants",
-            NotConst(_) =>
-                "this feature is not compatible with constant evaluation",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
             EvalError::PathNotFound(_) =>
@@ -218,12 +220,18 @@ impl<'tcx> Error for EvalError<'tcx> {
         }
     }
 
-    fn cause(&self) -> Option<&Error> { None }
+    fn cause(&self) -> Option<&Error> {
+        use self::EvalError::*;
+        match *self {
+            MachineError(ref inner) => Some(&**inner),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use EvalError::*;
+        use self::EvalError::*;
         match *self {
             PointerOutOfBounds { ptr, access, allocation_size } => {
                 write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
@@ -254,10 +262,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),
             ArrayIndexOutOfBounds(span, len, index) =>
                 write!(f, "index out of bounds: the len is {} but the index is {} at {:?}", len, index, span),
-            ReallocatedWrongMemoryKind(old, new) =>
-                write!(f, "tried to reallocate memory from {:?} to {:?}", old, new),
-            DeallocatedWrongMemoryKind(old, new) =>
-                write!(f, "tried to deallocate {:?} memory but gave {:?} as the kind", old, new),
+            ReallocatedWrongMemoryKind(ref old, ref new) =>
+                write!(f, "tried to reallocate memory from {} to {}", old, new),
+            DeallocatedWrongMemoryKind(ref old, ref new) =>
+                write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
             Math(span, ref err) =>
                 write!(f, "{:?} at {:?}", err, span),
             Intrinsic(ref err) =>
@@ -274,12 +282,10 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "expected primitive type, got {}", ty),
             Layout(ref err) =>
                 write!(f, "rustc layout computation failed: {:?}", err),
-            NeedsRfc(ref msg) =>
-                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg),
-            NotConst(ref msg) =>
-                write!(f, "Cannot evaluate within constants: \"{}\"", msg),
-            EvalError::PathNotFound(ref path) =>
+            PathNotFound(ref path) =>
                 write!(f, "Cannot find path {:?}", path),
+            MachineError(ref inner) =>
+                write!(f, "machine error: {}", inner),
             _ => write!(f, "{}", self.description()),
         }
     }

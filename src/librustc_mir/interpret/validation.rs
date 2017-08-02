@@ -10,11 +10,14 @@ use rustc::traits::Reveal;
 use rustc::infer::TransNormalize;
 use rustc::middle::region::CodeExtent;
 
-use error::{EvalError, EvalResult};
-use eval_context::{EvalContext, DynamicLifetime};
-use memory::{AccessKind, LockInfo};
-use value::{PrimVal, Value};
-use lvalue::{Lvalue, LvalueExtra};
+use super::{
+    EvalError, EvalResult,
+    EvalContext, DynamicLifetime,
+    AccessKind, LockInfo,
+    PrimVal, Value,
+    Lvalue, LvalueExtra,
+    Machine,
+};
 
 // FIXME remove this once it lands in rustc
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -54,7 +57,7 @@ impl ValidationMode {
 }
 
 // Validity checks
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
         // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
         {

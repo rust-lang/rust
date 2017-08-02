@@ -8,9 +8,12 @@ use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
 use rustc::middle::region::CodeExtent;
 
-use error::{EvalError, EvalResult};
-use value::{PrimVal, Pointer};
-use eval_context::{EvalContext, DynamicLifetime};
+use super::{
+    EvalError, EvalResult,
+    PrimVal, Pointer,
+    EvalContext, DynamicLifetime,
+    Machine,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Locks
@@ -113,7 +116,7 @@ impl fmt::Display for AllocId {
 }
 
 #[derive(Debug)]
-pub struct Allocation {
+pub struct Allocation<M> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
@@ -129,12 +132,12 @@ pub struct Allocation {
     /// Use the `mark_static_initalized` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified or deallocated in the future.
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
-    pub kind: Kind,
+    pub kind: Kind<M>,
     /// Memory regions that are locked by some function
     locks: BTreeMap<MemoryRange, LockInfo>,
 }
 
-impl Allocation {
+impl<M> Allocation<M> {
     fn iter_locks<'a>(&'a self, offset: u64, len: u64) -> impl Iterator<Item=(&'a MemoryRange, &'a LockInfo)> + 'a {
         self.locks.range(MemoryRange::range(offset, len))
             .filter(move |&(range, _)| range.overlaps(offset, len))
@@ -162,11 +165,7 @@ impl Allocation {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Kind {
-    /// Error if deallocated any other way than `rust_deallocate`
-    Rust,
-    /// Error if deallocated any other way than `free`
-    C,
+pub enum Kind<T> {
     /// Error if deallocated except during a stack pop
     Stack,
     /// Static in the process of being initialized.
@@ -176,8 +175,8 @@ pub enum Kind {
     UninitializedStatic,
     /// May never be deallocated
     Static,
-    /// Part of env var emulation
-    Env,
+    /// Additional memory kinds a machine wishes to distinguish from the builtin ones
+    Machine(T),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -195,7 +194,7 @@ impl<'tcx> MemoryPointer {
         MemoryPointer::new(self.alloc_id, cx.data_layout().wrapping_signed_offset(self.offset, i))
     }
 
-    pub(crate) fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
+    pub fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
@@ -204,12 +203,12 @@ impl<'tcx> MemoryPointer {
         Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().signed_offset(self.offset, i)?))
     }
 
-    pub(crate) fn overflowing_offset<C: HasDataLayout>(self, i: u64, cx: C) -> (Self, bool) {
+    pub fn overflowing_offset<C: HasDataLayout>(self, i: u64, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_offset(self.offset, i);
         (MemoryPointer::new(self.alloc_id, res), over)
     }
 
-    pub(crate) fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
         Ok(MemoryPointer::new(self.alloc_id, cx.data_layout().offset(self.offset, i)?))
     }
 }
@@ -218,17 +217,12 @@ impl<'tcx> MemoryPointer {
 // Top-level interpreter memory
 ////////////////////////////////////////////////////////////////////////////////
 
-pub type TlsKey = usize;
+pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
+    /// Additional data required by the Machine
+    pub data: M::MemoryData,
 
-#[derive(Copy, Clone, Debug)]
-pub struct TlsEntry<'tcx> {
-    data: Pointer, // Will eventually become a map from thread IDs to `Pointer`s, if we ever support more than one thread.
-    dtor: Option<ty::Instance<'tcx>>,
-}
-
-pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
-    alloc_map: HashMap<AllocId, Allocation>,
+    alloc_map: HashMap<AllocId, Allocation<M::MemoryKinds>>,
 
     /// The AllocId to assign to the next new allocation. Always incremented, never gets smaller.
     next_id: AllocId,
@@ -259,12 +253,6 @@ pub struct Memory<'a, 'tcx> {
     /// allocations for string and bytestring literals.
     literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
 
-    /// pthreads-style thread-local storage.
-    thread_local: BTreeMap<TlsKey, TlsEntry<'tcx>>,
-
-    /// The Key to use for the next thread-local allocation.
-    next_thread_local: TlsKey,
-
     /// To avoid having to pass flags to every single memory access, we have some global state saying whether
     /// alignment checking is currently enforced for read and/or write accesses.
     reads_are_aligned: Cell<bool>,
@@ -274,9 +262,10 @@ pub struct Memory<'a, 'tcx> {
     cur_frame: usize,
 }
 
-impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn new(layout: &'a TargetDataLayout, max_memory: u64) -> Self {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
+    pub fn new(layout: &'a TargetDataLayout, max_memory: u64, data: M::MemoryData) -> Self {
         Memory {
+            data,
             alloc_map: HashMap::new(),
             functions: HashMap::new(),
             function_alloc_cache: HashMap::new(),
@@ -286,15 +275,13 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             memory_usage: 0,
             static_alloc: HashSet::new(),
             literal_alloc_cache: HashMap::new(),
-            thread_local: BTreeMap::new(),
-            next_thread_local: 0,
             reads_are_aligned: Cell::new(true),
             writes_are_aligned: Cell::new(true),
             cur_frame: usize::max_value(),
         }
     }
 
-    pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation> {
+    pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation<M::MemoryKinds>> {
         self.alloc_map.iter()
     }
 
@@ -322,7 +309,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(ptr)
     }
 
-    pub fn allocate(&mut self, size: u64, align: u64, kind: Kind) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn allocate(
+        &mut self,
+        size: u64,
+        align: u64,
+        kind: Kind<M::MemoryKinds>,
+    ) -> EvalResult<'tcx, MemoryPointer> {
         assert_ne!(align, 0);
         assert!(align.is_power_of_two());
 
@@ -350,7 +342,15 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(MemoryPointer::new(id, 0))
     }
 
-    pub fn reallocate(&mut self, ptr: MemoryPointer, old_size: u64, old_align: u64, new_size: u64, new_align: u64, kind: Kind) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn reallocate(
+        &mut self,
+        ptr: MemoryPointer,
+        old_size: u64,
+        old_align: u64,
+        new_size: u64,
+        new_align: u64,
+        kind: Kind<M::MemoryKinds>,
+    ) -> EvalResult<'tcx, MemoryPointer> {
         use std::cmp::min;
 
         if ptr.offset != 0 {
@@ -358,7 +358,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
         if let Ok(alloc) = self.get(ptr.alloc_id) {
             if alloc.kind != kind {
-                return Err(EvalError::ReallocatedWrongMemoryKind(alloc.kind, kind));
+                return Err(EvalError::ReallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
             }
         }
 
@@ -370,7 +370,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         Ok(new_ptr)
     }
 
-    pub fn deallocate(&mut self, ptr: MemoryPointer, size_and_align: Option<(u64, u64)>, kind: Kind) -> EvalResult<'tcx> {
+    pub fn deallocate(
+        &mut self,
+        ptr: MemoryPointer,
+        size_and_align: Option<(u64, u64)>,
+        kind: Kind<M::MemoryKinds>,
+    ) -> EvalResult<'tcx> {
         if ptr.offset != 0 {
             return Err(EvalError::DeallocateNonBasePtr);
         }
@@ -389,7 +394,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             .map_err(|lock| EvalError::DeallocatedLockedMemory { ptr, lock })?;
 
         if alloc.kind != kind {
-            return Err(EvalError::DeallocatedWrongMemoryKind(alloc.kind, kind));
+            return Err(EvalError::DeallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
         }
         if let Some((size, align)) = size_and_align {
             if size != alloc.bytes.len() as u64 || align != alloc.align {
@@ -443,7 +448,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn check_bounds(&self, ptr: MemoryPointer, access: bool) -> EvalResult<'tcx> {
+    pub fn check_bounds(&self, ptr: MemoryPointer, access: bool) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset > allocation_size {
@@ -455,85 +460,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
     pub(crate) fn set_cur_frame(&mut self, cur_frame: usize) {
         self.cur_frame = cur_frame;
     }
-
-    pub(crate) fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
-        let new_key = self.next_thread_local;
-        self.next_thread_local += 1;
-        self.thread_local.insert(new_key, TlsEntry { data: Pointer::null(), dtor });
-        trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
-        return new_key;
-    }
-
-    pub(crate) fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx> {
-        return match self.thread_local.remove(&key) {
-            Some(_) => {
-                trace!("TLS key {} removed", key);
-                Ok(())
-            },
-            None => Err(EvalError::TlsOutOfBounds)
-        }
-    }
-
-    pub(crate) fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
-        return match self.thread_local.get(&key) {
-            Some(&TlsEntry { data, .. }) => {
-                trace!("TLS key {} loaded: {:?}", key, data);
-                Ok(data)
-            },
-            None => Err(EvalError::TlsOutOfBounds)
-        }
-    }
-
-    pub(crate) fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx> {
-        return match self.thread_local.get_mut(&key) {
-            Some(&mut TlsEntry { ref mut data, .. }) => {
-                trace!("TLS key {} stored: {:?}", key, new_data);
-                *data = new_data;
-                Ok(())
-            },
-            None => Err(EvalError::TlsOutOfBounds)
-        }
-    }
-    
-    /// Returns a dtor, its argument and its index, if one is supposed to run
-    ///
-    /// An optional destructor function may be associated with each key value.
-    /// At thread exit, if a key value has a non-NULL destructor pointer,
-    /// and the thread has a non-NULL value associated with that key,
-    /// the value of the key is set to NULL, and then the function pointed
-    /// to is called with the previously associated value as its sole argument.
-    /// The order of destructor calls is unspecified if more than one destructor
-    /// exists for a thread when it exits.
-    ///
-    /// If, after all the destructors have been called for all non-NULL values
-    /// with associated destructors, there are still some non-NULL values with
-    /// associated destructors, then the process is repeated.
-    /// If, after at least {PTHREAD_DESTRUCTOR_ITERATIONS} iterations of destructor
-    /// calls for outstanding non-NULL values, there are still some non-NULL values
-    /// with associated destructors, implementations may stop calling destructors,
-    /// or they may continue calling destructors until no non-NULL values with
-    /// associated destructors exist, even though this might result in an infinite loop.
-    pub(crate) fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>> {
-        use std::collections::Bound::*;
-        let start = match key {
-            Some(key) => Excluded(key),
-            None => Unbounded,
-        };
-        for (&key, &mut TlsEntry { ref mut data, dtor }) in self.thread_local.range_mut((start, Unbounded)) {
-            if !data.is_null()? {
-                if let Some(dtor) = dtor {
-                    let ret = Some((dtor, *data, key));
-                    *data = Pointer::null();
-                    return Ok(ret);
-                }
-            }
-        }
-        return Ok(None);
-    }
 }
 
 /// Locking
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub(crate) fn check_locks(&self, ptr: MemoryPointer, len: u64, access: AccessKind) -> EvalResult<'tcx> {
         if len == 0 {
             return Ok(())
@@ -656,8 +586,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Allocation accessors
-impl<'a, 'tcx> Memory<'a, 'tcx> {
-    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
+    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::MemoryKinds>> {
         match self.alloc_map.get(&id) {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
@@ -667,7 +597,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
     
-    fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+    fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
         match self.alloc_map.get_mut(&id) {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
@@ -677,7 +607,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation> {
+    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
         let alloc = self.get_mut_unchecked(id)?;
         if alloc.mutable == Mutability::Mutable {
             Ok(alloc)
@@ -747,13 +677,11 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
 
             let immutable = match (alloc.kind, alloc.mutable) {
-                (Kind::UninitializedStatic, _) => " (static in the process of initialization)",
-                (Kind::Static, Mutability::Mutable) => " (static mut)",
-                (Kind::Static, Mutability::Immutable) => " (immutable)",
-                (Kind::Env, _) => " (env var)",
-                (Kind::C, _) => " (malloc)",
-                (Kind::Rust, _) => " (heap)",
-                (Kind::Stack, _) => " (stack)",
+                (Kind::UninitializedStatic, _) => " (static in the process of initialization)".to_owned(),
+                (Kind::Static, Mutability::Mutable) => " (static mut)".to_owned(),
+                (Kind::Static, Mutability::Immutable) => " (immutable)".to_owned(),
+                (Kind::Machine(m), _) => format!(" ({:?})", m),
+                (Kind::Stack, _) => " (stack)".to_owned(),
             };
             trace!("{}({} bytes, alignment {}){}", msg, alloc.bytes.len(), alloc.align, immutable);
 
@@ -794,7 +722,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Byte accessors
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     fn get_bytes_unchecked(&self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
         if self.reads_are_aligned.get() {
@@ -847,7 +775,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Reading and writing
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     /// mark an allocation as being the entry point to a static (see `static_alloc` field)
     pub fn mark_static(&mut self, alloc_id: AllocId) {
         trace!("mark_static: {:?}", alloc_id);
@@ -877,17 +805,12 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     // E.g. `const Foo: &u32 = &1;` refers to the temp local that stores the `1`
                     Kind::Stack |
                     // The entire point of this function
-                    Kind::UninitializedStatic |
-                    // In the future const eval will allow heap allocations so we'll need to protect them
-                    // from deallocation, too
-                    Kind::Rust |
-                    Kind::C => {},
+                    Kind::UninitializedStatic => {},
+                    Kind::Machine(m) => M::mark_static_initialized(m)?,
                     Kind::Static => {
                         trace!("mark_static_initalized: skipping already initialized static referred to by static currently being initialized");
                         return Ok(());
                     },
-                    // FIXME: This could be allowed, but not for env vars set during miri execution
-                    Kind::Env => return Err(EvalError::Unimplemented("statics can't refer to env vars".to_owned())),
                 }
                 *kind = Kind::Static;
                 *mutable = mutability;
@@ -1157,7 +1080,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Relocations
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     fn relocations(&self, ptr: MemoryPointer, size: u64)
         -> EvalResult<'tcx, btree_map::Range<u64, AllocId>>
     {
@@ -1212,7 +1135,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 }
 
 /// Undefined bytes
-impl<'a, 'tcx> Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     // FIXME(solson): This is a very naive, slow version.
     fn copy_undef_mask(&mut self, src: MemoryPointer, dest: MemoryPointer, size: u64) -> EvalResult<'tcx> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
@@ -1395,9 +1318,9 @@ fn bit_index(bits: u64) -> (usize, usize) {
 // Unaligned accesses
 ////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) trait HasMemory<'a, 'tcx> {
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx>;
-    fn memory(&self) -> &Memory<'a, 'tcx>;
+pub trait HasMemory<'a, 'tcx, M: Machine<'tcx>> {
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M>;
+    fn memory(&self) -> &Memory<'a, 'tcx, M>;
 
     // These are not supposed to be overriden.
     fn read_maybe_aligned<F, T>(&self, aligned: bool, f: F) -> EvalResult<'tcx, T>
@@ -1434,26 +1357,26 @@ pub(crate) trait HasMemory<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> HasMemory<'a, 'tcx> for Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> HasMemory<'a, 'tcx, M> for Memory<'a, 'tcx, M> {
     #[inline]
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M> {
         self
     }
 
     #[inline]
-    fn memory(&self) -> &Memory<'a, 'tcx> {
+    fn memory(&self) -> &Memory<'a, 'tcx, M> {
         self
     }
 }
 
-impl<'a, 'tcx> HasMemory<'a, 'tcx> for EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> HasMemory<'a, 'tcx, M> for EvalContext<'a, 'tcx, M> {
     #[inline]
-    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx> {
+    fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M> {
         &mut self.memory
     }
 
     #[inline]
-    fn memory(&self) -> &Memory<'a, 'tcx> {
+    fn memory(&self) -> &Memory<'a, 'tcx, M> {
         &self.memory
     }
 }
@@ -1515,20 +1438,20 @@ pub trait PointerArithmetic : layout::HasDataLayout {
 
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
-impl<'a, 'tcx> layout::HasDataLayout for &'a Memory<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> layout::HasDataLayout for &'a Memory<'a, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self.layout
     }
 }
-impl<'a, 'tcx> layout::HasDataLayout for &'a EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> layout::HasDataLayout for &'a EvalContext<'a, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self.memory().layout
     }
 }
 
-impl<'c, 'b, 'a, 'tcx> layout::HasDataLayout for &'c &'b mut EvalContext<'a, 'tcx> {
+impl<'c, 'b, 'a, 'tcx, M: Machine<'tcx>> layout::HasDataLayout for &'c &'b mut EvalContext<'a, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self.memory().layout

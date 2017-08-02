@@ -2,13 +2,15 @@ use rustc::mir;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 
-use error::EvalResult;
-use eval_context::{EvalContext, StackPopCleanup};
-use lvalue::{Lvalue, LvalueExtra};
-use value::PrimVal;
-use value::Value;
+use interpret::{
+    EvalResult,
+    EvalContext, StackPopCleanup,
+    Lvalue, LvalueExtra,
+    PrimVal, Value,
+    Machine,
+};
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
+impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn drop_lvalue(&mut self, lval: Lvalue<'tcx>, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
         trace!("drop_lvalue: {:#?}", lval);
         // We take the address of the object.  This may well be unaligned, which is fine for us here.

@@ -1,22 +1,31 @@
 use rustc::traits::Reveal;
-use rustc::ty::{self, TyCtxt, Ty, Instance};
-use syntax::ast::Mutability;
+use rustc::ty::{self, TyCtxt, Ty, Instance, layout};
+use rustc::mir;
 
-use error::{EvalError, EvalResult};
-use lvalue::{Global, GlobalId, Lvalue};
-use value::PrimVal;
+use syntax::ast::Mutability;
+use syntax::codemap::Span;
+
+use super::{
+    EvalResult, EvalError,
+    Global, GlobalId, Lvalue,
+    PrimVal,
+    EvalContext, StackPopCleanup,
+};
+
 use rustc_const_math::ConstInt;
-use eval_context::{EvalContext, StackPopCleanup};
+
+use std::fmt;
+use std::error::Error;
 
 pub fn eval_body_as_primval<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
 ) -> EvalResult<'tcx, (PrimVal, Ty<'tcx>)> {
-    let limits = ::ResourceLimits::default();
-    let mut ecx = EvalContext::new(tcx, limits);
+    let limits = super::ResourceLimits::default();
+    let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, limits, (), ());
     let cid = GlobalId { instance, promoted: None };
     if ecx.tcx.has_attr(instance.def_id(), "linkage") {
-        return Err(EvalError::NotConst("extern global".to_string()));
+        return Err(ConstEvalError::NotConst("extern global".to_string()).into());
     }
     
     let mir = ecx.load_mir(instance.def)?;
@@ -70,6 +79,126 @@ pub fn eval_body_as_integer<'a, 'tcx>(
         TyUint(UintTy::U64) => ConstInt::U64(prim as u64),
         TyUint(UintTy::U128) => ConstInt::U128(prim),
         TyUint(UintTy::Us) => ConstInt::Usize(ConstUsize::new(prim as u64, tcx.sess.target.uint_type).expect("miri should already have errored")),
-        _ => return Err(EvalError::NeedsRfc("evaluating anything other than isize/usize during typeck".to_string())),
+        _ => return Err(ConstEvalError::NeedsRfc("evaluating anything other than isize/usize during typeck".to_string()).into()),
     })
+}
+
+struct CompileTimeFunctionEvaluator;
+
+impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
+    fn into(self) -> EvalError<'tcx> {
+        EvalError::MachineError(Box::new(self))
+    }
+}
+
+#[derive(Clone, Debug)]
+enum ConstEvalError {
+    NeedsRfc(String),
+    NotConst(String),
+}
+
+impl fmt::Display for ConstEvalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::ConstEvalError::*;
+        match *self {
+            NeedsRfc(ref msg) =>
+                write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg),
+            NotConst(ref msg) =>
+                write!(f, "Cannot evaluate within constants: \"{}\"", msg),
+        }
+    }
+}
+
+impl Error for ConstEvalError {
+    fn description(&self) -> &str {
+        use self::ConstEvalError::*;
+        match *self {
+            NeedsRfc(_) =>
+                "this feature needs an rfc before being allowed inside constants",
+            NotConst(_) =>
+                "this feature is not compatible with constant evaluation",
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        None
+    }
+}
+
+impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
+    type Data = ();
+    type MemoryData = ();
+    type MemoryKinds = !;
+    fn eval_fn_call<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        _arg_operands: &[mir::Operand<'tcx>],
+        span: Span,
+        _sig: ty::FnSig<'tcx>,
+    ) -> EvalResult<'tcx, bool> {
+        if !ecx.tcx.is_const_fn(instance.def_id()) {
+            return Err(ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into());
+        }
+        let mir = match ecx.load_mir(instance.def) {
+            Ok(mir) => mir,
+            Err(EvalError::NoMirFor(path)) => {
+                // some simple things like `malloc` might get accepted in the future
+                return Err(ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path)).into());
+            },
+            Err(other) => return Err(other),
+        };
+        let (return_lvalue, return_to_block) = match destination {
+            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
+            None => (Lvalue::undef(), StackPopCleanup::None),
+        };
+
+        ecx.push_stack_frame(
+            instance,
+            span,
+            mir,
+            return_lvalue,
+            return_to_block,
+        )?;
+
+        Ok(false)
+    }
+
+    fn call_intrinsic<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _args: &[mir::Operand<'tcx>],
+        _dest: Lvalue<'tcx>,
+        _dest_ty: Ty<'tcx>,
+        _dest_layout: &'tcx layout::Layout,
+        _target: mir::BasicBlock,
+    ) -> EvalResult<'tcx> {
+        Err(ConstEvalError::NeedsRfc("calling intrinsics".to_string()).into())
+    }
+
+    fn try_ptr_op<'a>(
+        _ecx: &EvalContext<'a, 'tcx, Self>,
+        _bin_op: mir::BinOp,
+        left: PrimVal,
+        _left_ty: Ty<'tcx>,
+        right: PrimVal,
+        _right_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
+        if left.is_bytes() && right.is_bytes() {
+            Ok(None)
+        } else {
+            Err(ConstEvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()).into())
+        }
+    }
+
+    fn mark_static_initialized(m: !) -> EvalResult<'tcx> {
+        m
+    }
+
+    fn box_alloc<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _ty: ty::Ty<'tcx>,
+    ) -> EvalResult<'tcx, PrimVal> {
+        Err(ConstEvalError::NeedsRfc("Heap allocations via `box` keyword".to_string()).into())
+    }
 }

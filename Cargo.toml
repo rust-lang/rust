@@ -1,0 +1,37 @@
+[package]
+authors = ["Scott Olson <scott@solson.me>"]
+description = "An experimental interpreter for Rust MIR."
+license = "MIT/Apache-2.0"
+name = "miri"
+repository = "https://github.com/solson/miri"
+version = "0.1.0"
+
+[[bin]]
+doc = false
+name = "miri"
+test = false
+path = "miri/bin/miri.rs"
+
+[[bin]]
+doc = false
+name = "cargo-miri"
+test = false
+path = "miri/bin/cargo-miri.rs"
+
+[lib]
+test = false
+path = "miri/lib.rs"
+
+[dependencies]
+byteorder = { version = "1.1", features = ["i128"]}
+env_logger = "0.4.3"
+log = "0.3.6"
+log_settings = "0.1.1"
+cargo_metadata = "0.2"
+rustc_miri = { path = "src/librustc_mir" }
+
+[dev-dependencies]
+compiletest_rs = "0.2.6"
+
+[workspace]
+exclude = ["xargo", "cargo-miri-test"]

@@ -1,17 +1,32 @@
 use rustc::mir;
 use rustc::traits::Reveal;
-use rustc::ty::layout::{Layout, Size, Align};
-use rustc::ty::subst::Substs;
+use rustc::ty::layout::Layout;
 use rustc::ty::{self, Ty};
 
-use error::{EvalError, EvalResult};
-use eval_context::EvalContext;
-use lvalue::{Lvalue, LvalueExtra};
-use value::{PrimVal, PrimValKind, Value, Pointer};
-use memory::HasMemory;
+use rustc_miri::interpret::{
+    EvalError, EvalResult,
+    Lvalue, LvalueExtra,
+    PrimVal, PrimValKind, Value, Pointer,
+    HasMemory,
+    EvalContext,
+};
 
-impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-    pub(super) fn call_intrinsic(
+use helpers::EvalContextExt as HelperEvalContextExt;
+
+pub trait EvalContextExt<'tcx> {
+    fn call_intrinsic(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        dest: Lvalue<'tcx>,
+        dest_ty: Ty<'tcx>,
+        dest_layout: &'tcx Layout,
+        target: mir::BasicBlock,
+    ) -> EvalResult<'tcx>;
+}
+
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+    fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
@@ -484,97 +499,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // current frame.
         Ok(())
     }
-
-    pub fn size_and_align_of_dst(
-        &mut self,
-        ty: ty::Ty<'tcx>,
-        value: Value,
-    ) -> EvalResult<'tcx, (u64, u64)> {
-        if let Some(size) = self.type_size(ty)? {
-            Ok((size as u64, self.type_align(ty)? as u64))
-        } else {
-            match ty.sty {
-                ty::TyAdt(def, substs) => {
-                    // First get the size of all statically known fields.
-                    // Don't use type_of::sizing_type_of because that expects t to be sized,
-                    // and it also rounds up to alignment, which we want to avoid,
-                    // as the unsized field's alignment could be smaller.
-                    assert!(!ty.is_simd());
-                    let layout = self.type_layout(ty)?;
-                    debug!("DST {} layout: {:?}", ty, layout);
-
-                    let (sized_size, sized_align) = match *layout {
-                        ty::layout::Layout::Univariant { ref variant, .. } => {
-                            (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align)
-                        }
-                        _ => {
-                            bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
-                                 ty, layout);
-                        }
-                    };
-                    debug!("DST {} statically sized prefix size: {} align: {:?}",
-                           ty, sized_size, sized_align);
-
-                    // Recurse to get the size of the dynamically sized field (must be
-                    // the last field).
-                    let last_field = def.struct_variant().fields.last().unwrap();
-                    let field_ty = self.field_ty(substs, last_field);
-                    let (unsized_size, unsized_align) = self.size_and_align_of_dst(field_ty, value)?;
-
-                    // FIXME (#26403, #27023): We should be adding padding
-                    // to `sized_size` (to accommodate the `unsized_align`
-                    // required of the unsized field that follows) before
-                    // summing it with `sized_size`. (Note that since #26403
-                    // is unfixed, we do not yet add the necessary padding
-                    // here. But this is where the add would go.)
-
-                    // Return the sum of sizes and max of aligns.
-                    let size = sized_size + unsized_size;
-
-                    // Choose max of two known alignments (combined value must
-                    // be aligned according to more restrictive of the two).
-                    let align = sized_align.max(Align::from_bytes(unsized_align, unsized_align).unwrap());
-
-                    // Issue #27023: must add any necessary padding to `size`
-                    // (to make it a multiple of `align`) before returning it.
-                    //
-                    // Namely, the returned size should be, in C notation:
-                    //
-                    //   `size + ((size & (align-1)) ? align : 0)`
-                    //
-                    // emulated via the semi-standard fast bit trick:
-                    //
-                    //   `(size + (align-1)) & -align`
-
-                    let size = Size::from_bytes(size).abi_align(align).bytes();
-                    Ok((size, align.abi()))
-                }
-                ty::TyDynamic(..) => {
-                    let (_, vtable) = value.into_ptr_vtable_pair(&self.memory)?;
-                    // the second entry in the vtable is the dynamic size of the object.
-                    self.read_size_and_align_from_vtable(vtable)
-                }
-
-                ty::TySlice(_) | ty::TyStr => {
-                    let elem_ty = ty.sequence_element_type(self.tcx);
-                    let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized") as u64;
-                    let (_, len) = value.into_slice(&self.memory)?;
-                    let align = self.type_align(elem_ty)?;
-                    Ok((len * elem_size, align as u64))
-                }
-
-                _ => bug!("size_of_val::<{:?}>", ty),
-            }
-        }
-    }
-    /// Returns the normalized type of a struct field
-    fn field_ty(
-        &self,
-        param_substs: &Substs<'tcx>,
-        f: &ty::FieldDef,
-    ) -> ty::Ty<'tcx> {
-        self.tcx.normalize_associated_type(&f.ty(self.tcx, param_substs))
-    }
 }
 
 fn numeric_intrinsic<'tcx>(
@@ -584,7 +508,7 @@ fn numeric_intrinsic<'tcx>(
 ) -> EvalResult<'tcx, PrimVal> {
     macro_rules! integer_intrinsic {
         ($method:ident) => ({
-            use value::PrimValKind::*;
+            use rustc_miri::interpret::PrimValKind::*;
             let result_bytes = match kind {
                 I8 => (bytes as i8).$method() as u128,
                 U8 => (bytes as u8).$method() as u128,
