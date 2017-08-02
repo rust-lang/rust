@@ -280,13 +280,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn size_and_align_of_dst(
         &mut self,
         ty: ty::Ty<'tcx>,
-        value: Value,
+        value: Value, // This has to be a fat ptr; we only care about the "extra" data in it.
     ) -> EvalResult<'tcx, (u64, u64)> {
         if let Some(size) = self.type_size(ty)? {
             Ok((size as u64, self.type_align(ty)? as u64))
         } else {
             match ty.sty {
-                ty::TyAdt(def, substs) => {
+                ty::TyAdt(..) | ty::TyTuple(..) => {
                     // First get the size of all statically known fields.
                     // Don't use type_of::sizing_type_of because that expects t to be sized,
                     // and it also rounds up to alignment, which we want to avoid,
@@ -309,9 +309,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                     // Recurse to get the size of the dynamically sized field (must be
                     // the last field).
-                    let last_field = def.struct_variant().fields.last().unwrap();
-                    let field_ty = self.field_ty(substs, last_field);
-                    let (unsized_size, unsized_align) = self.size_and_align_of_dst(field_ty, value)?;
+                    let (unsized_size, unsized_align) = match ty.sty {
+                        ty::TyAdt(def, substs) => {
+                            let last_field = def.struct_variant().fields.last().unwrap();
+                            let field_ty = self.field_ty(substs, last_field);
+                            self.size_and_align_of_dst(field_ty, value)?
+                        }
+                        ty::TyTuple(ref types, _) => {
+                            let field_ty = types.last().unwrap();
+                            let field_ty = self.tcx.normalize_associated_type(field_ty);
+                            self.size_and_align_of_dst(field_ty, value)?
+                        }
+                        _ => bug!("We already checked that we know this type"),
+                    };
 
                     // FIXME (#26403, #27023): We should be adding padding
                     // to `sized_size` (to accommodate the `unsized_align`
