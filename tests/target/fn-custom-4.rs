@@ -13,9 +13,7 @@ where
 }
 
 fn qux()
-where
-    X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
-{
+where X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT {
     baz();
 }
 

@@ -539,7 +539,7 @@ create_config! {
     // 1. Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
     // 2. Currently options `Tall` and `Vertical` produce the same output.
-    where_density: Density, Density::CompressedIfEmpty, "Density of a where clause";
+    where_density: Density, Density::Vertical, "Density of a where clause";
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: IndentStyle, IndentStyle::Visual,
         "Indentation style of a where predicate";
