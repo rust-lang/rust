@@ -38,7 +38,7 @@ fn main() {
 //         Validate(Suspend(ReScope(Misc(NodeId(46)))), [(*_5): i32/ReScope(Misc(NodeId(46))) (imm)]);
 //         _4 = &ReErased (*_5);
 //         Validate(Acquire, [(*_4): i32/ReScope(Misc(NodeId(46))) (imm)]);
-//         Validate(Release, [_4: &ReScope(Misc(NodeId(46))) i32]);
+//         Validate(Release, [_3: (), _4: &ReScope(Misc(NodeId(46))) i32]);
 //         _3 = const foo(_4) -> bb1;
 //     }
 //     bb1: {

@@ -37,7 +37,7 @@ fn main() {
 // fn test(_1: &ReErased mut i32) -> () {
 //     bb0: {
 //         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(4) => validate_5/8cd878b::test[0] }, BrAnon(0)) mut i32]);
-//         Validate(Release, [_4: *mut i32]);
+//         Validate(Release, [_3: bool, _4: *mut i32]);
 //         _3 = const write_42(_4) -> bb1;
 //     }
 // }

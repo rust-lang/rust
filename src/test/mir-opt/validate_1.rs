@@ -46,7 +46,7 @@ fn main() {
 //         Validate(Suspend(ReScope(Misc(NodeId(34)))), [(*_6): i32/ReScope(Misc(NodeId(34)))]);
 //         _5 = &ReErased mut (*_6);
 //         Validate(Acquire, [(*_5): i32/ReScope(Misc(NodeId(34)))]);
-//         Validate(Release, [_3: &ReScope(Misc(NodeId(34))) Test, _5: &ReScope(Misc(NodeId(34))) mut i32]);
+//         Validate(Release, [_2: (), _3: &ReScope(Misc(NodeId(34))) Test, _5: &ReScope(Misc(NodeId(34))) mut i32]);
 //         _2 = const Test::foo(_3, _5) -> bb1;
 //     }
 //

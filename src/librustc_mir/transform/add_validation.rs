@@ -248,18 +248,23 @@ impl MirPass for AddValidation {
             match block_data.terminator {
                 Some(Terminator { kind: TerminatorKind::Call { ref args, ref destination, .. },
                                   source_info }) => {
-                    // Before the call: Release all arguments
+                    // Before the call: Release all arguments *and* the return value.
+                    // The callee may write into the return value!  Note that this relies
+                    // on "release of uninitialized" to be a NOP.
                     if !restricted_validation {
                         let release_stmt = Statement {
                             source_info,
                             kind: StatementKind::Validate(ValidationOp::Release,
-                                args.iter().filter_map(|op| {
-                                    match op {
-                                        &Operand::Consume(ref lval) =>
-                                            Some(lval_to_operand(lval.clone())),
-                                        &Operand::Constant(..) => { None },
-                                    }
-                                }).collect())
+                                destination.iter().map(|dest| lval_to_operand(dest.0.clone()))
+                                .chain(
+                                    args.iter().filter_map(|op| {
+                                        match op {
+                                            &Operand::Consume(ref lval) =>
+                                                Some(lval_to_operand(lval.clone())),
+                                            &Operand::Constant(..) => { None },
+                                        }
+                                    })
+                                ).collect())
                         };
                         block_data.statements.push(release_stmt);
                     }
