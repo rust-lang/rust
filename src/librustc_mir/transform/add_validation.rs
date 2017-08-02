@@ -128,29 +128,29 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
         let mut cur = fn_like.id();
         loop {
             // Go further upwards.
-            let parent = tcx.hir.get_parent_node(cur);
-            if cur == parent {
-                bug!("Closures muts be inside a non-closure fn_like");
+            cur = tcx.hir.get_parent_node(cur);
+            let node = tcx.hir.get(cur);
+            // Check if this is an unsafe function
+            if let Some(fn_like) = FnLikeNode::from_node(node) {
+                if !fn_is_closure(fn_like) {
+                    if fn_like.unsafety() == hir::Unsafety::Unsafe {
+                        return true;
+                    }
+                }
             }
-            cur = parent;
-            // Check if this is an unsafe block
-            match tcx.hir.find(cur) {
-                Some(Node::NodeExpr(&hir::Expr { node: hir::ExprBlock(ref block), ..})) => {
+            // Check if this is an unsafe block, or an item
+            match node {
+                Node::NodeExpr(&hir::Expr { node: hir::ExprBlock(ref block), ..}) => {
                     if block_is_unsafe(&*block) {
                         // Found an unsafe block, we can bail out here.
                         return true;
                     }
                 }
-                _ => {},
-            }
-            // Check if this is a non-closure fn_like, at which point we have to stop moving up
-            if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(cur)) {
-                if !fn_is_closure(fn_like) {
-                    if fn_like.unsafety() == hir::Unsafety::Unsafe {
-                        return true;
-                    }
+                Node::NodeItem(..) => {
+                    // No walking up beyond items.  This makes sure the loop always terminates.
                     break;
                 }
+                _ => {},
             }
         }
     }
