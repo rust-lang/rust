@@ -561,17 +561,18 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) = item.node
         {
             let include_priv_fields = !self.save_ctxt.config.pub_only;
-            let fields_str = fields.iter()
-                                   .enumerate()
-                                   .filter_map(|(i, f)| {
-                                        if include_priv_fields || f.vis == ast::Visibility::Public {
-                                            f.ident.map(|i| i.to_string()).or_else(|| Some(i.to_string()))
-                                        } else {
-                                            None
-                                        }
-                                   })
-                                   .collect::<Vec<_>>()
-                                   .join(", ");
+            let fields_str = fields
+                .iter()
+                .enumerate()
+                .filter_map(|(i, f)| {
+                     if include_priv_fields || f.vis == ast::Visibility::Public {
+                         f.ident.map(|i| i.to_string()).or_else(|| Some(i.to_string()))
+                     } else {
+                         None
+                     }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
             let value = format!("{} {{ {} }}", name, fields_str);
             (value, fields.iter().map(|f| ::id_from_node_id(f.id, &self.save_ctxt)).collect())
         } else {
