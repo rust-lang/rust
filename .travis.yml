@@ -15,8 +15,8 @@ script:
   xargo/build.sh
 - |
   # Test plain miri
-  cargo build &&
-  cargo test &&
+  cargo build --release &&
+  cargo test --release &&
   cargo install
 - |
   # Test cargo miri
@@ -26,11 +26,11 @@ script:
   cd ..
 - |
   # and run all tests with full mir
-  MIRI_SYSROOT=~/.xargo/HOST cargo test
+  MIRI_SYSROOT=~/.xargo/HOST cargo test --release
 - |
   # test that the rustc_tests binary compiles
   cd rustc_tests &&
-  cargo build &&
+  cargo build --release &&
   cd ..
 notifications:
   email:
