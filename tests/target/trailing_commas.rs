@@ -66,7 +66,8 @@ type Double<
     T,
 > where
     T: P,
-    T: Q = Pair<
+    T: Q,
+= Pair<
     T, T,
 >;
 
