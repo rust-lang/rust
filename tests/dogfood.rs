@@ -18,7 +18,7 @@ fn dogfood() {
         }
     }
 
-    let mut config = compiletest::default_config();
+    let mut config = compiletest::Config::default();
 
     let cfg_mode = "run-fail".parse().expect("Invalid mode");
     let mut s = String::new();
