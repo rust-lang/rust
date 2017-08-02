@@ -549,7 +549,7 @@ impl<T> RefCell<T> {
     ///
     /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// #![feature(refcell_replace_swap)]
@@ -575,7 +575,7 @@ impl<T> RefCell<T> {
     ///
     /// This function corresponds to [`std::mem::swap`](../mem/fn.swap.html).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// #![feature(refcell_replace_swap)]
