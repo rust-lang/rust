@@ -1,0 +1,76 @@
+error: manual implementation of an assign operation
+  --> $DIR/strings.rs:10:9
+   |
+10 |         x = x + ".";
+   |         ^^^^^^^^^^^ help: replace it with: `x += "."`
+   |
+   = note: `-D assign-op-pattern` implied by `-D warnings`
+
+error: you added something to a string. Consider using `String::push_str()` instead
+  --> $DIR/strings.rs:10:13
+   |
+10 |         x = x + ".";
+   |             ^^^^^^^
+   |
+   = note: `-D string-add` implied by `-D warnings`
+
+error: you added something to a string. Consider using `String::push_str()` instead
+  --> $DIR/strings.rs:14:13
+   |
+14 |     let z = y + "...";
+   |             ^^^^^^^^^
+
+error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
+  --> $DIR/strings.rs:24:9
+   |
+24 |         x = x + ".";
+   |         ^^^^^^^^^^^
+   |
+   = note: `-D string-add-assign` implied by `-D warnings`
+
+error: manual implementation of an assign operation
+  --> $DIR/strings.rs:24:9
+   |
+24 |         x = x + ".";
+   |         ^^^^^^^^^^^ help: replace it with: `x += "."`
+
+error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
+  --> $DIR/strings.rs:38:9
+   |
+38 |         x = x + ".";
+   |         ^^^^^^^^^^^
+
+error: manual implementation of an assign operation
+  --> $DIR/strings.rs:38:9
+   |
+38 |         x = x + ".";
+   |         ^^^^^^^^^^^ help: replace it with: `x += "."`
+
+error: you added something to a string. Consider using `String::push_str()` instead
+  --> $DIR/strings.rs:42:13
+   |
+42 |     let z = y + "...";
+   |             ^^^^^^^^^
+
+error: calling `as_bytes()` on a string literal
+  --> $DIR/strings.rs:50:14
+   |
+50 |     let bs = "hello there".as_bytes();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"hello there"`
+   |
+   = note: `-D string-lit-as-bytes` implied by `-D warnings`
+
+error: calling `as_bytes()` on a string literal
+  --> $DIR/strings.rs:55:18
+   |
+55 |     let strify = stringify!(foobar).as_bytes();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `bstringify!(foobar)`
+
+error: manual implementation of an assign operation
+  --> $DIR/strings.rs:65:7
+   |
+65 |     ; x = x + 1;
+   |       ^^^^^^^^^ help: replace it with: `x += 1`
+
+error: aborting due to 11 previous errors
+

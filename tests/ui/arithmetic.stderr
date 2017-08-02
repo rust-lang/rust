@@ -1,0 +1,73 @@
+error: integer arithmetic detected
+ --> $DIR/arithmetic.rs:8:5
+  |
+8 |     1 + i;
+  |     ^^^^^
+  |
+  = note: `-D integer-arithmetic` implied by `-D warnings`
+
+error: integer arithmetic detected
+ --> $DIR/arithmetic.rs:9:5
+  |
+9 |     i * 2;
+  |     ^^^^^
+
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:10:5
+   |
+10 | /     1 %
+11 | |     i / 2; // no error, this is part of the expression in the preceding line
+   | |_________^
+
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:12:5
+   |
+12 |     i - 2 + 2 - i;
+   |     ^^^^^^^^^^^^^
+
+error: integer arithmetic detected
+  --> $DIR/arithmetic.rs:13:5
+   |
+13 |     -i;
+   |     ^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:23:5
+   |
+23 |     f * 2.0;
+   |     ^^^^^^^
+   |
+   = note: `-D float-arithmetic` implied by `-D warnings`
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:25:5
+   |
+25 |     1.0 + f;
+   |     ^^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:26:5
+   |
+26 |     f * 2.0;
+   |     ^^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:27:5
+   |
+27 |     f / 2.0;
+   |     ^^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:28:5
+   |
+28 |     f - 2.0 * 4.2;
+   |     ^^^^^^^^^^^^^
+
+error: floating-point arithmetic detected
+  --> $DIR/arithmetic.rs:29:5
+   |
+29 |     -f;
+   |     ^^
+
+error: aborting due to 11 previous errors
+

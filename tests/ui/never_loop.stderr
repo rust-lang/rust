@@ -1,0 +1,84 @@
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:7:5
+   |
+7  | /     loop { // never_loop
+8  | |         x += 1;
+9  | |         if x == 1 {
+10 | |             return
+11 | |         }
+12 | |         break;
+13 | |     }
+   | |_____^
+   |
+   = note: `-D never-loop` implied by `-D warnings`
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:28:5
+   |
+28 | /     loop { // never loops
+29 | |         x += 1;
+30 | |         break
+31 | |     }
+   | |_____^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:47:2
+   |
+47 | / \tloop { // never loops
+48 | | \t       while i == 0 { // never loops
+49 | | \t           break
+50 | | \t       }
+51 | | \t       return
+52 | | \t}
+   | |__^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:48:9
+   |
+48 | /         while i == 0 { // never loops
+49 | |             break
+50 | |         }
+   | |_________^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:57:5
+   |
+57 | /     'outer: loop { // never loops
+58 | |         x += 1;
+59 | | \t\tloop { // never loops
+60 | |             if x == 5 { break }
+...  |
+63 | | \t\treturn
+64 | | \t}
+   | |__^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:59:3
+   |
+59 | / \t\tloop { // never loops
+60 | | \t\t          if x == 5 { break }
+61 | | \t\t\tcontinue 'outer
+62 | | \t\t}
+   | |___^
+
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:92:5
+   |
+92 | /     while let Some(y) = x { // never loops
+93 | |         return
+94 | |     }
+   | |_____^
+
+error: this loop never actually loops
+   --> $DIR/never_loop.rs:98:5
+    |
+98  | /     for x in 0..10 { // never loops
+99  | |         match x {
+100 | |             1 => break,
+101 | |             _ => return,
+102 | |         }
+103 | |     }
+    | |_____^
+
+error: aborting due to 8 previous errors
+

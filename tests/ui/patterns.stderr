@@ -1,0 +1,10 @@
+error: the `y @ _` pattern can be written as just `y`
+  --> $DIR/patterns.rs:10:9
+   |
+10 |         y @ _   => (),
+   |         ^^^^^
+   |
+   = note: `-D redundant-pattern` implied by `-D warnings`
+
+error: aborting due to previous error
+

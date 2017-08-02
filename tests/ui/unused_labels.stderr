@@ -1,0 +1,26 @@
+error: unused label `'label`
+  --> $DIR/unused_labels.rs:8:5
+   |
+8  | /     'label: for i in 1..2 {
+9  | |         if i > 4 { continue }
+10 | |     }
+   | |_____^
+   |
+   = note: `-D unused-label` implied by `-D warnings`
+
+error: unused label `'a`
+  --> $DIR/unused_labels.rs:21:5
+   |
+21 |     'a: loop { break }
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: unused label `'same_label_in_two_fns`
+  --> $DIR/unused_labels.rs:32:5
+   |
+32 | /     'same_label_in_two_fns: loop {
+33 | |         let _ = 1;
+34 | |     }
+   | |_____^
+
+error: aborting due to 3 previous errors
+

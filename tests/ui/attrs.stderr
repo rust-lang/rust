@@ -1,0 +1,24 @@
+error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
+ --> $DIR/attrs.rs:6:1
+  |
+6 | #[inline(always)]
+  | ^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D inline-always` implied by `-D warnings`
+
+error: the since field must contain a semver-compliant version
+  --> $DIR/attrs.rs:27:14
+   |
+27 | #[deprecated(since = "forever")]
+   |              ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D deprecated-semver` implied by `-D warnings`
+
+error: the since field must contain a semver-compliant version
+  --> $DIR/attrs.rs:30:14
+   |
+30 | #[deprecated(since = "1")]
+   |              ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

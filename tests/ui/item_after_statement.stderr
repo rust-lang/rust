@@ -1,0 +1,16 @@
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> $DIR/item_after_statement.rs:12:5
+   |
+12 |     fn foo() { println!("foo"); }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D items-after-statements` implied by `-D warnings`
+
+error: adding items after statements is confusing, since items exist from the start of the scope
+  --> $DIR/item_after_statement.rs:17:5
+   |
+17 |     fn foo() { println!("foo"); }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,22 @@
+error: The function/method `takes_an_immutable_reference` doesn't need a mutable reference
+  --> $DIR/mut_reference.rs:22:34
+   |
+22 |     takes_an_immutable_reference(&mut 42);
+   |                                  ^^^^^^^
+   |
+   = note: `-D unnecessary-mut-passed` implied by `-D warnings`
+
+error: The function/method `as_ptr` doesn't need a mutable reference
+  --> $DIR/mut_reference.rs:24:12
+   |
+24 |     as_ptr(&mut 42);
+   |            ^^^^^^^
+
+error: The function/method `takes_an_immutable_reference` doesn't need a mutable reference
+  --> $DIR/mut_reference.rs:28:44
+   |
+28 |     my_struct.takes_an_immutable_reference(&mut 42);
+   |                                            ^^^^^^^
+
+error: aborting due to 3 previous errors
+

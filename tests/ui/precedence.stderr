@@ -1,0 +1,58 @@
+error: operator precedence can trip the unwary
+ --> $DIR/precedence.rs:8:5
+  |
+8 |     1 << 2 + 3;
+  |     ^^^^^^^^^^ help: consider parenthesizing your expression: `1 << (2 + 3)`
+  |
+  = note: `-D precedence` implied by `-D warnings`
+
+error: operator precedence can trip the unwary
+ --> $DIR/precedence.rs:9:5
+  |
+9 |     1 + 2 << 3;
+  |     ^^^^^^^^^^ help: consider parenthesizing your expression: `(1 + 2) << 3`
+
+error: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:10:5
+   |
+10 |     4 >> 1 + 1;
+   |     ^^^^^^^^^^ help: consider parenthesizing your expression: `4 >> (1 + 1)`
+
+error: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:11:5
+   |
+11 |     1 + 3 >> 2;
+   |     ^^^^^^^^^^ help: consider parenthesizing your expression: `(1 + 3) >> 2`
+
+error: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:12:5
+   |
+12 |     1 ^ 1 - 1;
+   |     ^^^^^^^^^ help: consider parenthesizing your expression: `1 ^ (1 - 1)`
+
+error: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:13:5
+   |
+13 |     3 | 2 - 1;
+   |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 | (2 - 1)`
+
+error: operator precedence can trip the unwary
+  --> $DIR/precedence.rs:14:5
+   |
+14 |     3 & 5 - 2;
+   |     ^^^^^^^^^ help: consider parenthesizing your expression: `3 & (5 - 2)`
+
+error: unary minus has lower precedence than method call
+  --> $DIR/precedence.rs:15:5
+   |
+15 |     -1i32.abs();
+   |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1i32.abs())`
+
+error: unary minus has lower precedence than method call
+  --> $DIR/precedence.rs:16:5
+   |
+16 |     -1f32.abs();
+   |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1f32.abs())`
+
+error: aborting due to 9 previous errors
+

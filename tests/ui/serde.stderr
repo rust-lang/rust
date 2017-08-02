@@ -1,0 +1,14 @@
+error: you should not implement `visit_string` without also implementing `visit_str`
+  --> $DIR/serde.rs:39:5
+   |
+39 | /     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
+40 | |         where E: serde::de::Error,
+41 | |     {
+42 | |         unimplemented!()
+43 | |     }
+   | |_____^
+   |
+   = note: `-D serde-api-misuse` implied by `-D warnings`
+
+error: aborting due to previous error
+

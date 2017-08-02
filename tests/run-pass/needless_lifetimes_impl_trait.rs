@@ -1,7 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![feature(conservative_impl_trait)]
-#![deny(needless_lifetime)]
+#![deny(needless_lifetimes)]
+#![allow(dead_code)]
 
 trait Foo {}
 

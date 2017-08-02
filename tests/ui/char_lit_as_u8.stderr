@@ -1,0 +1,12 @@
+error: casting character literal to u8. `char`s are 4 bytes wide in rust, so casting to u8 truncates them
+ --> $DIR/char_lit_as_u8.rs:7:13
+  |
+7 |     let c = 'a' as u8;
+  |             ^^^^^^^^^
+  |
+  = note: `-D char-lit-as-u8` implied by `-D warnings`
+  = help: Consider using a byte literal instead:
+          b'a'
+
+error: aborting due to previous error
+

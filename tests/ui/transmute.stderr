@@ -1,156 +1,158 @@
-warning: transmute from a type (`&'a T`) to itself
+error: transmute from a type (`&'a T`) to itself
   --> $DIR/transmute.rs:22:20
    |
 22 |     let _: &'a T = core::intrinsics::transmute(t);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: #[warn(useless_transmute)] on by default
+   = note: `-D useless-transmute` implied by `-D warnings`
 
-warning: transmute from a reference to a pointer
+error: transmute from a reference to a pointer
   --> $DIR/transmute.rs:26:23
    |
 26 |     let _: *const T = core::intrinsics::transmute(t);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T`
 
-warning: transmute from a reference to a pointer
+error: transmute from a reference to a pointer
   --> $DIR/transmute.rs:28:21
    |
 28 |     let _: *mut T = core::intrinsics::transmute(t);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *mut T`
 
-warning: transmute from a reference to a pointer
+error: transmute from a reference to a pointer
   --> $DIR/transmute.rs:30:23
    |
 30 |     let _: *const U = core::intrinsics::transmute(t);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *const U`
 
-warning: transmute from a pointer type (`*const T`) to a reference type (`&T`)
+error: transmute from a pointer type (`*const T`) to a reference type (`&T`)
   --> $DIR/transmute.rs:35:17
    |
 35 |     let _: &T = std::mem::transmute(p);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*p`
    |
-   = note: #[warn(transmute_ptr_to_ref)] on by default
+   = note: `-D transmute-ptr-to-ref` implied by `-D warnings`
 
-warning: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
   --> $DIR/transmute.rs:38:21
    |
 38 |     let _: &mut T = std::mem::transmute(m);
    |                     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *m`
 
-warning: transmute from a pointer type (`*mut T`) to a reference type (`&T`)
+error: transmute from a pointer type (`*mut T`) to a reference type (`&T`)
   --> $DIR/transmute.rs:41:17
    |
 41 |     let _: &T = std::mem::transmute(m);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*m`
 
-warning: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
   --> $DIR/transmute.rs:44:21
    |
 44 |     let _: &mut T = std::mem::transmute(p as *mut T);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(p as *mut T)`
 
-warning: transmute from a pointer type (`*const U`) to a reference type (`&T`)
+error: transmute from a pointer type (`*const U`) to a reference type (`&T`)
   --> $DIR/transmute.rs:47:17
    |
 47 |     let _: &T = std::mem::transmute(o);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(o as *const T)`
 
-warning: transmute from a pointer type (`*mut U`) to a reference type (`&mut T`)
+error: transmute from a pointer type (`*mut U`) to a reference type (`&mut T`)
   --> $DIR/transmute.rs:50:21
    |
 50 |     let _: &mut T = std::mem::transmute(om);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(om as *mut T)`
 
-warning: transmute from a pointer type (`*mut U`) to a reference type (`&T`)
+error: transmute from a pointer type (`*mut U`) to a reference type (`&T`)
   --> $DIR/transmute.rs:53:17
    |
 53 |     let _: &T = std::mem::transmute(om);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(om as *const T)`
 
-warning: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, u8>`)
+error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, u8>`)
   --> $DIR/transmute.rs:64:32
    |
 64 |     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<_>)`
 
-warning: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, &u8>`)
+error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<'_, &u8>`)
   --> $DIR/transmute.rs:66:33
    |
 66 |     let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<&_>)`
 
-warning: transmute from a pointer type (`*const i32`) to a reference type (`&u8`)
+error: transmute from a pointer type (`*const i32`) to a reference type (`&u8`)
   --> $DIR/transmute.rs:70:14
    |
 70 |     unsafe { std::mem::transmute::<_, Bar>(raw) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const u8)`
 
-warning: transmute from a type (`std::vec::Vec<i32>`) to itself
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:76:27
    |
 76 |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: transmute from a type (`std::vec::Vec<i32>`) to itself
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:78:27
    |
 78 |         let _: Vec<i32> = core::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: transmute from a type (`std::vec::Vec<i32>`) to itself
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:80:27
    |
 80 |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: transmute from a type (`std::vec::Vec<i32>`) to itself
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:82:27
    |
 82 |         let _: Vec<i32> = std::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: transmute from a type (`std::vec::Vec<i32>`) to itself
+error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:84:27
    |
 84 |         let _: Vec<i32> = my_transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: transmute from an integer to a pointer
+error: transmute from an integer to a pointer
   --> $DIR/transmute.rs:92:31
    |
 92 |         let _: *const usize = std::mem::transmute(5_isize);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `5_isize as *const usize`
 
-warning: transmute from an integer to a pointer
+error: transmute from an integer to a pointer
   --> $DIR/transmute.rs:96:31
    |
 96 |         let _: *const usize = std::mem::transmute(1+1usize);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(1+1usize) as *const usize`
 
-warning: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
+error: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
    --> $DIR/transmute.rs:111:24
     |
 111 |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
-    = note: #[warn(crosspointer_transmute)] on by default
+    = note: `-D crosspointer-transmute` implied by `-D warnings`
 
-warning: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
+error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
    --> $DIR/transmute.rs:113:24
     |
 113 |         let _: Usize = core::intrinsics::transmute(int_mut_ptr);
     |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
+error: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
    --> $DIR/transmute.rs:115:31
     |
 115 |         let _: *const Usize = core::intrinsics::transmute(my_int());
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
+error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
    --> $DIR/transmute.rs:117:29
     |
 117 |         let _: *mut Usize = core::intrinsics::transmute(my_int());
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 25 previous errors
 

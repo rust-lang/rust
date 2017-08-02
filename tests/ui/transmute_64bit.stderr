@@ -1,14 +1,16 @@
-warning: transmute from a `f64` to a pointer
+error: transmute from a `f64` to a pointer
  --> $DIR/transmute_64bit.rs:9:31
   |
 9 |         let _: *const usize = std::mem::transmute(6.0f64);
   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
-  = note: #[warn(wrong_transmute)] on by default
+  = note: `-D wrong-transmute` implied by `-D warnings`
 
-warning: transmute from a `f64` to a pointer
+error: transmute from a `f64` to a pointer
   --> $DIR/transmute_64bit.rs:11:29
    |
 11 |         let _: *mut usize = std::mem::transmute(6.0f64);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
