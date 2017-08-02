@@ -1313,7 +1313,11 @@ pub fn rewrite_type_alias(
         option,
     ));
     result.push_str(&where_clause_str);
-    result.push_str(" = ");
+    if where_clause_str.is_empty() {
+        result.push_str(" = ");
+    } else {
+        result.push_str(&format!("\n{}= ", indent.to_string(context.config)));
+    }
 
     let line_width = last_line_width(&result);
     // This checked_sub may fail as the extra space after '=' is not taken into account
