@@ -11,7 +11,7 @@ use super::{
     EvalError, EvalResult, EvalErrorKind,
     EvalContext, DynamicLifetime,
     AccessKind, LockInfo,
-    Value,
+    PrimVal, Value,
     Lvalue, LvalueExtra,
     Machine,
 };
@@ -179,6 +179,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
         }
 
+        // Release of an Undef local is fine, and a NOP.
         // HACK: For now, bail out if we hit a dead local during recovery (can happen because sometimes we have
         // StorageDead before EndRegion).
         // TODO: We should rather fix the MIR.
@@ -186,7 +187,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Lvalue::Local { frame, local } => {
                 let res = self.stack[frame].get_local(local);
                 match (res, mode) {
-                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) => {
+                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) |
+                    (Ok(Value::ByVal(PrimVal::Undef)), ValidationMode::Release) => {
                         return Ok(());
                     }
                     _ => {},
