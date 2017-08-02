@@ -798,16 +798,10 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         let new = new.subst(infcx.tcx, new_substs);
         // let old = old.subst(infcx.tcx, substs);
 
-        let old_param_env = to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id));
-
         let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
-        let new_param_env_trans =
-            to_old.translate_param_env(new_def_id, tcx.param_env(new_def_id));
-
-        let cause = ObligationCause::dummy();
 
         let error = infcx
-            .at(&cause, new_param_env)
+            .at(&ObligationCause::dummy(), new_param_env)
             .eq(old, new)
             .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
 
@@ -843,7 +837,13 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(TypeChanged { error: err }, old_def_id, None);
         }
 
-        let old_param_env = if let Some(env) = old_param_env { env } else { return; };
+        let old_param_env = if let Some(env) =
+            to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id))
+        {
+            env
+        } else {
+            return;
+        };
         let mut bound_cx = BoundContext::new(&infcx, old_param_env);
         bound_cx.register(new_def_id, new_substs);
 
@@ -859,7 +859,9 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
             }
         } else {
-            let new_param_env_trans = if let Some(env) = new_param_env_trans {
+            let new_param_env_trans = if let Some(env) =
+                to_old.translate_param_env(new_def_id, tcx.param_env(new_def_id))
+            {
                 env
             } else {
                 return;
@@ -998,5 +1000,60 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
         } else {
             None
         }
+    }
+}
+
+pub struct TypeComparisonContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    id_mapping: &'a IdMapping,
+    forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+    backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+}
+
+impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
+    pub fn target_new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping) -> Self {
+        TypeComparisonContext {
+            infcx: infcx,
+            id_mapping: id_mapping,
+            forward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
+            backward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
+        }
+    }
+
+    pub fn target_old(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping) -> Self {
+        TypeComparisonContext {
+            infcx: infcx,
+            id_mapping: id_mapping,
+            forward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
+            backward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
+        }
+    }
+
+    fn compute_target_infer_substs(&self, target_def_id: DefId) -> &Substs<'tcx> {
+        use syntax_pos::DUMMY_SP;
+
+        let has_self = self.infcx.tcx.generics_of(target_def_id).has_self;
+
+        Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
+            self.infcx.region_var_for_def(DUMMY_SP, def)
+        }, |def, substs| {
+            if def.index == 0 && has_self { // `Self` is special
+                self.infcx.tcx.mk_param_from_def(def)
+            } else {
+                self.infcx.type_var_for_def(DUMMY_SP, def, substs)
+            }
+        })
+    }
+
+    fn compute_target_default_substs(&self, target_def_id: DefId) -> &Substs<'tcx> {
+        use rustc::ty::ReEarlyBound;
+
+        Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
+            self.infcx.tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
+        }, |def, _| if self.id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
+            self.infcx.tcx.type_of(def.def_id)
+        } else {
+            self.infcx.tcx.mk_param_from_def(def)
+        })
     }
 }
