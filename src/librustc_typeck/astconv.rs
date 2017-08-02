@@ -1078,6 +1078,54 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
     }
 
+    fn impl_trait_to_ty(&self, impl_trait_node: ast::NodeId) -> Ty<'tcx> {
+        let tcx = self.tcx();
+        let def_id = tcx.hir.local_def_id(impl_trait_node);
+        let generics = tcx.generics_of(def_id);
+        let type_param_to_index = &generics.type_param_to_index;
+        let region_param_to_index = if let Some(ref x) = generics.region_param_to_index {
+            x
+        } else {
+            bug!("missing region_param_to_index for `impl Trait` generics")
+        };
+        let param_count = type_param_to_index.len() + region_param_to_index.len();
+
+        // Filter the parent substs into just the ones that are relevant to us
+        let parent = tcx.hir.local_def_id(tcx.hir.get_parent(impl_trait_node));
+        let parent_substs = Substs::identity_for_item(tcx, parent);
+        let mut opt_substs: Vec<Option<Kind>> =
+            ::std::iter::repeat(None).take(param_count).collect();
+
+        let mut parent_id = Some(parent);
+        while let Some(cur_gen_id) = parent_id {
+            let cur_generics = tcx.generics_of(cur_gen_id);
+
+            for region in &cur_generics.regions {
+                if let Some(&new_index) = region_param_to_index.get(&region.def_id.index) {
+                    opt_substs[new_index as usize] = Some(parent_substs[region.index as usize]);
+                }
+            }
+            for type_ in &cur_generics.types {
+                if let Some(&new_index) = type_param_to_index.get(&type_.def_id.index) {
+                    opt_substs[new_index as usize] = Some(parent_substs[type_.index as usize]);
+                }
+            }
+
+            parent_id = cur_generics.parent;
+        }
+
+        let mut substs = Vec::with_capacity(param_count);
+        for opt_subst in opt_substs {
+            if let Some(subst) = opt_subst {
+                substs.push(subst);
+            } else {
+                bug!("missing `impl Trait` subst");
+            }
+        }
+
+        tcx.mk_anon(def_id, tcx.intern_substs(&substs))
+    }
+
     /// Parses the programmer's textual representation of a type into our
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
@@ -1154,8 +1202,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 // Create the anonymized type.
                 if allow {
-                    let def_id = tcx.hir.local_def_id(ast_ty.id);
-                    tcx.mk_anon(def_id, Substs::identity_for_item(tcx, def_id))
+                    self.impl_trait_to_ty(ast_ty.id)
                 } else {
                     span_err!(tcx.sess, ast_ty.span, E0562,
                               "`impl Trait` not allowed outside of function \

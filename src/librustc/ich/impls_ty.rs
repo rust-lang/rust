@@ -345,6 +345,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Ge
             // Reverse map to each `TypeParameterDef`'s `index` field, from
             // `def_id.index` (`def_id.krate` is the same as the item's).
             type_param_to_index: _, // Don't hash this
+            region_param_to_index: _, // Don't hash this either
             has_self,
             has_late_bound_regions,
         } = *self;

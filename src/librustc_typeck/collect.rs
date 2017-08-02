@@ -65,7 +65,7 @@ use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
-use util::nodemap::FxHashMap;
+use util::nodemap::{DefIdSet, FxHashMap};
 
 use rustc_const_math::ConstInt;
 
@@ -76,7 +76,7 @@ use syntax::codemap::Spanned;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc::hir::{self, map as hir_map};
+use rustc::hir::{self, map as hir_map, Lifetime};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -863,6 +863,35 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+struct ImplTraitRegionBoundsCollector<'a, 'tcx: 'a, 'b> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    region_bounds: &'b mut DefIdSet,
+}
+
+impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for ImplTraitRegionBoundsCollector<'a, 'tcx, 'b> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
+        if !lifetime.is_static() { // no need to look up the lifetime if we already know it's static
+            match self.tcx.named_region_map.defs.get(&lifetime.id) {
+                Some(&rl::Region::EarlyBound(_, id)) => {
+                    self.region_bounds.insert(self.tcx.hir.local_def_id(id));
+                }
+                Some(&rl::Region::LateBound(_, _)) |
+                Some(&rl::Region::LateBoundAnon(_, _)) => {
+                    span_bug!(lifetime.span,
+                        "Late-bound lifetimes not yet handed properly in `impl Trait`");
+                }
+                Some(&rl::Region::Static) |
+                Some(&rl::Region::Free(_, _)) |
+                None => {}
+            }
+        }
+    }
+}
+
 fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          def_id: DefId)
                          -> &'tcx ty::Generics {
@@ -883,18 +912,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
             Some(tcx.closure_base_def_id(def_id))
-        }
-        NodeTy(&hir::Ty { node: hir::TyImplTrait(..), .. }) => {
-            let mut parent_id = node_id;
-            loop {
-                match tcx.hir.get(parent_id) {
-                    NodeItem(_) | NodeImplItem(_) | NodeTraitItem(_) => break,
-                    _ => {
-                        parent_id = tcx.hir.get_parent_node(parent_id);
-                    }
-                }
-            }
-            Some(tcx.hir.local_def_id(parent_id))
         }
         _ => None
     };
@@ -960,6 +977,67 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ForeignItemStatic(..) => &no_generics,
                 ForeignItemFn(_, _, ref generics) => generics
             }
+        }
+
+        NodeTy(&hir::Ty{ node: hir::TyImplTrait(ref impl_trait_bounds), .. }) => {
+            // Traverse impl_trait_bounds to identify all of the region bounds that appear
+            // so that we can copy them from the environment
+            let mut region_bounds = DefIdSet();
+            {
+                let mut bounds_collector = ImplTraitRegionBoundsCollector {
+                    tcx: tcx,
+                    region_bounds: &mut region_bounds,
+                };
+                for bound in impl_trait_bounds {
+                    bounds_collector.visit_ty_param_bound(bound);
+                }
+            }
+
+            let mut regions = vec![];
+            let mut types = vec![];
+            let mut region_param_to_index = BTreeMap::new();
+            let mut type_param_to_index = BTreeMap::new();
+            let mut has_self = false;
+
+            // Copy generics from parents, filtering out unused region parameters
+            let mut parent_id = Some(tcx.hir.local_def_id(tcx.hir.get_parent(node_id)));
+            while let Some(cur_gen_id) = parent_id {
+                let cur_generics = tcx.generics_of(cur_gen_id);
+
+                has_self |= cur_generics.has_self;
+
+                for region in &cur_generics.regions {
+                    if region_bounds.contains(&region.def_id) {
+                        regions.push(*region);
+                    }
+                }
+
+                types.extend_from_slice(&cur_generics.types);
+
+                parent_id = cur_generics.parent;
+            }
+
+            // Fixup indices
+            for (i, ref mut region) in regions.iter_mut().enumerate() {
+                region.index = i as u32;
+                region_param_to_index.insert(region.def_id.index, region.index);
+            }
+            for (i, ref mut type_) in types.iter_mut().enumerate() {
+                type_.index = (regions.len() + i) as u32;
+                type_param_to_index.insert(type_.def_id.index, type_.index);
+            }
+
+            return tcx.alloc_generics(ty::Generics {
+                parent: None,
+                parent_regions: 0,
+                parent_types: 0,
+                regions: regions,
+                types: types,
+                region_param_to_index: Some(region_param_to_index),
+                type_param_to_index: type_param_to_index,
+                has_self: has_self,
+                has_late_bound_regions: None,
+            });
         }
 
         _ => &no_generics
@@ -1048,6 +1126,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         regions: regions,
         types: types,
         type_param_to_index: type_param_to_index,
+        region_param_to_index: None,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     })
