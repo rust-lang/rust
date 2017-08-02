@@ -618,8 +618,11 @@ impl FileMap {
     /// If the hash of the input doesn't match or no input is supplied via None,
     /// it is interpreted as an error and the corresponding enum variant is set.
     /// The return value signifies whether some kind of source is present.
-    pub fn add_external_src(&self, src: Option<String>) -> bool {
+    pub fn add_external_src<F>(&self, get_src: F) -> bool
+        where F: FnOnce() -> Option<String>
+    {
         if *self.external_src.borrow() == ExternalSource::AbsentOk {
+            let src = get_src();
             let mut external_src = self.external_src.borrow_mut();
             if let Some(src) = src {
                 let mut hasher: StableHasher<u128> = StableHasher::new();

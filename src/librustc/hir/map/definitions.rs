@@ -18,7 +18,7 @@ use hir;
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace,
                   CRATE_DEF_INDEX};
 use ich::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -153,7 +153,7 @@ pub struct Definitions {
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
     macro_def_scopes: FxHashMap<Mark, DefId>,
     expansions: FxHashMap<DefIndex, Mark>,
-    keys_created: FxHashSet<DefKey>,
+    next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -170,7 +170,7 @@ impl Clone for Definitions {
             node_to_hir_id: self.node_to_hir_id.clone(),
             macro_def_scopes: self.macro_def_scopes.clone(),
             expansions: self.expansions.clone(),
-            keys_created: self.keys_created.clone(),
+            next_disambiguator: self.next_disambiguator.clone(),
         }
     }
 }
@@ -402,7 +402,7 @@ impl Definitions {
             node_to_hir_id: IndexVec::new(),
             macro_def_scopes: FxHashMap(),
             expansions: FxHashMap(),
-            keys_created: FxHashSet(),
+            next_disambiguator: FxHashMap(),
         }
     }
 
@@ -516,20 +516,20 @@ impl Definitions {
         // The root node must be created with create_root_def()
         assert!(data != DefPathData::CrateRoot);
 
-        // Find a unique DefKey. This basically means incrementing the disambiguator
-        // until we get no match.
-        let mut key = DefKey {
-            parent: Some(parent),
-            disambiguated_data: DisambiguatedDefPathData {
-                data,
-                disambiguator: 0
-            }
+        // Find the next free disambiguator for this key.
+        let disambiguator = {
+            let next_disamb = self.next_disambiguator.entry((parent, data.clone())).or_insert(0);
+            let disambiguator = *next_disamb;
+            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+            disambiguator
         };
 
-        while self.keys_created.contains(&key) {
-            key.disambiguated_data.disambiguator += 1;
-        }
-        self.keys_created.insert(key.clone());
+        let key = DefKey {
+            parent: Some(parent),
+            disambiguated_data: DisambiguatedDefPathData {
+                data, disambiguator
+            }
+        };
 
         let parent_hash = self.table.def_path_hash(parent);
         let def_path_hash = key.compute_stable_hash(parent_hash);
