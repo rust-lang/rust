@@ -354,7 +354,7 @@ require that `T: 'a` holds, and hence `foo()` would no longer have the
 implied bound that `T: 'a` holds.
 
 This situation is considerd unlikely: typically, if a struct has a
-lifetime parameter (such as the `Iterator` struct), then the fact that
+lifetime parameter (such as the `Iter` struct), then the fact that
 it contains (or may contain) a borrowed reference is rather
 fundamental to how it works. If that borrowed refernce were to be
 removed entirely, then the struct's API will likely be changing in
