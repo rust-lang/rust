@@ -1172,7 +1172,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let cgu_name = String::from(cgu.name());
         let cgu_id = cgu.work_product_id();
-        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &exported_symbols);
+        let symbol_name_hash = cgu.compute_symbol_name_hash(scx);
 
         // Check whether there is a previous work-product we can
         // re-use.  Not only must the file exist, and the inputs not
