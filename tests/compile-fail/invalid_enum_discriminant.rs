@@ -1,3 +1,6 @@
+// Validation makes this fail in the wrong place
+// compile-flags: -Zmir-emit-validate=0
+
 #[repr(C)]
 pub enum Foo {
     A, B, C, D
