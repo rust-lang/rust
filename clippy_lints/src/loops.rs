@@ -2,8 +2,8 @@ use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl, NestedVisitorMap};
-use rustc::hir::map::Node::NodeBlock;
+use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl, walk_pat, walk_stmt, NestedVisitorMap};
+use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
@@ -1327,38 +1327,105 @@ fn is_nested(cx: &LateContext, match_expr: &Expr, iter_expr: &Expr) -> bool {
     if_let_chain! {[
         let Some(loop_block) = get_enclosing_block(cx, match_expr.id),
         let Some(map::Node::NodeExpr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id)),
-        let Some(scope) = get_enclosing_block(cx, loop_expr.id)
     ], {
-        return is_loop_nested(cx, scope, loop_expr.id, iter_expr)
+        return is_loop_nested(cx, loop_expr, iter_expr)
     }}
     false
 }
 
-fn is_loop_nested(cx: &LateContext, scope: &Block, expr_id: NodeId, iter_expr: &Expr) -> bool {
-    let mut b = scope;
-    let mut e = expr_id;
-    if let Some(name) = path_name(iter_expr) {
-        loop {
-            if b.stmts.iter().take_while(|stmt| !is_expr_stmt(stmt, e)).any(|stmt|
-                    is_binding_or_assignment(stmt, name)) {
-                return false;
-            }
-            if let Some(map::Node::NodeExpr(outer)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(scope.id)) {
-                if let ExprLoop(..) = outer.node {
-                    return true;
+fn is_loop_nested(cx: &LateContext, loop_expr: &Expr, iter_expr: &Expr) -> bool {
+    let mut id = loop_expr.id;
+    let iter_name = if let Some(name) = path_name(iter_expr) {
+        name
+    } else {
+        return true;
+    };
+    loop {
+        let parent = cx.tcx.hir.get_parent_node(id);
+        if parent == id {
+            return false;
+        }
+        match cx.tcx.hir.find(parent) {
+            Some(NodeExpr(expr)) => {
+                match expr.node {
+                    ExprLoop(..) |
+                    ExprWhile(..) => { return true; },
+                    _ => ()
                 }
-                e = outer.id;
-                if let Some(eb) = get_enclosing_block(cx, e) {
-                    b = eb;
-                } else {
+            },
+            Some(NodeBlock(block)) => {
+                let mut block_visitor = LoopNestVisitor {
+                                            id: id,
+                                            iterator: iter_name,
+                                            nesting: Unknown
+                                        };
+                walk_block(&mut block_visitor, block);
+                if block_visitor.nesting == RuledOut {
                     return false;
                 }
-            } else {
+            },
+            Some(NodeStmt(_)) => (),
+            _ => {
                 return false;
             }
         }
+        id = parent;
     }
-    true
+}
+
+#[derive(PartialEq, Eq)]
+enum Nesting {
+    Unknown, // no nesting detected yet
+    RuledOut, // the iterator is initialized or assigned within scope
+    LookFurther // no nesting detected, no further walk required
+}
+
+use self::Nesting::{Unknown, RuledOut, LookFurther};
+
+struct LoopNestVisitor {
+    id: NodeId,
+    iterator: Name,
+    nesting: Nesting
+}
+
+impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
+        if stmt.node.id() == self.id {
+            self.nesting = LookFurther;
+        } else if self.nesting == Unknown {
+            walk_stmt(self, stmt);
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if self.nesting != Unknown { return; }
+        if expr.id == self.id {
+            self.nesting = LookFurther;
+            return;
+        }
+        match expr.node {
+            ExprAssign(ref path, _) |
+            ExprAssignOp(_, ref path, _) => if match_var(path, self.iterator) {
+                self.nesting = RuledOut;
+            },
+            _ => walk_expr(self, expr)
+        }
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx Pat) {
+        if self.nesting != Unknown { return; }
+        if let PatKind::Binding(_, _, span_name, _) = pat.node {
+            if self.iterator == span_name.node {
+                self.nesting = RuledOut;
+                return;
+            }
+        }
+        walk_pat(self, pat)
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
 }
 
 fn path_name(e: &Expr) -> Option<Name> {
@@ -1369,63 +1436,4 @@ fn path_name(e: &Expr) -> Option<Name> {
         }
     };
     None
-}
-
-fn is_binding_or_assignment(stmt: &Stmt, name: Name) -> bool {
-    match stmt.node {
-        StmtExpr(ref e, _) | StmtSemi(ref e, _) => contains_assignment(e, name),
-        StmtDecl(ref decl, _) => is_binding(decl, name)
-    }
-}
-
-struct AssignmentVisitor {
-    var: ast::Name, // var to look for
-    assigned: bool, // has the var been assigned?
-}
-
-impl<'tcx> Visitor<'tcx> for AssignmentVisitor {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
-        match expr.node {
-            ExprAssign(ref path, _) |
-            ExprAssignOp(_, ref path, _) => if match_var(path, self.var) {
-                self.assigned = true;
-            }
-            ExprLoop(..) |
-            ExprIf(..) |
-            ExprWhile(..) => (),
-            _ => walk_expr(self, expr)
-        }
-    }
-
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
-    }
-}
-
-fn contains_assignment(e: &Expr, name: Name) -> bool {
-    let mut av = AssignmentVisitor { var: name, assigned: false };
-    walk_expr(&mut av, e);
-    av.assigned
-}
-
-fn is_binding(decl: &Decl, name: Name) -> bool {
-    match decl.node {
-        DeclLocal(ref local) => {
-            !local.pat.walk(&mut |p: &Pat| {
-                if let PatKind::Binding(_, _, span_name, _) = p.node {
-                    name == span_name.node
-                } else {
-                    false
-                }
-            })
-        },
-        _ => false
-    }
-}
-
-fn is_expr_stmt(stmt: &Stmt, expr_id: NodeId) -> bool {
-    match stmt.node {
-        StmtExpr(ref e, _) | StmtSemi(ref e, _) => e.id == expr_id,
-        _ => false
-    }
 }

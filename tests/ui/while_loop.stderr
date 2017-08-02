@@ -104,10 +104,10 @@ error: empty `loop {}` detected. You may want to either use `panic!()` or add `s
     = note: `-D empty-loop` implied by `-D warnings`
 
 error: this loop could be written as a `for` loop
-   --> while_loop.rs:177:9
+   --> $DIR/while_loop.rs:183:9
     |
-177 | /         while let Some(v) = y.next() {
-178 | |         }
+183 | /         while let Some(v) = y.next() { // use a for loop here
+184 | |         }
     | |_________^ help: try: `for v in y { .. }`
 
 error: aborting due to 11 previous errors
