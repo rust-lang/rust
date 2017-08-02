@@ -57,6 +57,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     }
 
     // fourth pass still
+    diff_inherent_impls(&mut changes, &id_mapping, tcx);
     diff_trait_impls(&mut changes, &id_mapping, tcx);
 
     changes
@@ -648,6 +649,21 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             }
         },
         _ => (),
+    }
+}
+
+/// Compare the inherent implementations of items.
+fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                                 id_mapping: &IdMapping,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    for (item, impls) in id_mapping.inherent_impls() {
+        if id_mapping.in_old_crate(item.parent_def_id) {
+
+        } else if id_mapping.in_new_crate(item.parent_def_id) {
+
+        } else {
+            unreachable!();
+        }
     }
 }
 

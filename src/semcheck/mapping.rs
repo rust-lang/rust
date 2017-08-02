@@ -13,14 +13,14 @@ use syntax::ast::Name;
 
 /// A description of an item found in an inherent impl.
 // TODO: switch to a derived `Hash` instance
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct InherentEntry {
     /// The parent item's `DefId`.
-    parent_def_id: DefId,
+    pub parent_def_id: DefId,
     /// The kind of the item.
-    kind: AssociatedKind,
+    pub kind: AssociatedKind,
     /// The item's name.
-    name: Name,
+    pub name: Name,
 }
 
 use std::hash::{Hash, Hasher};
@@ -267,6 +267,13 @@ impl IdMapping {
         self.child_mapping
             .get(&parent)
             .map(|m| m.iter().map(move |old| (*old, self.internal_mapping[old])))
+    }
+
+    /// Iterate over all items in inherent impls.
+    pub fn inherent_impls<'a>(&'a self)
+        -> impl Iterator<Item = (&'a InherentEntry, &'a InherentImplSet)>
+    {
+        self.inherent_items.iter()
     }
 
     /// Check whether a `DefId` belongs to an item in the old crate.
