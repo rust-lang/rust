@@ -40,24 +40,19 @@ impl ValidationMode {
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
         // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
+        // We currently insta-UB on anything passing around uninitialized memory, so we have to whitelist
+        // the places that are allowed to do that.
         {
             // The regexp we use for filtering
             use regex::Regex;
             lazy_static! {
                 static ref RE: Regex = Regex::new("^(\
-std::mem::swap::|\
 std::mem::uninitialized::|\
-std::ptr::read::|\
-std::panicking::try::do_call::|\
-std::slice::from_raw_parts_mut::|\
+std::mem::forget::|\
 <std::heap::Heap as std::heap::Alloc>::|\
-<std::mem::ManuallyDrop<T>><std::heap::AllocErr>::new$|\
-<std::mem::ManuallyDrop<T> as std::ops::DerefMut><std::heap::AllocErr>::deref_mut$|\
-std::sync::atomic::AtomicBool::get_mut$|\
-<std::boxed::Box<T>><[a-zA-Z0-9_\\[\\]]+>::from_raw|\
-<[a-zA-Z0-9_:<>]+ as std::slice::SliceIndex<[a-zA-Z0-9_\\[\\]]+>><[a-zA-Z0-9_\\[\\]]+>::get_unchecked_mut$|\
-<alloc::raw_vec::RawVec<T, std::heap::Heap>><[a-zA-Z0-9_\\[\\]]+>::into_box$|\
-<std::vec::Vec<T>><[a-zA-Z0-9_\\[\\]]+>::into_boxed_slice$\
+<std::mem::ManuallyDrop<T>><.*>::new$|\
+<std::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
+std::ptr::read::\
 )").unwrap();
             }
             // Now test
