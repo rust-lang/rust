@@ -39,15 +39,10 @@ Compiling clippy can take almost a minute or more depending on your machine.
 You can set the environment flag `CARGO_INCREMENTAL=1` to cut down that time to
 almost a third on average, depending on the influence your change has.
 
-Clippy uses its own version of UI tests. Run `cargo test examples` to run only the ui tests.
-This will update all the `*.stderr` files in `clippy_tests/examples`. You need to check
-the stderr files whether they look as you expected them and commit them together with your
-changes.
-When you want to test a new lint, just create a new file in `clippy_tests/examples` and
-rerun `cargo test examples`.
-
-You can check just one example by running `cargo run --example example_name` inside the
-`clippy_tests` directory.
+Clippy uses UI tests. UI tests check that the output of the compiler is exactly as expected.
+Of course there's little sense in writing the output yourself or copying it around.
+Therefore you can simply run `tests/ui/update-all-references.sh` and check whether
+the output looks as you expect with `git diff`. Commit all `*.stderr` files, too.
 
 Also please document your lint with a doc comment akin to the following:
 ```rust
