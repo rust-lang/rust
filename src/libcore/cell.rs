@@ -188,6 +188,34 @@ use ptr;
 
 /// A mutable memory location.
 ///
+/// # Examples
+///
+/// Here you can see how using `Cell<T>` allows to use mutable field inside
+/// immutable struct (which is also called 'interior mutability').
+///
+/// ```
+/// use std::cell::Cell;
+///
+/// struct SomeStruct {
+///     regular_field: u8,
+///     special_field: Cell<u8>,
+/// }
+///
+/// let my_struct = SomeStruct {
+///     regular_field: 0,
+///     special_field: Cell::new(1),
+/// };
+///
+/// let new_value = 100;
+///
+/// // ERROR, because my_struct is immutable
+/// // my_struct.regular_field = new_value;
+///
+/// // WORKS, although `my_struct` is immutable, field `special_field` is mutable because it is Cell
+/// my_struct.special_field.set(new_value);
+/// assert_eq!(my_struct.special_field.get(), new_value);
+/// ```
+///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cell<T> {
