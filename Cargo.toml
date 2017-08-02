@@ -34,4 +34,4 @@ rustc_miri = { path = "src/librustc_mir" }
 compiletest_rs = "0.2.6"
 
 [workspace]
-exclude = ["xargo", "cargo-miri-test"]
+exclude = ["xargo", "cargo-miri-test", "rustc_tests"]
