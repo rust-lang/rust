@@ -30,7 +30,7 @@ let n: Option<u32> = None;
 let m = n.unwrap();
 ```
 
-<!-- TOC -->
+<!-- TOC updateOnSave:false -->
 
 - [Summary](#summary)
 - [Motivation](#motivation)
@@ -52,7 +52,7 @@ let m = n.unwrap();
 - [Rationale and alternatives](#rationale-and-alternatives)
     - [Rationale](#rationale)
     - [Alternatives](#alternatives)
-        - [🚲 Name of everything 🚲](#🚲-name-of-everything-🚲)
+        - [🚲 Name of everything 🚲](#-name-of-everything-)
         - [Avoid introducing new public items](#avoid-introducing-new-public-items)
         - [Inline MIR](#inline-mir)
         - [Default function arguments](#default-function-arguments)
@@ -364,7 +364,7 @@ args[3] = arg3
 
 ## Why do we use semantic-inlining
 
-If you are learning Rust alongside other languages, you may wonder why Rust obtain the caller
+If you are learning Rust alongside other languages, you may wonder why Rust obtains the caller
 information in such a strange way. There are two restrictions that forces us to adapt this solution:
 
 1. Programmatic access to the stack backtrace is often used in interpreted or runtime-heavy
@@ -813,7 +813,8 @@ restriction.
 * Use a different attribute, instead of piggybacking on `#[inline]`?
 * `***_at_source_location` is too long?
 * Should we move `std::panic::Location` into `core`, and not use a 3-tuple to represent the
-    location?
+    location? Note that this is also advocated in [RFC 2070].
+* Use intrinsics or static instead of consts for `core::caller::{FILE, LINE, COLUMN}`?
 
 ### Avoid introducing new public items
 
@@ -823,6 +824,9 @@ restriction.
     `core::caller::{FILE, LINE, COLUMN}`. This way, we don't need to introduce
     `panic_at_source_location!()`. The drawback is losing explicit control of whether we want to
     report the actual location or the caller's location.
+
+* Same as above, but `file!()` etc are converted to a special literal kind, a kind that only the
+    compiler can create.
 
 * We could make `#[inline(always)]` mean the same as `#[inline(semantic)]` to avoid introducing a
     new inline level.
@@ -976,6 +980,7 @@ stabilized. Methods applying this solution will also lose object-safety.
 [issue 33880]: https://github.com/rust-lang/rust/issues/33880
 [RFC issue 1744]: https://github.com/rust-lang/rfcs/issues/1744
 [RFC issue 323]: https://github.com/rust-lang/rfcs/issues/323
+[RFC 2070]: https://github.com/rust-lang/rfcs/pull/2070
 
 [a]: https://internals.rust-lang.org/t/rfrfc-better-option-result-error-messages/2904
 [b]: https://internals.rust-lang.org/t/line-info-for-unwrap-expect/3753
