@@ -9,7 +9,7 @@ use syntax::ast::Mutability;
 use rustc::middle::region::CodeExtent;
 
 use super::{
-    EvalError, EvalResult,
+    EvalResult, EvalErrorKind,
     PrimVal, Pointer,
     EvalContext, DynamicLifetime,
     Machine,
@@ -319,7 +319,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         assert!(align.is_power_of_two());
 
         if self.memory_size - self.memory_usage < size {
-            return Err(EvalError::OutOfMemory {
+            return err!(OutOfMemory {
                 allocation_size: size,
                 memory_size: self.memory_size,
                 memory_usage: self.memory_usage,
@@ -354,11 +354,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         use std::cmp::min;
 
         if ptr.offset != 0 {
-            return Err(EvalError::ReallocateNonBasePtr);
+            return err!(ReallocateNonBasePtr);
         }
         if let Ok(alloc) = self.get(ptr.alloc_id) {
             if alloc.kind != kind {
-                return Err(EvalError::ReallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
+                return err!(ReallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
             }
         }
 
@@ -377,12 +377,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         kind: Kind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
         if ptr.offset != 0 {
-            return Err(EvalError::DeallocateNonBasePtr);
+            return err!(DeallocateNonBasePtr);
         }
 
         let alloc = match self.alloc_map.remove(&ptr.alloc_id) {
             Some(alloc) => alloc,
-            None => return Err(EvalError::DoubleFree),
+            None => return err!(DoubleFree),
         };
 
         // It is okay for us to still holds locks on deallocation -- for example, we could store data we own
@@ -391,14 +391,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         // lock by another frame.  We *have* to permit deallocation if we hold a read lock.
         // TODO: Figure out the exact rules here.
         alloc.check_locks(Some(self.cur_frame), 0, alloc.bytes.len() as u64, AccessKind::Read)
-            .map_err(|lock| EvalError::DeallocatedLockedMemory { ptr, lock })?;
+            .map_err(|lock| EvalErrorKind::DeallocatedLockedMemory { ptr, lock })?;
 
         if alloc.kind != kind {
-            return Err(EvalError::DeallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
+            return err!(DeallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
         }
         if let Some((size, align)) = size_and_align {
             if size != alloc.bytes.len() as u64 || align != alloc.align {
-                return Err(EvalError::IncorrectAllocationInformation);
+                return err!(IncorrectAllocationInformation);
             }
         }
 
@@ -422,7 +422,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             PrimVal::Ptr(ptr) => {
                 let alloc = self.get(ptr.alloc_id)?;
                 if alloc.align < align {
-                    return Err(EvalError::AlignmentCheckFailed {
+                    return err!(AlignmentCheckFailed {
                         has: alloc.align,
                         required: align,
                     });
@@ -432,16 +432,16 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             PrimVal::Bytes(bytes) => {
                 let v = ((bytes as u128) % (1 << self.pointer_size())) as u64;
                 if v == 0 {
-                    return Err(EvalError::InvalidNullPointerUsage);
+                    return err!(InvalidNullPointerUsage);
                 }
                 v
             },
-            PrimVal::Undef => return Err(EvalError::ReadUndefBytes),
+            PrimVal::Undef => return err!(ReadUndefBytes),
         };
         if offset % align == 0 {
             Ok(())
         } else {
-            Err(EvalError::AlignmentCheckFailed {
+            err!(AlignmentCheckFailed {
                 has: offset % align,
                 required: align,
             })
@@ -452,7 +452,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let alloc = self.get(ptr.alloc_id)?;
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset > allocation_size {
-            return Err(EvalError::PointerOutOfBounds { ptr, access, allocation_size });
+            return err!(PointerOutOfBounds { ptr, access, allocation_size });
         }
         Ok(())
     }
@@ -471,7 +471,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let alloc = self.get(ptr.alloc_id)?;
         let frame = self.cur_frame;
         alloc.check_locks(Some(frame), ptr.offset, len, access)
-            .map_err(|lock| EvalError::MemoryLockViolation { ptr, len, frame, access, lock })
+            .map_err(|lock| EvalErrorKind::MemoryLockViolation { ptr, len, frame, access, lock }.into())
     }
 
     #[allow(dead_code)]
@@ -488,7 +488,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
         // Check if this conflicts with other locks
         alloc.check_locks(None, ptr.offset, len, kind)
-            .map_err(|lock| EvalError::MemoryAcquireConflict { ptr, len, kind, lock })?;
+            .map_err(|lock| EvalErrorKind::MemoryAcquireConflict { ptr, len, kind, lock })?;
 
         let lifetime = DynamicLifetime { frame, region };
         match (alloc.locks.entry(MemoryRange::new(ptr.offset, len)), kind) {
@@ -518,17 +518,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 WriteLock(ref lft) => {
                     // Make sure we can release this lock
                     if lft.frame != cur_frame {
-                        return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
+                        return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
                     }
                     if !range.contained_in(ptr.offset, len) {
-                        return Err(EvalError::Unimplemented(format!("miri does not support releasing part of a write-locked region")));
+                        return err!(Unimplemented(format!("miri does not support releasing part of a write-locked region")));
                     }
                     // Release it later.  We cannot do this now.
                     remove_list.push(*range);
                 }
                 ReadLock(_) => {
                     // Abort here and bubble the error outwards so that we do not even register a suspension.
-                    return Err(EvalError::InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
+                    return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
                 },
             }
         }
@@ -591,8 +591,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         match self.alloc_map.get(&id) {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
-                Some(_) => Err(EvalError::DerefFunctionPointer),
-                None => Err(EvalError::DanglingPointerDeref),
+                Some(_) => err!(DerefFunctionPointer),
+                None => err!(DanglingPointerDeref),
             }
         }
     }
@@ -601,8 +601,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         match self.alloc_map.get_mut(&id) {
             Some(alloc) => Ok(alloc),
             None => match self.functions.get(&id) {
-                Some(_) => Err(EvalError::DerefFunctionPointer),
-                None => Err(EvalError::DanglingPointerDeref),
+                Some(_) => err!(DerefFunctionPointer),
+                None => err!(DanglingPointerDeref),
             }
         }
     }
@@ -612,20 +612,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         if alloc.mutable == Mutability::Mutable {
             Ok(alloc)
         } else {
-            Err(EvalError::ModifiedConstantMemory)
+            err!(ModifiedConstantMemory)
         }
     }
 
     pub fn get_fn(&self, ptr: MemoryPointer) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         if ptr.offset != 0 {
-            return Err(EvalError::InvalidFunctionPointer);
+            return err!(InvalidFunctionPointer);
         }
         debug!("reading fn ptr: {}", ptr.alloc_id);
         match self.functions.get(&ptr.alloc_id) {
             Some(&fndef) => Ok(fndef),
             None => match self.alloc_map.get(&ptr.alloc_id) {
-                Some(_) => Err(EvalError::ExecuteMemory),
-                None => Err(EvalError::InvalidFunctionPointer),
+                Some(_) => err!(ExecuteMemory),
+                None => err!(InvalidFunctionPointer),
             }
         }
     }
@@ -760,7 +760,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     fn get_bytes(&self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size, 0);
         if self.relocations(ptr, size)?.count() != 0 {
-            return Err(EvalError::ReadPointerAsBytes);
+            return err!(ReadPointerAsBytes);
         }
         self.check_defined(ptr, size)?;
         self.get_bytes_unchecked(ptr, size, align)
@@ -818,7 +818,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 // mark recursively
                 mem::replace(relocations, Default::default())
             },
-            None if !self.functions.contains_key(&alloc_id) => return Err(EvalError::DanglingPointerDeref),
+            None if !self.functions.contains_key(&alloc_id) => return err!(DanglingPointerDeref),
             _ => return Ok(()),
         };
         // recurse into inner allocations
@@ -857,7 +857,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 if nonoverlapping {
                     if (src.offset <= dest.offset && src.offset + size > dest.offset) ||
                        (dest.offset <= src.offset && dest.offset + size > src.offset) {
-                        return Err(EvalError::Intrinsic(format!("copy_nonoverlapping called on overlapping ranges")));
+                        return err!(Intrinsic(format!("copy_nonoverlapping called on overlapping ranges")));
                     }
                 }
                 ptr::copy(src_bytes, dest_bytes, size as usize);
@@ -879,13 +879,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         match alloc.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
                 if self.relocations(ptr, (size + 1) as u64)?.count() != 0 {
-                    return Err(EvalError::ReadPointerAsBytes);
+                    return err!(ReadPointerAsBytes);
                 }
                 self.check_defined(ptr, (size + 1) as u64)?;
                 self.check_locks(ptr, (size + 1) as u64, AccessKind::Read)?;
                 Ok(&alloc.bytes[offset..offset + size])
             },
-            None => Err(EvalError::UnterminatedCString(ptr)),
+            None => err!(UnterminatedCString(ptr)),
         }
     }
 
@@ -987,7 +987,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         match bytes[0] {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(EvalError::InvalidBool),
+            _ => err!(InvalidBool),
         }
     }
 
@@ -1117,7 +1117,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let overlapping_start = self.relocations(ptr, 0)?.count();
         let overlapping_end = self.relocations(ptr.offset(size, self.layout)?, 0)?.count();
         if overlapping_start + overlapping_end != 0 {
-            return Err(EvalError::ReadPointerAsBytes);
+            return err!(ReadPointerAsBytes);
         }
         Ok(())
     }
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     fn check_defined(&self, ptr: MemoryPointer, size: u64) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         if !alloc.undef_mask.is_range_defined(ptr.offset, ptr.offset + size) {
-            return Err(EvalError::ReadUndefBytes);
+            return err!(ReadUndefBytes);
         }
         Ok(())
     }
@@ -1416,7 +1416,7 @@ pub trait PointerArithmetic : layout::HasDataLayout {
     fn signed_offset<'tcx>(self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
         let (res, over) = self.overflowing_signed_offset(val, i as i128);
         if over {
-            Err(EvalError::OverflowingMath)
+            err!(OverflowingMath)
         } else {
             Ok(res)
         }
@@ -1425,7 +1425,7 @@ pub trait PointerArithmetic : layout::HasDataLayout {
     fn offset<'tcx>(self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
         let (res, over) = self.overflowing_offset(val, i);
         if over {
-            Err(EvalError::OverflowingMath)
+            err!(OverflowingMath)
         } else {
             Ok(res)
         }

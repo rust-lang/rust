@@ -5,7 +5,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast::Mutability;
 
 use super::{
-    EvalError, EvalResult,
+    EvalResult,
     EvalContext,
     MemoryPointer,
     PrimVal, Value, Pointer,
@@ -140,7 +140,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         use rustc::mir::Lvalue::*;
         match *lvalue {
             // Might allow this in the future, right now there's no way to do this from Rust code anyway
-            Local(mir::RETURN_POINTER) => Err(EvalError::ReadFromReturnPointer),
+            Local(mir::RETURN_POINTER) => err!(ReadFromReturnPointer),
             // Directly reading a local will always succeed
             Local(local) => self.frame().get_local(local).map(Some),
             // Directly reading a static will always succeed

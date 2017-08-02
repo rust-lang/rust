@@ -17,7 +17,7 @@ use syntax::ast::{self, Mutability};
 use syntax::abi::Abi;
 
 use super::{
-    EvalError, EvalResult,
+    EvalError, EvalResult, EvalErrorKind,
     Global, GlobalId, Lvalue, LvalueExtra,
     Memory, MemoryPointer, HasMemory,
     Kind as MemoryKind,
@@ -257,7 +257,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn load_mir(&self, instance: ty::InstanceDef<'tcx>) -> EvalResult<'tcx, &'tcx mir::Mir<'tcx>> {
         trace!("load mir {:?}", instance);
         match instance {
-            ty::InstanceDef::Item(def_id) => self.tcx.maybe_optimized_mir(def_id).ok_or_else(|| EvalError::NoMirFor(self.tcx.item_path_str(def_id))),
+            ty::InstanceDef::Item(def_id) => self.tcx.maybe_optimized_mir(def_id).ok_or_else(|| EvalErrorKind::NoMirFor(self.tcx.item_path_str(def_id)).into()),
             _ => Ok(self.tcx.instance_mir(instance)),
         }
     }
@@ -402,7 +402,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
-        ty.layout(self.tcx, ty::ParamEnv::empty(Reveal::All)).map_err(EvalError::Layout)
+        ty.layout(self.tcx, ty::ParamEnv::empty(Reveal::All)).map_err(|layout| EvalErrorKind::Layout(layout).into())
     }
 
     pub fn push_stack_frame(
@@ -460,7 +460,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.memory.set_cur_frame(cur_frame);
 
         if self.stack.len() > self.stack_limit {
-            Err(EvalError::StackFrameLimitReached)
+            err!(StackFrameLimitReached)
         } else {
             Ok(())
         }
@@ -609,7 +609,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     // it emits in debug mode) is performance, but it doesn't cost us any performance in miri.
                     // If, however, the compiler ever starts transforming unchecked intrinsics into unchecked binops,
                     // we have to go back to just ignoring the overflow here.
-                    return Err(EvalError::OverflowingMath);
+                    return err!(OverflowingMath);
                 }
             }
 
@@ -729,7 +729,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     }
 
                     _ => {
-                        return Err(EvalError::Unimplemented(format!(
+                        return err!(Unimplemented(format!(
                             "can't handle destination layout {:?} when assigning {:?}",
                             dest_layout,
                             kind
@@ -857,7 +857,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let discr_val = self.read_discriminant_value(ptr, ty)?;
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     if adt_def.discriminants(self.tcx).all(|v| discr_val != v.to_u128_unchecked()) {
-                        return Err(EvalError::InvalidDiscriminant);
+                        return err!(InvalidDiscriminant);
                     }
                 } else {
                     bug!("rustc only generates Rvalue::Discriminant for enums");
@@ -948,7 +948,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         let ty = adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs);
                         Ok(TyAndPacked { ty, packed: nonnull.packed })
                     },
-                    _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle enum type: {:?}, {:?}", ty, ty.sty))),
+                    _ => err!(Unimplemented(format!("get_field_ty can't handle enum type: {:?}, {:?}", ty, ty.sty))),
                 }
             }
             ty::TyAdt(adt_def, substs) => {
@@ -959,7 +959,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         Ok(TyAndPacked { ty: variant_def.fields[field_index].ty(self.tcx, substs), packed: variants.packed }),
                     Univariant { ref variant, .. } =>
                         Ok(TyAndPacked { ty: variant_def.fields[field_index].ty(self.tcx, substs), packed: variant.packed }),
-                    _ => Err(EvalError::Unimplemented(format!("get_field_ty can't handle struct type: {:?}, {:?}", ty, ty.sty))),
+                    _ => err!(Unimplemented(format!("get_field_ty can't handle struct type: {:?}, {:?}", ty, ty.sty))),
                 }
             }
 
@@ -970,7 +970,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             ty::TyArray(ref inner, _) => Ok(TyAndPacked { ty: inner, packed: false }),
 
-            _ => Err(EvalError::Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
+            _ => err!(Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
         }
     }
 
@@ -993,7 +993,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             UntaggedUnion { .. } => Ok(Size::from_bytes(0)),
             _ => {
                 let msg = format!("get_field_offset: can't handle type: {:?}, with layout: {:?}", ty, layout);
-                Err(EvalError::Unimplemented(msg))
+                err!(Unimplemented(msg))
             }
         }
     }
@@ -1012,7 +1012,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             UntaggedUnion { .. } => Ok(1),
             _ => {
                 let msg = format!("get_field_count: can't handle type: {:?}, with layout: {:?}", ty, layout);
-                Err(EvalError::Unimplemented(msg))
+                err!(Unimplemented(msg))
             }
         }
     }
@@ -1073,7 +1073,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Lvalue::Local { frame, local } => {
                 // -1 since we don't store the return value
                 match self.stack[frame].locals[local.index() - 1] {
-                    None => return Err(EvalError::DeadLocal),
+                    None => return err!(DeadLocal),
                     Some(Value::ByRef { ptr, aligned }) => {
                         Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None }
                     },
@@ -1179,7 +1179,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Lvalue::Global(cid) => {
                 let dest = self.globals.get_mut(&cid).expect("global should be cached").clone();
                 if dest.mutable == Mutability::Immutable {
-                    return Err(EvalError::ModifiedConstantMemory);
+                    return err!(ModifiedConstantMemory);
                 }
                 let write_dest = |this: &mut Self, val| {
                     *this.globals.get_mut(&cid).expect("already checked") = Global {
@@ -1382,15 +1382,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         if variant.fields.len() == 1 {
                             return self.ty_to_primval_kind(variant.fields[0].ty(self.tcx, substs));
                         } else {
-                            return Err(EvalError::TypeNotPrimitive(ty));
+                            return err!(TypeNotPrimitive(ty));
                         }
                     }
 
-                    _ => return Err(EvalError::TypeNotPrimitive(ty)),
+                    _ => return err!(TypeNotPrimitive(ty)),
                 }
             }
 
-            _ => return Err(EvalError::TypeNotPrimitive(ty)),
+            _ => return err!(TypeNotPrimitive(ty)),
         };
 
         Ok(kind)
@@ -1398,10 +1398,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     fn ensure_valid_value(&self, val: PrimVal, ty: Ty<'tcx>) -> EvalResult<'tcx> {
         match ty.sty {
-            ty::TyBool if val.to_bytes()? > 1 => Err(EvalError::InvalidBool),
+            ty::TyBool if val.to_bytes()? > 1 => err!(InvalidBool),
 
             ty::TyChar if ::std::char::from_u32(val.to_bytes()? as u32).is_none()
-                => Err(EvalError::InvalidChar(val.to_bytes()? as u32 as u128)),
+                => err!(InvalidChar(val.to_bytes()? as u32 as u128)),
 
             _ => Ok(()),
         }
@@ -1440,7 +1440,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let c = self.memory.read_uint(ptr.to_ptr()?, 4)? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::from_char(ch),
-                    None => return Err(EvalError::InvalidChar(c as u128)),
+                    None => return err!(InvalidChar(c as u128)),
                 }
             }
 
@@ -1457,7 +1457,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // if we transmute a ptr to an isize, reading it back into a primval shouldn't panic
                 // Due to read_ptr ignoring the sign, we need to jump around some hoops
                 match self.memory.read_int(ptr.to_ptr()?, size) {
-                    Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() =>
+                    Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. }) if size == self.memory.pointer_size() =>
                         // Reading as an int failed because we are seeing ptr bytes *and* we are actually reading at ptr size.
                         // Let's try again, reading a ptr this time.
                         self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
@@ -1478,7 +1478,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // if we transmute a ptr to an usize, reading it back into a primval shouldn't panic
                 // for consistency's sake, we use the same code as above
                 match self.memory.read_uint(ptr.to_ptr()?, size) {
-                    Err(EvalError::ReadPointerAsBytes) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
+                    Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. }) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
                     other => PrimVal::from_u128(other?),
                 }
             }
@@ -1642,7 +1642,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             write!(msg, ":").unwrap();
 
             match self.stack[frame].get_local(local) {
-                Err(EvalError::DeadLocal) => {
+                Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..} ) => {
                     write!(msg, " is dead").unwrap();
                 }
                 Err(err) => {
@@ -1677,7 +1677,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     {
         let mut val = self.globals.get(&cid).expect("global not cached").clone();
         if val.mutable == Mutability::Immutable {
-            return Err(EvalError::ModifiedConstantMemory);
+            return err!(ModifiedConstantMemory);
         }
         val.value = f(self, val.value)?;
         *self.globals.get_mut(&cid).expect("already checked") = val;
@@ -1704,6 +1704,16 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn report(&self, e: &EvalError) {
+        let mut trace_text = "\n################################\nerror occurred in miri at\n".to_string();
+        for frame in e.backtrace.iter().skip_while(|frame| frame.function.starts_with("backtrace::")) {
+            // don't report initialization gibberish
+            if frame.function == "miri::after_analysis" {
+                break;
+            }
+            write!(trace_text, "# {}\n", frame.function).unwrap();
+            write!(trace_text, "{}:{}\n", frame.file.display(), frame.line).unwrap();
+        }
+        trace!("{}", trace_text);
         if let Some(frame) = self.stack().last() {
             let block = &frame.mir.basic_blocks()[frame.block];
             let span = if frame.stmt < block.statements.len() {
@@ -1729,13 +1739,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 impl<'tcx> Frame<'tcx> {
     pub fn get_local(&self, local: mir::Local) -> EvalResult<'tcx, Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
-        self.locals[local.index() - 1].ok_or(EvalError::DeadLocal)
+        self.locals[local.index() - 1].ok_or(EvalErrorKind::DeadLocal.into())
     }
 
     fn set_local(&mut self, local: mir::Local, value: Value) -> EvalResult<'tcx> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         match self.locals[local.index() - 1] {
-            None => Err(EvalError::DeadLocal),
+            None => err!(DeadLocal),
             Some(ref mut local) => {
                 *local = value;
                 Ok(())

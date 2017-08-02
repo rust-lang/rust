@@ -4,7 +4,7 @@ use rustc::ty::layout::Layout;
 use rustc::ty::{self, Ty};
 
 use rustc_miri::interpret::{
-    EvalError, EvalResult,
+    EvalResult,
     Lvalue, LvalueExtra,
     PrimVal, PrimValKind, Value, Pointer,
     HasMemory,
@@ -68,7 +68,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "assume" => {
                 let bool = self.tcx.types.bool;
                 let cond = self.value_to_primval(arg_vals[0], bool)?.to_bool()?;
-                if !cond { return Err(EvalError::AssumptionNotHeld); }
+                if !cond { return err!(AssumptionNotHeld); }
             }
 
             "atomic_load" |
@@ -180,7 +180,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let kind = self.ty_to_primval_kind(ty)?;
                 let num = if intrinsic_name.ends_with("_nonzero") {
                     if num == 0 {
-                        return Err(EvalError::Intrinsic(format!("{} called on 0", intrinsic_name)))
+                        return err!(Intrinsic(format!("{} called on 0", intrinsic_name)))
                     }
                     numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), num, kind)?
                 } else {
@@ -423,7 +423,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let bits = self.type_size(dest_ty)?.expect("intrinsic can't be called on unsized type") as u128 * 8;
                 let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
                 if rhs >= bits {
-                    return Err(EvalError::Intrinsic(format!("Overflowing shift by {} in unchecked_shl", rhs)));
+                    return err!(Intrinsic(format!("Overflowing shift by {} in unchecked_shl", rhs)));
                 }
                 self.intrinsic_overflowing(mir::BinOp::Shl, &args[0], &args[1], dest, dest_ty)?;
             }
@@ -432,7 +432,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let bits = self.type_size(dest_ty)?.expect("intrinsic can't be called on unsized type") as u128 * 8;
                 let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
                 if rhs >= bits {
-                    return Err(EvalError::Intrinsic(format!("Overflowing shift by {} in unchecked_shr", rhs)));
+                    return err!(Intrinsic(format!("Overflowing shift by {} in unchecked_shr", rhs)));
                 }
                 self.intrinsic_overflowing(mir::BinOp::Shr, &args[0], &args[1], dest, dest_ty)?;
             }
@@ -440,7 +440,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "unchecked_div" => {
                 let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
                 if rhs == 0 {
-                    return Err(EvalError::Intrinsic(format!("Division by 0 in unchecked_div")));
+                    return err!(Intrinsic(format!("Division by 0 in unchecked_div")));
                 }
                 self.intrinsic_overflowing(mir::BinOp::Div, &args[0], &args[1], dest, dest_ty)?;
             }
@@ -448,7 +448,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "unchecked_rem" => {
                 let rhs = self.value_to_primval(arg_vals[1], substs.type_at(0))?.to_bytes()?;
                 if rhs == 0 {
-                    return Err(EvalError::Intrinsic(format!("Division by 0 in unchecked_rem")));
+                    return err!(Intrinsic(format!("Division by 0 in unchecked_rem")));
                 }
                 self.intrinsic_overflowing(mir::BinOp::Rem, &args[0], &args[1], dest, dest_ty)?;
             }
@@ -489,7 +489,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 }
             }
 
-            name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
+            name => return err!(Unimplemented(format!("unimplemented intrinsic: {}", name))),
         }
 
         self.goto_block(target);

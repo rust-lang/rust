@@ -6,7 +6,7 @@ use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
 use super::{
-    EvalResult, EvalError,
+    EvalResult, EvalError, EvalErrorKind,
     Global, GlobalId, Lvalue,
     PrimVal,
     EvalContext, StackPopCleanup,
@@ -87,7 +87,7 @@ struct CompileTimeFunctionEvaluator;
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
     fn into(self) -> EvalError<'tcx> {
-        EvalError::MachineError(Box::new(self))
+        EvalErrorKind::MachineError(Box::new(self)).into()
     }
 }
 
@@ -142,7 +142,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         }
         let mir = match ecx.load_mir(instance.def) {
             Ok(mir) => mir,
-            Err(EvalError::NoMirFor(path)) => {
+            Err(EvalError{ kind: EvalErrorKind::NoMirFor(path), ..} ) => {
                 // some simple things like `malloc` might get accepted in the future
                 return Err(ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path)).into());
             },

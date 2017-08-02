@@ -1,5 +1,7 @@
 use std::error::Error;
 use std::fmt;
+use std::path::{PathBuf, Path};
+
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
 
@@ -11,7 +13,41 @@ use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
 #[derive(Debug)]
-pub enum EvalError<'tcx> {
+pub struct EvalError<'tcx> {
+    pub kind: EvalErrorKind<'tcx>,
+    pub backtrace: Vec<Frame>,
+}
+
+impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
+    fn from(kind: EvalErrorKind<'tcx>) -> Self {
+        let mut backtrace = Vec::new();
+        use backtrace::{trace, resolve};
+        trace(|frame| {
+            resolve(frame.ip(), |symbol| {
+                backtrace.push(Frame {
+                    function: symbol.name().map(|s| s.to_string()).unwrap_or(String::new()),
+                    file: symbol.filename().unwrap_or(Path::new("")).to_owned(),
+                    line: symbol.lineno().unwrap_or(0),
+                });
+            });
+            true
+        });
+        EvalError {
+            kind,
+            backtrace,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Frame {
+    pub function: String,
+    pub file: PathBuf,
+    pub line: u32,
+}
+
+#[derive(Debug)]
+pub enum EvalErrorKind<'tcx> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant
     MachineError(Box<Error>),
@@ -106,8 +142,8 @@ pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
 impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
-        use self::EvalError::*;
-        match *self {
+        use self::EvalErrorKind::*;
+        match self.kind {
             MachineError(ref inner) => inner.description(),
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
@@ -192,7 +228,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
             ReallocatedWrongMemoryKind(_, _) =>
-                "tried to reallocate memory from one kind to another",
+                "tried to EvalErrorKindreallocate memory from one kind to another",
             DeallocatedWrongMemoryKind(_, _) =>
                 "tried to deallocate memory of the wrong kind",
             ReallocateNonBasePtr =>
@@ -215,14 +251,14 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "the evaluated program panicked",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
-            EvalError::PathNotFound(_) =>
+            EvalErrorKind::PathNotFound(_) =>
                 "a path could not be resolved, maybe the crate is not loaded",
         }
     }
 
     fn cause(&self) -> Option<&Error> {
-        use self::EvalError::*;
-        match *self {
+        use self::EvalErrorKind::*;
+        match self.kind {
             MachineError(ref inner) => Some(&**inner),
             _ => None,
         }
@@ -231,8 +267,8 @@ impl<'tcx> Error for EvalError<'tcx> {
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::EvalError::*;
-        match *self {
+        use self::EvalErrorKind::*;
+        match self.kind {
             PointerOutOfBounds { ptr, access, allocation_size } => {
                 write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
                        if access { "memory access" } else { "pointer computed" },

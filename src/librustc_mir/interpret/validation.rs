@@ -11,7 +11,7 @@ use rustc::infer::TransNormalize;
 use rustc::middle::region::CodeExtent;
 
 use super::{
-    EvalError, EvalResult,
+    EvalError, EvalResult, EvalErrorKind,
     EvalContext, DynamicLifetime,
     AccessKind, LockInfo,
     PrimVal, Value,
@@ -98,7 +98,7 @@ std::sync::atomic::AtomicBool::get_mut$|\
             ValidationOp::Suspend(_) => ValidationMode::Release,
         };
         match self.validate(query.clone(), mode) {
-            Err(EvalError::InvalidMemoryLockRelease { lock: LockInfo::ReadLock(_), .. }) => {
+            Err(EvalError { kind: EvalErrorKind::InvalidMemoryLockRelease { lock: LockInfo::ReadLock(_), .. }, .. }) => {
                 // HACK: When &x is used while x is already borrowed read-only, AddValidation still
                 // emits suspension.  This code is legit, so just ignore the error *and*
                 // do NOT register a suspension.
@@ -170,7 +170,8 @@ std::sync::atomic::AtomicBool::get_mut$|\
             // HACK: If, during releasing, we hit memory we cannot use, we just ignore that.
             // This can happen because releases are added before drop elaboration.
             // TODO: Fix the MIR so that these releases do not happen.
-            res @ Err(EvalError::DanglingPointerDeref) | res @ Err(EvalError::ReadUndefBytes) => {
+            res @ Err(EvalError{ kind: EvalErrorKind::DanglingPointerDeref, ..}) |
+            res @ Err(EvalError{ kind: EvalErrorKind::ReadUndefBytes, ..}) => {
                 if let ValidationMode::Release = mode {
                     return Ok(());
                 }
@@ -207,8 +208,8 @@ std::sync::atomic::AtomicBool::get_mut$|\
             Lvalue::Local { frame, local } => {
                 let res = self.stack[frame].get_local(local);
                 match (res, mode) {
-                    (Err(EvalError::DeadLocal), ValidationMode::Recover(_)) |
-                    (Err(EvalError::DeadLocal), ValidationMode::Release) |
+                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) |
+                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Release) |
                     (Ok(Value::ByVal(PrimVal::Undef)), ValidationMode::Release) => {
                         return Ok(());
                     }
@@ -287,7 +288,7 @@ std::sync::atomic::AtomicBool::get_mut$|\
                 Ok(())
             }
             TyNever => {
-                Err(EvalError::ValidationFailure(format!("The empty type is never valid.")))
+                err!(ValidationFailure(format!("The empty type is never valid.")))
             }
             TyRef(region, ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
                 let val = self.read_lvalue(query.lval)?;
@@ -370,8 +371,11 @@ std::sync::atomic::AtomicBool::get_mut$|\
 
                         // Get variant index for discriminant
                         let variant_idx = adt.discriminants(self.tcx)
-                            .position(|variant_discr| variant_discr.to_u128_unchecked() == discr)
-                            .ok_or(EvalError::InvalidDiscriminant)?;
+                            .position(|variant_discr| variant_discr.to_u128_unchecked() == discr);
+                        let variant_idx = match variant_idx {
+                            Some(val) => val,
+                            None => return err!(InvalidDiscriminant),
+                        };
                         let variant = &adt.variants[variant_idx];
 
                         if variant.fields.len() > 0 {

@@ -6,7 +6,7 @@ use syntax::codemap::DUMMY_SP;
 use syntax::ast::{self, Mutability};
 
 use super::{
-    EvalResult, EvalError,
+    EvalResult,
     EvalContext, eval_context,
     MemoryPointer, Kind,
     Value, PrimVal,
@@ -82,7 +82,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // some values don't need to call a drop impl, so the value is null
             Value::ByVal(PrimVal::Bytes(0)) => Ok(None),
             Value::ByVal(PrimVal::Ptr(drop_fn)) => self.memory.get_fn(drop_fn).map(Some),
-            _ => Err(EvalError::ReadBytesAsPointer),
+            _ => err!(ReadBytesAsPointer),
         }
     }
 

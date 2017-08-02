@@ -50,7 +50,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let result = match (left, right) {
                     (PrimVal::Bytes(left), PrimVal::Bytes(right)) => left == right,
                     (PrimVal::Ptr(left), PrimVal::Ptr(right)) => left == right,
-                    (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
+                    (PrimVal::Undef, _) | (_, PrimVal::Undef) => return err!(ReadUndefBytes),
                     _ => false,
                 };
                 Ok(Some((PrimVal::from_bool(result), false)))
@@ -59,7 +59,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let result = match (left, right) {
                     (PrimVal::Bytes(left), PrimVal::Bytes(right)) => left != right,
                     (PrimVal::Ptr(left), PrimVal::Ptr(right)) => left != right,
-                    (PrimVal::Undef, _) | (_, PrimVal::Undef) => return Err(EvalError::ReadUndefBytes),
+                    (PrimVal::Undef, _) | (_, PrimVal::Undef) => return err!(ReadUndefBytes),
                     _ => true,
                 };
                 Ok(Some((PrimVal::from_bool(result), false)))
@@ -89,7 +89,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     Ok(Some((PrimVal::from_bool(res), false)))
                 } else {
                     // Both are pointers, but from different allocations.
-                    Err(EvalError::InvalidPointerMath)
+                    err!(InvalidPointerMath)
                 }
             }
             // These work if one operand is a pointer, the other an integer
@@ -141,13 +141,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     // Case 2: The base address bits are all taken away, i.e., right is all-0 there
                     (PrimVal::from_u128((left.offset & right) as u128), false)
                 } else {
-                    return Err(EvalError::ReadPointerAsBytes);
+                    return err!(ReadPointerAsBytes);
                 }
             }
 
             _ => {
                 let msg = format!("unimplemented binary op on pointer {:?}: {:?}, {:?} ({})", bin_op, left, right, if signed { "signed" } else { "unsigned" });
-                return Err(EvalError::Unimplemented(msg));
+                return err!(Unimplemented(msg));
             }
         })
     }

@@ -1,5 +1,10 @@
 //! An interpreter for MIR used in CTFE and by miri
 
+#[macro_export]
+macro_rules! err {
+    ($($tt:tt)*) => { Err($crate::interpret::EvalErrorKind::$($tt)*.into()) };
+}
+
 mod cast;
 mod const_eval;
 mod error;
@@ -17,6 +22,7 @@ mod value;
 pub use self::error::{
     EvalError,
     EvalResult,
+    EvalErrorKind,
 };
 
 pub use self::eval_context::{
