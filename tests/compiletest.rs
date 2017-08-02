@@ -20,6 +20,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
     let mut config = compiletest::default_config();
     config.mode = "compile-fail".parse().expect("Invalid mode");
     config.rustc_path = MIRI_PATH.into();
+    let mut flags = Vec::new();
     if fullmir {
         if host != target {
             // skip fullmir on nonhost
@@ -32,6 +33,8 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
         config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
         config.src_base = PathBuf::from(path.to_string());
     }
+    flags.push("-Zmir-emit-validate=1".to_owned());
+    config.target_rustcflags = Some(flags.join(" "));
     config.target = target.to_owned();
     compiletest::run_tests(&config);
 }
@@ -73,6 +76,7 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
     } else {
         flags.push("-Zmir-opt-level=0".to_owned());
     }
+    flags.push("-Zmir-emit-validate=1".to_owned());
     config.target_rustcflags = Some(flags.join(" "));
     // don't actually execute the final binary, it might be for other targets and we only care
     // about running miri, not the binary.

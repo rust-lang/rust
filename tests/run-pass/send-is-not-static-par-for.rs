@@ -10,6 +10,9 @@
 
 //ignore-windows
 
+// FIXME: Due to https://github.com/rust-lang/rust/issues/43457 we have to disable validation
+// compile-flags: -Zmir-emit-validate=0
+
 use std::sync::Mutex;
 
 fn par_for<I, F>(iter: I, f: F)

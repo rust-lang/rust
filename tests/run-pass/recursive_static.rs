@@ -1,3 +1,6 @@
+// FIXME: Disable validation until we figure out how to handle recursive statics.
+// compile-flags: -Zmir-emit-validate=0
+
 struct S(&'static S);
 static S1: S = S(&S2);
 static S2: S = S(&S1);

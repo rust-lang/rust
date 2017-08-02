@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// FIXME: We handle uninitialzied storage here, which currently makes validation fail.
+// compile-flags: -Zmir-emit-validate=0
 
 #![feature(libc)]
 
