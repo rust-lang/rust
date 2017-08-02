@@ -1,14 +1,3 @@
-<!---
-Copyright 2017 The Rust Project Developers. See the COPYRIGHT
-file at the top-level directory of this distribution.
-
-Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-<LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-option. This file may not be copied, modified, or distributed
-except according to those terms.
--->
-
 - Feature Name: license_rfcs
 - Start Date: 2017-06-26
 - RFC PR: https://github.com/rust-lang/rfcs/pull/2044
@@ -70,9 +59,6 @@ After this RFC has been merged, all new RFCs will be required to be
 dual-licensed under the MIT/Apache2. This includes RFCs currently being
 [considered for merging].
 
-This puts a responsibility on anyone who is merging RFCs to check for a
-license header.
-
 `README.md` should include a note that all contributions to the repo should be
 licensed under the new terms.
 
@@ -80,28 +66,6 @@ As the licensing requires consent from the RFC creators, an issue will be
 created on rust-lang/rfcs with a list of past contributors to the repo,
 asking every contributor to agree to their contributions to be licensed under
 those terms.
-
-To signify the terms, each RFC document shall start with a comment header like:
-
-```
-<!---
-Copyright <year> The Rust Project Developers. See the COPYRIGHT
-file at the top-level directory of this distribution.
-
-Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-<LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-option. This file may not be copied, modified, or distributed
-except according to those terms.
--->
-```
-
-All new RFCs, including the ones in the queue as of when this RFC gets merged,
-should start with such a section, and the RFC template should be changed
-accordingly.
-
-As more contributors sign off on the opened issue, sections may be added
-to existing RFCs which have only contributors that have signed off.
 
 Regarding non-RFC files in this repo, the intention is to get them licensed
 as well, not just the RFCs themselves. Therefore, contributors should be asked
@@ -121,8 +85,8 @@ Also, after this RFC got merged, all RFCs in the queue will get a comment in
 their Github PR and be asked to include the copyright section at the top of
 their RFC file.
 
-The note in README.md and the header in the template should should inform new
-PR authors of the terms they put their contribution under.
+The note in README.md should should inform new PR authors of the terms
+they put their contribution under.
 
 # Drawbacks
 [drawbacks]: #drawbacks
