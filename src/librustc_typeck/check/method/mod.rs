@@ -167,27 +167,40 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if result.rerun {
             // We probe again, taking all traits into account (not only those in scope).
-            if let Ok(new_pick) = self.lookup_probe(span,
-                                                    segment.name,
-                                                    self_ty,
-                                                    call_expr,
-                                                    ProbeScope::AllTraits) {
-                // If we find a different result, the caller probably forgot to import the trait.
-                // We span an error with an appropriate help message.
-                if new_pick != pick {
-                    let error = MethodError::NoMatch(
-                        NoMatchData::new(Vec::new(),
-                                         Vec::new(),
-                                         vec![new_pick.item.container.id()],
-                                         probe::Mode::MethodCall)
-                    );
-                    self.report_method_error(span,
-                                             self_ty,
-                                             segment.name,
-                                             Some(self_expr),
-                                             error,
-                                             None);
-                }
+            let candidates =
+                match self.lookup_probe(span,
+                                        segment.name,
+                                        self_ty,
+                                        call_expr,
+                                        ProbeScope::AllTraits) {
+                    Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container.id()],
+                    Err(MethodError::Ambiguity(ref sources)) => {
+                        sources.iter()
+                               .filter_map(|source| {
+                                   match *source {
+                                       // Note: this cannot come from an inherent impl,
+                                       // because the first probe succeeded.
+                                       ImplSource(def) => self.tcx.trait_id_of_impl(def),
+                                       TraitSource(_) => None,
+                                   }
+                               })
+                               .collect()
+                    }
+                    _ => Vec::new(),
+                };
+
+            // If we find a different result, the caller probably forgot to import a trait.
+            // We span an error with an appropriate help message.
+            if !candidates.is_empty() {
+                let error = MethodError::NoMatch(
+                    NoMatchData::new(Vec::new(), Vec::new(), candidates, probe::Mode::MethodCall)
+                );
+                self.report_method_error(span,
+                                         self_ty,
+                                         segment.name,
+                                         Some(self_expr),
+                                         error,
+                                         None);
             }
         }
 
