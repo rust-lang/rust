@@ -511,16 +511,29 @@ impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
 impl<'tcx> QueryDescription for queries::lint_levels<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("computing the lint levels for items in this crate")
+    }
 }
 
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
         if cfg!(debug_assertions) {
-            if $tcx.sess.opts.debugging_opts.profile_queries {
+            if  $tcx.sess.profile_queries() {
                 profq_msg($msg)
             }
         }
+    }
+}
+
+// If enabled, format a key using its debug string, which can be
+// expensive to compute (in terms of time).
+macro_rules! profq_key {
+    ($tcx:expr, $key:expr) => {
+        if cfg!(debug_assertions) {
+            if $tcx.sess.profile_queries_and_keys() {
+                Some(format!("{:?}", $key))
+            } else { None }
+        } else { None }
     }
 }
 
@@ -553,7 +566,7 @@ macro_rules! define_maps {
         #[allow(bad_style)]
         #[derive(Clone, Debug, PartialEq, Eq)]
         pub enum QueryMsg {
-            $($name(String)),*
+            $($name(Option<String>)),*
         }
 
         impl<$tcx> Query<$tcx> {
@@ -599,8 +612,11 @@ macro_rules! define_maps {
                        span);
 
                 profq_msg!(tcx,
-                    ProfileQueriesMsg::QueryBegin(span.clone(),
-                                                  QueryMsg::$name(format!("{:?}", key))));
+                    ProfileQueriesMsg::QueryBegin(
+                        span.clone(),
+                        QueryMsg::$name(profq_key!(tcx, key))
+                    )
+                );
 
                 if let Some(&(ref result, dep_node_index)) = tcx.maps.$name.borrow().map.get(&key) {
                     tcx.dep_graph.read_index(dep_node_index);

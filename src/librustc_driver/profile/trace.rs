@@ -33,12 +33,14 @@ pub enum CacheCase {
 pub struct Rec {
     pub effect: Effect,
     pub start: Instant,
-    pub duration: Duration,
+    pub dur_self: Duration,
+    pub dur_total: Duration,
     pub extent: Box<Vec<Rec>>,
 }
 pub struct QueryMetric {
     pub count: usize,
-    pub duration: Duration,
+    pub dur_self: Duration,
+    pub dur_total: Duration,
 }
 
 pub fn cons_of_query_msg(q: &trace::Query) -> String {
@@ -108,7 +110,7 @@ fn html_of_fraction(frac: f64) -> (String, String) {
 fn total_duration(traces: &Vec<Rec>) -> Duration {
     let mut sum : Duration = Duration::new(0,0);
     for t in traces.iter() {
-        sum += t.duration;
+        sum += t.dur_total;
     }
     return sum
 }
@@ -124,8 +126,8 @@ fn duration_div(nom: Duration, den: Duration) -> f64 {
 fn write_traces_rec(file: &mut File, traces: &Vec<Rec>, total: Duration, depth: usize) {
     for t in traces {
         let (eff_text, eff_css_classes) = html_of_effect(&t.effect);
-        let (dur_text, dur_css_classes) = html_of_duration(&t.start, &t.duration);
-        let fraction = duration_div(t.duration, total);
+        let (dur_text, dur_css_classes) = html_of_duration(&t.start, &t.dur_total);
+        let fraction = duration_div(t.dur_total, total);
         let percent = fraction * 100.0;
         let (frc_text, frc_css_classes) = html_of_fraction(fraction);
         write!(file, "<div class=\"trace depth-{} extent-{}{} {} {} {}\">\n",
@@ -155,7 +157,8 @@ fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec
                     Some(_qm) => { panic!("TimeBegin with non-unique, repeat message") }
                     None => QueryMetric{
                         count: 1,
-                        duration: t.duration
+                        dur_self: t.dur_self,
+                        dur_total: t.dur_total,
                     }};
                 counts.insert(msg.clone(), qm);
             },
@@ -165,11 +168,13 @@ fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec
                     Some(qm) =>
                         QueryMetric{
                             count: qm.count + 1,
-                            duration: qm.duration + t.duration
+                            dur_self: qm.dur_self + t.dur_self,
+                            dur_total: qm.dur_total + t.dur_total,
                         },
                     None => QueryMetric{
                         count: 1,
-                        duration: t.duration
+                        dur_self: t.dur_self,
+                        dur_total: t.dur_total,
                     }};
                 counts.insert(cons, qm);
             },
@@ -179,11 +184,13 @@ fn compute_counts_rec(counts: &mut HashMap<String,QueryMetric>, traces: &Vec<Rec
                     Some(qm) =>
                         QueryMetric{
                             count: qm.count + 1,
-                            duration: qm.duration + t.duration
+                            dur_total: qm.dur_total + t.dur_total,
+                            dur_self: qm.dur_self + t.dur_self
                         },
                     None => QueryMetric{
                         count: 1,
-                        duration: t.duration
+                        dur_total: t.dur_total,
+                        dur_self: t.dur_self,
                     }
                 };
                 counts.insert(qcons, qm);
@@ -199,13 +206,15 @@ pub fn write_counts(count_file: &mut File, counts: &mut HashMap<String,QueryMetr
 
     let mut data = vec![];
     for (ref cons, ref qm) in counts.iter() {
-        data.push((cons.clone(), qm.count.clone(), qm.duration.clone()));
+        data.push((cons.clone(), qm.count.clone(), qm.dur_total.clone(), qm.dur_self.clone()));
     };
-    data.sort_by(|&(_,_,d1),&(_,_,d2)|
-                 if d1 > d2 { Ordering::Less } else { Ordering::Greater } );
-    for (cons, count, duration) in data {
-        write!(count_file, "{},{},{}\n",
-               cons, count, duration_to_secs_str(duration)
+    data.sort_by(|&(_,_,_,self1),&(_,_,_,self2)|
+                 if self1 > self2 { Ordering::Less } else { Ordering::Greater } );
+    for (cons, count, dur_total, dur_self) in data {
+        write!(count_file, "{}, {}, {}, {}\n",
+               cons, count,
+               duration_to_secs_str(dur_total),
+               duration_to_secs_str(dur_self)
         ).unwrap();
     }
 }

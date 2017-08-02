@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::time::{Instant};
 use rustc::util::common::{ProfQDumpParams, ProfileQueriesMsg, profq_msg, profq_set_chan};
 use std::sync::mpsc::{Receiver};
 use std::io::{Write};
 use rustc::dep_graph::{DepNode};
+use std::time::{Duration, Instant};
 
 pub mod trace;
 
@@ -37,7 +37,7 @@ pub fn dump(path:String) {
         path, ack:tx,
         // FIXME: Add another compiler flag to toggle whether this log
         // is written; false for now
-        dump_profq_msg_log:false,
+        dump_profq_msg_log:true,
     };
     profq_msg(ProfileQueriesMsg::Dump(params));
     let _ = rx.recv().unwrap();
@@ -59,6 +59,12 @@ enum ParseState {
 struct StackFrame {
     pub parse_st: ParseState,
     pub traces:   Vec<trace::Rec>,
+}
+
+fn total_duration(traces: &Vec<trace::Rec>) -> Duration {
+    let mut sum : Duration = Duration::new(0,0);
+    for t in traces.iter() { sum += t.dur_total; }
+    return sum
 }
 
 // profiling thread; retains state (in local variables) and dump traces, upon request.
@@ -161,11 +167,13 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                                             parse_st:ParseState::Clear,
                                             traces:old_frame.traces
                                         };
+                                        let dur_extent = total_duration(&provider_extent);
                                         let trace = Rec {
                                             effect: Effect::QueryBegin(q, CacheCase::Miss),
                                             extent: Box::new(provider_extent),
                                             start: start,
-                                            duration: duration,
+                                            dur_self: duration - dur_extent,
+                                            dur_total: duration,
                                         };
                                         frame.traces.push( trace );
                                     },
@@ -200,11 +208,13 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                                             parse_st:ParseState::Clear,
                                             traces:old_frame.traces
                                         };
+                                        let dur_extent = total_duration(&provider_extent);
                                         let trace = Rec {
                                             effect: Effect::TimeBegin(msg),
                                             extent: Box::new(provider_extent),
                                             start: start,
-                                            duration: duration,
+                                            dur_total: duration,
+                                            dur_self: duration - dur_extent,
                                         };
                                         frame.traces.push( trace );
                                     },
@@ -239,11 +249,13 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                                             parse_st:ParseState::Clear,
                                             traces:old_frame.traces
                                         };
+                                        let dur_extent = total_duration(&provider_extent);
                                         let trace = Rec {
                                             effect: Effect::TaskBegin(key),
                                             extent: Box::new(provider_extent),
                                             start: start,
-                                            duration: duration,
+                                            dur_total: duration,
+                                            dur_self: duration - dur_extent,
                                         };
                                         frame.traces.push( trace );
                                     },
@@ -262,7 +274,8 @@ fn profile_queries_thread(r:Receiver<ProfileQueriesMsg>) {
                             effect: Effect::QueryBegin(q, CacheCase::Hit),
                             extent: Box::new(vec![]),
                             start: start,
-                            duration: duration,
+                            dur_self: duration,
+                            dur_total: duration,
                         };
                         frame.traces.push( trace );
                         frame.parse_st = ParseState::Clear;

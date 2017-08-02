@@ -107,7 +107,7 @@ pub fn compile_input(sess: &Session,
         sess.abort_if_errors();
     }
 
-    if sess.opts.debugging_opts.profile_queries {
+    if sess.profile_queries() {
         profile::begin();
     }
 
@@ -543,7 +543,7 @@ pub fn phase_1_parse_input<'a>(control: &CompileController,
                                -> PResult<'a, ast::Crate> {
     sess.diagnostic().set_continue_after_error(control.continue_parse_after_error);
 
-    if sess.opts.debugging_opts.profile_queries {
+    if sess.profile_queries() {
         profile::begin();
     }
 
@@ -1130,7 +1130,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
              "translation",
              move || trans::trans_crate(tcx, analysis, incremental_hashes_map, output_filenames));
 
-    if tcx.sess.opts.debugging_opts.profile_queries {
+    if tcx.sess.profile_queries() {
         profile::dump("profile_queries".to_string())
     }
 
