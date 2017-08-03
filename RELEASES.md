@@ -28,18 +28,19 @@ Compiler
 Libraries
 ---------
 
-- [`Ref`, `RefMut`, `MutexGuard`, `RwLockReadGuard`, `RwLockWriteGuard`
-  now impl `fmt::Display` & `fmt::Debug`.][42822]
+
 - [Relaxed Debug constraints on `{HashMap,BTreeMap}::{Keys,Values}`.][42854]
-- [Implement `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Debug`, `Hash` for unsized
+- [Impl `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Debug`, `Hash` for unsized
   tuples.][43011]
+- [Impl `fmt::{Display, Debug}` for `Ref`, `RefMut`, `MutexGuard`,
+  `RwLockReadGuard`, `RwLockWriteGuard`][42822]
 - [Impl `Clone` for `DefaultHasher`.][42799]
-- [Implement `Sync` for `SyncSender`.][42397]
+- [Impl `Sync` for `SyncSender`.][42397]
+- [Impl `FromStr` for `char`][42271]
 - [Fixed how `{f32, f64}::{is_sign_negative, is_sign_positive}` handles
   NaN.][42431]
 - [allow messages in the `unimplemented!()` macro.][42155]
   ie. `unimplemented!("Waiting for 1.21 to be stable")`
-- [`char`now impls `FromStr`.][42271]
 - [support pub(restricted) in thread_local! (round 2)][43185]
 - [Upgrade to Unicode 10.0.0][42999]
 - [Reimplemented `{f32, f64}::{min, max}` in Rust instead of using CMath.][42430]
