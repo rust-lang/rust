@@ -548,8 +548,19 @@ pub unsafe fn uninitialized<T>() -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
-    unsafe {
-        ptr::swap_nonoverlapping(x, y, 1);
+    if size_of::<T>() < 32 {
+        // For small types, just swap directly.
+        // This keeps alignment and lets debug not run the big loop.
+        unsafe {
+            let temp = ptr::read(x);
+            ptr::copy_nonoverlapping(y, x, 1);
+            ptr::write(y, temp);
+        }
+    } else {
+        // For large types, use the simd swapping code.
+        unsafe {
+            ptr::swap_nonoverlapping(x, y, 1);
+        }
     }
 }
 

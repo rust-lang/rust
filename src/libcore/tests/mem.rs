@@ -89,6 +89,13 @@ fn test_swap() {
     swap(&mut x, &mut y);
     assert_eq!(x, 42);
     assert_eq!(y, 31337);
+
+    // A bigger one to hit the SIMD loop
+    let mut x = [1u64, 2, 3, 4, 5, 6, 7, 8];
+    let mut y = [11, 12, 13, 14, 15, 16, 17, 18];
+    swap(&mut x, &mut y);
+    assert_eq!(x, [11, 12, 13, 14, 15, 16, 17, 18]);
+    assert_eq!(y, [1, 2, 3, 4, 5, 6, 7, 8]);
 }
 
 #[test]
