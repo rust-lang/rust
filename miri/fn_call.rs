@@ -62,7 +62,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
-            Err(EvalError::NoMirFor(path)) => {
+            Err(EvalError{ kind: EvalErrorKind::NoMirFor(path), ..} ) => {
                 self.call_missing_fn(instance, destination, arg_operands, sig, path)?;
                 return Ok(true);
             },
@@ -133,8 +133,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 // is called if a `HashMap` is created the regular way.
                 match self.value_to_primval(args[0], usize)?.to_u64()? {
                     318 |
-                    511 => return Err(EvalError::Unimplemented("miri does not support random number generators".to_owned())),
-                    id => return Err(EvalError::Unimplemented(format!("miri does not support syscall id {}", id))),
+                    511 => return err!(Unimplemented("miri does not support random number generators".to_owned())),
+                    id => return err!(Unimplemented(format!("miri does not support syscall id {}", id))),
                 }
             }
 
@@ -144,7 +144,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let symbol_name = self.memory.read_c_str(symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
-                return Err(EvalError::Unimplemented(format!("miri does not support dynamically loading libraries (requested symbol: {})", symbol_name)));
+                return err!(Unimplemented(format!("miri does not support dynamically loading libraries (requested symbol: {})", symbol_name)));
             }
 
             "__rust_maybe_catch_panic" => {
@@ -167,7 +167,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     StackPopCleanup::Goto(dest_block),
                 )?;
 
-                let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("Argument to __rust_maybe_catch_panic does not take enough arguments.".to_owned()))?;
+                let arg_local = self.frame().mir.args_iter().next().ok_or(EvalErrorKind::AbiViolation("Argument to __rust_maybe_catch_panic does not take enough arguments.".to_owned()))?;
                 let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                 self.write_ptr(arg_dest, data, u8_ptr_ty)?;
 
@@ -179,7 +179,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "__rust_start_panic" => {
-                return Err(EvalError::Panic);
+                return err!(Panic);
             }
 
             "memcmp" => {
@@ -342,7 +342,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if let Some(result) = result {
                     self.write_primval(dest, result, dest_ty)?;
                 } else {
-                    return Err(EvalError::Unimplemented(format!("Unimplemented sysconf name: {}", name)));
+                    return err!(Unimplemented(format!("Unimplemented sysconf name: {}", name)));
                 }
             }
 
@@ -354,13 +354,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let dtor = match args[1].into_ptr(&mut self.memory)?.into_inner_primval() {
                     PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
                     PrimVal::Bytes(0) => None,
-                    PrimVal::Bytes(_) => return Err(EvalError::ReadBytesAsPointer),
-                    PrimVal::Undef => return Err(EvalError::ReadUndefBytes),
+                    PrimVal::Bytes(_) => return err!(ReadBytesAsPointer),
+                    PrimVal::Undef => return err!(ReadUndefBytes),
                 };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_type = self.operand_ty(&arg_operands[0]).builtin_deref(true, ty::LvaluePreference::NoPreference)
-                                   .ok_or(EvalError::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
+                                   .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
                 let key_size = {
                     let layout = self.type_layout(key_type)?;
                     layout.size(&self.tcx.data_layout)
@@ -369,7 +369,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 // Create key and write it into the memory where key_ptr wants it
                 let key = self.memory.create_tls_key(dtor) as u128;
                 if key_size.bits() < 128 && key >= (1u128 << key_size.bits() as u128) {
-                    return Err(EvalError::OutOfTls);
+                    return err!(OutOfTls);
                 }
                 // TODO: Does this need checking for alignment?
                 self.memory.write_uint(key_ptr.to_ptr()?, key, key_size.bytes())?;
@@ -407,7 +407,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             },
 
             _ => {
-                return Err(EvalError::Unimplemented(format!("can't call C ABI function: {}", link_name)));
+                return err!(Unimplemented(format!("can't call C ABI function: {}", link_name)));
             }
         }
 
@@ -452,7 +452,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let path = path.iter()
                     .map(|&s| s.to_owned())
                     .collect();
-                EvalError::PathNotFound(path)
+                EvalErrorKind::PathNotFound(path).into()
             })
     }
 
@@ -467,12 +467,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         // In some cases in non-MIR libstd-mode, not having a destination is legit.  Handle these early.
         match &path[..] {
             "std::panicking::rust_panic_with_hook" |
-            "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
+            "std::rt::begin_panic_fmt" => return err!(Panic),
             _ => {},
         }
 
         let dest_ty = sig.output();
-        let (dest, dest_block) = destination.ok_or_else(|| EvalError::NoMirFor(path.clone()))?;
+        let (dest, dest_block) = destination.ok_or_else(|| EvalErrorKind::NoMirFor(path.clone()))?;
 
         if sig.abi == Abi::C {
             // An external C function
@@ -495,10 +495,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let size = self.value_to_primval(args[0], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[1], usize)?.to_u64()?;
                 if size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
+                    return err!(HeapAllocZeroBytes);
                 }
                 if !align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = self.memory.allocate(size, align, Kind::Rust.into())?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
@@ -507,10 +507,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let size = self.value_to_primval(args[0], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[1], usize)?.to_u64()?;
                 if size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
+                    return err!(HeapAllocZeroBytes);
                 }
                 if !align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let ptr = self.memory.allocate(size, align, Kind::Rust.into())?;
                 self.memory.write_repeat(ptr.into(), 0, size)?;
@@ -521,10 +521,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
                 let align = self.value_to_primval(args[2], usize)?.to_u64()?;
                 if old_size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
+                    return err!(HeapAllocZeroBytes);
                 }
                 if !align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(align));
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 self.memory.deallocate(ptr, Some((old_size, align)), Kind::Rust.into())?;
             }
@@ -535,13 +535,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let new_size = self.value_to_primval(args[3], usize)?.to_u64()?;
                 let new_align = self.value_to_primval(args[4], usize)?.to_u64()?;
                 if old_size == 0 || new_size == 0 {
-                    return Err(EvalError::HeapAllocZeroBytes);
+                    return err!(HeapAllocZeroBytes);
                 }
                 if !old_align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(old_align));
+                    return err!(HeapAllocNonPowerOfTwoAlignment(old_align));
                 }
                 if !new_align.is_power_of_two() {
-                    return Err(EvalError::HeapAllocNonPowerOfTwoAlignment(new_align));
+                    return err!(HeapAllocNonPowerOfTwoAlignment(new_align));
                 }
                 let new_ptr = self.memory.reallocate(ptr, old_size, old_align, new_size, new_align, Kind::Rust.into())?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
@@ -552,15 +552,15 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "std::io::_print" => {
                 trace!("Ignoring output.  To run programs that print, make sure you have a libstd with full MIR.");
             }
-            "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
-            "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
+            "std::thread::Builder::new" => return err!(Unimplemented("miri does not support threading".to_owned())),
+            "std::env::args" => return err!(Unimplemented("miri does not support program arguments".to_owned())),
             "std::panicking::panicking" |
             "std::rt::panicking" => {
                 // we abort on panic -> `std::rt::panicking` always returns false
                 let bool = self.tcx.types.bool;
                 self.write_primval(dest, PrimVal::from_bool(false), bool)?;
             }
-            _ => return Err(EvalError::NoMirFor(path)),
+            _ => return err!(NoMirFor(path)),
         }
 
         // Since we pushed no stack frame, the main loop will act

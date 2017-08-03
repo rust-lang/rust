@@ -5,7 +5,7 @@ use syntax::codemap::Span;
 use syntax::abi::Abi;
 
 use super::{
-    EvalError, EvalResult,
+    EvalError, EvalResult, EvalErrorKind,
     EvalContext, eval_context, TyAndPacked,
     Lvalue,
     MemoryPointer,
@@ -78,7 +78,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 let real_sig = self.erase_lifetimes(&real_sig);
                                 let real_sig = self.tcx.normalize_associated_type(&real_sig);
                                 if !self.check_sig_compat(sig, real_sig)? {
-                                    return Err(EvalError::FunctionPointerTyMismatch(real_sig, sig));
+                                    return err!(FunctionPointerTyMismatch(real_sig, sig));
                                 }
                             },
                             ref other => bug!("instance def ty: {:?}", other),
@@ -88,7 +88,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     ty::TyFnDef(def_id, substs) => (eval_context::resolve(self.tcx, def_id, substs), func_ty.fn_sig(self.tcx)),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
-                        return Err(EvalError::Unimplemented(msg));
+                        return err!(Unimplemented(msg));
                     }
                 };
                 let sig = self.erase_lifetimes(&sig);
@@ -121,17 +121,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             let index = self.eval_operand_to_primval(index)
                                 .expect("can't eval index")
                                 .to_u64()?;
-                            Err(EvalError::ArrayIndexOutOfBounds(span, len, index))
+                            err!(ArrayIndexOutOfBounds(span, len, index))
                         },
                         mir::AssertMessage::Math(ref err) =>
-                            Err(EvalError::Math(terminator.source_info.span, err.clone())),
+                            err!(Math(terminator.source_info.span, err.clone())),
                     }
                 }
             },
 
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
-            Unreachable => return Err(EvalError::Unreachable),
+            Unreachable => return err!(Unreachable),
         }
 
         Ok(())
@@ -214,11 +214,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ty::InstanceDef::Intrinsic(..) => {
                 let (ret, target) = match destination {
                     Some(dest) => dest,
-                    _ => return Err(EvalError::Unreachable),
+                    _ => return err!(Unreachable),
                 };
                 let ty = sig.output();
                 if !eval_context::is_inhabited(self.tcx, ty) {
-                    return Err(EvalError::Unreachable);
+                    return err!(Unreachable);
                 }
                 let layout = self.type_layout(ty)?;
                 M::call_intrinsic(self, instance, arg_operands, ret, ty, layout, target)?;
@@ -462,7 +462,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         trace!("read_nonnull_discriminant_value: {:?}, {}, {}", ptr, nndiscr, discr_size);
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
-            Ok(_) | Err(EvalError::ReadPointerAsBytes) => true,
+            Ok(_) | Err(EvalError{ kind: EvalErrorKind::ReadPointerAsBytes, .. }) => true,
             Err(e) => return Err(e),
         };
         assert!(nndiscr == 0 || nndiscr == 1);

@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt;
+
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
 
@@ -9,9 +10,25 @@ use super::{
 
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
+use backtrace::Backtrace;
 
 #[derive(Debug)]
-pub enum EvalError<'tcx> {
+pub struct EvalError<'tcx> {
+    pub kind: EvalErrorKind<'tcx>,
+    pub backtrace: Backtrace,
+}
+
+impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
+    fn from(kind: EvalErrorKind<'tcx>) -> Self {
+        EvalError {
+            kind,
+            backtrace: Backtrace::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum EvalErrorKind<'tcx> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant
     MachineError(Box<Error>),
@@ -106,8 +123,8 @@ pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
 impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
-        use self::EvalError::*;
-        match *self {
+        use self::EvalErrorKind::*;
+        match self.kind {
             MachineError(ref inner) => inner.description(),
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
@@ -215,14 +232,14 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "the evaluated program panicked",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
-            EvalError::PathNotFound(_) =>
+            EvalErrorKind::PathNotFound(_) =>
                 "a path could not be resolved, maybe the crate is not loaded",
         }
     }
 
     fn cause(&self) -> Option<&Error> {
-        use self::EvalError::*;
-        match *self {
+        use self::EvalErrorKind::*;
+        match self.kind {
             MachineError(ref inner) => Some(&**inner),
             _ => None,
         }
@@ -231,8 +248,8 @@ impl<'tcx> Error for EvalError<'tcx> {
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::EvalError::*;
-        match *self {
+        use self::EvalErrorKind::*;
+        match self.kind {
             PointerOutOfBounds { ptr, access, allocation_size } => {
                 write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
                        if access { "memory access" } else { "pointer computed" },

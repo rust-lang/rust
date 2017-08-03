@@ -1,6 +1,6 @@
 use rustc_miri::interpret::{
     Pointer,
-    EvalResult, EvalError,
+    EvalResult,
     PrimVal,
     EvalContext,
 };
@@ -48,7 +48,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         // allocation.
 
         if ptr.is_null()? { // NULL pointers must only be offset by 0
-            return if offset == 0 { Ok(ptr) } else { Err(EvalError::InvalidNullPointerUsage) };
+            return if offset == 0 { Ok(ptr) } else { err!(InvalidNullPointerUsage) };
         }
         // FIXME: assuming here that type size is < i64::max_value()
         let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
@@ -59,11 +59,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.memory.check_bounds(ptr, false)?;
             } else if ptr.is_null()? {
                 // We moved *to* a NULL pointer.  That seems wrong, LLVM considers the NULL pointer its own small allocation.  Reject this, for now.
-                return Err(EvalError::InvalidNullPointerUsage);
+                return err!(InvalidNullPointerUsage);
             }
             Ok(ptr)
         } else {
-            Err(EvalError::OverflowingMath)
+            err!(OverflowingMath)
         }
     }
 }

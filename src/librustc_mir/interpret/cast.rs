@@ -5,7 +5,6 @@ use super::{
     PrimVal,
     EvalContext,
     EvalResult,
-    EvalError,
     MemoryPointer, PointerArithmetic,
     Machine,
 };
@@ -79,12 +78,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TyFloat(FloatTy::F32)             => Ok(PrimVal::from_f32(v as f32)),
 
             TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
-            TyChar => Err(EvalError::InvalidChar(v)),
+            TyChar => err!(InvalidChar(v)),
 
             // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
             TyRawPtr(_) => Ok(PrimVal::Bytes(self.memory.truncate_to_ptr(v).0 as u128)),
 
-            _ => Err(EvalError::Unimplemented(format!("int to {:?} cast", ty))),
+            _ => err!(Unimplemented(format!("int to {:?} cast", ty))),
         }
     }
 
@@ -99,7 +98,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             TyFloat(FloatTy::F64) => Ok(PrimVal::from_f64(val)),
             TyFloat(FloatTy::F32) => Ok(PrimVal::from_f32(val as f32)),
-            _ => Err(EvalError::Unimplemented(format!("float to {:?} cast", ty))),
+            _ => err!(Unimplemented(format!("float to {:?} cast", ty))),
         }
     }
 
@@ -109,8 +108,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
             TyRawPtr(_) | TyInt(IntTy::Is) | TyUint(UintTy::Us) =>
                 Ok(PrimVal::Ptr(ptr)),
-            TyInt(_) | TyUint(_) => Err(EvalError::ReadPointerAsBytes),
-            _ => Err(EvalError::Unimplemented(format!("ptr to {:?} cast", ty))),
+            TyInt(_) | TyUint(_) => err!(ReadPointerAsBytes),
+            _ => err!(Unimplemented(format!("ptr to {:?} cast", ty))),
         }
     }
 }

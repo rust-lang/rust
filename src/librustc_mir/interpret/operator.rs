@@ -2,7 +2,7 @@ use rustc::mir;
 use rustc::ty::Ty;
 
 use super::{
-    EvalError, EvalResult,
+    EvalResult,
     EvalContext,
     Lvalue,
     Machine,
@@ -173,7 +173,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         if left_kind != right_kind {
             let msg = format!("unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
-            return Err(EvalError::Unimplemented(msg));
+            return err!(Unimplemented(msg));
         }
 
         let val = match (bin_op, left_kind) {
@@ -227,7 +227,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             _ => {
                 let msg = format!("unimplemented binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
-                return Err(EvalError::Unimplemented(msg));
+                return err!(Unimplemented(msg));
             }
         };
 
@@ -271,7 +271,7 @@ pub fn unary_op<'tcx>(
 
         _ => {
             let msg = format!("unimplemented unary op: {:?}, {:?}", un_op, val);
-            return Err(EvalError::Unimplemented(msg));
+            return err!(Unimplemented(msg));
         }
     };
 

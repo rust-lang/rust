@@ -2,7 +2,7 @@ use rustc::{ty, mir};
 
 use super::{
     TlsKey, TlsEntry,
-    EvalResult, EvalError,
+    EvalResult, EvalErrorKind,
     Pointer,
     Memory,
     Evaluator,
@@ -37,7 +37,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
                 trace!("TLS key {} removed", key);
                 Ok(())
             },
-            None => Err(EvalError::TlsOutOfBounds)
+            None => err!(TlsOutOfBounds)
         }
     }
 
@@ -47,7 +47,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
                 trace!("TLS key {} loaded: {:?}", key, data);
                 Ok(data)
             },
-            None => Err(EvalError::TlsOutOfBounds)
+            None => err!(TlsOutOfBounds)
         }
     }
 
@@ -58,7 +58,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
                 *data = new_data;
                 Ok(())
             },
-            None => Err(EvalError::TlsOutOfBounds)
+            None => err!(TlsOutOfBounds)
         }
     }
     
@@ -115,7 +115,7 @@ impl<'a, 'tcx: 'a> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator> {
                 Lvalue::undef(),
                 StackPopCleanup::None,
             )?;
-            let arg_local = self.frame().mir.args_iter().next().ok_or(EvalError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
+            let arg_local = self.frame().mir.args_iter().next().ok_or(EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
             let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
             self.write_ptr(dest, ptr, ty)?;

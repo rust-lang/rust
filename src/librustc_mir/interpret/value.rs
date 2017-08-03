@@ -4,7 +4,7 @@
 use rustc::ty::layout::HasDataLayout;
 
 use super::{
-    EvalError, EvalResult,
+    EvalResult,
     Memory, MemoryPointer, HasMemory, PointerArithmetic,
     Machine,
 };
@@ -72,7 +72,7 @@ impl<'tcx> Pointer {
                 Ok(Pointer::from(PrimVal::Bytes(layout.signed_offset(b as u64, i)? as u128)))
             },
             PrimVal::Ptr(ptr) => ptr.signed_offset(i, layout).map(Pointer::from),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+            PrimVal::Undef => err!(ReadUndefBytes),
         }
     }
 
@@ -84,7 +84,7 @@ impl<'tcx> Pointer {
                 Ok(Pointer::from(PrimVal::Bytes(layout.offset(b as u64, i)? as u128)))
             },
             PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(Pointer::from),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+            PrimVal::Undef => err!(ReadUndefBytes),
         }
     }
 
@@ -96,7 +96,7 @@ impl<'tcx> Pointer {
                 Ok(Pointer::from(PrimVal::Bytes(layout.wrapping_signed_offset(b as u64, i) as u128)))
             },
             PrimVal::Ptr(ptr) => Ok(Pointer::from(ptr.wrapping_signed_offset(i, layout))),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+            PrimVal::Undef => err!(ReadUndefBytes),
         }
     }
 
@@ -104,7 +104,7 @@ impl<'tcx> Pointer {
         match self.primval {
             PrimVal::Bytes(b) => Ok(b == 0),
             PrimVal::Ptr(_) => Ok(false),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+            PrimVal::Undef => err!(ReadUndefBytes),
         }
     }
 
@@ -249,16 +249,16 @@ impl<'tcx> PrimVal {
     pub fn to_bytes(self) -> EvalResult<'tcx, u128> {
         match self {
             PrimVal::Bytes(b) => Ok(b),
-            PrimVal::Ptr(_) => Err(EvalError::ReadPointerAsBytes),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+            PrimVal::Ptr(_) => err!(ReadPointerAsBytes),
+            PrimVal::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
         match self {
-            PrimVal::Bytes(_) => Err(EvalError::ReadBytesAsPointer),
+            PrimVal::Bytes(_) => err!(ReadBytesAsPointer),
             PrimVal::Ptr(p) => Ok(p),
-            PrimVal::Undef => Err(EvalError::ReadUndefBytes),
+            PrimVal::Undef => err!(ReadUndefBytes),
         }
     }
 
@@ -324,7 +324,7 @@ impl<'tcx> PrimVal {
         match self.to_bytes()? {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(EvalError::InvalidBool),
+            _ => err!(InvalidBool),
         }
     }
 }

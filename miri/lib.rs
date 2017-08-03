@@ -25,6 +25,7 @@ use std::collections::{
     BTreeMap,
 };
 
+#[macro_use]
 extern crate rustc_miri;
 pub use rustc_miri::interpret::*;
 
@@ -56,7 +57,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
 
         if !main_mir.return_ty.is_nil() || main_mir.arg_count != 0 {
-            return Err(EvalError::Unimplemented("miri does not support main functions without `fn()` type signatures".to_owned()));
+            return err!(Unimplemented("miri does not support main functions without `fn()` type signatures".to_owned()));
         }
 
         if let Some(start_id) = start_wrapper {
@@ -64,7 +65,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let start_mir = ecx.load_mir(start_instance.def)?;
 
             if start_mir.arg_count != 3 {
-                return Err(EvalError::AbiViolation(format!("'start' lang item should have three arguments, but has {}", start_mir.arg_count)));
+                return err!(AbiViolation(format!("'start' lang item should have three arguments, but has {}", start_mir.arg_count)));
             }
 
             // Return value
@@ -201,7 +202,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         use memory::Kind::*;
         match m {
             // FIXME: This could be allowed, but not for env vars set during miri execution
-            Env => Err(EvalError::Unimplemented("statics can't refer to env vars".to_owned())),
+            Env => err!(Unimplemented("statics can't refer to env vars".to_owned())),
             _ => Ok(()),
         }
     }
