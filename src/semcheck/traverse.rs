@@ -13,16 +13,17 @@ use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
-use rustc::ty::{AssociatedItem, ParamEnv, TraitRef, Ty, TyCtxt};
-use rustc::ty::Visibility::Public;
+use rustc::ty::{AssociatedItem, ParamEnv, Region, TraitRef, Ty, TyCtxt};
+use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::Visibility::Public;
 
 use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, InherentEntry, InherentImplSet, NameMapping};
 use semcheck::mismatch::Mismatch;
-use semcheck::translate::{BottomUpRegionFolder, TranslationContext};
+use semcheck::translate::{InferenceCleanupFolder, TranslationContext};
 
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
@@ -570,7 +571,7 @@ fn diff_generics(changes: &mut ChangeSet,
                 id_mapping.add_type_param(*old_type);
                 id_mapping.add_non_mapped(old_type.def_id);
             },
-            (None, Some(new_type)) => { // FIXME: is_fn could be used in a more elegant fashion
+            (None, Some(new_type)) => {
                 found.push(TypeParameterAdded { defaulted: new_type.has_default || is_fn });
                 id_mapping.add_type_param(*new_type);
                 id_mapping.add_non_mapped(new_type.def_id);
@@ -805,25 +806,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             .eq(old, new)
             .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
 
-        let mut folder = BottomUpRegionFolder {
-            tcx: infcx.tcx,
-            fldop_t: |ty| {
-                match ty.sty {
-                    TyRef(region, tm) if region.needs_infer() => {
-                        infcx.tcx.mk_ref(tcx.types.re_erased, tm)
-                    },
-                    TyInfer(_) => tcx.mk_ty(TyError),
-                    _ => ty,
-                }
-            },
-            fldop_r: |reg| {
-                if reg.needs_infer() {
-                    tcx.types.re_erased
-                } else {
-                    reg
-                }
-            },
-        };
+        let mut folder = InferenceCleanupFolder::new(&infcx);
 
         if let Err(err) = error {
             let region_maps = RegionMaps::new();
@@ -1006,6 +989,7 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
 pub struct TypeComparisonContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     id_mapping: &'a IdMapping,
+    folder: InferenceCleanupFolder<'a, 'gcx, 'tcx>,
     forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
     backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
 }
@@ -1015,6 +999,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         TypeComparisonContext {
             infcx: infcx,
             id_mapping: id_mapping,
+            folder: InferenceCleanupFolder::new(&infcx),
             forward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
             backward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
         }
@@ -1024,6 +1009,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         TypeComparisonContext {
             infcx: infcx,
             id_mapping: id_mapping,
+            folder: InferenceCleanupFolder::new(&infcx),
             forward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
             backward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
         }
@@ -1055,5 +1041,43 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         } else {
             self.infcx.tcx.mk_param_from_def(def)
         })
+    }
+
+    fn check_type_error<F, G>(&mut self,
+                              target_def_id: DefId,
+                              target_param_env: ParamEnv<'tcx>,
+                              orig: Ty<'tcx>,
+                              target: Ty<'tcx>) -> Option<TypeError<'tcx>> {
+        use rustc::infer::InferOk;
+        use rustc::middle::free_region::FreeRegionMap;
+        use rustc::middle::region::RegionMaps;
+        use rustc::ty::Lift;
+
+        let error =
+            self.infcx
+                .at(&ObligationCause::dummy(), target_param_env)
+                .eq(orig, target)
+                .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
+
+        if let Err(err) = error {
+            let region_maps = RegionMaps::new();
+            let mut free_regions = FreeRegionMap::new();
+
+            free_regions.relate_free_regions_from_predicates(target_param_env.caller_bounds);
+            self.infcx.resolve_regions_and_report_errors(target_def_id,
+                                                         &region_maps,
+                                                         &free_regions);
+
+            let err =
+                self.infcx
+                    .resolve_type_vars_if_possible(&err)
+                    .fold_with(&mut self.folder)
+                    .lift_to_tcx(self.infcx.tcx)
+                    .unwrap();
+
+            Some(err)
+        } else {
+            None
+        }
     }
 }

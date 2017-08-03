@@ -1,6 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::{ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
+use rustc::infer::InferCtxt;
 use rustc::ty::subst::Substs;
 
 use semcheck::mapping::{IdMapping, InherentEntry};
@@ -25,7 +26,6 @@ pub struct TranslationContext<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     /// Construct a translation context translating to the new crate's `DefId`s.
-    // TODO: check whether the function pointers force us to use dynamic dispatch
     pub fn target_new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                       id_mapping: &'a IdMapping,
                       translate_params: bool) -> TranslationContext<'a, 'gcx, 'tcx>
@@ -47,7 +47,6 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     }
 
     /// Construct a translation context translating to the old crate's `DefId`s.
-    // TODO: check whether the function pointers force us to use dynamic dispatch
     pub fn target_old(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                       id_mapping: &'a IdMapping,
                       translate_params: bool) -> TranslationContext<'a, 'gcx, 'tcx> {
@@ -472,29 +471,40 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     }
 }
 
-/// A simple closure folder for regions and types.
-pub struct BottomUpRegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F, G>
-    where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
-          G: FnMut(Region<'tcx>) -> Region<'tcx>,
-{
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub fldop_t: F,
-    pub fldop_r: G,
+pub struct InferenceCleanupFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx, F, G> TypeFolder<'gcx, 'tcx> for BottomUpRegionFolder<'a, 'gcx, 'tcx, F, G>
-    where F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
-          G: FnMut(Region<'tcx>) -> Region<'tcx>,
-{
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+impl<'a, 'gcx, 'tcx> InferenceCleanupFolder<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+        InferenceCleanupFolder {
+            infcx: infcx,
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceCleanupFolder<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.infcx.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        use rustc::ty::TypeVariants::{TyError, TyInfer, TyRef};
+
         let t1 = ty.super_fold_with(self);
-        (self.fldop_t)(t1)
+        match t1.sty {
+            TyRef(region, tm) if region.needs_infer() => {
+                self.infcx.tcx.mk_ref(self.infcx.tcx.types.re_erased, tm)
+            },
+            TyInfer(_) => self.infcx.tcx.mk_ty(TyError),
+            _ => t1,
+        }
     }
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
         let r1 = r.super_fold_with(self);
-        (self.fldop_r)(r1)
+        if r1.needs_infer() {
+            self.infcx.tcx.types.re_erased
+        } else {
+            r1
+        }
     }
 }
