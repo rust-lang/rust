@@ -102,14 +102,14 @@ pre {
 .content span.type, .content a.type, .block a.current.type { color: #ba5d00; }
 .content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
 .content span.union, .content a.union, .block a.current.union { color: #767b27; }
-.content span.constant, .content a.constant, .block a.current.constant { color: #9a6e31; }
+.content span.constant, .content a.constant, .block a.current.constant { color: #546e8a; }
 .content span.primitive, .content a.primitive, .block a.current.primitive { color: #2c8093; }
 .content span.externcrate,
 .content span.mod, .content a.mod, .block a.current.mod { color: #4d76ae; }
 .content span.fn, .content a.fn, .block a.current.fn,
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
-.content .fnname { color: #546e8a; }
+.content .fnname { color: #9a6e31; }
 
 pre.rust .comment { color: #8E908C; }
 pre.rust .doccomment { color: #4D4D4C; }
