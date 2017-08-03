@@ -125,10 +125,18 @@ impl Step for Llvm {
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
-           .define("LLVM_LINK_LLVM_DYLIB", "ON")
            .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+
+
+        // This setting makes the LLVM tools link to the dynamic LLVM library,
+        // which saves both memory during parallel links and overall disk space
+        // for the tools.  We don't distribute any of those tools, so this is
+        // just a local concern.  However, this doesn't seem to work on Windows.
+        if !target.contains("windows") {
+           cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+        }
 
         if target.contains("msvc") {
             cfg.define("LLVM_USE_CRT_DEBUG", "MT");
