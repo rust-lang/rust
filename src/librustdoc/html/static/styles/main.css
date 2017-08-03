@@ -74,8 +74,9 @@ pre {
 .content .highlighted.mod { background-color: #afc6e4; }
 .content .highlighted.enum { background-color: #b4d1b9; }
 .content .highlighted.struct { background-color: #e7b1a0; }
-.content .highlighted.fn { background-color: #c6afb3; }
-.content .highlighted.method { background-color: #c6afb3; }
+.content .highlighted.union { background-color: #b7bd49; }
+.content .highlighted.fn,
+.content .highlighted.method,
 .content .highlighted.tymethod { background-color: #c6afb3; }
 .content .highlighted.type { background-color: #c6afb3; }
 
