@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::fmt;
-use std::path::{PathBuf, Path};
 
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
@@ -11,39 +10,21 @@ use super::{
 
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
+use backtrace::Backtrace;
 
 #[derive(Debug)]
 pub struct EvalError<'tcx> {
     pub kind: EvalErrorKind<'tcx>,
-    pub backtrace: Vec<Frame>,
+    pub backtrace: Backtrace,
 }
 
 impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
     fn from(kind: EvalErrorKind<'tcx>) -> Self {
-        let mut backtrace = Vec::new();
-        use backtrace::{trace, resolve};
-        trace(|frame| {
-            resolve(frame.ip(), |symbol| {
-                backtrace.push(Frame {
-                    function: symbol.name().map(|s| s.to_string()).unwrap_or(String::new()),
-                    file: symbol.filename().unwrap_or(Path::new("")).to_owned(),
-                    line: symbol.lineno().unwrap_or(0),
-                });
-            });
-            true
-        });
         EvalError {
             kind,
-            backtrace,
+            backtrace: Backtrace::new(),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct Frame {
-    pub function: String,
-    pub file: PathBuf,
-    pub line: u32,
 }
 
 #[derive(Debug)]

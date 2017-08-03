@@ -1705,13 +1705,45 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn report(&self, e: &EvalError) {
         let mut trace_text = "\n################################\nerror occurred in miri at\n".to_string();
-        for frame in e.backtrace.iter().skip_while(|frame| frame.function.starts_with("backtrace::")) {
-            // don't report initialization gibberish
-            if frame.function == "miri::after_analysis" {
-                break;
+        let mut skip_init = true;
+        'frames: for (i, frame) in e.backtrace.frames().iter().enumerate() {
+            for symbol in frame.symbols() {
+                if let Some(name) = symbol.name() {
+                    // unmangle the symbol via `to_string`
+                    let name = name.to_string();
+                    if name.starts_with("miri::after_analysis") {
+                        // don't report initialization gibberish
+                        break 'frames;
+                    } else if name.starts_with("backtrace::capture::Backtrace::new")
+                            // debug mode produces funky symbol names
+                           || name.starts_with("backtrace::capture::{{impl}}::new") {
+                        // don't report backtrace internals
+                        skip_init = false;
+                        continue 'frames;
+                    }
+                }
             }
-            write!(trace_text, "# {}\n", frame.function).unwrap();
-            write!(trace_text, "{}:{}\n", frame.file.display(), frame.line).unwrap();
+            if skip_init {
+                continue;
+            }
+            write!(trace_text, "{}\n", i).unwrap();
+            for symbol in frame.symbols() {
+                if let Some(name) = symbol.name() {
+                    write!(trace_text, "# {}\n", name).unwrap();
+                } else {
+                    write!(trace_text, "# <unknown>\n").unwrap();
+                }
+                if let Some(file_path) = symbol.filename() {
+                    write!(trace_text, "{}", file_path.display()).unwrap();
+                } else {
+                    write!(trace_text, "<unknown_file>").unwrap();
+                }
+                if let Some(line) = symbol.lineno() {
+                    write!(trace_text, ":{}\n", line).unwrap();
+                } else {
+                    write!(trace_text, "\n").unwrap();
+                }
+            }
         }
         trace!("{}", trace_text);
         if let Some(frame) = self.stack().last() {
