@@ -13,7 +13,7 @@ use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
-use rustc::ty::{AssociatedItem, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, ParamEnv, Predicate, TraitRef, Ty, TyCtxt};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs};
@@ -21,7 +21,7 @@ use rustc::ty::Visibility::Public;
 
 use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
-use semcheck::mapping::{IdMapping, InherentEntry, InherentImplSet, NameMapping};
+use semcheck::mapping::{IdMapping, NameMapping};
 use semcheck::mismatch::Mismatch;
 use semcheck::translate::{InferenceCleanupFolder, TranslationContext};
 
@@ -759,110 +759,54 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        new_def_id: DefId,
                        old: Ty<'tcx>,
                        new: Ty<'tcx>) {
-    use rustc::infer::InferOk;
-    use rustc::middle::free_region::FreeRegionMap;
-    use rustc::middle::region::RegionMaps;
-    use rustc::ty::{Lift, ReEarlyBound};
-    use rustc::ty::TypeVariants::*;
-    use syntax_pos::DUMMY_SP;
-
     info!("comparing types of {:?} / {:?}:\n  {:?} / {:?}", old_def_id, new_def_id, old, new);
 
-    let to_new = TranslationContext::target_new(tcx, id_mapping, false);
-    let to_old = TranslationContext::target_old(tcx, id_mapping, false);
-
-    let substs = Substs::identity_for_item(tcx, new_def_id);
-    let old = to_new.translate_item_type(old_def_id, old);
-
     tcx.infer_ctxt().enter(|infcx| {
+        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping);
+
+        let old_substs = Substs::identity_for_item(infcx.tcx, new_def_id);
+        let old = compcx.forward_trans.translate_item_type(old_def_id, old);
+        // let old = old.subst(infcx.tcx, old_substs);
+
         let new_substs = if new.is_fn() {
-            let has_self = tcx.generics_of(new_def_id).has_self;
-            Substs::for_item(infcx.tcx, new_def_id, |def, _| {
-                infcx.region_var_for_def(DUMMY_SP, def)
-            }, |def, substs| {
-                if def.index == 0 && has_self { // `Self` is special
-                    tcx.mk_param_from_def(def)
-                } else {
-                    infcx.type_var_for_def(DUMMY_SP, def, substs)
-                }
-            })
+            compcx.compute_target_infer_substs(new_def_id)
         } else {
-            Substs::for_item(tcx, new_def_id, |def, _| {
-                tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-            }, |def, _| if id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
-                tcx.type_of(def.def_id)
-            } else {
-                tcx.mk_param_from_def(def)
-            })
+            compcx.compute_target_default_substs(new_def_id)
         };
-
         let new = new.subst(infcx.tcx, new_substs);
-        // let old = old.subst(infcx.tcx, substs);
 
-        let new_param_env = tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
+        let new_param_env = infcx.tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
 
-        let error = infcx
-            .at(&ObligationCause::dummy(), new_param_env)
-            .eq(old, new)
-            .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
-
-        let mut folder = InferenceCleanupFolder::new(&infcx);
-
-        if let Err(err) = error {
-            let region_maps = RegionMaps::new();
-            let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(new_param_env.caller_bounds);
-            infcx.resolve_regions_and_report_errors(new_def_id, &region_maps, &free_regions);
-
-            let err = infcx.resolve_type_vars_if_possible(&err);
-            let err = err.fold_with(&mut folder).lift_to_tcx(tcx).unwrap();
-
+        if let Some(err) = compcx.check_type_error(tcx, new_def_id, new_param_env, old, new) {
             changes.add_change(TypeChanged { error: err }, old_def_id, None);
         }
 
-        let old_param_env = if let Some(env) =
-            to_new.translate_param_env(old_def_id, tcx.param_env(old_def_id))
+        let old_param_env = compcx
+            .forward_trans
+            .translate_param_env(old_def_id, tcx.param_env(old_def_id));
+        let new_param_env = compcx
+            .backward_trans
+            .translate_param_env(new_def_id, tcx.param_env(new_def_id));
+
+        if let Some(errors) =
+            compcx.check_bounds_error(tcx, old_param_env, new_def_id, new_substs)
         {
-            env
-        } else {
-            return;
-        };
-        let mut bound_cx = BoundContext::new(&infcx, old_param_env);
-        bound_cx.register(new_def_id, new_substs);
-
-        if let Some(errors) = bound_cx.get_errors() {
-            for err in &errors {
-                let pred = infcx.resolve_type_vars_if_possible(&err.obligation.predicate);
-                let pred = pred.fold_with(&mut folder);
-
+            for err in errors {
                 let err_type = BoundsTightened {
-                    pred: pred.lift_to_tcx(tcx).unwrap(),
+                    pred: err,
                 };
 
                 changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
             }
-        } else {
-            let new_param_env_trans = if let Some(env) =
-                to_old.translate_param_env(new_def_id, tcx.param_env(new_def_id))
-            {
-                env
-            } else {
-                return;
-            };
-            let mut rev_bound_cx = BoundContext::new(&infcx, new_param_env_trans);
-            rev_bound_cx.register(old_def_id, substs);
+        } else if let Some(errors) =
+            compcx.check_bounds_error(tcx, new_param_env, old_def_id, old_substs)
+        {
+            for err in errors {
+                let err_type = BoundsLoosened {
+                    pred: err,
+                };
 
-            if let Some(errors) = rev_bound_cx.get_errors() {
-                for err in &errors {
-                    let pred = infcx.resolve_type_vars_if_possible(&err.obligation.predicate);
-                    let pred = pred.fold_with(&mut folder);
-
-                    let err_type = BoundsLoosened {
-                        pred: pred.lift_to_tcx(tcx).unwrap(),
-                    };
-
-                    changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
-                }
+                changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
             }
         }
     });
@@ -990,8 +934,8 @@ pub struct TypeComparisonContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     id_mapping: &'a IdMapping,
     folder: InferenceCleanupFolder<'a, 'gcx, 'tcx>,
-    forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
-    backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+    pub forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+    pub backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
@@ -1043,11 +987,12 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn check_type_error<F, G>(&mut self,
-                              target_def_id: DefId,
-                              target_param_env: ParamEnv<'tcx>,
-                              orig: Ty<'tcx>,
-                              target: Ty<'tcx>) -> Option<TypeError<'tcx>> {
+    fn check_type_error<'b, 'tcx2>(&self,
+                                   lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+                                   target_def_id: DefId,
+                                   target_param_env: ParamEnv<'tcx>,
+                                   orig: Ty<'tcx>,
+                                   target: Ty<'tcx>) -> Option<TypeError<'tcx2>> {
         use rustc::infer::InferOk;
         use rustc::middle::free_region::FreeRegionMap;
         use rustc::middle::region::RegionMaps;
@@ -1071,8 +1016,8 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
             let err =
                 self.infcx
                     .resolve_type_vars_if_possible(&err)
-                    .fold_with(&mut self.folder)
-                    .lift_to_tcx(self.infcx.tcx)
+                    .fold_with(&mut self.folder.clone())
+                    .lift_to_tcx(lift_tcx)
                     .unwrap();
 
             Some(err)
@@ -1081,13 +1026,15 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_bounds_error<F, G>(&mut self,
-                                orig_def_id: DefId,
-                                target_def_id: DefId,
-                                orig_param_env: Option<ParamEnv<'tcx>>,
-                                target_param_env: Option<ParamEnv<'tcx>>,
-                                orig_substs: &Substs<'tcx>,
-                                target_substs: &Substs<'tcx>) -> Option<Vec<Predicate<'tcx>>> {
+    fn check_bounds_error<'b, 'tcx2>(&self,
+                                     lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+                                     orig_param_env: Option<ParamEnv<'tcx>>,
+                                     target_def_id: DefId,
+                                     target_substs: &Substs<'tcx>)
+        -> Option<Vec<Predicate<'tcx2>>>
+    {
+        use rustc::ty::Lift;
+
         let orig_param_env = if let Some(env) = orig_param_env {
             env
         } else {
@@ -1103,26 +1050,9 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                 .map(|err|
                      self.infcx
                          .resolve_type_vars_if_possible(&err.obligation.predicate)
-                         .fold_with(&mut self.folder))
-                .collect())
-        }
-
-        let target_param_env = if let Some(env) = target_param_env {
-            env
-        } else {
-            return None;
-        };
-
-        let mut rev_bound_cx = BoundContext::new(self.infcx, target_param_env);
-        rev_bound_cx.register(orig_def_id, orig_substs);
-
-        if let Some(errors) = rev_bound_cx.get_errors() {
-            return Some(errors
-                .iter()
-                .map(|err|
-                     self.infcx
-                         .resolve_type_vars_if_possible(&err.obligation.predicate)
-                         .fold_with(&mut self.folder))
+                         .fold_with(&mut self.folder.clone())
+                         .lift_to_tcx(lift_tcx)
+                         .unwrap())
                 .collect())
         }
 

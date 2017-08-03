@@ -471,6 +471,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct InferenceCleanupFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
