@@ -65,7 +65,6 @@ pub mod snapshot_vec;
 pub mod stable_hasher;
 pub mod transitive_relation;
 pub mod unify;
-pub mod fnv;
 pub mod fx;
 pub mod tuple_slice;
 pub mod veccell;
