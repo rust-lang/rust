@@ -30,7 +30,7 @@ Libraries
 
 - [`Ref`, `RefMut`, `MutexGuard`, `RwLockReadGuard`, `RwLockWriteGuard`
   now impl `fmt::Display` & `fmt::Debug`.][42822]
-- [Relaxed Debug constraints on {HashMap,BTreeMap}::{Keys,Values}.][42854]
+- [Relaxed Debug constraints on `{HashMap,BTreeMap}::{Keys,Values}`.][42854]
 - [Implement `PartialEq`, `Eq`, `PartialOrd`, `Ord`, `Debug`, `Hash` for unsized
   tuples.][43011]
 - [Impl `Clone` for `DefaultHasher`.][42799]
