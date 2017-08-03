@@ -788,6 +788,12 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             .backward_trans
             .translate_param_env(new_def_id, tcx.param_env(new_def_id));
 
+        let old_param_env = if let Some(env) = old_param_env {
+            env
+        } else {
+            return;
+        };
+
         if let Some(errors) =
             compcx.check_bounds_error(tcx, old_param_env, new_def_id, new_substs)
         {
@@ -798,7 +804,15 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
                 changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
             }
-        } else if let Some(errors) =
+        }
+
+        let new_param_env = if let Some(env) = new_param_env {
+            env
+        } else {
+            return;
+        };
+
+        if let Some(errors) =
             compcx.check_bounds_error(tcx, new_param_env, old_def_id, old_substs)
         {
             for err in errors {
@@ -1028,18 +1042,12 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
     fn check_bounds_error<'b, 'tcx2>(&self,
                                      lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
-                                     orig_param_env: Option<ParamEnv<'tcx>>,
+                                     orig_param_env: ParamEnv<'tcx>,
                                      target_def_id: DefId,
                                      target_substs: &Substs<'tcx>)
         -> Option<Vec<Predicate<'tcx2>>>
     {
         use rustc::ty::Lift;
-
-        let orig_param_env = if let Some(env) = orig_param_env {
-            env
-        } else {
-            return None;
-        };
 
         let mut bound_cx = BoundContext::new(self.infcx, orig_param_env);
         bound_cx.register(target_def_id, target_substs);
