@@ -66,7 +66,6 @@ use hir::map::DefPathHash;
 use ich::Fingerprint;
 use ty::{TyCtxt, Instance, InstanceDef};
 use ty::fast_reject::SimplifiedType;
-use ty::subst::Substs;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use ich::StableHashingContext;
 use std::fmt;
@@ -104,6 +103,8 @@ macro_rules! define_dep_nodes {
                 match *self {
                     $(
                         DepKind :: $variant => {
+                            $(return !anon_attr_to_bool!($anon);)*
+
                             // tuple args
                             $({
                                 return <( $($tuple_arg,)* ) as DepNodeParams>
@@ -112,6 +113,7 @@ macro_rules! define_dep_nodes {
 
                             // struct args
                             $({
+
                                 return <( $($struct_arg_ty,)* ) as DepNodeParams>
                                     ::CAN_RECONSTRUCT_QUERY_KEY;
                             })*
@@ -445,17 +447,17 @@ define_dep_nodes!( <'tcx>
     [] TypeckBodiesKrate,
     [] TypeckTables(DefId),
     [] HasTypeckTables(DefId),
-    [] ConstEval { def_id: DefId, substs: &'tcx Substs<'tcx> },
+    [anon] ConstEval,
     [] SymbolName(DefId),
     [] InstanceSymbolName { instance: Instance<'tcx> },
     [] SpecializationGraph(DefId),
     [] ObjectSafety(DefId),
 
-    [anon] IsCopy(DefId),
-    [anon] IsSized(DefId),
-    [anon] IsFreeze(DefId),
-    [anon] NeedsDrop(DefId),
-    [anon] Layout(DefId),
+    [anon] IsCopy,
+    [anon] IsSized,
+    [anon] IsFreeze,
+    [anon] NeedsDrop,
+    [anon] Layout,
 
     // The set of impls for a given trait.
     [] TraitImpls(DefId),
