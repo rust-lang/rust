@@ -79,11 +79,11 @@ fn line_is_url(line: &str) -> bool {
                 => state = EXP_URL,
 
             (EXP_LINK_LABEL_OR_URL, w)
-                if w.starts_with("http://") || w.starts_with("https://")
+                if w.starts_with("http://") || w.starts_with("https://") || w.starts_with("../")
                 => state = EXP_END,
 
             (EXP_URL, w)
-                if w.starts_with("http://") || w.starts_with("https://")
+                if w.starts_with("http://") || w.starts_with("https://") || w.starts_with("../")
                 => state = EXP_END,
 
             (_, _) => return false,
