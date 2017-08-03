@@ -109,7 +109,7 @@ impl Step for ToolBuild {
 
         cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
 
-        let info = GitInfo::new(&dir);
+        let info = GitInfo::new(&build.config, &dir);
         if let Some(sha) = info.sha() {
             cargo.env("CFG_COMMIT_HASH", sha);
         }

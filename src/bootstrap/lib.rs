@@ -299,9 +299,9 @@ impl Build {
             }
             None => false,
         };
-        let rust_info = channel::GitInfo::new(&src);
-        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
+        let rust_info = channel::GitInfo::new(&config, &src);
+        let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
 
         Build {
             initial_rustc: config.initial_rustc.clone(),

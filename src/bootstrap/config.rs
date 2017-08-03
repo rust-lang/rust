@@ -54,6 +54,7 @@ pub struct Config {
     pub extended: bool,
     pub sanitizers: bool,
     pub profiler: bool,
+    pub ignore_git: bool,
 
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
@@ -260,6 +261,7 @@ struct Rust {
     optimize_tests: Option<bool>,
     debuginfo_tests: Option<bool>,
     codegen_tests: Option<bool>,
+    ignore_git: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -292,6 +294,7 @@ impl Config {
         config.rust_codegen_units = 1;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
+        config.ignore_git = false;
         config.rust_dist_src = true;
 
         config.on_fail = flags.on_fail;
@@ -410,6 +413,7 @@ impl Config {
             set(&mut config.use_jemalloc, rust.use_jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
+            set(&mut config.ignore_git, rust.ignore_git);
             config.rustc_default_linker = rust.default_linker.clone();
             config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
