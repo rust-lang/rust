@@ -93,36 +93,46 @@ impl Step for ToolBuild {
         let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
-        let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
-        let dir = build.src.join("src/tools").join(tool);
-        cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
-
-        // We don't want to build tools dynamically as they'll be running across
-        // stages and such and it's just easier if they're not dynamically linked.
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-
-        if let Some(dir) = build.openssl_install_dir(target) {
-            cargo.env("OPENSSL_STATIC", "1");
-            cargo.env("OPENSSL_DIR", dir);
-            cargo.env("LIBZ_SYS_STATIC", "1");
-        }
-
-        cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
-
-        let info = GitInfo::new(&build.config, &dir);
-        if let Some(sha) = info.sha() {
-            cargo.env("CFG_COMMIT_HASH", sha);
-        }
-        if let Some(sha_short) = info.sha_short() {
-            cargo.env("CFG_SHORT_COMMIT_HASH", sha_short);
-        }
-        if let Some(date) = info.commit_date() {
-            cargo.env("CFG_COMMIT_DATE", date);
-        }
-
+        let mut cargo = prepare_tool_cargo(builder, compiler, target, tool);
         build.run(&mut cargo);
         build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
     }
+}
+
+fn prepare_tool_cargo(
+    builder: &Builder,
+    compiler: Compiler,
+    target: Interned<String>,
+    tool: &'static str,
+) -> Command {
+    let build = builder.build;
+    let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
+    let dir = build.src.join("src/tools").join(tool);
+    cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
+
+    // We don't want to build tools dynamically as they'll be running across
+    // stages and such and it's just easier if they're not dynamically linked.
+    cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+    if let Some(dir) = build.openssl_install_dir(target) {
+        cargo.env("OPENSSL_STATIC", "1");
+        cargo.env("OPENSSL_DIR", dir);
+        cargo.env("LIBZ_SYS_STATIC", "1");
+    }
+
+    cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
+
+    let info = GitInfo::new(&build.config, &dir);
+    if let Some(sha) = info.sha() {
+        cargo.env("CFG_COMMIT_HASH", sha);
+    }
+    if let Some(sha_short) = info.sha_short() {
+        cargo.env("CFG_SHORT_COMMIT_HASH", sha_short);
+    }
+    if let Some(date) = info.commit_date() {
+        cargo.env("CFG_COMMIT_DATE", date);
+    }
+    cargo
 }
 
 macro_rules! tool {
@@ -245,7 +255,9 @@ impl Step for Rustdoc {
     }
 
     fn run(self, builder: &Builder) -> PathBuf {
+        let build = builder.build;
         let target_compiler = self.target_compiler;
+        let target = target_compiler.host;
         let build_compiler = if target_compiler.stage == 0 {
             builder.compiler(0, builder.build.build)
         } else {
@@ -255,12 +267,16 @@ impl Step for Rustdoc {
             builder.compiler(target_compiler.stage - 1, builder.build.build)
         };
 
-        let tool_rustdoc = builder.ensure(ToolBuild {
-            compiler: build_compiler,
-            target: target_compiler.host,
-            tool: "rustdoc",
-            mode: Mode::Librustc,
-        });
+        builder.ensure(CleanTools { compiler: build_compiler, target, mode: Mode::Librustc });
+        builder.ensure(compile::Rustc { compiler: build_compiler, target });
+
+        let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
+        println!("Building rustdoc for stage{} ({})", target_compiler.stage, target_compiler.host);
+
+        let mut cargo = prepare_tool_cargo(builder, build_compiler, target, "rustdoc");
+        build.run(&mut cargo);
+        let tool_rustdoc = build.cargo_out(build_compiler, Mode::Tool, target)
+            .join(exe("rustdoc", &target_compiler.host));
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
