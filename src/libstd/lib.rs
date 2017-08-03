@@ -80,8 +80,8 @@
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
-//! calls to methods on [`str`] and [`[T]`][slice] respectively, via [deref
-//! coercions].
+//! calls to methods on [`str`] and [`[T]`][slice] respectively, via
+//! [deref-coercions].
 //!
 //! Third, the standard library defines [The Rust Prelude], a small collection
 //! of items - mostly traits - that are imported into every module of every
@@ -203,7 +203,7 @@
 //! [`use`]: ../book/first-edition/crates-and-modules.html#importing-modules-with-use
 //! [crate root]: ../book/first-edition/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
-//! [deref coercions]: ../book/second-edition/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
+//! [deref-coercions]: ../book/second-edition/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
