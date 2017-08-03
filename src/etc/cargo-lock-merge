@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+"""A merge driver for Cargo.lock.
+To enable, add the following snippet to .git/config:
+
+[merge "cargo-lock-merge"]
+    name = Cargo.lock merging
+    driver = ./src/etc/cargo-lock-merge
+
+"""
+
+import os
+import subprocess
+import sys
+
+rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+
+def run(args, **kwargs):
+    """Run a child program in a new process"""
+    # Use Popen here instead of call() as it apparently allows powershell on
+    # Windows to not lock up waiting for input presumably.
+    ret = subprocess.Popen(args, **kwargs)
+    code = ret.wait()
+    if code != 0:
+        err = "failed to run: " + ' '.join(args)
+        sys.exit(err)
+
+def main():
+    print('Updating submodules')
+    default_encoding = sys.getdefaultencoding()
+    run(["git", "submodule", "-q", "sync"], cwd=rust_root)
+    submodules = [s.split(' ', 1)[1] for s in subprocess.check_output(
+        ["git", "config", "--file",
+         os.path.join(rust_root, ".gitmodules"),
+         "--get-regexp", "path"]
+    ).decode(default_encoding).splitlines()]
+    submodules = [module for module in submodules
+                  if not (module.endswith("llvm") or
+                          module.endswith("jemalloc"))]
+    run(["git", "submodule", "update",
+         "--init", "--recursive"] + submodules,
+        cwd=rust_root)
+    run(["git", "submodule", "-q", "foreach", "git",
+         "reset", "-q", "--hard"],
+        cwd=rust_root)
+    run(["git", "submodule", "-q", "foreach", "git",
+         "clean", "-qdfx"],
+        cwd=rust_root)
+    run(["cargo", "generate-lockfile"], cwd=os.path.join(rust_root, "src"))
+
+if __name__ == '__main__':
+    main()
