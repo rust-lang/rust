@@ -1,4 +1,4 @@
-#![feature(slice_concat_ext)]
+#![feature(slice_concat_ext, const_fn)]
 
 extern crate compiletest_rs as compiletest;
 
@@ -13,8 +13,8 @@ macro_rules! eprintln {
     }
 }
 
-fn miri_path() -> String {
-    format!("target/{}/miri", env!("PROFILE"))
+const fn miri_path() -> &'static str {
+    concat!("target/", env!("PROFILE"), "/miri")
 }
 
 fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: bool) {
