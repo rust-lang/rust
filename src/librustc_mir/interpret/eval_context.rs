@@ -277,10 +277,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.tcx.erase_regions(&value)
     }
 
+    /// Return the size and aligment of the value at the given type.
+    /// Note that the value does not matter if the type is sized. For unsized types,
+    /// the value has to be a fat pointer, and we only care about the "extra" data in it.
     pub fn size_and_align_of_dst(
         &mut self,
         ty: ty::Ty<'tcx>,
-        value: Value, // This has to be a fat ptr; we only care about the "extra" data in it.
+        value: Value,
     ) -> EvalResult<'tcx, (u64, u64)> {
         if let Some(size) = self.type_size(ty)? {
             Ok((size as u64, self.type_align(ty)? as u64))
