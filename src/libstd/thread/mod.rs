@@ -896,6 +896,9 @@ struct Inner {
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
 /// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`thread::current`]: ../../std/thread/fn.current.html
 /// [`spawn`]: ../../std/thread/fn.spawn.html
 
 pub struct Thread {
