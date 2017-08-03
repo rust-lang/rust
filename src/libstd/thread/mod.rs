@@ -820,7 +820,8 @@ pub fn park_timeout(dur: Duration) {
 ///
 /// A `ThreadId` is an opaque object that has a unique value for each thread
 /// that creates one. `ThreadId`s are not guaranteed to correspond to a thread's
-/// system-designated identifier.
+/// system-designated identifier. A `ThreadId` can be retrieved from the [`id`]
+/// method on a [`Thread`].
 ///
 /// # Examples
 ///
@@ -834,6 +835,9 @@ pub fn park_timeout(dur: Duration) {
 /// let other_thread_id = other_thread.join().unwrap();
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
+///
+/// [`id`]: ../../std/thread/struct.Thread.html#method.id
+/// [`Thread`]: ../../std/thread/struct.Thread.html
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
@@ -896,6 +900,9 @@ struct Inner {
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
 /// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`thread::current`]: ../../std/thread/fn.current.html
 /// [`spawn`]: ../../std/thread/fn.spawn.html
 
 pub struct Thread {
