@@ -182,13 +182,13 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         self.byte_array_map.entry(pat).or_insert_with(|| {
             match pat.kind {
                 box PatternKind::Constant {
-                    value: ConstVal::ByteStr(ref data)
+                    value: &ConstVal::ByteStr(b)
                 } => {
-                    data.iter().map(|c| &*pattern_arena.alloc(Pattern {
+                    b.data.iter().map(|&b| &*pattern_arena.alloc(Pattern {
                         ty: tcx.types.u8,
                         span: pat.span,
                         kind: box PatternKind::Constant {
-                            value: ConstVal::Integral(ConstInt::U8(*c))
+                            value: tcx.mk_const(ConstVal::Integral(ConstInt::U8(b)))
                         }
                     })).collect()
                 }
@@ -228,9 +228,9 @@ pub enum Constructor<'tcx> {
     /// Enum variants.
     Variant(DefId),
     /// Literal values.
-    ConstantValue(ConstVal<'tcx>),
+    ConstantValue(&'tcx ConstVal<'tcx>),
     /// Ranges of literal values (`2...5` and `2..5`).
-    ConstantRange(ConstVal<'tcx>, ConstVal<'tcx>, RangeEnd),
+    ConstantRange(&'tcx ConstVal<'tcx>, &'tcx ConstVal<'tcx>, RangeEnd),
     /// Array patterns of length n.
     Slice(usize),
 }
@@ -370,7 +370,7 @@ impl<'tcx> Witness<'tcx> {
 
                 _ => {
                     match *ctor {
-                        ConstantValue(ref v) => PatternKind::Constant { value: v.clone() },
+                        ConstantValue(value) => PatternKind::Constant { value },
                         _ => PatternKind::Wild,
                     }
                 }
@@ -404,8 +404,11 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 {
     debug!("all_constructors({:?})", pcx.ty);
     match pcx.ty.sty {
-        ty::TyBool =>
-            [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
+        ty::TyBool => {
+            [true, false].iter().map(|&b| {
+                ConstantValue(cx.tcx.mk_const(ConstVal::Bool(b)))
+            }).collect()
+        }
         ty::TySlice(ref sub_ty) => {
             if cx.is_uninhabited(sub_ty) {
                 vec![Slice(0)]
@@ -511,8 +514,8 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant { value: ConstVal::ByteStr(ref data) } => {
-                max_fixed_len = cmp::max(max_fixed_len, data.len());
+            PatternKind::Constant { value: &ConstVal::ByteStr(b) } => {
+                max_fixed_len = cmp::max(max_fixed_len, b.data.len());
             }
             PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
                 let fixed_len = prefix.len() + suffix.len();
@@ -715,10 +718,10 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
             Some(vec![Single]),
         PatternKind::Variant { adt_def, variant_index, .. } =>
             Some(vec![Variant(adt_def.variants[variant_index].did)]),
-        PatternKind::Constant { ref value } =>
-            Some(vec![ConstantValue(value.clone())]),
-        PatternKind::Range { ref lo, ref hi, ref end } =>
-            Some(vec![ConstantRange(lo.clone(), hi.clone(), end.clone())]),
+        PatternKind::Constant { value } =>
+            Some(vec![ConstantValue(value)]),
+        PatternKind::Range { lo, hi, end } =>
+            Some(vec![ConstantRange(lo, hi, end)]),
         PatternKind::Array { .. } => match pcx.ty.sty {
             ty::TyArray(_, length) => Some(vec![Slice(length)]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
@@ -806,7 +809,7 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
                                     suffix: &[Pattern])
                                     -> Result<bool, ErrorReported> {
     let data = match *ctor {
-        ConstantValue(ConstVal::ByteStr(ref data)) => data,
+        ConstantValue(&ConstVal::ByteStr(b)) => b.data,
         _ => bug!()
     };
 
@@ -820,7 +823,7 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
             data[data.len()-suffix.len()..].iter().zip(suffix))
     {
         match pat.kind {
-            box PatternKind::Constant { ref value } => match *value {
+            box PatternKind::Constant { value } => match *value {
                 ConstVal::Integral(ConstInt::U8(u)) => {
                     if u != *ch {
                         return Ok(false);
@@ -843,19 +846,19 @@ fn constructor_covered_by_range(tcx: TyCtxt, span: Span,
     let cmp_from = |c_from| Ok(compare_const_vals(tcx, span, c_from, from)? != Ordering::Less);
     let cmp_to = |c_to| compare_const_vals(tcx, span, c_to, to);
     match *ctor {
-        ConstantValue(ref value) => {
+        ConstantValue(value) => {
             let to = cmp_to(value)?;
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(value)? && end)
         },
-        ConstantRange(ref from, ref to, RangeEnd::Included) => {
+        ConstantRange(from, to, RangeEnd::Included) => {
             let to = cmp_to(to)?;
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(from)? && end)
         },
-        ConstantRange(ref from, ref to, RangeEnd::Excluded) => {
+        ConstantRange(from, to, RangeEnd::Excluded) => {
             let to = cmp_to(to)?;
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Excluded && to == Ordering::Equal);
@@ -919,11 +922,11 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
             Some(vec![subpattern])
         }
 
-        PatternKind::Constant { ref value } => {
+        PatternKind::Constant { value } => {
             match *constructor {
                 Slice(..) => match *value {
-                    ConstVal::ByteStr(ref data) => {
-                        if wild_patterns.len() == data.len() {
+                    ConstVal::ByteStr(b) => {
+                        if wild_patterns.len() == b.data.len() {
                             Some(cx.lower_byte_str_pattern(pat))
                         } else {
                             None

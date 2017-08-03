@@ -16,7 +16,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::hash as std_hash;
 use std::mem;
-use syntax_pos::symbol::InternedString;
 use middle::region;
 use ty;
 
@@ -272,58 +271,59 @@ for ::middle::const_val::ConstVal<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        use middle::const_val::ConstVal;
+        use middle::const_val::ConstVal::*;
+        use middle::const_val::ConstAggregate::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            ConstVal::Float(ref value) => {
+            Float(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::Integral(ref value) => {
+            Integral(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::Str(ref value) => {
+            Str(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::ByteStr(ref value) => {
+            ByteStr(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::Bool(value) => {
+            Bool(value) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::Char(value) => {
+            Char(value) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::Variant(def_id) => {
+            Variant(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            ConstVal::Function(def_id, substs) => {
+            Function(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            ConstVal::Struct(ref name_value_map) => {
-                let mut values: Vec<(InternedString, &ConstVal)> =
-                    name_value_map.iter()
-                                  .map(|(name, val)| (name.as_str(), val))
-                                  .collect();
-
+            Aggregate(Struct(ref name_values)) => {
+                let mut values = name_values.to_vec();
                 values.sort_unstable_by_key(|&(ref name, _)| name.clone());
                 values.hash_stable(hcx, hasher);
             }
-            ConstVal::Tuple(ref value) => {
+            Aggregate(Tuple(ref value)) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::Array(ref value) => {
+            Aggregate(Array(ref value)) => {
                 value.hash_stable(hcx, hasher);
             }
-            ConstVal::Repeat(ref value, times) => {
+            Aggregate(Repeat(ref value, times)) => {
                 value.hash_stable(hcx, hasher);
                 times.hash_stable(hcx, hasher);
             }
         }
     }
 }
+
+impl_stable_hash_for!(struct ::middle::const_val::ByteArray<'tcx> {
+    data
+});
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
 

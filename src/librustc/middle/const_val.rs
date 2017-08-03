@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use self::ConstVal::*;
+use self::ConstAggregate::*;
 pub use rustc_const_math::ConstInt;
 
 use hir;
@@ -22,30 +23,55 @@ use rustc_const_math::*;
 
 use graphviz::IntoCow;
 use errors::DiagnosticBuilder;
+use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax::symbol::InternedString;
 use syntax::ast;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
-use std::rc::Rc;
 
-pub type EvalResult<'tcx> = Result<ConstVal<'tcx>, ConstEvalErr<'tcx>>;
+pub type EvalResult<'tcx> = Result<&'tcx ConstVal<'tcx>, ConstEvalErr<'tcx>>;
 
-#[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub enum ConstVal<'tcx> {
     Float(ConstFloat),
     Integral(ConstInt),
     Str(InternedString),
-    ByteStr(Rc<Vec<u8>>),
+    ByteStr(ByteArray<'tcx>),
     Bool(bool),
     Char(char),
     Variant(DefId),
     Function(DefId, &'tcx Substs<'tcx>),
-    Struct(BTreeMap<ast::Name, ConstVal<'tcx>>),
-    Tuple(Vec<ConstVal<'tcx>>),
-    Array(Vec<ConstVal<'tcx>>),
-    Repeat(Box<ConstVal<'tcx>>, u64),
+    Aggregate(ConstAggregate<'tcx>),
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx ConstVal<'tcx> {}
+
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, Eq, PartialEq)]
+pub struct ByteArray<'tcx> {
+    pub data: &'tcx [u8],
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for ByteArray<'tcx> {}
+
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub enum ConstAggregate<'tcx> {
+    Struct(&'tcx [(ast::Name, &'tcx ConstVal<'tcx>)]),
+    Tuple(&'tcx [&'tcx ConstVal<'tcx>]),
+    Array(&'tcx [&'tcx ConstVal<'tcx>]),
+    Repeat(&'tcx ConstVal<'tcx>, u64),
+}
+
+impl<'tcx> Encodable for ConstAggregate<'tcx> {
+    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
+        bug!("should never encode ConstAggregate::{:?}", self)
+    }
+}
+
+impl<'tcx> Decodable for ConstAggregate<'tcx> {
+    fn decode<D: Decoder>(_: &mut D) -> Result<Self, D::Error> {
+        bug!("should never decode ConstAggregate")
+    }
 }
 
 impl<'tcx> ConstVal<'tcx> {
@@ -58,11 +84,11 @@ impl<'tcx> ConstVal<'tcx> {
             Bool(_) => "boolean",
             Char(..) => "char",
             Variant(_) => "enum variant",
-            Struct(_) => "struct",
-            Tuple(_) => "tuple",
+            Aggregate(Struct(_)) => "struct",
+            Aggregate(Tuple(_)) => "tuple",
             Function(..) => "function definition",
-            Array(..) => "array",
-            Repeat(..) => "repeat",
+            Aggregate(Array(..)) => "array",
+            Aggregate(Repeat(..)) => "repeat",
         }
     }
 
@@ -233,7 +259,7 @@ pub fn eval_length(tcx: TyCtxt,
     let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
     let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
     match tcx.at(count_expr.span).const_eval(param_env.and((count_def_id, substs))) {
-        Ok(Integral(Usize(count))) => {
+        Ok(&Integral(Usize(count))) => {
             let val = count.as_u64(tcx.sess.target.uint_type);
             assert_eq!(val as usize as u64, val);
             Ok(val as usize)

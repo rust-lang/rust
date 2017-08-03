@@ -407,7 +407,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: tcx.mk_fn_def(self.def_id, substs),
             literal: Literal::Value {
-                value: ConstVal::Function(self.def_id, substs),
+                value: tcx.mk_const(ConstVal::Function(self.def_id, substs)),
             },
         });
 
@@ -472,7 +472,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: self.tcx.types.usize,
             literal: Literal::Value {
-                value: ConstVal::Integral(ConstInt::Usize(value))
+                value: self.tcx.mk_const(ConstVal::Integral(ConstInt::Usize(value)))
             }
         }
     }
@@ -711,8 +711,8 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 ty: tcx.type_of(def_id),
                 literal: Literal::Value {
-                    value: ConstVal::Function(def_id,
-                        Substs::identity_for_item(tcx, def_id)),
+                    value: tcx.mk_const(ConstVal::Function(def_id,
+                        Substs::identity_for_item(tcx, def_id))),
                 },
             }),
             vec![rcvr]

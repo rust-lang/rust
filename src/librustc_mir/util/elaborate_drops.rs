@@ -922,7 +922,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         Operand::Constant(box Constant {
             span: self.source_info.span,
             ty: self.tcx().types.usize,
-            literal: Literal::Value { value: ConstVal::Integral(self.tcx().const_usize(val)) }
+            literal: Literal::Value {
+                value: self.tcx().mk_const(ConstVal::Integral(self.tcx().const_usize(val)))
+            }
         })
     }
 

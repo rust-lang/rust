@@ -257,7 +257,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_const_val(&mut self,
-                       const_val: &ConstVal,
+                       const_val: &&'tcx ConstVal<'tcx>,
                        _: Location) {
         self.record("ConstVal", const_val);
         self.super_const_val(const_val);

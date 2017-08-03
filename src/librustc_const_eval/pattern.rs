@@ -83,12 +83,12 @@ pub enum PatternKind<'tcx> {
     },
 
     Constant {
-        value: ConstVal<'tcx>,
+        value: &'tcx ConstVal<'tcx>,
     },
 
     Range {
-        lo: ConstVal<'tcx>,
-        hi: ConstVal<'tcx>,
+        lo: &'tcx ConstVal<'tcx>,
+        hi: &'tcx ConstVal<'tcx>,
         end: RangeEnd,
     },
 
@@ -112,15 +112,12 @@ fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
         ConstVal::Float(ref x) => write!(f, "{}", x),
         ConstVal::Integral(ref i) => write!(f, "{}", i),
         ConstVal::Str(ref s) => write!(f, "{:?}", &s[..]),
-        ConstVal::ByteStr(ref b) => write!(f, "{:?}", &b[..]),
+        ConstVal::ByteStr(b) => write!(f, "{:?}", b.data),
         ConstVal::Bool(b) => write!(f, "{:?}", b),
         ConstVal::Char(c) => write!(f, "{:?}", c),
         ConstVal::Variant(_) |
-        ConstVal::Struct(_) |
-        ConstVal::Tuple(_) |
         ConstVal::Function(..) |
-        ConstVal::Array(..) |
-        ConstVal::Repeat(..) => bug!("{:?} not printable in a pattern", value)
+        ConstVal::Aggregate(_) => bug!("{:?} not printable in a pattern", value)
     }
 }
 
@@ -230,12 +227,12 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 }
                 write!(f, "{}", subpattern)
             }
-            PatternKind::Constant { ref value } => {
+            PatternKind::Constant { value } => {
                 print_const_val(value, f)
             }
-            PatternKind::Range { ref lo, ref hi, ref end } => {
+            PatternKind::Range { lo, hi, end } => {
                 print_const_val(lo, f)?;
-                match *end {
+                match end {
                     RangeEnd::Included => write!(f, "...")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
@@ -278,7 +275,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
     pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
                     tables: &'a ty::TypeckTables<'tcx>,
-                    pat: &hir::Pat) -> Self {
+                    pat: &'tcx hir::Pat) -> Self {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
@@ -302,7 +299,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
-    pub fn lower_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
+    pub fn lower_pattern(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
         let mut ty = self.tables.node_id_to_type(pat.hir_id);
 
         let kind = match pat.node {
@@ -310,11 +307,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Lit(ref value) => self.lower_lit(value),
 
-            PatKind::Range(ref lo, ref hi, ref end) => {
+            PatKind::Range(ref lo, ref hi, end) => {
                 match (self.lower_lit(lo), self.lower_lit(hi)) {
                     (PatternKind::Constant { value: lo },
                      PatternKind::Constant { value: hi }) => {
-                        PatternKind::Range { lo: lo, hi: hi, end: end.clone() }
+                        PatternKind::Range { lo, hi, end }
                     }
                     _ => PatternKind::Wild
                 }
@@ -474,11 +471,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
-    fn lower_patterns(&mut self, pats: &[P<hir::Pat>]) -> Vec<Pattern<'tcx>> {
+    fn lower_patterns(&mut self, pats: &'tcx [P<hir::Pat>]) -> Vec<Pattern<'tcx>> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(&mut self, pat: &Option<P<hir::Pat>>) -> Option<Pattern<'tcx>>
+    fn lower_opt_pattern(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pattern<'tcx>>
     {
         pat.as_ref().map(|p| self.lower_pattern(p))
     }
@@ -521,9 +518,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         &mut self,
         span: Span,
         ty: Ty<'tcx>,
-        prefix: &[P<hir::Pat>],
-        slice: &Option<P<hir::Pat>>,
-        suffix: &[P<hir::Pat>])
+        prefix: &'tcx [P<hir::Pat>],
+        slice: &'tcx Option<P<hir::Pat>>,
+        suffix: &'tcx [P<hir::Pat>])
         -> PatternKind<'tcx>
     {
         let prefix = self.lower_patterns(prefix);
@@ -631,17 +628,17 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
-    fn lower_lit(&mut self, expr: &hir::Expr) -> PatternKind<'tcx> {
+    fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
         let const_cx = eval::ConstContext::new(self.tcx,
                                                self.param_env.and(self.substs),
                                                self.tables);
         match const_cx.eval(expr) {
             Ok(value) => {
-                if let ConstVal::Variant(def_id) = value {
+                if let ConstVal::Variant(def_id) = *value {
                     let ty = self.tables.expr_ty(expr);
                     self.lower_variant_or_leaf(Def::Variant(def_id), ty, vec![])
                 } else {
-                    PatternKind::Constant { value: value }
+                    PatternKind::Constant { value }
                 }
             }
             Err(e) => {
@@ -652,7 +649,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     fn lower_const_expr(&mut self,
-                        expr: &hir::Expr,
+                        expr: &'tcx hir::Expr,
                         pat_id: ast::NodeId,
                         span: Span)
                         -> Pattern<'tcx> {
@@ -819,8 +816,8 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region<'tcx>,
-    Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ConstVal<'tcx>,
+    Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }
 
@@ -892,18 +889,18 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
                 subpattern: subpattern.fold_with(folder),
             },
             PatternKind::Constant {
-                ref value
+                value
             } => PatternKind::Constant {
                 value: value.fold_with(folder)
             },
             PatternKind::Range {
-                ref lo,
-                ref hi,
-                ref end,
+                lo,
+                hi,
+                end,
             } => PatternKind::Range {
                 lo: lo.fold_with(folder),
                 hi: hi.fold_with(folder),
-                end: end.clone(),
+                end,
             },
             PatternKind::Slice {
                 ref prefix,

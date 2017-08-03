@@ -572,7 +572,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             match result {
-                Ok(ConstVal::Integral(x)) => Some(x),
+                Ok(&ConstVal::Integral(x)) => Some(x),
                 _ => None
             }
         } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {

@@ -59,7 +59,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty::TyBool => {
                 self.hir.false_literal()
             }
-            ty::TyChar => Literal::Value { value: ConstVal::Char('\0') },
+            ty::TyChar => {
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ConstVal::Char('\0'))
+                }
+            }
             ty::TyUint(ity) => {
                 let val = match ity {
                     ast::UintTy::U8  => ConstInt::U8(0),
@@ -74,7 +78,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                }
             }
             ty::TyInt(ity) => {
                 let val = match ity {
@@ -90,7 +96,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                }
             }
             _ => {
                 span_bug!(span, "Invalid type for zero_literal: `{:?}`", ty)

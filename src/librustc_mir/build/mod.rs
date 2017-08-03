@@ -11,7 +11,6 @@
 
 use build;
 use hair::cx::Cx;
-use hair::Pattern;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
@@ -537,10 +536,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let lvalue = Lvalue::Local(Local::new(index + 1));
 
             if let Some(pattern) = pattern {
-                let pattern = Pattern::from_hir(self.hir.tcx().global_tcx(),
-                                                self.hir.param_env.and(self.hir.identity_substs),
-                                                self.hir.tables(),
-                                                pattern);
+                let pattern = self.hir.pattern_from_hir(pattern);
                 scope = self.declare_bindings(scope, ast_body.span, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }

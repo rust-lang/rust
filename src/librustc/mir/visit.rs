@@ -233,7 +233,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_const_val(&mut self,
-                               const_val: & $($mutability)* ConstVal,
+                               const_val: & $($mutability)* &'tcx ConstVal<'tcx>,
                                _: Location) {
                 self.super_const_val(const_val);
             }
@@ -760,7 +760,7 @@ macro_rules! make_mir_visitor {
                                     _substs: & $($mutability)* ClosureSubsts<'tcx>) {
             }
 
-            fn super_const_val(&mut self, _const_val: & $($mutability)* ConstVal) {
+            fn super_const_val(&mut self, _const_val: & $($mutability)* &'tcx ConstVal<'tcx>) {
             }
 
             fn super_const_int(&mut self, _const_int: &ConstInt) {

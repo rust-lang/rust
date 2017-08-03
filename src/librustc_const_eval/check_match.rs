@@ -140,7 +140,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn check_match(
         &self,
         scrut: &hir::Expr,
-        arms: &[hir::Arm],
+        arms: &'tcx [hir::Arm],
         source: hir::MatchSource)
     {
         for arm in arms {
@@ -231,7 +231,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_irrefutable(&self, pat: &Pat, origin: &str) {
+    fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
         let module = self.tcx.hir.get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,

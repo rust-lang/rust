@@ -113,7 +113,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
         match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
-            Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val)) },
+            Ok(val) => {
+                Literal::Value {
+                    value: self.tcx.mk_const(ConstVal::Integral(ConstInt::Usize(val)))
+                }
+            }
             Err(_) => bug!("usize literal out of range for target"),
         }
     }
@@ -127,11 +131,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn true_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Bool(true) }
+        Literal::Value { value: self.tcx.mk_const(ConstVal::Bool(true)) }
     }
 
     pub fn false_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Bool(false) }
+        Literal::Value { value: self.tcx.mk_const(ConstVal::Bool(false)) }
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
@@ -139,10 +143,22 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let const_cx = ConstContext::new(tcx,
                                          self.param_env.and(self.identity_substs),
                                          self.tables());
-        match const_cx.eval(e) {
-            Ok(value) => Literal::Value { value: value },
+        match const_cx.eval(tcx.hir.expect_expr(e.id)) {
+            Ok(value) => Literal::Value { value },
             Err(s) => self.fatal_const_eval_err(&s, e.span, "expression")
         }
+    }
+
+    pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
+        let tcx = self.tcx.global_tcx();
+        let p = match tcx.hir.get(p.id) {
+            hir::map::NodePat(p) | hir::map::NodeBinding(p) => p,
+            node => bug!("pattern became {:?}", node)
+        };
+        Pattern::from_hir(tcx,
+                          self.param_env.and(self.identity_substs),
+                          self.tables(),
+                          p)
     }
 
     pub fn fatal_const_eval_err(&mut self,
@@ -170,7 +186,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let method_ty = method_ty.subst(self.tcx, substs);
                 return (method_ty,
                         Literal::Value {
-                            value: ConstVal::Function(item.def_id, substs),
+                            value: self.tcx.mk_const(ConstVal::Function(item.def_id, substs)),
                         });
             }
         }

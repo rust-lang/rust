@@ -21,6 +21,7 @@ use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
+use middle::const_val::ConstVal;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -108,6 +109,7 @@ pub struct CtxtInterners<'tcx> {
     region: RefCell<FxHashSet<Interned<'tcx, RegionKind>>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
     predicates: RefCell<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
+    const_: RefCell<FxHashSet<Interned<'tcx, ConstVal<'tcx>>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -120,6 +122,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             region: RefCell::new(FxHashSet()),
             existential_predicates: RefCell::new(FxHashSet()),
             predicates: RefCell::new(FxHashSet()),
+            const_: RefCell::new(FxHashSet()),
         }
     }
 
@@ -934,6 +937,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.adt_def.alloc(def)
     }
 
+    pub fn alloc_byte_array(self, bytes: &[u8]) -> &'gcx [u8] {
+        if bytes.is_empty() {
+            &[]
+        } else {
+            self.global_interners.arena.alloc_slice(bytes)
+        }
+    }
+
+    pub fn alloc_constval_slice(self, values: &[&'tcx ConstVal<'gcx>])
+                                -> &'gcx [&'tcx ConstVal<'gcx>] {
+        if values.is_empty() {
+            &[]
+        } else {
+            self.global_interners.arena.alloc_slice(values)
+        }
+    }
+
+    pub fn alloc_name_constval_slice(self, values: &[(ast::Name, &'tcx ConstVal<'gcx>)])
+                                     -> &'gcx [(ast::Name, &'tcx ConstVal<'gcx>)] {
+        if values.is_empty() {
+            &[]
+        } else {
+            self.global_interners.arena.alloc_slice(values)
+        }
+    }
+
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
         if let Some(st) = self.stability_interner.borrow().get(&stab) {
             return st;
@@ -1507,6 +1536,12 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Predicate<'lcx>]>
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<ConstVal<'lcx>> for Interned<'tcx, ConstVal<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a ConstVal<'lcx> {
+        &self.0
+    }
+}
+
 macro_rules! intern_method {
     ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
                                             $alloc_method:ident,
@@ -1587,7 +1622,8 @@ direct_interners!('tcx,
             &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
             _ => false
         }
-    }) -> RegionKind
+    }) -> RegionKind,
+    const_: mk_const(/*|c: &Const| keep_local(&c.ty)*/ |_| false) -> ConstVal<'tcx>
 );
 
 macro_rules! slice_interners {

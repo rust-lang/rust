@@ -56,7 +56,7 @@ impl MirPass for SimplifyBranches {
                 },
                 TerminatorKind::Assert { target, cond: Operand::Constant(box Constant {
                     literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
+                        value: &ConstVal::Bool(cond)
                     }, ..
                 }), expected, .. } if cond == expected => {
                     TerminatorKind::Goto { target: target }

@@ -197,7 +197,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         span: expr_span,
                         ty: this.hir.tcx().types.u32,
                         literal: Literal::Value {
-                            value: ConstVal::Integral(ConstInt::U32(0)),
+                            value: this.hir.tcx().mk_const(ConstVal::Integral(ConstInt::U32(0))),
                         },
                     }));
                     box AggregateKind::Generator(closure_id, substs, interior)
@@ -391,7 +391,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                }
             }
             _ => {
                 span_bug!(span, "Invalid type for neg_1_literal: `{:?}`", ty)
@@ -424,7 +426,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                }
             }
             _ => {
                 span_bug!(span, "Invalid type for minval_literal: `{:?}`", ty)

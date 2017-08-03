@@ -90,11 +90,11 @@ impl<'tcx> Const<'tcx> {
 
     /// Translate ConstVal into a LLVM constant value.
     pub fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
-                             cv: ConstVal,
+                             cv: &ConstVal,
                              ty: Ty<'tcx>)
                              -> Const<'tcx> {
         let llty = type_of::type_of(ccx, ty);
-        let val = match cv {
+        let val = match *cv {
             ConstVal::Float(v) => {
                 let bits = match v.ty {
                     ast::FloatTy::F32 => C_u32(ccx, v.bits as u32),
@@ -105,12 +105,11 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
-            ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
+            ConstVal::ByteStr(v) => consts::addr_of(ccx, C_bytes(ccx, v.data), 1, "byte_str"),
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
             ConstVal::Function(..) => C_null(type_of::type_of(ccx, ty)),
             ConstVal::Variant(_) |
-            ConstVal::Struct(_) | ConstVal::Tuple(_) |
-            ConstVal::Array(..) | ConstVal::Repeat(..) => {
+            ConstVal::Aggregate(..) => {
                 bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
             }
         };

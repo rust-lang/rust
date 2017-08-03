@@ -473,7 +473,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let def_id = cx.tcx.hir.body_owner_def_id(count);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and((def_id, substs))) {
-                Ok(ConstVal::Integral(ConstInt::Usize(u))) => u,
+                Ok(&ConstVal::Integral(ConstInt::Usize(u))) => u,
                 Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
                 Err(s) => cx.fatal_const_eval_err(&s, c.span, "expression")
             };
@@ -597,7 +597,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         span: expr.span,
         kind: ExprKind::Literal {
             literal: Literal::Value {
-                value: ConstVal::Function(def_id, substs),
+                value: cx.tcx.mk_const(ConstVal::Function(def_id, substs)),
             },
         },
     }
@@ -612,12 +612,7 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
-        patterns: arm.pats.iter().map(|p| {
-            Pattern::from_hir(cx.tcx.global_tcx(),
-                              cx.param_env.and(cx.identity_substs),
-                              cx.tables(),
-                              p)
-        }).collect(),
+        patterns: arm.pats.iter().map(|p| cx.pattern_from_hir(p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }
@@ -635,7 +630,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::StructCtor(def_id, CtorKind::Fn) |
         Def::VariantCtor(def_id, CtorKind::Fn) => ExprKind::Literal {
             literal: Literal::Value {
-                value: ConstVal::Function(def_id, substs),
+                value: cx.tcx.mk_const(ConstVal::Function(def_id, substs)),
             },
         },
 
