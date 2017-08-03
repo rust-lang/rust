@@ -1,4 +1,4 @@
-#![feature(slice_concat_ext, const_fn)]
+#![feature(slice_concat_ext)]
 
 extern crate compiletest_rs as compiletest;
 
@@ -13,15 +13,13 @@ macro_rules! eprintln {
     }
 }
 
-const fn miri_path() -> &'static str {
-    concat!("target/", env!("PROFILE"), "/miri")
-}
+const MIRI_PATH: &'static str = concat!("target/", env!("PROFILE"), "/miri");
 
 fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: bool) {
     eprintln!("## Running compile-fail tests in {} against miri for target {}", path, target);
     let mut config = compiletest::default_config();
     config.mode = "compile-fail".parse().expect("Invalid mode");
-    config.rustc_path = miri_path().into();
+    config.rustc_path = MIRI_PATH.into();
     if fullmir {
         if host != target {
             // skip fullmir on nonhost
@@ -60,7 +58,7 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
-    config.rustc_path = miri_path().into();
+    config.rustc_path = MIRI_PATH.into();
     let mut flags = Vec::new();
     if fullmir {
         if host != target {
