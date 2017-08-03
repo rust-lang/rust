@@ -110,8 +110,12 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         self.unify_receivers(self_ty, method_sig.inputs()[0]);
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
-        self.add_obligations(method_ty, all_substs, &method_predicates);
+        // We won't add these if we encountered an illegal sized bound, so that we can use
+        // a custom error in that case.
+        if !rerun {
+            let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
+            self.add_obligations(method_ty, all_substs, &method_predicates);
+        }
 
         // Create the final `MethodCallee`.
         let callee = MethodCallee {

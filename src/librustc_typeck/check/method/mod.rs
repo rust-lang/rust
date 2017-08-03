@@ -60,6 +60,10 @@ pub enum MethodError<'tcx> {
 
     // Found an applicable method, but it is not visible.
     PrivateMatch(Def),
+
+    // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
+    // forgotten to import a trait.
+    IllegalSizedBound(Vec<DefId>),
 }
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
@@ -112,6 +116,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(Ambiguity(..)) => true,
             Err(ClosureAmbiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
+            Err(IllegalSizedBound(..)) => true,
         }
     }
 
@@ -173,13 +178,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         self_ty,
                                         call_expr,
                                         ProbeScope::AllTraits) {
+
+                    // If we find a different result the caller probably forgot to import a trait.
                     Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container.id()],
-                    Err(MethodError::Ambiguity(ref sources)) => {
+                    Err(Ambiguity(ref sources)) => {
                         sources.iter()
                                .filter_map(|source| {
                                    match *source {
                                        // Note: this cannot come from an inherent impl,
-                                       // because the first probe succeeded.
+                                       // because the first probing succeeded.
                                        ImplSource(def) => self.tcx.trait_id_of_impl(def),
                                        TraitSource(_) => None,
                                    }
@@ -189,19 +196,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => Vec::new(),
                 };
 
-            // If we find a different result, the caller probably forgot to import a trait.
-            // We span an error with an appropriate help message.
-            if !candidates.is_empty() {
-                let error = MethodError::NoMatch(
-                    NoMatchData::new(Vec::new(), Vec::new(), candidates, probe::Mode::MethodCall)
-                );
-                self.report_method_error(span,
-                                         self_ty,
-                                         segment.name,
-                                         Some(self_expr),
-                                         error,
-                                         None);
-            }
+            return Err(IllegalSizedBound(candidates));
         }
 
         Ok(result.callee)

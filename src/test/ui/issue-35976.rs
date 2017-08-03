@@ -22,10 +22,8 @@ mod private {
 
 fn bar(arg: Box<private::Future>) {
     arg.wait();
-    //~^ ERROR no method named `wait` found for type `std::boxed::Box<private::Future + 'static>`
-    //~| the following trait is implemented but not in scope
-    //~| ERROR the trait bound `private::Future + 'static: std::marker::Sized` is not satisfied
-    //~| `private::Future + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the `wait` method cannot be invoked on a trait object
+    //~| another candidate was found in the following trait, perhaps add a `use` for it:
 }
 
 fn main() {
