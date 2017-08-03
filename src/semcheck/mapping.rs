@@ -12,8 +12,7 @@ use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use syntax::ast::Name;
 
 /// A description of an item found in an inherent impl.
-// TODO: switch to a derived `Hash` instance
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct InherentEntry {
     /// The parent item's `DefId`.
     pub parent_def_id: DefId,
@@ -21,19 +20,6 @@ pub struct InherentEntry {
     pub kind: AssociatedKind,
     /// The item's name.
     pub name: Name,
-}
-
-use std::hash::{Hash, Hasher};
-impl Hash for InherentEntry {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.parent_def_id.hash(state);
-        match self.kind {
-            AssociatedKind::Method => 0,
-            AssociatedKind::Type => 1,
-            AssociatedKind::Const => 2,
-        }.hash(state);
-        self.name.hash(state);
-    }
 }
 
 /// A set of pairs of impl- and item `DefId` for inherent associated items.

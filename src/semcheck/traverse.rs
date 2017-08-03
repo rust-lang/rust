@@ -957,7 +957,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         TypeComparisonContext {
             infcx: infcx,
             id_mapping: id_mapping,
-            folder: InferenceCleanupFolder::new(&infcx),
+            folder: InferenceCleanupFolder::new(infcx),
             forward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
             backward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
         }
@@ -967,7 +967,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         TypeComparisonContext {
             infcx: infcx,
             id_mapping: id_mapping,
-            folder: InferenceCleanupFolder::new(&infcx),
+            folder: InferenceCleanupFolder::new(infcx),
             forward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
             backward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
         }
