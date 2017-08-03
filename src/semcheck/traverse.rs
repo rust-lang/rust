@@ -13,7 +13,7 @@ use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause};
-use rustc::ty::{AssociatedItem, ParamEnv, Region, TraitRef, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs};
@@ -1079,5 +1079,53 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         } else {
             None
         }
+    }
+
+    fn check_bounds_error<F, G>(&mut self,
+                                orig_def_id: DefId,
+                                target_def_id: DefId,
+                                orig_param_env: Option<ParamEnv<'tcx>>,
+                                target_param_env: Option<ParamEnv<'tcx>>,
+                                orig_substs: &Substs<'tcx>,
+                                target_substs: &Substs<'tcx>) -> Option<Vec<Predicate<'tcx>>> {
+        let orig_param_env = if let Some(env) = orig_param_env {
+            env
+        } else {
+            return None;
+        };
+
+        let mut bound_cx = BoundContext::new(self.infcx, orig_param_env);
+        bound_cx.register(target_def_id, target_substs);
+
+        if let Some(errors) = bound_cx.get_errors() {
+            return Some(errors
+                .iter()
+                .map(|err|
+                     self.infcx
+                         .resolve_type_vars_if_possible(&err.obligation.predicate)
+                         .fold_with(&mut self.folder))
+                .collect())
+        }
+
+        let target_param_env = if let Some(env) = target_param_env {
+            env
+        } else {
+            return None;
+        };
+
+        let mut rev_bound_cx = BoundContext::new(self.infcx, target_param_env);
+        rev_bound_cx.register(orig_def_id, orig_substs);
+
+        if let Some(errors) = rev_bound_cx.get_errors() {
+            return Some(errors
+                .iter()
+                .map(|err|
+                     self.infcx
+                         .resolve_type_vars_if_possible(&err.obligation.predicate)
+                         .fold_with(&mut self.folder))
+                .collect())
+        }
+
+        None
     }
 }
