@@ -228,7 +228,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
             ReallocatedWrongMemoryKind(_, _) =>
-                "tried to EvalErrorKindreallocate memory from one kind to another",
+                "tried to reallocate memory from one kind to another",
             DeallocatedWrongMemoryKind(_, _) =>
                 "tried to deallocate memory of the wrong kind",
             ReallocateNonBasePtr =>
