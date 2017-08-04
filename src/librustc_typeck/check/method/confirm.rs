@@ -38,6 +38,11 @@ impl<'a, 'gcx, 'tcx> Deref for ConfirmContext<'a, 'gcx, 'tcx> {
     }
 }
 
+pub struct ConfirmResult<'tcx> {
+    pub callee: MethodCallee<'tcx>,
+    pub illegal_sized_bound: bool,
+}
+
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn confirm_method(&self,
                           span: Span,
@@ -46,7 +51,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           unadjusted_self_ty: Ty<'tcx>,
                           pick: probe::Pick<'tcx>,
                           segment: &hir::PathSegment)
-                          -> MethodCallee<'tcx> {
+                          -> ConfirmResult<'tcx> {
         debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
                unadjusted_self_ty,
                pick,
@@ -75,7 +80,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                unadjusted_self_ty: Ty<'tcx>,
                pick: probe::Pick<'tcx>,
                segment: &hir::PathSegment)
-               -> MethodCallee<'tcx> {
+               -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
 
@@ -91,12 +96,26 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Create the final signature for the method, replacing late-bound regions.
         let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
 
+        // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
+        // something which derefs to `Self` actually implements the trait and the caller
+        // wanted to make a static dispatch on it but forgot to import the trait.
+        // See test `src/test/ui/issue-35976.rs`.
+        //
+        // In that case, we'll error anyway, but we'll also re-run the search with all traits
+        // in scope, and if we find another method which can be used, we'll output an
+        // appropriate hint suggesting to import the trait.
+        let illegal_sized_bound = self.predicates_require_illegal_sized_bound(&method_predicates);
+
         // Unify the (adjusted) self type with what the method expects.
         self.unify_receivers(self_ty, method_sig.inputs()[0]);
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
-        self.add_obligations(method_ty, all_substs, &method_predicates);
+        // We won't add these if we encountered an illegal sized bound, so that we can use
+        // a custom error in that case.
+        if !illegal_sized_bound {
+            let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
+            self.add_obligations(method_ty, all_substs, &method_predicates);
+        }
 
         // Create the final `MethodCallee`.
         let callee = MethodCallee {
@@ -109,7 +128,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             self.convert_lvalue_derefs_to_mutable();
         }
 
-        callee
+        ConfirmResult { callee, illegal_sized_bound }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -532,6 +551,30 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
+
+    fn predicates_require_illegal_sized_bound(&self,
+                                              predicates: &ty::InstantiatedPredicates<'tcx>)
+                                              -> bool {
+        let sized_def_id = match self.tcx.lang_items.sized_trait() {
+            Some(def_id) => def_id,
+            None => return false,
+        };
+
+        traits::elaborate_predicates(self.tcx, predicates.predicates.clone())
+            .filter_map(|predicate| {
+                match predicate {
+                    ty::Predicate::Trait(trait_pred) if trait_pred.def_id() == sized_def_id =>
+                        Some(trait_pred),
+                    _ => None,
+                }
+            })
+            .any(|trait_pred| {
+                match trait_pred.0.self_ty().sty {
+                    ty::TyDynamic(..) => true,
+                    _ => false,
+                }
+            })
+    }
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.

@@ -106,7 +106,7 @@ enum CandidateKind<'tcx> {
                          ty::PolyTraitRef<'tcx>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Pick<'tcx> {
     pub item: ty::AssociatedItem,
     pub kind: PickKind<'tcx>,
@@ -130,7 +130,7 @@ pub struct Pick<'tcx> {
     pub unsize: Option<Ty<'tcx>>,
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PickKind<'tcx> {
     InherentImplPick,
     ExtensionImplPick(// Impl
@@ -155,6 +155,15 @@ pub enum Mode {
     Path,
 }
 
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum ProbeScope {
+    // Assemble candidates coming only from traits in scope.
+    TraitsInScope,
+
+    // Assemble candidates coming from all traits.
+    AllTraits,
+}
+
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// This is used to offer suggestions to users. It returns methods
     /// that could have been called which have the desired return
@@ -175,14 +184,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                scope_expr_id);
         let method_names =
             self.probe_op(span, mode, LookingFor::ReturnType(return_type), IsSuggestion(true),
-                          self_ty, scope_expr_id,
+                          self_ty, scope_expr_id, ProbeScope::TraitsInScope,
                           |probe_cx| Ok(probe_cx.candidate_method_names()))
                 .unwrap_or(vec![]);
         method_names
             .iter()
             .flat_map(|&method_name| {
                 match self.probe_for_name(span, mode, method_name, IsSuggestion(true), self_ty,
-                                          scope_expr_id) {
+                                          scope_expr_id, ProbeScope::TraitsInScope) {
                     Ok(pick) => Some(pick.item),
                     Err(_) => None,
                 }
@@ -196,7 +205,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           item_name: ast::Name,
                           is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
-                          scope_expr_id: ast::NodeId)
+                          scope_expr_id: ast::NodeId,
+                          scope: ProbeScope)
                           -> PickResult<'tcx> {
         debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
                self_ty,
@@ -208,6 +218,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       is_suggestion,
                       self_ty,
                       scope_expr_id,
+                      scope,
                       |probe_cx| probe_cx.pick())
     }
 
@@ -218,6 +229,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
                       scope_expr_id: ast::NodeId,
+                      scope: ProbeScope,
                       op: OP)
                       -> Result<R, MethodError<'tcx>>
         where OP: FnOnce(ProbeContext<'a, 'gcx, 'tcx>) -> Result<R, MethodError<'tcx>>
@@ -275,8 +287,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut probe_cx =
                 ProbeContext::new(self, span, mode, looking_for,
                                   steps, opt_simplified_steps);
+
             probe_cx.assemble_inherent_candidates();
-            probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?;
+            match scope {
+                ProbeScope::TraitsInScope =>
+                    probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?,
+                ProbeScope::AllTraits =>
+                    probe_cx.assemble_extension_candidates_for_all_traits()?,
+            };
             op(probe_cx)
         })
     }
