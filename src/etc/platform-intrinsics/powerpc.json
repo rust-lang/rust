@@ -212,6 +212,13 @@
             "llvm": "vsum4shs",
             "ret": "s32",
             "args": ["0N", "0"]
+        },
+        {
+            "intrinsic": "sums",
+            "width": [128],
+            "llvm": "vsumsws",
+            "ret": "s32",
+            "args": ["0", "0"]
         }
     ]
 }
