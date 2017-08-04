@@ -142,6 +142,20 @@
             "llvm": "vpkpx",
             "ret": "s16",
             "args": ["s32", "s32"]
+        },
+        {
+            "intrinsic": "unpackl{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vupkl{1.kind}{1.data_type_short}",
+            "ret": "s(16-32)",
+            "args": ["0N"]
+        },
+        {
+            "intrinsic": "unpackh{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vupkh{1.kind}{1.data_type_short}",
+            "ret": "s(16-32)",
+            "args": ["0N"]
         }
     ]
 }
