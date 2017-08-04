@@ -9,7 +9,7 @@ Language
 Compiler
 --------
 
-- [Struct fields are now properly to the expected field type.][42807]
+- [Struct fields are now properly coerced to the expected field type.][42807]
 - [Enabled wasm LLVM backend][42571] WASM can now be built with the
   `wasm32-experimental-emscripten` target.
 - [Changed some of the error messages to be more helpful.][42033]
@@ -53,18 +53,41 @@ Libraries
 Stabilized APIs
 ---------------
 
+- [`CStr::into_c_string`]
+- [`CString::as_c_str`]
+- [`CString::into_boxed_c_str`]
 - [`Chain::get_mut`]
 - [`Chain::get_ref`]
 - [`Chain::into_inner`]
+- [`Option::get_or_insert_with`]
+- [`Option::get_or_insert`]
+- [`OsStr::into_os_string`]
+- [`OsString::into_boxed_os_str`]
 - [`Take::get_mut`]
 - [`Take::get_ref`]
+- [`Utf8Error::error_len`]
+- [`char::EscapeDebug`]
+- [`char::escape_debug`]
+- [`compile_error!`]
 - [`f32::from_bits`]
 - [`f32::to_bits`]
 - [`f64::from_bits`]
 - [`f64::to_bits`]
-- [`slice::sort_unstable`]
-- [`slice::sort_unstable_by`]
+- [`mem::ManuallyDrop`]
 - [`slice::sort_unstable_by_key`]
+- [`slice::sort_unstable_by`]
+- [`slice::sort_unstable`]
+- [`ste::from_boxed_utf8_unchecked`]
+- [`str::as_bytes_mut`]
+- [`str::as_bytes_mut`]
+- [`str::from_utf8_mut`]
+- [`str::from_utf8_unchecked_mut`]
+- [`str::get_mut`]
+- [`str::get_unchecked_mut`]
+- [`str::get_unchecked`]
+- [`str::get`]
+- [`str::into_boxed_bytes`]
+
 
 Cargo
 -----
@@ -121,18 +144,40 @@ Compatibility Notes
 [cargo/4248]: https://github.com/rust-lang/cargo/pull/4248
 [cargo/4259]: https://github.com/rust-lang/cargo/pull/4259
 [cargo/4270]: https://github.com/rust-lang/cargo/pull/4270
+[`CStr::into_c_string`]: https://doc.rust-lang.org/std/ffi/struct.CStr.html#method.into_c_string
+[`CString::as_c_str`]: https://doc.rust-lang.org/std/ffi/struct.CString.html#method.as_c_str
+[`CString::into_boxed_c_str`]: https://doc.rust-lang.org/std/ffi/struct.CString.html#method.into_boxed_c_str
 [`Chain::get_mut`]: https://doc.rust-lang.org/std/io/struct.Chain.html#method.get_mut
 [`Chain::get_ref`]: https://doc.rust-lang.org/std/io/struct.Chain.html#method.get_ref
 [`Chain::into_inner`]: https://doc.rust-lang.org/std/io/struct.Chain.html#method.into_inner
+[`Option::get_or_insert_with`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.get_or_insert_with
+[`Option::get_or_insert`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.get_or_insert
+[`OsStr::into_os_string`]: https://doc.rust-lang.org/std/ffi/struct.OsStr.html#method.into_os_string
+[`OsString::into_boxed_os_str`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.into_boxed_os_str
 [`Take::get_mut`]: https://doc.rust-lang.org/std/io/struct.Take.html#method.get_mut
 [`Take::get_ref`]: https://doc.rust-lang.org/std/io/struct.Take.html#method.get_ref
+[`Utf8Error::error_len`]: https://doc.rust-lang.org/std/str/struct.Utf8Error.html#method.error_len
+[`char::EscapeDebug`]: https://doc.rust-lang.org/std/char/struct.EscapeDebug.html
+[`char::escape_debug`]: https://doc.rust-lang.org/std/primitive.char.html#method.escape_debug
+[`compile_error!`]: https://doc.rust-lang.org/std/macro.compile_error.html
 [`f32::from_bits`]: https://doc.rust-lang.org/std/primitive.f32.html#method.from_bits
 [`f32::to_bits`]: https://doc.rust-lang.org/std/primitive.f32.html#method.to_bits
 [`f64::from_bits`]: https://doc.rust-lang.org/std/primitive.f64.html#method.from_bits
 [`f64::to_bits`]: https://doc.rust-lang.org/std/primitive.f64.html#method.to_bits
+[`mem::ManuallyDrop`]: https://doc.rust-lang.org/std/mem/union.ManuallyDrop.html
 [`slice::sort_unstable_by_key`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by_key
 [`slice::sort_unstable_by`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
 [`slice::sort_unstable`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable
+[`ste::from_boxed_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_boxed_utf8_unchecked.html
+[`str::as_bytes_mut`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_bytes_mut
+[`str::as_bytes_mut`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_bytes_mut
+[`str::from_utf8_mut`]: https://doc.rust-lang.org/std/str/fn.from_utf8_mut.html
+[`str::from_utf8_unchecked_mut`]: https://doc.rust-lang.org/std/str/fn.from_utf8_unchecked_mut.html
+[`str::get_mut`]: https://doc.rust-lang.org/std/primitive.str.html#method.get_mut
+[`str::get_unchecked_mut`]: https://doc.rust-lang.org/std/primitive.str.html#method.get_unchecked_mut
+[`str::get_unchecked`]: https://doc.rust-lang.org/std/primitive.str.html#method.get_unchecked
+[`str::get`]: https://doc.rust-lang.org/std/primitive.str.html#method.get
+[`str::into_boxed_bytes`]: https://doc.rust-lang.org/std/primitive.str.html#method.into_boxed_bytes
 
 
 Version 1.19.0 (2017-07-20)
