@@ -690,7 +690,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
                     }
 
-                    StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
+                    StructWrappedNullablePointer { nndiscr, ref discrfield_source, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
                             if nndiscr == variant as u64 {
                                 self.assign_fields(dest, dest_ty, operands)?;
@@ -699,7 +699,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                let (offset, TyAndPacked { ty, packed: _}) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
+                                let (offset, TyAndPacked { ty, packed: _}) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield_source)?;
                                 // TODO: The packed flag is ignored
 
                                 // FIXME(solson)
