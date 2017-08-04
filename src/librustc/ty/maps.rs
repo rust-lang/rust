@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
-use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
 use middle::const_val;
@@ -931,7 +931,7 @@ define_maps! { <'tcx>
     /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    [] crate_inherent_impls_overlap_check: crate_inherent_impls_dep_node(CrateNum) -> (),
+    [] crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node(CrateNum) -> (),
 
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
@@ -1014,6 +1014,10 @@ fn crate_inherent_impls_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::Coherence
 }
 
+fn inherent_impls_overlap_check_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::CoherenceInherentImplOverlapCheck
+}
+
 fn reachability_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::Reachability
 }
@@ -1032,10 +1036,9 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
+fn const_eval_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                              -> DepConstructor<'tcx> {
-    let (def_id, substs) = key.value;
-    DepConstructor::ConstEval { def_id, substs }
+    DepConstructor::ConstEval
 }
 
 fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
@@ -1050,32 +1053,22 @@ fn relevant_trait_impls_for<'tcx>((def_id, t): (DefId, SimplifiedType)) -> DepCo
     DepConstructor::RelevantTraitImpls(def_id, t)
 }
 
-fn is_copy_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::IsCopy(def_id)
+fn is_copy_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsCopy
 }
 
-fn is_sized_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::IsSized(def_id)
+fn is_sized_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsSized
 }
 
-fn is_freeze_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::IsFreeze(def_id)
+fn is_freeze_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsFreeze
 }
 
-fn needs_drop_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::NeedsDrop(def_id)
+fn needs_drop_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::NeedsDrop
 }
 
-fn layout_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::Layout(def_id)
+fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::Layout
 }
