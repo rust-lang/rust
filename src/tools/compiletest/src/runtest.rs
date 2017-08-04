@@ -2300,6 +2300,7 @@ actual:\n\
                                                    .read_to_string(&mut test_file_contents)
                                                    .unwrap();
         if let Some(idx) =  test_file_contents.find("// END RUST SOURCE") {
+            let filename = self.testpaths.file.to_str().unwrap();
             let (_, tests_text) = test_file_contents.split_at(idx + "// END_RUST SOURCE".len());
             let tests_text_str = String::from(tests_text);
             let mut curr_test : Option<&str> = None;
@@ -2321,7 +2322,7 @@ actual:\n\
                     // ignore
                 } else if l.starts_with("// ") {
                     let (_, test_content) = l.split_at("// ".len());
-                    curr_test_contents.push(test_content);
+                    curr_test_contents.push(test_content.replace("$FILE", filename));
                 }
             }
         }
@@ -2339,7 +2340,7 @@ actual:\n\
         }
     }
 
-    fn compare_mir_test_output(&self, test_name: &str, expected_content: &[&str]) {
+    fn compare_mir_test_output(&self, test_name: &str, expected_content: &[String]) {
         let mut output_file = PathBuf::new();
         output_file.push(self.get_mir_dump_dir());
         output_file.push(test_name);

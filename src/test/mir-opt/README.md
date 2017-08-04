@@ -21,9 +21,10 @@ The test format is:
 All the test information is in comments so the test is runnable.
 
 For each $file_name, compiletest expects [$expected_line_0, ...,
-$expected_line_N] to appear in the dumped MIR in order.  Currently it allows
-other non-matched lines before, after and in-between. Note that this includes
-lines that end basic blocks or begin new ones; it is good practice
+$expected_line_N] to appear in the dumped MIR in order. Every occurrence of `$FILE`
+in the expected line is replaced with the file name of the source code before
+matching.  Currently it allows other non-matched lines before, after and in-between.
+Note that this includes lines that end basic blocks or begin new ones; it is good practice
 in your tests to include the terminator for each of your basic blocks as an
 internal sanity check guarding against a test like:
 
