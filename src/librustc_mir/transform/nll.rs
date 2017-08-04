@@ -20,7 +20,7 @@ use std::collections::HashMap;
 
 #[allow(dead_code)]
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    pub lookup_map: HashMap<RegionVid, Lookup>,
+    lookup_map: HashMap<RegionVid, Lookup>,
     infcx: InferCtxt<'a, 'gcx, 'tcx>,
 }
 
@@ -30,6 +30,10 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
             infcx: infcx,
             lookup_map: HashMap::new(),
         }
+    }
+
+    pub fn into_results(self) -> HashMap<RegionVid, Lookup> {
+        self.lookup_map
     }
 
     fn renumber_regions<T>(&self, value: &T) -> T where T: TypeFoldable<'tcx> {
@@ -136,6 +140,7 @@ impl MirPass for NLL {
             let mut renumbered_mir = mir.clone();
             let mut visitor = NLLVisitor::new(infcx);
             visitor.visit_mir(&mut renumbered_mir);
+            let _results = visitor.into_results();
         })
     }
 }
