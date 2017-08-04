@@ -240,6 +240,13 @@
             "llvm": "vrfim",
             "ret": "f32",
             "args": ["0"]
+        },
+        {
+            "intrinsic": "loge",
+            "width": [128],
+            "llvm": "vlogefp",
+            "ret": "f32",
+            "args": ["0"]
         }
     ]
 }
