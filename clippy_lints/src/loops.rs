@@ -2,8 +2,8 @@ use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl, NestedVisitorMap};
-use rustc::hir::map::Node::NodeBlock;
+use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl, walk_pat, walk_stmt, NestedVisitorMap};
+use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
@@ -304,10 +304,8 @@ declare_lint! {
     "any loop that will always `break` or `return`"
 }
 
-#[derive(Copy, Clone, Default)]
-pub struct Pass {
-    loop_count: usize,
-}
+#[derive(Copy, Clone)]
+pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
@@ -329,15 +327,6 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        match expr.node {
-            ExprWhile(..) | ExprLoop(..) => {
-                self.loop_count -= 1;
-            },
-            _ => (),
-        }
-    }
-
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some((pat, arg, body)) = higher::for_loop(expr) {
             check_for_loop(cx, pat, arg, body, expr);
@@ -347,7 +336,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         match expr.node {
             ExprWhile(_, ref block, _) |
             ExprLoop(ref block, _, _) => {
-                self.loop_count += 1;
                 if never_loop(block, &expr.id) {
                     span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
                 }
@@ -410,10 +398,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     &ExprMethodCall(ref method_path, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if self.loop_count < 2 && method_path.name == "next" &&
-                   match_trait_method(cx, match_expr, &paths::ITERATOR) &&
+                if method_path.name == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR) &&
                    lhs_constructor.name == "Some" && !is_refutable(cx, &pat_args[0]) &&
-                   !is_iterator_used_after_while_let(cx, iter_expr) {
+                   !is_iterator_used_after_while_let(cx, iter_expr) && !is_nested(cx, expr, &method_args[0]) {
                     let iterator = snippet(cx, method_args[0].span, "_");
                     let loop_var = snippet(cx, pat_args[0].span, "_");
                     span_lint_and_sugg(cx,
@@ -939,6 +926,15 @@ fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     }
 }
 
+fn match_var(expr: &Expr, var: Name) -> bool {
+    if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
+        if path.segments.len() == 1 && path.segments[0].name == var {
+            return true
+        }
+    }
+    false
+}
+
 struct UsedVisitor {
     var: ast::Name, // var to look for
     used: bool, // has the var been used otherwise?
@@ -946,15 +942,13 @@ struct UsedVisitor {
 
 impl<'tcx> Visitor<'tcx> for UsedVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
-            if path.segments.len() == 1 && path.segments[0].name == self.var {
-                self.used = true;
-                return;
-            }
+        if match_var(expr, self.var) {
+            self.used = true;
+            return;
         }
-
         walk_expr(self, expr);
     }
+
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
@@ -1327,4 +1321,119 @@ fn is_conditional(expr: &Expr) -> bool {
         ExprIf(..) | ExprMatch(..) => true,
         _ => false,
     }
+}
+
+fn is_nested(cx: &LateContext, match_expr: &Expr, iter_expr: &Expr) -> bool {
+    if_let_chain! {[
+        let Some(loop_block) = get_enclosing_block(cx, match_expr.id),
+        let Some(map::Node::NodeExpr(loop_expr)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(loop_block.id)),
+    ], {
+        return is_loop_nested(cx, loop_expr, iter_expr)
+    }}
+    false
+}
+
+fn is_loop_nested(cx: &LateContext, loop_expr: &Expr, iter_expr: &Expr) -> bool {
+    let mut id = loop_expr.id;
+    let iter_name = if let Some(name) = path_name(iter_expr) {
+        name
+    } else {
+        return true;
+    };
+    loop {
+        let parent = cx.tcx.hir.get_parent_node(id);
+        if parent == id {
+            return false;
+        }
+        match cx.tcx.hir.find(parent) {
+            Some(NodeExpr(expr)) => {
+                match expr.node {
+                    ExprLoop(..) |
+                    ExprWhile(..) => { return true; },
+                    _ => ()
+                }
+            },
+            Some(NodeBlock(block)) => {
+                let mut block_visitor = LoopNestVisitor {
+                                            id: id,
+                                            iterator: iter_name,
+                                            nesting: Unknown
+                                        };
+                walk_block(&mut block_visitor, block);
+                if block_visitor.nesting == RuledOut {
+                    return false;
+                }
+            },
+            Some(NodeStmt(_)) => (),
+            _ => {
+                return false;
+            }
+        }
+        id = parent;
+    }
+}
+
+#[derive(PartialEq, Eq)]
+enum Nesting {
+    Unknown, // no nesting detected yet
+    RuledOut, // the iterator is initialized or assigned within scope
+    LookFurther // no nesting detected, no further walk required
+}
+
+use self::Nesting::{Unknown, RuledOut, LookFurther};
+
+struct LoopNestVisitor {
+    id: NodeId,
+    iterator: Name,
+    nesting: Nesting
+}
+
+impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
+        if stmt.node.id() == self.id {
+            self.nesting = LookFurther;
+        } else if self.nesting == Unknown {
+            walk_stmt(self, stmt);
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if self.nesting != Unknown { return; }
+        if expr.id == self.id {
+            self.nesting = LookFurther;
+            return;
+        }
+        match expr.node {
+            ExprAssign(ref path, _) |
+            ExprAssignOp(_, ref path, _) => if match_var(path, self.iterator) {
+                self.nesting = RuledOut;
+            },
+            _ => walk_expr(self, expr)
+        }
+    }
+
+    fn visit_pat(&mut self, pat: &'tcx Pat) {
+        if self.nesting != Unknown { return; }
+        if let PatKind::Binding(_, _, span_name, _) = pat.node {
+            if self.iterator == span_name.node {
+                self.nesting = RuledOut;
+                return;
+            }
+        }
+        walk_pat(self, pat)
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+}
+
+fn path_name(e: &Expr) -> Option<Name> {
+    if let ExprPath(QPath::Resolved(_, ref path)) = e.node {
+        let segments = &path.segments;
+        if segments.len() == 1 {
+            return Some(segments[0].name);
+        }
+    };
+    None
 }

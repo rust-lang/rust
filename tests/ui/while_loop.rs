@@ -174,7 +174,13 @@ fn refutable() {
 
     let mut y = a.iter();
     for _ in 0..2 {
-        while let Some(v) = y.next() {
+        while let Some(v) = y.next() { // y is reused, don't lint
+        }
+    }
+
+    loop {
+        let mut y = a.iter();
+        while let Some(v) = y.next() { // use a for loop here
         }
     }
 }
