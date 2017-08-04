@@ -1,1 +1,21 @@
-version bump: 1.0.0 -> (patch) -> 1.0.1
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: breaking changes in `def`
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:21:5
+   |
+21 | /     pub fn def(&self) -> u8 {
+22 | |         0
+23 | |     }
+   | |_____^
+   |
+   = warning: removed item in inherent impl (breaking)
+
+warning: technically breaking changes in `def`
+  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:27:5
+   |
+27 | /     pub fn def(&self) -> u8 {
+28 | |         0
+29 | |     }
+   | |_____^
+   |
+   = note: added item in inherent impl (technically breaking)
+

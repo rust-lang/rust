@@ -11,3 +11,20 @@ impl Abc {
 
     fn def(&self) { }
 }
+
+#[allow(dead_code)]
+pub struct Def<A> {
+    field: A,
+}
+
+impl Def<bool> {
+    pub fn def(&self) -> u8 {
+        0
+    }
+}
+
+impl Def<u8> {
+    pub fn def(&self) -> u8 {
+        0
+    }
+}

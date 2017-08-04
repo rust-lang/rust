@@ -98,23 +98,29 @@ pub struct TypeComparisonContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     /// Construct a new context where the original item is old.
     pub fn target_new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping) -> Self {
-        TypeComparisonContext {
-            infcx: infcx,
-            id_mapping: id_mapping,
-            folder: InferenceCleanupFolder::new(infcx),
-            forward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
-            backward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
-        }
+        let forward_trans = TranslationContext::target_new(infcx.tcx, id_mapping, false);
+        let backward_trans = TranslationContext::target_old(infcx.tcx, id_mapping, false);
+        TypeComparisonContext::from_trans(infcx, id_mapping, forward_trans, backward_trans)
     }
 
     /// Construct a new context where the original item is new.
     pub fn target_old(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping) -> Self {
+        let forward_trans = TranslationContext::target_old(infcx.tcx, id_mapping, false);
+        let backward_trans = TranslationContext::target_new(infcx.tcx, id_mapping, false);
+        TypeComparisonContext::from_trans(infcx, id_mapping, forward_trans, backward_trans)
+    }
+
+    /// Construct a new context given a pair of translation contexts.
+    fn from_trans(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                  id_mapping: &'a IdMapping,
+                  forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+                  backward_trans: TranslationContext<'a, 'gcx, 'tcx>) -> Self {
         TypeComparisonContext {
             infcx: infcx,
             id_mapping: id_mapping,
             folder: InferenceCleanupFolder::new(infcx),
-            forward_trans: TranslationContext::target_old(infcx.tcx, id_mapping, false),
-            backward_trans: TranslationContext::target_new(infcx.tcx, id_mapping, false),
+            forward_trans: forward_trans,
+            backward_trans: backward_trans,
         }
     }
 
