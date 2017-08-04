@@ -256,6 +256,13 @@
             "args": ["0"]
         },
         {
+            "intrinsic": "trunc",
+            "width": [128],
+            "llvm": "vrfiz",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
             "intrinsic": "loge",
             "width": [128],
             "llvm": "vlogefp",
