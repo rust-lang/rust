@@ -301,7 +301,7 @@ pub enum Vtable<'tcx, N> {
     VtableObject(VtableObjectData<'tcx, N>),
 
     /// Successful resolution for a builtin trait.
-    VtableBuiltin(VtableBuiltinData<N>),
+    VtableBuiltin(VtableBuiltinData<'tcx, N>),
 
     /// Vtable automatically generated for a closure. The def ID is the ID
     /// of the closure expression. This is a `VtableImpl` in spirit, but the
@@ -345,7 +345,9 @@ pub struct VtableDefaultImplData<N> {
 }
 
 #[derive(Clone)]
-pub struct VtableBuiltinData<N> {
+pub struct VtableBuiltinData<'tcx, N> {
+    /// `ty` can be used for generating shim for builtin implementations like `Clone::clone`.
+    pub ty: ty::Ty<'tcx>,
     pub nested: Vec<N>
 }
 
@@ -769,6 +771,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             }),
             VtableParam(n) => VtableParam(n.into_iter().map(f).collect()),
             VtableBuiltin(i) => VtableBuiltin(VtableBuiltinData {
+                ty: i.ty,
                 nested: i.nested.into_iter().map(f).collect(),
             }),
             VtableObject(o) => VtableObject(VtableObjectData {

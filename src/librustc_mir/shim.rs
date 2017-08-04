@@ -17,6 +17,7 @@ use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
+use rustc_const_math::{ConstInt, ConstUsize};
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
@@ -98,14 +99,26 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         ty::InstanceDef::DropGlue(def_id, ty) => {
             build_drop_shim(tcx, def_id, ty)
         }
+        ty::InstanceDef::BuiltinShim(def_id, ty) => {
+            let name = tcx.item_name(def_id).as_str();
+            let trait_id = tcx.trait_of_item(def_id);
+            if trait_id == tcx.lang_items.clone_trait() && name == "clone" {
+                build_clone_shim(tcx, def_id, ty)
+            } else if trait_id == tcx.lang_items.clone_trait() && name == "clone_from" {
+                debug!("make_shim({:?}: using default trait implementation", instance);
+                return tcx.optimized_mir(def_id);
+            } else {
+                bug!("builtin shim {:?} not supported", instance)
+            }
+        }
         ty::InstanceDef::Intrinsic(_) => {
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
         }
     };
-        debug!("make_shim({:?}) = untransformed {:?}", instance, result);
-        no_landing_pads::no_landing_pads(tcx, &mut result);
-        simplify::simplify_cfg(&mut result);
-        add_call_guards::CriticalCallEdges.add_call_guards(&mut result);
+    debug!("make_shim({:?}) = untransformed {:?}", instance, result);
+    no_landing_pads::no_landing_pads(tcx, &mut result);
+    simplify::simplify_cfg(&mut result);
+    add_call_guards::CriticalCallEdges.add_call_guards(&mut result);
     debug!("make_shim({:?}) = {:?}", instance, result);
 
     tcx.alloc_mir(result)
@@ -257,6 +270,164 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn downcast_subpath(&self, _path: Self::Path, _variant: usize) -> Option<Self::Path> {
         Some(())
     }
+}
+
+/// Build a `Clone::clone` shim for `recvr_ty`. Here, `def_id` is `Clone::clone`.
+fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+                              def_id: DefId,
+                              recvr_ty: ty::Ty<'tcx>)
+                              -> Mir<'tcx>
+{
+    let sig = tcx.fn_sig(def_id);
+    let sig = tcx.erase_late_bound_regions(&sig);
+    let span = tcx.def_span(def_id);
+
+    debug!("build_clone_shim(def_id={:?})", def_id);
+
+    let mut local_decls = local_decls_for_sig(&sig, span);
+    let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
+
+    let mut blocks = IndexVec::new();
+    let block = |blocks: &mut IndexVec<_, _>, statement, kind| {
+        blocks.push(BasicBlockData {
+            statements: vec![statement],
+            terminator: Some(Terminator { source_info, kind }),
+            is_cleanup: false
+        })
+    };
+
+    let rcvr = Lvalue::Local(Local::new(1+0)).deref();
+
+    let call_clone = |i, ty, rcvr_field, blocks: &mut _, local_decls: &mut IndexVec<_, _>| {
+        // `func == Clone::clone(&ty) -> ty`
+        let substs = Substs::for_item(tcx, def_id, |_, _| tcx.types.re_erased, |_, _| ty);
+        let func = Operand::Constant(box Constant {
+            span: span,
+            ty: tcx.mk_fn_def(def_id, substs),
+            literal: Literal::Value {
+                value: ConstVal::Function(def_id, substs),
+            },
+        });
+
+        let ref_loc = Lvalue::Local(
+            local_decls.push(temp_decl(
+                Mutability::Not,
+                tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
+                    ty,
+                    mutbl: hir::Mutability::MutImmutable,
+                }),
+                span
+            ))
+        );
+
+        let loc = Lvalue::Local(
+            local_decls.push(temp_decl(
+                Mutability::Not,
+                ty,
+                span
+            ))
+        );
+
+        // `let ref_loc: &ty = &rcvr_field;`
+        let statement = Statement {
+            source_info: source_info,
+            kind: StatementKind::Assign(
+                ref_loc.clone(),
+                Rvalue::Ref(tcx.types.re_erased, BorrowKind::Shared, rcvr_field)
+            )
+        };
+
+        // `let loc = Clone::clone(ref_loc);`
+        block(blocks, statement, TerminatorKind::Call {
+            func,
+            args: vec![Operand::Consume(ref_loc)],
+            destination: Some((loc.clone(), BasicBlock::new(i + 1))),
+            cleanup: None,
+        });
+
+        loc
+    };
+
+    match recvr_ty.sty {
+        ty::TyArray(ty, len) => {
+            let mut returns = Vec::new();
+            for i in 0..len {
+                let index = ConstUsize::new(i as u64, tcx.sess.target.uint_type).unwrap();
+                let rcvr_field = rcvr.clone().index(
+                    Operand::Constant(box Constant {
+                        span,
+                        ty: tcx.types.usize,
+                        literal: Literal::Value {
+                            value: ConstVal::Integral(ConstInt::Usize(index))
+                        }
+                    })
+                );
+
+                // `returns[i] = Clone::clone(&rcvr[i]);`
+                returns.push(call_clone(i, ty, rcvr_field, &mut blocks, &mut local_decls));
+            }
+
+            // `return [returns[0], returns[1], ..., returns[len - 1]];`
+            let statement = Statement {
+                source_info: source_info,
+                kind: StatementKind::Assign(
+                    Lvalue::Local(RETURN_POINTER),
+                    Rvalue::Aggregate(
+                        box AggregateKind::Array(ty),
+                        returns.into_iter().map(|loc| Operand::Consume(loc)).collect()
+                    )
+                )
+            };
+            block(&mut blocks, statement, TerminatorKind::Return);
+        }
+        ty::TyTuple(tys, _) => {
+            let mut returns = Vec::new();
+            for (i, ity) in tys.iter().enumerate() {
+                let rcvr_field = rcvr.clone().field(Field::new(i), *ity);
+
+                // `returns[i] = Clone::clone(&rcvr.i);`
+                returns.push(call_clone(i, *ity, rcvr_field, &mut blocks, &mut local_decls));
+            }
+
+            // `return (returns[0], returns[1], ..., returns[tys.len() - 1]);`
+            let statement = Statement {
+                source_info: source_info,
+                kind: StatementKind::Assign(
+                    Lvalue::Local(RETURN_POINTER),
+                    Rvalue::Aggregate(
+                        box AggregateKind::Tuple,
+                        returns.into_iter().map(|loc| Operand::Consume(loc)).collect()
+                    )
+                )
+            };
+            block(&mut blocks, statement, TerminatorKind::Return);
+        }
+        _ => {
+            // `return *self;`
+            let statement = Statement {
+                source_info: source_info,
+                kind: StatementKind::Assign(
+                    Lvalue::Local(RETURN_POINTER),
+                    Rvalue::Use(Operand::Consume(rcvr))
+                )
+            };
+            block(&mut blocks, statement, TerminatorKind::Return);
+        }
+    };
+
+    let mir = Mir::new(
+        blocks,
+        IndexVec::from_elem_n(
+            VisibilityScopeData { span: span, parent_scope: None }, 1
+        ),
+        IndexVec::new(),
+        sig.output(),
+        local_decls,
+        sig.inputs().len(),
+        vec![],
+        span
+    );
+    mir
 }
 
 /// Build a "call" shim for `def_id`. The shim calls the

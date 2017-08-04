@@ -719,6 +719,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 continue;
             }
 
+            self.assemble_builtin_candidates(import_id, trait_def_id, item.clone());
+
             self.assemble_extension_candidates_for_trait_impls(import_id, trait_def_id,
                                                                item.clone());
 
@@ -730,6 +732,49 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
 
         Ok(())
+    }
+
+    fn assemble_builtin_candidates(&mut self,
+                                   import_id: Option<ast::NodeId>,
+                                   trait_def_id: DefId,
+                                   item: ty::AssociatedItem) {
+        if Some(trait_def_id) == self.tcx.lang_items.clone_trait() {
+            self.assemble_builtin_clone_candidates(import_id, trait_def_id, item);
+        }
+    }
+
+    fn assemble_builtin_clone_candidates(&mut self,
+                                         import_id: Option<ast::NodeId>,
+                                         trait_def_id: DefId,
+                                         item: ty::AssociatedItem) {
+        for step in Rc::clone(&self.steps).iter() {
+            match step.self_ty.sty {
+                ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
+                ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+                ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
+                ty::TyRawPtr(..) | ty::TyError | ty::TyNever |
+                ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) |
+                ty::TyArray(..) | ty::TyTuple(..) => {
+                    ()
+                }
+
+                _ => continue,
+            };
+
+            let substs = Substs::for_item(self.tcx,
+                                          trait_def_id,
+                                          |def, _| self.region_var_for_def(self.span, def),
+                                          |def, substs| {
+                if def.index == 0 {
+                    step.self_ty
+                } else {
+                    self.type_var_for_def(self.span, def, substs)
+                }
+            });
+
+            let xform_self_ty = self.xform_self_ty(&item, step.self_ty, substs);
+            self.push_inherent_candidate(xform_self_ty, item, TraitCandidate, import_id);
+        }
     }
 
     fn assemble_extension_candidates_for_trait_impls(&mut self,

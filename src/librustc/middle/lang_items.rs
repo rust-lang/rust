@@ -274,6 +274,7 @@ language_item_table! {
     SizedTraitLangItem,              "sized",                   sized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
+    CloneTraitLangItem,              "clone",                   clone_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
     FreezeTraitLangItem,             "freeze",                  freeze_trait;
 
@@ -319,6 +320,9 @@ language_item_table! {
     OrdTraitLangItem,                "ord",                     ord_trait;
 
     StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
+
+    CloneMethodLangItem,             "clone_method",            clone_method;
+    CloneFromMethodLangItem,         "clone_from_method",       clone_from_method;
 
     // A number of panic-related lang items. The `panic` item corresponds to
     // divide-by-zero and various panic cases with `match`. The

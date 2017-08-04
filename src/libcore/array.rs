@@ -124,6 +124,7 @@ macro_rules! array_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
             impl<T:Copy> Clone for [T; $N] {
                 fn clone(&self) -> [T; $N] {
                     *self

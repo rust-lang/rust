@@ -143,6 +143,12 @@ fn resolve_associated_item<'a, 'tcx>(
                 substs: rcvr_substs
             }
         }
+        traits::VtableBuiltin(ref data) => {
+            Instance {
+                def: ty::InstanceDef::BuiltinShim(def_id, data.ty),
+                substs: rcvr_substs
+            }
+        }
         _ => {
             bug!("static call to invalid vtable: {:?}", vtbl)
         }

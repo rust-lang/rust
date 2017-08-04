@@ -1296,6 +1296,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
          } else if self.tcx().lang_items.unsize_trait() == Some(def_id) {
              self.assemble_candidates_for_unsizing(obligation, &mut candidates);
          } else {
+            if self.tcx().lang_items.clone_trait() == Some(def_id) {
+                // Same builtin conditions as `Copy`, i.e. every type which has builtin support
+                // for `Copy` also has builtin support for `Clone`, + tuples and arrays of `Clone`
+                // types have builtin support for `Clone`.
+                let clone_conditions = self.copy_conditions(obligation);
+                self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
+            }
+
              self.assemble_closure_candidates(obligation, &mut candidates)?;
              self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
              self.assemble_candidates_from_impls(obligation, &mut candidates)?;
@@ -2164,8 +2172,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match candidate {
             BuiltinCandidate { has_nested } => {
-                Ok(VtableBuiltin(
-                    self.confirm_builtin_candidate(obligation, has_nested)))
+                let data = self.confirm_builtin_candidate(obligation, has_nested);
+                Ok(VtableBuiltin(data))
             }
 
             ParamCandidate(param) => {
@@ -2257,7 +2265,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn confirm_builtin_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
                                  has_nested: bool)
-                                 -> VtableBuiltinData<PredicateObligation<'tcx>>
+                                 -> VtableBuiltinData<'tcx, PredicateObligation<'tcx>>
     {
         debug!("confirm_builtin_candidate({:?}, {:?})",
                obligation, has_nested);
@@ -2269,6 +2277,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     self.sized_conditions(obligation)
                 }
                 _ if Some(trait_def) == self.tcx().lang_items.copy_trait() => {
+                    self.copy_conditions(obligation)
+                }
+                _ if Some(trait_def) == self.tcx().lang_items.clone_trait() => {
                     self.copy_conditions(obligation)
                 }
                 _ => bug!("unexpected builtin trait {:?}", trait_def)
@@ -2291,7 +2302,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         debug!("confirm_builtin_candidate: obligations={:?}",
                obligations);
-        VtableBuiltinData { nested: obligations }
+
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
+        VtableBuiltinData { ty: self_ty, nested: obligations }
     }
 
     /// This handles the case where a `impl Foo for ..` impl is being used.
@@ -2598,8 +2611,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     fn confirm_builtin_unsize_candidate(&mut self,
                                         obligation: &TraitObligation<'tcx>,)
-                                        -> Result<VtableBuiltinData<PredicateObligation<'tcx>>,
-                                                  SelectionError<'tcx>> {
+        -> Result<VtableBuiltinData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
+    {
         let tcx = self.tcx();
 
         // assemble_candidates_for_unsizing should ensure there are no late bound
@@ -2801,7 +2814,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             _ => bug!()
         };
 
-        Ok(VtableBuiltinData { nested: nested })
+        Ok(VtableBuiltinData { ty: source, nested: nested })
     }
 
     ///////////////////////////////////////////////////////////////////////////

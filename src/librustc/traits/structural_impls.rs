@@ -86,9 +86,9 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableClosureData<'tcx, N> {
     }
 }
 
-impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableBuiltinData<N> {
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableBuiltinData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableBuiltin(nested={:?})", self.nested)
+        write!(f, "VtableBuiltin(ty={:?}, nested={:?})", self.ty, self.nested)
     }
 }
 
@@ -300,7 +300,14 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 })
             }
             traits::VtableParam(n) => Some(traits::VtableParam(n)),
-            traits::VtableBuiltin(d) => Some(traits::VtableBuiltin(d)),
+            traits::VtableBuiltin(traits::VtableBuiltinData { ty, nested }) => {
+                tcx.lift(&ty).map(|ty| {
+                    traits::VtableBuiltin(traits::VtableBuiltinData {
+                        ty,
+                        nested,
+                    })
+                })
+            }
             traits::VtableObject(traits::VtableObjectData {
                 upcast_trait_ref,
                 vtable_base,
@@ -378,9 +385,10 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableDefaultIm
     }
 }
 
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinData<N> {
+impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinData<'tcx, N> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableBuiltinData {
+            ty: self.ty.fold_with(folder),
             nested: self.nested.fold_with(folder),
         }
     }
