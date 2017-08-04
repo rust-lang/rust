@@ -133,8 +133,8 @@ impl Step for Llvm {
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
         // for the tools.  We don't distribute any of those tools, so this is
-        // just a local concern.  However, this doesn't seem to work on Windows.
-        if !target.contains("windows") {
+        // just a local concern.  However, it doesn't work well everywhere.
+        if target.contains("linux-gnu") || target.contains("apple-darwin") {
            cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
