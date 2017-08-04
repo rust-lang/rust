@@ -1420,8 +1420,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         -> bool
     {
         assert!(!skol_trait_ref.has_escaping_regions());
+        debug!("match_projection: obligation={:?}, trait_bound={:?}",
+               obligation, trait_bound);
+
+        let Normalized { value: normal_bound, obligations } =
+            project::normalize(
+                self, obligation.param_env.clone(), obligation.cause.clone(),
+                &trait_bound);
+        debug!("match_projection: \
+                obligation={:?}, normal_bound={:?}, \
+                additional inferred_obligations={:?}",
+               obligation, normal_bound, obligations);
+        self.inferred_obligations.extend(obligations);
+
         match self.infcx.at(&obligation.cause, obligation.param_env)
-                        .sup(ty::Binder(skol_trait_ref), trait_bound) {
+                        .sup(ty::Binder(skol_trait_ref), normal_bound) {
             Ok(InferOk { obligations, .. }) => {
                 self.inferred_obligations.extend(obligations);
             }
