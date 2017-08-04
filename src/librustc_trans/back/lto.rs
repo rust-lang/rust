@@ -27,6 +27,7 @@ use flate2::read::DeflateDecoder;
 use std::io::Read;
 use std::ffi::CString;
 use std::path::Path;
+use std::ptr::read_unaligned;
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
@@ -223,13 +224,13 @@ fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
 fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
     let pos = link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET;
     let byte_data = &bc[pos..pos + 4];
-    let data = unsafe { *(byte_data.as_ptr() as *const u32) };
+    let data = unsafe { read_unaligned(byte_data.as_ptr() as *const u32) };
     u32::from_le(data)
 }
 
 fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
     let pos = link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET;
     let byte_data = &bc[pos..pos + 8];
-    let data = unsafe { *(byte_data.as_ptr() as *const u64) };
+    let data = unsafe { read_unaligned(byte_data.as_ptr() as *const u64) };
     u64::from_le(data)
 }
