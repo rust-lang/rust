@@ -156,6 +156,13 @@
             "llvm": "vupkh{1.kind}{1.data_type_short}",
             "ret": "s(16-32)",
             "args": ["0N"]
+        },
+        {
+            "intrinsic": "madds",
+            "width": [128],
+            "llvm": "vmhaddshs",
+            "ret": "s16",
+            "args": ["0", "0", "0"]
         }
     ]
 }
