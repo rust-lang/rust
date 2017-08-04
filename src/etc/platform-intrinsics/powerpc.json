@@ -249,6 +249,13 @@
             "args": ["0"]
         },
         {
+            "intrinsic": "round",
+            "width": [128],
+            "llvm": "vrfin",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
             "intrinsic": "loge",
             "width": [128],
             "llvm": "vlogefp",
