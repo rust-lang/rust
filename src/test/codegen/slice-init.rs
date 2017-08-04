@@ -33,7 +33,7 @@ pub fn zero_len_array() {
 // CHECK-LABEL: @byte_array
 #[no_mangle]
 pub fn byte_array() {
-    // CHECK: call void @llvm.memset.p0i8.i{{[0-9]+}}(i8* {{.*}}, i8 7, i64 4
+    // CHECK: call void @llvm.memset.p0i8.i[[WIDTH:[0-9]+]](i8* {{.*}}, i8 7, i[[WIDTH]] 4
     // CHECK-NOT: br label %slice_loop_header{{.*}}
     let x = [7u8; 4];
     drop(&x);
@@ -49,7 +49,7 @@ enum Init {
 // CHECK-LABEL: @byte_enum_array
 #[no_mangle]
 pub fn byte_enum_array() {
-    // CHECK: call void @llvm.memset.p0i8.i{{[0-9]+}}(i8* {{.*}}, i8 {{.*}}, i64 4
+    // CHECK: call void @llvm.memset.p0i8.i[[WIDTH:[0-9]+]](i8* {{.*}}, i8 {{.*}}, i[[WIDTH]] 4
     // CHECK-NOT: br label %slice_loop_header{{.*}}
     let x = [Init::Memset; 4];
     drop(&x);
@@ -58,7 +58,7 @@ pub fn byte_enum_array() {
 // CHECK-LABEL: @zeroed_integer_array
 #[no_mangle]
 pub fn zeroed_integer_array() {
-    // CHECK: call void @llvm.memset.p0i8.i{{[0-9]+}}(i8* {{.*}}, i8 0, i64 16
+    // CHECK: call void @llvm.memset.p0i8.i[[WIDTH:[0-9]+]](i8* {{.*}}, i8 0, i[[WIDTH]] 16
     // CHECK-NOT: br label %slice_loop_header{{.*}}
     let x = [0u32; 4];
     drop(&x);
