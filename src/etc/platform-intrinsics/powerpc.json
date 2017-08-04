@@ -226,6 +226,13 @@
             "llvm": "vmaddfp",
             "ret": "f32",
             "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "expte",
+            "width": [128],
+            "llvm": "vexptefp",
+            "ret": "f32",
+            "args": ["0"]
         }
     ]
 }
