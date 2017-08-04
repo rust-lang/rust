@@ -233,6 +233,13 @@
             "llvm": "vexptefp",
             "ret": "f32",
             "args": ["0"]
+        },
+        {
+            "intrinsic": "floor",
+            "width": [128],
+            "llvm": "vrfim",
+            "ret": "f32",
+            "args": ["0"]
         }
     ]
 }

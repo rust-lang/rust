@@ -407,6 +407,11 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::F32x4,
             definition: Named("llvm.ppc.altivec.vexptefp")
         },
+        "_vec_floor" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vrfim")
+        },
         _ => return None,
     })
 }
