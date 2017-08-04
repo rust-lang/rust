@@ -260,7 +260,7 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
         t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
     }
 
-    let mut cmd = builder.rustdoc_cmd(compiler);
+    let mut cmd = builder.rustdoc_cmd(compiler.host);
 
     let out = out.join("book");
 
@@ -343,7 +343,7 @@ impl Step for Standalone {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = builder.rustdoc(compiler);
+            let rustdoc = builder.rustdoc(compiler.host);
             if up_to_date(&path, &html) &&
                up_to_date(&footer, &html) &&
                up_to_date(&favicon, &html) &&
@@ -353,7 +353,7 @@ impl Step for Standalone {
                 continue
             }
 
-            let mut cmd = builder.rustdoc_cmd(compiler);
+            let mut cmd = builder.rustdoc_cmd(compiler.host);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
@@ -408,7 +408,7 @@ impl Step for Std {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
-        let rustdoc = builder.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -493,7 +493,7 @@ impl Step for Test {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
-        let rustdoc = builder.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -554,7 +554,7 @@ impl Step for Rustc {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
-        let rustdoc = builder.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {

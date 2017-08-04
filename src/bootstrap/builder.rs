@@ -414,22 +414,20 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { target_compiler: compiler })
+    pub fn rustdoc(&self, host: Interned<String>) -> PathBuf {
+        self.ensure(tool::Rustdoc { host })
     }
 
-    pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
+    pub fn rustdoc_cmd(&self, host: Interned<String>) -> Command {
         let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
+        // See rational for top_stage in rustdoc
+        let compiler = self.compiler(self.top_stage, host);
         cmd
-            .env("RUSTC_STAGE", compiler.stage.to_string())
-            .env("RUSTC_SYSROOT", if compiler.is_snapshot(&self.build) {
-                INTERNER.intern_path(self.build.rustc_snapshot_libdir())
-            } else {
-                self.sysroot(compiler)
-            })
+            .env("RUSTDOC_STAGE", compiler.stage.to_string())
+            .env("RUSTC_SYSROOT", self.sysroot(compiler))
             .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
             .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(compiler));
+            .env("RUSTDOC_REAL", self.rustdoc(compiler.host));
         cmd
     }
 
@@ -482,8 +480,9 @@ impl<'a> Builder<'a> {
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
+             .env("RUSTDOC_STAGE", self.top_stage.to_string())
              .env("RUSTDOC_REAL", if cmd == "doc" || cmd == "test" {
-                 self.rustdoc(compiler)
+                 self.rustdoc(compiler.host)
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })

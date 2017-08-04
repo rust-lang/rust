@@ -24,7 +24,7 @@ fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTC_LIBDIR").expect("RUSTC_LIBDIR was not set");
-    let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
+    let stage = env::var("RUSTDOC_STAGE").expect("RUSTDOC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
 
     let mut dylib_path = bootstrap::util::dylib_path();
