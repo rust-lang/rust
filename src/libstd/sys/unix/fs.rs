@@ -284,12 +284,7 @@ impl DirEntry {
         lstat(&self.path())
     }
 
-    #[cfg(target_os = "solaris")]
-    pub fn file_type(&self) -> io::Result<FileType> {
-        stat(&self.path()).map(|m| m.file_type())
-    }
-
-    #[cfg(target_os = "haiku")]
+    #[cfg(any(target_os = "solaris", target_os = "haiku"))]
     pub fn file_type(&self) -> io::Result<FileType> {
         lstat(&self.path()).map(|m| m.file_type())
     }
