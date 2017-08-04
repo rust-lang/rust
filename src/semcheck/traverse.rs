@@ -867,13 +867,13 @@ fn match_trait_impl<'a, 'tcx>(id_mapping: &IdMapping,
 
 /// Compare an item pair in two inherent implementations and indicate whether the target one is
 /// compatible with the original one.
-fn match_inherent_impl<'a, 'tcx>(id_mapping: &IdMapping,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 trans: &TranslationContext<'a, 'tcx, 'tcx>,
-                                 orig_impl_def_id: DefId,
-                                 orig_item_def_id: DefId,
-                                 target_impl_def_id: DefId,
-                                 target_item_def_id: DefId) -> bool {
+fn match_inherent_impl<'a, 'tcx>(_id_mapping: &IdMapping,
+                                 _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 _trans: &TranslationContext<'a, 'tcx, 'tcx>,
+                                 _orig_impl_def_id: DefId,
+                                 _orig_item_def_id: DefId,
+                                 _target_impl_def_id: DefId,
+                                 _target_item_def_id: DefId) -> bool {
     true
 }
 

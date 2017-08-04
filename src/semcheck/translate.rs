@@ -20,8 +20,6 @@ pub struct TranslationContext<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> {
     needs_translation: fn(&IdMapping, DefId) -> bool,
     /// Elementary operation to translate a `DefId`.
     translate_orig: fn(&IdMapping, DefId) -> Option<DefId>,
-    /// Elementary operation to translate a `DefId` of a trait item.
-    translate_orig_trait: fn(&IdMapping, DefId, DefId) -> Option<DefId>,
 }
 
 impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
@@ -40,9 +38,6 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             translate_orig: |id_mapping, orig_def_id| {
                 id_mapping.get_new_id(orig_def_id)
             },
-            translate_orig_trait: |id_mapping, orig_def_id, trait_def_id| {
-                id_mapping.get_new_trait_item_id(orig_def_id, trait_def_id)
-            },
         }
     }
 
@@ -59,9 +54,6 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             },
             translate_orig: |id_mapping, orig_def_id| {
                 id_mapping.get_old_id(orig_def_id)
-            },
-            translate_orig_trait: |id_mapping, orig_def_id, trait_def_id| {
-                id_mapping.get_old_trait_item_id(orig_def_id, trait_def_id)
             },
         }
     }
@@ -99,47 +91,18 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Translate a `DefId` of a toplevel item and it's substs.
+    /// Translate a `DefId` of any item and it's substs.
     fn translate_orig_substs(&self,
                              index_map: &HashMap<u32, DefId>,
                              orig_def_id: DefId,
                              orig_substs: &Substs<'tcx>) -> Option<(DefId, &'tcx Substs<'tcx>)> {
-        self.translate_orig_opt_trait_substs(index_map, orig_def_id, None, orig_substs)
-    }
-
-    /// Translate a `DefId` of a trait item and it's substs.
-    fn translate_orig_trait_substs(&self,
-                                   index_map: &HashMap<u32, DefId>,
-                                   orig_def_id: DefId,
-                                   orig_trait_def_id: DefId,
-                                   orig_substs: &Substs<'tcx>)
-        -> Option<(DefId, &'tcx Substs<'tcx>)>
-    {
-        self.translate_orig_opt_trait_substs(index_map,
-                                             orig_def_id,
-                                             Some(orig_trait_def_id),
-                                             orig_substs)
-    }
-
-    /// Translate a `DefId` of any item and it's substs.
-    fn translate_orig_opt_trait_substs(&self,
-                                       index_map: &HashMap<u32, DefId>,
-                                       orig_def_id: DefId,
-                                       orig_trait_def_id: Option<DefId>,
-                                       orig_substs: &Substs<'tcx>)
-        -> Option<(DefId, &'tcx Substs<'tcx>)>
-    {
-        debug!("translating w/ substs: did: {:?} (trait did: {:?}), substs: {:?}",
-               orig_def_id, orig_trait_def_id, orig_substs);
+        debug!("translating w/ substs: did: {:?}, substs: {:?}",
+               orig_def_id, orig_substs);
 
         use rustc::ty::ReEarlyBound;
         use std::cell::Cell;
 
-        let target_def_id = if let Some(orig_trait_def_id) = orig_trait_def_id {
-            (self.translate_orig_trait)(self.id_mapping, orig_def_id, orig_trait_def_id)
-        } else {
-            (self.translate_orig)(self.id_mapping, orig_def_id)
-        };
+        let target_def_id = (self.translate_orig)(self.id_mapping, orig_def_id);
 
         if let Some(target_def_id) = target_def_id {
             let success = Cell::new(true);
@@ -261,12 +224,10 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     }
                 },
                 TyProjection(proj) => {
-                    let trait_def_id = self.tcx.associated_item(proj.item_def_id).container.id();
                     if let Some((target_def_id, target_substs)) =
-                        self.translate_orig_trait_substs(index_map,
-                                                         proj.item_def_id,
-                                                         trait_def_id,
-                                                         proj.substs) {
+                        self.translate_orig_substs(index_map,
+                                                   proj.item_def_id,
+                                                   proj.substs) {
                         self.tcx.mk_projection(target_def_id, target_substs)
                     } else {
                         ty

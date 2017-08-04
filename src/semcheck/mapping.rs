@@ -195,32 +195,6 @@ impl IdMapping {
         }
     }
 
-    /// Get the new `DefId` associated with the given old one, respecting possibly removed
-    /// traits that are a parent of the given `DefId`.
-    pub fn get_new_trait_item_id(&self, old: DefId, trait_id: DefId) -> Option<DefId> {
-        assert!(!self.in_new_crate(trait_id));
-
-        // TODO: this body is now nonsensical. reevaluate.
-        if !self.non_mapped_items.contains(&trait_id) {
-            self.get_new_id(old)
-        } else {
-            Some(old)
-        }
-    }
-
-    /// Get the old `DefId` associated with the given new one, respecting possibly added
-    /// traits that are a parent of the given `DefId`.
-    pub fn get_old_trait_item_id(&self, new: DefId, trait_id: DefId) -> Option<DefId> {
-        assert!(!self.in_old_crate(trait_id));
-
-        // TODO: this body is now nonsensical. reevaluate.
-        if !self.non_mapped_items.contains(&trait_id) {
-            self.get_old_id(new)
-        } else {
-            Some(new)
-        }
-    }
-
     /// Return the `DefId` of the trait a given item belongs to.
     pub fn get_trait_def(&self, item_def_id: &DefId) -> Option<DefId> {
         self.trait_item_mapping.get(item_def_id).map(|t| t.2)
