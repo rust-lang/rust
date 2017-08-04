@@ -16,4 +16,5 @@ fn main() {
     let s = Simba { mother: 1, father: 0 };
     //~^ ERROR E0560
     //~| NOTE `Simba` does not have this field
+    //~| NOTE available fields are: `mother`
 }
