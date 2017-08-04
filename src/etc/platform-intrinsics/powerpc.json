@@ -135,6 +135,13 @@
             "llvm": "vpk{1.kind}{1.data_type_short}{0.kind}s",
             "ret": "u(8-16)",
             "args": ["0Ws", "1"]
+        },
+        {
+            "intrinsic": "packpx",
+            "width": [128],
+            "llvm": "vpkpx",
+            "ret": "s16",
+            "args": ["s32", "s32"]
         }
     ]
 }
