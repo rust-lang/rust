@@ -197,6 +197,7 @@ impl<'a, 'tcx: 'a> Value {
 
             ByValPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
 
+            ByVal(PrimVal::Undef) => err!(ReadUndefBytes),
             _ => bug!("expected ptr and vtable, got {:?}", self),
         }
     }
@@ -216,6 +217,7 @@ impl<'a, 'tcx: 'a> Value {
                 assert_eq!(len as u64 as u128, len);
                 Ok((ptr.into(), len as u64))
             },
+            ByVal(PrimVal::Undef) => err!(ReadUndefBytes),
             ByVal(_) => bug!("expected ptr and length, got {:?}", self),
         }
     }

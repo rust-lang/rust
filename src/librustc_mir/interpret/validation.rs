@@ -11,7 +11,7 @@ use super::{
     EvalError, EvalResult, EvalErrorKind,
     EvalContext, DynamicLifetime,
     AccessKind, LockInfo,
-    PrimVal, Value,
+    Value,
     Lvalue, LvalueExtra,
     Machine,
 };
@@ -156,10 +156,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn validate(&mut self, query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
     {
         match self.try_validate(query, mode) {
-            // HACK: If, during releasing, we hit memory we cannot use, we just ignore that.
-            // This can happen because releases are added before drop elaboration.
-            // TODO: Fix the MIR so that these releases do not happen.
-            res @ Err(EvalError{ kind: EvalErrorKind::DanglingPointerDeref, ..}) |
+            // Releasing an uninitalized variable is a NOP.  This is needed because
+            // we have to release the return value of a function; due to destination-passing-style
+            // the callee may directly write there.
+            // TODO: Ideally we would know whether the destination is already initialized, and only
+            // release if it is.
             res @ Err(EvalError{ kind: EvalErrorKind::ReadUndefBytes, ..}) => {
                 if let ValidationMode::Release = mode {
                     return Ok(());
@@ -187,16 +188,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
         }
 
-        // Release of an Undef local is fine, and a NOP.
         // HACK: For now, bail out if we hit a dead local during recovery (can happen because sometimes we have
-        // StorageDead before EndRegion).
+        // StorageDead before EndRegion due to https://github.com/rust-lang/rust/issues/43481).
         // TODO: We should rather fix the MIR.
         match query.lval {
             Lvalue::Local { frame, local } => {
                 let res = self.stack[frame].get_local(local);
                 match (res, mode) {
-                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) |
-                    (Ok(Value::ByVal(PrimVal::Undef)), ValidationMode::Release) => {
+                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) => {
                         return Ok(());
                     }
                     _ => {},
