@@ -41,5 +41,7 @@ fn main() {
         println!("cargo:rustc-link-lib=unwind");
     } else if target.contains("haiku") {
         println!("cargo:rustc-link-lib=gcc_s");
+    } else if target.contains("redox") {
+        println!("cargo:rustc-link-lib=gcc");
     }
 }
