@@ -254,6 +254,13 @@
             "llvm": "vrefp",
             "ret": "f32",
             "args": ["0"]
+        },
+        {
+            "intrinsic": "rsqrte",
+            "width": [128],
+            "llvm": "vrsqrtefp",
+            "ret": "f32",
+            "args": ["0"]
         }
     ]
 }
