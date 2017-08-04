@@ -163,6 +163,27 @@
             "llvm": "vmhaddshs",
             "ret": "s16",
             "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "msumu{1.data_type_short}m",
+            "width": [128],
+            "llvm": "vmsumu{1.data_type_short}m",
+            "ret": "u32",
+            "args": ["u(8-16)", "1", "u32"]
+        },
+        {
+            "intrinsic": "msummbm",
+            "width": [128],
+            "llvm": "vmsummbm",
+            "ret": "s32",
+            "args": ["s8", "u8", "s32"]
+        },
+        {
+            "intrinsic": "msumshm",
+            "width": [128],
+            "llvm": "vmsumshm",
+            "ret": "s32",
+            "args": ["s16", "s16", "s32"]
         }
     ]
 }
