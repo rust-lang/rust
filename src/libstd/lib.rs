@@ -80,8 +80,8 @@
 //!
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
-//! calls to methods on [`str`] and [`[T]`][slice] respectively, via
-//! [deref-coercions].
+//! calls to methods on [`str`] and [`[T]`][slice] respectively, via [deref
+//! coercions][deref-coercions].
 //!
 //! Third, the standard library defines [The Rust Prelude], a small collection
 //! of items - mostly traits - that are imported into every module of every
