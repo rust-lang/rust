@@ -41,12 +41,12 @@ Libraries
   NaN.][42431]
 - [allow messages in the `unimplemented!()` macro.][42155]
   ie. `unimplemented!("Waiting for 1.21 to be stable")`
-- [support pub(restricted) in thread_local! (round 2)][43185]
+- [`pub(restricted)` is now supported in the `thread_local!` macro.][43185]
 - [Upgrade to Unicode 10.0.0][42999]
 - [Reimplemented `{f32, f64}::{min, max}` in Rust instead of using CMath.][42430]
 - [Skip the main thread's manual stack guard on Linux][43072]
 - [Iterator::nth for `ops::{Range, RangeFrom}` is now done in O(1) time][43077]
-- [`#cfg[align(N)]` attribute max number is now 2^31 - 1.][43097] This was
+- [`#[repr(align(N))]` attribute max number is now 2^31 - 1.][43097] This was
   previously 2^15.
 - [`{OsStr, Path}::Display` now avoids allocations where possible][42613]
 
@@ -109,6 +109,8 @@ Compatibility Notes
 
 - [Functions with `'static` in their return types will now not be as usable as
   if they were using lifetime parameters instead.][42417]
+- [The reimplementation of `{f32, f64}::is_sign_{negative, positive}` now
+  takes the sign of NaN into account where previously didn't.][42430] 
 
 [42033]: https://github.com/rust-lang/rust/pull/42033
 [42155]: https://github.com/rust-lang/rust/pull/42155
