@@ -191,6 +191,13 @@
             "llvm": "vmsum{0.kind}hs",
             "ret": "i32",
             "args": ["0N", "0N", "0"]
+        },
+        {
+            "intrinsic": "sum2s",
+            "width": [128],
+            "llvm": "vsum2sws",
+            "ret": "s32",
+            "args": ["0", "0"]
         }
     ]
 }
