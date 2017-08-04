@@ -11,6 +11,8 @@
 //! This pass erases all early-bound regions from the types occuring in the MIR.
 //! We want to do this once just before trans, so trans does not have to take
 //! care erasing regions all over the place.
+//! NOTE:  We do NOT erase regions of statements that are relevant for
+//! "types-as-contracts"-validation, namely, AcquireValid, ReleaseValid, and EndRegion.
 
 use rustc::ty::subst::Substs;
 use rustc::ty::{Ty, TyCtxt, ClosureSubsts};
@@ -20,20 +22,24 @@ use rustc::mir::transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    in_validation_statement: bool,
 }
 
 impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         EraseRegionsVisitor {
-            tcx: tcx
+            tcx: tcx,
+            in_validation_statement: false,
         }
     }
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: Lookup) {
-        let old_ty = *ty;
-        *ty = self.tcx.erase_regions(&old_ty);
+        if !self.in_validation_statement {
+            *ty = self.tcx.erase_regions(&{*ty});
+        }
+        self.super_ty(ty);
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, _: Location) {
@@ -71,10 +77,20 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
-        if let StatementKind::EndRegion(_) = statement.kind {
-            statement.kind = StatementKind::Nop;
+        // Do NOT delete EndRegion if validation statements are emitted.
+        // Validation needs EndRegion.
+        if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
+            if let StatementKind::EndRegion(_) = statement.kind {
+                statement.kind = StatementKind::Nop;
+            }
         }
+
+        self.in_validation_statement = match statement.kind {
+            StatementKind::Validate(..) => true,
+            _ => false,
+        };
         self.super_statement(block, statement, location);
+        self.in_validation_statement = false;
     }
 }
 

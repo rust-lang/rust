@@ -25,7 +25,7 @@ use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
 use rustc_back::slice;
-use hir::InlineAsm;
+use hir::{self, InlineAsm};
 use std::ascii;
 use std::borrow::{Cow};
 use std::cell::Ref;
@@ -818,11 +818,17 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
 
+    /// Execute a piece of inline Assembly.
     InlineAsm {
         asm: Box<InlineAsm>,
         outputs: Vec<Lvalue<'tcx>>,
         inputs: Vec<Operand<'tcx>>
     },
+
+    /// Assert the given lvalues to be valid inhabitants of their type.  These statements are
+    /// currently only interpreted by miri and only generated when "-Z mir-emit-validate" is passed.
+    /// See <https://internals.rust-lang.org/t/types-as-contracts/5562/73> for more details.
+    Validate(ValidationOp, Vec<ValidationOperand<'tcx, Lvalue<'tcx>>>),
 
     /// Mark one terminating point of an extent (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
@@ -832,6 +838,57 @@ pub enum StatementKind<'tcx> {
     Nop,
 }
 
+/// The `ValidationOp` describes what happens with each of the operands of a
+/// `Validate` statement.
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq)]
+pub enum ValidationOp {
+    /// Recursively traverse the lvalue following the type and validate that all type
+    /// invariants are maintained.  Furthermore, acquire exclusive/read-only access to the
+    /// memory reachable from the lvalue.
+    Acquire,
+    /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
+    /// access.
+    Release,
+    /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
+    /// access *until* the given region ends.  Then, access will be recovered.
+    Suspend(CodeExtent),
+}
+
+impl Debug for ValidationOp {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        use self::ValidationOp::*;
+        match *self {
+            Acquire => write!(fmt, "Acquire"),
+            Release => write!(fmt, "Release"),
+            // (reuse lifetime rendering policy from ppaux.)
+            Suspend(ref ce) => write!(fmt, "Suspend({})", ty::ReScope(*ce)),
+        }
+    }
+}
+
+// This is generic so that it can be reused by miri
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct ValidationOperand<'tcx, T> {
+    pub lval: T,
+    pub ty: Ty<'tcx>,
+    pub re: Option<CodeExtent>,
+    pub mutbl: hir::Mutability,
+}
+
+impl<'tcx, T: Debug> Debug for ValidationOperand<'tcx, T> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        write!(fmt, "{:?}: {:?}", self.lval, self.ty)?;
+        if let Some(ce) = self.re {
+            // (reuse lifetime rendering policy from ppaux.)
+            write!(fmt, "/{}", ty::ReScope(ce))?;
+        }
+        if let hir::MutImmutable = self.mutbl {
+            write!(fmt, " (imm)")?;
+        }
+        Ok(())
+    }
+}
+
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::StatementKind::*;
@@ -839,6 +896,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
             // (reuse lifetime rendering policy from ppaux.)
             EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
+            Validate(ref op, ref lvalues) => write!(fmt, "Validate({:?}, {:?})", op, lvalues),
             StorageLive(ref lv) => write!(fmt, "StorageLive({:?})", lv),
             StorageDead(ref lv) => write!(fmt, "StorageDead({:?})", lv),
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
@@ -1481,6 +1539,21 @@ impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Lvalue<'tcx>> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ValidationOperand {
+            lval: self.lval.fold_with(folder),
+            ty: self.ty.fold_with(folder),
+            re: self.re,
+            mutbl: self.mutbl,
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.lval.visit_with(visitor) || self.ty.visit_with(visitor)
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         use mir::StatementKind::*;
@@ -1504,6 +1577,10 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             // to carry `[ty::Region]`, or extend the `TypeFolder`
             // trait with a `fn fold_extent`.
             EndRegion(ref extent) => EndRegion(extent.clone()),
+
+            Validate(ref op, ref lvals) =>
+                Validate(op.clone(),
+                         lvals.iter().map(|operand| operand.fold_with(folder)).collect()),
 
             Nop => Nop,
         };
@@ -1529,6 +1606,9 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             // to carry `[ty::Region]`, or extend the `TypeVisitor`
             // trait with a `fn visit_extent`.
             EndRegion(ref _extent) => false,
+
+            Validate(ref _op, ref lvalues) =>
+                lvalues.iter().any(|ty_and_lvalue| ty_and_lvalue.visit_with(visitor)),
 
             Nop => false,
         }

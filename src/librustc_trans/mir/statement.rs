@@ -87,6 +87,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 bcx
             }
             mir::StatementKind::EndRegion(_) |
+            mir::StatementKind::Validate(..) |
             mir::StatementKind::Nop => bcx,
         }
     }

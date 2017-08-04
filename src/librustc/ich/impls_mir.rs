@@ -226,8 +226,12 @@ for mir::StatementKind<'tcx> {
             mir::StatementKind::StorageDead(ref lvalue) => {
                 lvalue.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::EndRegion(ref extents) => {
-                extents.hash_stable(hcx, hasher);
+            mir::StatementKind::EndRegion(ref extent) => {
+                extent.hash_stable(hcx, hasher);
+            }
+            mir::StatementKind::Validate(ref op, ref lvalues) => {
+                op.hash_stable(hcx, hasher);
+                lvalues.hash_stable(hcx, hasher);
             }
             mir::StatementKind::Nop => {}
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
@@ -238,6 +242,23 @@ for mir::StatementKind<'tcx> {
         }
     }
 }
+
+impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+    for mir::ValidationOperand<'tcx, T>
+    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>)
+    {
+        self.lval.hash_stable(hcx, hasher);
+        self.ty.hash_stable(hcx, hasher);
+        self.re.hash_stable(hcx, hasher);
+        self.mutbl.hash_stable(hcx, hasher);
+    }
+}
+
+impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(extent) });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for mir::Lvalue<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,

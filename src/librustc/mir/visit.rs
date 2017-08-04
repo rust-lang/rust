@@ -338,6 +338,13 @@ macro_rules! make_mir_visitor {
                         self.visit_assign(block, lvalue, rvalue, location);
                     }
                     StatementKind::EndRegion(_) => {}
+                    StatementKind::Validate(_, ref $($mutability)* lvalues) => {
+                        for operand in lvalues {
+                            self.visit_lvalue(& $($mutability)* operand.lval,
+                                              LvalueContext::Validate, location);
+                            self.visit_ty(& $($mutability)* operand.ty, Lookup::Loc(location));
+                        }
+                    }
                     StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {
                         self.visit_lvalue(lvalue, LvalueContext::Store, location);
                     }
@@ -789,6 +796,9 @@ pub enum LvalueContext<'tcx> {
     // Starting and ending a storage live range
     StorageLive,
     StorageDead,
+
+    // Validation command
+    Validate,
 }
 
 impl<'tcx> LvalueContext<'tcx> {
@@ -835,7 +845,8 @@ impl<'tcx> LvalueContext<'tcx> {
             LvalueContext::Borrow { kind: BorrowKind::Shared, .. } |
             LvalueContext::Borrow { kind: BorrowKind::Unique, .. } |
             LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume |
-            LvalueContext::StorageLive | LvalueContext::StorageDead => false,
+            LvalueContext::StorageLive | LvalueContext::StorageDead |
+            LvalueContext::Validate => false,
         }
     }
 
@@ -847,7 +858,8 @@ impl<'tcx> LvalueContext<'tcx> {
             LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume => true,
             LvalueContext::Borrow { kind: BorrowKind::Mut, .. } | LvalueContext::Store |
             LvalueContext::Call | LvalueContext::Projection(Mutability::Mut) |
-            LvalueContext::Drop | LvalueContext::StorageLive | LvalueContext::StorageDead => false,
+            LvalueContext::Drop | LvalueContext::StorageLive | LvalueContext::StorageDead |
+            LvalueContext::Validate => false,
         }
     }
 
