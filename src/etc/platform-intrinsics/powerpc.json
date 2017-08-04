@@ -107,6 +107,13 @@
             "llvm": "vmule{0.kind}{1.data_type_short}",
             "ret": "i(16-32)",
             "args": ["0N", "1"]
+        },
+        {
+            "intrinsic": "mulo{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vmulo{0.kind}{1.data_type_short}",
+            "ret": "i(16-32)",
+            "args": ["0N", "1"]
         }
     ]
 }
