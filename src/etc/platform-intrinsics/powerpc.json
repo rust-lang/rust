@@ -247,6 +247,13 @@
             "llvm": "vlogefp",
             "ret": "f32",
             "args": ["0"]
+        },
+        {
+            "intrinsic": "re",
+            "width": [128],
+            "llvm": "vrefp",
+            "ret": "f32",
+            "args": ["0"]
         }
     ]
 }
