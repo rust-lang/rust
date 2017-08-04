@@ -100,6 +100,13 @@
             "llvm": "vaddcuw",
             "ret": "u32",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "mule{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vmule{0.kind}{1.data_type_short}",
+            "ret": "i(16-32)",
+            "args": ["0N", "1"]
         }
     ]
 }
