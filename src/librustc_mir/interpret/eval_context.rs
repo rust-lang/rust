@@ -1716,49 +1716,53 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub fn report(&self, e: &EvalError) {
-        let mut trace_text = "\n################################\nerror occurred in miri at\n".to_string();
-        let mut skip_init = true;
-        'frames: for (i, frame) in e.backtrace.frames().iter().enumerate() {
-            for symbol in frame.symbols() {
-                if let Some(name) = symbol.name() {
-                    // unmangle the symbol via `to_string`
-                    let name = name.to_string();
-                    if name.starts_with("miri::after_analysis") {
-                        // don't report initialization gibberish
-                        break 'frames;
-                    } else if name.starts_with("backtrace::capture::Backtrace::new")
+    pub fn report(&self, e: &mut EvalError) {
+        if let Some(ref mut backtrace) = e.backtrace {
+            let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
+            let mut skip_init = true;
+            backtrace.resolve();
+            'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
+                for symbol in frame.symbols() {
+                    if let Some(name) = symbol.name() {
+                        // unmangle the symbol via `to_string`
+                        let name = name.to_string();
+                        if name.starts_with("miri::after_analysis") {
+                            // don't report initialization gibberish
+                            break 'frames;
+                        } else if name.starts_with("backtrace::capture::Backtrace::new")
                             // debug mode produces funky symbol names
-                           || name.starts_with("backtrace::capture::{{impl}}::new") {
-                        // don't report backtrace internals
-                        skip_init = false;
-                        continue 'frames;
+                            || name.starts_with("backtrace::capture::{{impl}}::new") {
+                            // don't report backtrace internals
+                            skip_init = false;
+                            continue 'frames;
+                        }
+                    }
+                }
+                if skip_init {
+                    continue;
+                }
+                for symbol in frame.symbols() {
+                    write!(trace_text, "{}: " , i).unwrap();
+                    if let Some(name) = symbol.name() {
+                        write!(trace_text, "{}\n", name).unwrap();
+                    } else {
+                        write!(trace_text, "<unknown>\n").unwrap();
+                    }
+                    write!(trace_text, "\tat ").unwrap();
+                    if let Some(file_path) = symbol.filename() {
+                        write!(trace_text, "{}", file_path.display()).unwrap();
+                    } else {
+                        write!(trace_text, "<unknown_file>").unwrap();
+                    }
+                    if let Some(line) = symbol.lineno() {
+                        write!(trace_text, ":{}\n", line).unwrap();
+                    } else {
+                        write!(trace_text, "\n").unwrap();
                     }
                 }
             }
-            if skip_init {
-                continue;
-            }
-            write!(trace_text, "{}\n", i).unwrap();
-            for symbol in frame.symbols() {
-                if let Some(name) = symbol.name() {
-                    write!(trace_text, "# {}\n", name).unwrap();
-                } else {
-                    write!(trace_text, "# <unknown>\n").unwrap();
-                }
-                if let Some(file_path) = symbol.filename() {
-                    write!(trace_text, "{}", file_path.display()).unwrap();
-                } else {
-                    write!(trace_text, "<unknown_file>").unwrap();
-                }
-                if let Some(line) = symbol.lineno() {
-                    write!(trace_text, ":{}\n", line).unwrap();
-                } else {
-                    write!(trace_text, "\n").unwrap();
-                }
-            }
+            error!("{}", trace_text);
         }
-        trace!("{}", trace_text);
         if let Some(frame) = self.stack().last() {
             let block = &frame.mir.basic_blocks()[frame.block];
             let span = if frame.stmt < block.statements.len() {

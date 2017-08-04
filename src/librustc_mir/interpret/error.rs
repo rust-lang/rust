@@ -1,5 +1,5 @@
 use std::error::Error;
-use std::fmt;
+use std::{fmt, env};
 
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
@@ -15,14 +15,18 @@ use backtrace::Backtrace;
 #[derive(Debug)]
 pub struct EvalError<'tcx> {
     pub kind: EvalErrorKind<'tcx>,
-    pub backtrace: Backtrace,
+    pub backtrace: Option<Backtrace>,
 }
 
 impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
     fn from(kind: EvalErrorKind<'tcx>) -> Self {
+        let backtrace = match env::var("RUST_BACKTRACE") {
+            Ok(ref val) if !val.is_empty() => Some(Backtrace::new_unresolved()),
+            _ => None
+        };
         EvalError {
             kind,
-            backtrace: Backtrace::new(),
+            backtrace,
         }
     }
 }
