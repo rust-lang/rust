@@ -1187,11 +1187,15 @@ impl<'tcx> Operand<'tcx> {
         substs: &'tcx Substs<'tcx>,
         span: Span,
     ) -> Self {
+        let ty = tcx.type_of(def_id).subst(tcx, substs);
         Operand::Constant(box Constant {
             span,
-            ty: tcx.type_of(def_id).subst(tcx, substs),
+            ty,
             literal: Literal::Value {
-                value: tcx.mk_const(ConstVal::Function(def_id, substs))
+                value: tcx.mk_const(ty::Const {
+                    val: ConstVal::Function(def_id, substs),
+                    ty
+                })
             },
         })
     }
@@ -1480,7 +1484,7 @@ pub enum Literal<'tcx> {
         substs: &'tcx Substs<'tcx>,
     },
     Value {
-        value: &'tcx ConstVal<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
     },
     Promoted {
         // Index into the `promoted` vector of `Mir`.
@@ -1501,9 +1505,9 @@ impl<'tcx> Debug for Literal<'tcx> {
             Item { def_id, substs } => {
                 ppaux::parameterized(fmt, substs, def_id, &[])
             }
-            Value { ref value } => {
+            Value { value } => {
                 write!(fmt, "const ")?;
-                fmt_const_val(fmt, value)
+                fmt_const_val(fmt, &value.val)
             }
             Promoted { index } => {
                 write!(fmt, "{:?}", index)

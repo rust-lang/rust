@@ -197,7 +197,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         span: expr_span,
                         ty: this.hir.tcx().types.u32,
                         literal: Literal::Value {
-                            value: this.hir.tcx().mk_const(ConstVal::Integral(ConstInt::U32(0))),
+                            value: this.hir.tcx().mk_const(ty::Const {
+                                val: ConstVal::Integral(ConstInt::U32(0)),
+                                ty: this.hir.tcx().types.u32
+                            }),
                         },
                     }));
                     box AggregateKind::Generator(closure_id, substs, interior)
@@ -392,7 +395,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
 
                 Literal::Value {
-                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
                 }
             }
             _ => {
@@ -427,7 +433,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
 
                 Literal::Value {
-                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
                 }
             }
             _ => {

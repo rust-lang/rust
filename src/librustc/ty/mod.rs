@@ -64,7 +64,7 @@ pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
+pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
@@ -1601,7 +1601,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                 match tcx.const_eval(param_env.and((expr_did, substs))) {
-                    Ok(&ConstVal::Integral(v)) => {
+                    Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                         discr = v;
                     }
                     err => {
@@ -1641,7 +1641,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 ty::VariantDiscr::Explicit(expr_did) => {
                     let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                     match tcx.const_eval(param_env.and((expr_did, substs))) {
-                        Ok(&ConstVal::Integral(v)) => {
+                        Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                             explicit_value = v;
                             break;
                         }

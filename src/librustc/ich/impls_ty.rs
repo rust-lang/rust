@@ -277,10 +277,10 @@ for ::middle::const_val::ConstVal<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            Float(ref value) => {
+            Integral(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
-            Integral(ref value) => {
+            Float(ref value) => {
                 value.hash_stable(hcx, hasher);
             }
             Str(ref value) => {
@@ -323,6 +323,11 @@ for ::middle::const_val::ConstVal<'gcx> {
 
 impl_stable_hash_for!(struct ::middle::const_val::ByteArray<'tcx> {
     data
+});
+
+impl_stable_hash_for!(struct ty::Const<'tcx> {
+    ty,
+    val
 });
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_val::ConstVal;
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, Region, Ty, GeneratorInterior};
@@ -214,6 +213,18 @@ macro_rules! make_mir_visitor {
                 self.super_ty(ty);
             }
 
+            fn visit_region(&mut self,
+                            region: & $($mutability)* ty::Region<'tcx>,
+                            _: Location) {
+                self.super_region(region);
+            }
+
+            fn visit_const(&mut self,
+                           constant: & $($mutability)* &'tcx ty::Const<'tcx>,
+                           _: Location) {
+                self.super_const(constant);
+            }
+
             fn visit_substs(&mut self,
                             substs: & $($mutability)* &'tcx Substs<'tcx>,
                             _: Location) {
@@ -230,12 +241,6 @@ macro_rules! make_mir_visitor {
                                     interior: & $($mutability)* GeneratorInterior<'tcx>,
                                     _: Location) {
                 self.super_generator_interior(interior);
-            }
-
-            fn visit_const_val(&mut self,
-                               const_val: & $($mutability)* &'tcx ConstVal<'tcx>,
-                               _: Location) {
-                self.super_const_val(const_val);
             }
 
             fn visit_const_int(&mut self,
@@ -517,9 +522,10 @@ macro_rules! make_mir_visitor {
                         self.visit_const_usize(length, location);
                     }
 
-                    Rvalue::Ref(r, bk, ref $($mutability)* path) => {
+                    Rvalue::Ref(ref $($mutability)* r, bk, ref $($mutability)* path) => {
+                        self.visit_region(r, location);
                         self.visit_lvalue(path, LvalueContext::Borrow {
-                            region: r,
+                            region: *r,
                             kind: bk
                         }, location);
                     }
@@ -724,7 +730,7 @@ macro_rules! make_mir_visitor {
                         self.visit_substs(substs, location);
                     }
                     Literal::Value { ref $($mutability)* value } => {
-                        self.visit_const_val(value, location);
+                        self.visit_const(value, location);
                     }
                     Literal::Promoted { index: _ } => {}
                 }
@@ -749,6 +755,12 @@ macro_rules! make_mir_visitor {
             fn super_ty(&mut self, _ty: & $($mutability)* Ty<'tcx>) {
             }
 
+            fn super_region(&mut self, _region: & $($mutability)* ty::Region<'tcx>) {
+            }
+
+            fn super_const(&mut self, _const: & $($mutability)* &'tcx ty::Const<'tcx>) {
+            }
+
             fn super_substs(&mut self, _substs: & $($mutability)* &'tcx Substs<'tcx>) {
             }
 
@@ -758,9 +770,6 @@ macro_rules! make_mir_visitor {
 
             fn super_closure_substs(&mut self,
                                     _substs: & $($mutability)* ClosureSubsts<'tcx>) {
-            }
-
-            fn super_const_val(&mut self, _const_val: & $($mutability)* &'tcx ConstVal<'tcx>) {
             }
 
             fn super_const_int(&mut self, _const_int: &ConstInt) {

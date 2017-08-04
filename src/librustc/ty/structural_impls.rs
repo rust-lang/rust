@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use infer::type_variable;
+use middle::const_val::{ConstVal, ConstAggregate};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -1099,5 +1100,97 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             ProjectionMismatched(_) |
             ProjectionBoundsLength(_) => false,
         }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            ConstVal::Integral(i) => ConstVal::Integral(i),
+            ConstVal::Float(f) => ConstVal::Float(f),
+            ConstVal::Str(s) => ConstVal::Str(s),
+            ConstVal::ByteStr(b) => ConstVal::ByteStr(b),
+            ConstVal::Bool(b) => ConstVal::Bool(b),
+            ConstVal::Char(c) => ConstVal::Char(c),
+            ConstVal::Variant(def_id) => ConstVal::Variant(def_id),
+            ConstVal::Function(def_id, substs) => {
+                ConstVal::Function(def_id, substs.fold_with(folder))
+            }
+            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
+                let new_fields: Vec<_> = fields.iter().map(|&(name, v)| {
+                    (name, v.fold_with(folder))
+                }).collect();
+                let fields = if new_fields == fields {
+                    fields
+                } else {
+                    folder.tcx().alloc_name_const_slice(&new_fields)
+                };
+                ConstVal::Aggregate(ConstAggregate::Struct(fields))
+            }
+            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) => {
+                let new_fields: Vec<_> = fields.iter().map(|v| {
+                    v.fold_with(folder)
+                }).collect();
+                let fields = if new_fields == fields {
+                    fields
+                } else {
+                    folder.tcx().alloc_const_slice(&new_fields)
+                };
+                ConstVal::Aggregate(ConstAggregate::Tuple(fields))
+            }
+            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
+                let new_fields: Vec<_> = fields.iter().map(|v| {
+                    v.fold_with(folder)
+                }).collect();
+                let fields = if new_fields == fields {
+                    fields
+                } else {
+                    folder.tcx().alloc_const_slice(&new_fields)
+                };
+                ConstVal::Aggregate(ConstAggregate::Array(fields))
+            }
+            ConstVal::Aggregate(ConstAggregate::Repeat(v, count)) => {
+                let v = v.fold_with(folder);
+                ConstVal::Aggregate(ConstAggregate::Repeat(v, count))
+            }
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            ConstVal::Integral(_) |
+            ConstVal::Float(_) |
+            ConstVal::Str(_) |
+            ConstVal::ByteStr(_) |
+            ConstVal::Bool(_) |
+            ConstVal::Char(_) |
+            ConstVal::Variant(_) => false,
+            ConstVal::Function(_, substs) => substs.visit_with(visitor),
+            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
+                fields.iter().any(|&(_, v)| v.visit_with(visitor))
+            }
+            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
+            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
+                fields.iter().any(|v| v.visit_with(visitor))
+            }
+            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
+                v.visit_with(visitor)
+            }
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let ty = self.ty.fold_with(folder);
+        let val = self.val.fold_with(folder);
+        folder.tcx().mk_const(ty::Const {
+            ty,
+            val
+        })
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.ty.visit_with(visitor) || self.val.visit_with(visitor)
     }
 }

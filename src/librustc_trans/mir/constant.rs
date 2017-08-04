@@ -522,7 +522,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         MirConstContext::new(self.ccx, mir, self.substs, IndexVec::new()).trans()
                     }
                     mir::Literal::Value { value } => {
-                        Ok(Const::from_constval(self.ccx, value, ty))
+                        Ok(Const::from_constval(self.ccx, &value.val, ty))
                     }
                 }
             }
@@ -971,7 +971,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 MirConstContext::new(bcx.ccx, mir, self.param_substs, IndexVec::new()).trans()
             }
             mir::Literal::Value { value } => {
-                Ok(Const::from_constval(bcx.ccx, value, ty))
+                Ok(Const::from_constval(bcx.ccx, &value.val, ty))
             }
         };
 

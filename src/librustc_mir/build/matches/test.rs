@@ -112,8 +112,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      test_lvalue: &Lvalue<'tcx>,
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
-                                     options: &mut Vec<&'tcx ConstVal<'tcx>>,
-                                     indices: &mut FxHashMap<&'tcx ConstVal<'tcx>, usize>)
+                                     options: &mut Vec<&'tcx ty::Const<'tcx>>,
+                                     indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
@@ -228,7 +228,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     assert!(options.len() > 0 && options.len() <= 2);
                     let (true_bb, false_bb) = (self.cfg.start_new_block(),
                                                self.cfg.start_new_block());
-                    let ret = match *options[0] {
+                    let ret = match options[0].val {
                         ConstVal::Bool(true) => vec![true_bb, false_bb],
                         ConstVal::Bool(false) => vec![false_bb, true_bb],
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v)
@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                .chain(Some(otherwise))
                                .collect();
                     let values: Vec<_> = options.iter().map(|v|
-                        v.to_const_int().expect("switching on integral")
+                        v.val.to_const_int().expect("switching on integral")
                     ).collect();
                     (targets.clone(), TerminatorKind::SwitchInt {
                         discr: Operand::Consume(lvalue.clone()),
@@ -263,7 +263,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 // If we're using b"..." as a pattern, we need to insert an
                 // unsizing coercion, as the byte string has the type &[u8; N].
-                let expect = if let ConstVal::ByteStr(bytes) = *value {
+                let expect = if let ConstVal::ByteStr(bytes) = value.val {
                     let tcx = self.hir.tcx();
 
                     // Unsize the lvalue to &[u8], too, if necessary.

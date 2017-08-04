@@ -572,7 +572,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match operand {
             &Operand::Constant(box Constant {
                 literal: Literal::Value {
-                    value: &ConstVal::Function(def_id, _), ..
+                    value: &ty::Const { val: ConstVal::Function(def_id, _), .. }, ..
                 }, ..
             }) => {
                 Some(def_id) == self.tcx().lang_items().box_free_fn()

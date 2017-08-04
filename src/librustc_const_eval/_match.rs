@@ -182,13 +182,16 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         self.byte_array_map.entry(pat).or_insert_with(|| {
             match pat.kind {
                 box PatternKind::Constant {
-                    value: &ConstVal::ByteStr(b)
+                    value: &ty::Const { val: ConstVal::ByteStr(b), .. }
                 } => {
                     b.data.iter().map(|&b| &*pattern_arena.alloc(Pattern {
                         ty: tcx.types.u8,
                         span: pat.span,
                         kind: box PatternKind::Constant {
-                            value: tcx.mk_const(ConstVal::Integral(ConstInt::U8(b)))
+                            value: tcx.mk_const(ty::Const {
+                                val: ConstVal::Integral(ConstInt::U8(b)),
+                                ty: tcx.types.u8
+                            })
                         }
                     })).collect()
                 }
@@ -228,9 +231,9 @@ pub enum Constructor<'tcx> {
     /// Enum variants.
     Variant(DefId),
     /// Literal values.
-    ConstantValue(&'tcx ConstVal<'tcx>),
+    ConstantValue(&'tcx ty::Const<'tcx>),
     /// Ranges of literal values (`2...5` and `2..5`).
-    ConstantRange(&'tcx ConstVal<'tcx>, &'tcx ConstVal<'tcx>, RangeEnd),
+    ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// Array patterns of length n.
     Slice(usize),
 }
@@ -406,7 +409,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     match pcx.ty.sty {
         ty::TyBool => {
             [true, false].iter().map(|&b| {
-                ConstantValue(cx.tcx.mk_const(ConstVal::Bool(b)))
+                ConstantValue(cx.tcx.mk_const(ty::Const {
+                    val: ConstVal::Bool(b),
+                    ty: cx.tcx.types.bool
+                }))
             }).collect()
         }
         ty::TySlice(ref sub_ty) => {
@@ -514,7 +520,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant { value: &ConstVal::ByteStr(b) } => {
+            PatternKind::Constant { value: &ty::Const { val: ConstVal::ByteStr(b), .. } } => {
                 max_fixed_len = cmp::max(max_fixed_len, b.data.len());
             }
             PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
@@ -809,7 +815,7 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
                                     suffix: &[Pattern])
                                     -> Result<bool, ErrorReported> {
     let data = match *ctor {
-        ConstantValue(&ConstVal::ByteStr(b)) => b.data,
+        ConstantValue(&ty::Const { val: ConstVal::ByteStr(b), .. }) => b.data,
         _ => bug!()
     };
 
@@ -823,7 +829,7 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
             data[data.len()-suffix.len()..].iter().zip(suffix))
     {
         match pat.kind {
-            box PatternKind::Constant { value } => match *value {
+            box PatternKind::Constant { value } => match value.val {
                 ConstVal::Integral(ConstInt::U8(u)) => {
                     if u != *ch {
                         return Ok(false);
@@ -847,22 +853,22 @@ fn constructor_covered_by_range(tcx: TyCtxt, span: Span,
     let cmp_to = |c_to| compare_const_vals(tcx, span, c_to, to);
     match *ctor {
         ConstantValue(value) => {
-            let to = cmp_to(value)?;
+            let to = cmp_to(&value.val)?;
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Included && to == Ordering::Equal);
-            Ok(cmp_from(value)? && end)
+            Ok(cmp_from(&value.val)? && end)
         },
         ConstantRange(from, to, RangeEnd::Included) => {
-            let to = cmp_to(to)?;
+            let to = cmp_to(&to.val)?;
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Included && to == Ordering::Equal);
-            Ok(cmp_from(from)? && end)
+            Ok(cmp_from(&from.val)? && end)
         },
         ConstantRange(from, to, RangeEnd::Excluded) => {
-            let to = cmp_to(to)?;
+            let to = cmp_to(&to.val)?;
             let end = (to == Ordering::Less) ||
                       (end == RangeEnd::Excluded && to == Ordering::Equal);
-            Ok(cmp_from(from)? && end)
+            Ok(cmp_from(&from.val)? && end)
         }
         Single => Ok(true),
         _ => bug!(),
@@ -924,7 +930,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
 
         PatternKind::Constant { value } => {
             match *constructor {
-                Slice(..) => match *value {
+                Slice(..) => match value.val {
                     ConstVal::ByteStr(b) => {
                         if wild_patterns.len() == b.data.len() {
                             Some(cx.lower_byte_str_pattern(pat))
@@ -937,7 +943,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                 },
                 _ => {
                     match constructor_covered_by_range(
-                        cx.tcx, pat.span, constructor, value, value, RangeEnd::Included
+                        cx.tcx, pat.span, constructor, &value.val, &value.val, RangeEnd::Included
                             ) {
                         Ok(true) => Some(vec![]),
                         Ok(false) => None,
@@ -947,9 +953,9 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
             }
         }
 
-        PatternKind::Range { ref lo, ref hi, ref end } => {
+        PatternKind::Range { lo, hi, ref end } => {
             match constructor_covered_by_range(
-                cx.tcx, pat.span, constructor, lo, hi, end.clone()
+                cx.tcx, pat.span, constructor, &lo.val, &hi.val, end.clone()
             ) {
                 Ok(true) => Some(vec![]),
                 Ok(false) => None,

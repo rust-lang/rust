@@ -403,11 +403,15 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         );
 
         // `func == Clone::clone(&ty) -> ty`
+        let func_ty = tcx.mk_fn_def(self.def_id, substs);
         let func = Operand::Constant(box Constant {
             span: self.span,
-            ty: tcx.mk_fn_def(self.def_id, substs),
+            ty: func_ty,
             literal: Literal::Value {
-                value: tcx.mk_const(ConstVal::Function(self.def_id, substs)),
+                value: tcx.mk_const(ty::Const {
+                    val: ConstVal::Function(self.def_id, substs),
+                    ty: func_ty
+                }),
             },
         });
 
@@ -472,7 +476,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: self.tcx.types.usize,
             literal: Literal::Value {
-                value: self.tcx.mk_const(ConstVal::Integral(ConstInt::Usize(value)))
+                value: self.tcx.mk_const(ty::Const {
+                    val: ConstVal::Integral(ConstInt::Usize(value)),
+                    ty: self.tcx.types.usize,
+                })
             }
         }
     }
@@ -706,17 +713,21 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     let (callee, mut args) = match call_kind {
         CallKind::Indirect => (rcvr, vec![]),
-        CallKind::Direct(def_id) => (
-            Operand::Constant(box Constant {
+        CallKind::Direct(def_id) => {
+            let ty = tcx.type_of(def_id);
+            (Operand::Constant(box Constant {
                 span,
-                ty: tcx.type_of(def_id),
+                ty,
                 literal: Literal::Value {
-                    value: tcx.mk_const(ConstVal::Function(def_id,
-                        Substs::identity_for_item(tcx, def_id))),
+                    value: tcx.mk_const(ty::Const {
+                        val: ConstVal::Function(def_id,
+                            Substs::identity_for_item(tcx, def_id)),
+                        ty
+                    }),
                 },
-            }),
-            vec![rcvr]
-        )
+             }),
+             vec![rcvr])
+        }
     };
 
     if let Some(untuple_args) = untuple_args {

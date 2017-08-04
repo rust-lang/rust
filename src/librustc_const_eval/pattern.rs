@@ -83,12 +83,12 @@ pub enum PatternKind<'tcx> {
     },
 
     Constant {
-        value: &'tcx ConstVal<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
     },
 
     Range {
-        lo: &'tcx ConstVal<'tcx>,
-        hi: &'tcx ConstVal<'tcx>,
+        lo: &'tcx ty::Const<'tcx>,
+        hi: &'tcx ty::Const<'tcx>,
         end: RangeEnd,
     },
 
@@ -228,15 +228,15 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatternKind::Constant { value } => {
-                print_const_val(value, f)
+                print_const_val(&value.val, f)
             }
             PatternKind::Range { lo, hi, end } => {
-                print_const_val(lo, f)?;
+                print_const_val(&lo.val, f)?;
                 match end {
                     RangeEnd::Included => write!(f, "...")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
-                print_const_val(hi, f)
+                print_const_val(&hi.val, f)
             }
             PatternKind::Slice { ref prefix, ref slice, ref suffix } |
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -634,7 +634,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                                self.tables);
         match const_cx.eval(expr) {
             Ok(value) => {
-                if let ConstVal::Variant(def_id) = *value {
+                if let ConstVal::Variant(def_id) = value.val {
                     let ty = self.tables.expr_ty(expr);
                     self.lower_variant_or_leaf(Def::Variant(def_id), ty, vec![])
                 } else {
@@ -816,7 +816,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ConstVal<'tcx>,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }

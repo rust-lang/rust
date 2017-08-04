@@ -30,12 +30,12 @@ use syntax_pos::Span;
 
 use std::borrow::Cow;
 
-pub type EvalResult<'tcx> = Result<&'tcx ConstVal<'tcx>, ConstEvalErr<'tcx>>;
+pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
 
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub enum ConstVal<'tcx> {
-    Float(ConstFloat),
     Integral(ConstInt),
+    Float(ConstFloat),
     Str(InternedString),
     ByteStr(ByteArray<'tcx>),
     Bool(bool),
@@ -44,8 +44,6 @@ pub enum ConstVal<'tcx> {
     Function(DefId, &'tcx Substs<'tcx>),
     Aggregate(ConstAggregate<'tcx>),
 }
-
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx ConstVal<'tcx> {}
 
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, Eq, PartialEq)]
 pub struct ByteArray<'tcx> {
@@ -56,10 +54,10 @@ impl<'tcx> serialize::UseSpecializedDecodable for ByteArray<'tcx> {}
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum ConstAggregate<'tcx> {
-    Struct(&'tcx [(ast::Name, &'tcx ConstVal<'tcx>)]),
-    Tuple(&'tcx [&'tcx ConstVal<'tcx>]),
-    Array(&'tcx [&'tcx ConstVal<'tcx>]),
-    Repeat(&'tcx ConstVal<'tcx>, u64),
+    Struct(&'tcx [(ast::Name, &'tcx ty::Const<'tcx>)]),
+    Tuple(&'tcx [&'tcx ty::Const<'tcx>]),
+    Array(&'tcx [&'tcx ty::Const<'tcx>]),
+    Repeat(&'tcx ty::Const<'tcx>, u64),
 }
 
 impl<'tcx> Encodable for ConstAggregate<'tcx> {
@@ -259,7 +257,7 @@ pub fn eval_length(tcx: TyCtxt,
     let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
     let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
     match tcx.at(count_expr.span).const_eval(param_env.and((count_def_id, substs))) {
-        Ok(&Integral(Usize(count))) => {
+        Ok(&ty::Const { val: Integral(Usize(count)), .. }) => {
             let val = count.as_u64(tcx.sess.target.uint_type);
             assert_eq!(val as usize as u64, val);
             Ok(val as usize)

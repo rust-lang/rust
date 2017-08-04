@@ -115,7 +115,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
             Ok(val) => {
                 Literal::Value {
-                    value: self.tcx.mk_const(ConstVal::Integral(ConstInt::Usize(val)))
+                    value: self.tcx.mk_const(ty::Const {
+                        val: ConstVal::Integral(ConstInt::Usize(val)),
+                        ty: self.tcx.types.usize
+                    })
                 }
             }
             Err(_) => bug!("usize literal out of range for target"),
@@ -131,11 +134,21 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn true_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: self.tcx.mk_const(ConstVal::Bool(true)) }
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Bool(true),
+                ty: self.tcx.types.bool
+            })
+        }
     }
 
     pub fn false_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: self.tcx.mk_const(ConstVal::Bool(false)) }
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Bool(false),
+                ty: self.tcx.types.bool
+            })
+        }
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
@@ -186,7 +199,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let method_ty = method_ty.subst(self.tcx, substs);
                 return (method_ty,
                         Literal::Value {
-                            value: self.tcx.mk_const(ConstVal::Function(item.def_id, substs)),
+                            value: self.tcx.mk_const(ty::Const {
+                                val: ConstVal::Function(item.def_id, substs),
+                                ty: method_ty
+                            }),
                         });
             }
         }

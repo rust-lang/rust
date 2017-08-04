@@ -16,8 +16,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::const_val::ConstVal;
-use rustc::ty::{AdtDef, Ty};
+use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use rustc::hir;
 use hair::*;
@@ -294,20 +293,20 @@ pub struct MatchPair<'pat, 'tcx:'pat> {
 enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
-        adt_def: &'tcx AdtDef,
+        adt_def: &'tcx ty::AdtDef,
         variants: BitVector,
     },
 
     // test the branches of enum
     SwitchInt {
         switch_ty: Ty<'tcx>,
-        options: Vec<&'tcx ConstVal<'tcx>>,
-        indices: FxHashMap<&'tcx ConstVal<'tcx>, usize>,
+        options: Vec<&'tcx ty::Const<'tcx>>,
+        indices: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
     },
 
     // test for equality
     Eq {
-        value: &'tcx ConstVal<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
         ty: Ty<'tcx>,
     },
 

@@ -521,7 +521,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             span,
             ty: self.tcx.types.bool,
             literal: Literal::Value {
-                value: self.tcx.mk_const(ConstVal::Bool(val))
+                value: self.tcx.mk_const(ty::Const {
+                    val: ConstVal::Bool(val),
+                    ty: self.tcx.types.bool
+                })
             }
         })))
     }

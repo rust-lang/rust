@@ -89,7 +89,7 @@ pub struct ConstContext<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     substs: &'tcx Substs<'tcx>,
-    fn_args: Option<NodeMap<&'tcx ConstVal<'tcx>>>
+    fn_args: Option<NodeMap<&'tcx ty::Const<'tcx>>>
 }
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
@@ -121,7 +121,8 @@ type CastResult<'tcx> = Result<ConstVal<'tcx>, ErrKind<'tcx>>;
 fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                                      e: &'tcx Expr) -> EvalResult<'tcx> {
     let tcx = cx.tcx;
-    let ety = cx.tables.expr_ty(e).subst(tcx, cx.substs);
+    let ty = cx.tables.expr_ty(e).subst(tcx, cx.substs);
+    let mk_const = |val| tcx.mk_const(ty::Const { val, ty });
 
     let result = match e.node {
       hir::ExprUnary(hir::UnNeg, ref inner) => {
@@ -134,7 +135,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             const I32_OVERFLOW: u128 = i32::min_value() as u32 as u128;
             const I64_OVERFLOW: u128 = i64::min_value() as u64 as u128;
             const I128_OVERFLOW: u128 = i128::min_value() as u128;
-            let negated = match (&lit.node, &ety.sty) {
+            let negated = match (&lit.node, &ty.sty) {
                 (&LitKind::Int(I8_OVERFLOW, _), &ty::TyInt(IntTy::I8)) |
                 (&LitKind::Int(I8_OVERFLOW, Signed(IntTy::I8)), _) => {
                     Some(I8(i8::min_value()))
@@ -179,17 +180,17 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 _ => None
             };
             if let Some(i) = negated {
-                return Ok(tcx.mk_const(Integral(i)));
+                return Ok(mk_const(Integral(i)));
             }
         }
-        tcx.mk_const(match *cx.eval(inner)? {
+        mk_const(match cx.eval(inner)?.val {
           Float(f) => Float(-f),
           Integral(i) => Integral(math!(e, -i)),
           const_val => signal!(e, NegateOn(const_val)),
         })
       }
       hir::ExprUnary(hir::UnNot, ref inner) => {
-        tcx.mk_const(match *cx.eval(inner)? {
+        mk_const(match cx.eval(inner)?.val {
           Integral(i) => Integral(math!(e, !i)),
           Bool(b) => Bool(!b),
           const_val => signal!(e, NotOn(const_val)),
@@ -201,7 +202,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         // gives us a type through a type-suffix, cast or const def type
         // we need to re-eval the other value of the BinOp if it was
         // not inferred
-        tcx.mk_const(match (*cx.eval(a)?, *cx.eval(b)?) {
+        mk_const(match (cx.eval(a)?.val, cx.eval(b)?.val) {
           (Float(a), Float(b)) => {
             use std::cmp::Ordering::*;
             match op.node {
@@ -275,11 +276,11 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       hir::ExprCast(ref base, _) => {
         let base_val = cx.eval(base)?;
         let base_ty = cx.tables.expr_ty(base).subst(tcx, cx.substs);
-        if ety == base_ty {
+        if ty == base_ty {
             base_val
         } else {
-            match cast_const(tcx, *base_val, ety) {
-                Ok(val) => tcx.mk_const(val),
+            match cast_const(tcx, base_val.val, ty) {
+                Ok(val) => mk_const(val),
                 Err(kind) => signal!(e, kind),
             }
         }
@@ -301,13 +302,13 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                     }
               },
               Def::VariantCtor(variant_def, CtorKind::Const) => {
-                tcx.mk_const(Variant(variant_def))
+                mk_const(Variant(variant_def))
               }
               Def::VariantCtor(_, CtorKind::Fn) => {
                   signal!(e, UnimplementedConstVal("enum variants"));
               }
               Def::StructCtor(_, CtorKind::Const) => {
-                  tcx.mk_const(Aggregate(Struct(&[])))
+                  mk_const(Aggregate(Struct(&[])))
               }
               Def::StructCtor(_, CtorKind::Fn) => {
                   signal!(e, UnimplementedConstVal("tuple struct constructors"))
@@ -320,13 +321,13 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                       signal!(e, NonConstPath);
                   }
               },
-              Def::Method(id) | Def::Fn(id) => tcx.mk_const(Function(id, substs)),
+              Def::Method(id) | Def::Fn(id) => mk_const(Function(id, substs)),
               Def::Err => span_bug!(e.span, "typeck error"),
               _ => signal!(e, NonConstPath),
           }
       }
       hir::ExprCall(ref callee, ref args) => {
-          let (def_id, substs) = match *cx.eval(callee)? {
+          let (def_id, substs) = match cx.eval(callee)?.val {
               Function(def_id, substs) => (def_id, substs),
               _ => signal!(e, TypeckError),
           };
@@ -340,12 +341,12 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             match &tcx.item_name(def_id)[..] {
                 "size_of" => {
                     let size = layout_of(substs.type_at(0))?.size(tcx).bytes();
-                    return Ok(tcx.mk_const(Integral(Usize(ConstUsize::new(size,
+                    return Ok(mk_const(Integral(Usize(ConstUsize::new(size,
                         tcx.sess.target.uint_type).unwrap()))));
                 }
                 "min_align_of" => {
                     let align = layout_of(substs.type_at(0))?.align(tcx).abi();
-                    return Ok(tcx.mk_const(Integral(Usize(ConstUsize::new(align,
+                    return Ok(mk_const(Integral(Usize(ConstUsize::new(align,
                         tcx.sess.target.uint_type).unwrap()))));
                 }
                 _ => signal!(e, TypeckError)
@@ -394,23 +395,23 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           };
           callee_cx.eval(&body.value)?
       },
-      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety) {
-          Ok(val) => tcx.mk_const(val),
+      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ty) {
+          Ok(val) => mk_const(val),
           Err(err) => signal!(e, err),
       },
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => cx.eval(expr)?,
-            None => tcx.mk_const(Aggregate(Tuple(&[]))),
+            None => mk_const(Aggregate(Tuple(&[]))),
         }
       }
       hir::ExprType(ref e, _) => cx.eval(e)?,
       hir::ExprTup(ref fields) => {
         let values = fields.iter().map(|e| cx.eval(e)).collect::<Result<Vec<_>, _>>()?;
-        tcx.mk_const(Aggregate(Tuple(tcx.alloc_constval_slice(&values))))
+        mk_const(Aggregate(Tuple(tcx.alloc_const_slice(&values))))
       }
       hir::ExprStruct(_, ref fields, _) => {
-        tcx.mk_const(Aggregate(Struct(tcx.alloc_name_constval_slice(&fields.iter().map(|f| {
+        mk_const(Aggregate(Struct(tcx.alloc_name_const_slice(&fields.iter().map(|f| {
             cx.eval(&f.expr).map(|v| (f.name.node, v))
         }).collect::<Result<Vec<_>, _>>()?))))
       }
@@ -419,12 +420,12 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             signal!(e, IndexOpFeatureGated);
         }
         let arr = cx.eval(arr)?;
-        let idx = match *cx.eval(idx)? {
+        let idx = match cx.eval(idx)?.val {
             Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
             _ => signal!(idx, IndexNotUsize),
         };
         assert_eq!(idx as usize as u64, idx);
-        match *arr {
+        match arr.val {
             Aggregate(Array(v)) => {
                 if let Some(&elem) = v.get(idx as usize) {
                     elem
@@ -444,7 +445,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 signal!(e, IndexOutOfBounds { len: b.data.len() as u64, index: idx })
             }
             ByteStr(b) => {
-                tcx.mk_const(Integral(U8(b.data[idx as usize])))
+                mk_const(Integral(U8(b.data[idx as usize])))
             },
 
             _ => signal!(e, IndexedNonVec),
@@ -452,24 +453,24 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       }
       hir::ExprArray(ref v) => {
         let values = v.iter().map(|e| cx.eval(e)).collect::<Result<Vec<_>, _>>()?;
-        tcx.mk_const(Aggregate(Array(tcx.alloc_constval_slice(&values))))
+        mk_const(Aggregate(Array(tcx.alloc_const_slice(&values))))
       }
       hir::ExprRepeat(ref elem, _) => {
-          let n = match ety.sty {
+          let n = match ty.sty {
             ty::TyArray(_, n) => n as u64,
             _ => span_bug!(e.span, "typeck error")
           };
-          tcx.mk_const(Aggregate(Repeat(cx.eval(elem)?, n)))
+          mk_const(Aggregate(Repeat(cx.eval(elem)?, n)))
       },
       hir::ExprTupField(ref base, index) => {
-        if let Aggregate(Tuple(fields)) = *cx.eval(base)? {
+        if let Aggregate(Tuple(fields)) = cx.eval(base)?.val {
             fields[index.node]
         } else {
             signal!(base, ExpectedConstTuple);
         }
       }
       hir::ExprField(ref base, field_name) => {
-        if let Aggregate(Struct(fields)) = *cx.eval(base)? {
+        if let Aggregate(Struct(fields)) = cx.eval(base)?.val {
             if let Some(&(_, f)) = fields.iter().find(|&&(name, _)| name == field_name.node) {
                 f
             } else {
@@ -756,7 +757,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
                 return Err(ErrorReported);
             }
         };
-        compare_const_vals(tcx, span, &a, &b)
+        compare_const_vals(tcx, span, &a.val, &b.val)
     }
 }
 

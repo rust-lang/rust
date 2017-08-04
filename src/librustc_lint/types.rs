@@ -117,7 +117,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                                              cx.param_env.and(substs),
                                                              cx.tables);
                             match const_cx.eval(&r) {
-                                Ok(&ConstVal::Integral(i)) => {
+                                Ok(&ty::Const { val: ConstVal::Integral(i), .. }) => {
                                     i.is_negative() ||
                                     i.to_u64()
                                         .map(|i| i >= bits)

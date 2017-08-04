@@ -12,6 +12,7 @@
 
 use hir::def_id::DefId;
 
+use middle::const_val::ConstVal;
 use middle::region;
 use ty::subst::{Substs, Subst};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
@@ -1458,3 +1459,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 }
+
+/// Typed constant value.
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+pub struct Const<'tcx> {
+    pub ty: Ty<'tcx>,
+
+    // FIXME(eddyb) Replace this with a miri value.
+    pub val: ConstVal<'tcx>,
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}

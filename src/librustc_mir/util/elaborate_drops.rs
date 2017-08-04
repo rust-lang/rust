@@ -923,7 +923,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             span: self.source_info.span,
             ty: self.tcx().types.usize,
             literal: Literal::Value {
-                value: self.tcx().mk_const(ConstVal::Integral(self.tcx().const_usize(val)))
+                value: self.tcx().mk_const(ty::Const {
+                    val: ConstVal::Integral(self.tcx().const_usize(val)),
+                    ty: self.tcx().types.usize
+                })
             }
         })
     }

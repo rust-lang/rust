@@ -166,6 +166,26 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
         }
     }
 
+    fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
+        if let Some(lifted) = self.tcx.lift(region) {
+            *region = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found region `{:?}` with inference types/regions in MIR",
+                      region);
+        }
+    }
+
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
+        if let Some(lifted) = self.tcx.lift(constant) {
+            *constant = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found constant `{:?}` with inference types/regions in MIR",
+                      constant);
+        }
+    }
+
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, _: Location) {
         if let Some(lifted) = self.tcx.lift(substs) {
             *substs = lifted;

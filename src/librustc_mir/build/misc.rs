@@ -61,7 +61,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ty::TyChar => {
                 Literal::Value {
-                    value: self.hir.tcx().mk_const(ConstVal::Char('\0'))
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Char('\0'),
+                        ty
+                    })
                 }
             }
             ty::TyUint(ity) => {
@@ -79,7 +82,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
 
                 Literal::Value {
-                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
                 }
             }
             ty::TyInt(ity) => {
@@ -97,7 +103,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
 
                 Literal::Value {
-                    value: self.hir.tcx().mk_const(ConstVal::Integral(val))
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
                 }
             }
             _ => {
