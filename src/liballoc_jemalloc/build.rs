@@ -111,7 +111,7 @@ fn main() {
         cmd.arg("--with-jemalloc-prefix=je_");
     }
 
-    if cfg!(feature = "debug-jemalloc") {
+    if cfg!(feature = "debug") {
         cmd.arg("--enable-debug");
     }
 
