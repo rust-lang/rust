@@ -302,6 +302,16 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::U16x8,
             definition: Named("llvm.ppc.altivec.vpkuwus")
         },
+        "_vec_packsush" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
+            output: &::U8x16,
+            definition: Named("llvm.ppc.altivec.vpkshus")
+        },
+        "_vec_packsusw" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
+            output: &::U16x8,
+            definition: Named("llvm.ppc.altivec.vpkswus")
+        },
         _ => return None,
     })
 }
