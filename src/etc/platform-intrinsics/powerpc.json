@@ -86,6 +86,13 @@
             "llvm": "vsubcuw",
             "ret": "u32",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "add{0.kind}{0.data_type_short}s",
+            "width": [128],
+            "llvm": "vadd{0.kind}{0.data_type_short}s",
+            "ret": "i(8-32)",
+            "args": ["0", "0"]
         }
     ]
 }
