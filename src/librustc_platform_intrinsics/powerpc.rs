@@ -377,6 +377,21 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::I32x4,
             definition: Named("llvm.ppc.altivec.vsum2sws")
         },
+        "_vec_sum4sbs" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.ppc.altivec.vsum4sbs")
+        },
+        "_vec_sum4ubs" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U32x4]; &INPUTS },
+            output: &::U32x4,
+            definition: Named("llvm.ppc.altivec.vsum4ubs")
+        },
+        "_vec_sum4shs" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.ppc.altivec.vsum4shs")
+        },
         _ => return None,
     })
 }

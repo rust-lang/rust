@@ -198,6 +198,20 @@
             "llvm": "vsum2sws",
             "ret": "s32",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "sum4{0.kind}bs",
+            "width": [128],
+            "llvm": "vsum4{0.kind}bs",
+            "ret": "i32",
+            "args": ["0NN", "0"]
+        },
+        {
+            "intrinsic": "sum4shs",
+            "width": [128],
+            "llvm": "vsum4shs",
+            "ret": "s32",
+            "args": ["0N", "0"]
         }
     ]
 }
