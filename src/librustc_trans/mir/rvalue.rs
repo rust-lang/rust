@@ -122,8 +122,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     if common::val_ty(v) == Type::i8(bcx.ccx) {
                         let align = align.unwrap_or_else(|| bcx.ccx.align_of(tr_elem.ty));
                         let align = C_i32(bcx.ccx, align as i32);
-                        let fill = tr_elem.immediate();
-                        base::call_memset(&bcx, base, fill, size, align, false);
+                        base::call_memset(&bcx, base, v, size, align, false);
                         return bcx;
                     }
                 }
