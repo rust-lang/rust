@@ -36,11 +36,11 @@ match $val {
 [design]: #detailed-design
 
 1. Change the compiler error `irrefutable if-let-pattern` and similar patterns to an `error-by-default` lint that can be disabled by an `#[allow]` statement
-2. Proposed lint name: `irrefutable-let-pattern`
+2. Proposed lint name: `irrefutable_let_pattern`
 
 Code Example (explicit):
 ```rust
-#[allow(irrefutable-let-pattern)]
+#[allow(irrefutable_let_pattern)]
 if let _ = 'a' {
     println!("Hello World");
 }
@@ -50,7 +50,7 @@ Code Example (implicit):
 ```rust
 macro_rules! check_five {
     ($p:pat) => {{
-        #[allow(irrefutable-let-pattern)]
+        #[allow(irrefutable_let_pattern)]
         if let $p = 5 {
             println!("Pattern matches five");
         }
