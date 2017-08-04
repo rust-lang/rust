@@ -7,5 +7,6 @@ mod mapping;
 mod mismatch;
 mod translate;
 mod traverse;
+mod typeck;
 
 pub use self::traverse::run_analysis;
