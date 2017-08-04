@@ -537,7 +537,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                let def_id = self.mc.tables.type_dependent_defs[&call.id].def_id();
+                let def_id = self.mc.tables.type_dependent_defs[&call.hir_id.local_id].def_id();
                 match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                     FnMutOverloadedCall => {
                         let call_scope_r = self.tcx().node_scope_region(call.id);
@@ -863,7 +863,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 PatKind::Struct(ref qpath, ..) => qpath,
                 _ => return
             };
-            let def = mc.tables.qpath_def(qpath, pat.id);
+            let def = mc.tables.qpath_def(qpath, pat.hir_id);
             match def {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {

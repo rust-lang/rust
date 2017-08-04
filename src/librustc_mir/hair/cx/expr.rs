@@ -450,7 +450,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         hir::ExprPath(ref qpath) => {
-            let def = cx.tables().qpath_def(qpath, expr.id);
+            let def = cx.tables().qpath_def(qpath, expr.hir_id);
             convert_path_expr(cx, expr, def)
         }
 
@@ -580,7 +580,8 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  -> Expr<'tcx> {
     let temp_lifetime = cx.region_maps.temporary_scope(expr.id);
     let (def_id, substs) = custom_callee.unwrap_or_else(|| {
-        (cx.tables().type_dependent_defs[&expr.id].def_id(),
+        cx.tables().validate_hir_id(expr.hir_id);
+        (cx.tables().type_dependent_defs[&expr.hir_id.local_id].def_id(),
          cx.tables().node_substs(expr.id))
     });
     Expr {

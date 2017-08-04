@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             .or_insert(vec![]).push(autoref);
                     }
                 }
-                self.write_method_call(expr.id, method);
+                self.write_method_call((expr.id, expr.hir_id), method);
 
                 method.sig.output()
             }
@@ -340,7 +340,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
             Ok(method) => {
-                self.write_method_call(ex.id, method);
+                self.write_method_call((ex.id, ex.hir_id), method);
                 method.sig.output()
             }
             Err(()) => {

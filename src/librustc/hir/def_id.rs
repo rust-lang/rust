@@ -201,4 +201,11 @@ impl DefId {
     pub fn is_local(&self) -> bool {
         self.krate == LOCAL_CRATE
     }
+
+    pub fn invalid() -> DefId {
+        DefId {
+            krate: INVALID_CRATE,
+            index: CRATE_DEF_INDEX,
+        }
+    }
 }

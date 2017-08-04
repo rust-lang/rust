@@ -321,7 +321,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Path(ref qpath) => {
-                return self.lower_path(qpath, pat.id, pat.id, pat.span);
+                return self.lower_path(qpath, (pat.id, pat.hir_id), pat.id, pat.span);
             }
 
             PatKind::Ref(ref subpattern, _) |
@@ -417,7 +417,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
-                let def = self.tables.qpath_def(qpath, pat.id);
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt_def = match ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT"),
@@ -436,7 +436,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Struct(ref qpath, ref fields, _) => {
-                let def = self.tables.qpath_def(qpath, pat.id);
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt_def = match ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => {
@@ -590,12 +590,12 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
-                  id: ast::NodeId,
+                  (id, hir_id): (ast::NodeId, hir::HirId),
                   pat_id: ast::NodeId,
                   span: Span)
                   -> Pattern<'tcx> {
         let ty = self.tables.node_id_to_type(id);
-        let def = self.tables.qpath_def(qpath, id);
+        let def = self.tables.qpath_def(qpath, hir_id);
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
@@ -696,7 +696,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     _ => bug!()
                 };
                 let ty = self.tables.node_id_to_type(callee.id);
-                let def = self.tables.qpath_def(qpath, callee.id);
+                let def = self.tables.qpath_def(qpath, callee.hir_id);
                 match def {
                     Def::Fn(..) | Def::Method(..) => self.lower_lit(expr),
                     _ => {
@@ -712,7 +712,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             hir::ExprStruct(ref qpath, ref fields, None) => {
-                let def = self.tables.qpath_def(qpath, expr.id);
+                let def = self.tables.qpath_def(qpath, expr.hir_id);
                 let adt_def = match pat_ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => {
@@ -755,7 +755,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             hir::ExprPath(ref qpath) => {
-                return self.lower_path(qpath, expr.id, pat_id, span);
+                return self.lower_path(qpath, (expr.id, expr.hir_id), pat_id, span);
             }
 
             _ => self.lower_lit(expr)

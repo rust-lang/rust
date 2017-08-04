@@ -19,6 +19,7 @@ use syntax::ast;
 use syntax_pos::Span;
 use hir::{self, PatKind};
 use hir::def::Def;
+use hir::def_id::DefId;
 use hir::intravisit::{self, FnKind, Visitor, NestedVisitorMap};
 
 #[derive(Copy, Clone)]
@@ -165,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprMethodCall(..) => {
-                let def_id = self.tables.type_dependent_defs[&expr.id].def_id();
+                let def_id = self.tables.type_dependent_defs[&expr.hir_id.local_id].def_id();
                 let sig = self.tcx.fn_sig(def_id);
                 debug!("effect: method call case, signature is {:?}",
                         sig);
@@ -262,7 +263,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = EffectCheckVisitor {
         tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(DefId::invalid()),
         body_id: hir::BodyId { node_id: ast::CRATE_NODE_ID },
         unsafe_context: UnsafeContext::new(SafeContext),
     };

@@ -572,8 +572,16 @@ pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
                  -> InheritedBuilder<'a, 'gcx, 'tcx> {
+        let hir_id_root = if def_id.is_local() {
+            let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+            let hir_id = tcx.hir.definitions().node_to_hir_id(node_id);
+            DefId::local(hir_id.owner)
+        } else {
+            def_id
+        };
+
         InheritedBuilder {
-            infcx: tcx.infer_ctxt().with_fresh_in_progress_tables(),
+            infcx: tcx.infer_ctxt().with_fresh_in_progress_tables(hir_id_root),
             def_id,
         }
     }
@@ -840,7 +848,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     let body = tcx.hir.body(body_id);
 
-    Inherited::build(tcx, def_id).enter(|inh| {
+    let tables = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
         let fcx = if let Some(decl) = fn_decl {
             let fn_sig = tcx.fn_sig(def_id);
@@ -887,7 +895,13 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         fcx.resolve_type_vars_in_body(body)
-    })
+    });
+
+    // Consistency check our TypeckTables instance can hold all ItemLocalIds
+    // it will need to hold.
+    assert_eq!(tables.local_id_root,
+               DefId::local(tcx.hir.definitions().node_to_hir_id(id).owner));
+    tables
 }
 
 fn check_abi<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, abi: Abi) {
@@ -1804,8 +1818,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn write_method_call(&self, node_id: ast::NodeId, method: MethodCallee<'tcx>) {
-        self.tables.borrow_mut().type_dependent_defs.insert(node_id, Def::Method(method.def_id));
+    // The NodeId and the ItemLocalId must identify the same item. We just pass
+    // both of them for consistency checking.
+    pub fn write_method_call(&self,
+                             (node_id, hir_id): (ast::NodeId, hir::HirId),
+                             method: MethodCallee<'tcx>) {
+        {
+            let mut tables = self.tables.borrow_mut();
+            tables.validate_hir_id(hir_id);
+            tables.type_dependent_defs.insert(hir_id.local_id, Def::Method(method.def_id));
+        }
         self.write_substs(node_id, method.substs);
     }
 
@@ -2254,7 +2276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 self.apply_adjustments(base_expr, adjustments);
 
-                self.write_method_call(expr.id, method);
+                self.write_method_call((expr.id, expr.hir_id), method);
                 (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
             });
             if result.is_some() {
@@ -2794,7 +2816,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               expr,
                                               rcvr) {
             Ok(method) => {
-                self.write_method_call(expr.id, method);
+                self.write_method_call((expr.id, expr.hir_id), method);
                 Ok(method)
             }
             Err(error) => {
@@ -3499,7 +3521,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 }]);
                             }
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
-                            self.write_method_call(expr.id, method);
+                            self.write_method_call((expr.id, expr.hir_id), method);
                         } else {
                             type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
                                                "type `{}` cannot be dereferenced",
@@ -4000,7 +4022,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                    ty, def, segment);
 
                 // Write back the new resolution.
-                self.tables.borrow_mut().type_dependent_defs.insert(node_id, def);
+                let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+                let mut tables = self.tables.borrow_mut();
+                tables.validate_hir_id(hir_id);
+                tables.type_dependent_defs.insert(hir_id.local_id, def);
 
                 (def, ty)
             }
@@ -4041,7 +4066,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Write back the new resolution.
-        self.tables.borrow_mut().type_dependent_defs.insert(node_id, def);
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        let mut tables = self.tables.borrow_mut();
+        tables.validate_hir_id(hir_id);
+        tables.type_dependent_defs.insert(hir_id.local_id, def);
         (def, Some(ty), slice::ref_slice(&**item_segment))
     }
 

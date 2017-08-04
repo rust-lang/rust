@@ -465,6 +465,10 @@ impl Definitions {
         self.node_to_hir_id[node_id]
     }
 
+    pub fn find_node_for_hir_id(&self, hir_id: hir::HirId) -> ast::NodeId {
+        self.node_to_hir_id.binary_search(&hir_id).unwrap()
+    }
+
     /// Add a definition with a parent definition.
     pub fn create_root_def(&mut self,
                            crate_name: &str,

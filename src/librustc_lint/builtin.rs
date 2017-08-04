@@ -896,7 +896,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             match cx.tcx.hir.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        cx.tables.qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
                     };
@@ -934,7 +934,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
 
             // Check for method calls and overloaded operators.
             if cx.tables.is_method_call(expr) {
-                let def_id = cx.tables.type_dependent_defs[&id].def_id();
+                let local_id = cx.tcx.hir.definitions().node_to_hir_id(id).local_id;
+                let def_id = cx.tables.type_dependent_defs[&local_id].def_id();
                 let substs = cx.tables.node_substs(id);
                 if method_call_refers_to_method(cx, method, def_id, substs, id) {
                     return true;
@@ -945,7 +946,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             match expr.node {
                 hir::ExprCall(ref callee, _) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        cx.tables.qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
                     };
@@ -1179,7 +1180,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
             let def = if let hir::ExprPath(ref qpath) = expr.node {
-                cx.tables.qpath_def(qpath, expr.id)
+                cx.tables.qpath_def(qpath, expr.hir_id)
             } else {
                 return None;
             };

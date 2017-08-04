@@ -550,7 +550,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::MethodCall(..) => {
-                let method_id = self.tables.type_dependent_defs[&expr.id].def_id();
+                let local_id = self.tcx.hir.definitions().node_to_hir_id(expr.id).local_id;
+                let method_id = self.tables.type_dependent_defs[&local_id].def_id();
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),
@@ -586,7 +587,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::NodePat(&hir::Pat { node: hir::PatKind::Path(ref qpath), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::Struct(ref qpath, ..), .. }) |
             Node::NodePat(&hir::Pat { node: hir::PatKind::TupleStruct(ref qpath, ..), .. }) => {
-                self.tables.qpath_def(qpath, id)
+                let hir_id = self.tcx.hir.node_to_hir_id(id);
+                self.tables.qpath_def(qpath, hir_id)
             }
 
             Node::NodeLocal(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
@@ -975,7 +977,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
 
     let save_ctxt = SaveContext {
         tcx: tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(DefId::invalid()),
         analysis: analysis,
         span_utils: SpanUtils::new(&tcx.sess),
         config: find_config(config),

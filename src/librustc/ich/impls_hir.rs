@@ -359,6 +359,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::B
             ref stmts,
             ref expr,
             id,
+            hir_id: _,
             rules,
             span,
             targeted_by_break,
@@ -423,6 +424,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::P
 
         let hir::Pat {
             id,
+            hir_id: _,
             ref node,
             ref span
         } = *self;
@@ -551,6 +553,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::E
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Expr {
                 id,
+                hir_id: _,
                 ref span,
                 ref node,
                 ref attrs
@@ -1021,7 +1024,8 @@ impl_stable_hash_for!(enum hir::Stmt_ {
 
 impl_stable_hash_for!(struct hir::Arg {
     pat,
-    id
+    id,
+    hir_id
 });
 
 impl_stable_hash_for!(struct hir::Body {

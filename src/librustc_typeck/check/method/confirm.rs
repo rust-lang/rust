@@ -513,7 +513,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
         };
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
-        self.write_method_call(expr.id, method);
+        self.write_method_call((expr.id, expr.hir_id), method);
 
         let (region, mutbl) = if let ty::TyRef(r, mt) = method.sig.inputs()[0].sty {
             (r, mt.mutbl)

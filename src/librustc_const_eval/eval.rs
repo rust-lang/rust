@@ -276,7 +276,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       }
       hir::ExprPath(ref qpath) => {
         let substs = cx.tables.node_substs(e.id).subst(tcx, cx.substs);
-          match cx.tables.qpath_def(qpath, e.id) {
+          match cx.tables.qpath_def(qpath, e.hir_id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
                     match tcx.at(e.span).const_eval(cx.param_env.and((def_id, substs))) {

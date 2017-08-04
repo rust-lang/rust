@@ -43,7 +43,7 @@ use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 use hir;
-use hir::def_id::LOCAL_CRATE;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
 
@@ -986,7 +986,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let mut cx = LateContext {
         tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(DefId::invalid()),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
