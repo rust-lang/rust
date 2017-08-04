@@ -1265,3 +1265,54 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
         }
     }
 }
+
+
+/// Lint for casts from types other than `usize` or `isize` to raw pointers
+pub struct IntoToRawPtrCast;
+
+declare_lint! {
+    pub INT_TO_RAW_PTR_CAST,
+    Deny,
+    "cast from signed int other than `isize` to raw pointer"
+}
+
+impl LintPass for IntoToRawPtrCast {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(INT_TO_RAW_PTR_CAST)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntoToRawPtrCast {
+    fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
+        if let hir::ExprCast(ref base, _) = expr.node {
+            let base_ty = cx.tables.expr_ty(base);
+            let target_ty = cx.tables.expr_ty(expr);
+            if let ty::TyRawPtr(..) = target_ty.sty {
+                match base_ty.sty {
+                    ty::TyInt(ast::IntTy::Is) |
+                    ty::TyInt(ast::IntTy::I128) |
+                    ty::TyInt(ast::IntTy::I64) => return,
+                    ty::TyInt(ast::IntTy::I32) => {
+                        if cx.tcx.data_layout.pointer_size.bytes() <= 4 {
+                            return;
+                        }
+                    },
+                    ty::TyInt(ast::IntTy::I16) => {
+                        if cx.tcx.data_layout.pointer_size.bytes() <= 2 {
+                            return;
+                        }
+                    },
+                    // these we report
+                    ty::TyInt(_) => {},
+                    // only int casts are relevant
+                    _ => return,
+                }
+                cx.span_lint(
+                    INT_TO_RAW_PTR_CAST,
+                    expr.span,
+                    &format!("cast from `{}` to raw pointer", base_ty),
+                );
+            }
+        }
+    }
+}

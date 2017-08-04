@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(libc)]
+#![allow(int_to_raw_ptr_cast)]
 
 extern crate libc;
 
