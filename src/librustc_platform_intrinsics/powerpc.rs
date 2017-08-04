@@ -402,6 +402,11 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::F32x4,
             definition: Named("llvm.ppc.altivec.vmaddfp")
         },
+        "_vec_nmsub" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vnmsubfp")
+        },
         "_vec_expte" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
             output: &::F32x4,

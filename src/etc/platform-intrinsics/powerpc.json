@@ -228,6 +228,13 @@
             "args": ["0", "0", "0"]
         },
         {
+            "intrinsic": "nmsub",
+            "width": [128],
+            "llvm": "vnmsubfp",
+            "ret": "f32",
+            "args": ["0", "0", "0"]
+        },
+        {
             "intrinsic": "expte",
             "width": [128],
             "llvm": "vexptefp",
