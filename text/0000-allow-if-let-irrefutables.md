@@ -7,6 +7,7 @@
 [summary]: #summary
 
 Currently when using an if let statement and an irrefutable pattern (read always match) is used the compiler complains with an `E0162: irrefutable if-let pattern`.
+The current state breaks macros who want to accept patterns generically and this RFC proposes changing this error to an error-by-default which is allowed to be disabled by such macros.
 
 # Motivation
 [motivation]: #motivation
@@ -35,6 +36,27 @@ match $val {
 [design]: #detailed-design
 
 1. Change the compiler error `irrefutable if-let-pattern` and similar patterns to an `error-by-default` lint that can be disabled by an `#[allow]` statement
+2. Proposed lint name: `irrefutable-let-pattern`
+
+Code Example (explicit):
+```rust
+#[allow(irrefutable-let-pattern)]
+if let _ = 'a' {
+    println!("Hello World");
+}
+```
+
+Code Example (implicit):
+```rust
+macro_rules! check_five {
+    ($p:pat) => {{
+        #[allow(irrefutable-let-pattern)]
+        if let $p = 5 {
+            println!("Pattern matches five");
+        }
+    }};
+}
+```
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
