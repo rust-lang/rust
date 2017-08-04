@@ -413,8 +413,7 @@ impl Step for Rustc {
             t!(fs::create_dir_all(image.join("bin")));
             cp_r(&src.join("bin"), &image.join("bin"));
 
-            install(&builder.ensure(tool::Rustdoc { target_compiler: compiler }),
-                &image.join("bin"), 0o755);
+            install(&builder.rustdoc(compiler.host), &image.join("bin"), 0o755);
 
             // Copy runtime DLLs needed by the compiler
             if libdir != "bin" {

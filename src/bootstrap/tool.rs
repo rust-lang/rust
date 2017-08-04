@@ -236,7 +236,7 @@ impl Step for RemoteTestServer {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
-    pub target_compiler: Compiler,
+    pub host: Interned<String>,
 }
 
 impl Step for Rustdoc {
@@ -250,13 +250,13 @@ impl Step for Rustdoc {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Rustdoc {
-            target_compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            host: run.host,
         });
     }
 
     fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
-        let target_compiler = self.target_compiler;
+        let target_compiler = builder.compiler(builder.top_stage, self.host);
         let target = target_compiler.host;
         let build_compiler = if target_compiler.stage == 0 {
             builder.compiler(0, builder.build.build)
