@@ -144,7 +144,7 @@ use boxed::Box;
 /// # Deref
 ///
 /// `String`s implement [`Deref`]`<Target=str>`, and so inherit all of [`str`]'s
-/// methods. In addition, this means that you can pass a `String` to any
+/// methods. In addition, this means that you can pass a `String` to a
 /// function which takes a [`&str`] by using an ampersand (`&`):
 ///
 /// ```
@@ -160,8 +160,31 @@ use boxed::Box;
 ///
 /// This will create a [`&str`] from the `String` and pass it in. This
 /// conversion is very inexpensive, and so generally, functions will accept
-/// [`&str`]s as arguments unless they need a `String` for some specific reason.
+/// [`&str`]s as arguments unless they need a `String` for some specific
+/// reason.
 ///
+/// In certain cases Rust doesn't have enough information to make this conversion,
+/// known as deref coercion. For example, in this case a string slice implements
+/// a trait and the function takes anything that implements the trait, Rust would
+/// need to make two implicit conversions which Rust doesn't know how to do. The
+/// following example will not compile for that reason.
+///
+/// ```compile_fail,E0277
+/// trait TraitExample {}
+///
+/// impl<'a> TraitExample for &'a str {}
+///
+/// fn example_func<A: TraitExample>(example_arg: A) {}
+///
+/// fn main() {
+///     let example_string = String::from("example_string");
+///     example_func(&example_string);
+/// }
+/// ```
+///
+/// What would work in this case is changing the line `example_func(&example_string);`
+/// to `example_func(example_string.to_str());`. This works because we're doing the
+/// conversion explicitly, rather than relying on the implicit conversion.
 ///
 /// # Representation
 ///
