@@ -170,7 +170,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                          pick.clone(),
                                          segment);
 
-        if result.rerun {
+        if result.illegal_sized_bound {
             // We probe again, taking all traits into account (not only those in scope).
             let candidates =
                 match self.lookup_probe(span,

@@ -40,7 +40,7 @@ impl<'a, 'gcx, 'tcx> Deref for ConfirmContext<'a, 'gcx, 'tcx> {
 
 pub struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
-    pub rerun: bool,
+    pub illegal_sized_bound: bool,
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
@@ -99,12 +99,12 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
         // something which derefs to `Self` actually implements the trait and the caller
         // wanted to make a static dispatch on it but forgot to import the trait.
-        // See test `src/test/compile-fail/issue-35976.rs`.
+        // See test `src/test/ui/issue-35976.rs`.
         //
         // In that case, we'll error anyway, but we'll also re-run the search with all traits
         // in scope, and if we find another method which can be used, we'll output an
         // appropriate hint suggesting to import the trait.
-        let rerun = self.predicates_require_illegal_sized_bound(&method_predicates);
+        let illegal_sized_bound = self.predicates_require_illegal_sized_bound(&method_predicates);
 
         // Unify the (adjusted) self type with what the method expects.
         self.unify_receivers(self_ty, method_sig.inputs()[0]);
@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
-        if !rerun {
+        if !illegal_sized_bound {
             let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
             self.add_obligations(method_ty, all_substs, &method_predicates);
         }
@@ -128,7 +128,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             self.convert_lvalue_derefs_to_mutable();
         }
 
-        ConfirmResult { callee, rerun }
+        ConfirmResult { callee, illegal_sized_bound }
     }
 
     ///////////////////////////////////////////////////////////////////////////
