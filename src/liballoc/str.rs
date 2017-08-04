@@ -330,7 +330,7 @@ impl str {
     /// ```
     /// let mut v = String::from("🗻∈🌏");
     ///
-    /// assert_eq!(Some("🗻"), v.get(0..4);
+    /// assert_eq!(Some("🗻"), v.get(0..4));
     ///
     /// // indices not on UTF-8 sequence boundaries
     /// assert!(v.get_mut(1..).is_none());
@@ -573,12 +573,16 @@ impl str {
     /// Basic usage:
     ///
     /// ```
+    /// use std::ascii::AsciiExt;
+    ///
     /// let mut s = "Per Martin-Löf".to_string();
-    ///
-    /// let (first, last) = s.split_at_mut(3);
-    ///
-    /// assert_eq!("Per", first);
-    /// assert_eq!(" Martin-Löf", last);
+    /// {
+    ///     let (first, last) = s.split_at_mut(3);
+    ///     first.make_ascii_uppercase();
+    ///     assert_eq!("PER", first);
+    ///     assert_eq!(" Martin-Löf", last);
+    /// }
+    /// assert_eq!("PER Martin-Löf", s);
     /// ```
     #[inline]
     #[stable(feature = "str_split_at", since = "1.4.0")]
