@@ -31,8 +31,9 @@ use rewrite::{Rewrite, RewriteContext};
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{binary_search, colon_spaces, contains_skip, extra_offset, first_line_width,
-            last_line_extendable, last_line_width, left_most_sub_expr, mk_sp, paren_overhead,
-            semicolon_for_stmt, stmt_expr, trimmed_last_line_width, wrap_str};
+            inner_attributes, last_line_extendable, last_line_width, left_most_sub_expr, mk_sp,
+            outer_attributes, paren_overhead, semicolon_for_stmt, stmt_expr,
+            trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -54,15 +55,13 @@ fn combine_attr_and_expr(
     expr: &ast::Expr,
     expr_str: &str,
 ) -> Option<String> {
-    let attr_str = try_opt!((&*expr.attrs).rewrite(context, shape));
+    let attrs = outer_attributes(&expr.attrs);
+    let attr_str = try_opt!(attrs.rewrite(context, shape));
     let separator = if attr_str.is_empty() {
         String::new()
     } else {
         // Try to recover comments between the attributes and the expression if available.
-        let missing_snippet = context.snippet(mk_sp(
-            expr.attrs[expr.attrs.len() - 1].span.hi,
-            expr.span.lo,
-        ));
+        let missing_snippet = context.snippet(mk_sp(attrs[attrs.len() - 1].span.hi, expr.span.lo));
         let comment_opening_pos = missing_snippet.chars().position(|c| c == '/');
         let prefer_same_line = if let Some(pos) = comment_opening_pos {
             !missing_snippet[..pos].contains('\n')
@@ -198,7 +197,7 @@ pub fn format_expr(
             }
         }
         ast::ExprKind::Match(ref cond, ref arms) => {
-            rewrite_match(context, cond, arms, shape, expr.span)
+            rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
             rewrite_path(context, PathContext::Expr, qself.as_ref(), path, shape)
@@ -1531,6 +1530,7 @@ fn rewrite_match(
     arms: &[ast::Arm],
     shape: Shape,
     span: Span,
+    attrs: &[ast::Attribute],
 ) -> Option<String> {
     if arms.is_empty() {
         return None;
@@ -1558,11 +1558,42 @@ fn rewrite_match(
         _ => " ",
     };
 
+    let nested_indent_str = shape
+        .indent
+        .block_indent(context.config)
+        .to_string(context.config);
+    // Inner attributes.
+    let inner_attrs = &inner_attributes(attrs);
+    let inner_attrs_str = if inner_attrs.is_empty() {
+        String::new()
+    } else {
+        try_opt!(
+            inner_attrs
+                .rewrite(context, shape)
+                .map(|s| format!("\n{}{}", nested_indent_str, s))
+        )
+    };
+
+    let open_brace_pos = if inner_attrs.is_empty() {
+        context
+            .codemap
+            .span_after(mk_sp(cond.span.hi, arms[0].span().lo), "{")
+    } else {
+        inner_attrs[inner_attrs.len() - 1].span().hi
+    };
+
     Some(format!(
-        "match {}{}{{{}\n{}}}",
+        "match {}{}{{{}{}\n{}}}",
         cond_str,
         block_sep,
-        try_opt!(rewrite_match_arms(context, arms, shape, span, cond.span.hi)),
+        inner_attrs_str,
+        try_opt!(rewrite_match_arms(
+            context,
+            arms,
+            shape,
+            span,
+            open_brace_pos,
+        )),
         shape.indent.to_string(context.config),
     ))
 }
@@ -1586,7 +1617,7 @@ fn rewrite_match_arms(
     arms: &[ast::Arm],
     shape: Shape,
     span: Span,
-    cond_end_pos: BytePos,
+    open_brace_pos: BytePos,
 ) -> Option<String> {
     let mut result = String::new();
 
@@ -1596,10 +1627,6 @@ fn rewrite_match_arms(
         shape.block_indent(0)
     }.with_max_width(context.config);
     let arm_indent_str = arm_shape.indent.to_string(context.config);
-
-    let open_brace_pos = context
-        .codemap
-        .span_after(mk_sp(cond_end_pos, arms[0].span().lo), "{");
 
     let arm_num = arms.len();
     for (i, arm) in arms.iter().enumerate() {
