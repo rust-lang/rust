@@ -283,7 +283,7 @@ fn use_foo_outside_mod() {
 
     // Because we're outside `my_mod`, using a value of type `Foo` as anything
     // other than `impl Debug` is an error:
-    let y: i32 = foo(); // ERROR: expected type `i32`, found type `Foo`
+    let y: i32 = my_mod::foo(); // ERROR: expected type `i32`, found type `Foo`
 }
 ```
 
