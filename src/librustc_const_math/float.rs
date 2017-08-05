@@ -9,102 +9,164 @@
 // except according to those terms.
 
 use std::cmp::Ordering;
-use std::hash;
-use std::mem::transmute;
+use std::num::ParseFloatError;
+
+use syntax::ast;
+
+use rustc_apfloat::{Float, FloatConvert, Status};
+use rustc_apfloat::ieee::{Single, Double};
 
 use super::err::*;
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum ConstFloat {
-    F32(f32),
-    F64(f64)
+// Note that equality for `ConstFloat` means that the it is the same
+// constant, not that the rust values are equal. In particular, `NaN
+// == NaN` (at least if it's the same NaN; distinct encodings for NaN
+// are considering unequal).
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct ConstFloat {
+    pub ty: ast::FloatTy,
+
+    // This is a bit inefficient but it makes conversions below more
+    // ergonomic, and all of this will go away once `miri` is merged.
+    pub bits: u128,
 }
-pub use self::ConstFloat::*;
 
 impl ConstFloat {
     /// Description of the type, not the value
     pub fn description(&self) -> &'static str {
-        match *self {
-            F32(_) => "f32",
-            F64(_) => "f64",
-        }
+        self.ty.ty_to_string()
     }
 
     pub fn is_nan(&self) -> bool {
-        match *self {
-            F32(f) => f.is_nan(),
-            F64(f) => f.is_nan(),
+        match self.ty {
+            ast::FloatTy::F32 => Single::from_bits(self.bits).is_nan(),
+            ast::FloatTy::F64 => Double::from_bits(self.bits).is_nan(),
         }
     }
 
     /// Compares the values if they are of the same type
     pub fn try_cmp(self, rhs: Self) -> Result<Ordering, ConstMathErr> {
-        match (self, rhs) {
-            (F64(a), F64(b))  => {
+        match (self.ty, rhs.ty) {
+            (ast::FloatTy::F64, ast::FloatTy::F64)  => {
+                let a = Double::from_bits(self.bits);
+                let b = Double::from_bits(rhs.bits);
                 // This is pretty bad but it is the existing behavior.
-                Ok(if a == b {
-                    Ordering::Equal
-                } else if a < b {
-                    Ordering::Less
-                } else {
-                    Ordering::Greater
-                })
+                Ok(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
             }
 
-            (F32(a), F32(b)) => {
-                Ok(if a == b {
-                    Ordering::Equal
-                } else if a < b {
-                    Ordering::Less
-                } else {
-                    Ordering::Greater
-                })
+            (ast::FloatTy::F32, ast::FloatTy::F32) => {
+                let a = Single::from_bits(self.bits);
+                let b = Single::from_bits(rhs.bits);
+                Ok(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
             }
 
             _ => Err(CmpBetweenUnequalTypes),
         }
     }
-}
 
-/// Note that equality for `ConstFloat` means that the it is the same
-/// constant, not that the rust values are equal. In particular, `NaN
-/// == NaN` (at least if it's the same NaN; distinct encodings for NaN
-/// are considering unequal).
-impl PartialEq for ConstFloat {
-    fn eq(&self, other: &Self) -> bool {
-        match (*self, *other) {
-            (F64(a), F64(b)) => {
-                unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)}
+    pub fn from_i128(input: i128, ty: ast::FloatTy) -> Self {
+        let bits = match ty {
+            ast::FloatTy::F32 => Single::from_i128(input).value.to_bits(),
+            ast::FloatTy::F64 => Double::from_i128(input).value.to_bits()
+        };
+        ConstFloat { bits, ty }
+    }
+
+    pub fn from_u128(input: u128, ty: ast::FloatTy) -> Self {
+        let bits = match ty {
+            ast::FloatTy::F32 => Single::from_u128(input).value.to_bits(),
+            ast::FloatTy::F64 => Double::from_u128(input).value.to_bits()
+        };
+        ConstFloat { bits, ty }
+    }
+
+    pub fn from_str(num: &str, ty: ast::FloatTy) -> Result<Self, ParseFloatError> {
+        let bits = match ty {
+            ast::FloatTy::F32 => {
+                let rust_bits = num.parse::<f32>()?.to_bits() as u128;
+                let apfloat = num.parse::<Single>().unwrap_or_else(|e| {
+                    panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e);
+                });
+                let apfloat_bits = apfloat.to_bits();
+                assert!(rust_bits == apfloat_bits,
+                    "apfloat::ieee::Single gave different result for `{}`: \
+                     {}({:#x}) vs Rust's {}({:#x})",
+                    num, apfloat, apfloat_bits,
+                    Single::from_bits(rust_bits), rust_bits);
+                apfloat_bits
             }
-            (F32(a), F32(b)) => {
-                unsafe{transmute::<_,u32>(a) == transmute::<_,u32>(b)}
+            ast::FloatTy::F64 => {
+                let rust_bits = num.parse::<f64>()?.to_bits() as u128;
+                let apfloat = num.parse::<Double>().unwrap_or_else(|e| {
+                    panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e);
+                });
+                let apfloat_bits = apfloat.to_bits();
+                assert!(rust_bits == apfloat_bits,
+                    "apfloat::ieee::Double gave different result for `{}`: \
+                     {}({:#x}) vs Rust's {}({:#x})",
+                    num, apfloat, apfloat_bits,
+                    Double::from_bits(rust_bits), rust_bits);
+                apfloat_bits
             }
-            _ => false
+        };
+        Ok(ConstFloat { bits, ty })
+    }
+
+    pub fn to_i128(self, width: usize) -> Option<i128> {
+        assert!(width <= 128);
+        let r = match self.ty {
+            ast::FloatTy::F32 => Single::from_bits(self.bits).to_i128(width),
+            ast::FloatTy::F64 => Double::from_bits(self.bits).to_i128(width)
+        };
+        if r.status.intersects(Status::INVALID_OP) {
+            None
+        } else {
+            Some(r.value)
         }
     }
-}
 
-impl Eq for ConstFloat {}
-
-impl hash::Hash for ConstFloat {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        match *self {
-            F64(a) => {
-                unsafe { transmute::<_,u64>(a) }.hash(state)
-            }
-            F32(a) => {
-                unsafe { transmute::<_,u32>(a) }.hash(state)
-            }
+    pub fn to_u128(self, width: usize) -> Option<u128> {
+        assert!(width <= 128);
+        let r = match self.ty {
+            ast::FloatTy::F32 => Single::from_bits(self.bits).to_u128(width),
+            ast::FloatTy::F64 => Double::from_bits(self.bits).to_u128(width)
+        };
+        if r.status.intersects(Status::INVALID_OP) {
+            None
+        } else {
+            Some(r.value)
         }
+    }
+
+    pub fn convert(self, to: ast::FloatTy) -> Self {
+        let bits = match (self.ty, to) {
+            (ast::FloatTy::F32, ast::FloatTy::F32) |
+            (ast::FloatTy::F64, ast::FloatTy::F64) => return self,
+
+            (ast::FloatTy::F32, ast::FloatTy::F64) => {
+                Double::to_bits(Single::from_bits(self.bits).convert(&mut false).value)
+            }
+            (ast::FloatTy::F64, ast::FloatTy::F32) => {
+                Single::to_bits(Double::from_bits(self.bits).convert(&mut false).value)
+            }
+        };
+        ConstFloat { bits, ty: to }
     }
 }
 
 impl ::std::fmt::Display for ConstFloat {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-        match *self {
-            F32(f) => write!(fmt, "{}f32", f),
-            F64(f) => write!(fmt, "{}f64", f),
+        match self.ty {
+            ast::FloatTy::F32 => write!(fmt, "{:#}", Single::from_bits(self.bits))?,
+            ast::FloatTy::F64 => write!(fmt, "{:#}", Double::from_bits(self.bits))?,
         }
+        write!(fmt, "{}", self.ty)
+    }
+}
+
+impl ::std::fmt::Debug for ConstFloat {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        ::std::fmt::Display::fmt(self, fmt)
     }
 }
 
@@ -113,11 +175,20 @@ macro_rules! derive_binop {
         impl ::std::ops::$op for ConstFloat {
             type Output = Result<Self, ConstMathErr>;
             fn $func(self, rhs: Self) -> Result<Self, ConstMathErr> {
-                match (self, rhs) {
-                    (F32(a), F32(b)) => Ok(F32(a.$func(b))),
-                    (F64(a), F64(b)) => Ok(F64(a.$func(b))),
-                    _ => Err(UnequalTypes(Op::$op)),
-                }
+                let bits = match (self.ty, rhs.ty) {
+                    (ast::FloatTy::F32, ast::FloatTy::F32) =>{
+                        let a = Single::from_bits(self.bits);
+                        let b = Single::from_bits(rhs.bits);
+                        a.$func(b).value.to_bits()
+                    }
+                    (ast::FloatTy::F64, ast::FloatTy::F64) => {
+                        let a = Double::from_bits(self.bits);
+                        let b = Double::from_bits(rhs.bits);
+                        a.$func(b).value.to_bits()
+                    }
+                    _ => return Err(UnequalTypes(Op::$op)),
+                };
+                Ok(ConstFloat { bits, ty: self.ty })
             }
         }
     }
@@ -132,9 +203,10 @@ derive_binop!(Rem, rem);
 impl ::std::ops::Neg for ConstFloat {
     type Output = Self;
     fn neg(self) -> Self {
-        match self {
-            F32(f) => F32(-f),
-            F64(f) => F64(-f),
-        }
+        let bits = match self.ty {
+            ast::FloatTy::F32 => (-Single::from_bits(self.bits)).to_bits(),
+            ast::FloatTy::F64 => (-Double::from_bits(self.bits)).to_bits(),
+        };
+        ConstFloat { bits, ty: self.ty }
     }
 }
