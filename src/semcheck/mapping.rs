@@ -202,7 +202,8 @@ impl IdMapping {
             self.reverse_mapping
                 .get(&new)
                 .cloned()
-                .or(self.current_match
+                .or_else(||
+                    self.current_match
                         .get()
                         .and_then(|p| if p.1 == new { Some(p.0) } else { None }))
         } else {

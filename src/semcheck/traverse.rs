@@ -690,7 +690,7 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                parent_output && orig_assoc_item.vis == Public);
 
             let target_impls = if let Some(impls) = forward_trans
-                .translate_inherent_entry(&orig_item)
+                .translate_inherent_entry(orig_item)
                 .and_then(|item| id_mapping.get_inherent_impls(&item))
             {
                 impls
@@ -951,15 +951,15 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         }
 
         let (orig, target) = match (orig_item.kind, target_item.kind) {
-            (AssociatedKind::Const, AssociatedKind::Const) => {
+            (AssociatedKind::Const, AssociatedKind::Const) |
+            (AssociatedKind::Type, AssociatedKind::Type) => {
                 (infcx.tcx.type_of(orig_item_def_id), infcx.tcx.type_of(target_item_def_id))
             },
             (AssociatedKind::Method, AssociatedKind::Method) => {
                 diff_method(changes, tcx, orig_item, target_item);
-                (infcx.tcx.type_of(orig_item_def_id), infcx.tcx.type_of(target_item_def_id))
-            },
-            (AssociatedKind::Type, AssociatedKind::Type) => {
-                (infcx.tcx.type_of(orig_item_def_id), infcx.tcx.type_of(target_item_def_id))
+                let orig_sig = infcx.tcx.type_of(orig_item_def_id).fn_sig(tcx);
+                let target_sig = infcx.tcx.type_of(target_item_def_id).fn_sig(tcx);
+                (tcx.mk_fn_ptr(orig_sig), tcx.mk_fn_ptr(target_sig))
             },
             _ => {
                 unreachable!();

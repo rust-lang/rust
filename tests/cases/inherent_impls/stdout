@@ -9,6 +9,24 @@ warning: breaking changes in `def`
    |
    = warning: removed item in inherent impl (breaking)
 
+warning: breaking changes in `def`
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:27:5
+   |
+27 | /     pub fn def(&self) -> u8 {
+28 | |         0
+29 | |     }
+   | |_____^
+   |
+   = warning: type error: expected u8, found u16 (breaking)
+
+warning: breaking changes in `ghi`
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:31:5
+   |
+31 |     pub fn ghi() { }
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = warning: removed item in inherent impl (breaking)
+
 warning: technically breaking changes in `abc`
   --> $REPO_PATH/tests/cases/inherent_impls/new.rs:25:5
    |

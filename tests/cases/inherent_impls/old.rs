@@ -27,4 +27,8 @@ impl Def<u8> {
     pub fn def(&self) -> u8 {
         0
     }
+
+    pub fn ghi() { }
+
+    fn ghi2() { }
 }
