@@ -355,6 +355,24 @@ fn get_foo<T: Debug>(x: T) -> Foo<T> {
 }
 ```
 
+`impl Trait` can also appear inside of another type in a type alias:
+
+```rust
+type Foo = Option<impl Debug>;
+fn foo() -> Foo {
+    Some("Debuggable")
+}
+```
+
+Or even multiple times within the same type alias:
+
+```rust
+type Foo = (impl Debug, impl Fn());
+fn foo() -> Foo {
+    ("Debuggable", || println!("Hello, world!"))
+}
+```
+
 # Reference-Level Explanation
 [reference]: #reference
 
@@ -541,6 +559,24 @@ The current RFC will also help us to gain experience with how people use
 `impl Trait` in practice, allowing us to resolve some remaining questions
 in the linked draft, specifically around how `impl Trait` associated types
 are used.
+
+There are a number of alternative syntaxes we could use for `impl Trait`
+aliases:
+- `abstype / abstract type Foo: Trait;`: Suggested in
+[RFC 1951](https://github.com/rust-lang/rfcs/blob/master/text/1951-expand-impl-trait.md),
+this syntax has the potential advantage of being able to specify constraints
+such as `abstract type Foo: Trait = MyType;`, which provides module-level
+abstraction without relying upon module-level inference.
+- `type Foo: Trait;`: This option also has the "abstraction without inference"
+advantage. However, it doesn't include an easily searchable keyword like
+`abstract/abstype/impl`, so it might be hard for users to discover what's going
+on when they first encounter this syntax.
+- `type Foo = impl Trait;`: This is the syntax option I've used in this RFC.
+It is the only option which doesn't allow for "abstraction without inference",
+but it is also the only option which allows for "composite" `impl Trait` types
+such as `type Foo = (impl Debug, impl Fn());`. It also bears a syntactic
+resemblance to the `impl Trait` feature, which should make it easy for new users
+to identify and understand.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
