@@ -97,6 +97,25 @@ pub fn format_abi(abi: abi::Abi, explicit_abi: bool) -> String {
     }
 }
 
+#[inline]
+pub fn filter_attributes(attrs: &[ast::Attribute], style: ast::AttrStyle) -> Vec<ast::Attribute> {
+    attrs
+        .iter()
+        .filter(|a| a.style == style)
+        .cloned()
+        .collect::<Vec<_>>()
+}
+
+#[inline]
+pub fn inner_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
+    filter_attributes(attrs, ast::AttrStyle::Inner)
+}
+
+#[inline]
+pub fn outer_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
+    filter_attributes(attrs, ast::AttrStyle::Outer)
+}
+
 // The width of the first line in s.
 #[inline]
 pub fn first_line_width(s: &str) -> usize {

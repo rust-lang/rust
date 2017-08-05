@@ -46,7 +46,7 @@ use checkstyle::{output_footer, output_header};
 use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
-use utils::mk_sp;
+use utils::{mk_sp, outer_attributes};
 use visitor::FmtVisitor;
 
 pub use self::summary::Summary;
@@ -81,13 +81,33 @@ pub trait Spanned {
     fn span(&self) -> Span;
 }
 
+macro_rules! span_with_attrs_lo_hi {
+    ($this:ident, $lo:expr, $hi:expr) => {
+        {
+            let attrs = outer_attributes(&$this.attrs);
+            if attrs.is_empty() {
+                mk_sp($lo, $hi)
+            } else {
+                mk_sp(attrs[0].span.lo, $hi)
+            }
+        }
+    }
+}
+macro_rules! span_with_attrs {
+    ($this:ident) => {
+        span_with_attrs_lo_hi!($this, $this.span.lo, $this.span.hi)
+    }
+}
+
 impl Spanned for ast::Expr {
     fn span(&self) -> Span {
-        if self.attrs.is_empty() {
-            self.span
-        } else {
-            mk_sp(self.attrs[0].span.lo, self.span.hi)
-        }
+        span_with_attrs!(self)
+    }
+}
+
+impl Spanned for ast::Item {
+    fn span(&self) -> Span {
+        span_with_attrs!(self)
     }
 }
 
@@ -117,12 +137,7 @@ impl Spanned for ast::Ty {
 
 impl Spanned for ast::Arm {
     fn span(&self) -> Span {
-        let hi = self.body.span.hi;
-        if self.attrs.is_empty() {
-            mk_sp(self.pats[0].span.lo, hi)
-        } else {
-            mk_sp(self.attrs[0].span.lo, hi)
-        }
+        span_with_attrs_lo_hi!(self, self.pats[0].span.lo, self.body.span.hi)
     }
 }
 
@@ -138,23 +153,13 @@ impl Spanned for ast::Arg {
 
 impl Spanned for ast::StructField {
     fn span(&self) -> Span {
-        if self.attrs.is_empty() {
-            mk_sp(self.span.lo, self.ty.span.hi)
-        } else {
-            // Include attributes and doc comments, if present
-            mk_sp(self.attrs[0].span.lo, self.ty.span.hi)
-        }
+        span_with_attrs_lo_hi!(self, self.span.lo, self.ty.span.hi)
     }
 }
 
 impl Spanned for ast::Field {
     fn span(&self) -> Span {
-        let lo = if self.attrs.is_empty() {
-            self.span.lo
-        } else {
-            self.attrs[0].span.lo
-        };
-        mk_sp(lo, self.span.hi)
+        span_with_attrs!(self)
     }
 }
 
