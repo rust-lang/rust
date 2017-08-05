@@ -273,7 +273,10 @@ impl str {
         core_str::StrExt::is_char_boundary(self, index)
     }
 
-    /// Converts a string slice to a byte slice.
+    /// Converts a string slice to a byte slice. To convert the byte slice back
+    /// into a string slice, use the [`str::from_utf8`] function.
+    ///
+    /// [`str::from_utf8`]: ./str/fn.from_utf8.html
     ///
     /// # Examples
     ///
@@ -289,7 +292,11 @@ impl str {
         core_str::StrExt::as_bytes(self)
     }
 
-    /// Converts a mutable string slice to a mutable byte slice.
+    /// Converts a mutable string slice to a mutable byte slice. To convert the
+    /// mutable byte slice back into a mutable string slice, use the
+    /// [`str::from_utf8_mut`] function.
+    ///
+    /// [`str::from_utf8_mut`]: ./str/fn.from_utf8_mut.html
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
@@ -328,11 +335,16 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// let v = "🗻∈🌏";
+    /// let mut v = String::from("🗻∈🌏");
+    ///
     /// assert_eq!(Some("🗻"), v.get(0..4));
-    /// assert!(v.get(1..).is_none());
-    /// assert!(v.get(..8).is_none());
-    /// assert!(v.get(..42).is_none());
+    ///
+    /// // indices not on UTF-8 sequence boundaries
+    /// assert!(v.get_mut(1..).is_none());
+    /// assert!(v.get_mut(..8).is_none());
+    ///
+    /// // out of bounds
+    /// assert!(v.get_mut(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
@@ -351,9 +363,14 @@ impl str {
     ///
     /// ```
     /// let mut v = String::from("🗻∈🌏");
+    ///
     /// assert_eq!(Some("🗻"), v.get_mut(0..4).map(|v| &*v));
+    ///
+    /// // indices not on UTF-8 sequence boundaries
     /// assert!(v.get_mut(1..).is_none());
     /// assert!(v.get_mut(..8).is_none());
+    ///
+    /// // out of bounds
     /// assert!(v.get_mut(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
@@ -563,12 +580,16 @@ impl str {
     /// Basic usage:
     ///
     /// ```
+    /// use std::ascii::AsciiExt;
+    ///
     /// let mut s = "Per Martin-Löf".to_string();
-    ///
-    /// let (first, last) = s.split_at_mut(3);
-    ///
-    /// assert_eq!("Per", first);
-    /// assert_eq!(" Martin-Löf", last);
+    /// {
+    ///     let (first, last) = s.split_at_mut(3);
+    ///     first.make_ascii_uppercase();
+    ///     assert_eq!("PER", first);
+    ///     assert_eq!(" Martin-Löf", last);
+    /// }
+    /// assert_eq!("PER Martin-Löf", s);
     /// ```
     #[inline]
     #[stable(feature = "str_split_at", since = "1.4.0")]
