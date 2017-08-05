@@ -321,9 +321,6 @@ language_item_table! {
 
     StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
 
-    CloneMethodLangItem,             "clone_method",            clone_method;
-    CloneFromMethodLangItem,         "clone_from_method",       clone_from_method;
-
     // A number of panic-related lang items. The `panic` item corresponds to
     // divide-by-zero and various panic cases with `match`. The
     // `panic_bounds_check` item is for indexing arrays.
