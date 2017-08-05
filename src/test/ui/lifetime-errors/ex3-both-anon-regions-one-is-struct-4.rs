@@ -11,11 +11,7 @@
 struct Ref<'a, 'b> { a: &'a u32, b: &'b u32 }
 
 fn foo(mut y: Ref, x: &u32) {
-<<<<<<< HEAD
     y.b = x;
-=======
-    x = y.b;
->>>>>>> Adding E0623 for structs
 }
 
 fn main() { }

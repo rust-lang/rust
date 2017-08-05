@@ -7,15 +7,13 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-struct Ref<'a, 'b> { a: &'a u32, b: &'b u32 }
-
-fn foo(mut y: Ref, x: &u32) {
-<<<<<<< HEAD
-    y.b = x;
-=======
-    x = y.b;
->>>>>>> Adding E0623 for structs
+struct Ref<'a, 'b> {
+    a: &'a u32,
+    b: &'b u32,
 }
 
-fn main() { }
+fn foo(mut x: Ref) {
+    x.a = x.b;
+}
+
+fn main() {}
