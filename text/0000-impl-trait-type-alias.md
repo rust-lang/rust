@@ -158,51 +158,35 @@ let displayable: impl Display = "Hello, world!";
 println!("{}", displayable);
 ```
 
-Declaring a variable of type `impl Trait` will hide its concrete type
-from other modules. The concrete type will only be visible within
-the module in which the declaration occurred.
+Declaring a variable of type `impl Trait` will hide its concrete type.
+This is useful for declaring a value which implements a trait,
+but whose concrete type might change later on.
 In our example above, this means that, while we can "display" the
-value of `displayable`, the concrete type `&str` is hidden to
-other modules:
+value of `displayable`, the concrete type `&str` is hidden:
 
 ```rust
 use std::fmt::Display;
 
 // Without `impl Trait`:
-mod my_mod {
-    pub const DISPLAYABLE: &str = "Hello, world!";
-    fn in_mod() {
-        println!("{}", DISPLAYABLE);
-        assert_eq!(DISPLAYABLE.len(), 5);
-    }
-}
-
-fn outside_mod() {
-    println!("{}", my_mod::DISPLAYABLE);
-    assert_eq!(my_mod::DISPLAYABLE.len(), 5);
+const DISPLAYABLE: &str = "Hello, world!";
+fn display() {
+    println!("{}", DISPLAYABLE);
+    assert_eq!(DISPLAYABLE.len(), 5);
 }
 
 // With `impl Trait`:
-mod my_mod {
-    pub const DISPLAYABLE: impl Display = "Hello, world!";
-    fn in_mod() {
-        // Inside the module, the concrete type of DISPLAYABLE is visible
-        println!("{}", DISPLAYABLE);
-        assert_eq!(DISPLAYABLE.len(), 5);
-    }
-}
+const DISPLAYABLE: impl Display = "Hello, world!";
 
-fn outside_mod() {
-    // Outside the my_mod, we only know `DISPLAYABLE` implements `Display`.
-    println!("{}", my_mod::DISPLAYABLE);
+fn display() {
+    // We know `DISPLAYABLE` implements `Display`.
+    println!("{}", DISPLAYABLE);
 
     // ERROR: no method `len` on `impl Display`
-    assert_eq!(my_mod::DISPLAYABLE.len(), 5);
+    // We don't know the concrete type of `DISPLAYABLE`,
+    // so we don't know that it has a `len` method.
+    assert_eq!(DISPLAYABLE.len(), 5);
 }
 ```
-
-This is useful for declaring a value which implements a trait,
-but whose concrete type might change later on.
 
 `impl Trait` declarations are also useful when declaring constants or
 static with types that are impossible to name, like closures:
@@ -214,6 +198,43 @@ const MY_CLOSURE: ??? = |x| x + 1;
 
 // With `impl Trait`:
 const MY_CLOSURE: impl Fn(i32) -> i32 = |x| x + 1;
+```
+
+Finally, note that `impl Trait` `let` declarations hide the concrete
+types of local variables:
+
+```rust
+let displayable: impl Display = "Hello, world!";
+
+// We know `displayable` implements `Display`.
+println!("{}", displayable);
+
+// ERROR: no method `len` on `impl Display`
+// We don't know the concrete type of `displayable`,
+// so we don't know that it has a `len` method.
+assert_eq!(displayable.len(), 5);
+```
+
+At first glance, this behavior doesn't seem particularly useful.
+Indeed, `impl Trait` in `let` bindings exists mostly for consistency with
+`const`s and `static`s. However, it can be useful for documenting the
+specific ways in which a variable is used. It can also be used to provide
+better error messages for complex, nested types:
+
+```rust
+// Without `impl Trait`:
+let x = (0..100).map(|x| x * 3).filter(|x| x % 5 == 0);
+
+// ERROR: no method named `bogus_missing_method` found for type
+// `std::iter::Filter<std::iter::Map<std::ops::Range<{integer}>, [closure@src/main.rs:2:26: 2:35]>, [closure@src/main.rs:2:44: 2:58]>` in the current scope
+x.bogus_missing_method();
+
+// With `impl Trait`:
+let x: impl Iterator<Item = i32> = (0..100).map(|x| x * 3).filter(|x| x % 5);
+
+// ERROR: no method named `bogus_missing_method` found for type
+// `impl std::iter::Iterator` in the current scope
+x.bogus_missing_method();
 ```
 
 ## Guide: `impl Trait` Type Aliases
