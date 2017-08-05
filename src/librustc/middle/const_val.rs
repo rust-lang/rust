@@ -247,18 +247,23 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 }
 
 /// Returns the value of the length-valued expression
-pub fn eval_length(tcx: TyCtxt,
-                   count: hir::BodyId,
-                   reason: &str)
-                   -> Result<ConstUsize, ErrorReported>
+pub fn eval_length<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                   count: hir::BodyId,
+                                   reason: &str)
+                                   -> Result<&'gcx ty::Const<'gcx>, ErrorReported>
 {
     let count_expr = &tcx.hir.body(count).value;
     let count_def_id = tcx.hir.body_owner_def_id(count);
     let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
     let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
     match tcx.at(count_expr.span).const_eval(param_env.and((count_def_id, substs))) {
-        Ok(&ty::Const { val: Integral(Usize(count)), .. }) => Ok(count),
-        Ok(_) | Err(ConstEvalErr { kind: ErrKind::TypeckError, .. }) => Err(ErrorReported),
+        Ok(count) => {
+            // Elsewhere in the compiler this is enforced even in the presence
+            // of erroneous code (type mismatch error has already been emitted).
+            assert_eq!(count.ty, tcx.types.usize);
+            Ok(count)
+        }
+        Err(ConstEvalErr { kind: ErrKind::TypeckError, .. }) => Err(ErrorReported),
         Err(err) => {
             let mut diag = err.struct_error(tcx, count_expr.span, reason);
 

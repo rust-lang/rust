@@ -537,7 +537,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             ty::TyArray(_, len) => {
                 // fixed-length array
-                assert!(len.as_u64() >= prefix.len() as u64 + suffix.len() as u64);
+                let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+                assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
 

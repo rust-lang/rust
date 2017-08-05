@@ -11,6 +11,7 @@
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
+use middle::const_val::{ConstVal, ConstAggregate};
 use ty::{self, Ty};
 use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
@@ -83,7 +84,11 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
         ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError => {
         }
-        ty::TyArray(ty, _) | ty::TySlice(ty) => {
+        ty::TyArray(ty, len) => {
+            push_const(stack, len);
+            stack.push(ty);
+        }
+        ty::TySlice(ty) => {
             stack.push(ty);
         }
         ty::TyRawPtr(ref mt) | ty::TyRef(_, ref mt) => {
@@ -122,13 +127,39 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyFnDef(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::TyFnPtr(ft) => {
-            push_sig_subtypes(stack, ft);
+        ty::TyFnPtr(sig) => {
+            stack.push(sig.skip_binder().output());
+            stack.extend(sig.skip_binder().inputs().iter().cloned().rev());
         }
     }
 }
 
-fn push_sig_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, sig: ty::PolyFnSig<'tcx>) {
-    stack.push(sig.skip_binder().output());
-    stack.extend(sig.skip_binder().inputs().iter().cloned().rev());
+fn push_const<'tcx>(stack: &mut TypeWalkerStack<'tcx>, constant: &'tcx ty::Const<'tcx>) {
+    match constant.val {
+        ConstVal::Integral(_) |
+        ConstVal::Float(_) |
+        ConstVal::Str(_) |
+        ConstVal::ByteStr(_) |
+        ConstVal::Bool(_) |
+        ConstVal::Char(_) |
+        ConstVal::Variant(_) => {}
+        ConstVal::Function(_, substs) => {
+            stack.extend(substs.types().rev());
+        }
+        ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
+            for &(_, v) in fields.iter().rev() {
+                push_const(stack, v);
+            }
+        }
+        ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
+        ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
+            for v in fields.iter().rev() {
+                push_const(stack, v);
+            }
+        }
+        ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
+            push_const(stack, v);
+        }
+    }
+    stack.push(constant.ty);
 }

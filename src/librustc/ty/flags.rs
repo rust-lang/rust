@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::const_val::{ConstVal, ConstAggregate};
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
@@ -145,7 +146,12 @@ impl FlagComputation {
                 self.add_region(r);
             }
 
-            &ty::TyArray(tt, _) | &ty::TySlice(tt) => {
+            &ty::TyArray(tt, len) => {
+                self.add_ty(tt);
+                self.add_const(len);
+            }
+
+            &ty::TySlice(tt) => {
                 self.add_ty(tt)
             }
 
@@ -199,6 +205,36 @@ impl FlagComputation {
         self.add_flags(r.type_flags());
         if let ty::ReLateBound(debruijn, _) = *r {
             self.add_depth(debruijn.depth);
+        }
+    }
+
+    fn add_const(&mut self, constant: &ty::Const) {
+        self.add_ty(constant.ty);
+        match constant.val {
+            ConstVal::Integral(_) |
+            ConstVal::Float(_) |
+            ConstVal::Str(_) |
+            ConstVal::ByteStr(_) |
+            ConstVal::Bool(_) |
+            ConstVal::Char(_) |
+            ConstVal::Variant(_) => {}
+            ConstVal::Function(_, substs) => {
+                self.add_substs(substs);
+            }
+            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
+                for &(_, v) in fields {
+                    self.add_const(v);
+                }
+            }
+            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
+            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
+                for v in fields {
+                    self.add_const(v);
+                }
+            }
+            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
+                self.add_const(v);
+            }
         }
     }
 

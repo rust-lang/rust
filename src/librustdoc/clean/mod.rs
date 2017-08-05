@@ -27,6 +27,7 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
@@ -40,6 +41,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use rustc::hir;
 
+use rustc_const_math::ConstInt;
 use std::{mem, slice, vec};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -1785,7 +1787,12 @@ impl Clean<Type> for hir::Ty {
             TyArray(ref ty, length) => {
                 use rustc::middle::const_val::eval_length;
                 let n = eval_length(cx.tcx, length, "array length").unwrap();
-                Array(box ty.clean(cx), n.to_string())
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else {
+                    format!("{:?}", n)
+                };
+                Array(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(hir::QPath::Resolved(None, ref path)) => {
@@ -1895,7 +1902,14 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
-            ty::TyArray(ty, n) => Array(box ty.clean(cx), n.to_string()),
+            ty::TyArray(ty, n) => {
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else {
+                    format!("{:?}", n)
+                };
+                Array(box ty.clean(cx), n)
+            }
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),

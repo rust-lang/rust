@@ -209,7 +209,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 LvalueTy::Ty {
                     ty: match base_ty.sty {
                         ty::TyArray(inner, size) => {
-                            let size = size.as_u64();
+                            let size = size.val.to_const_int().unwrap().to_u64().unwrap();
                             let min_size = (from as u64) + (to as u64);
                             if let Some(rest_size) = size.checked_sub(min_size) {
                                 tcx.mk_array(inner, rest_size)

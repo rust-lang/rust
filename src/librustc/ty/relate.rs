@@ -428,10 +428,14 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::TyArray(a_t, sz_a), &ty::TyArray(b_t, sz_b)) =>
         {
             let t = relation.relate(&a_t, &b_t)?;
-            if sz_a == sz_b {
-                Ok(tcx.mk_array(t, sz_a.as_u64()))
+            assert_eq!(sz_a.ty, tcx.types.usize);
+            assert_eq!(sz_b.ty, tcx.types.usize);
+            let sz_a_u64 = sz_a.val.to_const_int().unwrap().to_u64().unwrap();
+            let sz_b_u64 = sz_b.val.to_const_int().unwrap().to_u64().unwrap();
+            if sz_a_u64 == sz_b_u64 {
+                Ok(tcx.mk_ty(ty::TyArray(t, sz_a)))
             } else {
-                Err(TypeError::FixedArraySize(expected_found(relation, &sz_a, &sz_b)))
+                Err(TypeError::FixedArraySize(expected_found(relation, &sz_a_u64, &sz_b_u64)))
             }
         }
 

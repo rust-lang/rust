@@ -521,7 +521,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if common::type_is_zero_size(bcx.ccx, op.ty) {
                     if let ty::TyArray(_, n) = op.ty.sty {
-                        return common::C_usize(bcx.ccx, n.as_u64());
+                        let n = n.val.to_const_int().unwrap().to_u64().unwrap();
+                        return common::C_usize(bcx.ccx, n);
                     }
                 }
             }

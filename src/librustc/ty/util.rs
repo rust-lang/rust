@@ -697,7 +697,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyInt(i) => self.hash(i),
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
-            TyArray(_, n) => self.hash(n),
+            TyArray(_, n) => {
+                self.hash(n.val.to_const_int().unwrap().to_u64().unwrap())
+            }
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |

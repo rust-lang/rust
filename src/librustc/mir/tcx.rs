@@ -70,7 +70,8 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                 LvalueTy::Ty {
                     ty: match ty.sty {
                         ty::TyArray(inner, size) => {
-                            let len = size.as_u64() - (from as u64) - (to as u64);
+                            let size = size.val.to_const_int().unwrap().to_u64().unwrap();
+                            let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }
                         ty::TySlice(..) => ty,
@@ -148,7 +149,7 @@ impl<'tcx> Rvalue<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_array(operand.ty(local_decls, tcx), count.as_u64())
+                tcx.mk_array_const_usize(operand.ty(local_decls, tcx), count)
             }
             Rvalue::Ref(reg, bk, ref lv) => {
                 let lv_ty = lv.ty(local_decls, tcx).to_ty(tcx);

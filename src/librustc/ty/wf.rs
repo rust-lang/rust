@@ -207,6 +207,10 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Pushes the obligations required for a constant value to be WF
+    /// into `self.out`.
+    fn compute_const(&mut self, _constant: &'tcx ty::Const<'tcx>) {}
+
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
         if !subty.has_escaping_regions() {
             let cause = self.cause(cause);
@@ -239,9 +243,14 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // WfScalar, WfParameter, etc
                 }
 
-                ty::TySlice(subty) |
-                ty::TyArray(subty, _) => {
+                ty::TySlice(subty) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
+                }
+
+                ty::TyArray(subty, len) => {
+                    self.require_sized(subty, traits::SliceOrArrayElem);
+                    assert_eq!(len.ty, self.infcx.tcx.types.usize);
+                    self.compute_const(len);
                 }
 
                 ty::TyTuple(ref tys, _) => {

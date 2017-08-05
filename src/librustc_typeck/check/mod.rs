@@ -3923,7 +3923,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Ok(count) = count {
-                if count.as_u64() > 1 {
+                let zero_or_one = count.val.to_const_int().and_then(|count| {
+                    count.to_u64().map(|count| count <= 1)
+                }).unwrap_or(false);
+                if !zero_or_one {
                     // For [foo, ..n] where n > 1, `foo` must have
                     // Copy type:
                     let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);

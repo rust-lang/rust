@@ -456,7 +456,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       }
       hir::ExprRepeat(ref elem, _) => {
           let n = match ty.sty {
-            ty::TyArray(_, n) => n.as_u64(),
+            ty::TyArray(_, n) => n.val.to_const_int().unwrap().to_u64().unwrap(),
             _ => span_bug!(e.span, "typeck error")
           };
           mk_const(Aggregate(Repeat(cx.eval(elem)?, n)))
@@ -635,8 +635,13 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Err(ErrKind::UnimplementedConstVal("casting a bytestr to a raw ptr"))
             },
             ty::TyRef(_, ty::TypeAndMut { ref ty, mutbl: hir::MutImmutable }) => match ty.sty {
-                ty::TyArray(ty, n) if ty == tcx.types.u8 && n.as_u64() == b.data.len() as u64 => {
-                    Ok(val)
+                ty::TyArray(ty, n) => {
+                    let n = n.val.to_const_int().unwrap().to_u64().unwrap();
+                    if ty == tcx.types.u8 && n == b.data.len() as u64 {
+                        Ok(val)
+                    } else {
+                        Err(CannotCast)
+                    }
                 }
                 ty::TySlice(_) => {
                     Err(ErrKind::UnimplementedConstVal("casting a bytestr to slice"))

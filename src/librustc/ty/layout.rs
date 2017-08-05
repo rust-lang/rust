@@ -837,7 +837,7 @@ impl<'a, 'tcx> Struct {
 
             // Is this a fixed-size array of something non-zero
             // with at least one element?
-            (_, &ty::TyArray(ety, d)) if d.as_u64() > 0 => {
+            (_, &ty::TyArray(ety, d)) if d.val.to_const_int().unwrap().to_u64().unwrap() != 0 => {
                 Struct::non_zero_field_paths(
                     tcx,
                     param_env,
@@ -1177,7 +1177,7 @@ impl<'a, 'tcx> Layout {
             ty::TyArray(element, count) => {
                 let element = element.layout(tcx, param_env)?;
                 let element_size = element.size(dl);
-                let count = count.as_u64();
+                let count = count.val.to_const_int().unwrap().to_u64().unwrap();
                 if element_size.checked_mul(count, dl).is_none() {
                     return Err(LayoutError::SizeOverflow(ty));
                 }

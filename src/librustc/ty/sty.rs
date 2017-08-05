@@ -27,8 +27,6 @@ use syntax::ast::{self, Name};
 use syntax::symbol::keywords;
 use util::nodemap::FxHashMap;
 
-use rustc_const_math::ConstUsize;
-
 use serialize;
 
 use hir;
@@ -112,7 +110,7 @@ pub enum TypeVariants<'tcx> {
     TyStr,
 
     /// An array with the given length. Written as `[T; n]`.
-    TyArray(Ty<'tcx>, ConstUsize),
+    TyArray(Ty<'tcx>, &'tcx ty::Const<'tcx>),
 
     /// The pointee of an array slice.  Written as `[T]`.
     TySlice(Ty<'tcx>),

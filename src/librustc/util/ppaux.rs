@@ -10,6 +10,7 @@
 
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
+use middle::const_val::ConstVal;
 use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
@@ -24,6 +25,7 @@ use std::cell::Cell;
 use std::fmt;
 use std::usize;
 
+use rustc_const_math::ConstInt;
 use syntax::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::Symbol;
@@ -886,7 +888,18 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
 
                 write!(f, "]")
             }),
-            TyArray(ty, sz) => write!(f, "[{}; {}]",  ty, sz),
+            TyArray(ty, sz) => {
+                write!(f, "[{}; ", ty)?;
+                match sz.val {
+                    ConstVal::Integral(ConstInt::Usize(sz)) => {
+                        write!(f, "{}", sz)?;
+                    }
+                    _ => {
+                        write!(f, "{:?}", sz)?;
+                    }
+                }
+                write!(f, "]")
+            }
             TySlice(ty) => write!(f, "[{}]",  ty)
         }
     }

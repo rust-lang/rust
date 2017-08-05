@@ -552,7 +552,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let sty = match self.sty {
             ty::TyRawPtr(tm) => ty::TyRawPtr(tm.fold_with(folder)),
-            ty::TyArray(typ, sz) => ty::TyArray(typ.fold_with(folder), sz),
+            ty::TyArray(typ, sz) => ty::TyArray(typ.fold_with(folder), sz.fold_with(folder)),
             ty::TySlice(typ) => ty::TySlice(typ.fold_with(folder)),
             ty::TyAdt(tid, substs) => ty::TyAdt(tid, substs.fold_with(folder)),
             ty::TyDynamic(ref trait_ty, ref region) =>
@@ -590,7 +590,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match self.sty {
             ty::TyRawPtr(ref tm) => tm.visit_with(visitor),
-            ty::TyArray(typ, _sz) => typ.visit_with(visitor),
+            ty::TyArray(typ, sz) => typ.visit_with(visitor) || sz.visit_with(visitor),
             ty::TySlice(typ) => typ.visit_with(visitor),
             ty::TyAdt(_, substs) => substs.visit_with(visitor),
             ty::TyDynamic(ref trait_ty, ref reg) =>

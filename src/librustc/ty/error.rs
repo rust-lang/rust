@@ -10,6 +10,7 @@
 
 use hir::def_id::DefId;
 use infer::type_variable;
+use middle::const_val::ConstVal;
 use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
 
 use std::fmt;
@@ -18,7 +19,7 @@ use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
-use rustc_const_math::ConstUsize;
+use rustc_const_math::ConstInt;
 
 use hir;
 
@@ -36,7 +37,7 @@ pub enum TypeError<'tcx> {
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
     TupleSize(ExpectedFound<usize>),
-    FixedArraySize(ExpectedFound<ConstUsize>),
+    FixedArraySize(ExpectedFound<u64>),
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
@@ -181,7 +182,13 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyTuple(ref tys, _) if tys.is_empty() => self.to_string(),
 
             ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
-            ty::TyArray(_, n) => format!("array of {} elements", n),
+            ty::TyArray(_, n) => {
+                if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    format!("array of {} elements", n)
+                } else {
+                    "array".to_string()
+                }
+            }
             ty::TySlice(_) => "slice".to_string(),
             ty::TyRawPtr(_) => "*-ptr".to_string(),
             ty::TyRef(region, tymut) => {

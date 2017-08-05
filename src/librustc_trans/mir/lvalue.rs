@@ -106,7 +106,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         let ty = self.ty.to_ty(ccx.tcx());
         match ty.sty {
-            ty::TyArray(_, n) => common::C_usize(ccx, n.as_u64()),
+            ty::TyArray(_, n) => {
+                common::C_usize(ccx, n.val.to_const_int().unwrap().to_u64().unwrap())
+            }
             ty::TySlice(_) | ty::TyStr => {
                 assert!(self.llextra != ptr::null_mut());
                 self.llextra

@@ -422,11 +422,12 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
-        ty::TyArray(ref sub_ty, length) => {
-            if length.as_u64() > 0 && cx.is_uninhabited(sub_ty) {
+        ty::TyArray(ref sub_ty, len) => {
+            let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+            if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
-                vec![Slice(length.as_u64())]
+                vec![Slice(len)]
             }
         }
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
@@ -729,7 +730,9 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
         PatternKind::Range { lo, hi, end } =>
             Some(vec![ConstantRange(lo, hi, end)]),
         PatternKind::Array { .. } => match pcx.ty.sty {
-            ty::TyArray(_, length) => Some(vec![Slice(length.as_u64())]),
+            ty::TyArray(_, length) => Some(vec![
+                Slice(length.val.to_const_int().unwrap().to_u64().unwrap())
+            ]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
         PatternKind::Slice { ref prefix, ref slice, ref suffix } => {

@@ -1083,7 +1083,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyArray(ref ty, length) => {
                 if let Ok(length) = eval_length(tcx, length, "array length") {
-                    tcx.mk_array(self.ast_ty_to_ty(&ty), length.as_u64())
+                    tcx.mk_ty(ty::TyArray(self.ast_ty_to_ty(&ty), length))
                 } else {
                     self.tcx().types.err
                 }

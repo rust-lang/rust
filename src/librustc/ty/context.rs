@@ -21,6 +21,7 @@ use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
+use middle::const_val::ConstVal;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -49,7 +50,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
 use arena::{TypedArena, DroplessArena};
-use rustc_const_math::ConstUsize;
+use rustc_const_math::{ConstInt, ConstUsize};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
@@ -1757,7 +1758,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
         let n = ConstUsize::new(n, self.sess.target.usize_ty).unwrap();
-        self.mk_ty(TyArray(ty, n))
+        self.mk_array_const_usize(ty, n)
+    }
+
+    pub fn mk_array_const_usize(self, ty: Ty<'tcx>, n: ConstUsize) -> Ty<'tcx> {
+        self.mk_ty(TyArray(ty, self.mk_const(ty::Const {
+            val: ConstVal::Integral(ConstInt::Usize(n)),
+            ty: self.types.usize
+        })))
     }
 
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {

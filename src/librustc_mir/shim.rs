@@ -292,7 +292,10 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
-        ty::TyArray(ty, len) => builder.array_shim(ty, len.as_u64()),
+        ty::TyArray(ty, len) => {
+            let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+            builder.array_shim(ty, len)
+        }
         ty::TyTuple(tys, _) => builder.tuple_shim(tys),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty);

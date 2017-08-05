@@ -200,7 +200,9 @@ impl<'tcx> ConstLvalue<'tcx> {
 
     pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         match self.ty.sty {
-            ty::TyArray(_, n) => C_usize(ccx, n.as_u64()),
+            ty::TyArray(_, n) => {
+                C_usize(ccx, n.val.to_const_int().unwrap().to_u64().unwrap())
+            }
             ty::TySlice(_) | ty::TyStr => {
                 assert!(self.llextra != ptr::null_mut());
                 self.llextra
