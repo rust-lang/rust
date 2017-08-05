@@ -910,6 +910,8 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             return false;
         }
 
+        // at this point we have an impl match, so the return value is always `true`.
+
         if !register_errors {
             // checking backwards, impls match.
             return true;

@@ -10,6 +10,11 @@ impl Abc {
     }
 
     fn def(&self) { }
+
+    // TODO
+    /* pub fn ghi<A>(&self, _: A) -> u8 {
+        0
+    } */
 }
 
 #[allow(dead_code)]
@@ -17,6 +22,7 @@ pub struct Def<A> {
     field: A,
 }
 
+#[allow(dead_code)]
 impl Def<u8> {
     pub fn def(&self) -> u16 {
         0
@@ -27,6 +33,7 @@ impl Def<u8> {
     fn abc2() { }
 }
 
+#[allow(dead_code)]
 impl Def<u16> {
     pub fn def(&self) -> u8 {
         0

@@ -255,9 +255,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                     pred: err,
                 };
 
-                changes.add_change(err_type,
-                                   orig_def_id,
-                                   Some(tcx.def_span(orig_def_id)));
+                changes.add_change(err_type, orig_def_id, None);
             }
         }
 
@@ -275,9 +273,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                     pred: err,
                 };
 
-                changes.add_change(err_type,
-                                   orig_def_id,
-                                   Some(tcx.def_span(orig_def_id)));
+                changes.add_change(err_type, orig_def_id, None);
             }
         }
     }

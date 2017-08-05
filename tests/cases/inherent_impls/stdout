@@ -1,15 +1,5 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 warning: breaking changes in `def`
-  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:21:5
-   |
-21 | /     pub fn def(&self) -> u8 {
-22 | |         0
-23 | |     }
-   | |_____^
-   |
-   = warning: removed item in inherent impl (breaking)
-
-warning: breaking changes in `def`
   --> $REPO_PATH/tests/cases/inherent_impls/old.rs:27:5
    |
 27 | /     pub fn def(&self) -> u8 {
@@ -17,30 +7,40 @@ warning: breaking changes in `def`
 29 | |     }
    | |_____^
    |
+   = warning: removed item in inherent impl (breaking)
+
+warning: breaking changes in `def`
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:34:5
+   |
+34 | /     pub fn def(&self) -> u8 {
+35 | |         0
+36 | |     }
+   | |_____^
+   |
    = warning: type error: expected u8, found u16 (breaking)
 
 warning: breaking changes in `ghi`
-  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:31:5
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:38:5
    |
-31 |     pub fn ghi() { }
+38 |     pub fn ghi() { }
    |     ^^^^^^^^^^^^^^^^
    |
    = warning: removed item in inherent impl (breaking)
 
 warning: technically breaking changes in `abc`
-  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:25:5
+  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:31:5
    |
-25 |     pub fn abc() { }
+31 |     pub fn abc() { }
    |     ^^^^^^^^^^^^^^^^
    |
    = note: added item in inherent impl (technically breaking)
 
 warning: technically breaking changes in `def`
-  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:31:5
+  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:38:5
    |
-31 | /     pub fn def(&self) -> u8 {
-32 | |         0
-33 | |     }
+38 | /     pub fn def(&self) -> u8 {
+39 | |         0
+40 | |     }
    | |_____^
    |
    = note: added item in inherent impl (technically breaking)
