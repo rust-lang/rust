@@ -15,7 +15,7 @@ use syntax::{ast, ptr, visit};
 use syntax::codemap::{self, BytePos, CodeMap, Span};
 use syntax::parse::ParseSess;
 
-use {Indent, Shape};
+use {Indent, Shape, Spanned};
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, FindUncommented};
 use comment::rewrite_comment;
@@ -34,19 +34,6 @@ fn is_use_item(item: &ast::Item) -> bool {
         ast::ItemKind::Use(_) => true,
         _ => false,
     }
-}
-
-fn item_bound(item: &ast::Item) -> Span {
-    item.attrs.iter().map(|attr| attr.span).fold(
-        item.span,
-        |bound, span| {
-            Span {
-                lo: cmp::min(bound.lo, span.lo),
-                hi: cmp::max(bound.hi, span.hi),
-                ctxt: span.ctxt,
-            }
-        },
-    )
 }
 
 pub struct FmtVisitor<'a> {
@@ -93,7 +80,7 @@ impl<'a> FmtVisitor<'a> {
                 let span = if expr.attrs.is_empty() {
                     stmt.span
                 } else {
-                    mk_sp(expr.attrs[0].span.lo, stmt.span.hi)
+                    mk_sp(expr.span().lo, stmt.span.hi)
                 };
                 self.push_rewrite(span, rewrite)
             }
@@ -105,7 +92,7 @@ impl<'a> FmtVisitor<'a> {
                 let span = if expr.attrs.is_empty() {
                     stmt.span
                 } else {
-                    mk_sp(expr.attrs[0].span.lo, stmt.span.hi)
+                    mk_sp(expr.span().lo, stmt.span.hi)
                 };
                 self.push_rewrite(span, rewrite)
             }
@@ -648,12 +635,12 @@ impl<'a> FmtVisitor<'a> {
             // next item for output.
             if self.config.reorder_imports() && is_use_item(&*items_left[0]) {
                 let reorder_imports_in_group = self.config.reorder_imports_in_group();
-                let mut last = self.codemap.lookup_line_range(item_bound(&items_left[0]));
+                let mut last = self.codemap.lookup_line_range(items_left[0].span());
                 let use_item_length = items_left
                     .iter()
                     .take_while(|ppi| {
                         is_use_item(&***ppi) && (!reorder_imports_in_group || {
-                            let current = self.codemap.lookup_line_range(item_bound(&ppi));
+                            let current = self.codemap.lookup_line_range(ppi.span());
                             let in_same_group = current.lo < last.hi + 2;
                             last = current;
                             in_same_group
