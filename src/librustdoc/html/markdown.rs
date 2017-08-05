@@ -32,7 +32,6 @@ use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;
-use std::ffi::CString;
 use std::fmt::{self, Write};
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
@@ -531,6 +530,7 @@ extern {
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
     fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
+    fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const libc::c_char, len: libc::size_t);
 }
 
 impl hoedown_buffer {
@@ -620,8 +620,7 @@ pub fn render(w: &mut fmt::Formatter,
                                Some("rust-example-rendered"),
                                None,
                                playground_button.as_ref().map(String::as_str)));
-                let output = CString::new(s).unwrap();
-                hoedown_buffer_puts(ob, output.as_ptr());
+                hoedown_buffer_put(ob, s.as_ptr() as *const libc::c_char, s.len());
             })
         }
     }
@@ -681,8 +680,7 @@ pub fn render(w: &mut fmt::Formatter,
                            <a href='#{id}'>{sec}{}</a></h{lvl}>",
                            s, lvl = level, id = id, sec = sec);
 
-        let text = CString::new(text).unwrap();
-        unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
+        unsafe { hoedown_buffer_put(ob, text.as_ptr() as *const libc::c_char, text.len()); }
     }
 
     extern fn codespan(
@@ -699,9 +697,10 @@ pub fn render(w: &mut fmt::Formatter,
             collapse_whitespace(s)
         };
 
-        let content = format!("<code>{}</code>", Escape(&content));
-        let element = CString::new(content).unwrap();
-        unsafe { hoedown_buffer_puts(ob, element.as_ptr()); }
+        let content = format!("<code>{}</code>", Escape(&content)).replace("\0", "\\0");
+        unsafe {
+            hoedown_buffer_put(ob, content.as_ptr() as *const libc::c_char, content.len());
+        }
         // Return anything except 0, which would mean "also print the code span verbatim".
         1
     }
