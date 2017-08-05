@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
-    z.push((x,y));
+struct Ref<'a, 'b> { a: &'a u32, b: &'b u32 }
+
+fn foo(mut x: Ref, y: &u32) {
+    y = x.b;
 }
 
 fn main() { }
-
