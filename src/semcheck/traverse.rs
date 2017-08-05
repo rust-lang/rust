@@ -668,20 +668,20 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             };
 
         for &(orig_impl_def_id, orig_item_def_id) in orig_impls {
+            let item_span = tcx.def_span(orig_item_def_id);
+            changes.new_change(orig_item_def_id,
+                               orig_item_def_id,
+                               orig_item.name,
+                               item_span,
+                               item_span,
+                               true);
+
             let target_impls = if let Some(impls) = forward_trans
                 .translate_inherent_entry(orig_item)
                 .and_then(|item| id_mapping.get_inherent_impls(&item))
             {
                 impls
             } else {
-                let item_span = tcx.def_span(orig_item_def_id);
-
-                changes.new_change(orig_item_def_id,
-                                   orig_item_def_id,
-                                   orig_item.name,
-                                   item_span,
-                                   item_span,
-                                   true);
                 changes.add_change(err_type.clone(), orig_item_def_id, None);
                 continue;
             };
@@ -699,14 +699,6 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 });
 
             if !match_found {
-                let item_span = tcx.def_span(orig_item_def_id);
-
-                changes.new_change(orig_item_def_id,
-                                   orig_item_def_id,
-                                   orig_item.name,
-                                   item_span,
-                                   item_span,
-                                   true);
                 changes.add_change(err_type.clone(), orig_item_def_id, None);
             }
         }
@@ -879,12 +871,12 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                  target_impl_def_id: DefId,
                                  target_item_def_id: DefId) -> bool {
     tcx.infer_ctxt().enter(|infcx| {
-        let compcx = if id_mapping.in_old_crate(orig_impl_def_id) {
+        let (compcx, register_errors) = if id_mapping.in_old_crate(orig_impl_def_id) {
             id_mapping.register_current_match(orig_item_def_id, target_item_def_id);
-            TypeComparisonContext::target_new(&infcx, id_mapping)
+            (TypeComparisonContext::target_new(&infcx, id_mapping), true)
         } else {
             id_mapping.register_current_match(target_item_def_id, orig_item_def_id);
-            TypeComparisonContext::target_old(&infcx, id_mapping)
+            (TypeComparisonContext::target_old(&infcx, id_mapping), false)
         };
 
         let orig_self = compcx
@@ -925,6 +917,16 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             return false;
         }
 
+        if !register_errors {
+            // checking backwards, impl match found.
+            return true;
+        }
+
+        let orig_item = tcx.associated_item(orig_item_def_id);
+        let target_item = tcx.associated_item(target_item_def_id);
+
+        diff_method(changes, tcx, orig_item, target_item);
+
         let orig = compcx
             .forward_trans
             .translate_item_type(orig_item_def_id, infcx.tcx.type_of(orig_item_def_id));
@@ -937,7 +939,6 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                             target);
 
         if let Some(err) = error {
-            println!("err: {:?}", err);
             changes.add_change(TypeChanged { error: err }, orig_item_def_id, None);
         }
 
@@ -959,8 +960,6 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             compcx.check_bounds_error(tcx, orig_param_env, target_item_def_id, target_substs)
         {
             for err in errors {
-                println!("err preds forward: {:?}", err);
-
                 let err_type = BoundsTightened {
                     pred: err,
                 };
