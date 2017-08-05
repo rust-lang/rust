@@ -273,7 +273,10 @@ impl str {
         core_str::StrExt::is_char_boundary(self, index)
     }
 
-    /// Converts a string slice to a byte slice.
+    /// Converts a string slice to a byte slice. To convert the byte slice back
+    /// into a string slice, use the [`str::from_utf8`] function.
+    ///
+    /// [`str::from_utf8`]: ./str/fn.from_utf8.html
     ///
     /// # Examples
     ///
@@ -289,7 +292,11 @@ impl str {
         core_str::StrExt::as_bytes(self)
     }
 
-    /// Converts a mutable string slice to a mutable byte slice.
+    /// Converts a mutable string slice to a mutable byte slice. To convert the
+    /// mutable byte slice back into a mutable string slice, use the
+    /// [`str::from_utf8_mut`] function.
+    ///
+    /// [`str::from_utf8_mut`]: ./str/fn.from_utf8_mut.html
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
