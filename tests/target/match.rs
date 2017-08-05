@@ -450,3 +450,11 @@ fn match_with_near_max_width() {
         Variant::Tag6 => {}
     }
 }
+
+fn match_with_trailing_spaces() {
+    match x {
+        #![allow(simple_match)]
+        Some(..) => 0,
+        None => 1,
+    }
+}
