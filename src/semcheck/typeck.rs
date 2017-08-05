@@ -11,6 +11,7 @@ use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
 
+use semcheck::changes::ChangeSet;
 use semcheck::mapping::IdMapping;
 use semcheck::translate::{InferenceCleanupFolder, TranslationContext};
 
@@ -197,10 +198,10 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
     /// Check for trait bound mismatches for a pair of items.
     pub fn check_bounds_error<'b, 'tcx2>(&self,
-                                     lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
-                                     orig_param_env: ParamEnv<'tcx>,
-                                     target_def_id: DefId,
-                                     target_substs: &Substs<'tcx>)
+                                         lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+                                         orig_param_env: ParamEnv<'tcx>,
+                                         target_def_id: DefId,
+                                         target_substs: &Substs<'tcx>)
         -> Option<Vec<Predicate<'tcx2>>>
     {
         use rustc::ty::Lift;
@@ -219,5 +220,65 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                          .lift_to_tcx(lift_tcx)
                          .unwrap())
                 .collect())
+    }
+
+    /// Check the bounds on an item in both directions and register changes found.
+    pub fn check_bounds_bidirectional<'b, 'tcx2>(&self,
+                                                 changes: &mut ChangeSet<'tcx2>,
+                                                 lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+                                                 orig_def_id: DefId,
+                                                 target_def_id: DefId,
+                                                 orig_substs: &Substs<'tcx>,
+                                                 target_substs: &Substs<'tcx>) {
+        use semcheck::changes::ChangeType::{BoundsLoosened, BoundsTightened};
+
+        let tcx = self.infcx.tcx;
+
+        let orig_param_env = self
+            .forward_trans
+            .translate_param_env(orig_def_id, tcx.param_env(orig_def_id));
+        let target_param_env = self
+            .backward_trans
+            .translate_param_env(target_def_id, tcx.param_env(target_def_id));
+
+        let orig_param_env = if let Some(env) = orig_param_env {
+            env
+        } else {
+            return;
+        };
+
+        if let Some(errors) =
+            self.check_bounds_error(lift_tcx, orig_param_env, target_def_id, target_substs)
+        {
+            for err in errors {
+                let err_type = BoundsTightened {
+                    pred: err,
+                };
+
+                changes.add_change(err_type,
+                                   orig_def_id,
+                                   Some(tcx.def_span(orig_def_id)));
+            }
+        }
+
+        let target_param_env = if let Some(env) = target_param_env {
+            env
+        } else {
+            return;
+        };
+
+        if let Some(errors) =
+            self.check_bounds_error(lift_tcx, target_param_env, orig_def_id, orig_substs)
+        {
+            for err in errors {
+                let err_type = BoundsLoosened {
+                    pred: err,
+                };
+
+                changes.add_change(err_type,
+                                   orig_def_id,
+                                   Some(tcx.def_span(orig_def_id)));
+            }
+        }
     }
 }

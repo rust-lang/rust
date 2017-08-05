@@ -803,48 +803,12 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(TypeChanged { error: err }, orig_def_id, None);
         }
 
-        let orig_param_env = compcx
-            .forward_trans
-            .translate_param_env(orig_def_id, tcx.param_env(orig_def_id));
-        let target_param_env = compcx
-            .backward_trans
-            .translate_param_env(target_def_id, tcx.param_env(target_def_id));
-
-        let orig_param_env = if let Some(env) = orig_param_env {
-            env
-        } else {
-            return;
-        };
-
-        if let Some(errors) =
-            compcx.check_bounds_error(tcx, orig_param_env, target_def_id, target_substs)
-        {
-            for err in errors {
-                let err_type = BoundsTightened {
-                    pred: err,
-                };
-
-                changes.add_change(err_type, orig_def_id, Some(tcx.def_span(orig_def_id)));
-            }
-        }
-
-        let target_param_env = if let Some(env) = target_param_env {
-            env
-        } else {
-            return;
-        };
-
-        if let Some(errors) =
-            compcx.check_bounds_error(tcx, target_param_env, orig_def_id, orig_substs)
-        {
-            for err in errors {
-                let err_type = BoundsLoosened {
-                    pred: err,
-                };
-
-                changes.add_change(err_type, orig_def_id, Some(tcx.def_span(orig_def_id)));
-            }
-        }
+        compcx.check_bounds_bidirectional(changes,
+                                          tcx,
+                                          orig_def_id,
+                                          target_def_id,
+                                          orig_substs,
+                                          target_substs);
     });
 }
 
@@ -907,6 +871,7 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             (TypeComparisonContext::target_old(&infcx, id_mapping), false)
         };
 
+        let orig_substs = Substs::identity_for_item(infcx.tcx, target_item_def_id);
         let orig_self = compcx
             .forward_trans
             .translate_item_type(orig_impl_def_id, infcx.tcx.type_of(orig_impl_def_id));
@@ -979,55 +944,12 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(TypeChanged { error: err }, orig_item_def_id, None);
         }
 
-        let orig_param_env = compcx
-            .forward_trans
-            .translate_param_env(orig_item_def_id, tcx.param_env(orig_item_def_id));
-        let target_param_env = compcx
-            .backward_trans
-            .translate_param_env(target_item_def_id, tcx.param_env(target_item_def_id));
-
-        let orig_param_env = if let Some(env) = orig_param_env {
-            env
-        } else {
-            // The bounds on the item could not have been translated - impl match found.
-            return true;
-        };
-
-        if let Some(errors) =
-            compcx.check_bounds_error(tcx, orig_param_env, target_item_def_id, target_substs)
-        {
-            for err in errors {
-                let err_type = BoundsTightened {
-                    pred: err,
-                };
-
-                changes.add_change(err_type,
-                                   orig_item_def_id,
-                                   Some(tcx.def_span(orig_item_def_id)));
-            }
-        }
-
-        let target_param_env = if let Some(env) = target_param_env {
-            env
-        } else {
-            // The bounds on the item could not have been translated - impl match found.
-            return true;
-        };
-
-        let orig_substs = Substs::identity_for_item(tcx, target_item_def_id);
-        if let Some(errors) =
-            compcx.check_bounds_error(tcx, target_param_env, orig_item_def_id, orig_substs)
-        {
-            for err in errors {
-                let err_type = BoundsLoosened {
-                    pred: err,
-                };
-
-                changes.add_change(err_type,
-                                   orig_item_def_id,
-                                   Some(tcx.def_span(orig_item_def_id)));
-            }
-        }
+        compcx.check_bounds_bidirectional(changes,
+                                          tcx,
+                                          orig_item_def_id,
+                                          target_item_def_id,
+                                          orig_substs,
+                                          target_substs);
 
         true
     })
