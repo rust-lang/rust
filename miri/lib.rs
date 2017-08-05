@@ -127,8 +127,8 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 tcx.sess.err("the evaluated program leaked memory");
             }
         }
-        Err(e) => {
-            ecx.report(&e);
+        Err(mut e) => {
+            ecx.report(&mut e);
         }
     }
 }
