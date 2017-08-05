@@ -1615,7 +1615,9 @@ fn rewrite_match_arms(
             arm_shape,
             &arm_indent_str,
         ));
-        result.push_str(&comment);
+        if !comment.chars().all(|c| c == ' ') {
+            result.push_str(&comment);
+        }
         result.push('\n');
         result.push_str(&arm_indent_str);
 
