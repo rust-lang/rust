@@ -689,7 +689,8 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             let match_found = target_impls
                 .iter()
                 .any(|&(target_impl_def_id, target_item_def_id)| {
-                    match_inherent_impl(id_mapping,
+                    match_inherent_impl(changes,
+                                        id_mapping,
                                         tcx,
                                         orig_impl_def_id,
                                         orig_item_def_id,
@@ -839,11 +840,8 @@ fn match_trait_impl<'a, 'tcx>(id_mapping: &IdMapping,
                               orig_def_id: DefId) -> bool {
     let trans = if id_mapping.in_old_crate(orig_def_id) {
         TranslationContext::target_new(tcx, id_mapping, false)
-    } else if id_mapping.in_new_crate(orig_def_id) {
-        TranslationContext::target_old(tcx, id_mapping, false)
     } else {
-        // not reached, but apparently we don't care.
-        return true;
+        TranslationContext::target_old(tcx, id_mapping, false)
     };
 
     debug!("matching: {:?}", orig_def_id);
@@ -873,7 +871,8 @@ fn match_trait_impl<'a, 'tcx>(id_mapping: &IdMapping,
 
 /// Compare an item pair in two inherent implementations and indicate whether the target one is
 /// compatible with the original one.
-fn match_inherent_impl<'a, 'tcx>(id_mapping: &IdMapping,
+fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                                 id_mapping: &IdMapping,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  orig_impl_def_id: DefId,
                                  orig_item_def_id: DefId,
@@ -904,6 +903,25 @@ fn match_inherent_impl<'a, 'tcx>(id_mapping: &IdMapping,
                                             target_self);
 
         if error.is_some() {
+            // `Self` on the impls isn't equal - no impl match found.
+            return false;
+        }
+
+        let orig_param_env = compcx
+            .forward_trans
+            .translate_param_env(orig_impl_def_id, tcx.param_env(orig_impl_def_id));
+
+        if let Some(orig_param_env) = orig_param_env {
+            let errors = compcx.check_bounds_error(tcx,
+                                                   orig_param_env,
+                                                   target_impl_def_id,
+                                                   target_substs);
+            if errors.is_some() {
+                // The bounds on the impls have been tightened - no impl match found.
+                return false
+            }
+        } else {
+            // The bounds could not have been translated - no impl match found.
             return false;
         }
 
@@ -920,6 +938,61 @@ fn match_inherent_impl<'a, 'tcx>(id_mapping: &IdMapping,
 
         if let Some(err) = error {
             println!("err: {:?}", err);
+            changes.add_change(TypeChanged { error: err }, orig_item_def_id, None);
+        }
+
+        let orig_param_env = compcx
+            .forward_trans
+            .translate_param_env(orig_item_def_id, tcx.param_env(orig_item_def_id));
+        let target_param_env = compcx
+            .backward_trans
+            .translate_param_env(target_item_def_id, tcx.param_env(target_item_def_id));
+
+        let orig_param_env = if let Some(env) = orig_param_env {
+            env
+        } else {
+            // The bounds on the item could not have been translated - impl match found.
+            return true;
+        };
+
+        if let Some(errors) =
+            compcx.check_bounds_error(tcx, orig_param_env, target_item_def_id, target_substs)
+        {
+            for err in errors {
+                println!("err preds forward: {:?}", err);
+
+                let err_type = BoundsTightened {
+                    pred: err,
+                };
+
+                changes.add_change(err_type,
+                                   orig_item_def_id,
+                                   Some(tcx.def_span(orig_item_def_id)));
+            }
+        }
+
+        let target_param_env = if let Some(env) = target_param_env {
+            env
+        } else {
+            // The bounds on the item could not have been translated - impl match found.
+            return true;
+        };
+
+        let orig_substs = Substs::identity_for_item(tcx, target_item_def_id);
+        if let Some(errors) =
+            compcx.check_bounds_error(tcx, target_param_env, orig_item_def_id, orig_substs)
+        {
+            for err in errors {
+                println!("err preds backward: {:?}", err);
+
+                let err_type = BoundsLoosened {
+                    pred: err,
+                };
+
+                changes.add_change(err_type,
+                                   orig_item_def_id,
+                                   Some(tcx.def_span(orig_item_def_id)));
+            }
         }
 
         true

@@ -181,7 +181,11 @@ impl IdMapping {
             } else if let Some(new_def_id) = self.internal_mapping.get(&old) {
                 Some(*new_def_id)
             } else if let Some(def_id_pair) = self.current_match.get() {
-                Some(def_id_pair.1)
+                if def_id_pair.0 == old {
+                    Some(def_id_pair.1)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -195,7 +199,12 @@ impl IdMapping {
         assert!(!self.in_old_crate(new));
 
         if self.in_new_crate(new) {
-            self.reverse_mapping.get(&new).cloned().or(self.current_match.get().map(|p| p.0))
+            self.reverse_mapping
+                .get(&new)
+                .cloned()
+                .or(self.current_match
+                        .get()
+                        .and_then(|p| if p.1 == new { Some(p.0) } else { None }))
         } else {
             Some(new)
         }

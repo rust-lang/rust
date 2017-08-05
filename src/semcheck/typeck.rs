@@ -208,8 +208,9 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         let mut bound_cx = BoundContext::new(self.infcx, orig_param_env);
         bound_cx.register(target_def_id, target_substs);
 
-        if let Some(errors) = bound_cx.get_errors() {
-            return Some(errors
+        bound_cx
+            .get_errors()
+            .map(|errors| errors
                 .iter()
                 .map(|err|
                      self.infcx
@@ -218,8 +219,5 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                          .lift_to_tcx(lift_tcx)
                          .unwrap())
                 .collect())
-        }
-
-        None
     }
 }
