@@ -28,6 +28,7 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![doc(cfg(unix))]
 
 pub mod io;
 pub mod ffi;

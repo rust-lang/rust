@@ -28,6 +28,7 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![doc(cfg(target_os = "redox"))]
 
 pub mod ffi;
 pub mod fs;
