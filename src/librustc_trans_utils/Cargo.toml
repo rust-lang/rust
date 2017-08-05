@@ -1,21 +1,15 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc_trans"
+name = "rustc_trans_utils"
 version = "0.0.0"
 
 [lib]
-name = "rustc_trans"
+name = "rustc_trans_utils"
 path = "lib.rs"
 crate-type = ["dylib"]
 test = false
 
 [dependencies]
-num_cpus = "1.0"
-flate2 = "0.2"
-jobserver = "0.1.5"
-log = "0.3"
-owning_ref = "0.3.3"
-rustc-demangle = "0.1.4"
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_back = { path = "../librustc_back" }
@@ -26,10 +20,6 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_llvm = { path = "../librustc_llvm" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
-rustc_trans_utils = { path = "../librustc_trans_utils" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-
-[target."cfg(windows)".dependencies]
-gcc = "0.3.50"

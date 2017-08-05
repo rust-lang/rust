@@ -54,6 +54,7 @@ extern crate rustc_resolve;
 extern crate rustc_save_analysis;
 #[cfg(feature="llvm")]
 extern crate rustc_trans;
+extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
 #[macro_use]
@@ -68,7 +69,9 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
+#[cfg(feature="llvm")]
 use rustc_trans::back::link;
+#[cfg(feature="llvm")]
 use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
@@ -83,6 +86,8 @@ use rustc::middle::cstore::MetadataLoader;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::{time, ErrorReported};
+#[cfg(not(feature="llvm"))]
+use rustc_back::target::Target;
 
 use serialize::json::ToJson;
 
@@ -95,6 +100,8 @@ use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
+#[cfg(not(feature="llvm"))]
+use std::path::Path;
 use std::process::{self, Command, Stdio};
 use std::rc::Rc;
 use std::str;
@@ -112,6 +119,7 @@ pub mod test;
 
 pub mod driver;
 pub mod pretty;
+#[cfg(feature="llvm")]
 pub mod target_features;
 mod derive_registrar;
 
@@ -220,6 +228,7 @@ pub fn run_compiler<'a>(args: &[String],
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
     if sopts.debugging_opts.debug_llvm {
+        #[cfg(feature="llvm")]
         rustc_trans::enable_llvm_debug();
     }
 
@@ -249,10 +258,12 @@ pub fn run_compiler<'a>(args: &[String],
     let mut sess = session::build_session_with_codemap(
         sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
     );
+    #[cfg(feature="llvm")]
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, cfg);
+    #[cfg(feature="llvm")]
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
@@ -528,9 +539,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     None,
                     descriptions.clone(),
                     cstore.clone());
+                #[cfg(feature="llvm")]
                 rustc_trans::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
+                #[cfg(feature="llvm")]
                 target_features::add_configuration(&mut cfg, &sess);
                 sess.parse_sess.config = cfg;
                 let should_stop =
@@ -723,14 +736,14 @@ impl RustcDefaultCalls {
                     };
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = driver::build_output_filenames(input, odir, ofile, attrs, sess);
-                    let id = link::find_crate_name(Some(sess), attrs, input);
+                    let id = rustc_trans_utils::link::find_crate_name(Some(sess), attrs, input);
                     if *req == PrintRequest::CrateName {
                         println!("{}", id);
                         continue;
                     }
                     let crate_types = driver::collect_crate_types(sess, attrs);
                     for &style in &crate_types {
-                        let fname = link::filename_for_input(sess, style, &id, &t_outputs);
+                        let fname = rustc_trans_utils::link::filename_for_input(sess, style, &id, &t_outputs);
                         println!("{}",
                                  fname.file_name()
                                       .unwrap()
@@ -779,6 +792,7 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
+                    #[cfg(features="llvm")]
                     for &(name, _) in RELOC_MODEL_ARGS.iter() {
                         println!("    {}", name);
                     }
@@ -786,13 +800,17 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
+                    #[cfg(features="llvm")]
                     for &(name, _) in CODE_GEN_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }
                     println!("");
                 }
                 PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
+                    #[cfg(feature="llvm")]
                     rustc_trans::print(*req, sess);
+                    #[cfg(not(feature="llvm"))]
+                    panic!("LLVM not supported by this rustc")
                 }
             }
         }
@@ -831,6 +849,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
+        #[cfg(feature="llvm")]
         rustc_trans::print_version();
     }
 }
@@ -1128,6 +1147,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
+        #[cfg(feature="llvm")]
         rustc_trans::print_passes();
         return None;
     }
@@ -1255,6 +1275,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_borrowck::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
+    #[cfg(feature="llvm")]
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
