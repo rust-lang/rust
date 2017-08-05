@@ -221,9 +221,15 @@ pub fn C_undef(t: Type) -> ValueRef {
     }
 }
 
-pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
+pub fn C_int(t: Type, i: i64) -> ValueRef {
     unsafe {
-        llvm::LLVMConstInt(t.to_ref(), u, sign_extend as Bool)
+        llvm::LLVMConstInt(t.to_ref(), i as u64, True)
+    }
+}
+
+pub fn C_uint(t: Type, i: u64) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstInt(t.to_ref(), i, False)
     }
 }
 
@@ -239,49 +245,34 @@ pub fn C_nil(ccx: &CrateContext) -> ValueRef {
 }
 
 pub fn C_bool(ccx: &CrateContext, val: bool) -> ValueRef {
-    C_integral(Type::i1(ccx), val as u64, false)
+    C_uint(Type::i1(ccx), val as u64)
 }
 
 pub fn C_i32(ccx: &CrateContext, i: i32) -> ValueRef {
-    C_integral(Type::i32(ccx), i as u64, true)
+    C_int(Type::i32(ccx), i as i64)
 }
 
 pub fn C_u32(ccx: &CrateContext, i: u32) -> ValueRef {
-    C_integral(Type::i32(ccx), i as u64, false)
+    C_uint(Type::i32(ccx), i as u64)
 }
 
 pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
-    C_integral(Type::i64(ccx), i, false)
+    C_uint(Type::i64(ccx), i)
 }
 
-pub fn C_uint<I: AsU64>(ccx: &CrateContext, i: I) -> ValueRef {
-    let v = i.as_u64();
-
-    let bit_size = machine::llbitsize_of_real(ccx, ccx.int_type());
+pub fn C_usize(ccx: &CrateContext, i: u64) -> ValueRef {
+    let bit_size = machine::llbitsize_of_real(ccx, ccx.isize_ty());
 
     if bit_size < 64 {
         // make sure it doesn't overflow
-        assert!(v < (1<<bit_size));
+        assert!(i < (1<<bit_size));
     }
 
-    C_integral(ccx.int_type(), v, false)
+    C_uint(ccx.isize_ty(), i)
 }
 
-pub trait AsI64 { fn as_i64(self) -> i64; }
-pub trait AsU64 { fn as_u64(self) -> u64; }
-
-// FIXME: remove the intptr conversions, because they
-// are host-architecture-dependent
-impl AsI64 for i64 { fn as_i64(self) -> i64 { self as i64 }}
-impl AsI64 for i32 { fn as_i64(self) -> i64 { self as i64 }}
-impl AsI64 for isize { fn as_i64(self) -> i64 { self as i64 }}
-
-impl AsU64 for u64  { fn as_u64(self) -> u64 { self as u64 }}
-impl AsU64 for u32  { fn as_u64(self) -> u64 { self as u64 }}
-impl AsU64 for usize { fn as_u64(self) -> u64 { self as u64 }}
-
 pub fn C_u8(ccx: &CrateContext, i: u8) -> ValueRef {
-    C_integral(Type::i8(ccx), i as u64, false)
+    C_uint(Type::i8(ccx), i as u64)
 }
 
 
@@ -315,7 +306,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false), Type::i8p(cx));
-    C_named_struct(cx.str_slice_type(), &[cs, C_uint(cx, len)])
+    C_named_struct(cx.str_slice_type(), &[cs, C_usize(cx, len as u64)])
 }
 
 pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
@@ -482,9 +473,9 @@ pub fn shift_mask_val<'a, 'tcx>(
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
             let val = llty.int_width() - 1;
             if invert {
-                C_integral(mask_llty, !val, true)
+                C_int(mask_llty, !val as i64)
             } else {
-                C_integral(mask_llty, val, false)
+                C_uint(mask_llty, val)
             }
         },
         TypeKind::Vector => {

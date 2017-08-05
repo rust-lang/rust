@@ -34,7 +34,7 @@ pub fn slice_for_each<'a, 'tcx, F>(
     let next_bcx = bcx.build_sibling_block("slice_loop_next");
 
     let start = if zst {
-        C_uint(bcx.ccx, 0usize)
+        C_usize(bcx.ccx, 1)
     } else {
         data_ptr
     };
@@ -46,7 +46,7 @@ pub fn slice_for_each<'a, 'tcx, F>(
     let keep_going = header_bcx.icmp(llvm::IntNE, current, end);
     header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
-    let next = add(&body_bcx, current, C_uint(bcx.ccx, 1usize));
+    let next = add(&body_bcx, current, C_usize(bcx.ccx, 1));
     f(&body_bcx, if zst { data_ptr } else { current }, header_bcx.llbb());
     header_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
     next_bcx

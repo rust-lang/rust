@@ -148,9 +148,8 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       }
 
       ty::TyArray(ty, size) => {
-          let size = size as u64;
           let llty = in_memory_type_of(cx, ty);
-          Type::array(&llty, size)
+          Type::array(&llty, size.as_u64())
       }
 
       // Unsized slice types (and str) have the type of their element, and

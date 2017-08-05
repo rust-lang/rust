@@ -876,7 +876,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
         let promotable = match expr_ty.sty {
-            ty::TyArray(_, 0) => true,
+            ty::TyArray(_, len) if len.as_u64() == 0 => true,
             _ => promotable,
         };
 

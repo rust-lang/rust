@@ -158,7 +158,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 },
                 (&LitKind::Int(n, _), &ty::TyInt(IntTy::Is)) |
                 (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
-                    match tcx.sess.target.int_type {
+                    match tcx.sess.target.isize_ty {
                         IntTy::I16 => if n == I16_OVERFLOW {
                             Some(Isize(Is16(i16::min_value())))
                         } else {
@@ -342,12 +342,12 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 "size_of" => {
                     let size = layout_of(substs.type_at(0))?.size(tcx).bytes();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(size,
-                        tcx.sess.target.uint_type).unwrap()))));
+                        tcx.sess.target.usize_ty).unwrap()))));
                 }
                 "min_align_of" => {
                     let align = layout_of(substs.type_at(0))?.align(tcx).abi();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(align,
-                        tcx.sess.target.uint_type).unwrap()))));
+                        tcx.sess.target.usize_ty).unwrap()))));
                 }
                 _ => signal!(e, TypeckError)
             }
@@ -421,7 +421,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }
         let arr = cx.eval(arr)?;
         let idx = match cx.eval(idx)?.val {
-            Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
+            Integral(Usize(i)) => i.as_u64(),
             _ => signal!(idx, IndexNotUsize),
         };
         assert_eq!(idx as usize as u64, idx);
@@ -431,7 +431,6 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                     elem
                 } else {
                     let n = v.len() as u64;
-                    assert_eq!(n as usize as u64, n);
                     signal!(e, IndexOutOfBounds { len: n, index: idx })
                 }
             }
@@ -457,7 +456,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       }
       hir::ExprRepeat(ref elem, _) => {
           let n = match ty.sty {
-            ty::TyArray(_, n) => n as u64,
+            ty::TyArray(_, n) => n.as_u64(),
             _ => span_bug!(e.span, "typeck error")
           };
           mk_const(Aggregate(Repeat(cx.eval(elem)?, n)))
@@ -562,7 +561,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyInt(ast::IntTy::I64) => Ok(Integral(I64(v as i128 as i64))),
         ty::TyInt(ast::IntTy::I128) => Ok(Integral(I128(v as i128))),
         ty::TyInt(ast::IntTy::Is) => {
-            Ok(Integral(Isize(ConstIsize::new_truncating(v as i128, tcx.sess.target.int_type))))
+            Ok(Integral(Isize(ConstIsize::new_truncating(v as i128, tcx.sess.target.isize_ty))))
         },
         ty::TyUint(ast::UintTy::U8) => Ok(Integral(U8(v as u8))),
         ty::TyUint(ast::UintTy::U16) => Ok(Integral(U16(v as u16))),
@@ -570,7 +569,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyUint(ast::UintTy::U64) => Ok(Integral(U64(v as u64))),
         ty::TyUint(ast::UintTy::U128) => Ok(Integral(U128(v as u128))),
         ty::TyUint(ast::UintTy::Us) => {
-            Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.uint_type))))
+            Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.usize_ty))))
         },
         ty::TyFloat(fty) => {
             if let Some(i) = val.to_u128() {
@@ -636,7 +635,9 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Err(ErrKind::UnimplementedConstVal("casting a bytestr to a raw ptr"))
             },
             ty::TyRef(_, ty::TypeAndMut { ref ty, mutbl: hir::MutImmutable }) => match ty.sty {
-                ty::TyArray(ty, n) if ty == tcx.types.u8 && n == b.data.len() => Ok(val),
+                ty::TyArray(ty, n) if ty == tcx.types.u8 && n.as_u64() == b.data.len() as u64 => {
+                    Ok(val)
+                }
                 ty::TySlice(_) => {
                     Err(ErrKind::UnimplementedConstVal("casting a bytestr to slice"))
                 },
@@ -678,12 +679,12 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 (&ty::TyInt(ity), _) |
                 (_, Signed(ity)) => {
                     Ok(Integral(ConstInt::new_signed_truncating(n as i128,
-                        ity, tcx.sess.target.int_type)))
+                        ity, tcx.sess.target.isize_ty)))
                 }
                 (&ty::TyUint(uty), _) |
                 (_, Unsigned(uty)) => {
                     Ok(Integral(ConstInt::new_unsigned_truncating(n as u128,
-                        uty, tcx.sess.target.uint_type)))
+                        uty, tcx.sess.target.usize_ty)))
                 }
                 _ => bug!()
             }

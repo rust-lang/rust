@@ -46,7 +46,7 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", Value(llvtable), self);
 
-        let llvtable = bcx.pointercast(llvtable, Type::int(bcx.ccx).ptr_to());
+        let llvtable = bcx.pointercast(llvtable, Type::isize(bcx.ccx).ptr_to());
         let ptr = bcx.load(bcx.gepi(llvtable, &[self.0]), None);
         // Vtable loads are invariant
         bcx.set_invariant_load(ptr);
@@ -81,8 +81,8 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let mut components: Vec<_> = [
         callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.shared(), ty)),
-        C_uint(ccx, ccx.size_of(ty)),
-        C_uint(ccx, ccx.align_of(ty))
+        C_usize(ccx, ccx.size_of(ty)),
+        C_usize(ccx, ccx.align_of(ty) as u64)
     ].iter().cloned().collect();
 
     if let Some(trait_ref) = trait_ref {

@@ -1555,7 +1555,7 @@ pub enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
-    Array(Box<Type>, usize),
+    Array(Box<Type>, String),
     Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
@@ -1785,7 +1785,7 @@ impl Clean<Type> for hir::Ty {
             TyArray(ref ty, length) => {
                 use rustc::middle::const_val::eval_length;
                 let n = eval_length(cx.tcx, length, "array length").unwrap();
-                Array(box ty.clean(cx), n)
+                Array(box ty.clean(cx), n.to_string())
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(hir::QPath::Resolved(None, ref path)) => {
@@ -1895,7 +1895,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
-            ty::TyArray(ty, n) => Array(box ty.clean(cx), n),
+            ty::TyArray(ty, n) => Array(box ty.clean(cx), n.to_string()),
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),

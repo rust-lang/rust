@@ -53,7 +53,7 @@ use mir::lvalue::LvalueRef;
 use attributes;
 use builder::Builder;
 use callee;
-use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
+use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use collector::{self, TransItemCollectionMode};
 use common::{C_struct_in_context, C_u64, C_undef, C_array};
 use common::CrateContext;
@@ -201,7 +201,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 -> ValueRef {
     let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
-        (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
+        (&ty::TyArray(_, len), &ty::TySlice(_)) => C_usize(ccx, len.as_u64()),
         (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
@@ -524,7 +524,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = b.pointercast(src, Type::i8p(ccx));
     let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
-    let size = b.intcast(n_bytes, ccx.int_type(), false);
+    let size = b.intcast(n_bytes, ccx.isize_ty(), false);
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
@@ -545,7 +545,7 @@ pub fn memcpy_ty<'a, 'tcx>(
     }
 
     let align = align.unwrap_or_else(|| ccx.align_of(t));
-    call_memcpy(bcx, dst, src, C_uint(ccx, size), align);
+    call_memcpy(bcx, dst, src, C_usize(ccx, size), align);
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
@@ -696,7 +696,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                        sp: Span,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()], &ccx.int_type());
+        let llfty = Type::func(&[ccx.isize_ty(), Type::i8p(ccx).ptr_to()], &ccx.isize_ty());
 
         if declare::get_defined_value(ccx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.

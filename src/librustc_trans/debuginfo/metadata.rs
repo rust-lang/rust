@@ -366,7 +366,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          -> bool {
         member_llvm_types.len() == 2 &&
         member_llvm_types[0] == type_of::type_of(cx, element_type).ptr_to() &&
-        member_llvm_types[1] == cx.int_type()
+        member_llvm_types[1] == cx.isize_ty()
     }
 }
 
@@ -530,7 +530,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::TyArray(typ, len) => {
-            fixed_vec_metadata(cx, unique_type_id, typ, Some(len as u64), usage_site_span)
+            fixed_vec_metadata(cx, unique_type_id, typ, Some(len.as_u64()), usage_site_span)
         }
         ty::TySlice(typ) => {
             fixed_vec_metadata(cx, unique_type_id, typ, None, usage_site_span)

@@ -93,8 +93,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
 
                 if binop.node.is_shift() {
                     let opt_ty_bits = match cx.tables.node_id_to_type(l.hir_id).sty {
-                        ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
-                        ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
+                        ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.isize_ty)),
+                        ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.usize_ty)),
                         _ => None,
                     };
 
@@ -141,7 +141,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
                             ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
                                 let int_type = if let ast::IntTy::Is = t {
-                                    cx.sess().target.int_type
+                                    cx.sess().target.isize_ty
                                 } else {
                                     t
                                 };
@@ -164,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                     }
                     ty::TyUint(t) => {
                         let uint_type = if let ast::UintTy::Us = t {
-                            cx.sess().target.uint_type
+                            cx.sess().target.usize_ty
                         } else {
                             t
                         };
@@ -250,9 +250,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
+        fn int_ty_bits(int_ty: ast::IntTy, isize_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::IntTy::Is => int_ty_bits(target_int_ty, target_int_ty),
+                ast::IntTy::Is => int_ty_bits(isize_ty, isize_ty),
                 ast::IntTy::I8 => 8,
                 ast::IntTy::I16 => 16 as u64,
                 ast::IntTy::I32 => 32,
@@ -261,9 +261,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
+        fn uint_ty_bits(uint_ty: ast::UintTy, usize_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::UintTy::Us => uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::UintTy::Us => uint_ty_bits(usize_ty, usize_ty),
                 ast::UintTy::U8 => 8,
                 ast::UintTy::U16 => 16,
                 ast::UintTy::U32 => 32,

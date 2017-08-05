@@ -18,6 +18,8 @@ use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
+use rustc_const_math::ConstUsize;
+
 use hir;
 
 #[derive(Clone, Copy, Debug)]
@@ -34,7 +36,7 @@ pub enum TypeError<'tcx> {
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
     TupleSize(ExpectedFound<usize>),
-    FixedArraySize(ExpectedFound<usize>),
+    FixedArraySize(ExpectedFound<ConstUsize>),
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),

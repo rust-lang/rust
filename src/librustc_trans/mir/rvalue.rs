@@ -19,8 +19,7 @@ use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use base;
 use builder::Builder;
 use callee;
-use common::{self, val_ty, C_bool, C_null, C_uint};
-use common::{C_integral, C_i32};
+use common::{self, val_ty, C_bool, C_i32, C_null, C_usize, C_uint};
 use adt;
 use machine;
 use monomorphize;
@@ -92,7 +91,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 bcx
             }
 
-            mir::Rvalue::Repeat(ref elem, ref count) => {
+            mir::Rvalue::Repeat(ref elem, count) => {
                 let dest_ty = dest.ty.to_ty(bcx.tcx());
 
                 // No need to inizialize memory of a zero-sized slice
@@ -101,8 +100,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 let tr_elem = self.trans_operand(&bcx, elem);
-                let size = count.as_u64(bcx.tcx().sess.target.uint_type);
-                let size = C_uint(bcx.ccx, size);
+                let size = count.as_u64();
+                let size = C_usize(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
                 let align = dest.alignment.to_align();
 
@@ -113,7 +112,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let align = C_i32(bcx.ccx, align as i32);
                         let ty = type_of::type_of(bcx.ccx, dest_ty);
                         let size = machine::llsize_of(bcx.ccx, ty);
-                        let fill = C_integral(Type::i8(bcx.ccx), 0, false);
+                        let fill = C_uint(Type::i8(bcx.ccx), 0);
                         base::call_memset(&bcx, base, fill, size, align, false);
                         return bcx;
                     }
@@ -301,7 +300,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 base::call_assume(&bcx, bcx.icmp(
                                     llvm::IntULE,
                                     llval,
-                                    C_integral(common::val_ty(llval), max, false)
+                                    C_uint(common::val_ty(llval), max)
                                 ));
                             }
 
@@ -464,7 +463,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(bcx.ccx.shared().type_is_sized(ty));
-                let val = C_uint(bcx.ccx, bcx.ccx.size_of(ty));
+                let val = C_usize(bcx.ccx, bcx.ccx.size_of(ty));
                 let tcx = bcx.tcx();
                 (bcx, OperandRef {
                     val: OperandValue::Immediate(val),
@@ -477,7 +476,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let llty = type_of::type_of(bcx.ccx, content_ty);
                 let llsize = machine::llsize_of(bcx.ccx, llty);
                 let align = bcx.ccx.align_of(content_ty);
-                let llalign = C_uint(bcx.ccx, align);
+                let llalign = C_usize(bcx.ccx, align as u64);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);
 
@@ -522,7 +521,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if common::type_is_zero_size(bcx.ccx, op.ty) {
                     if let ty::TyArray(_, n) = op.ty.sty {
-                        return common::C_uint(bcx.ccx, n);
+                        return common::C_usize(bcx.ccx, n.as_u64());
                     }
                 }
             }

@@ -801,13 +801,13 @@ fn walk_ty() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
-        let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty], false);
+        let usize_ty = tcx.types.usize;
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
         let walked: Vec<_> = tup2_ty.walk().collect();
         assert_eq!(walked,
-                   [tup2_ty, tup1_ty, int_ty, uint_ty, int_ty, uint_ty, tup1_ty, int_ty,
-                    uint_ty, int_ty, uint_ty, uint_ty]);
+                   [tup2_ty, tup1_ty, int_ty, usize_ty, int_ty, usize_ty, tup1_ty, int_ty,
+                    usize_ty, int_ty, usize_ty, usize_ty]);
     })
 }
 
@@ -816,20 +816,20 @@ fn walk_ty_skip_subtree() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
-        let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty], false);
+        let usize_ty = tcx.types.usize;
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.
         let mut expected = vec![(tup2_ty, false),
                                 (tup1_ty, false),
                                 (int_ty, false),
-                                (uint_ty, false),
+                                (usize_ty, false),
                                 (int_ty, false),
-                                (uint_ty, false),
+                                (usize_ty, false),
                                 (tup1_ty, true), // skip the isize/usize/isize/usize
-                                (uint_ty, false)];
+                                (usize_ty, false)];
         expected.reverse();
 
         let mut walker = tup2_ty.walk();

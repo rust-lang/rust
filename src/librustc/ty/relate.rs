@@ -429,7 +429,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         {
             let t = relation.relate(&a_t, &b_t)?;
             if sz_a == sz_b {
-                Ok(tcx.mk_array(t, sz_a))
+                Ok(tcx.mk_array(t, sz_a.as_u64()))
             } else {
                 Err(TypeError::FixedArraySize(expected_found(relation, &sz_a, &sz_b)))
             }

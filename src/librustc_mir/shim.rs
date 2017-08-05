@@ -292,7 +292,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
-        ty::TyArray(ty, len) => builder.array_shim(ty, len),
+        ty::TyArray(ty, len) => builder.array_shim(ty, len.as_u64()),
         ty::TyTuple(tys, _) => builder.tuple_shim(tys),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty);
@@ -470,8 +470,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         );
     }
 
-    fn make_usize(&self, value: usize) -> Box<Constant<'tcx>> {
-        let value = ConstUsize::new(value as u64, self.tcx.sess.target.uint_type).unwrap();
+    fn make_usize(&self, value: u64) -> Box<Constant<'tcx>> {
+        let value = ConstUsize::new(value, self.tcx.sess.target.usize_ty).unwrap();
         box Constant {
             span: self.span,
             ty: self.tcx.types.usize,
@@ -484,7 +484,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         }
     }
 
-    fn array_shim(&mut self, ty: ty::Ty<'tcx>, len: usize) {
+    fn array_shim(&mut self, ty: ty::Ty<'tcx>, len: u64) {
         let tcx = self.tcx;
         let span = self.span;
         let rcvr = Lvalue::Local(Local::new(1+0)).deref();

@@ -235,7 +235,7 @@ pub enum Constructor<'tcx> {
     /// Ranges of literal values (`2...5` and `2..5`).
     ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// Array patterns of length n.
-    Slice(usize),
+    Slice(u64),
 }
 
 impl<'tcx> Constructor<'tcx> {
@@ -276,7 +276,7 @@ pub enum WitnessPreference {
 #[derive(Copy, Clone, Debug)]
 struct PatternContext<'tcx> {
     ty: Ty<'tcx>,
-    max_slice_length: usize,
+    max_slice_length: u64,
 }
 
 /// A stack of patterns in reverse order of construction
@@ -330,8 +330,8 @@ impl<'tcx> Witness<'tcx> {
     {
         let arity = constructor_arity(cx, ctor, ty);
         let pat = {
-            let len = self.0.len();
-            let mut pats = self.0.drain(len-arity..).rev();
+            let len = self.0.len() as u64;
+            let mut pats = self.0.drain((len-arity) as usize..).rev();
 
             match ty.sty {
                 ty::TyAdt(..) |
@@ -423,10 +423,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }
         }
         ty::TyArray(ref sub_ty, length) => {
-            if length > 0 && cx.is_uninhabited(sub_ty) {
+            if length.as_u64() > 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
-                vec![Slice(length)]
+                vec![Slice(length.as_u64())]
             }
         }
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
@@ -447,7 +447,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
 fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     _cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    patterns: I) -> usize
+    patterns: I) -> u64
     where I: Iterator<Item=&'p Pattern<'tcx>>
 {
     // The exhaustiveness-checking paper does not include any details on
@@ -521,15 +521,15 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     for row in patterns {
         match *row.kind {
             PatternKind::Constant { value: &ty::Const { val: ConstVal::ByteStr(b), .. } } => {
-                max_fixed_len = cmp::max(max_fixed_len, b.data.len());
+                max_fixed_len = cmp::max(max_fixed_len, b.data.len() as u64);
             }
             PatternKind::Slice { ref prefix, slice: None, ref suffix } => {
-                let fixed_len = prefix.len() + suffix.len();
+                let fixed_len = prefix.len() as u64 + suffix.len() as u64;
                 max_fixed_len = cmp::max(max_fixed_len, fixed_len);
             }
             PatternKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
-                max_prefix_len = cmp::max(max_prefix_len, prefix.len());
-                max_suffix_len = cmp::max(max_suffix_len, suffix.len());
+                max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
+                max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
             }
             _ => {}
         }
@@ -729,11 +729,11 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
         PatternKind::Range { lo, hi, end } =>
             Some(vec![ConstantRange(lo, hi, end)]),
         PatternKind::Array { .. } => match pcx.ty.sty {
-            ty::TyArray(_, length) => Some(vec![Slice(length)]),
+            ty::TyArray(_, length) => Some(vec![Slice(length.as_u64())]),
             _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pcx.ty)
         },
         PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
-            let pat_len = prefix.len() + suffix.len();
+            let pat_len = prefix.len() as u64 + suffix.len() as u64;
             if slice.is_some() {
                 Some((pat_len..pcx.max_slice_length+1).map(Slice).collect())
             } else {
@@ -748,10 +748,10 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
+fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
     debug!("constructor_arity({:?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs, _) => fs.len(),
+        ty::TyTuple(ref fs, _) => fs.len() as u64,
         ty::TySlice(..) | ty::TyArray(..) => match *ctor {
             Slice(length) => length,
             ConstantValue(_) => 0,
@@ -759,7 +759,7 @@ fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize 
         },
         ty::TyRef(..) => 1,
         ty::TyAdt(adt, _) => {
-            adt.variants[ctor.variant_index_for_adt(adt)].fields.len()
+            adt.variants[ctor.variant_index_for_adt(adt)].fields.len() as u64
         }
         _ => 0
     }
@@ -777,7 +777,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
     match ty.sty {
         ty::TyTuple(ref fs, _) => fs.into_iter().map(|t| *t).collect(),
         ty::TySlice(ty) | ty::TyArray(ty, _) => match *ctor {
-            Slice(length) => repeat(ty).take(length).collect(),
+            Slice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(_) => vec![],
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
         },

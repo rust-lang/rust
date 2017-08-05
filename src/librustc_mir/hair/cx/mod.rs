@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
-        match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
+        match ConstUsize::new(value, self.tcx.sess.target.usize_ty) {
             Ok(val) => {
                 Literal::Value {
                     value: self.tcx.mk_const(ty::Const {

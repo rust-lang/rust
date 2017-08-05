@@ -279,7 +279,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     assert!(ty.is_slice());
 
-                    let array_ty = tcx.mk_array(tcx.types.u8, bytes.data.len());
+                    let array_ty = tcx.mk_array(tcx.types.u8, bytes.data.len() as u64);
                     let array_ref = tcx.mk_imm_ref(tcx.types.re_static, array_ty);
                     let array = self.literal_operand(test.span, array_ref, Literal::Value {
                         value

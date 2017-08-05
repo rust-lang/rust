@@ -250,20 +250,15 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 pub fn eval_length(tcx: TyCtxt,
                    count: hir::BodyId,
                    reason: &str)
-                   -> Result<usize, ErrorReported>
+                   -> Result<ConstUsize, ErrorReported>
 {
     let count_expr = &tcx.hir.body(count).value;
     let count_def_id = tcx.hir.body_owner_def_id(count);
     let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
     let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
     match tcx.at(count_expr.span).const_eval(param_env.and((count_def_id, substs))) {
-        Ok(&ty::Const { val: Integral(Usize(count)), .. }) => {
-            let val = count.as_u64(tcx.sess.target.uint_type);
-            assert_eq!(val as usize as u64, val);
-            Ok(val as usize)
-        },
-        Ok(_) |
-        Err(ConstEvalErr { kind: ErrKind::TypeckError, .. }) => Err(ErrorReported),
+        Ok(&ty::Const { val: Integral(Usize(count)), .. }) => Ok(count),
+        Ok(_) | Err(ConstEvalErr { kind: ErrKind::TypeckError, .. }) => Err(ErrorReported),
         Err(err) => {
             let mut diag = err.struct_error(tcx, count_expr.span, reason);
 
