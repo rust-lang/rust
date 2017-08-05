@@ -1,3 +1,6 @@
+// Validation detects that we are casting & to &mut and so it changes why we fail
+// compile-flags: -Zmir-emit-validate=0
+
 use std::mem::transmute;
 
 #[allow(mutable_transmutes)]

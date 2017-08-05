@@ -1,9 +1,6 @@
-// code for @RalfJung's validation branch is dead for now
-#![allow(dead_code)]
-
 use rustc::hir::Mutability;
 use rustc::hir::Mutability::*;
-use rustc::mir;
+use rustc::mir::{self, ValidationOp, ValidationOperand};
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
@@ -14,27 +11,10 @@ use super::{
     EvalError, EvalResult, EvalErrorKind,
     EvalContext, DynamicLifetime,
     AccessKind, LockInfo,
-    PrimVal, Value,
+    Value,
     Lvalue, LvalueExtra,
     Machine,
 };
-
-// FIXME remove this once it lands in rustc
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum ValidationOp {
-    Acquire,
-    Release,
-    Suspend(CodeExtent),
-}
-
-#[derive(Clone, Debug)]
-pub struct ValidationOperand<'tcx, T> {
-    pub lval: T,
-    pub ty: Ty<'tcx>,
-    pub re: Option<CodeExtent>,
-    pub mutbl: Mutability,
-}
-// FIXME end
 
 pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue<'tcx>>;
 
@@ -59,26 +39,35 @@ impl ValidationMode {
 // Validity checks
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
+        // If mir-emit-validate is set to 0 (i.e., disabled), we may still see validation commands
+        // because other crates may have been compiled with mir-emit-validate > 0.  Ignore those
+        // commands.  This makes mir-emit-validate also a flag to control whether miri will do
+        // validation or not.
+        if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
+            return Ok(());
+        }
+
         // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
+        // We currently insta-UB on anything passing around uninitialized memory, so we have to whitelist
+        // the places that are allowed to do that.
+        // The second group is stuff libstd does that is forbidden even under relaxed validation.
         {
             // The regexp we use for filtering
             use regex::Regex;
             lazy_static! {
                 static ref RE: Regex = Regex::new("^(\
-std::mem::swap::|\
-std::mem::uninitialized::|\
-std::ptr::read::|\
-std::panicking::try::do_call::|\
-std::slice::from_raw_parts_mut::|\
-<std::heap::Heap as std::heap::Alloc>::|\
-<std::mem::ManuallyDrop<T>><std::heap::AllocErr>::new$|\
-<std::mem::ManuallyDrop<T> as std::ops::DerefMut><std::heap::AllocErr>::deref_mut$|\
-std::sync::atomic::AtomicBool::get_mut$|\
-<std::boxed::Box<T>><[a-zA-Z0-9_\\[\\]]+>::from_raw|\
-<[a-zA-Z0-9_:<>]+ as std::slice::SliceIndex<[a-zA-Z0-9_\\[\\]]+>><[a-zA-Z0-9_\\[\\]]+>::get_unchecked_mut$|\
-<alloc::raw_vec::RawVec<T, std::heap::Heap>><[a-zA-Z0-9_\\[\\]]+>::into_box$|\
-<std::vec::Vec<T>><[a-zA-Z0-9_\\[\\]]+>::into_boxed_slice$\
-)").unwrap();
+                    std::mem::uninitialized::|\
+                    std::mem::forget::|\
+                    <(std|alloc)::heap::Heap as (std::heap|alloc::allocator)::Alloc>::|\
+                    <std::mem::ManuallyDrop<T>><.*>::new$|\
+                    <std::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
+                    std::ptr::read::|\
+                    \
+                    <std::sync::Arc<T>><.*>::inner$|\
+                    <std::sync::Arc<T>><.*>::drop_slow$|\
+                    (std::heap|alloc::allocator)::Layout::for_value::|\
+                    std::mem::(size|align)_of_val::\
+                )").unwrap();
             }
             // Now test
             let name = self.stack[self.cur_frame()].instance.to_string();
@@ -167,10 +156,11 @@ std::sync::atomic::AtomicBool::get_mut$|\
     fn validate(&mut self, query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
     {
         match self.try_validate(query, mode) {
-            // HACK: If, during releasing, we hit memory we cannot use, we just ignore that.
-            // This can happen because releases are added before drop elaboration.
-            // TODO: Fix the MIR so that these releases do not happen.
-            res @ Err(EvalError{ kind: EvalErrorKind::DanglingPointerDeref, ..}) |
+            // Releasing an uninitalized variable is a NOP.  This is needed because
+            // we have to release the return value of a function; due to destination-passing-style
+            // the callee may directly write there.
+            // TODO: Ideally we would know whether the destination is already initialized, and only
+            // release if it is.
             res @ Err(EvalError{ kind: EvalErrorKind::ReadUndefBytes, ..}) => {
                 if let ValidationMode::Release = mode {
                     return Ok(());
@@ -199,18 +189,13 @@ std::sync::atomic::AtomicBool::get_mut$|\
         }
 
         // HACK: For now, bail out if we hit a dead local during recovery (can happen because sometimes we have
-        // StorageDead before EndRegion).
+        // StorageDead before EndRegion due to https://github.com/rust-lang/rust/issues/43481).
         // TODO: We should rather fix the MIR.
-        // HACK: Releasing on dead/undef local variables is a NOP.  This can happen because of releases being added
-        // before drop elaboration.
-        // TODO: Fix the MIR so that these releases do not happen.
         match query.lval {
             Lvalue::Local { frame, local } => {
                 let res = self.stack[frame].get_local(local);
                 match (res, mode) {
-                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) |
-                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Release) |
-                    (Ok(Value::ByVal(PrimVal::Undef)), ValidationMode::Release) => {
+                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) => {
                         return Ok(());
                     }
                     _ => {},

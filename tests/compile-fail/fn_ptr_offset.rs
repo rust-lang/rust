@@ -1,3 +1,6 @@
+// Validation makes this fail in the wrong place
+// compile-flags: -Zmir-emit-validate=0
+
 use std::mem;
 
 fn f() {}
