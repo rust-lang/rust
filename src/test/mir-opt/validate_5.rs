@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags: -Z verbose -Z mir-emit-validate=2
+// compile-flags: -Z verbose -Z mir-emit-validate=2 -Z span_free_formats
 
-// Make sure unsafe fns and fns with an unsafe block only get full validation.
+// Make sure unsafe fns and fns with an unsafe block still get full validation.
 
 unsafe fn write_42(x: *mut i32) -> bool {
     *x = 42;
@@ -29,9 +29,6 @@ fn main() {
     test_closure(&mut 0);
 }
 
-// FIXME: Also test code generated inside the closure, make sure it has validation.  Unfortunately,
-// the interesting lines of code also contain name of the source file, so we cannot test for it.
-
 // END RUST SOURCE
 // START rustc.node17.EraseRegions.after.mir
 // fn test(_1: &ReErased mut i32) -> () {
@@ -42,3 +39,22 @@ fn main() {
 //     }
 // }
 // END rustc.node17.EraseRegions.after.mir
+// START rustc.node46.EraseRegions.after.mir
+// fn main::{{closure}}(_1: &ReErased [closure@NodeId(46)], _2: &ReErased mut i32) -> bool {
+//     bb0: {
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483660) => validate_5/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(46)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483660) => validate_5/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         StorageLive(_3);
+//         _3 = _2;
+//         StorageLive(_4);
+//         StorageLive(_5);
+//         Validate(Suspend(ReScope(Misc(NodeId(44)))), [(*_3): i32]);
+//         _5 = &ReErased mut (*_3);
+//         Validate(Acquire, [(*_5): i32/ReScope(Misc(NodeId(44)))]);
+//         _4 = _5 as *mut i32 (Misc);
+//         StorageDead(_5);
+//         EndRegion(ReScope(Misc(NodeId(44))));
+//         Validate(Release, [_0: bool, _4: *mut i32]);
+//         _0 = const write_42(_4) -> bb1;
+//     }
+// }
+// END rustc.node46.EraseRegions.after.mir
