@@ -18,9 +18,13 @@ pub struct Def<A> {
 }
 
 impl Def<u8> {
-    pub fn def(&self) -> u8 {
+    pub fn def(&self) -> u16 {
         0
     }
+
+    pub fn abc() { }
+
+    fn abc2() { }
 }
 
 impl Def<u16> {

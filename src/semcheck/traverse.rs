@@ -308,6 +308,15 @@ fn diff_method(changes: &mut ChangeSet, tcx: TyCtxt, old: AssociatedItem, new: A
                            None);
     }
 
+    let old_pub = old.vis == Public;
+    let new_pub = new.vis == Public;
+
+    if old_pub && !new_pub {
+        changes.add_change(ItemMadePrivate, old.def_id, None);
+    } else if !old_pub && new_pub {
+        changes.add_change(ItemMadePublic, old.def_id, None);
+    }
+
     diff_fn(changes, tcx, Def::Method(old.def_id), Def::Method(new.def_id));
 }
 
@@ -667,17 +676,21 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 unreachable!()
             };
 
+        let parent_output = changes.get_output(orig_item.parent_def_id);
+
         for &(orig_impl_def_id, orig_item_def_id) in orig_impls {
+            let orig_assoc_item = tcx.associated_item(orig_item_def_id);
+
             let item_span = tcx.def_span(orig_item_def_id);
             changes.new_change(orig_item_def_id,
                                orig_item_def_id,
                                orig_item.name,
                                item_span,
                                item_span,
-                               true);
+                               parent_output && orig_assoc_item.vis == Public);
 
             let target_impls = if let Some(impls) = forward_trans
-                .translate_inherent_entry(orig_item)
+                .translate_inherent_entry(&orig_item)
                 .and_then(|item| id_mapping.get_inherent_impls(&item))
             {
                 impls
@@ -689,13 +702,19 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             let match_found = target_impls
                 .iter()
                 .any(|&(target_impl_def_id, target_item_def_id)| {
+                    let target_assoc_item = tcx.associated_item(target_item_def_id);
+
+                    if parent_output && target_assoc_item.vis == Public {
+                        changes.set_output(orig_item.parent_def_id);
+                    }
+
                     match_inherent_impl(changes,
                                         id_mapping,
                                         tcx,
                                         orig_impl_def_id,
-                                        orig_item_def_id,
                                         target_impl_def_id,
-                                        target_item_def_id)
+                                        orig_assoc_item,
+                                        target_assoc_item)
                 });
 
             if !match_found {
@@ -754,72 +773,76 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        id_mapping: &IdMapping,
                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       old_def_id: DefId,
-                       new_def_id: DefId,
-                       old: Ty<'tcx>,
-                       new: Ty<'tcx>) {
-    info!("comparing types of {:?} / {:?}:\n  {:?} / {:?}", old_def_id, new_def_id, old, new);
+                       orig_def_id: DefId,
+                       target_def_id: DefId,
+                       orig: Ty<'tcx>,
+                       target: Ty<'tcx>) {
+    info!("comparing types of {:?} / {:?}:\n  {:?} / {:?}",
+          orig_def_id, target_def_id, orig, target);
 
     tcx.infer_ctxt().enter(|infcx| {
         let compcx = TypeComparisonContext::target_new(&infcx, id_mapping);
 
-        let old_substs = Substs::identity_for_item(infcx.tcx, new_def_id);
-        let old = compcx.forward_trans.translate_item_type(old_def_id, old);
-        // let old = old.subst(infcx.tcx, old_substs);
+        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
+        let orig = compcx.forward_trans.translate_item_type(orig_def_id, orig);
+        // let orig = orig.subst(infcx.tcx, orig_substs);
 
-        let new_substs = if new.is_fn() {
-            compcx.compute_target_infer_substs(new_def_id)
+        let target_substs = if target.is_fn() {
+            compcx.compute_target_infer_substs(target_def_id)
         } else {
-            compcx.compute_target_default_substs(new_def_id)
+            compcx.compute_target_default_substs(target_def_id)
         };
-        let new = new.subst(infcx.tcx, new_substs);
+        let target = target.subst(infcx.tcx, target_substs);
 
-        let new_param_env = infcx.tcx.param_env(new_def_id).subst(infcx.tcx, new_substs);
+        let target_param_env =
+            infcx.tcx.param_env(target_def_id).subst(infcx.tcx, target_substs);
 
-        if let Some(err) = compcx.check_type_error(tcx, new_def_id, new_param_env, old, new) {
-            changes.add_change(TypeChanged { error: err }, old_def_id, None);
+        if let Some(err) =
+            compcx.check_type_error(tcx, target_def_id, target_param_env, orig, target)
+        {
+            changes.add_change(TypeChanged { error: err }, orig_def_id, None);
         }
 
-        let old_param_env = compcx
+        let orig_param_env = compcx
             .forward_trans
-            .translate_param_env(old_def_id, tcx.param_env(old_def_id));
-        let new_param_env = compcx
+            .translate_param_env(orig_def_id, tcx.param_env(orig_def_id));
+        let target_param_env = compcx
             .backward_trans
-            .translate_param_env(new_def_id, tcx.param_env(new_def_id));
+            .translate_param_env(target_def_id, tcx.param_env(target_def_id));
 
-        let old_param_env = if let Some(env) = old_param_env {
+        let orig_param_env = if let Some(env) = orig_param_env {
             env
         } else {
             return;
         };
 
         if let Some(errors) =
-            compcx.check_bounds_error(tcx, old_param_env, new_def_id, new_substs)
+            compcx.check_bounds_error(tcx, orig_param_env, target_def_id, target_substs)
         {
             for err in errors {
                 let err_type = BoundsTightened {
                     pred: err,
                 };
 
-                changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
+                changes.add_change(err_type, orig_def_id, Some(tcx.def_span(orig_def_id)));
             }
         }
 
-        let new_param_env = if let Some(env) = new_param_env {
+        let target_param_env = if let Some(env) = target_param_env {
             env
         } else {
             return;
         };
 
         if let Some(errors) =
-            compcx.check_bounds_error(tcx, new_param_env, old_def_id, old_substs)
+            compcx.check_bounds_error(tcx, target_param_env, orig_def_id, orig_substs)
         {
             for err in errors {
                 let err_type = BoundsLoosened {
                     pred: err,
                 };
 
-                changes.add_change(err_type, old_def_id, Some(tcx.def_span(old_def_id)));
+                changes.add_change(err_type, orig_def_id, Some(tcx.def_span(orig_def_id)));
             }
         }
     });
@@ -867,9 +890,14 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                  id_mapping: &IdMapping,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  orig_impl_def_id: DefId,
-                                 orig_item_def_id: DefId,
                                  target_impl_def_id: DefId,
-                                 target_item_def_id: DefId) -> bool {
+                                 orig_item: AssociatedItem,
+                                 target_item: AssociatedItem) -> bool {
+    use rustc::ty::AssociatedKind;
+
+    let orig_item_def_id = orig_item.def_id;
+    let target_item_def_id = target_item.def_id;
+
     tcx.infer_ctxt().enter(|infcx| {
         let (compcx, register_errors) = if id_mapping.in_old_crate(orig_impl_def_id) {
             id_mapping.register_current_match(orig_item_def_id, target_item_def_id);
@@ -883,7 +911,7 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             .forward_trans
             .translate_item_type(orig_impl_def_id, infcx.tcx.type_of(orig_impl_def_id));
 
-        let target_substs = compcx.compute_target_infer_substs(target_impl_def_id);
+        let target_substs = compcx.compute_target_infer_substs(target_item_def_id);
         let target_self = infcx.tcx.type_of(target_impl_def_id).subst(infcx.tcx, target_substs);
 
         let target_param_env = infcx.tcx.param_env(target_impl_def_id);
@@ -895,7 +923,7 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                             target_self);
 
         if error.is_some() {
-            // `Self` on the impls isn't equal - no impl match found.
+            // `Self` on the impls isn't equal - no impl match.
             return false;
         }
 
@@ -909,28 +937,37 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                                    target_impl_def_id,
                                                    target_substs);
             if errors.is_some() {
-                // The bounds on the impls have been tightened - no impl match found.
+                // The bounds on the impls have been tightened - no impl match.
                 return false
             }
         } else {
-            // The bounds could not have been translated - no impl match found.
+            // The bounds could not have been translated - no impl match.
             return false;
         }
 
         if !register_errors {
-            // checking backwards, impl match found.
+            // checking backwards, impls match.
             return true;
         }
 
-        let orig_item = tcx.associated_item(orig_item_def_id);
-        let target_item = tcx.associated_item(target_item_def_id);
+        let (orig, target) = match (orig_item.kind, target_item.kind) {
+            (AssociatedKind::Const, AssociatedKind::Const) => {
+                (infcx.tcx.type_of(orig_item_def_id), infcx.tcx.type_of(target_item_def_id))
+            },
+            (AssociatedKind::Method, AssociatedKind::Method) => {
+                diff_method(changes, tcx, orig_item, target_item);
+                (infcx.tcx.type_of(orig_item_def_id), infcx.tcx.type_of(target_item_def_id))
+            },
+            (AssociatedKind::Type, AssociatedKind::Type) => {
+                (infcx.tcx.type_of(orig_item_def_id), infcx.tcx.type_of(target_item_def_id))
+            },
+            _ => {
+                unreachable!();
+            },
+        };
 
-        diff_method(changes, tcx, orig_item, target_item);
-
-        let orig = compcx
-            .forward_trans
-            .translate_item_type(orig_item_def_id, infcx.tcx.type_of(orig_item_def_id));
-        let target = infcx.tcx.type_of(target_item_def_id).subst(infcx.tcx, target_substs);
+        let orig = compcx.forward_trans.translate_item_type(orig_item_def_id, orig);
+        let target = target.subst(infcx.tcx, target_substs);
 
         let error = compcx.check_type_error(tcx,
                                             target_item_def_id,
@@ -982,8 +1019,6 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             compcx.check_bounds_error(tcx, target_param_env, orig_item_def_id, orig_substs)
         {
             for err in errors {
-                println!("err preds backward: {:?}", err);
-
                 let err_type = BoundsLoosened {
                     pred: err,
                 };

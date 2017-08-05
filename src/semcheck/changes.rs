@@ -531,6 +531,16 @@ impl<'tcx> ChangeSet<'tcx> {
         self.changes.get_mut(&old).unwrap().insert(type_, span);
     }
 
+    /// Check whether the changes associated with a `DefId` will be reported.
+    pub fn get_output(&self, old: DefId) -> bool {
+        self.changes.get(&old).map_or(true, |change| change.output)
+    }
+
+    /// Set up reporting for the changes associated with a given `DefId`.
+    pub fn set_output(&mut self, old: DefId) {
+        self.changes.get_mut(&old).map(|change| change.output = true);
+    }
+
     /// Check whether an item with the given id has undergone breaking changes.
     ///
     /// The expected `DefId` is obviously an *old* one.

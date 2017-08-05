@@ -9,12 +9,20 @@ warning: breaking changes in `def`
    |
    = warning: removed item in inherent impl (breaking)
 
-warning: technically breaking changes in `def`
-  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:27:5
+warning: technically breaking changes in `abc`
+  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:25:5
    |
-27 | /     pub fn def(&self) -> u8 {
-28 | |         0
-29 | |     }
+25 |     pub fn abc() { }
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `def`
+  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:31:5
+   |
+31 | /     pub fn def(&self) -> u8 {
+32 | |         0
+33 | |     }
    | |_____^
    |
    = note: added item in inherent impl (technically breaking)
