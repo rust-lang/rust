@@ -364,6 +364,9 @@ declare_features! (
     // global allocators and their internals
     (active, global_allocator, "1.20.0", None),
     (active, allocator_internals, "1.20.0", None),
+
+    // #[doc(cfg(...))]
+    (active, doc_cfg, "1.21.0", Some(43781)),
 );
 
 declare_features! (
@@ -1155,6 +1158,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         if !attr.span.allows_unstable() {
             // check for gated attributes
             self.context.check_attribute(attr, false);
+        }
+
+        if attr.check_name("doc") {
+            if let Some(content) = attr.meta_item_list() {
+                if content.len() == 1 && content[0].check_name("cfg") {
+                    gate_feature_post!(&self, doc_cfg, attr.span,
+                        "#[doc(cfg(...))] is experimental"
+                    );
+                }
+            }
         }
 
         if self.context.features.proc_macro && attr::is_known(attr) {

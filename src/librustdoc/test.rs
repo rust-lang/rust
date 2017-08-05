@@ -125,6 +125,7 @@ pub fn run(input: &str,
         let map = hir::map::map_crate(&mut hir_forest, defs);
         let krate = map.krate();
         let mut hir_collector = HirCollector {
+            sess: &sess,
             collector: &mut collector,
             map: &map
         };
@@ -578,6 +579,7 @@ impl Collector {
 }
 
 struct HirCollector<'a, 'hir: 'a> {
+    sess: &'a session::Session,
     collector: &'a mut Collector,
     map: &'a hir::map::Map<'hir>
 }
@@ -587,12 +589,18 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
                                             name: String,
                                             attrs: &[ast::Attribute],
                                             nested: F) {
+        let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
+        if let Some(ref cfg) = attrs.cfg {
+            if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features.borrow())) {
+                return;
+            }
+        }
+
         let has_name = !name.is_empty();
         if has_name {
             self.collector.names.push(name);
         }
 
-        let mut attrs = Attributes::from_ast(attrs);
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
