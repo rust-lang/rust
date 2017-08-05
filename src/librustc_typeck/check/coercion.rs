@@ -1046,7 +1046,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
-    /// occurs in a case like `if foo { ... };`, where the issing else
+    /// occurs in a case like `if foo { ... };`, where the missing else
     /// generates a "forced unit". Another example is a `loop { break;
     /// }`, where the `break` has no argument expression. We treat
     /// these cases slightly differently for error-reporting
