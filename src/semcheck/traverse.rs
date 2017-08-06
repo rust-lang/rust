@@ -25,8 +25,6 @@ use semcheck::typeck::{BoundContext, TypeComparisonContext};
 
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
-use syntax::symbol::Symbol;
-
 /// The main entry point to our analysis passes.
 ///
 /// Set up the necessary data structures and run the analysis passes.
@@ -780,12 +778,9 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         if !match_trait_impl(id_mapping, tcx, *old_impl_def_id) {
             let impl_span = tcx.def_span(*old_impl_def_id);
 
-            changes.new_change(*old_impl_def_id,
-                               *old_impl_def_id,
-                               Symbol::intern("impl"), // FIXME: find something more fitting
-                               impl_span,
-                               impl_span,
-                               true);
+            changes.new_change_impl(*old_impl_def_id,
+                                    tcx.item_path_str(*old_impl_def_id),
+                                    impl_span);
             changes.add_change(TraitImplTightened, *old_impl_def_id, None);
         }
     }
@@ -801,12 +796,9 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         if !match_trait_impl(id_mapping, tcx, *new_impl_def_id) {
             let impl_span = tcx.def_span(*new_impl_def_id);
 
-            changes.new_change(*new_impl_def_id,
-                               *new_impl_def_id,
-                               Symbol::intern("impl"), // FIXME: find something more fitting
-                               impl_span,
-                               impl_span,
-                               true);
+            changes.new_change_impl(*new_impl_def_id,
+                                    tcx.item_path_str(*new_impl_def_id),
+                                    impl_span);
             changes.add_change(TraitImplLoosened, *new_impl_def_id, None);
         }
     }

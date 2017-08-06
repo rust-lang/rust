@@ -64,6 +64,25 @@ impl<'a> fmt::Display for ChangeCategory {
     }
 }
 
+/// Different ways to refer to a changed item.
+pub enum Name {
+    /// The changed item's name.
+    Symbol(Symbol),
+    /// A textutal description of the item, used for trait impls.
+    ImplDesc(String),
+}
+
+impl<'a> fmt::Display for Name {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Name::Symbol(name) => write!(f, "`{}`", name),
+            Name::ImplDesc(ref desc) => {
+                write!(f, "`{}`", desc)
+            },
+        }
+    }
+}
+
 /// A change record of newly introduced or removed paths to an item.
 ///
 /// It is important to note that the `Eq` and `Ord` instances are constucted to only regard the
@@ -343,7 +362,7 @@ pub struct Change<'tcx> {
     /// The most severe change category already recorded for the item.
     max: ChangeCategory,
     /// The name of the item.
-    name: Symbol,
+    name: Name,
     /// The new definition span of the item.
     new_span: Span,
     /// Whether to output changes. Used to distinguish all-private items.
@@ -352,7 +371,7 @@ pub struct Change<'tcx> {
 
 impl<'tcx> Change<'tcx> {
     /// Construct a new empty change record for an item.
-    fn new(name: Symbol, span: Span, output: bool) -> Change<'tcx> {
+    fn new(name: Name, span: Span, output: bool) -> Change<'tcx> {
         Change {
             changes: Vec::new(),
             max: ChangeCategory::default(),
@@ -430,7 +449,7 @@ impl<'tcx> Change<'tcx> {
             return;
         }
 
-        let msg = format!("{} changes in `{}`", self.max, self.name);
+        let msg = format!("{} changes in {}", self.max, self.name);
         let mut builder = session.struct_span_warn(self.new_span, &msg);
 
         for change in &self.changes {
@@ -526,11 +545,21 @@ impl<'tcx> ChangeSet<'tcx> {
                       old_span: Span,
                       new_span: Span,
                       output: bool) {
-        let change = Change::new(name, new_span, output);
+        let change = Change::new(Name::Symbol(name), new_span, output);
 
         self.spans.insert(old_span, old_def_id);
         self.spans.insert(new_span, new_def_id);
         self.changes.insert(old_def_id, change);
+    }
+
+    pub fn new_change_impl(&mut self,
+                           def_id: DefId,
+                           desc: String,
+                           span: Span) {
+        let change = Change::new(Name::ImplDesc(desc), span, true);
+
+        self.spans.insert(span, def_id);
+        self.changes.insert(def_id, change);
     }
 
     /// Add a new change to an already existing entry.
@@ -763,7 +792,7 @@ pub mod tests {
         -> Change<'a>
     {
         let mut interner = Interner::new();
-        let mut change = Change::new(interner.intern("test"), s1, output);
+        let mut change = Change::new(Name::Symbol(interner.intern("test")), s1, output);
 
         for (type_, span) in changes.drain(..) {
             change.insert(type_.inner(), span.map(|s| s.inner()));
