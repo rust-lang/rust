@@ -312,8 +312,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
             MethodError::PrivateMatch(def) => {
-                let msg = format!("{} `{}` is private", def.kind_name(), item_name);
-                self.tcx.sess.span_err(span, &msg);
+                struct_span_err!(self.tcx.sess, span, E0624,
+                                 "{} `{}` is private", def.kind_name(), item_name).emit();
             }
 
             MethodError::IllegalSizedBound(candidates) => {
