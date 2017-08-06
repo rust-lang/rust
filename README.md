@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 203 lints included in this crate:
+There are 204 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -378,6 +378,7 @@ name                                                                            
 [useless_let_if_seq](https://github.com/Manishearth/rust-clippy/wiki#useless_let_if_seq)                               | warn    | unidiomatic `let mut` declaration followed by initialization in `if`
 [useless_transmute](https://github.com/Manishearth/rust-clippy/wiki#useless_transmute)                                 | warn    | transmutes that have the same to and from types or could be a cast/coercion
 [useless_vec](https://github.com/Manishearth/rust-clippy/wiki#useless_vec)                                             | warn    | useless `vec!`
+[verbose_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#verbose_bit_mask)                                   | warn    | expressions where a bit mask is less readable than the corresponding method call
 [while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                                       | warn    | `loop { if let { ... } else break }`, which can be written as a `while let` loop
 [while_let_on_iterator](https://github.com/Manishearth/rust-clippy/wiki#while_let_on_iterator)                         | warn    | using a while-let loop instead of a for loop on an iterator
 [wrong_pub_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_pub_self_convention)                 | allow   | defining a public method named with an established prefix (like "into_") that takes `self` with the wrong convention

@@ -592,6 +592,7 @@ All notable changes to this project will be documented in this file.
 [`useless_let_if_seq`]: https://github.com/Manishearth/rust-clippy/wiki#useless_let_if_seq
 [`useless_transmute`]: https://github.com/Manishearth/rust-clippy/wiki#useless_transmute
 [`useless_vec`]: https://github.com/Manishearth/rust-clippy/wiki#useless_vec
+[`verbose_bit_mask`]: https://github.com/Manishearth/rust-clippy/wiki#verbose_bit_mask
 [`while_let_loop`]: https://github.com/Manishearth/rust-clippy/wiki#while_let_loop
 [`while_let_on_iterator`]: https://github.com/Manishearth/rust-clippy/wiki#while_let_on_iterator
 [`wrong_pub_self_convention`]: https://github.com/Manishearth/rust-clippy/wiki#wrong_pub_self_convention
