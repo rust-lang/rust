@@ -498,7 +498,7 @@ impl<'a> Drop for DiagnosticWrapper<'a> {
 impl<'a> DiagnosticWrapper<'a> {
     fn wiki_link(&mut self, lint: &'static Lint) {
         if env::var("CLIPPY_DISABLE_WIKI_LINKS").is_err() {
-            self.0.help(&format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
+            self.0.help(&format!("for further information visit https://github.com/rust-lang-nursery/rust-clippy/wiki#{}",
                                  lint.name_lower()));
         }
     }

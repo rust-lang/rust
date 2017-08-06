@@ -6,16 +6,16 @@ Hello fellow Rustacean! Great to see your interest in compiler internals and lin
 
 All issues on Clippy are mentored, if you want help with a bug just ask @Manishearth or @llogiq.
 
-Some issues are easier than others. The [E-easy](https://github.com/Manishearth/rust-clippy/labels/E-easy)
+Some issues are easier than others. The [E-easy](https://github.com/rust-lang-nursery/rust-clippy/labels/E-easy)
 label can be used to find the easy issues. If you want to work on an issue, please leave a comment
 so that we can assign it to you!
 
-Issues marked [T-AST](https://github.com/Manishearth/rust-clippy/labels/T-AST) involve simple
+Issues marked [T-AST](https://github.com/rust-lang-nursery/rust-clippy/labels/T-AST) involve simple
 matching of the syntax tree structure, and are generally easier than
-[T-middle](https://github.com/Manishearth/rust-clippy/labels/T-middle) issues, which involve types
+[T-middle](https://github.com/rust-lang-nursery/rust-clippy/labels/T-middle) issues, which involve types
 and resolved paths.
 
-Issues marked [E-medium](https://github.com/Manishearth/rust-clippy/labels/E-medium) are generally
+Issues marked [E-medium](https://github.com/rust-lang-nursery/rust-clippy/labels/E-medium) are generally
 pretty easy too, though it's recommended you work on an E-easy issue first.
 
 [Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is a nice primer
@@ -28,7 +28,7 @@ how this syntax structure is encoded in the AST, it is recommended to run `rustc
 example of the structure and compare with the
 [nodes in the AST docs](http://manishearth.github.io/rust-internals-docs/syntax/ast/). Usually
 the lint will end up to be a nested series of matches and ifs,
-[like so](https://github.com/Manishearth/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
+[like so](https://github.com/rust-lang-nursery/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
 
 T-middle issues can be more involved and require verifying types. The
 [`ty`](http://manishearth.github.io/rust-internals-docs/rustc/ty) module contains a

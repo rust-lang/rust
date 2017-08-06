@@ -10,7 +10,7 @@ authors = [
 	"Martin Carton <cartonmartin@gmail.com>"
 ]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
-repository = "https://github.com/Manishearth/rust-clippy"
+repository = "https://github.com/rust-lang-nursery/rust-clippy"
 readme = "README.md"
 license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]

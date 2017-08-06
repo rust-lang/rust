@@ -29,7 +29,7 @@ declare_restriction_lint_re = re.compile(r'''
 
 nl_escape_re = re.compile(r'\\\n\s*')
 
-wiki_link = 'https://github.com/Manishearth/rust-clippy/wiki'
+wiki_link = 'https://github.com/rust-lang-nursery/rust-clippy/wiki'
 
 
 def collect(lints, deprecated_lints, restriction_lints, fn):

@@ -1072,7 +1072,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
 /// will mistakenly imply that it is possible for `x` to be outside the range of
 /// `u8`.
 ///
-/// **Known problems:** https://github.com/Manishearth/rust-clippy/issues/886
+/// **Known problems:** https://github.com/rust-lang-nursery/rust-clippy/issues/886
 ///
 /// **Example:**
 /// ```rust
