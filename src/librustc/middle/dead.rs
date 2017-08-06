@@ -13,7 +13,7 @@
 // from live codes are live, and everything else is dead.
 
 use hir::map as hir_map;
-use hir::{self, PatKind};
+use hir::{self, Item_, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 
@@ -189,6 +189,22 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.struct_has_extern_repr = had_extern_repr;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
+
+    fn mark_as_used_if_union(&mut self, did: DefId, fields: &hir::HirVec<hir::Field>) {
+        if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
+            if let Some(hir_map::NodeItem(item)) = self.tcx.hir.find(node_id) {
+                if let Item_::ItemUnion(ref variant, _) = item.node {
+                    if variant.fields().len() > 1 {
+                        for field in variant.fields() {
+                            if fields.iter().find(|x| x.name.node == field.name).is_some() {
+                                self.live_symbols.insert(field.id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
@@ -230,6 +246,13 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             }
             hir::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&lhs, idx.node);
+            }
+            hir::ExprStruct(_, ref fields, _) => {
+                if let ty::TypeVariants::TyAdt(ref def, _) = self.tables.expr_ty(expr).sty {
+                    if def.is_union() {
+                        self.mark_as_used_if_union(def.did, fields);
+                    }
+                }
             }
             _ => ()
         }
@@ -561,7 +584,6 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
             self.warn_dead_code(field.id, field.span,
                                 field.name, "field");
         }
-
         intravisit::walk_struct_field(self, field);
     }
 
@@ -603,6 +625,9 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
     let krate = tcx.hir.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
-    let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
+    let mut visitor = DeadVisitor {
+        tcx: tcx,
+        live_symbols: live_symbols,
+    };
     intravisit::walk_crate(&mut visitor, krate);
 }
