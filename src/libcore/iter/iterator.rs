@@ -1247,7 +1247,7 @@ pub trait Iterator {
     /// assert_eq!(vec![2, 4, 6], doubled);
     /// ```
     ///
-    /// Because `collect()` cares about what you're collecting into, you can
+    /// Because `collect()` only cares about what you're collecting into, you can
     /// still use a partial type hint, `_`, with the turbofish:
     ///
     /// ```
