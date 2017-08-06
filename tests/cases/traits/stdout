@@ -132,13 +132,13 @@ warning: breaking changes in `Klm`
    |
    = warning: added bound: `Self: std::clone::Clone` (breaking)
 
-warning: technically breaking changes in `Nop`
+warning: breaking changes in `Nop`
   --> $REPO_PATH/tests/cases/traits/new.rs:44:1
    |
 44 | pub trait Nop { }
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: removed bound: `Self: std::clone::Clone` (technically breaking)
+   = warning: removed bound on trait definition: `Self: std::clone::Clone` (breaking)
 
 warning: breaking changes in `Qrs`
   --> $REPO_PATH/tests/cases/traits/new.rs:46:1
@@ -148,11 +148,11 @@ warning: breaking changes in `Qrs`
    |
    = warning: added bound: `A: std::clone::Clone` (breaking)
 
-warning: technically breaking changes in `Tuv`
+warning: breaking changes in `Tuv`
   --> $REPO_PATH/tests/cases/traits/new.rs:48:1
    |
 48 | pub trait Tuv<A> { }
    | ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: removed bound: `A: std::clone::Clone` (technically breaking)
+   = warning: removed bound on trait definition: `A: std::clone::Clone` (breaking)
 

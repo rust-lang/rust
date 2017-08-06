@@ -207,7 +207,7 @@ pub enum ChangeType<'tcx> {
     /// An item's bounds have been tightened.
     BoundsTightened { pred: Predicate<'tcx> },
     /// An item's bounds have been loosened.
-    BoundsLoosened { pred: Predicate<'tcx> },
+    BoundsLoosened { pred: Predicate<'tcx>, trait_def: bool },
     /// A trait impl has been specialized or removed for some types.
     TraitImplTightened,
     /// A trait impl has been generalized or newly added for some types.
@@ -244,12 +244,13 @@ impl<'tcx> ChangeType<'tcx> {
             TraitItemRemoved { .. } |
             TraitUnsafetyChanged { .. } |
             BoundsTightened { .. } |
+            BoundsLoosened { trait_def: true, .. } |
             TraitImplTightened |
             AssociatedItemRemoved |
             Unknown => Breaking,
             MethodSelfChanged { now_self: true } |
             TraitItemAdded { defaulted: true } |
-            BoundsLoosened { .. } |
+            BoundsLoosened { trait_def: false, .. } |
             TraitImplLoosened |
             AssociatedItemAdded |
             ItemMadePublic => TechnicallyBreaking,
@@ -309,7 +310,12 @@ impl<'a> fmt::Display for ChangeType<'a> {
             TraitUnsafetyChanged { now_unsafe: false } => "trait no longer unsafe",
             TypeChanged { ref error } => return write!(f, "type error: {}", error),
             BoundsTightened { ref pred } => return write!(f, "added bound: `{}`", pred),
-            BoundsLoosened { ref pred } => return write!(f, "removed bound: `{}`", pred),
+            BoundsLoosened { ref pred, trait_def } =>
+                if trait_def {
+                    return write!(f, "removed bound on trait definition: `{}`", pred)
+                } else {
+                    return write!(f, "removed bound: `{}`", pred)
+                },
             TraitImplTightened => "trait impl specialized or removed",
             TraitImplLoosened => "trait impl generalized or newly added",
             AssociatedItemAdded => "added item in inherent impl",

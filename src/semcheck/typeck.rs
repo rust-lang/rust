@@ -230,6 +230,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     pub fn check_bounds_bidirectional<'b, 'tcx2>(&self,
                                                  changes: &mut ChangeSet<'tcx2>,
                                                  lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+                                                 trait_def: bool,
                                                  orig_def_id: DefId,
                                                  target_def_id: DefId,
                                                  orig_substs: &Substs<'tcx>,
@@ -275,6 +276,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
             for err in errors {
                 let err_type = BoundsLoosened {
                     pred: err,
+                    trait_def: trait_def,
                 };
 
                 changes.add_change(err_type, orig_def_id, None);
