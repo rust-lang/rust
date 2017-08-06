@@ -31,7 +31,7 @@ use syntax_pos::Span;
 /// exotic and/or unlikely scenarios.
 ///
 /// [1]: https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChangeCategory {
     /// Patch change - no change to the public API of a crate.
     Patch,
@@ -416,7 +416,7 @@ impl<'tcx> Change<'tcx> {
 
     /// Get the change's category.
     fn to_category(&self) -> ChangeCategory {
-        self.max.clone()
+        self.max
     }
 
     /// Get the new span of the change item.
@@ -512,7 +512,7 @@ impl<'tcx> ChangeSet<'tcx> {
         let cat = if add { TechnicallyBreaking } else { Breaking };
 
         if cat > self.max {
-            self.max = cat.clone();
+            self.max = cat;
         }
 
         self.path_changes.get_mut(&old).unwrap().insert(span, add);
@@ -538,7 +538,7 @@ impl<'tcx> ChangeSet<'tcx> {
         let cat = type_.to_category();
 
         if cat > self.max && self.get_output(old) {
-            self.max = cat.clone();
+            self.max = cat;
         }
 
         self.changes.get_mut(&old).unwrap().insert(type_, span);
@@ -551,8 +551,18 @@ impl<'tcx> ChangeSet<'tcx> {
 
     /// Set up reporting for the changes associated with a given `DefId`.
     pub fn set_output(&mut self, old: DefId) {
-        // FIXME: possibly recompute the maximum change category too (just to be safe).
-        self.changes.get_mut(&old).map(|change| change.output = true);
+        let max = &mut self.max;
+        self.changes
+            .get_mut(&old)
+            .map(|change| {
+                let cat = change.to_category();
+
+                if cat > *max {
+                    *max = cat;
+                }
+
+                change.output = true
+            });
     }
 
     /// Check whether an item with the given id has undergone breaking changes.
