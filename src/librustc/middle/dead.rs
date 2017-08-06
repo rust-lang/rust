@@ -190,20 +190,18 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
 
-    fn mark_as_used_if_union(&mut self, did: DefId) {
+    fn mark_as_used_if_union(&mut self, did: DefId, fields: &hir::HirVec<hir::Field>) {
         if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
-            match self.tcx.hir.find(node_id) {
-                Some(hir_map::NodeItem(item)) => match item.node {
-                    Item_::ItemUnion(ref variant, _) => {
-                        if variant.fields().len() > 1 {
-                            for field in variant.fields() {
+            if let Some(hir_map::NodeItem(item)) = self.tcx.hir.find(node_id) {
+                if let Item_::ItemUnion(ref variant, _) = item.node {
+                    if variant.fields().len() > 1 {
+                        for field in variant.fields() {
+                            if fields.iter().find(|x| x.name.node == field.name).is_some() {
                                 self.live_symbols.insert(field.id);
                             }
                         }
                     }
-                    _ => {}
-                },
-                _ => {}
+                }
             }
         }
     }
@@ -239,11 +237,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let def = self.tables.qpath_def(qpath, expr.id);
                 self.handle_definition(def);
-                self.mark_as_used_if_union(def.def_id());
-            }
-            hir::ExprPath(ref qpath @ hir::QPath::Resolved(..)) => {
-                let def = self.tables.qpath_def(qpath, expr.id);
-                self.mark_as_used_if_union(def.def_id());
             }
             hir::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id);
@@ -253,6 +246,10 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             }
             hir::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&lhs, idx.node);
+            }
+            hir::ExprStruct(ref qpath, ref fields, _) => {
+                let def = self.tables.qpath_def(qpath, expr.id);
+                self.mark_as_used_if_union(def.def_id(), fields);
             }
             _ => ()
         }

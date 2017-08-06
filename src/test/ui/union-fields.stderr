@@ -1,8 +1,8 @@
-error: field is never used: `y`
-  --> $DIR/union-fields.rs:20:5
+error: field is never used: `c`
+  --> $DIR/union-fields.rs:16:5
    |
-20 |     y: u32,
-   |     ^^^^^^
+16 |     c: u8, // should be reported
+   |     ^^^^^
    |
 note: lint level defined here
   --> $DIR/union-fields.rs:11:9
@@ -10,5 +10,17 @@ note: lint level defined here
 11 | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: aborting due to previous error
+error: field is never used: `a`
+  --> $DIR/union-fields.rs:19:5
+   |
+19 |     a: u8, // should be reported
+   |     ^^^^^
+
+error: field is never used: `a`
+  --> $DIR/union-fields.rs:23:20
+   |
+23 | union NoDropLike { a: u8 } // should be reported as unused
+   |                    ^^^^^
+
+error: aborting due to 3 previous errors
 
