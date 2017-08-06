@@ -10,15 +10,20 @@
 
 /// The addition operator `+`.
 ///
+/// Note that `RHS = Self` by default, but this is not mandatory. For example,
+/// [`std::time::SystemTime`] implements `Add<Duration>`, which permits
+/// operations of the form `SystemTime = SystemTime + Duration`.
+///
+/// [`std::time::SystemTime`]: ../../std/time/struct.SystemTime.html
+///
 /// # Examples
 ///
-/// This example creates a `Point` struct that implements the `Add` trait, and
-/// then demonstrates adding two `Point`s.
+/// ## `Add`able points
 ///
 /// ```
 /// use std::ops::Add;
 ///
-/// #[derive(Debug)]
+/// #[derive(Debug, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
@@ -35,17 +40,11 @@
 ///     }
 /// }
 ///
-/// impl PartialEq for Point {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.x == other.x && self.y == other.y
-///     }
-/// }
-///
-/// fn main() {
-///     assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
-///                Point { x: 3, y: 3 });
-/// }
+/// assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
+///            Point { x: 3, y: 3 });
 /// ```
+///
+/// ## Implementing `Add` with generics
 ///
 /// Here is an example of the same `Point` struct implementing the `Add` trait
 /// using generics.
@@ -53,13 +52,13 @@
 /// ```
 /// use std::ops::Add;
 ///
-/// #[derive(Debug)]
+/// #[derive(Debug, PartialEq)]
 /// struct Point<T> {
 ///     x: T,
 ///     y: T,
 /// }
 ///
-/// // Notice that the implementation uses the `Output` associated type
+/// // Notice that the implementation uses the associated type `Output`.
 /// impl<T: Add<Output=T>> Add for Point<T> {
 ///     type Output = Point<T>;
 ///
@@ -71,32 +70,18 @@
 ///     }
 /// }
 ///
-/// impl<T: PartialEq> PartialEq for Point<T> {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.x == other.x && self.y == other.y
-///     }
-/// }
-///
-/// fn main() {
-///     assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
-///                Point { x: 3, y: 3 });
-/// }
+/// assert_eq!(Point { x: 1, y: 0 } + Point { x: 2, y: 3 },
+///            Point { x: 3, y: 3 });
 /// ```
-///
-/// Note that `RHS = Self` by default, but this is not mandatory. For example,
-/// [std::time::SystemTime] implements `Add<Duration>`, which permits
-/// operations of the form `SystemTime = SystemTime + Duration`.
-///
-/// [std::time::SystemTime]: ../../std/time/struct.SystemTime.html
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} + {RHS}`"]
 pub trait Add<RHS=Self> {
-    /// The resulting type after applying the `+` operator
+    /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `+` operator
+    /// Performs the `+` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn add(self, rhs: RHS) -> Self::Output;
 }
@@ -120,15 +105,20 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The subtraction operator `-`.
 ///
+/// Note that `RHS = Self` by default, but this is not mandatory. For example,
+/// [std::time::SystemTime] implements `Sub<Duration>`, which permits
+/// operations of the form `SystemTime = SystemTime - Duration`.
+///
+/// [`std::time::SystemTime`]: ../../std/time/struct.SystemTime.html
+///
 /// # Examples
 ///
-/// This example creates a `Point` struct that implements the `Sub` trait, and
-/// then demonstrates subtracting two `Point`s.
+/// ## `Sub`tractable points
 ///
 /// ```
 /// use std::ops::Sub;
 ///
-/// #[derive(Debug)]
+/// #[derive(Debug, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
@@ -145,17 +135,11 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     }
 /// }
 ///
-/// impl PartialEq for Point {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.x == other.x && self.y == other.y
-///     }
-/// }
-///
-/// fn main() {
-///     assert_eq!(Point { x: 3, y: 3 } - Point { x: 2, y: 3 },
-///                Point { x: 1, y: 0 });
-/// }
+/// assert_eq!(Point { x: 3, y: 3 } - Point { x: 2, y: 3 },
+///            Point { x: 1, y: 0 });
 /// ```
+///
+/// ## Implementing `Sub` with generics
 ///
 /// Here is an example of the same `Point` struct implementing the `Sub` trait
 /// using generics.
@@ -163,13 +147,13 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::Sub;
 ///
-/// #[derive(Debug)]
+/// #[derive(Debug, PartialEq)]
 /// struct Point<T> {
 ///     x: T,
 ///     y: T,
 /// }
 ///
-/// // Notice that the implementation uses the `Output` associated type
+/// // Notice that the implementation uses the associated type `Output`.
 /// impl<T: Sub<Output=T>> Sub for Point<T> {
 ///     type Output = Point<T>;
 ///
@@ -181,32 +165,18 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     }
 /// }
 ///
-/// impl<T: PartialEq> PartialEq for Point<T> {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.x == other.x && self.y == other.y
-///     }
-/// }
-///
-/// fn main() {
-///     assert_eq!(Point { x: 2, y: 3 } - Point { x: 1, y: 0 },
-///                Point { x: 1, y: 3 });
-/// }
+/// assert_eq!(Point { x: 2, y: 3 } - Point { x: 1, y: 0 },
+///            Point { x: 1, y: 3 });
 /// ```
-///
-/// Note that `RHS = Self` by default, but this is not mandatory. For example,
-/// [std::time::SystemTime] implements `Sub<Duration>`, which permits
-/// operations of the form `SystemTime = SystemTime - Duration`.
-///
-/// [std::time::SystemTime]: ../../std/time/struct.SystemTime.html
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} - {RHS}`"]
 pub trait Sub<RHS=Self> {
-    /// The resulting type after applying the `-` operator
+    /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `-` operator
+    /// Performs the `-` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn sub(self, rhs: RHS) -> Self::Output;
 }
@@ -230,17 +200,19 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The multiplication operator `*`.
 ///
+/// Note that `RHS = Self` by default, but this is not mandatory.
+///
 /// # Examples
 ///
-/// Implementing a `Mul`tipliable rational number struct:
+/// ## `Mul`tipliable rational numbers
 ///
 /// ```
 /// use std::ops::Mul;
 ///
-/// // The uniqueness of rational numbers in lowest terms is a consequence of
-/// // the fundamental theorem of arithmetic.
-/// #[derive(Eq)]
-/// #[derive(PartialEq, Debug)]
+/// // By the fundamental theorem of arithmetic, rational numbers in lowest
+/// // terms are unique. So, by keeping `Rational`s in reduced form, we can
+/// // derive `Eq` and `PartialEq`.
+/// #[derive(Debug, Eq, PartialEq)]
 /// struct Rational {
 ///     nominator: usize,
 ///     denominator: usize,
@@ -291,45 +263,37 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///            Rational::new(1, 2));
 /// ```
 ///
-/// Note that `RHS = Self` by default, but this is not mandatory. Here is an
-/// implementation which enables multiplication of vectors by scalars, as is
-/// done in linear algebra.
+/// ## Multiplying vectors by scalars as in linear algebra
 ///
 /// ```
 /// use std::ops::Mul;
 ///
-/// struct Scalar {value: usize};
+/// struct Scalar { value: usize }
 ///
-/// #[derive(Debug)]
-/// struct Vector {value: Vec<usize>};
+/// #[derive(Debug, PartialEq)]
+/// struct Vector { value: Vec<usize> }
 ///
-/// impl Mul<Vector> for Scalar {
+/// impl Mul<Scalar> for Vector {
 ///     type Output = Vector;
 ///
-///     fn mul(self, rhs: Vector) -> Vector {
-///         Vector {value: rhs.value.iter().map(|v| self.value * v).collect()}
+///     fn mul(self, rhs: Scalar) -> Vector {
+///         Vector { value: self.value.iter().map(|v| v * rhs.value).collect() }
 ///     }
 /// }
 ///
-/// impl PartialEq<Vector> for Vector {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.value == other.value
-///     }
-/// }
-///
-/// let scalar = Scalar{value: 3};
-/// let vector = Vector{value: vec![2, 4, 6]};
-/// assert_eq!(scalar * vector, Vector{value: vec![6, 12, 18]});
+/// let vector = Vector { value: vec![2, 4, 6] };
+/// let scalar = Scalar { value: 3 };
+/// assert_eq!(vector * scalar, Vector { value: vec![6, 12, 18] });
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} * {RHS}`"]
 pub trait Mul<RHS=Self> {
-    /// The resulting type after applying the `*` operator
+    /// The resulting type after applying the `*` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `*` operator
+    /// Performs the `*` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn mul(self, rhs: RHS) -> Self::Output;
 }
@@ -353,17 +317,19 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The division operator `/`.
 ///
+/// Note that `RHS = Self` by default, but this is not mandatory.
+///
 /// # Examples
 ///
-/// Implementing a `Div`idable rational number struct:
+/// ## `Div`idable rational numbers
 ///
 /// ```
 /// use std::ops::Div;
 ///
-/// // The uniqueness of rational numbers in lowest terms is a consequence of
-/// // the fundamental theorem of arithmetic.
-/// #[derive(Eq)]
-/// #[derive(PartialEq, Debug)]
+/// // By the fundamental theorem of arithmetic, rational numbers in lowest
+/// // terms are unique. So, by keeping `Rational`s in reduced form, we can
+/// // derive `Eq` and `PartialEq`.
+/// #[derive(Debug, Eq, PartialEq)]
 /// struct Rational {
 ///     nominator: usize,
 ///     denominator: usize,
@@ -413,52 +379,42 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     x
 /// }
 ///
-/// fn main() {
-///     assert_eq!(Rational::new(1, 2), Rational::new(2, 4));
-///     assert_eq!(Rational::new(1, 2) / Rational::new(3, 4),
-///                Rational::new(2, 3));
-/// }
+/// assert_eq!(Rational::new(1, 2), Rational::new(2, 4));
+/// assert_eq!(Rational::new(1, 2) / Rational::new(3, 4),
+///            Rational::new(2, 3));
 /// ```
 ///
-/// Note that `RHS = Self` by default, but this is not mandatory. Here is an
-/// implementation which enables division of vectors by scalars, as is done in
-/// linear algebra.
+/// ## Dividing vectors by scalars as in linear algebra
 ///
 /// ```
 /// use std::ops::Div;
 ///
-/// struct Scalar {value: f32};
+/// struct Scalar { value: f32 }
 ///
-/// #[derive(Debug)]
-/// struct Vector {value: Vec<f32>};
+/// #[derive(Debug, PartialEq)]
+/// struct Vector { value: Vec<f32> }
 ///
 /// impl Div<Scalar> for Vector {
 ///     type Output = Vector;
 ///
 ///     fn div(self, rhs: Scalar) -> Vector {
-///         Vector {value: self.value.iter().map(|v| v / rhs.value).collect()}
+///         Vector { value: self.value.iter().map(|v| v / rhs.value).collect() }
 ///     }
 /// }
 ///
-/// impl PartialEq<Vector> for Vector {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.value == other.value
-///     }
-/// }
-///
-/// let scalar = Scalar{value: 2f32};
-/// let vector = Vector{value: vec![2f32, 4f32, 6f32]};
-/// assert_eq!(vector / scalar, Vector{value: vec![1f32, 2f32, 3f32]});
+/// let scalar = Scalar { value: 2f32 };
+/// let vector = Vector { value: vec![2f32, 4f32, 6f32] };
+/// assert_eq!(vector / scalar, Vector { value: vec![1f32, 2f32, 3f32] });
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} / {RHS}`"]
 pub trait Div<RHS=Self> {
-    /// The resulting type after applying the `/` operator
+    /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `/` operator
+    /// Performs the `/` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn div(self, rhs: RHS) -> Self::Output;
 }
@@ -526,7 +482,7 @@ div_impl_float! { f32 f64 }
 /// }
 ///
 /// // If we were to divide &[0, 1, 2, 3, 4, 5, 6, 7] into slices of size 3,
-/// // the remainder would be &[6, 7]
+/// // the remainder would be &[6, 7].
 /// assert_eq!(SplitSlice { slice: &[0, 1, 2, 3, 4, 5, 6, 7] } % 3,
 ///            SplitSlice { slice: &[6, 7] });
 /// ```
@@ -534,11 +490,11 @@ div_impl_float! { f32 f64 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} % {RHS}`"]
 pub trait Rem<RHS=Self> {
-    /// The resulting type after applying the `%` operator
+    /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output = Self;
 
-    /// The method for the `%` operator
+    /// Performs the `%` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rem(self, rhs: RHS) -> Self::Output;
 }
@@ -607,21 +563,21 @@ rem_impl_float! { f32 f64 }
 ///     }
 /// }
 ///
-/// // a negative positive is a negative
+/// // A negative positive is a negative.
 /// assert_eq!(-Sign::Positive, Sign::Negative);
-/// // a double negative is a positive
+/// // A double negative is a positive.
 /// assert_eq!(-Sign::Negative, Sign::Positive);
-/// // zero is its own negation
+/// // Zero is its own negation.
 /// assert_eq!(-Sign::Zero, Sign::Zero);
 /// ```
 #[lang = "neg"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Neg {
-    /// The resulting type after applying the `-` operator
+    /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the unary `-` operator
+    /// Performs the unary `-` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn neg(self) -> Self::Output;
 }
@@ -668,7 +624,7 @@ neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::AddAssign;
 ///
-/// #[derive(Debug)]
+/// #[derive(Debug, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
@@ -683,12 +639,6 @@ neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
 ///     }
 /// }
 ///
-/// impl PartialEq for Point {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.x == other.x && self.y == other.y
-///     }
-/// }
-///
 /// let mut point = Point { x: 1, y: 0 };
 /// point += Point { x: 2, y: 3 };
 /// assert_eq!(point, Point { x: 3, y: 3 });
@@ -697,7 +647,7 @@ neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} += {Rhs}`"]
 pub trait AddAssign<Rhs=Self> {
-    /// The method for the `+=` operator
+    /// Performs the `+=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn add_assign(&mut self, rhs: Rhs);
 }
@@ -725,7 +675,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 /// use std::ops::SubAssign;
 ///
-/// #[derive(Debug)]
+/// #[derive(Debug, PartialEq)]
 /// struct Point {
 ///     x: i32,
 ///     y: i32,
@@ -740,12 +690,6 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     }
 /// }
 ///
-/// impl PartialEq for Point {
-///     fn eq(&self, other: &Self) -> bool {
-///         self.x == other.x && self.y == other.y
-///     }
-/// }
-///
 /// let mut point = Point { x: 3, y: 3 };
 /// point -= Point { x: 2, y: 3 };
 /// assert_eq!(point, Point {x: 1, y: 0});
@@ -754,7 +698,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} -= {Rhs}`"]
 pub trait SubAssign<Rhs=Self> {
-    /// The method for the `-=` operator
+    /// Performs the `-=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn sub_assign(&mut self, rhs: Rhs);
 }
@@ -776,31 +720,27 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `MulAssign`. When `Foo *= Foo` happens, it ends up
-/// calling `mul_assign`, and therefore, `main` prints `Multiplying!`.
-///
 /// ```
 /// use std::ops::MulAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// struct Frequency { hertz: f64 }
 ///
-/// impl MulAssign for Foo {
-///     fn mul_assign(&mut self, _rhs: Foo) {
-///         println!("Multiplying!");
+/// impl MulAssign<f64> for Frequency {
+///     fn mul_assign(&mut self, rhs: f64) {
+///         self.hertz *= rhs;
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo *= Foo;
-/// }
+/// let mut frequency = Frequency { hertz: 50.0 };
+/// frequency *= 4.0;
+/// assert_eq!(Frequency { hertz: 200.0 }, frequency);
 /// ```
 #[lang = "mul_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} *= {Rhs}`"]
 pub trait MulAssign<Rhs=Self> {
-    /// The method for the `*=` operator
+    /// Performs the `*=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn mul_assign(&mut self, rhs: Rhs);
 }
@@ -822,31 +762,27 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `DivAssign`. When `Foo /= Foo` happens, it ends up
-/// calling `div_assign`, and therefore, `main` prints `Dividing!`.
-///
 /// ```
 /// use std::ops::DivAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// struct Frequency { hertz: f64 }
 ///
-/// impl DivAssign for Foo {
-///     fn div_assign(&mut self, _rhs: Foo) {
-///         println!("Dividing!");
+/// impl DivAssign<f64> for Frequency {
+///     fn div_assign(&mut self, rhs: f64) {
+///         self.hertz /= rhs;
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo /= Foo;
-/// }
+/// let mut frequency = Frequency { hertz: 200.0 };
+/// frequency /= 4.0;
+/// assert_eq!(Frequency { hertz: 50.0 }, frequency);
 /// ```
 #[lang = "div_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} /= {Rhs}`"]
 pub trait DivAssign<Rhs=Self> {
-    /// The method for the `/=` operator
+    /// Performs the `/=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn div_assign(&mut self, rhs: Rhs);
 }
@@ -867,31 +803,31 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `RemAssign`. When `Foo %= Foo` happens, it ends up
-/// calling `rem_assign`, and therefore, `main` prints `Remainder-ing!`.
-///
 /// ```
 /// use std::ops::RemAssign;
 ///
-/// struct Foo;
+/// struct CookieJar { cookies: u32 }
 ///
-/// impl RemAssign for Foo {
-///     fn rem_assign(&mut self, _rhs: Foo) {
-///         println!("Remainder-ing!");
+/// impl RemAssign<u32> for CookieJar {
+///     fn rem_assign(&mut self, piles: u32) {
+///         self.cookies %= piles;
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo %= Foo;
-/// }
+/// let mut jar = CookieJar { cookies: 31 };
+/// let piles = 4;
+///
+/// println!("Splitting up {} cookies into {} even piles!", jar.cookies, piles);
+///
+/// jar %= piles;
+///
+/// println!("{} cookies remain in the cookie jar!", jar.cookies);
 /// ```
 #[lang = "rem_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} %= {Rhs}`"]
 pub trait RemAssign<Rhs=Self> {
-    /// The method for the `%=` operator
+    /// Performs the `%=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn rem_assign(&mut self, rhs: Rhs);
 }
