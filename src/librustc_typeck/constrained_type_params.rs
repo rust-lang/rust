@@ -86,12 +86,13 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 }
 
-pub fn identify_constrained_type_params<'tcx>(predicates: &[ty::Predicate<'tcx>],
+pub fn identify_constrained_type_params<'tcx>(tcx: ty::TyCtxt,
+                                              predicates: &[ty::Predicate<'tcx>],
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut FxHashSet<Parameter>)
 {
     let mut predicates = predicates.to_owned();
-    setup_constraining_predicates(&mut predicates, impl_trait_ref, input_parameters);
+    setup_constraining_predicates(tcx, &mut predicates, impl_trait_ref, input_parameters);
 }
 
 
@@ -135,7 +136,8 @@ pub fn identify_constrained_type_params<'tcx>(predicates: &[ty::Predicate<'tcx>]
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(predicates: &mut [ty::Predicate<'tcx>],
+pub fn setup_constraining_predicates<'tcx>(tcx: ty::TyCtxt,
+                                           predicates: &mut [ty::Predicate<'tcx>],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                            input_parameters: &mut FxHashSet<Parameter>)
 {
@@ -175,7 +177,7 @@ pub fn setup_constraining_predicates<'tcx>(predicates: &mut [ty::Predicate<'tcx>
                 // Special case: watch out for some kind of sneaky attempt
                 // to project out an associated type defined by this very
                 // trait.
-                let unbound_trait_ref = &projection.projection_ty.trait_ref;
+                let unbound_trait_ref = projection.projection_ty.trait_ref(tcx);
                 if Some(unbound_trait_ref.clone()) == impl_trait_ref {
                     continue;
                 }
@@ -185,8 +187,7 @@ pub fn setup_constraining_predicates<'tcx>(predicates: &mut [ty::Predicate<'tcx>
                 //     `<<T as Bar>::Baz as Iterator>::Output = <U as Iterator>::Output`
                 // Then the projection only applies if `T` is known, but it still
                 // does not determine `U`.
-
-                let inputs = parameters_for(&projection.projection_ty.trait_ref, true);
+                let inputs = parameters_for(&projection.projection_ty.trait_ref(tcx), true);
                 let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(&p));
                 if !relies_only_on_inputs {
                     continue;

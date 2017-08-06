@@ -15,7 +15,6 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::{DepNode, DepConstructor};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -68,12 +67,14 @@ pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
-pub use self::sty::Issue32330;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TypeVariants::*;
+
+pub use self::binding::BindingMode;
+pub use self::binding::BindingMode::*;
 
 pub use self::context::{TyCtxt, GlobalArenas, tls};
 pub use self::context::{Lift, TypeckTables};
@@ -85,6 +86,7 @@ pub use self::trait_def::TraitDef;
 pub use self::maps::queries;
 
 pub mod adjustment;
+pub mod binding;
 pub mod cast;
 pub mod error;
 pub mod fast_reject;
@@ -158,7 +160,7 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct AssociatedItem {
     pub def_id: DefId,
     pub name: Name,
@@ -172,7 +174,7 @@ pub struct AssociatedItem {
     pub method_has_self_argument: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub enum AssociatedKind {
     Const,
     Method,
@@ -677,7 +679,6 @@ pub struct RegionParameterDef {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
-    pub issue_32330: Option<ty::Issue32330>,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `'a`, asserts data of lifetime `'a`
@@ -720,6 +721,7 @@ pub struct Generics {
     pub type_param_to_index: BTreeMap<DefIndex, u32>,
 
     pub has_self: bool,
+    pub has_late_bound_regions: Option<Span>,
 }
 
 impl Generics {
@@ -947,28 +949,6 @@ impl<'tcx> TraitPredicate<'tcx> {
         self.trait_ref.def_id
     }
 
-    /// Creates the dep-node for selecting/evaluating this trait reference.
-    fn dep_node(&self, tcx: TyCtxt) -> DepNode {
-        // Extact the trait-def and first def-id from inputs.  See the
-        // docs for `DepNode::TraitSelect` for more information.
-        let trait_def_id = self.def_id();
-        let input_def_id =
-            self.input_types()
-                .flat_map(|t| t.walk())
-                .filter_map(|t| match t.sty {
-                    ty::TyAdt(adt_def, ..) => Some(adt_def.did),
-                    ty::TyClosure(def_id, ..) => Some(def_id),
-                    ty::TyFnDef(def_id, ..) => Some(def_id),
-                    _ => None
-                })
-                .next()
-                .unwrap_or(trait_def_id);
-        DepNode::new(tcx, DepConstructor::TraitSelect {
-            trait_def_id,
-            input_def_id,
-        })
-    }
-
     pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         self.trait_ref.input_types()
     }
@@ -982,11 +962,6 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
         // ok to skip binder since trait def-id does not care about regions
         self.0.def_id()
-    }
-
-    pub fn dep_node(&self, tcx: TyCtxt) -> DepNode {
-        // ok to skip binder since depnode does not care about regions
-        self.0.dep_node(tcx)
     }
 }
 
@@ -1030,8 +1005,13 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
-    pub fn item_name(&self, tcx: TyCtxt) -> Name {
-        self.0.projection_ty.item_name(tcx) // safe to skip the binder to access a name
+    pub fn to_poly_trait_ref(&self, tcx: TyCtxt) -> PolyTraitRef<'tcx> {
+        // Note: unlike with TraitRef::to_poly_trait_ref(),
+        // self.0.trait_ref is permitted to have escaping regions.
+        // This is because here `self` has a `Binder` and so does our
+        // return value, so we are preserving the number of binding
+        // levels.
+        ty::Binder(self.0.projection_ty.trait_ref(tcx))
     }
 }
 
@@ -1049,17 +1029,6 @@ impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
 impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
         self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
-    }
-}
-
-impl<'tcx> ToPolyTraitRef<'tcx> for PolyProjectionPredicate<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        // Note: unlike with TraitRef::to_poly_trait_ref(),
-        // self.0.trait_ref is permitted to have escaping regions.
-        // This is because here `self` has a `Binder` and so does our
-        // return value, so we are preserving the number of binding
-        // levels.
-        ty::Binder(self.0.projection_ty.trait_ref)
     }
 }
 
@@ -1132,8 +1101,7 @@ impl<'tcx> Predicate<'tcx> {
                 vec![]
             }
             ty::Predicate::Projection(ref data) => {
-                let trait_inputs = data.0.projection_ty.trait_ref.input_types();
-                trait_inputs.chain(Some(data.0.ty)).collect()
+                data.0.projection_ty.substs.types().chain(Some(data.0.ty)).collect()
             }
             ty::Predicate::WellFormed(data) => {
                 vec![data]
@@ -1616,14 +1584,15 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                          -> impl Iterator<Item=ConstInt> + 'a {
+        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<ConstInt>;
         self.variants.iter().map(move |v| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
             if let VariantDiscr::Explicit(expr_did) = v.discr {
-                let substs = Substs::empty();
-                match tcx.const_eval((expr_did, substs)) {
+                let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
+                match tcx.const_eval(param_env.and((expr_did, substs))) {
                     Ok(ConstVal::Integral(v)) => {
                         discr = v;
                     }
@@ -1651,6 +1620,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                     variant_index: usize)
                                     -> ConstInt {
+        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let mut explicit_value = repr_type.initial_discriminant(tcx.global_tcx());
         let mut explicit_index = variant_index;
@@ -1661,8 +1631,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     explicit_index -= distance;
                 }
                 ty::VariantDiscr::Explicit(expr_did) => {
-                    let substs = Substs::empty();
-                    match tcx.const_eval((expr_did, substs)) {
+                    let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
+                    match tcx.const_eval(param_env.and((expr_did, substs))) {
                         Ok(ConstVal::Integral(v)) => {
                             explicit_value = v;
                             break;

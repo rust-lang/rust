@@ -17,7 +17,7 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 
 use dep_graph::{DepGraph, DepNode, DepKind};
 
-use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex, DefIndexAddressSpace};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndexAddressSpace};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
@@ -377,10 +377,6 @@ impl<'hir> Map<'hir> {
         self.definitions.def_path(def_id.index)
     }
 
-    pub fn def_index_for_def_key(&self, def_key: DefKey) -> Option<DefIndex> {
-        self.definitions.def_index_for_def_key(def_key)
-    }
-
     pub fn local_def_id(&self, node: NodeId) -> DefId {
         self.opt_local_def_id(node).unwrap_or_else(|| {
             bug!("local_def_id: no entry for `{}`, which has a map of `{:?}`",
@@ -557,7 +553,9 @@ impl<'hir> Map<'hir> {
     }
 
     /// Similar to get_parent, returns the parent node id or id if there is no
-    /// parent.
+    /// parent. Note that the parent may be CRATE_NODE_ID, which is not itself
+    /// present in the map -- so passing the return value of get_parent_node to
+    /// get may actually panic.
     /// This function returns the immediate parent in the AST, whereas get_parent
     /// returns the enclosing item. Note that this might not be the actual parent
     /// node in the AST - some kinds of nodes are not in the map and these will
@@ -633,7 +631,7 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieve the NodeId for `id`'s enclosing method, unless there's a
-    /// `while` or `loop` before reacing it, as block tail returns are not
+    /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
     /// ```

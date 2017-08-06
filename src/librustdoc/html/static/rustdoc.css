@@ -274,9 +274,13 @@ nav.sub {
 	border-bottom: 1px solid;
 }
 
-.docblock h1 { font-size: 1.3em; }
-.docblock h2 { font-size: 1.15em; }
-.docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
+#main > .docblock h1 { font-size: 1.3em; }
+#main > .docblock h2 { font-size: 1.15em; }
+#main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
+
+.docblock h1 { font-size: 1em; }
+.docblock h2 { font-size: 0.95em; }
+.docblock h3, .docblock h4, .docblock h5 { font-size: 0.9em; }
 
 .docblock {
 	margin-left: 24px;
@@ -295,6 +299,10 @@ nav.sub {
 
 h3.impl > .out-of-band {
 	font-size: 21px;
+}
+
+h4.method > .out-of-band {
+	font-size: 19px;
 }
 
 h4 > code, h3 > code, .invisible > code {
@@ -691,7 +699,7 @@ span.since {
 	margin-bottom: 25px;
 }
 
-.enum .variant, .struct .structfield {
+.enum .variant, .struct .structfield, .union .structfield {
 	display: block;
 }
 

@@ -65,10 +65,12 @@ pub struct Layout {
 
 impl Layout {
     /// Constructs a `Layout` from a given `size` and `align`,
-    /// or returns `None` if either of the following conditions
+    /// or returns `None` if any of the following conditions
     /// are not met:
     ///
     /// * `align` must be a power of two,
+    ///
+    /// * `align` must not exceed 2^31 (i.e. `1 << 31`),
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
     ///    must not overflow (i.e. the rounded value must be less than
@@ -76,6 +78,10 @@ impl Layout {
     #[inline]
     pub fn from_size_align(size: usize, align: usize) -> Option<Layout> {
         if !align.is_power_of_two() {
+            return None;
+        }
+
+        if align > (1 << 31) {
             return None;
         }
 
@@ -106,8 +112,10 @@ impl Layout {
     ///
     /// # Unsafety
     ///
-    /// This function is unsafe as it does not verify that `align` is a power of
-    /// two nor that `size` aligned to `align` fits within the address space.
+    /// This function is unsafe as it does not verify that `align` is
+    /// a power-of-two that is also less than or equal to 2^31, nor
+    /// that `size` aligned to `align` fits within the address space
+    /// (i.e. the `Layout::from_size_align` preconditions).
     #[inline]
     pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Layout {
         Layout { size: size, align: align }
@@ -207,6 +215,7 @@ impl Layout {
     /// of each element in the array.
     ///
     /// On arithmetic overflow, returns `None`.
+    #[inline]
     pub fn repeat(&self, n: usize) -> Option<(Self, usize)> {
         let padded_size = match self.size.checked_add(self.padding_needed_for(self.align)) {
             None => return None,
@@ -217,10 +226,10 @@ impl Layout {
             Some(alloc_size) => alloc_size,
         };
 
-        // We can assume that `self.align` is a power-of-two.
-        // Furthermore, `alloc_size` has alreayd been rounded up
-        // to a multiple of `self.align`; therefore, the call
-        // to `Layout::from_size_align` below should never panic.
+        // We can assume that `self.align` is a power-of-two that does
+        // not exceed 2^31. Furthermore, `alloc_size` has already been
+        // rounded up to a multiple of `self.align`; therefore, the
+        // call to `Layout::from_size_align` below should never panic.
         Some((Layout::from_size_align(alloc_size, self.align).unwrap(), padded_size))
     }
 
@@ -892,7 +901,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
-            unsafe { self.alloc(k).map(|p| Unique::new(p as *mut T)) }
+            unsafe { self.alloc(k).map(|p| Unique::new_unchecked(p as *mut T)) }
         } else {
             Err(AllocErr::invalid_input("zero-sized type invalid for alloc_one"))
         }
@@ -963,7 +972,7 @@ pub unsafe trait Alloc {
                 unsafe {
                     self.alloc(layout.clone())
                         .map(|p| {
-                            Unique::new(p as *mut T)
+                            Unique::new_unchecked(p as *mut T)
                         })
                 }
             }
@@ -1012,7 +1021,7 @@ pub unsafe trait Alloc {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new), ptr.as_ptr()) {
             (Some(ref k_old), Some(ref k_new), ptr) if k_old.size() > 0 && k_new.size() > 0 => {
                 self.realloc(ptr as *mut u8, k_old.clone(), k_new.clone())
-                    .map(|p|Unique::new(p as *mut T))
+                    .map(|p|Unique::new_unchecked(p as *mut T))
             }
             _ => {
                 Err(AllocErr::invalid_input("invalid layout for realloc_array"))

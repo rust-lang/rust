@@ -16,7 +16,7 @@ use std::mem::size_of;
 #[test]
 fn test_create_nonzero_instance() {
     let _a = unsafe {
-        NonZero::new(21)
+        NonZero::new_unchecked(21)
     };
 }
 
@@ -28,14 +28,14 @@ fn test_size_nonzero_in_option() {
 #[test]
 fn test_match_on_nonzero_option() {
     let a = Some(unsafe {
-        NonZero::new(42)
+        NonZero::new_unchecked(42)
     });
     match a {
         Some(val) => assert_eq!(val.get(), 42),
         None => panic!("unexpected None while matching on Some(NonZero(_))")
     }
 
-    match unsafe { Some(NonZero::new(43)) } {
+    match unsafe { Some(NonZero::new_unchecked(43)) } {
         Some(val) => assert_eq!(val.get(), 43),
         None => panic!("unexpected None while matching on Some(NonZero(_))")
     }

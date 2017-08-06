@@ -187,7 +187,7 @@ for ty::OutlivesPredicate<A, B>
 }
 
 impl_stable_hash_for!(struct ty::ProjectionPredicate<'tcx> { projection_ty, ty });
-impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { trait_ref, item_def_id });
+impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { substs, item_def_id });
 
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Predicate<'tcx> {
@@ -346,6 +346,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Ge
             // `def_id.index` (`def_id.krate` is the same as the item's).
             type_param_to_index: _, // Don't hash this
             has_self,
+            has_late_bound_regions,
         } = *self;
 
         parent.hash_stable(hcx, hasher);
@@ -354,6 +355,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Ge
         regions.hash_stable(hcx, hasher);
         types.hash_stable(hcx, hasher);
         has_self.hash_stable(hcx, hasher);
+        has_late_bound_regions.hash_stable(hcx, hasher);
     }
 }
 
@@ -366,7 +368,6 @@ for ty::RegionParameterDef {
             name,
             def_id,
             index,
-            issue_32330: _,
             pure_wrt_drop
         } = *self;
 
@@ -599,8 +600,8 @@ impl_stable_hash_for!(struct ty::ExistentialTraitRef<'tcx> {
 });
 
 impl_stable_hash_for!(struct ty::ExistentialProjection<'tcx> {
-    trait_ref,
-    item_name,
+    item_def_id,
+    substs,
     ty
 });
 
@@ -615,6 +616,7 @@ for ty::TypeckTables<'tcx> {
             ref node_types,
             ref node_substs,
             ref adjustments,
+            ref pat_binding_modes,
             ref upvar_capture_map,
             ref closure_tys,
             ref closure_kinds,
@@ -635,6 +637,7 @@ for ty::TypeckTables<'tcx> {
             ich::hash_stable_nodemap(hcx, hasher, node_types);
             ich::hash_stable_nodemap(hcx, hasher, node_substs);
             ich::hash_stable_nodemap(hcx, hasher, adjustments);
+            ich::hash_stable_nodemap(hcx, hasher, pat_binding_modes);
             ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
                 let ty::UpvarId {
                     var_id,
@@ -661,3 +664,60 @@ for ty::TypeckTables<'tcx> {
         })
     }
 }
+
+impl_stable_hash_for!(enum ty::fast_reject::SimplifiedType {
+    BoolSimplifiedType,
+    CharSimplifiedType,
+    IntSimplifiedType(int_ty),
+    UintSimplifiedType(int_ty),
+    FloatSimplifiedType(float_ty),
+    AdtSimplifiedType(def_id),
+    StrSimplifiedType,
+    ArraySimplifiedType,
+    PtrSimplifiedType,
+    NeverSimplifiedType,
+    TupleSimplifiedType(size),
+    TraitSimplifiedType(def_id),
+    ClosureSimplifiedType(def_id),
+    AnonSimplifiedType(def_id),
+    FunctionSimplifiedType(params),
+    ParameterSimplifiedType
+});
+
+impl_stable_hash_for!(struct ty::Instance<'tcx> {
+    def,
+    substs
+});
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::InstanceDef<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            ty::InstanceDef::Item(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::Intrinsic(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::FnPtrShim(def_id, ty) => {
+                def_id.hash_stable(hcx, hasher);
+                ty.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::Virtual(def_id, n) => {
+                def_id.hash_stable(hcx, hasher);
+                n.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::ClosureOnceShim { call_once } => {
+                call_once.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::DropGlue(def_id, t) => {
+                def_id.hash_stable(hcx, hasher);
+                t.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+

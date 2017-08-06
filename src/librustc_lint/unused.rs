@@ -44,9 +44,13 @@ impl UnusedMut {
 
         let mut mutables = FxHashMap();
         for p in pats {
-            p.each_binding(|mode, id, _, path1| {
+            p.each_binding(|_, id, span, path1| {
+                let bm = match cx.tables.pat_binding_modes.get(&id) {
+                    Some(&bm) => bm,
+                    None => span_bug!(span, "missing binding mode"),
+                };
                 let name = path1.node;
-                if let hir::BindByValue(hir::MutMutable) = mode {
+                if let ty::BindByValue(hir::MutMutable) = bm {
                     if !name.as_str().starts_with("_") {
                         match mutables.entry(name) {
                             Vacant(entry) => {

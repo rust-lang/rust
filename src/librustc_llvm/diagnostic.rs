@@ -17,7 +17,6 @@ use libc::c_uint;
 use std::ptr;
 
 use {DiagnosticInfoRef, TwineRef, ValueRef};
-use ffi::DebugLocRef;
 
 #[derive(Copy, Clone)]
 pub enum OptimizationDiagnosticKind {
@@ -47,7 +46,9 @@ pub struct OptimizationDiagnostic {
     pub kind: OptimizationDiagnosticKind,
     pub pass_name: String,
     pub function: ValueRef,
-    pub debug_loc: DebugLocRef,
+    pub line: c_uint,
+    pub column: c_uint,
+    pub filename: String,
     pub message: String,
 }
 
@@ -56,24 +57,37 @@ impl OptimizationDiagnostic {
                      di: DiagnosticInfoRef)
                      -> OptimizationDiagnostic {
         let mut function = ptr::null_mut();
-        let mut debug_loc = ptr::null_mut();
+        let mut line = 0;
+        let mut column = 0;
 
         let mut message = None;
+        let mut filename = None;
         let pass_name = super::build_string(|pass_name|
             message = super::build_string(|message|
-                super::LLVMRustUnpackOptimizationDiagnostic(di,
-                                                            pass_name,
-                                                            &mut function,
-                                                            &mut debug_loc,
-                                                            message)
+                filename = super::build_string(|filename|
+                    super::LLVMRustUnpackOptimizationDiagnostic(di,
+                                                                pass_name,
+                                                                &mut function,
+                                                                &mut line,
+                                                                &mut column,
+                                                                filename,
+                                                                message)
+                )
             )
         );
+
+        let mut filename = filename.unwrap_or(String::new());
+        if filename.is_empty() {
+            filename.push_str("<unknown file>");
+        }
 
         OptimizationDiagnostic {
             kind: kind,
             pass_name: pass_name.expect("got a non-UTF8 pass name from LLVM"),
             function: function,
-            debug_loc: debug_loc,
+            line: line,
+            column: column,
+            filename: filename,
             message: message.expect("got a non-UTF8 OptimizationDiagnostic message from LLVM")
         }
     }

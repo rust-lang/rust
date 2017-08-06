@@ -34,10 +34,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(discriminant_value)]
 #![feature(specialization)]
-#![feature(manually_drop)]
-
-#![cfg_attr(stage0, feature(associated_consts))]
-#![cfg_attr(stage0, feature(struct_field_attributes))]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -69,7 +65,6 @@ pub mod snapshot_vec;
 pub mod stable_hasher;
 pub mod transitive_relation;
 pub mod unify;
-pub mod fnv;
 pub mod fx;
 pub mod tuple_slice;
 pub mod veccell;

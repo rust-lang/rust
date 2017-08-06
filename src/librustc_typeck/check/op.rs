@@ -320,7 +320,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   from a string reference. String concatenation \
                                   appends the string on the right to the string \
                                   on the left and may require reallocation. This \
-                                  requires ownership of the string on the left."), suggestion);
+                                  requires ownership of the string on the left"), suggestion);
                     is_string_addition = true;
                 }
 

@@ -89,23 +89,23 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                tcx.item_path_str(tcx.hir.local_def_id(item.id)));
 
         match item.node {
-            /// Right now we check that every default trait implementation
-            /// has an implementation of itself. Basically, a case like:
-            ///
-            /// `impl Trait for T {}`
-            ///
-            /// has a requirement of `T: Trait` which was required for default
-            /// method implementations. Although this could be improved now that
-            /// there's a better infrastructure in place for this, it's being left
-            /// for a follow-up work.
-            ///
-            /// Since there's such a requirement, we need to check *just* positive
-            /// implementations, otherwise things like:
-            ///
-            /// impl !Send for T {}
-            ///
-            /// won't be allowed unless there's an *explicit* implementation of `Send`
-            /// for `T`
+            // Right now we check that every default trait implementation
+            // has an implementation of itself. Basically, a case like:
+            //
+            // `impl Trait for T {}`
+            //
+            // has a requirement of `T: Trait` which was required for default
+            // method implementations. Although this could be improved now that
+            // there's a better infrastructure in place for this, it's being left
+            // for a follow-up work.
+            //
+            // Since there's such a requirement, we need to check *just* positive
+            // implementations, otherwise things like:
+            //
+            // impl !Send for T {}
+            //
+            // won't be allowed unless there's an *explicit* implementation of `Send`
+            // for `T`
             hir::ItemImpl(_, hir::ImplPolarity::Positive, _, _,
                           ref trait_ref, ref self_ty, _) => {
                 self.check_impl(item, self_ty, trait_ref);
@@ -508,7 +508,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                      .map(|(index, _)| Parameter(index as u32))
                      .collect();
 
-        identify_constrained_type_params(ty_predicates.predicates.as_slice(),
+        identify_constrained_type_params(self.tcx,
+                                         ty_predicates.predicates.as_slice(),
                                          None,
                                          &mut constrained_parameters);
 

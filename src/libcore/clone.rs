@@ -106,7 +106,7 @@ pub trait Clone : Sized {
     /// `a.clone_from(&b)` is equivalent to `a = b.clone()` in functionality,
     /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
-    #[inline(always)]
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
@@ -165,6 +165,7 @@ clone_impl! { u128 }
 clone_impl! { f32 }
 clone_impl! { f64 }
 
+clone_impl! { ! }
 clone_impl! { () }
 clone_impl! { bool }
 clone_impl! { char }

@@ -140,24 +140,22 @@ struct BoxedNode<K, V> {
 
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        unsafe {
-            BoxedNode { ptr: Unique::new(Box::into_raw(node)) }
-        }
+        BoxedNode { ptr: Box::into_unique(node) }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
         unsafe {
-            BoxedNode { ptr: Unique::new(Box::into_raw(node) as *mut LeafNode<K, V>) }
+            BoxedNode { ptr: Unique::new_unchecked(Box::into_raw(node) as *mut LeafNode<K, V>) }
         }
     }
 
     unsafe fn from_ptr(ptr: NonZero<*const LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::new(ptr.get() as *mut LeafNode<K, V>) }
+        BoxedNode { ptr: Unique::new_unchecked(ptr.get() as *mut LeafNode<K, V>) }
     }
 
     fn as_ptr(&self) -> NonZero<*const LeafNode<K, V>> {
         unsafe {
-            NonZero::new(self.ptr.as_ptr())
+            NonZero::from(self.ptr.as_ref())
         }
     }
 }
@@ -384,21 +382,19 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         >,
         Self
     > {
-        if self.as_leaf().parent.is_null() {
-            Err(self)
-        } else {
+        if let Some(non_zero) = NonZero::new(self.as_leaf().parent as *const LeafNode<K, V>) {
             Ok(Handle {
                 node: NodeRef {
                     height: self.height + 1,
-                    node: unsafe {
-                        NonZero::new(self.as_leaf().parent as *mut LeafNode<K, V>)
-                    },
+                    node: non_zero,
                     root: self.root,
                     _marker: PhantomData
                 },
                 idx: self.as_leaf().parent_idx as usize,
                 _marker: PhantomData
             })
+        } else {
+            Err(self)
         }
     }
 

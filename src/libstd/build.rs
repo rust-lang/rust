@@ -45,6 +45,7 @@ fn main() {
         println!("cargo:rustc-link-lib=socket");
         println!("cargo:rustc-link-lib=posix4");
         println!("cargo:rustc-link-lib=pthread");
+        println!("cargo:rustc-link-lib=resolv");
     } else if target.contains("apple-darwin") {
         println!("cargo:rustc-link-lib=System");
 

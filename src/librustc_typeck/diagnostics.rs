@@ -332,92 +332,6 @@ fn main() {
 ```
 "##,
 
-E0035: r##"
-You tried to give a type parameter where it wasn't needed. Erroneous code
-example:
-
-```compile_fail,E0035
-struct Test;
-
-impl Test {
-    fn method(&self) {}
-}
-
-fn main() {
-    let x = Test;
-
-    x.method::<i32>(); // Error: Test::method doesn't need type parameter!
-}
-```
-
-To fix this error, just remove the type parameter:
-
-```
-struct Test;
-
-impl Test {
-    fn method(&self) {}
-}
-
-fn main() {
-    let x = Test;
-
-    x.method(); // OK, we're good!
-}
-```
-"##,
-
-E0036: r##"
-This error occurrs when you pass too many or not enough type parameters to
-a method. Erroneous code example:
-
-```compile_fail,E0036
-struct Test;
-
-impl Test {
-    fn method<T>(&self, v: &[T]) -> usize {
-        v.len()
-    }
-}
-
-fn main() {
-    let x = Test;
-    let v = &[0];
-
-    x.method::<i32, i32>(v); // error: only one type parameter is expected!
-}
-```
-
-To fix it, just specify a correct number of type parameters:
-
-```
-struct Test;
-
-impl Test {
-    fn method<T>(&self, v: &[T]) -> usize {
-        v.len()
-    }
-}
-
-fn main() {
-    let x = Test;
-    let v = &[0];
-
-    x.method::<i32>(v); // OK, we're good!
-}
-```
-
-Please note on the last example that we could have called `method` like this:
-
-```
-# struct Test;
-# impl Test { fn method<T>(&self, v: &[T]) -> usize { v.len() } }
-# let x = Test;
-# let v = &[0];
-x.method(v);
-```
-"##,
-
 E0040: r##"
 It is not allowed to manually call destructors in Rust. It is also not
 necessary to do this since `drop` is called automatically whenever a value goes
@@ -2717,26 +2631,6 @@ struct Bar<S, T> { x: Foo<S, T> }
 ```
 "##,
 
-E0569: r##"
-If an impl has a generic parameter with the `#[may_dangle]` attribute, then
-that impl must be declared as an `unsafe impl. For example:
-
-```compile_fail,E0569
-#![feature(generic_param_attrs)]
-#![feature(dropck_eyepatch)]
-
-struct Foo<X>(X);
-impl<#[may_dangle] X> Drop for Foo<X> {
-    fn drop(&mut self) { }
-}
-```
-
-In this example, we are asserting that the destructor for `Foo` will not
-access any data of type `X`, and require this assertion to be true for
-overall safety in our program. The compiler does not currently attempt to
-verify this assertion; therefore we must tag this `impl` as unsafe.
-"##,
-
 E0318: r##"
 Default impls for a trait must be located in the same crate where the trait was
 defined. For more information see the [opt-in builtin traits RFC][RFC 19].
@@ -3543,6 +3437,56 @@ impl Foo for i32 {
 ```
 "##,
 
+E0436: r##"
+The functional record update syntax is only allowed for structs. (Struct-like
+enum variants don't qualify, for example.)
+
+Erroneous code example:
+
+```compile_fail,E0436
+enum PublicationFrequency {
+    Weekly,
+    SemiMonthly { days: (u8, u8), annual_special: bool },
+}
+
+fn one_up_competitor(competitor_frequency: PublicationFrequency)
+                     -> PublicationFrequency {
+    match competitor_frequency {
+        PublicationFrequency::Weekly => PublicationFrequency::SemiMonthly {
+            days: (1, 15), annual_special: false
+        },
+        c @ PublicationFrequency::SemiMonthly{ .. } =>
+            PublicationFrequency::SemiMonthly {
+                annual_special: true, ..c // error: functional record update
+                                          //        syntax requires a struct
+        }
+    }
+}
+```
+
+Rewrite the expression without functional record update syntax:
+
+```
+enum PublicationFrequency {
+    Weekly,
+    SemiMonthly { days: (u8, u8), annual_special: bool },
+}
+
+fn one_up_competitor(competitor_frequency: PublicationFrequency)
+                     -> PublicationFrequency {
+    match competitor_frequency {
+        PublicationFrequency::Weekly => PublicationFrequency::SemiMonthly {
+            days: (1, 15), annual_special: false
+        },
+        PublicationFrequency::SemiMonthly{ days, .. } =>
+            PublicationFrequency::SemiMonthly {
+                days, annual_special: true // ok!
+        }
+    }
+}
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -4010,6 +3954,28 @@ fn main() {
 See [RFC 1522] for more details.
 
 [RFC 1522]: https://github.com/rust-lang/rfcs/blob/master/text/1522-conservative-impl-trait.md
+"##,
+
+E0569: r##"
+If an impl has a generic parameter with the `#[may_dangle]` attribute, then
+that impl must be declared as an `unsafe impl.
+
+Erroneous code example:
+
+```compile_fail,E0569
+#![feature(generic_param_attrs)]
+#![feature(dropck_eyepatch)]
+
+struct Foo<X>(X);
+impl<#[may_dangle] X> Drop for Foo<X> {
+    fn drop(&mut self) { }
+}
+```
+
+In this example, we are asserting that the destructor for `Foo` will not
+access any data of type `X`, and require this assertion to be true for
+overall safety in our program. The compiler does not currently attempt to
+verify this assertion; therefore we must tag this `impl` as unsafe.
 "##,
 
 E0570: r##"
@@ -4681,6 +4647,8 @@ error, just declare a function.
 }
 
 register_diagnostics! {
+//  E0035, merged into E0087/E0089
+//  E0036, merged into E0087/E0089
 //  E0068,
 //  E0085,
 //  E0086,
@@ -4739,7 +4707,6 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0436, // functional record update requires a struct
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
     E0563, // cannot determine a type for this `impl Trait`: {}
@@ -4747,6 +4714,7 @@ register_diagnostics! {
            // but `{}` was found in the type `{}`
     E0567, // auto traits can not have type parameters
     E0568, // auto-traits can not have predicates,
+    E0587, // struct has conflicting packed and align representation hints
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
 //  E0613, // Removed (merged with E0609)

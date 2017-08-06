@@ -74,7 +74,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             if arg.is_ignore() || arg.is_indirect() { continue; }
 
             // At this point we know this must be a primitive of sorts.
-            let unit = arg.layout.homogenous_aggregate(ccx).unwrap();
+            let unit = arg.layout.homogeneous_aggregate(ccx).unwrap();
             let size = arg.layout.size(ccx);
             assert_eq!(unit.size, size);
             if unit.kind == RegKind::Float {

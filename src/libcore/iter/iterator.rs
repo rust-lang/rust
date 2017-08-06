@@ -637,15 +637,14 @@ pub trait Iterator {
     /// let a = ["1", "2", "lol"];
     ///
     /// let mut iter = a.iter()
-    ///                 .map(|s| s.parse().ok())
-    ///                 .filter(|s| s.is_some());
+    ///                 .map(|s| s.parse())
+    ///                 .filter(|s| s.is_ok())
+    ///                 .map(|s| s.unwrap());
     ///
-    /// assert_eq!(iter.next(), Some(Some(1)));
-    /// assert_eq!(iter.next(), Some(Some(2)));
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
-    ///
-    /// There's an extra layer of [`Some`] in there.
     ///
     /// [`Option<T>`]: ../../std/option/enum.Option.html
     /// [`Some`]: ../../std/option/enum.Option.html#variant.Some

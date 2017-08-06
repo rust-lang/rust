@@ -13,9 +13,7 @@
 
 use super::{CombinedSnapshot,
             InferCtxt,
-            LateBoundRegion,
             HigherRankedType,
-            RegionVariableOrigin,
             SubregionOrigin,
             SkolemizationMap};
 use super::combine::CombineFields;
@@ -29,15 +27,6 @@ use util::nodemap::{FxHashMap, FxHashSet};
 
 pub struct HrMatchResult<U> {
     pub value: U,
-
-    /// Normally, when we do a higher-ranked match operation, we
-    /// expect all higher-ranked regions to be constrained as part of
-    /// the match operation. However, in the transition period for
-    /// #32330, it can happen that we sometimes have unconstrained
-    /// regions that get instantiated with fresh variables. In that
-    /// case, we collect the set of unconstrained bound regions here
-    /// and replace them with fresh variables.
-    pub unconstrained_regions: Vec<ty::BoundRegion>,
 }
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
@@ -108,7 +97,6 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     /// that do not appear in `T`. If that happens, those regions are
     /// unconstrained, and this routine replaces them with `'static`.
     pub fn higher_ranked_match<T, U>(&mut self,
-                                     span: Span,
                                      a_pair: &Binder<(T, U)>,
                                      b_match: &T,
                                      a_is_expected: bool)
@@ -158,28 +146,16 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // be any region from the sets above, except for other members of
             // `skol_map`. There should always be a representative if things
             // are properly well-formed.
-            let mut unconstrained_regions = vec![];
             let skol_representatives: FxHashMap<_, _> =
                 skol_resolution_map
                 .iter()
-                .map(|(&skol, &(br, ref regions))| {
+                .map(|(&skol, &(_, ref regions))| {
                     let representative =
                         regions.iter()
                                .filter(|&&r| !skol_resolution_map.contains_key(r))
                                .cloned()
                                .next()
-                               .unwrap_or_else(|| { // [1]
-                                   unconstrained_regions.push(br);
-                                   self.infcx.next_region_var(
-                                       LateBoundRegion(span, br, HigherRankedType))
-                               });
-
-                    // [1] There should always be a representative,
-                    // unless the higher-ranked region did not appear
-                    // in the values being matched. We should reject
-                    // as ill-formed cases that can lead to this, but
-                    // right now we sometimes issue warnings (see
-                    // #32330).
+                               .expect("no representative region");
 
                     (skol, representative)
                 })
@@ -216,10 +192,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // We are now done with these skolemized variables.
             self.infcx.pop_skolemized(skol_map, snapshot);
 
-            Ok(HrMatchResult {
-                value: a_value,
-                unconstrained_regions,
-            })
+            Ok(HrMatchResult { value: a_value })
         });
     }
 
@@ -657,28 +630,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        skol_br,
                        tainted_region);
 
-                let issue_32330 = if let &ty::ReVar(vid) = tainted_region {
-                    match self.region_vars.var_origin(vid) {
-                        RegionVariableOrigin::EarlyBoundRegion(_, _, issue_32330) => {
-                            issue_32330.map(Box::new)
-                        }
-                        _ => None
-                    }
-                } else {
-                    None
-                };
-
-                if overly_polymorphic {
+                return Err(if overly_polymorphic {
                     debug!("Overly polymorphic!");
-                    return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
-                                                                   tainted_region,
-                                                                   issue_32330));
+                    TypeError::RegionsOverlyPolymorphic(skol_br, tainted_region)
                 } else {
                     debug!("Not as polymorphic!");
-                    return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
-                                                                           tainted_region,
-                                                                           issue_32330));
-                }
+                    TypeError::RegionsInsufficientlyPolymorphic(skol_br, tainted_region)
+                })
             }
         }
 

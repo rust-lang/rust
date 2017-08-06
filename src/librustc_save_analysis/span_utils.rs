@@ -398,9 +398,10 @@ impl<'a> SpanUtils<'a> {
             return false;
         }
         // If sub_span is none, filter out generated code.
-        if sub_span.is_none() {
-            return true;
-        }
+        let sub_span = match sub_span {
+            Some(ss) => ss,
+            None => return true,
+        };
 
         //If the span comes from a fake filemap, filter it.
         if !self.sess.codemap().lookup_char_pos(parent.lo).file.is_real_file() {
@@ -409,7 +410,7 @@ impl<'a> SpanUtils<'a> {
 
         // Otherwise, a generated span is deemed invalid if it is not a sub-span of the root
         // callsite. This filters out macro internal variables and most malformed spans.
-        !parent.source_callsite().contains(parent)
+        !parent.source_callsite().contains(sub_span)
     }
 }
 

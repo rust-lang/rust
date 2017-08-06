@@ -113,6 +113,7 @@ mod arm;
 mod aarch64;
 mod nvptx;
 mod hexagon;
+mod powerpc;
 
 impl Intrinsic {
     pub fn find(name: &str) -> Option<Intrinsic> {
@@ -126,6 +127,8 @@ impl Intrinsic {
             nvptx::find(name)
         } else if name.starts_with("Q6_") {
             hexagon::find(name)
+        } else if name.starts_with("powerpc_") {
+            powerpc::find(name)
         } else {
             None
         }

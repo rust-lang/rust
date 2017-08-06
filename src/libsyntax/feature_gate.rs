@@ -117,7 +117,6 @@ macro_rules! declare_features {
 
 declare_features! (
     (active, asm, "1.0.0", Some(29722)),
-    (active, compile_error, "1.20.0", Some(40872)),
     (active, concat_idents, "1.0.0", Some(29599)),
     (active, link_args, "1.0.0", Some(29596)),
     (active, log_syntax, "1.0.0", Some(29598)),
@@ -445,6 +444,8 @@ declare_features! (
     // Allows the definition of associated constants in `trait` or `impl`
     // blocks.
     (accepted, associated_consts, "1.20.0", Some(29646)),
+    // Usage of the `compile_error!` macro
+    (accepted, compile_error, "1.20.0", Some(40872)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -551,7 +552,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("ignore", Normal, Ungated),
     ("no_implicit_prelude", Normal, Ungated),
     ("reexport_test_harness_main", Normal, Ungated),
-    ("link_args", Normal, Ungated),
+    ("link_args", Normal, Gated(Stability::Unstable,
+                                "link_args",
+                                "the `link_args` attribute is experimental and not \
+                                 portable across platforms, it is recommended to \
+                                 use `#[link(name = \"foo\")] instead",
+                                cfg_fn!(link_args))),
     ("macro_escape", Normal, Ungated),
 
     // RFC #1445.
@@ -1035,9 +1041,6 @@ pub const EXPLAIN_LOG_SYNTAX: &'static str =
 pub const EXPLAIN_CONCAT_IDENTS: &'static str =
     "`concat_idents` is not stable enough for use and is subject to change";
 
-pub const EXPLAIN_COMPILE_ERROR: &'static str =
-    "`compile_error` is not stable enough for use and is subject to change";
-
 pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
@@ -1184,12 +1187,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::ForeignMod(ref foreign_module) => {
-                if attr::contains_name(&i.attrs[..], "link_args") {
-                    gate_feature_post!(&self, link_args, i.span,
-                                      "the `link_args` attribute is not portable \
-                                       across platforms, it is recommended to \
-                                       use `#[link(name = \"foo\")]` instead")
-                }
                 self.check_abi(foreign_module.abi, i.span);
             }
 

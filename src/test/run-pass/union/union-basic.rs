@@ -12,6 +12,7 @@
 
 // FIXME: This test case makes little-endian assumptions.
 // ignore-s390x
+// ignore-sparc
 
 extern crate union;
 use std::mem::{size_of, align_of, zeroed};

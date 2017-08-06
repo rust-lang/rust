@@ -453,8 +453,6 @@ impl CString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(as_c_str)]
-    ///
     /// use std::ffi::{CString, CStr};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).unwrap();
@@ -462,7 +460,7 @@ impl CString {
     /// assert_eq!(c_str, CStr::from_bytes_with_nul(b"foo\0").unwrap());
     /// ```
     #[inline]
-    #[unstable(feature = "as_c_str", issue = "40380")]
+    #[stable(feature = "as_c_str", since = "1.20.0")]
     pub fn as_c_str(&self) -> &CStr {
         &*self
     }
@@ -474,15 +472,13 @@ impl CString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(into_boxed_c_str)]
-    ///
     /// use std::ffi::{CString, CStr};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).unwrap();
     /// let boxed = c_string.into_boxed_c_str();
     /// assert_eq!(&*boxed, CStr::from_bytes_with_nul(b"foo\0").unwrap());
     /// ```
-    #[unstable(feature = "into_boxed_c_str", issue = "40380")]
+    #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
         unsafe { mem::transmute(self.into_inner()) }
     }
@@ -1001,15 +997,13 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(into_boxed_c_str)]
-    ///
     /// use std::ffi::CString;
     ///
     /// let c_string = CString::new(b"foo".to_vec()).unwrap();
     /// let boxed = c_string.into_boxed_c_str();
     /// assert_eq!(boxed.into_c_string(), CString::new("foo").unwrap());
     /// ```
-    #[unstable(feature = "into_boxed_c_str", issue = "40380")]
+    #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_c_string(self: Box<CStr>) -> CString {
         unsafe { mem::transmute(self) }
     }

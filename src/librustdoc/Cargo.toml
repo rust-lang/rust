@@ -7,25 +7,10 @@ build = "build.rs"
 [lib]
 name = "rustdoc"
 path = "lib.rs"
-crate-type = ["dylib"]
 
 [dependencies]
-arena = { path = "../libarena" }
 env_logger = { version = "0.4", default-features = false }
 log = "0.3"
-rustc = { path = "../librustc" }
-rustc_back = { path = "../librustc_back" }
-rustc_data_structures = { path = "../librustc_data_structures" }
-rustc_driver = { path = "../librustc_driver" }
-rustc_errors = { path = "../librustc_errors" }
-rustc_lint = { path = "../librustc_lint" }
-rustc_metadata = { path = "../librustc_metadata" }
-rustc_resolve = { path = "../librustc_resolve" }
-rustc_typeck = { path = "../librustc_typeck" }
-rustc_trans = { path = "../librustc_trans" }
-serialize = { path = "../libserialize" }
-syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../libsyntax_pos" }
 pulldown-cmark = { version = "0.0.14", default-features = false }
 
 [build-dependencies]

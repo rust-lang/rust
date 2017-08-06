@@ -73,10 +73,10 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths {
     fn bytes_to_path(b: &[u8]) -> PathBuf {
         PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
     }
-    fn is_colon(b: &u8) -> bool { *b == b':' }
+    fn is_semicolon(b: &u8) -> bool { *b == b';' }
     let unparsed = unparsed.as_bytes();
     SplitPaths {
-        iter: unparsed.split(is_colon as fn(&u8) -> bool)
+        iter: unparsed.split(is_semicolon as fn(&u8) -> bool)
                       .map(bytes_to_path as fn(&[u8]) -> PathBuf)
     }
 }
@@ -94,7 +94,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     where I: Iterator<Item=T>, T: AsRef<OsStr>
 {
     let mut joined = Vec::new();
-    let sep = b':';
+    let sep = b';';
 
     for (i, path) in paths.enumerate() {
         let path = path.as_ref().as_bytes();

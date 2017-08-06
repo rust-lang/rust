@@ -24,6 +24,11 @@
 /// The multi-argument form of this macro panics with a string and has the
 /// `format!` syntax for building a string.
 ///
+/// # Current implementation
+///
+/// If the main thread panics it will terminate all your threads and end your
+/// program with code `101`.
+///
 /// # Examples
 ///
 /// ```should_panic
@@ -41,7 +46,7 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_panic_new($msg, {
+        $crate::rt::begin_panic($msg, {
             // static requires less code at runtime, more constant data
             static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
             &_FILE_LINE_COL
@@ -244,7 +249,7 @@ pub mod builtin {
     /// For more information, see the [RFC].
     ///
     /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
-    #[unstable(feature = "compile_error_macro", issue = "40872")]
+    #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
 

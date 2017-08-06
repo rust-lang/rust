@@ -16,6 +16,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use convert::From;
 use intrinsics;
 use ops::CoerceUnsized;
 use fmt;
@@ -160,7 +161,10 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // #[repr(simd)], even if we don't actually use this struct directly.
     //
     // FIXME repr(simd) broken on emscripten and redox
-    #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox")), repr(simd))]
+    // It's also broken on big-endian powerpc64 and s390x.  #42778
+    #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox",
+                       target_endian = "big")),
+               repr(simd))]
     struct Block(u64, u64, u64, u64);
     struct UnalignedBlock(u64, u64, u64, u64);
 
@@ -241,7 +245,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///     assert_eq!(std::ptr::read(y), 12);
 /// }
 /// ```
-#[inline(always)]
+#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
@@ -275,7 +279,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///     assert_eq!(std::ptr::read_unaligned(y), 12);
 /// }
 /// ```
-#[inline(always)]
+#[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
@@ -1095,7 +1099,7 @@ impl<T: Sized> Unique<T> {
     pub fn empty() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
-            Unique::new(ptr)
+            Unique::new_unchecked(ptr)
         }
     }
 }
@@ -1107,8 +1111,13 @@ impl<T: ?Sized> Unique<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub const unsafe fn new(ptr: *mut T) -> Unique<T> {
-        Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
+    pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
+        Unique { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
+    }
+
+    /// Creates a new `Unique` if `ptr` is non-null.
+    pub fn new(ptr: *mut T) -> Option<Self> {
+        NonZero::new(ptr as *const T).map(|nz| Unique { pointer: nz, _marker: PhantomData })
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -1135,14 +1144,14 @@ impl<T: ?Sized> Unique<T> {
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Clone for Unique<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Copy for Unique<T> { }
 
 #[unstable(feature = "unique", issue = "27730")]
@@ -1152,6 +1161,20 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsiz
 impl<T: ?Sized> fmt::Pointer for Unique<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
+    }
+}
+
+#[unstable(feature = "unique", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
+    fn from(reference: &'a mut T) -> Self {
+        Unique { pointer: NonZero::from(reference), _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "unique", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
+    fn from(reference: &'a T) -> Self {
+        Unique { pointer: NonZero::from(reference), _marker: PhantomData }
     }
 }
 
@@ -1209,7 +1232,7 @@ impl<T: Sized> Shared<T> {
     pub fn empty() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
-            Shared::new(ptr)
+            Shared::new_unchecked(ptr)
         }
     }
 }
@@ -1221,8 +1244,13 @@ impl<T: ?Sized> Shared<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub unsafe fn new(ptr: *mut T) -> Self {
-        Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
+    pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
+        Shared { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
+    }
+
+    /// Creates a new `Shared` if `ptr` is non-null.
+    pub fn new(ptr: *mut T) -> Option<Self> {
+        NonZero::new(ptr as *const T).map(|nz| Shared { pointer: nz, _marker: PhantomData })
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -1273,5 +1301,26 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsiz
 impl<T: ?Sized> fmt::Pointer for Shared<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> From<Unique<T>> for Shared<T> {
+    fn from(unique: Unique<T>) -> Self {
+        Shared { pointer: unique.pointer, _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a mut T> for Shared<T> {
+    fn from(reference: &'a mut T) -> Self {
+        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a T> for Shared<T> {
+    fn from(reference: &'a T) -> Self {
+        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
     }
 }

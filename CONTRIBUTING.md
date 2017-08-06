@@ -289,7 +289,7 @@ been approved. The PR then enters the [merge queue][merge-queue], where @bors
 will run all the tests on every platform we support. If it all works out,
 @bors will merge your code into `master` and close the pull request.
 
-[merge-queue]: https://buildbot.rust-lang.org/homu/queue/rust
+[merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found

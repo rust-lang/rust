@@ -27,38 +27,21 @@ exit 1
   set -x
 }
 
-# Download emsdk
-cd /
-curl -L https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz | \
-    tar -xz
-
 # Download last known good emscripten from WebAssembly waterfall
-BUILD=$(curl -L https://storage.googleapis.com/wasm-llvm/builds/linux/lkgr.json | \
+BUILD=$(curl -fL https://storage.googleapis.com/wasm-llvm/builds/linux/lkgr.json | \
     jq '.build | tonumber')
-curl -L https://storage.googleapis.com/wasm-llvm/builds/linux/$BUILD/wasm-binaries.tbz2 | \
+curl -sL https://storage.googleapis.com/wasm-llvm/builds/linux/$BUILD/wasm-binaries.tbz2 | \
     hide_output tar xvkj
 
 # node 8 is required to run wasm
 cd /
-curl -L https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
+curl -sL https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
     tar -xJ
 
-cd /emsdk-portable
-./emsdk update
-hide_output ./emsdk install sdk-1.37.13-64bit
-./emsdk activate sdk-1.37.13-64bit
-
 # Make emscripten use wasm-ready node and LLVM tools
-echo "NODE_JS='/node-v8.0.0-linux-x64/bin/node'" >> /root/.emscripten
+echo "EMSCRIPTEN_ROOT = '/wasm-install/emscripten'" >> /root/.emscripten
+echo "NODE_JS='/usr/local/bin/node'" >> /root/.emscripten
 echo "LLVM_ROOT='/wasm-install/bin'" >> /root/.emscripten
-
-# Make emsdk usable by any user
-cp /root/.emscripten /emsdk-portable
-chmod a+rxw -R /emsdk-portable
-
-# Compile and cache libc
-source ./emsdk_env.sh
-echo "main(){}" > a.c
-HOME=/emsdk-portable/ emcc a.c
-HOME=/emsdk-portable/ emcc -s WASM=1 a.c
-rm -f a.*
+echo "BINARYEN_ROOT = '/wasm-install'" >> /root/.emscripten
+echo "COMPILER_ENGINE = NODE_JS" >> /root/.emscripten
+echo "JS_ENGINES = [NODE_JS]" >> /root/.emscripten

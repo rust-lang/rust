@@ -442,9 +442,11 @@ impl_stable_hash_for!(struct hir::FieldPat {
     is_shorthand
 });
 
-impl_stable_hash_for!(enum hir::BindingMode {
-    BindByRef(mutability),
-    BindByValue(mutability)
+impl_stable_hash_for!(enum hir::BindingAnnotation {
+    Unannotated,
+    Mutable,
+    Ref,
+    RefMut
 });
 
 impl_stable_hash_for!(enum hir::RangeEnd {
@@ -895,25 +897,28 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        let node_id_hashing_mode = match self.node {
-            hir::ItemExternCrate(..) |
+        let (node_id_hashing_mode, hash_spans) = match self.node {
             hir::ItemStatic(..)      |
             hir::ItemConst(..)       |
-            hir::ItemFn(..)          |
-            hir::ItemMod(..)         |
+            hir::ItemFn(..)          => {
+                (NodeIdHashingMode::Ignore, hcx.hash_spans())
+            }
+            hir::ItemUse(..) => {
+                (NodeIdHashingMode::HashTraitsInScope, false)
+            }
+
+            hir::ItemExternCrate(..) |
             hir::ItemForeignMod(..)  |
             hir::ItemGlobalAsm(..)   |
+            hir::ItemMod(..)         |
+            hir::ItemDefaultImpl(..) |
+            hir::ItemTrait(..)       |
+            hir::ItemImpl(..)        |
             hir::ItemTy(..)          |
             hir::ItemEnum(..)        |
             hir::ItemStruct(..)      |
-            hir::ItemUnion(..)       |
-            hir::ItemTrait(..)       |
-            hir::ItemDefaultImpl(..) |
-            hir::ItemImpl(..)        => {
-                NodeIdHashingMode::Ignore
-            }
-            hir::ItemUse(..) => {
-                NodeIdHashingMode::HashTraitsInScope
+            hir::ItemUnion(..)       => {
+                (NodeIdHashingMode::Ignore, false)
             }
         };
 
@@ -927,14 +932,16 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
         } = *self;
 
         hcx.hash_hir_item_like(attrs, |hcx| {
-            hcx.with_node_id_hashing_mode(node_id_hashing_mode, |hcx| {
-                id.hash_stable(hcx, hasher);
+            hcx.while_hashing_spans(hash_spans, |hcx| {
+                hcx.with_node_id_hashing_mode(node_id_hashing_mode, |hcx| {
+                    id.hash_stable(hcx, hasher);
+                });
+                name.hash_stable(hcx, hasher);
+                attrs.hash_stable(hcx, hasher);
+                node.hash_stable(hcx, hasher);
+                vis.hash_stable(hcx, hasher);
+                span.hash_stable(hcx, hasher);
             });
-            name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
-            vis.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
         });
     }
 }

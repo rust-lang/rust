@@ -23,7 +23,9 @@ use getopts::Options;
 use Build;
 use config::Config;
 use metadata;
-use step;
+use builder::Builder;
+
+use cache::{Interned, INTERNER};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
@@ -31,9 +33,9 @@ pub struct Flags {
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
-    pub build: String,
-    pub host: Vec<String>,
-    pub target: Vec<String>,
+    pub build: Interned<String>,
+    pub host: Vec<Interned<String>>,
+    pub target: Vec<Interned<String>>,
     pub config: Option<PathBuf>,
     pub src: PathBuf,
     pub jobs: Option<u32>,
@@ -246,10 +248,9 @@ Arguments:
             config.build = flags.build.clone();
             let mut build = Build::new(flags, config);
             metadata::build(&mut build);
-            let maybe_rules_help = step::build_rules(&build).get_help(subcommand);
-            if maybe_rules_help.is_some() {
-                extra_help.push_str(maybe_rules_help.unwrap().as_str());
-            }
+
+            let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
+            extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
         } else {
             extra_help.push_str(format!("Run `./x.py {} -h -v` to see a list of available paths.",
                      subcommand).as_str());
@@ -319,11 +320,13 @@ Arguments:
             stage: stage,
             on_fail: matches.opt_str("on-fail"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
-            build: matches.opt_str("build").unwrap_or_else(|| {
+            build: INTERNER.intern_string(matches.opt_str("build").unwrap_or_else(|| {
                 env::var("BUILD").unwrap()
-            }),
-            host: split(matches.opt_strs("host")),
-            target: split(matches.opt_strs("target")),
+            })),
+            host: split(matches.opt_strs("host"))
+                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
+            target: split(matches.opt_strs("target"))
+                .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
             config: cfg_file,
             src: src,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),

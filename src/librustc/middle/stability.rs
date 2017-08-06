@@ -313,8 +313,9 @@ struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
     fn check_missing_stability(&self, id: NodeId, span: Span) {
         let def_id = self.tcx.hir.local_def_id(id);
+        let stab = self.tcx.stability.borrow().stab_map.get(&def_id).cloned();
         let is_error = !self.tcx.sess.opts.test &&
-                        !self.tcx.stability.borrow().stab_map.contains_key(&def_id) &&
+                        (stab == None || stab == Some(None)) &&
                         self.access_levels.is_reachable(id);
         if is_error {
             self.tcx.sess.span_err(span, "This node does not have a stability attribute");
@@ -420,7 +421,6 @@ impl<'a, 'tcx> Index<'tcx> {
         let is_staged_api =
             sess.opts.debugging_opts.force_unstable_if_unmarked ||
             sess.features.borrow().staged_api;
-
         let mut staged_api = FxHashMap();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         Index {

@@ -262,7 +262,7 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
 }
 
 pub struct Printer<'a> {
-    pub out: Box<io::Write+'a>,
+    out: Box<io::Write+'a>,
     buf_len: usize,
     /// Width of lines we're constrained to
     margin: isize,
@@ -577,75 +577,75 @@ impl<'a> Printer<'a> {
           }
         }
     }
-}
 
-// Convenience functions to talk to the printer.
+    // Convenience functions to talk to the printer.
 
-/// "raw box"
-pub fn rbox(p: &mut Printer, indent: usize, b: Breaks) -> io::Result<()> {
-    p.pretty_print(Token::Begin(BeginToken {
-        offset: indent as isize,
-        breaks: b
-    }))
-}
+    /// "raw box"
+    pub fn rbox(&mut self, indent: usize, b: Breaks) -> io::Result<()> {
+        self.pretty_print(Token::Begin(BeginToken {
+            offset: indent as isize,
+            breaks: b
+        }))
+    }
 
-/// Inconsistent breaking box
-pub fn ibox(p: &mut Printer, indent: usize) -> io::Result<()> {
-    rbox(p, indent, Breaks::Inconsistent)
-}
+    /// Inconsistent breaking box
+    pub fn ibox(&mut self, indent: usize) -> io::Result<()> {
+        self.rbox(indent, Breaks::Inconsistent)
+    }
 
-/// Consistent breaking box
-pub fn cbox(p: &mut Printer, indent: usize) -> io::Result<()> {
-    rbox(p, indent, Breaks::Consistent)
-}
+    /// Consistent breaking box
+    pub fn cbox(&mut self, indent: usize) -> io::Result<()> {
+        self.rbox(indent, Breaks::Consistent)
+    }
 
-pub fn break_offset(p: &mut Printer, n: usize, off: isize) -> io::Result<()> {
-    p.pretty_print(Token::Break(BreakToken {
-        offset: off,
-        blank_space: n as isize
-    }))
-}
+    pub fn break_offset(&mut self, n: usize, off: isize) -> io::Result<()> {
+        self.pretty_print(Token::Break(BreakToken {
+            offset: off,
+            blank_space: n as isize
+        }))
+    }
 
-pub fn end(p: &mut Printer) -> io::Result<()> {
-    p.pretty_print(Token::End)
-}
+    pub fn end(&mut self) -> io::Result<()> {
+        self.pretty_print(Token::End)
+    }
 
-pub fn eof(p: &mut Printer) -> io::Result<()> {
-    p.pretty_print(Token::Eof)
-}
+    pub fn eof(&mut self) -> io::Result<()> {
+        self.pretty_print(Token::Eof)
+    }
 
-pub fn word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(wrd.to_string(), wrd.len() as isize))
-}
+    pub fn word(&mut self, wrd: &str) -> io::Result<()> {
+        self.pretty_print(Token::String(wrd.to_string(), wrd.len() as isize))
+    }
 
-pub fn huge_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(wrd.to_string(), SIZE_INFINITY))
-}
+    pub fn huge_word(&mut self, wrd: &str) -> io::Result<()> {
+        self.pretty_print(Token::String(wrd.to_string(), SIZE_INFINITY))
+    }
 
-pub fn zero_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(wrd.to_string(), 0))
-}
+    pub fn zero_word(&mut self, wrd: &str) -> io::Result<()> {
+        self.pretty_print(Token::String(wrd.to_string(), 0))
+    }
 
-pub fn spaces(p: &mut Printer, n: usize) -> io::Result<()> {
-    break_offset(p, n, 0)
-}
+    fn spaces(&mut self, n: usize) -> io::Result<()> {
+        self.break_offset(n, 0)
+    }
 
-pub fn zerobreak(p: &mut Printer) -> io::Result<()> {
-    spaces(p, 0)
-}
+    pub fn zerobreak(&mut self) -> io::Result<()> {
+        self.spaces(0)
+    }
 
-pub fn space(p: &mut Printer) -> io::Result<()> {
-    spaces(p, 1)
-}
+    pub fn space(&mut self) -> io::Result<()> {
+        self.spaces(1)
+    }
 
-pub fn hardbreak(p: &mut Printer) -> io::Result<()> {
-    spaces(p, SIZE_INFINITY as usize)
-}
+    pub fn hardbreak(&mut self) -> io::Result<()> {
+        self.spaces(SIZE_INFINITY as usize)
+    }
 
-pub fn hardbreak_tok_offset(off: isize) -> Token {
-    Token::Break(BreakToken {offset: off, blank_space: SIZE_INFINITY})
-}
+    pub fn hardbreak_tok_offset(off: isize) -> Token {
+        Token::Break(BreakToken {offset: off, blank_space: SIZE_INFINITY})
+    }
 
-pub fn hardbreak_tok() -> Token {
-    hardbreak_tok_offset(0)
+    pub fn hardbreak_tok() -> Token {
+        Self::hardbreak_tok_offset(0)
+    }
 }

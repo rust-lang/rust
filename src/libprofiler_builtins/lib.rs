@@ -9,8 +9,8 @@
 // except according to those terms.
 
 #![no_std]
-#![cfg_attr(not(stage0), feature(profiler_runtime))]
-#![cfg_attr(not(stage0), profiler_runtime)]
+#![feature(profiler_runtime)]
+#![profiler_runtime]
 #![unstable(feature = "profiler_runtime_lib",
             reason = "internal implementation detail of rustc right now",
             issue = "0")]

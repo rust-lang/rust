@@ -38,6 +38,7 @@ use gcc;
 
 use Build;
 use config::Target;
+use cache::Interned;
 
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
@@ -50,11 +51,11 @@ pub fn find(build: &mut Build) {
         cfg.cargo_metadata(false).opt_level(0).debug(false)
            .target(target).host(&build.build);
 
-        let config = build.config.target_config.get(target);
+        let config = build.config.target_config.get(&target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
             cfg.compiler(cc);
         } else {
-            set_compiler(&mut cfg, "gcc", target, config, build);
+            set_compiler(&mut cfg, "gcc", *target, config, build);
         }
 
         let compiler = cfg.get_compiler();
@@ -63,7 +64,7 @@ pub fn find(build: &mut Build) {
         if let Some(ref ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", target, ar));
         }
-        build.cc.insert(target.to_string(), (compiler, ar));
+        build.cc.insert(*target, (compiler, ar));
     }
 
     // For all host triples we need to find a C++ compiler as well
@@ -78,20 +79,20 @@ pub fn find(build: &mut Build) {
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
         } else {
-            set_compiler(&mut cfg, "g++", host, config, build);
+            set_compiler(&mut cfg, "g++", *host, config, build);
         }
         let compiler = cfg.get_compiler();
         build.verbose(&format!("CXX_{} = {:?}", host, compiler.path()));
-        build.cxx.insert(host.to_string(), compiler);
+        build.cxx.insert(*host, compiler);
     }
 }
 
 fn set_compiler(cfg: &mut gcc::Config,
                 gnu_compiler: &str,
-                target: &str,
+                target: Interned<String>,
                 config: Option<&Target>,
                 build: &Build) {
-    match target {
+    match &*target {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.

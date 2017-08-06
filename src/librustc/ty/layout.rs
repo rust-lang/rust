@@ -581,14 +581,14 @@ pub struct Struct {
     pub min_size: Size,
 }
 
-// Info required to optimize struct layout.
+/// Info required to optimize struct layout.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
 enum StructKind {
-    // A tuple, closure, or univariant which cannot be coerced to unsized.
+    /// A tuple, closure, or univariant which cannot be coerced to unsized.
     AlwaysSizedUnivariant,
-    // A univariant, the last field of which may be coerced to unsized.
+    /// A univariant, the last field of which may be coerced to unsized.
     MaybeUnsizedUnivariant,
-    // A univariant, but part of an enum.
+    /// A univariant, but part of an enum.
     EnumVariant,
 }
 
@@ -908,13 +908,30 @@ pub struct Union {
 }
 
 impl<'a, 'tcx> Union {
-    fn new(dl: &TargetDataLayout, packed: bool) -> Union {
-        let align = if packed { dl.i8_align } else { dl.aggregate_align };
+    fn new(dl: &TargetDataLayout, repr: &ReprOptions) -> Union {
+        if repr.packed() && repr.align > 0 {
+            bug!("Union cannot be packed and aligned");
+        }
+
+        let primitive_align = if repr.packed() {
+            dl.i8_align
+        } else {
+            dl.aggregate_align
+        };
+
+        let align = if repr.align > 0 {
+            let repr_align = repr.align as u64;
+            debug!("Union::new repr_align: {:?}", repr_align);
+            primitive_align.max(Align::from_bytes(repr_align, repr_align).unwrap())
+        } else {
+            primitive_align
+        };
+
         Union {
             align,
-            primitive_align: align,
+            primitive_align,
             min_size: Size::from_bytes(0),
-            packed,
+            packed: repr.packed(),
         }
     }
 
@@ -1003,7 +1020,7 @@ pub enum Layout {
     /// TyRawPtr or TyRef with a !Sized pointee.
     FatPointer {
         metadata: Primitive,
-        // If true, the pointer cannot be null.
+        /// If true, the pointer cannot be null.
         non_zero: bool
     },
 
@@ -1014,8 +1031,8 @@ pub enum Layout {
         discr: Integer,
         signed: bool,
         non_zero: bool,
-        // Inclusive discriminant range.
-        // If min > max, it represents min...u64::MAX followed by 0...max.
+        /// Inclusive discriminant range.
+        /// If min > max, it represents min...u64::MAX followed by 0...max.
         // FIXME(eddyb) always use the shortest range, e.g. by finding
         // the largest space between two consecutive discriminants and
         // taking everything else as the (shortest) discriminant range.
@@ -1026,7 +1043,7 @@ pub enum Layout {
     /// Single-case enums, and structs/tuples.
     Univariant {
         variant: Struct,
-        // If true, the structure is NonZero.
+        /// If true, the structure is NonZero.
         // FIXME(eddyb) use a newtype Layout kind for this.
         non_zero: bool
     },
@@ -1067,9 +1084,9 @@ pub enum Layout {
     StructWrappedNullablePointer {
         nndiscr: u64,
         nonnull: Struct,
-        // N.B. There is a 0 at the start, for LLVM GEP through a pointer.
+        /// N.B. There is a 0 at the start, for LLVM GEP through a pointer.
         discrfield: FieldPath,
-        // Like discrfield, but in source order. For debuginfo.
+        /// Like discrfield, but in source order. For debuginfo.
         discrfield_source: FieldPath
     }
 }
@@ -1311,7 +1328,7 @@ impl<'a, 'tcx> Layout {
                         field.ty(tcx, substs).layout(tcx, param_env)
                     }).collect::<Result<Vec<_>, _>>()?;
                     let layout = if def.is_union() {
-                        let mut un = Union::new(dl, def.repr.packed());
+                        let mut un = Union::new(dl, &def.repr);
                         un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
@@ -1927,11 +1944,11 @@ pub enum SizeSkeleton<'tcx> {
 
     /// A potentially-fat pointer.
     Pointer {
-        // If true, this pointer is never null.
+        /// If true, this pointer is never null.
         non_zero: bool,
-        // The type which determines the unsized metadata, if any,
-        // of this pointer. Either a type parameter or a projection
-        // depending on one, with regions erased.
+        /// The type which determines the unsized metadata, if any,
+        /// of this pointer. Either a type parameter or a projection
+        /// depending on one, with regions erased.
         tail: Ty<'tcx>
     }
 }

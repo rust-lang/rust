@@ -55,7 +55,8 @@ check:
 check-aux:
 	$(Q)$(BOOTSTRAP) test \
 		src/tools/cargotest \
-		cargo \
+		src/tools/cargo \
+		src/tools/rls \
 		src/test/pretty \
 		src/test/run-pass/pretty \
 		src/test/run-fail/pretty \
@@ -63,6 +64,8 @@ check-aux:
 		src/test/run-pass-fulldeps/pretty \
 		src/test/run-fail-fulldeps/pretty \
 		$(BOOTSTRAP_ARGS)
+check-bootstrap:
+	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:

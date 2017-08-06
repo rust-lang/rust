@@ -14,8 +14,8 @@ error[E0281]: type mismatch: `[closure@$DIR/issue-36053-2.rs:17:39: 17:53]` impl
 17 |     once::<&str>("str").fuse().filter(|a: &str| true).count();
    |                                ^^^^^^ -------------- implements `for<'r> std::ops::FnMut<(&'r str,)>`
    |                                |
-   |                                requires `for<'r> std::ops::FnMut<(&'r &str,)>`
    |                                expected &str, found str
+   |                                requires `for<'r> std::ops::FnMut<(&'r &str,)>`
 
 error: aborting due to 2 previous errors
 

@@ -16,11 +16,13 @@ use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
 use callee;
+use back::symbol_export::ExportedSymbols;
 use base;
 use declare;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
+use trans_item::TransItem;
 use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
@@ -28,13 +30,14 @@ use rustc::session::Session;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
-use rustc::util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::ptr;
 use std::iter;
 use std::str;
+use std::sync::Arc;
 use std::marker::PhantomData;
 use syntax::ast;
 use syntax::symbol::InternedString;
@@ -76,7 +79,6 @@ impl Stats {
 /// crate, so it must not contain references to any LLVM data structures
 /// (aside from metadata-related ones).
 pub struct SharedCrateContext<'a, 'tcx: 'a> {
-    exported_symbols: NodeSet,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_overflow: bool,
 
@@ -94,6 +96,13 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     llcx: ContextRef,
     stats: Stats,
     codegen_unit: CodegenUnit<'tcx>,
+
+    /// The translation items of the whole crate.
+    crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
+
+    /// Information about which symbols are exported from the crate.
+    exported_symbols: Arc<ExportedSymbols>,
+
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
@@ -265,7 +274,6 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               exported_symbols: NodeSet,
                check_overflow: bool,
                output_filenames: &'b OutputFilenames)
                -> SharedCrateContext<'b, 'tcx> {
@@ -315,7 +323,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
 
         SharedCrateContext {
-            exported_symbols: exported_symbols,
             tcx: tcx,
             check_overflow: check_overflow,
             use_dll_storage_attrs: use_dll_storage_attrs,
@@ -333,10 +340,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         ty.is_freeze(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
-    }
-
-    pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
-        &self.exported_symbols
     }
 
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
@@ -362,7 +365,9 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: CodegenUnit<'tcx>)
+               codegen_unit: CodegenUnit<'tcx>,
+               crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
+               exported_symbols: Arc<ExportedSymbols>,)
                -> LocalCrateContext<'a, 'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
@@ -394,6 +399,8 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 llcx: llcx,
                 stats: Stats::default(),
                 codegen_unit: codegen_unit,
+                crate_trans_items,
+                exported_symbols,
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
                 const_cstr_cache: RefCell::new(FxHashMap()),
@@ -502,6 +509,14 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
         &self.local().codegen_unit
+    }
+
+    pub fn crate_trans_items(&self) -> &FxHashSet<TransItem<'tcx>> {
+        &self.local().crate_trans_items
+    }
+
+    pub fn exported_symbols(&self) -> &ExportedSymbols {
+        &self.local().exported_symbols
     }
 
     pub fn td(&self) -> llvm::TargetDataRef {

@@ -178,6 +178,15 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
+        match p.node {
+            hir::PatKind::Binding(..) => {
+                let bm = *self.fcx.tables.borrow().pat_binding_modes.get(&p.id)
+                                                                    .expect("missing binding mode");
+                self.tables.pat_binding_modes.insert(p.id, bm);
+            }
+            _ => {}
+        };
+
         self.visit_node_id(p.span, p.id);
         intravisit::walk_pat(self, p);
     }

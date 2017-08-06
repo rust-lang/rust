@@ -23,11 +23,14 @@
 
 use rustc::mir::LvalueElem;
 use rustc::mir::{Operand, ProjectionElem};
+use rustc::ty::Ty;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct AbstractOperand;
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct AbstractType;
 pub type AbstractElem<'tcx> =
-    ProjectionElem<'tcx, AbstractOperand>;
+    ProjectionElem<'tcx, AbstractOperand, AbstractType>;
 
 pub trait Lift {
     type Abstract;
@@ -37,6 +40,10 @@ impl<'tcx> Lift for Operand<'tcx> {
     type Abstract = AbstractOperand;
     fn lift(&self) -> Self::Abstract { AbstractOperand }
 }
+impl<'tcx> Lift for Ty<'tcx> {
+    type Abstract = AbstractType;
+    fn lift(&self) -> Self::Abstract { AbstractType }
+}
 impl<'tcx> Lift for LvalueElem<'tcx> {
     type Abstract = AbstractElem<'tcx>;
     fn lift(&self) -> Self::Abstract {
@@ -44,7 +51,7 @@ impl<'tcx> Lift for LvalueElem<'tcx> {
             ProjectionElem::Deref =>
                 ProjectionElem::Deref,
             ProjectionElem::Field(ref f, ty) =>
-                ProjectionElem::Field(f.clone(), ty.clone()),
+                ProjectionElem::Field(f.clone(), ty.lift()),
             ProjectionElem::Index(ref i) =>
                 ProjectionElem::Index(i.lift()),
             ProjectionElem::Subslice {from, to} =>

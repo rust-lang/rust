@@ -214,6 +214,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             ident: keywords::Invalid.ident(),
             id: ast::DUMMY_NODE_ID,
             vis: ast::Visibility::Public,
+            tokens: None,
         })));
 
         match self.expand(krate_item).make_items().pop().map(P::unwrap) {
@@ -1041,11 +1042,11 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
         fn proc_macro_enabled = proc_macro,
-        fn enable_compile_error = compile_error,
     }
 }
 
 // A Marker adds the given mark to the syntax context.
+#[derive(Debug)]
 pub struct Marker(pub Mark);
 
 impl Folder for Marker {

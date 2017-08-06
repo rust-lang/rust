@@ -312,7 +312,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.path_all(span, true, strs, Vec::new(), Vec::new(), Vec::new())
     }
     fn path_all(&self,
-                sp: Span,
+                span: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
                 lifetimes: Vec<ast::Lifetime>,
@@ -322,28 +322,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
         if global {
-            segments.push(ast::PathSegment::crate_root(sp));
+            segments.push(ast::PathSegment::crate_root(span));
         }
 
-        segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, sp)));
-        let parameters = if lifetimes.is_empty() && types.is_empty() && bindings.is_empty() {
-            None
+        segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, span)));
+        let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
+            ast::AngleBracketedParameterData { lifetimes, types, bindings, span }.into()
         } else {
-            Some(P(ast::PathParameters::AngleBracketed(ast::AngleBracketedParameterData {
-                lifetimes: lifetimes,
-                types: types,
-                bindings: bindings,
-            })))
+            None
         };
-        segments.push(ast::PathSegment {
-            identifier: last_identifier,
-            span: sp,
-            parameters: parameters
-        });
-        ast::Path {
-            span: sp,
-            segments: segments,
-        }
+        segments.push(ast::PathSegment { identifier: last_identifier, span, parameters });
+        ast::Path { span, segments }
     }
 
     /// Constructs a qualified path.
@@ -369,15 +358,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
-        let parameters = ast::AngleBracketedParameterData {
-            lifetimes: lifetimes,
-            types: types,
-            bindings: bindings,
+        let parameters = if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
+            ast::AngleBracketedParameterData { lifetimes, types, bindings, span: ident.span }.into()
+        } else {
+            None
         };
         path.segments.push(ast::PathSegment {
             identifier: ident.node,
             span: ident.span,
-            parameters: Some(P(ast::PathParameters::AngleBracketed(parameters))),
+            parameters: parameters,
         });
 
         (ast::QSelf {
@@ -774,7 +763,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let expr_loc_ptr = self.expr_addr_of(span, expr_loc_tuple);
         self.expr_call_global(
             span,
-            self.std_path(&["rt", "begin_panic_new"]),
+            self.std_path(&["rt", "begin_panic"]),
             vec![
                 self.expr_str(span, msg),
                 expr_loc_ptr])
@@ -990,7 +979,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             node: node,
             vis: ast::Visibility::Inherited,
-            span: span
+            span: span,
+            tokens: None,
         })
     }
 
@@ -1158,7 +1148,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             attrs: vec![],
             node: ast::ItemKind::Use(vp),
             vis: vis,
-            span: sp
+            span: sp,
+            tokens: None,
         })
     }
 

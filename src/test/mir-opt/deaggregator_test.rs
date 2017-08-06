@@ -25,7 +25,7 @@ fn main() {}
 // bb0: {
 //     _2 = _1;
 //     _3 = _2;
-//     _0 = Baz { x: _3, y: const F32(0), z: const false };
+//     _0 = Baz { x: _3, y: const 0f32, z: const false };
 //     return;
 // }
 // END rustc.node13.Deaggregator.before.mir
@@ -34,7 +34,7 @@ fn main() {}
 //     _2 = _1;
 //     _3 = _2;
 //     (_0.0: usize) = _3;
-//     (_0.1: f32) = const F32(0);
+//     (_0.1: f32) = const 0f32;
 //     (_0.2: bool) = const false;
 //     return;
 // }

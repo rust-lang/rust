@@ -470,8 +470,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             let project_obligation = obligation.with(data.clone());
             match project::poly_project_and_unify_type(selcx, &project_obligation) {
                 Ok(None) => {
+                    let tcx = selcx.tcx();
                     pending_obligation.stalled_on =
-                        trait_ref_type_vars(selcx, data.to_poly_trait_ref());
+                        trait_ref_type_vars(selcx, data.to_poly_trait_ref(tcx));
                     Ok(None)
                 }
                 Ok(v) => Ok(v),

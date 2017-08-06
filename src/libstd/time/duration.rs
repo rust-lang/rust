@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,9 +18,10 @@ const MILLIS_PER_SEC: u64 = 1_000;
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
 ///
-/// Each `Duration` is composed of a number of seconds and nanosecond precision.
-/// APIs binding a system timeout will typically round up the nanosecond
-/// precision if the underlying system does not support that level of precision.
+/// Each `Duration` is composed of a whole number of seconds and a fractional part
+/// represented in nanoseconds.  If the underlying system does not support
+/// nanosecond-level precision, APIs binding a system timeout will typically round up
+/// the number of nanoseconds.
 ///
 /// `Duration`s implement many common traits, including [`Add`], [`Sub`], and other
 /// [`ops`] traits.
@@ -50,11 +51,11 @@ pub struct Duration {
 }
 
 impl Duration {
-    /// Creates a new `Duration` from the specified number of seconds and
-    /// additional nanosecond precision.
+    /// Creates a new `Duration` from the specified number of whole seconds and
+    /// additional nanoseconds.
     ///
-    /// If the nanoseconds is greater than 1 billion (the number of nanoseconds
-    /// in a second), then it will carry over into the seconds provided.
+    /// If the number of nanoseconds is greater than 1 billion (the number of
+    /// nanoseconds in a second), then it will carry over into the seconds provided.
     ///
     /// # Panics
     ///
@@ -77,7 +78,7 @@ impl Duration {
         Duration { secs: secs, nanos: nanos }
     }
 
-    /// Creates a new `Duration` from the specified number of seconds.
+    /// Creates a new `Duration` from the specified number of whole seconds.
     ///
     /// # Examples
     ///
@@ -115,10 +116,10 @@ impl Duration {
         Duration { secs: secs, nanos: nanos }
     }
 
-    /// Returns the number of whole seconds represented by this `Duration`.
+    /// Returns the number of _whole_ seconds contained by this `Duration`.
     ///
-    /// The extra precision represented by this duration is ignored (i.e. extra
-    /// nanoseconds are not represented in the returned value).
+    /// The returned value does not include the fractional (nanosecond) part of the
+    /// duration, which can be obtained using [`subsec_nanos`].
     ///
     /// # Examples
     ///
@@ -147,7 +148,7 @@ impl Duration {
     #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
 
-    /// Returns the nanosecond precision represented by this `Duration`.
+    /// Returns the fractional part of this `Duration`, in nanoseconds.
     ///
     /// This method does **not** return the length of the duration when
     /// represented by nanoseconds. The returned number always represents a
@@ -159,7 +160,8 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_millis(5010);
-    /// assert_eq!(duration.subsec_nanos(), 10000000);
+    /// assert_eq!(duration.as_secs(), 5);
+    /// assert_eq!(duration.subsec_nanos(), 10_000_000);
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]

@@ -38,6 +38,7 @@ use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span, DUMMY_SP};
 use util::nodemap::FxHashMap;
 use arena::DroplessArena;
+
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
@@ -273,7 +274,7 @@ pub enum LateBoundRegionConversionTime {
     HigherRankedType,
 
     /// when projecting an associated type
-    AssocTypeProjection(ast::Name),
+    AssocTypeProjection(ast::Name), // FIXME(tschottdorf): should contain DefId, not Name
 }
 
 /// Reasons to create a region inference variable
@@ -298,7 +299,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     // Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, ast::Name, Option<ty::Issue32330>),
+    EarlyBoundRegion(Span, ast::Name),
 
     // Region variables created for bound regions
     // in a function or method that is called
@@ -988,7 +989,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               span: Span,
                               def: &ty::RegionParameterDef)
                               -> ty::Region<'tcx> {
-        self.next_region_var(EarlyBoundRegion(span, def.name, def.issue_32330))
+        self.next_region_var(EarlyBoundRegion(span, def.name))
     }
 
     /// Create a type inference variable for the given
@@ -1276,16 +1277,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                            match_b: ty::TraitRef<'tcx>)
                                            -> InferResult<'tcx, HrMatchResult<Ty<'tcx>>>
     {
-        let span = cause.span;
-        let match_trait_ref = match_a.skip_binder().projection_ty.trait_ref;
+        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref(self.tcx), p.ty));
         let trace = TypeTrace {
             cause,
-            values: TraitRefs(ExpectedFound::new(true, match_trait_ref, match_b))
+            values: TraitRefs(ExpectedFound::new(true, match_pair.skip_binder().0, match_b))
         };
 
-        let match_pair = match_a.map_bound(|p| (p.projection_ty.trait_ref, p.ty));
         let mut combine = self.combine_fields(trace, param_env);
-        let result = combine.higher_ranked_match(span, &match_pair, &match_b, true)?;
+        let result = combine.higher_ranked_match(&match_pair, &match_b, true)?;
         Ok(InferOk { value: result, obligations: combine.obligations })
     }
 

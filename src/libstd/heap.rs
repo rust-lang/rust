@@ -13,10 +13,9 @@
 #![unstable(issue = "32838", feature = "allocator_api")]
 
 pub use alloc::heap::{Heap, Alloc, Layout, Excess, CannotReallocInPlace, AllocErr};
-#[cfg(not(stage0))]
 pub use alloc_system::System;
 
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(not(test))]
 #[doc(hidden)]
 pub mod __default_lib_allocator {
     use super::{System, Layout, Alloc, AllocErr};

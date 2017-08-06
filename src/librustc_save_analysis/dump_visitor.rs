@@ -29,6 +29,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::Node;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_data_structures::fx::FxHashSet;
 
 use std::path::Path;
 
@@ -41,7 +42,8 @@ use syntax::ptr::P;
 use syntax::codemap::Spanned;
 use syntax_pos::*;
 
-use {escape, generated_code, SaveContext, PathCollector, docs_for_attrs, lower_attributes, Dump};
+use {escape, generated_code, SaveContext, PathCollector, lower_attributes};
+use json_dumper::{JsonDumper, DumpOutput};
 use span_utils::SpanUtils;
 use sig;
 
@@ -58,11 +60,11 @@ macro_rules! down_cast_data {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
+pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
-    dumper: &'ll mut D,
+    dumper: &'ll mut JsonDumper<O>,
 
     span: SpanUtils<'l>,
 
@@ -73,12 +75,13 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
     // we only write one macro def per unique macro definition, and
     // one macro use per unique callsite span.
     // mac_defs: HashSet<Span>,
+    macro_calls: FxHashSet<Span>,
 }
 
-impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
+impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     pub fn new(save_ctxt: SaveContext<'l, 'tcx>,
-               dumper: &'ll mut D)
-               -> DumpVisitor<'l, 'tcx, 'll, D> {
+               dumper: &'ll mut JsonDumper<O>)
+               -> DumpVisitor<'l, 'tcx, 'll, O> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         DumpVisitor {
             sess: &save_ctxt.tcx.sess,
@@ -88,11 +91,12 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             span: span_utils.clone(),
             cur_scope: CRATE_NODE_ID,
             // mac_defs: HashSet::new(),
+            macro_calls: FxHashSet(),
         }
     }
 
     fn nest_scope<F>(&mut self, scope_id: NodeId, f: F)
-        where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
+        where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, O>)
     {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
@@ -101,7 +105,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 
     fn nest_tables<F>(&mut self, item_id: NodeId, f: F)
-        where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
+        where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, O>)
     {
         let item_def_id = self.tcx.hir.local_def_id(item_id);
         if self.tcx.has_typeck_tables(item_def_id) {
@@ -531,7 +535,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: Some(::id_from_def_id(parent_id)),
                 children: vec![],
                 decl_id: None,
-                docs: docs_for_attrs(attrs),
+                docs: self.save_ctxt.docs_for_attrs(attrs),
                 sig,
                 attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
             });
@@ -556,14 +560,21 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         let (value, fields) =
             if let ast::ItemKind::Struct(ast::VariantData::Struct(ref fields, _), _) = item.node
         {
-            let fields_str = fields.iter()
-                                   .enumerate()
-                                   .map(|(i, f)| f.ident.map(|i| i.to_string())
-                                                  .unwrap_or(i.to_string()))
-                                   .collect::<Vec<_>>()
-                                   .join(", ");
-            (format!("{} {{ {} }}", name, fields_str),
-             fields.iter().map(|f| ::id_from_node_id(f.id, &self.save_ctxt)).collect())
+            let include_priv_fields = !self.save_ctxt.config.pub_only;
+            let fields_str = fields
+                .iter()
+                .enumerate()
+                .filter_map(|(i, f)| {
+                     if include_priv_fields || f.vis == ast::Visibility::Public {
+                         f.ident.map(|i| i.to_string()).or_else(|| Some(i.to_string()))
+                     } else {
+                         None
+                     }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            let value = format!("{} {{ {} }}", name, fields_str);
+            (value, fields.iter().map(|f| ::id_from_node_id(f.id, &self.save_ctxt)).collect())
         } else {
             (String::new(), vec![])
         };
@@ -580,7 +591,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: None,
                 children: fields,
                 decl_id: None,
-                docs: docs_for_attrs(&item.attrs),
+                docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                 sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
             });
@@ -637,7 +648,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent,
                             children: vec![],
                             decl_id: None,
-                            docs: docs_for_attrs(&variant.node.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(&variant.node.attrs),
                             sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: lower_attributes(variant.node.attrs.clone(),
                                                          &self.save_ctxt),
@@ -671,7 +682,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent,
                             children: vec![],
                             decl_id: None,
-                            docs: docs_for_attrs(&variant.node.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(&variant.node.attrs),
                             sig: sig::variant_signature(variant, &self.save_ctxt),
                             attributes: lower_attributes(variant.node.attrs.clone(),
                                                          &self.save_ctxt),
@@ -742,7 +753,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 parent: None,
                 children,
                 decl_id: None,
-                docs: docs_for_attrs(&item.attrs),
+                docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                 sig: sig::item_signature(item, &self.save_ctxt),
                 attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
             });
@@ -971,10 +982,18 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     /// callsite spans to record macro definition and use data, using the
     /// mac_uses and mac_defs sets to prevent multiples.
     fn process_macro_use(&mut self, span: Span) {
+        let source_span = span.source_callsite();
+        if self.macro_calls.contains(&source_span) {
+            return;
+        }
+        self.macro_calls.insert(source_span);
+
         let data = match self.save_ctxt.get_macro_use_data(span) {
             None => return,
             Some(data) => data,
         };
+
+        self.dumper.macro_use(data);
 
         // FIXME write the macro def
         // let mut hasher = DefaultHasher::new();
@@ -995,7 +1014,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         //         }.lower(self.tcx));
         //     }
         // }
-        self.dumper.macro_use(data);
     }
 
     fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
@@ -1039,7 +1057,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         parent: Some(::id_from_def_id(trait_id)),
                         children: vec![],
                         decl_id: None,
-                        docs: docs_for_attrs(&trait_item.attrs),
+                        docs: self.save_ctxt.docs_for_attrs(&trait_item.attrs),
                         sig: sig::assoc_type_signature(trait_item.id,
                                                        trait_item.ident,
                                                        Some(bounds),
@@ -1089,7 +1107,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     }
 }
 
-impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, D> {
+impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, O> {
     fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
         // Since we handle explicit modules ourselves in visit_item, this should
         // only get called for the root module of a crate.
@@ -1113,7 +1131,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             children,
             parent: None,
             decl_id: None,
-            docs: docs_for_attrs(attrs),
+            docs: self.save_ctxt.docs_for_attrs(attrs),
             sig: None,
             attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
         });
@@ -1250,7 +1268,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         parent: None,
                         children: vec![],
                         decl_id: None,
-                        docs: docs_for_attrs(&item.attrs),
+                        docs: self.save_ctxt.docs_for_attrs(&item.attrs),
                         sig: sig::item_signature(item, &self.save_ctxt),
                         attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
                     });
@@ -1314,8 +1332,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = self.save_ctxt.tcx.hir.expect_expr(ex.id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
-                    Some(ty) => ty.ty_adt_def().unwrap(),
-                    None => {
+                    Some(ty) if ty.ty_adt_def().is_some() => ty.ty_adt_def().unwrap(),
+                    _ => {
                         visit::walk_expr(self, ex);
                         return;
                     }

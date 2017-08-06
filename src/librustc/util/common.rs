@@ -19,8 +19,6 @@ use std::iter::repeat;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use ty::TyCtxt;
-
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
 
@@ -59,6 +57,32 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
     let rv = f();
     let dur = start.elapsed();
 
+    print_time_passes_entry_internal(what, dur);
+
+    TIME_DEPTH.with(|slot| slot.set(old));
+
+    rv
+}
+
+pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
+    if !do_it {
+        return
+    }
+
+    let old = TIME_DEPTH.with(|slot| {
+        let r = slot.get();
+        slot.set(r + 1);
+        r
+    });
+
+    print_time_passes_entry_internal(what, dur);
+
+    TIME_DEPTH.with(|slot| slot.set(old));
+}
+
+fn print_time_passes_entry_internal(what: &str, dur: Duration) {
+    let indentation = TIME_DEPTH.with(|slot| slot.get());
+
     let mem_string = match get_resident() {
         Some(n) => {
             let mb = n as f64 / 1_000_000.0;
@@ -67,14 +91,10 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
         None => "".to_owned(),
     };
     println!("{}time: {}{}\t{}",
-             repeat("  ").take(old).collect::<String>(),
+             repeat("  ").take(indentation).collect::<String>(),
              duration_to_secs_str(dur),
              mem_string,
              what);
-
-    TIME_DEPTH.with(|slot| slot.set(old));
-
-    rv
 }
 
 // Hack up our own formatting for the duration to make it easier for scripts
@@ -211,7 +231,7 @@ pub trait MemoizationMap {
     /// needed in the `op` to ensure that the correct edges are
     /// added into the dep graph. See the `DepTrackingMap` impl for
     /// more details!
-    fn memoize<OP>(&self, tcx: TyCtxt, key: Self::Key, op: OP) -> Self::Value
+    fn memoize<OP>(&self, key: Self::Key, op: OP) -> Self::Value
         where OP: FnOnce() -> Self::Value;
 }
 
@@ -221,7 +241,7 @@ impl<K, V, S> MemoizationMap for RefCell<HashMap<K,V,S>>
     type Key = K;
     type Value = V;
 
-    fn memoize<OP>(&self, _tcx: TyCtxt, key: K, op: OP) -> V
+    fn memoize<OP>(&self, key: K, op: OP) -> V
         where OP: FnOnce() -> V
     {
         let result = self.borrow().get(&key).cloned();

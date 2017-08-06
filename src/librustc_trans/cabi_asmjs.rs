@@ -18,7 +18,7 @@ use context::CrateContext;
 
 fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if ret.layout.is_aggregate() {
-        if let Some(unit) = ret.layout.homogenous_aggregate(ccx) {
+        if let Some(unit) = ret.layout.homogeneous_aggregate(ccx) {
             let size = ret.layout.size(ccx);
             if unit.size == size {
                 ret.cast_to(ccx, Uniform {

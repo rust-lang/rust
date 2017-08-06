@@ -121,7 +121,7 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, InternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{self, BytePos, Span};
+use syntax_pos::{self, BytePos, Span, MultiSpan};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -1063,11 +1063,7 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         check_simd(tcx, span, def_id);
     }
 
-    // if struct is packed and not aligned, check fields for alignment.
-    // Checks for combining packed and align attrs on single struct are done elsewhere.
-    if tcx.adt_def(def_id).repr.packed() && tcx.adt_def(def_id).repr.align == 0 {
-        check_packed(tcx, span, def_id);
-    }
+    check_packed(tcx, span, def_id);
 }
 
 fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1077,6 +1073,8 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
+
+    check_packed(tcx, span, def_id);
 }
 
 pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item) {
@@ -1167,6 +1165,7 @@ fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }) {
         if let Some(istring) = attr.value_str() {
             let istring = istring.as_str();
+            let name = tcx.item_name(def_id).as_str();
             let parser = Parser::new(&istring);
             let types = &generics.types;
             for token in parser {
@@ -1175,13 +1174,14 @@ fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     Piece::NextArgument(a) => match a.position {
                         // `{Self}` is allowed
                         Position::ArgumentNamed(s) if s == "Self" => (),
+                        // `{ThisTraitsName}` is allowed
+                        Position::ArgumentNamed(s) if s == name => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
                             t.name == s
                         }) {
                             Some(_) => (),
                             None => {
-                                let name = tcx.item_name(def_id);
                                 span_err!(tcx.sess, attr.span, E0230,
                                                  "there is no type parameter \
                                                           {} on trait {}",
@@ -1476,9 +1476,15 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId
 }
 
 fn check_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) {
-    if check_packed_inner(tcx, def_id, &mut Vec::new()) {
-        struct_span_err!(tcx.sess, sp, E0588,
-            "packed struct cannot transitively contain a `[repr(align)]` struct").emit();
+    if tcx.adt_def(def_id).repr.packed() {
+        if tcx.adt_def(def_id).repr.align > 0 {
+            struct_span_err!(tcx.sess, sp, E0587,
+                             "type has conflicting packed and align representation hints").emit();
+        }
+        else if check_packed_inner(tcx, def_id, &mut Vec::new()) {
+            struct_span_err!(tcx.sess, sp, E0588,
+                "packed type cannot transitively contain a `[repr(align)]` type").emit();
+        }
     }
 }
 
@@ -1491,7 +1497,7 @@ fn check_packed_inner<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return false;
     }
     match t.sty {
-        ty::TyAdt(def, substs) if def.is_struct() => {
+        ty::TyAdt(def, substs) if def.is_struct() || def.is_union() => {
             if tcx.adt_def(def.did).repr.align > 0 {
                 return true;
             }
@@ -1601,7 +1607,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn re_infer(&self, span: Span, def: Option<&ty::RegionParameterDef>)
                 -> Option<ty::Region<'tcx>> {
         let v = match def {
-            Some(def) => infer::EarlyBoundRegion(span, def.name, def.issue_32330),
+            Some(def) => infer::EarlyBoundRegion(span, def.name),
             None => infer::MiscVariable(span)
         };
         Some(self.next_region_var(v))
@@ -1620,17 +1626,18 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
 
     fn projected_ty_from_poly_trait_ref(&self,
                                         span: Span,
-                                        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-                                        item_name: ast::Name)
+                                        item_def_id: DefId,
+                                        poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>
     {
+        let item = self.tcx().associated_item(item_def_id);
         let (trait_ref, _) =
             self.replace_late_bound_regions_with_fresh_var(
                 span,
-                infer::LateBoundRegionConversionTime::AssocTypeProjection(item_name),
+                infer::LateBoundRegionConversionTime::AssocTypeProjection(item.name),
                 &poly_trait_ref);
 
-        self.tcx().mk_projection(trait_ref, item_name)
+        self.tcx().mk_projection(item_def_id, trait_ref.substs)
     }
 
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -2651,7 +2658,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Add help to type error if this is an `if` condition with an assignment
             match (expected, &expr.node) {
                 (ExpectIfCondition, &hir::ExprAssign(ref lhs, ref rhs)) => {
-                    let msg = "did you mean to compare equality?";
+                    let msg = "try comparing for equality";
                     if let (Ok(left), Ok(right)) = (
                         self.tcx.sess.codemap().span_to_snippet(lhs.span),
                         self.tcx.sess.codemap().span_to_snippet(rhs.span))
@@ -2953,6 +2960,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                format!("did you mean `{}`?", suggested_field_name));
                             } else {
                                 err.span_label(field.span, "unknown field");
+                                let struct_variant_def = def.struct_variant();
+                                let field_names = self.available_field_names(struct_variant_def);
+                                if !field_names.is_empty() {
+                                    err.note(&format!("available fields are: {}",
+                                                      self.name_series_display(field_names)));
+                                }
                             };
                     }
                     ty::TyRawPtr(..) => {
@@ -2976,7 +2989,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Return an hint about the closest match in field names
     fn suggest_field_name(variant: &'tcx ty::VariantDef,
                           field: &Spanned<ast::Name>,
-                          skip : Vec<InternedString>)
+                          skip: Vec<InternedString>)
                           -> Option<Symbol> {
         let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {
@@ -2989,8 +3002,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        // only find fits with at least one matching letter
-        find_best_match_for_name(names, &name, Some(name.len()))
+        find_best_match_for_name(names, &name, None)
+    }
+
+    fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<ast::Name> {
+        let mut available = Vec::new();
+        for field in variant.fields.iter() {
+            let (_, def_scope) = self.tcx.adjust(field.name, variant.did, self.body_id);
+            if field.vis.is_accessible_from(def_scope, self.tcx) {
+                available.push(field.name);
+            }
+        }
+        available
+    }
+
+    fn name_series_display(&self, names: Vec<ast::Name>) -> String {
+        // dynamic limit, to never omit just one field
+        let limit = if names.len() == 6 { 6 } else { 5 };
+        let mut display = names.iter().take(limit)
+            .map(|n| format!("`{}`", n)).collect::<Vec<_>>().join(", ");
+        if names.len() > limit {
+            display = format!("{} ... and {} others", display, names.len() - limit);
+        }
+        display
     }
 
     // Check tuple index expressions
@@ -3104,13 +3138,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            format!("field does not exist - did you mean `{}`?", field_name));
         } else {
             match ty.sty {
-                ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    err.span_label(field.name.span, format!("`{}::{}` does not have this field",
-                                                             ty, variant.name));
+                ty::TyAdt(adt, ..) => {
+                    if adt.is_enum() {
+                        err.span_label(field.name.span,
+                                       format!("`{}::{}` does not have this field",
+                                               ty, variant.name));
+                    } else {
+                        err.span_label(field.name.span,
+                                       format!("`{}` does not have this field", ty));
+                    }
+                    let available_field_names = self.available_field_names(variant);
+                    if !available_field_names.is_empty() {
+                        err.note(&format!("available fields are: {}",
+                                          self.name_series_display(available_field_names)));
+                    }
                 }
-                _ => {
-                    err.span_label(field.name.span, format!("`{}` does not have this field", ty));
-                }
+                _ => bug!("non-ADT passed to report_unknown_field")
             }
         };
         err.emit();
@@ -3992,7 +4035,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   local: &'gcx hir::Local,
                                   init: &'gcx hir::Expr) -> Ty<'tcx>
     {
-        let ref_bindings = local.pat.contains_ref_binding();
+        // FIXME(tschottdorf): contains_explicit_ref_binding() must be removed
+        // for #42640.
+        let ref_bindings = local.pat.contains_explicit_ref_binding();
 
         let local_ty = self.local_ty(init.span, local.id);
         if let Some(m) = ref_bindings {
@@ -4267,7 +4312,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 hir::ExprBlock(..) => {
                     let sp = cause_span.next_point();
                     err.span_suggestion(sp,
-                                        "did you mean to add a semicolon here?",
+                                        "try adding a semicolon",
                                         ";".to_string());
                 }
                 _ => (),
@@ -4299,7 +4344,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } = fn_decl {
             if ty.is_suggestable() {
                 err.span_suggestion(span,
-                                    "possibly return type missing here?",
+                                    "try adding a return type",
                                     format!("-> {} ", ty));
             } else {
                 err.span_label(span, "possibly return type missing here?");
@@ -4488,8 +4533,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        self.check_path_parameter_count(span, &mut type_segment);
-        self.check_path_parameter_count(span, &mut fn_segment);
+        self.check_path_parameter_count(span, &mut type_segment, false);
+        self.check_path_parameter_count(span, &mut fn_segment, false);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4615,7 +4660,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report errors if the provided parameters are too few or too many.
     fn check_path_parameter_count(&self,
                                   span: Span,
-                                  segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
+                                  segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
+                                  is_method_call: bool) {
         let (lifetimes, types, infer_types, bindings) = {
             match segment.map(|(s, _)| &s.parameters) {
                 Some(&hir::AngleBracketedParameters(ref data)) => {
@@ -4629,6 +4675,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => (&[][..], &[][..], true, &[][..])
             }
         };
+        let infer_lifetimes = lifetimes.len() == 0;
 
         let count_lifetime_params = |n| {
             format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
@@ -4636,32 +4683,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let count_type_params = |n| {
             format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
         };
-
-        // Check provided lifetime parameters.
-        let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
-        if lifetimes.len() > lifetime_defs.len() {
-            let expected_text = count_lifetime_params(lifetime_defs.len());
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0088,
-                             "too many lifetime parameters provided: \
-                              expected at most {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
-        } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
-            let expected_text = count_lifetime_params(lifetime_defs.len());
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0090,
-                             "too few lifetime parameters provided: \
-                              expected {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
-        }
-
-        // The case where there is not enough lifetime parameters is not checked,
-        // because this is not possible - a function never takes lifetime parameters.
-        // See discussion for Pull Request 36208.
 
         // Check provided type parameters.
         let type_defs = segment.map_or(&[][..], |(_, generics)| {
@@ -4687,7 +4708,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if !infer_types && types.len() < required_len {
+        } else if types.len() < required_len && !infer_types {
             let expected_text = count_type_params(required_len);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
@@ -4702,6 +4723,54 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             span_err!(self.tcx.sess, bindings[0].span, E0182,
                       "unexpected binding of associated item in expression path \
                        (only allowed in type paths)");
+        }
+
+        // Check provided lifetime parameters.
+        let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
+        let required_len = lifetime_defs.len();
+
+        // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
+        let has_late_bound_lifetime_defs =
+            segment.map_or(None, |(_, generics)| generics.has_late_bound_regions);
+        if let (Some(span_late), false) = (has_late_bound_lifetime_defs, lifetimes.is_empty()) {
+            // Report this as a lint only if no error was reported previously.
+            let primary_msg = "cannot specify lifetime arguments explicitly \
+                               if late bound lifetime parameters are present";
+            let note_msg = "the late bound lifetime parameter is introduced here";
+            if !is_method_call && (lifetimes.len() > lifetime_defs.len() ||
+                                   lifetimes.len() < required_len && !infer_lifetimes) {
+                let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
+                err.span_note(span_late, note_msg);
+                err.emit();
+                *segment = None;
+            } else {
+                let mut multispan = MultiSpan::from_span(lifetimes[0].span);
+                multispan.push_span_label(span_late, note_msg.to_string());
+                self.tcx.sess.add_lint(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                                       lifetimes[0].id, multispan, primary_msg.to_string());
+            }
+            return;
+        }
+
+        if lifetimes.len() > lifetime_defs.len() {
+            let span = lifetimes[lifetime_defs.len()].span;
+            let expected_text = count_lifetime_params(lifetime_defs.len());
+            let actual_text = count_lifetime_params(lifetimes.len());
+            struct_span_err!(self.tcx.sess, span, E0088,
+                             "too many lifetime parameters provided: \
+                              expected at most {}, found {}",
+                             expected_text, actual_text)
+                .span_label(span, format!("expected {}", expected_text))
+                .emit();
+        } else if lifetimes.len() < required_len && !infer_lifetimes {
+            let expected_text = count_lifetime_params(lifetime_defs.len());
+            let actual_text = count_lifetime_params(lifetimes.len());
+            struct_span_err!(self.tcx.sess, span, E0090,
+                             "too few lifetime parameters provided: \
+                              expected {}, found {}",
+                             expected_text, actual_text)
+                .span_label(span, format!("expected {}", expected_text))
+                .emit();
         }
     }
 

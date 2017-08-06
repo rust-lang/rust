@@ -1252,12 +1252,13 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
-    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
-    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
-    /// heapsort on degenerate inputs.
+    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
+    /// which combines the fast average case of randomized quicksort with the fast worst case of
+    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
+    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
+    /// deterministic behavior.
     ///
-    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// It is typically faster than stable sorting, except in a few special cases, e.g. when the
     /// slice consists of several concatenated sorted sequences.
     ///
     /// # Examples
@@ -1286,12 +1287,13 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
-    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
-    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
-    /// heapsort on degenerate inputs.
+    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
+    /// which combines the fast average case of randomized quicksort with the fast worst case of
+    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
+    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
+    /// deterministic behavior.
     ///
-    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// It is typically faster than stable sorting, except in a few special cases, e.g. when the
     /// slice consists of several concatenated sorted sequences.
     ///
     /// # Examples
@@ -1323,12 +1325,13 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
-    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
-    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
-    /// heapsort on degenerate inputs.
+    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
+    /// which combines the fast average case of randomized quicksort with the fast worst case of
+    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
+    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
+    /// deterministic behavior.
     ///
-    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// It is typically faster than stable sorting, except in a few special cases, e.g. when the
     /// slice consists of several concatenated sorted sequences.
     ///
     /// # Examples

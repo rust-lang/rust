@@ -5,7 +5,7 @@ all: default
 	$(RUSTC) --target x86_64-pc-windows-gnu --print cfg | grep x86_64
 	$(RUSTC) --target i686-pc-windows-msvc --print cfg | grep msvc
 	$(RUSTC) --target i686-apple-darwin --print cfg | grep macos
-	$(RUSTC) --target i686-unknown-linux-gnu --print cfg | grep sse2
+	$(RUSTC) --target i686-unknown-linux-gnu --print cfg | grep gnu
 
 ifdef IS_WINDOWS
 default:

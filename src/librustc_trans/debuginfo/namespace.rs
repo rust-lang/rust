@@ -10,8 +10,8 @@
 
 // Namespace Handling.
 
-use super::metadata::{file_metadata, unknown_file_metadata, UNKNOWN_LINE_NUMBER};
-use super::utils::{DIB, debug_context, span_start};
+use super::metadata::{unknown_file_metadata, UNKNOWN_LINE_NUMBER};
+use super::utils::{DIB, debug_context};
 
 use llvm;
 use llvm::debuginfo::DIScope;
@@ -19,10 +19,8 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use common::CrateContext;
 
-use libc::c_uint;
 use std::ffi::CString;
 use std::ptr;
-use syntax_pos::DUMMY_SP;
 
 pub fn mangled_name_of_item(ccx: &CrateContext, def_id: DefId, extra: &str) -> String {
     fn fill_nested(ccx: &CrateContext, def_id: DefId, extra: &str, output: &mut String) {
@@ -69,21 +67,14 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
     };
 
     let namespace_name = CString::new(namespace_name.as_bytes()).unwrap();
-    let span = ccx.tcx().def_span(def_id);
-    let (file, line) = if span != DUMMY_SP {
-        let loc = span_start(ccx, span);
-        (file_metadata(ccx, &loc.file.name, def_id.krate), loc.line as c_uint)
-    } else {
-        (unknown_file_metadata(ccx), UNKNOWN_LINE_NUMBER)
-    };
 
     let scope = unsafe {
         llvm::LLVMRustDIBuilderCreateNameSpace(
             DIB(ccx),
             parent_scope,
             namespace_name.as_ptr(),
-            file,
-            line as c_uint)
+            unknown_file_metadata(ccx),
+            UNKNOWN_LINE_NUMBER)
     };
 
     debug_context(ccx).namespace_map.borrow_mut().insert(def_id, scope);

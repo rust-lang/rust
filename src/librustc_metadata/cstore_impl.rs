@@ -12,17 +12,18 @@ use cstore;
 use encoder;
 use schema;
 
-use rustc::dep_graph::DepTrackingMapConfig;
+use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
                             NativeLibrary, MetadataLoader, LinkMeta,
-                            LinkagePreference, LoadedMacro, EncodedMetadata};
+                            LinkagePreference, LoadedMacro, EncodedMetadata,
+                            EncodedMetadataHashes};
 use rustc::hir::def;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
+use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
@@ -45,7 +46,7 @@ macro_rules! provide {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
                                     -> <ty::queries::$name<$lt> as
-                                        DepTrackingMapConfig>::Value {
+                                        QueryConfig>::Value {
                 assert!(!$def_id.is_local());
 
                 let def_path_hash = $tcx.def_path_hash($def_id);
@@ -307,16 +308,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).is_no_builtins(&self.dep_graph)
     }
 
-    fn retrace_path(&self,
-                    cnum: CrateNum,
-                    path: &[DisambiguatedDefPathData])
-                    -> Option<DefId> {
-        let cdata = self.get_crate_data(cnum);
-        cdata.def_path_table
-             .retrace_path(&path)
-             .map(|index| DefId { krate: cnum, index: index })
-    }
-
     /// Returns the `DefKey` for a given `DefId`. This indicates the
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
@@ -399,6 +390,7 @@ impl CrateStore for cstore::CStore {
                 legacy: def.legacy,
             }),
             vis: ast::Visibility::Inherited,
+            tokens: None,
         })
     }
 
@@ -452,7 +444,7 @@ impl CrateStore for cstore::CStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> EncodedMetadata
+                                 -> (EncodedMetadata, EncodedMetadataHashes)
     {
         encoder::encode_metadata(tcx, link_meta, reachable)
     }

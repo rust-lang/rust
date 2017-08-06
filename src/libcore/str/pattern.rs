@@ -83,7 +83,7 @@ pub enum SearchStep {
     /// Note that there might be more than one `Reject` between two `Match`es,
     /// there is no requirement for them to be combined into one.
     Reject(usize, usize),
-    /// Expresses that every byte of the haystack has been visted, ending
+    /// Expresses that every byte of the haystack has been visited, ending
     /// the iteration.
     Done
 }
@@ -101,7 +101,7 @@ pub enum SearchStep {
 /// the haystack. This enables consumers of this trait to
 /// slice the haystack without additional runtime checks.
 pub unsafe trait Searcher<'a> {
-    /// Getter for the underlaying string to be searched in
+    /// Getter for the underlying string to be searched in
     ///
     /// Will always return the same `&str`
     fn haystack(&self) -> &'a str;
@@ -668,7 +668,7 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
         match self.searcher {
             StrSearcherImpl::Empty(..) => {
@@ -936,7 +936,7 @@ impl TwoWaySearcher {
         bytes.iter().fold(0, |a, &b| (1 << (b & 0x3f)) | a)
     }
 
-    #[inline(always)]
+    #[inline]
     fn byteset_contains(&self, byte: u8) -> bool {
         (self.byteset >> ((byte & 0x3f) as usize)) & 1 != 0
     }
@@ -946,7 +946,7 @@ impl TwoWaySearcher {
     // left to right. If v matches, we try to match u by scanning right to left.
     // How far we can jump when we encounter a mismatch is all based on the fact
     // that (u, v) is a critical factorization for the needle.
-    #[inline(always)]
+    #[inline]
     fn next<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool)
         -> S::Output
         where S: TwoWayStrategy
@@ -1153,7 +1153,7 @@ impl TwoWaySearcher {
     // The maximal suffix is a possible critical factorization (u', v') of `arr`.
     //
     // Returns `i` where `i` is the starting index of v', from the back;
-    // returns immedately when a period of `known_period` is reached.
+    // returns immediately when a period of `known_period` is reached.
     //
     // `order_greater` determines if lexical order is `<` or `>`. Both
     // orders must be computed -- the ordering with the largest `i` gives

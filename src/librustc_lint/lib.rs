@@ -111,6 +111,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        UnusedImportBraces,
                        AnonymousParameters,
                        IllegalFloatLiteralPattern,
+                       UnusedDocComment,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -235,7 +236,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES),
             reference: "issue #42238 <https://github.com/rust-lang/rust/issues/42238>",
-        }
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(LATE_BOUND_LIFETIME_ARGUMENTS),
+            reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
+        },
         ]);
 
     // Register renamed and removed lints

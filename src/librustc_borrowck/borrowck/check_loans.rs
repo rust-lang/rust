@@ -466,19 +466,33 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let mut err = match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
                     let mut err = struct_span_err!(self.bccx, new_loan.span, E0499,
-                                                  "cannot borrow `{}`{} as mutable \
-                                                  more than once at a time",
-                                                  nl, new_loan_msg);
-                    err.span_label(
-                            old_loan.span,
-                            format!("first mutable borrow occurs here{}", old_loan_msg));
-                    err.span_label(
-                            new_loan.span,
-                            format!("second mutable borrow occurs here{}", new_loan_msg));
-                    err.span_label(
-                            previous_end_span,
-                            "first borrow ends here");
-                    err
+                                                      "cannot borrow `{}`{} as mutable \
+                                                      more than once at a time",
+                                                      nl, new_loan_msg);
+
+                    if new_loan.span == old_loan.span {
+                        // Both borrows are happening in the same place
+                        // Meaning the borrow is occuring in a loop
+                        err.span_label(
+                                new_loan.span,
+                                format!("mutable borrow starts here in previous \
+                                        iteration of loop{}", new_loan_msg));
+                        err.span_label(
+                                previous_end_span,
+                                "mutable borrow ends here");
+                        err
+                    } else {
+                       err.span_label(
+                                old_loan.span,
+                                format!("first mutable borrow occurs here{}", old_loan_msg));
+                        err.span_label(
+                                new_loan.span,
+                                format!("second mutable borrow occurs here{}", new_loan_msg));
+                        err.span_label(
+                                previous_end_span,
+                                "first borrow ends here");
+                        err
+                    }
                 }
 
                 (ty::UniqueImmBorrow, ty::UniqueImmBorrow) => {

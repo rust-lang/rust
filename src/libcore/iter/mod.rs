@@ -359,10 +359,18 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 
+    #[inline]
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
         where P: FnMut(&Self::Item) -> bool
     {
         self.iter.rfind(predicate)
+    }
+
+    #[inline]
+    fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
+        P: FnMut(Self::Item) -> bool
+    {
+        self.iter.position(predicate)
     }
 }
 

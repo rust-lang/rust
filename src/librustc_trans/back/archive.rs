@@ -126,7 +126,7 @@ impl<'a> ArchiveBuilder<'a> {
             Some(ref src) => src,
             None => return None,
         };
-        self.src_archive = Some(ArchiveRO::open(src));
+        self.src_archive = Some(ArchiveRO::open(src).ok());
         self.src_archive.as_ref().unwrap().as_ref()
     }
 
@@ -186,9 +186,8 @@ impl<'a> ArchiveBuilder<'a> {
         where F: FnMut(&str) -> bool + 'static
     {
         let archive = match ArchiveRO::open(archive) {
-            Some(ar) => ar,
-            None => return Err(io::Error::new(io::ErrorKind::Other,
-                                              "failed to open archive")),
+            Ok(ar) => ar,
+            Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
         };
         self.additions.push(Addition::Archive {
             archive: archive,

@@ -36,6 +36,10 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                           t: Ty<'tcx>,
                                           qualified: bool,
                                           output: &mut String) {
+    // When targeting MSVC, emit C++ style type names for compatability with
+    // .natvis visualizers (and perhaps other existing native debuggers?)
+    let cpp_like_names = cx.sess().target.target.options.is_like_msvc;
+
     match t.sty {
         ty::TyBool => output.push_str("bool"),
         ty::TyChar => output.push_str("char"),
@@ -61,21 +65,33 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(')');
         },
         ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
-            output.push('*');
+            if !cpp_like_names {
+                output.push('*');
+            }
             match mutbl {
                 hir::MutImmutable => output.push_str("const "),
                 hir::MutMutable => output.push_str("mut "),
             }
 
             push_debuginfo_type_name(cx, inner_type, true, output);
+
+            if cpp_like_names {
+                output.push('*');
+            }
         },
         ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
-            output.push('&');
+            if !cpp_like_names {
+                output.push('&');
+            }
             if mutbl == hir::MutMutable {
                 output.push_str("mut ");
             }
 
             push_debuginfo_type_name(cx, inner_type, true, output);
+
+            if cpp_like_names {
+                output.push('*');
+            }
         },
         ty::TyArray(inner_type, len) => {
             output.push('[');
@@ -84,9 +100,19 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(']');
         },
         ty::TySlice(inner_type) => {
-            output.push('[');
+            if cpp_like_names {
+                output.push_str("slice<");
+            } else {
+                output.push('[');
+            }
+
             push_debuginfo_type_name(cx, inner_type, true, output);
-            output.push(']');
+
+            if cpp_like_names {
+                output.push('>');
+            } else {
+                output.push(']');
+            }
         },
         ty::TyDynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {

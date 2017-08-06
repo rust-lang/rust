@@ -81,9 +81,8 @@ RUN curl -Lo /rustroot/dumb-init \
       chmod +x /rustroot/dumb-init
 ENTRYPOINT ["/rustroot/dumb-init", "--"]
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
+COPY scripts/sccache.sh /scripts/
+RUN sh /scripts/sccache.sh
 
 ENV HOSTS=i686-unknown-linux-gnu
 

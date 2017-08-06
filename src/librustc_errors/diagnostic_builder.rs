@@ -82,26 +82,27 @@ impl<'a> DiagnosticBuilder<'a> {
             return;
         }
 
-        match self.level {
+        let is_error = match self.level {
             Level::Bug |
             Level::Fatal |
             Level::PhaseFatal |
             Level::Error => {
-                self.handler.bump_err_count();
+                true
             }
 
             Level::Warning |
             Level::Note |
             Level::Help |
             Level::Cancelled => {
+                false
             }
-        }
+        };
 
         self.handler.emitter.borrow_mut().emit(&self);
         self.cancel();
 
-        if self.level == Level::Error {
-            self.handler.panic_if_treat_err_as_bug();
+        if is_error {
+            self.handler.bump_err_count();
         }
 
         // if self.is_fatal() {
@@ -146,6 +147,11 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   sp: S,
                                                   msg: &str)
                                                   -> &mut Self);
+    forward!(pub fn span_suggestion_short(&mut self,
+                                          sp: Span,
+                                          msg: &str,
+                                          suggestion: String)
+                                          -> &mut Self);
     forward!(pub fn span_suggestion(&mut self,
                                     sp: Span,
                                     msg: &str,
@@ -205,4 +211,3 @@ impl<'a> Drop for DiagnosticBuilder<'a> {
         }
     }
 }
-

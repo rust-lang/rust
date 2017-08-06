@@ -177,6 +177,8 @@ pub trait MetadataExt {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn nlink(&self) -> u64;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn uid(&self) -> u32;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn gid(&self) -> u32;
@@ -194,6 +196,10 @@ pub trait MetadataExt {
     fn ctime(&self) -> i64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn ctime_nsec(&self) -> i64;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn blksize(&self) -> u64;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn blocks(&self) -> u64;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -206,6 +212,9 @@ impl MetadataExt for fs::Metadata {
     }
     fn mode(&self) -> u32 {
         self.as_inner().as_inner().st_mode as u32
+    }
+    fn nlink(&self) -> u64 {
+        self.as_inner().as_inner().st_nlink as u64
     }
     fn uid(&self) -> u32 {
         self.as_inner().as_inner().st_uid as u32
@@ -233,6 +242,12 @@ impl MetadataExt for fs::Metadata {
     }
     fn ctime_nsec(&self) -> i64 {
         self.as_inner().as_inner().st_ctime_nsec as i64
+    }
+    fn blksize(&self) -> u64 {
+        self.as_inner().as_inner().st_blksize as u64
+    }
+    fn blocks(&self) -> u64 {
+        self.as_inner().as_inner().st_blocks as u64
     }
 }
 

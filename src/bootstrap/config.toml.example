@@ -69,11 +69,6 @@
 # controlled by rustbuild's -j parameter.
 #link-jobs = 0
 
-# Delete LLVM build directory on LLVM rebuild.
-# This option defaults to `false` for local development, but CI may want to
-# always perform clean full builds (possibly accelerated by (s)ccache).
-#clean-rebuild = false
-
 # =============================================================================
 # General build configuration options
 # =============================================================================
@@ -208,7 +203,7 @@
 #codegen-units = 1
 
 # Whether or not debug assertions are enabled for the compiler and standard
-# library
+# library. Also enables compilation of debug! and trace! logging macros.
 #debug-assertions = false
 
 # Whether or not debuginfo is emitted

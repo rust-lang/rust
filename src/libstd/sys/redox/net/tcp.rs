@@ -29,10 +29,10 @@ impl TcpStream {
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);
-        Ok(TcpStream(File::open(&Path::new(path.as_str()), &options)?))
+        Ok(TcpStream(File::open(Path::new(path.as_str()), &options)?))
     }
 
-    pub fn connect_timeout(_addr: &SocketAddr, _timeout: Duration) -> Result<()> {
+    pub fn connect_timeout(_addr: &SocketAddr, _timeout: Duration) -> Result<TcpStream> {
         Err(Error::new(ErrorKind::Other, "TcpStream::connect_timeout not implemented"))
     }
 
@@ -177,7 +177,7 @@ impl TcpListener {
         let mut options = OpenOptions::new();
         options.read(true);
         options.write(true);
-        Ok(TcpListener(File::open(&Path::new(path.as_str()), &options)?))
+        Ok(TcpListener(File::open(Path::new(path.as_str()), &options)?))
     }
 
     pub fn accept(&self) -> Result<(TcpStream, SocketAddr)> {

@@ -47,11 +47,12 @@ impl Emitter for EmitterWriter {
                // don't display multiline suggestions as labels
                sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
                 let substitution = &sugg.substitution_parts[0].substitutions[0];
-                let msg = if substitution.len() == 0 {
-                    // This substitution is only removal, don't show it
+                let msg = if substitution.len() == 0 || !sugg.show_code_when_inline {
+                    // This substitution is only removal or we explicitely don't want to show the
+                    // code inline, don't show it
                     format!("help: {}", sugg.msg)
                 } else {
-                    format!("help: {} `{}`", sugg.msg, substitution)
+                    format!("help: {}: `{}`", sugg.msg, substitution)
                 };
                 primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
             } else {
@@ -346,9 +347,20 @@ impl EmitterWriter {
         // and "annotations lines", where the highlight lines have the `^`.
 
         // Sort the annotations by (start, end col)
+        // The labels are reversed, sort and then reversed again.
+        // Consider a list of annotations (A1, A2, C1, C2, B1, B2) where
+        // the letter signifies the span. Here we are only sorting by the
+        // span and hence, the order of the elements with the same span will
+        // not change. On reversing the ordering (|a, b| but b.cmp(a)), you get
+        // (C1, C2, B1, B2, A1, A2). All the elements with the same span are
+        // still ordered first to last, but all the elements with different
+        // spans are ordered by their spans in last to first order. Last to
+        // first order is important, because the jiggly lines and | are on
+        // the left, so the rightmost span needs to be rendered first,
+        // otherwise the lines would end up needing to go over a message.
+
         let mut annotations = line.annotations.clone();
-        annotations.sort();
-        annotations.reverse();
+        annotations.sort_by(|a,b| b.start_col.cmp(&a.start_col));
 
         // First, figure out where each label will be positioned.
         //

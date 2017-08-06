@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use LinkerFlavor;
-use target::{LinkArgs, TargetOptions};
+use target::{LinkArgs, TargetOptions, RelroLevel};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
@@ -36,6 +36,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         pre_link_args: args,
         position_independent_executables: true,
+        relro_level: RelroLevel::Full,
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: true,
         .. Default::default()

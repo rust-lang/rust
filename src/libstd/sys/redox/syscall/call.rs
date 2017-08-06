@@ -77,9 +77,9 @@ pub fn dup2(fd: usize, newfd: usize, buf: &[u8]) -> Result<usize> {
 }
 
 /// Replace the current process with a new executable
-pub fn execve(path: &str, args: &[[usize; 2]]) -> Result<usize> {
-    unsafe { syscall4(SYS_EXECVE, path.as_ptr() as usize, path.len(),
-                                  args.as_ptr() as usize, args.len()) }
+pub fn execve<T: AsRef<[u8]>>(path: T, args: &[[usize; 2]]) -> Result<usize> {
+    unsafe { syscall4(SYS_EXECVE, path.as_ref().as_ptr() as usize,
+                      path.as_ref().len(), args.as_ptr() as usize, args.len()) }
 }
 
 /// Exit the current process

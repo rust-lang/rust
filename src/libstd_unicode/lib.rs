@@ -32,7 +32,6 @@
 #![deny(warnings)]
 #![no_std]
 
-#![feature(char_escape_debug)]
 #![feature(core_char_ext)]
 #![feature(str_internals)]
 #![feature(core_intrinsics)]

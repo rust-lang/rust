@@ -24,6 +24,7 @@ use syntax::ast;
 use syntax_pos::{DUMMY_SP, Span};
 use transform;
 
+pub mod add_validation;
 pub mod clean_end_regions;
 pub mod simplify_branches;
 pub mod simplify;
@@ -40,6 +41,7 @@ pub mod deaggregator;
 pub mod instcombine;
 pub mod copy_prop;
 pub mod inline;
+pub mod nll;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::qualify_consts::provide(providers);

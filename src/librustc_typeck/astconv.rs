@@ -66,8 +66,8 @@ pub trait AstConv<'gcx, 'tcx> {
     /// late-bound regions.
     fn projected_ty_from_poly_trait_ref(&self,
                                         span: Span,
-                                        poly_trait_ref: ty::PolyTraitRef<'tcx>,
-                                        item_name: ast::Name)
+                                        item_def_id: DefId,
+                                        poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>;
 
     /// Normalize an associated type coming from the user.
@@ -651,11 +651,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         });
         let existential_projections = projection_bounds.iter().map(|bound| {
             bound.map_bound(|b| {
-                let p = b.projection_ty;
+                let trait_ref = self.trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
                 ty::ExistentialProjection {
-                    trait_ref: self.trait_ref_to_existential(p.trait_ref),
-                    item_name: p.item_name(tcx),
-                    ty: b.ty
+                    ty: b.ty,
+                    item_def_id: b.projection_ty.item_def_id,
+                    substs: trait_ref.substs,
                 }
             })
         });
@@ -676,22 +676,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         for tr in traits::supertraits(tcx, principal) {
             associated_types.extend(tcx.associated_items(tr.def_id())
                 .filter(|item| item.kind == ty::AssociatedKind::Type)
-                .map(|item| (tr.def_id(), item.name)));
+                .map(|item| item.def_id));
         }
 
         for projection_bound in &projection_bounds {
-            let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
-                        projection_bound.0.projection_ty.item_name(tcx));
-            associated_types.remove(&pair);
+            associated_types.remove(&projection_bound.0.projection_ty.item_def_id);
         }
 
-        for (trait_def_id, name) in associated_types {
+        for item_def_id in associated_types {
+            let assoc_item = tcx.associated_item(item_def_id);
+            let trait_def_id = assoc_item.container.id();
             struct_span_err!(tcx.sess, span, E0191,
                 "the value of the associated type `{}` (from the trait `{}`) must be specified",
-                        name,
+                        assoc_item.name,
                         tcx.item_path_str(trait_def_id))
                         .span_label(span, format!(
-                            "missing associated type `{}` value", name))
+                            "missing associated type `{}` value", assoc_item.name))
                         .emit();
         }
 
@@ -896,11 +896,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let trait_did = bound.0.def_id;
-        let ty = self.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
-        let ty = self.normalize_ty(span, ty);
-
         let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name)
                                                   .expect("missing associated type");
+
+        let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, bound);
+        let ty = self.normalize_ty(span, ty);
+
         let def = Def::AssociatedTy(item.def_id);
         let def_scope = tcx.adjust(assoc_name, item.container.id(), ref_id).1;
         if !item.vis.is_accessible_from(def_scope, tcx) {
@@ -915,12 +916,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn qpath_to_ty(&self,
                    span: Span,
                    opt_self_ty: Option<Ty<'tcx>>,
-                   trait_def_id: DefId,
+                   item_def_id: DefId,
                    trait_segment: &hir::PathSegment,
                    item_segment: &hir::PathSegment)
                    -> Ty<'tcx>
     {
         let tcx = self.tcx();
+        let trait_def_id = tcx.parent_def_id(item_def_id).unwrap();
 
         self.prohibit_type_params(slice::ref_slice(item_segment));
 
@@ -944,7 +946,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
 
-        self.normalize_ty(span, tcx.mk_projection(trait_ref, item_segment.name))
+        self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
@@ -1050,10 +1052,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             Def::AssociatedTy(def_id) => {
                 self.prohibit_type_params(&path.segments[..path.segments.len()-2]);
-                let trait_did = tcx.parent_def_id(def_id).unwrap();
                 self.qpath_to_ty(span,
                                  opt_self_ty,
-                                 trait_did,
+                                 def_id,
                                  &path.segments[path.segments.len()-2],
                                  path.segments.last().unwrap())
             }
@@ -1109,46 +1110,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                let bare_fn_ty = self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl);
-
-                // Find any late-bound regions declared in return type that do
-                // not appear in the arguments. These are not wellformed.
-                //
-                // Example:
-                //
-                //     for<'a> fn() -> &'a str <-- 'a is bad
-                //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
-                //
-                // Note that we do this check **here** and not in
-                // `ty_of_bare_fn` because the latter is also used to make
-                // the types for fn items, and we do not want to issue a
-                // warning then. (Once we fix #32330, the regions we are
-                // checking for here would be considered early bound
-                // anyway.)
-                let inputs = bare_fn_ty.inputs();
-                let late_bound_in_args = tcx.collect_constrained_late_bound_regions(
-                    &inputs.map_bound(|i| i.to_owned()));
-                let output = bare_fn_ty.output();
-                let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
-                for br in late_bound_in_ret.difference(&late_bound_in_args) {
-                    let br_name = match *br {
-                        ty::BrNamed(_, name) => name,
-                        _ => {
-                            span_bug!(
-                                bf.decl.output.span(),
-                                "anonymous bound region {:?} in return but not args",
-                                br);
-                        }
-                    };
-                    struct_span_err!(tcx.sess,
-                                     ast_ty.span,
-                                     E0581,
-                                     "return type references lifetime `{}`, \
-                                      which does not appear in the fn input types",
-                                     br_name)
-                        .emit();
-                }
-                tcx.mk_fn_ptr(bare_fn_ty)
+                tcx.mk_fn_ptr(self.ty_of_fn(bf.unsafety, bf.abi, &bf.decl))
             }
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
@@ -1268,23 +1230,56 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
+        let tcx = self.tcx();
         let input_tys: Vec<Ty> =
             decl.inputs.iter().map(|a| self.ty_of_arg(a, None)).collect();
 
         let output_ty = match decl.output {
             hir::Return(ref output) => self.ast_ty_to_ty(output),
-            hir::DefaultReturn(..) => self.tcx().mk_nil(),
+            hir::DefaultReturn(..) => tcx.mk_nil(),
         };
 
         debug!("ty_of_fn: output_ty={:?}", output_ty);
 
-        ty::Binder(self.tcx().mk_fn_sig(
+        let bare_fn_ty = ty::Binder(tcx.mk_fn_sig(
             input_tys.into_iter(),
             output_ty,
             decl.variadic,
             unsafety,
             abi
-        ))
+        ));
+
+        // Find any late-bound regions declared in return type that do
+        // not appear in the arguments. These are not wellformed.
+        //
+        // Example:
+        //     for<'a> fn() -> &'a str <-- 'a is bad
+        //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
+        let inputs = bare_fn_ty.inputs();
+        let late_bound_in_args = tcx.collect_constrained_late_bound_regions(
+            &inputs.map_bound(|i| i.to_owned()));
+        let output = bare_fn_ty.output();
+        let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
+        for br in late_bound_in_ret.difference(&late_bound_in_args) {
+            let br_name = match *br {
+                ty::BrNamed(_, name) => name,
+                _ => {
+                    span_bug!(
+                        decl.output.span(),
+                        "anonymous bound region {:?} in return but not args",
+                        br);
+                }
+            };
+            struct_span_err!(tcx.sess,
+                             decl.output.span(),
+                             E0581,
+                             "return type references lifetime `{}`, \
+                             which does not appear in the fn input types",
+                             br_name)
+                .emit();
+        }
+
+        bare_fn_ty
     }
 
     pub fn ty_of_closure(&self,

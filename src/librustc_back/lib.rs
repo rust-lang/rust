@@ -47,6 +47,8 @@ pub mod target;
 pub mod slice;
 pub mod dynamic_lib;
 
+use std::str::FromStr;
+
 use serialize::json::{Json, ToJson};
 
 macro_rules! linker_flavor {
@@ -111,6 +113,46 @@ impl ToJson for PanicStrategy {
         match *self {
             PanicStrategy::Abort => "abort".to_json(),
             PanicStrategy::Unwind => "unwind".to_json(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum RelroLevel {
+    Full,
+    Partial,
+    Off,
+}
+
+impl RelroLevel {
+    pub fn desc(&self) -> &str {
+        match *self {
+            RelroLevel::Full => "full",
+            RelroLevel::Partial => "partial",
+            RelroLevel::Off => "off",
+        }
+    }
+}
+
+impl FromStr for RelroLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<RelroLevel, ()> {
+        match s {
+            "full" => Ok(RelroLevel::Full),
+            "partial" => Ok(RelroLevel::Partial),
+            "off" => Ok(RelroLevel::Off),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for RelroLevel {
+    fn to_json(&self) -> Json {
+        match *self {
+            RelroLevel::Full => "full".to_json(),
+            RelroLevel::Partial => "partial".to_json(),
+            RelroLevel::Off => "off".to_json(),
         }
     }
 }

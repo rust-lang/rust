@@ -15,6 +15,7 @@ use std::mem;
 
 // Raising alignment
 #[repr(align(16))]
+#[derive(Clone, Copy, Debug)]
 struct Align16(i32);
 
 // Lowering has no effect
@@ -66,6 +67,11 @@ struct AlignContainsPacked {
 #[repr(align(0x10000))]
 struct AlignLarge {
     stuff: [u8; 0x10000],
+}
+
+union UnionContainsAlign {
+    a: Align16,
+    b: f32
 }
 
 impl Align16 {
@@ -175,6 +181,18 @@ pub fn main() {
         _ => ()
     }
     assert!(is_aligned_to(&e, 16));
+
+    // check union alignment
+    assert_eq!(mem::align_of::<UnionContainsAlign>(), 16);
+    assert_eq!(mem::size_of::<UnionContainsAlign>(), 16);
+    let u = UnionContainsAlign { a: Align16(10) };
+    unsafe {
+        assert_eq!(mem::align_of_val(&u.a), 16);
+        assert_eq!(mem::size_of_val(&u.a), 16);
+        assert_eq!(u.a.0, 10);
+        let UnionContainsAlign { a } = u;
+        assert_eq!(a.0, 10);
+    }
 
     // arrays of aligned elements should also be aligned
     assert_eq!(mem::align_of::<[Align16;2]>(), 16);

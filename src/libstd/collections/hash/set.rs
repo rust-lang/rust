@@ -123,13 +123,13 @@ pub struct HashSet<T, S = RandomState> {
 }
 
 impl<T: Hash + Eq> HashSet<T, RandomState> {
-    /// Creates an empty HashSet.
+    /// Creates an empty `HashSet`.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let mut set: HashSet<i32> = HashSet::new();
+    /// let set: HashSet<i32> = HashSet::new();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -146,7 +146,8 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let mut set: HashSet<i32> = HashSet::with_capacity(10);
+    /// let set: HashSet<i32> = HashSet::with_capacity(10);
+    /// assert!(set.capacity() >= 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -215,6 +216,17 @@ impl<T, S> HashSet<T, S>
     /// Returns a reference to the set's [`BuildHasher`].
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// let hasher = RandomState::new();
+    /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
+    /// let hasher: &RandomState = set.hasher();
+    /// ```
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
@@ -249,6 +261,7 @@ impl<T, S> HashSet<T, S>
     /// use std::collections::HashSet;
     /// let mut set: HashSet<i32> = HashSet::new();
     /// set.reserve(10);
+    /// assert!(set.capacity() >= 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
@@ -312,13 +325,13 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x); // Print 1
     /// }
     ///
-    /// let diff: HashSet<_> = a.difference(&b).cloned().collect();
-    /// assert_eq!(diff, [1].iter().cloned().collect());
+    /// let diff: HashSet<_> = a.difference(&b).collect();
+    /// assert_eq!(diff, [1].iter().collect());
     ///
     /// // Note that difference is not symmetric,
     /// // and `b - a` means something else:
-    /// let diff: HashSet<_> = b.difference(&a).cloned().collect();
-    /// assert_eq!(diff, [4].iter().cloned().collect());
+    /// let diff: HashSet<_> = b.difference(&a).collect();
+    /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
@@ -343,11 +356,11 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let diff1: HashSet<_> = a.symmetric_difference(&b).cloned().collect();
-    /// let diff2: HashSet<_> = b.symmetric_difference(&a).cloned().collect();
+    /// let diff1: HashSet<_> = a.symmetric_difference(&b).collect();
+    /// let diff2: HashSet<_> = b.symmetric_difference(&a).collect();
     ///
     /// assert_eq!(diff1, diff2);
-    /// assert_eq!(diff1, [1, 4].iter().cloned().collect());
+    /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(&'a self,
@@ -371,8 +384,8 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let intersection: HashSet<_> = a.intersection(&b).cloned().collect();
-    /// assert_eq!(intersection, [2, 3].iter().cloned().collect());
+    /// let intersection: HashSet<_> = a.intersection(&b).collect();
+    /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
@@ -397,8 +410,8 @@ impl<T, S> HashSet<T, S>
     ///     println!("{}", x);
     /// }
     ///
-    /// let union: HashSet<_> = a.union(&b).cloned().collect();
-    /// assert_eq!(union, [1, 2, 3, 4].iter().cloned().collect());
+    /// let union: HashSet<_> = a.union(&b).collect();
+    /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
@@ -440,6 +453,22 @@ impl<T, S> HashSet<T, S>
     }
 
     /// Clears the set, returning all elements in an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert!(!set.is_empty());
+    ///
+    /// // print 1, 2, 3 in an arbitrary order
+    /// for i in set.drain() {
+    ///     println!("{}", i);
+    /// }
+    ///
+    /// assert!(set.is_empty());
+    /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<T> {

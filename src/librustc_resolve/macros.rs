@@ -19,6 +19,7 @@ use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use syntax::ast::{self, Name, Ident};
 use syntax::attr::{self, HasAttrs};
+use syntax::codemap::respan;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
@@ -384,16 +385,22 @@ impl<'a> Resolver<'a> {
 
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                             -> Result<Def, Determinacy> {
-        let ast::Path { ref segments, span } = *path;
-        if segments.iter().any(|segment| segment.parameters.is_some()) {
-            let kind =
-                if segments.last().unwrap().parameters.is_some() { "macro" } else { "module" };
-            let msg = format!("type parameters are not allowed on {}s", kind);
-            self.session.span_err(path.span, &msg);
-            return Err(Determinacy::Determined);
+        let def = self.resolve_macro_to_def_inner(scope, path, kind, force);
+        if def != Err(Determinacy::Undetermined) {
+            // Do not report duplicated errors on every undetermined resolution.
+            path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
+                self.session.span_err(segment.parameters.as_ref().unwrap().span(),
+                                      "generic arguments in macro path");
+            });
         }
+        def
+    }
 
-        let path: Vec<_> = segments.iter().map(|seg| seg.identifier).collect();
+    fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path,
+                                  kind: MacroKind, force: bool)
+                                  -> Result<Def, Determinacy> {
+        let ast::Path { ref segments, span } = *path;
+        let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.identifier)).collect();
         let invocation = self.invocations[&scope];
         self.current_module = invocation.module.get();
 
@@ -418,16 +425,19 @@ impl<'a> Resolver<'a> {
                     Err(Determinacy::Determined)
                 },
             };
+            let path = path.iter().map(|p| p.node).collect::<Vec<_>>();
             self.current_module.nearest_item_scope().macro_resolutions.borrow_mut()
                 .push((path.into_boxed_slice(), span));
             return def;
         }
 
-        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path[0], false);
+        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope,
+                                                          path[0].node,
+                                                          false);
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
-            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, false, span) {
+            match self.resolve_lexical_macro_path_segment(path[0].node, MacroNS, false, span) {
                 Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 Err(_) => {
@@ -438,7 +448,7 @@ impl<'a> Resolver<'a> {
         };
 
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((scope, path[0], span, kind));
+            .push((scope, path[0].node, span, kind));
 
         result
     }
@@ -576,9 +586,10 @@ impl<'a> Resolver<'a> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(path, Some(MacroNS), true, span) {
+            let path = path.iter().map(|p| respan(span, *p)).collect::<Vec<_>>();
+            match self.resolve_path(&path, Some(MacroNS), true, span) {
                 PathResult::NonModule(_) => {},
-                PathResult::Failed(msg, _) => {
+                PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 }
                 _ => unreachable!(),
@@ -652,15 +663,16 @@ impl<'a> Resolver<'a> {
                 }
             };
             let ident = Ident::from_str(name);
-            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro, span)
+            self.lookup_typo_candidate(&vec![respan(span, ident)], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
-                    err.help(&format!("did you mean `{}!`?", suggestion));
+                    err.span_suggestion(span, "you could try the macro",
+                                        format!("{}!", suggestion));
                 } else {
-                    err.help(&format!("did you mean `{}`?", suggestion));
+                    err.span_suggestion(span, "try", suggestion.to_string());
                 }
             } else {
                 err.help("have you added the `#[macro_use]` on the module/import?");

@@ -126,6 +126,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
         self.record(match statement.kind {
             StatementKind::Assign(..) => "StatementKind::Assign",
             StatementKind::EndRegion(..) => "StatementKind::EndRegion",
+            StatementKind::Validate(..) => "StatementKind::Validate",
             StatementKind::SetDiscriminant { .. } => "StatementKind::SetDiscriminant",
             StatementKind::StorageLive(..) => "StatementKind::StorageLive",
             StatementKind::StorageDead(..) => "StatementKind::StorageDead",
@@ -279,7 +280,8 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_closure_substs(&mut self,
-                            substs: &ClosureSubsts<'tcx>) {
+                            substs: &ClosureSubsts<'tcx>,
+                            _: Location) {
         self.record("ClosureSubsts", substs);
         self.super_closure_substs(substs);
     }

@@ -31,32 +31,31 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let mut _0: ();
 //     let _1: D;
 //     let mut _2: ();
-//     let mut _3: ();
-//     let mut _4: [closure@NodeId(18) d: &'19mce D];
-//     let mut _5: &'19mce D;
-//
+//     let mut _3: [closure@NodeId(18) d:&'19mce D];
+//     let mut _4: &'19mce D;
+//     let mut _5: ();
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
+//         StorageLive(_3);
 //         StorageLive(_4);
-//         StorageLive(_5);
-//         _5 = &'19mce _1;
-//         _4 = [closure@NodeId(18)] { d: _5 };
-//         StorageDead(_5);
-//         _3 = const foo(_4) -> [return: bb2, unwind: bb3];
+//         _4 = &'19mce _1;
+//         _3 = [closure@NodeId(18)] { d: _4 };
+//         StorageDead(_4);
+//         _2 = const foo(_3) -> [return: bb1, unwind: bb3];
 //     }
 //     bb1: {
-//         resume;
-//     }
-//     bb2: {
-//         StorageDead(_4);
+//         StorageDead(_3);
 //         EndRegion('19mce);
 //         _0 = ();
 //         drop(_1) -> bb4;
 //     }
+//     bb2: {
+//         resume;
+//     }
 //     bb3: {
 //         EndRegion('19mce);
-//         drop(_1) -> bb1;
+//         drop(_1) -> bb2;
 //     }
 //     bb4: {
 //         StorageDead(_1);

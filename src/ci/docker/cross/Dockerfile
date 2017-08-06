@@ -21,7 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-# dumb-init
 COPY scripts/dumb-init.sh /scripts/
 RUN sh /scripts/dumb-init.sh
 
@@ -68,5 +67,4 @@ ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# init
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]

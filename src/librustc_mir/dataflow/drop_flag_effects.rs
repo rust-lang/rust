@@ -289,6 +289,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::EndRegion(_) |
+            mir::StatementKind::Validate(..) |
             mir::StatementKind::Nop => {}
         },
         None => {

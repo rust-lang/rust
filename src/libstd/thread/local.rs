@@ -115,7 +115,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// # Syntax
 ///
 /// The macro wraps any number of static declarations and makes them thread local.
-/// Each static may be public or private, and attributes are allowed. Example:
+/// Publicity and attributes for each static are allowed. Example:
 ///
 /// ```
 /// use std::cell::RefCell;
@@ -136,31 +136,18 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
 macro_rules! thread_local {
-    // rule 0: empty (base case for the recursion)
+    // empty (base case for the recursion)
     () => {};
 
-    // rule 1: process multiple declarations where the first one is private
-    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        thread_local!($(#[$attr])* static $name: $t = $init); // go to rule 2
+    // process multiple declarations
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
+        __thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
         thread_local!($($rest)*);
     );
 
-    // rule 2: handle a single private declaration
-    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr) => (
-        $(#[$attr])* static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init);
-    );
-
-    // rule 3: handle multiple declarations where the first one is public
-    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        thread_local!($(#[$attr])* pub static $name: $t = $init); // go to rule 4
-        thread_local!($($rest)*);
-    );
-
-    // rule 4: handle a single public declaration
-    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr) => (
-        $(#[$attr])* pub static $name: $crate::thread::LocalKey<$t> =
-            __thread_local_inner!($t, $init);
+    // handle a single declaration
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr) => (
+        __thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
     );
 }
 
@@ -171,27 +158,29 @@ macro_rules! thread_local {
 #[macro_export]
 #[allow_internal_unstable]
 macro_rules! __thread_local_inner {
-    ($t:ty, $init:expr) => {{
-        fn __init() -> $t { $init }
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
+            fn __init() -> $t { $init }
 
-        fn __getit() -> $crate::option::Option<
-            &'static $crate::cell::UnsafeCell<
-                $crate::option::Option<$t>>>
-        {
-            #[thread_local]
-            #[cfg(target_thread_local)]
-            static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
-                $crate::thread::__FastLocalKeyInner::new();
+            fn __getit() -> $crate::option::Option<
+                &'static $crate::cell::UnsafeCell<
+                    $crate::option::Option<$t>>>
+            {
+                #[thread_local]
+                #[cfg(target_thread_local)]
+                static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
+                    $crate::thread::__FastLocalKeyInner::new();
 
-            #[cfg(not(target_thread_local))]
-            static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
-                $crate::thread::__OsLocalKeyInner::new();
+                #[cfg(not(target_thread_local))]
+                static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
+                    $crate::thread::__OsLocalKeyInner::new();
 
-            __KEY.get()
-        }
+                __KEY.get()
+            }
 
-        $crate::thread::LocalKey::new(__getit, __init)
-    }}
+            $crate::thread::LocalKey::new(__getit, __init)
+        };
+    }
 }
 
 /// Indicator of the state of a thread local storage key.
@@ -232,6 +221,32 @@ pub enum LocalKeyState {
     Destroyed,
 }
 
+/// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
+#[unstable(feature = "thread_local_state",
+           reason = "state querying was recently added",
+           issue = "27716")]
+pub struct AccessError {
+    _private: (),
+}
+
+#[unstable(feature = "thread_local_state",
+           reason = "state querying was recently added",
+           issue = "27716")]
+impl fmt::Debug for AccessError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("AccessError").finish()
+    }
+}
+
+#[unstable(feature = "thread_local_state",
+           reason = "state querying was recently added",
+           issue = "27716")]
+impl fmt::Display for AccessError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt("already destroyed", f)
+    }
+}
+
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
     #[unstable(feature = "thread_local_internals",
@@ -258,15 +273,8 @@ impl<T: 'static> LocalKey<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
                       where F: FnOnce(&T) -> R {
-        unsafe {
-            let slot = (self.inner)();
-            let slot = slot.expect("cannot access a TLS value during or \
-                                    after it is destroyed");
-            f(match *slot.get() {
-                Some(ref inner) => inner,
-                None => self.init(slot),
-            })
-        }
+        self.try_with(f).expect("cannot access a TLS value during or \
+                                 after it is destroyed")
     }
 
     unsafe fn init(&self, slot: &UnsafeCell<Option<T>>) -> &T {
@@ -329,6 +337,32 @@ impl<T: 'static> LocalKey<T> {
                 }
                 None => LocalKeyState::Destroyed,
             }
+        }
+    }
+
+    /// Acquires a reference to the value in this TLS key.
+    ///
+    /// This will lazily initialize the value if this thread has not referenced
+    /// this key yet. If the key has been destroyed (which may happen if this is called
+    /// in a destructor), this function will return a ThreadLocalError.
+    ///
+    /// # Panics
+    ///
+    /// This function will still `panic!()` if the key is uninitialized and the
+    /// key's initializer panics.
+    #[unstable(feature = "thread_local_state",
+               reason = "state querying was recently added",
+               issue = "27716")]
+    pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
+                      where F: FnOnce(&T) -> R {
+        unsafe {
+            let slot = (self.inner)().ok_or(AccessError {
+                _private: (),
+            })?;
+            Ok(f(match *slot.get() {
+                Some(ref inner) => inner,
+                None => self.init(slot),
+            }))
         }
     }
 }

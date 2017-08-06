@@ -17,8 +17,8 @@ fn main() {
     let x2: i8 = --128; //~ error: literal out of range for i8
     //~^ error: attempt to negate with overflow
 
-    let x = -3.40282348e+38_f32; //~ error: literal out of range for f32
-    let x =  3.40282348e+38_f32; //~ error: literal out of range for f32
+    let x = -3.40282357e+38_f32; //~ error: literal out of range for f32
+    let x =  3.40282357e+38_f32; //~ error: literal out of range for f32
     let x = -1.7976931348623159e+308_f64; //~ error: literal out of range for f64
     let x =  1.7976931348623159e+308_f64; //~ error: literal out of range for f64
 }

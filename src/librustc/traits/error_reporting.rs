@@ -330,6 +330,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .filter(|a| a.check_name("rustc_on_unimplemented"))
             .next()
         {
+            let name = self.tcx.item_name(def_id).as_str();
             let err_sp = item.span.substitute_dummy(span);
             let trait_str = self.tcx.item_path_str(trait_ref.def_id);
             if let Some(istring) = item.value_str() {
@@ -347,6 +348,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         Piece::NextArgument(a) => match a.position {
                             Position::ArgumentNamed(s) => match generic_map.get(s) {
                                 Some(val) => Some(val),
+                                None if s == name => {
+                                    Some(&trait_str)
+                                }
                                 None => {
                                     span_err!(self.tcx.sess, err_sp, E0272,
                                               "the #[rustc_on_unimplemented] attribute on trait \

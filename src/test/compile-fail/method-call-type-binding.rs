@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    0.clone::<T = u8>(); //~ ERROR type bindings cannot be used in method calls
+    0.clone::<T = u8>(); //~ ERROR unexpected binding of associated item
 }

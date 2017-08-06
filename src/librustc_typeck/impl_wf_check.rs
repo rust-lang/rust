@@ -102,7 +102,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut input_parameters = ctp::parameters_for_impl(impl_self_ty, impl_trait_ref);
     ctp::identify_constrained_type_params(
-        &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
+        tcx, &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
     // Disallow ANY unconstrained type parameters.
     for (ty_param, param) in impl_generics.types.iter().zip(&impl_hir_generics.ty_params) {

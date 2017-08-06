@@ -19,7 +19,7 @@ pub use self::DebugInfoLevel::*;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
-use rustc_back::{LinkerFlavor, PanicStrategy};
+use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
 use rustc_back::target::Target;
 use lint;
 use middle::cstore;
@@ -489,6 +489,12 @@ impl Options {
             self.debugging_opts.query_dep_graph
     }
 
+    #[inline(always)]
+    pub fn enable_dep_node_debug_strs(&self) -> bool {
+        cfg!(debug_assertions) &&
+            (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
+    }
+
     pub fn single_codegen_unit(&self) -> bool {
         self.incremental.is_none() ||
         self.cg.codegen_units == 1
@@ -648,6 +654,8 @@ macro_rules! options {
             Some("a number");
         pub const parse_panic_strategy: Option<&'static str> =
             Some("either `panic` or `abort`");
+        pub const parse_relro_level: Option<&'static str> =
+            Some("one of: `full`, `partial`, or `off`");
         pub const parse_sanitizer: Option<&'static str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
         pub const parse_linker_flavor: Option<&'static str> =
@@ -659,7 +667,7 @@ macro_rules! options {
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer};
-        use rustc_back::{LinkerFlavor, PanicStrategy};
+        use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -775,6 +783,19 @@ macro_rules! options {
             match v {
                 Some("unwind") => *slot = Some(PanicStrategy::Unwind),
                 Some("abort") => *slot = Some(PanicStrategy::Abort),
+                _ => return false
+            }
+            true
+        }
+
+        fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => {
+                    match s.parse::<RelroLevel>() {
+                        Ok(level) => *slot = Some(level),
+                        _ => return false
+                    }
+                },
                 _ => return false
             }
             true
@@ -939,9 +960,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
-    save_analysis_api: bool = (false, parse_bool, [UNTRACKED],
-        "write syntax and type analysis information for opaque libraries (in JSON format), \
-         in addition to normal output"),
     print_move_fragments: bool = (false, parse_bool, [UNTRACKED],
         "print out move-fragment data for every fn"),
     flowgraph_print_loans: bool = (false, parse_bool, [UNTRACKED],
@@ -1007,6 +1025,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "the directory the MIR is dumped into"),
     dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
           "if set, exclude the pass number when dumping MIR (used in tests)"),
+    mir_emit_validate: usize = (0, parse_uint, [TRACKED],
+          "emit Validate MIR statements, interpreted e.g. by miri (0: do not emit; 1: if function \
+           contains unsafe block, only validate arguments; 2: always emit full validation)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -1037,6 +1058,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "extra arguments to prepend to the linker invocation (space separated)"),
     profile: bool = (false, parse_bool, [TRACKED],
                      "insert profiling code"),
+    relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
+        "choose which RELRO level to use"),
+    nll: bool = (false, parse_bool, [UNTRACKED],
+                 "run the non-lexical lifetimes MIR pass"),
+    trans_time_graph: bool = (false, parse_bool, [UNTRACKED],
+        "generate a graphical HTML report of time spent in trans and LLVM"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1477,6 +1504,23 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         early_error(error_format, "Value for codegen units must be a positive nonzero integer");
     }
 
+    // It's possible that we have `codegen_units > 1` but only one item in
+    // `trans.modules`.  We could theoretically proceed and do LTO in that
+    // case, but it would be confusing to have the validity of
+    // `-Z lto -C codegen-units=2` depend on details of the crate being
+    // compiled, so we complain regardless.
+    if cg.lto && cg.codegen_units > 1 {
+        // This case is impossible to handle because LTO expects to be able
+        // to combine the entire crate and all its dependencies into a
+        // single compilation unit, but each codegen unit is in a separate
+        // LLVM context, so they can't easily be combined.
+        early_error(error_format, "can't perform LTO when using multiple codegen units");
+    }
+
+    if cg.lto && debugging_opts.incremental.is_some() {
+        early_error(error_format, "can't perform LTO when compiling incrementally");
+    }
+
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::TargetCPUs);
@@ -1593,8 +1637,15 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             "target-features" => PrintRequest::TargetFeatures,
             "relocation-models" => PrintRequest::RelocationModels,
             "code-models" => PrintRequest::CodeModels,
-            "target-spec-json" if nightly_options::is_unstable_enabled(matches)
-                => PrintRequest::TargetSpec,
+            "target-spec-json" => {
+                if nightly_options::is_unstable_enabled(matches) {
+                    PrintRequest::TargetSpec
+                } else {
+                    early_error(error_format,
+                                &format!("the `-Z unstable-options` flag must also be passed to \
+                                          enable the target-spec-json print option"));
+                }
+            },
             req => {
                 early_error(error_format, &format!("unknown print request `{}`", req))
             }
@@ -1771,7 +1822,7 @@ mod dep_tracking {
     use super::{Passes, CrateType, OptLevel, DebugInfoLevel,
                 OutputTypes, Externs, ErrorOutputType, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
-    use rustc_back::PanicStrategy;
+    use rustc_back::{PanicStrategy, RelroLevel};
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
@@ -1813,11 +1864,13 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<String>);
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
+    impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(Option<cstore::NativeLibraryKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
+    impl_dep_tracking_hash_via_hash!(RelroLevel);
     impl_dep_tracking_hash_via_hash!(Passes);
     impl_dep_tracking_hash_via_hash!(OptLevel);
     impl_dep_tracking_hash_via_hash!(DebugInfoLevel);
@@ -1899,7 +1952,7 @@ mod tests {
     use std::path::PathBuf;
     use std::rc::Rc;
     use super::{OutputType, OutputTypes, Externs};
-    use rustc_back::PanicStrategy;
+    use rustc_back::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
 
     fn optgroups() -> getopts::Options {
@@ -2494,8 +2547,6 @@ mod tests {
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.save_analysis = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.save_analysis_api = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.print_move_fragments = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.flowgraph_print_loans = true;
@@ -2576,6 +2627,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.mir_opt_level = 3;
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.relro_level = Some(RelroLevel::Full);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 }

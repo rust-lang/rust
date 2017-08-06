@@ -14,7 +14,7 @@ use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
 
 use std::fmt;
 use syntax::abi;
-use syntax::ast::{self, Name};
+use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -39,15 +39,15 @@ pub enum TypeError<'tcx> {
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
     RegionsNotSame(Region<'tcx>, Region<'tcx>),
     RegionsNoOverlap(Region<'tcx>, Region<'tcx>),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>, Option<Box<ty::Issue32330>>),
-    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>, Option<Box<ty::Issue32330>>),
+    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
+    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
     CyclicTy,
-    ProjectionNameMismatched(ExpectedFound<Name>),
+    ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
@@ -116,13 +116,13 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             RegionsNoOverlap(..) => {
                 write!(f, "lifetimes do not intersect")
             }
-            RegionsInsufficientlyPolymorphic(br, _, _) => {
+            RegionsInsufficientlyPolymorphic(br, _) => {
                 write!(f,
                        "expected bound lifetime parameter{}{}, found concrete lifetime",
                        if br.is_named() { " " } else { "" },
                        br)
             }
-            RegionsOverlyPolymorphic(br, _, _) => {
+            RegionsOverlyPolymorphic(br, _) => {
                 write!(f,
                        "expected concrete lifetime, found bound lifetime parameter{}{}",
                        if br.is_named() { " " } else { "" },
@@ -154,11 +154,11 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        if values.expected { "variadic" } else { "non-variadic" },
                        if values.found { "variadic" } else { "non-variadic" })
             }
-            ProjectionNameMismatched(ref values) => {
+            ProjectionMismatched(ref values) => ty::tls::with(|tcx| {
                 write!(f, "expected {}, found {}",
-                       values.expected,
-                       values.found)
-            }
+                       tcx.item_path_str(values.expected),
+                       tcx.item_path_str(values.found))
+            }),
             ProjectionBoundsLength(ref values) => {
                 write!(f, "expected {} associated type bindings, found {}",
                        values.expected,
@@ -257,15 +257,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.note_and_explain_region(db, "...does not overlap ",
                                            region2, "");
             }
-            RegionsInsufficientlyPolymorphic(_, conc_region, _) => {
+            RegionsInsufficientlyPolymorphic(_, conc_region) => {
                 self.note_and_explain_region(db, "concrete lifetime that was found is ",
                                            conc_region, "");
             }
-            RegionsOverlyPolymorphic(_, &ty::ReVar(_), _) => {
+            RegionsOverlyPolymorphic(_, &ty::ReVar(_)) => {
                 // don't bother to print out the message below for
                 // inference variables, it's not very illuminating.
             }
-            RegionsOverlyPolymorphic(_, conc_region, _) => {
+            RegionsOverlyPolymorphic(_, conc_region) => {
                 self.note_and_explain_region(db, "expected concrete lifetime is ",
                                            conc_region, "");
             }

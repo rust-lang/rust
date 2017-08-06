@@ -952,15 +952,15 @@ impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
 
 impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
-        let trait_ = match self.trait_ref.clean(cx) {
+        let trait_ = match self.trait_ref(cx.tcx).clean(cx) {
             TyParamBound::TraitBound(t, _) => t.trait_,
             TyParamBound::RegionBound(_) => {
                 panic!("cleaning a trait got a region")
             }
         };
         Type::QPath {
-            name: self.item_name(cx.tcx).clean(cx),
-            self_type: box self.trait_ref.self_ty().clean(cx),
+            name: cx.tcx.associated_item(self.item_def_id).name.clean(cx),
+            self_type: box self.self_ty().clean(cx),
             trait_: box trait_
         }
     }
@@ -1547,6 +1547,8 @@ pub enum PrimitiveType {
     Array,
     Tuple,
     RawPointer,
+    Reference,
+    Fn,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1581,6 +1583,8 @@ impl Type {
             Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
             Tuple(..) => Some(PrimitiveType::Tuple),
             RawPointer(..) => Some(PrimitiveType::RawPointer),
+            BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
+            BareFunction(..) => Some(PrimitiveType::Fn),
             _ => None,
         }
     }
@@ -1633,6 +1637,8 @@ impl PrimitiveType {
             "slice" => Some(PrimitiveType::Slice),
             "tuple" => Some(PrimitiveType::Tuple),
             "pointer" => Some(PrimitiveType::RawPointer),
+            "reference" => Some(PrimitiveType::Reference),
+            "fn" => Some(PrimitiveType::Fn),
             _ => None,
         }
     }
@@ -1661,6 +1667,8 @@ impl PrimitiveType {
             Slice => "slice",
             Tuple => "tuple",
             RawPointer => "pointer",
+            Reference => "reference",
+            Fn => "fn",
         }
     }
 
@@ -1784,7 +1792,7 @@ impl Clean<Type> for hir::Ty {
                 let mut def = Def::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
                 if let ty::TyProjection(proj) = ty.sty {
-                    def = Def::Trait(proj.trait_ref.def_id);
+                    def = Def::Trait(proj.trait_ref(cx.tcx).def_id);
                 }
                 let trait_path = hir::Path {
                     span: self.span,
@@ -1901,7 +1909,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     let mut bindings = vec![];
                     for ty::Binder(ref pb) in obj.projection_bounds() {
                         bindings.push(TypeBinding {
-                            name: pb.item_name.clean(cx),
+                            name: cx.tcx.associated_item(pb.item_def_id).name.clean(cx),
                             ty: pb.ty.clean(cx)
                         });
                     }
@@ -2556,6 +2564,8 @@ fn build_deref_target_impls(cx: &DocContext,
             Array => tcx.lang_items.slice_impl(),
             Tuple => None,
             RawPointer => tcx.lang_items.const_ptr_impl(),
+            Reference => None,
+            Fn => None,
         };
         if let Some(did) = did {
             if !did.is_local() {
@@ -2776,6 +2786,9 @@ fn resolve_type(cx: &DocContext,
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
+        }
+        Def::TyParam(..) if path.segments.len() == 1 => {
+            return Generic(format!("{:#}", path));
         }
         Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,

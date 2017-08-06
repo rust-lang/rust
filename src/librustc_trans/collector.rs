@@ -208,6 +208,9 @@ use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
 use trans_item::{TransItem, DefPathBasedNames, InstantiationMode};
 
+use rustc_data_structures::bitvec::BitVector;
+use back::symbol_export::ExportedSymbols;
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {
     Eager,
@@ -217,12 +220,16 @@ pub enum TransItemCollectionMode {
 /// Maps every translation item to all translation items it references in its
 /// body.
 pub struct InliningMap<'tcx> {
-    // Maps a source translation item to a range of target translation items
-    // that are potentially inlined by LLVM into the source.
+    // Maps a source translation item to the range of translation items
+    // accessed by it.
     // The two numbers in the tuple are the start (inclusive) and
     // end index (exclusive) within the `targets` vecs.
     index: FxHashMap<TransItem<'tcx>, (usize, usize)>,
     targets: Vec<TransItem<'tcx>>,
+
+    // Contains one bit per translation item in the `targets` field. That bit
+    // is true if that translation item needs to be inlined into every CGU.
+    inlines: BitVector,
 }
 
 impl<'tcx> InliningMap<'tcx> {
@@ -231,18 +238,31 @@ impl<'tcx> InliningMap<'tcx> {
         InliningMap {
             index: FxHashMap(),
             targets: Vec::new(),
+            inlines: BitVector::new(1024),
         }
     }
 
-    fn record_inlining_canditates<I>(&mut self,
-                                     source: TransItem<'tcx>,
-                                     targets: I)
-        where I: Iterator<Item=TransItem<'tcx>>
+    fn record_accesses<I>(&mut self,
+                          source: TransItem<'tcx>,
+                          new_targets: I)
+        where I: Iterator<Item=(TransItem<'tcx>, bool)> + ExactSizeIterator
     {
         assert!(!self.index.contains_key(&source));
 
         let start_index = self.targets.len();
-        self.targets.extend(targets);
+        let new_items_count = new_targets.len();
+        let new_items_count_total = new_items_count + self.targets.len();
+
+        self.targets.reserve(new_items_count);
+        self.inlines.grow(new_items_count_total);
+
+        for (i, (target, inline)) in new_targets.enumerate() {
+            self.targets.push(target);
+            if inline {
+                self.inlines.insert(i + start_index);
+            }
+        }
+
         let end_index = self.targets.len();
         self.index.insert(source, (start_index, end_index));
     }
@@ -250,24 +270,38 @@ impl<'tcx> InliningMap<'tcx> {
     // Internally iterate over all items referenced by `source` which will be
     // made available for inlining.
     pub fn with_inlining_candidates<F>(&self, source: TransItem<'tcx>, mut f: F)
-        where F: FnMut(TransItem<'tcx>) {
-        if let Some(&(start_index, end_index)) = self.index.get(&source)
-        {
-            for candidate in &self.targets[start_index .. end_index] {
-                f(*candidate)
+        where F: FnMut(TransItem<'tcx>)
+    {
+        if let Some(&(start_index, end_index)) = self.index.get(&source) {
+            for (i, candidate) in self.targets[start_index .. end_index]
+                                      .iter()
+                                      .enumerate() {
+                if self.inlines.contains(start_index + i) {
+                    f(*candidate);
+                }
             }
+        }
+    }
+
+    // Internally iterate over all items and the things each accesses.
+    pub fn iter_accesses<F>(&self, mut f: F)
+        where F: FnMut(TransItem<'tcx>, &[TransItem<'tcx>])
+    {
+        for (&accessor, &(start_index, end_index)) in &self.index {
+            f(accessor, &self.targets[start_index .. end_index])
         }
     }
 }
 
 pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                                                 exported_symbols: &ExportedSymbols,
                                                  mode: TransItemCollectionMode)
                                                  -> (FxHashSet<TransItem<'tcx>>,
                                                      InliningMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
     scx.tcx().dep_graph.with_ignore(|| {
-        let roots = collect_roots(scx, mode);
+        let roots = collect_roots(scx, exported_symbols, mode);
 
         debug!("Building translation item graph, beginning at roots");
         let mut visited = FxHashSet();
@@ -289,6 +323,7 @@ pub fn collect_crate_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                           exported_symbols: &ExportedSymbols,
                            mode: TransItemCollectionMode)
                            -> Vec<TransItem<'tcx>> {
     debug!("Collecting roots");
@@ -298,6 +333,7 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         let mut visitor = RootCollector {
             scx: scx,
             mode: mode,
+            exported_symbols,
             output: &mut roots,
         };
 
@@ -340,7 +376,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
 
             recursion_depth_reset = None;
 
-            collect_neighbours(scx, instance, &mut neighbors);
+            collect_neighbours(scx, instance, true, &mut neighbors);
         }
         TransItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
@@ -352,14 +388,14 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
                                                                recursion_depths));
             check_type_length_limit(scx.tcx(), instance);
 
-            collect_neighbours(scx, instance, &mut neighbors);
+            collect_neighbours(scx, instance, false, &mut neighbors);
         }
         TransItem::GlobalAsm(..) => {
             recursion_depth_reset = None;
         }
     }
 
-    record_inlining_canditates(scx.tcx(), starting_point, &neighbors[..], inlining_map);
+    record_accesses(scx.tcx(), starting_point, &neighbors[..], inlining_map);
 
     for neighbour in neighbors {
         collect_items_rec(scx, neighbour, visited, recursion_depths, inlining_map);
@@ -372,7 +408,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
     debug!("END collect_items_rec({})", starting_point.to_string(scx.tcx()));
 }
 
-fn record_inlining_canditates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         caller: TransItem<'tcx>,
                                         callees: &[TransItem<'tcx>],
                                         inlining_map: &mut InliningMap<'tcx>) {
@@ -380,11 +416,12 @@ fn record_inlining_canditates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         trans_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };
 
-    let inlining_candidates = callees.into_iter()
-                                     .map(|x| *x)
-                                     .filter(is_inlining_candidate);
+    let accesses = callees.into_iter()
+                          .map(|trans_item| {
+                             (*trans_item, is_inlining_candidate(trans_item))
+                          });
 
-    inlining_map.record_inlining_canditates(caller, inlining_candidates);
+    inlining_map.record_accesses(caller, accesses);
 }
 
 fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -459,7 +496,8 @@ struct MirNeighborCollector<'a, 'tcx: 'a> {
     scx: &'a SharedCrateContext<'a, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
     output: &'a mut Vec<TransItem<'tcx>>,
-    param_substs: &'tcx Substs<'tcx>
+    param_substs: &'tcx Substs<'tcx>,
+    const_context: bool,
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
@@ -540,7 +578,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             let substs = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                  &substs);
             let instance = monomorphize::resolve(self.scx, def_id, substs);
-            collect_neighbours(self.scx, instance, self.output);
+            collect_neighbours(self.scx, instance, true, self.output);
         }
 
         self.super_constant(constant, location);
@@ -557,7 +595,26 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.mir, tcx);
                 let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
-                visit_fn_use(self.scx, callee_ty, true, &mut self.output);
+
+                let constness = match (self.const_context, &callee_ty.sty) {
+                    (true, &ty::TyFnDef(def_id, substs)) if self.scx.tcx().is_const_fn(def_id) => {
+                        let instance = monomorphize::resolve(self.scx, def_id, substs);
+                        Some(instance)
+                    }
+                    _ => None
+                };
+
+                if let Some(const_fn_instance) = constness {
+                    // If this is a const fn, called from a const context, we
+                    // have to visit its body in order to find any fn reifications
+                    // it might contain.
+                    collect_neighbours(self.scx,
+                                       const_fn_instance,
+                                       true,
+                                       self.output);
+                } else {
+                    visit_fn_use(self.scx, callee_ty, true, &mut self.output);
+                }
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
@@ -575,6 +632,22 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         }
 
         self.super_terminator_kind(block, kind, location);
+    }
+
+    fn visit_static(&mut self,
+                    static_: &mir::Static<'tcx>,
+                    context: mir::visit::LvalueContext<'tcx>,
+                    location: Location) {
+        debug!("visiting static {:?} @ {:?}", static_.def_id, location);
+
+        let tcx = self.scx.tcx();
+        let instance = Instance::mono(tcx, static_.def_id);
+        if should_trans_locally(tcx, &instance) {
+            let node_id = tcx.hir.as_local_node_id(static_.def_id).unwrap();
+            self.output.push(TransItem::Static(node_id));
+        }
+
+        self.super_static(static_, context, location);
     }
 }
 
@@ -795,6 +868,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
 
 struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     scx: &'b SharedCrateContext<'a, 'tcx>,
+    exported_symbols: &'b ExportedSymbols,
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
 }
@@ -850,14 +924,19 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 // const items only generate translation items if they are
                 // actually used somewhere. Just declaring them is insufficient.
             }
-            hir::ItemFn(.., ref generics, _) => {
-                if !generics.is_type_parameterized() {
-                    let def_id = self.scx.tcx().hir.local_def_id(item.id);
+            hir::ItemFn(..) => {
+                let tcx = self.scx.tcx();
+                let def_id = tcx.hir.local_def_id(item.id);
+
+                if (self.mode == TransItemCollectionMode::Eager ||
+                    !tcx.is_const_fn(def_id) ||
+                    self.exported_symbols.local_exports().contains(&item.id)) &&
+                   !item_has_type_parameters(tcx, def_id) {
 
                     debug!("RootCollector: ItemFn({})",
-                           def_id_to_string(self.scx.tcx(), def_id));
+                           def_id_to_string(tcx, def_id));
 
-                    let instance = Instance::mono(self.scx.tcx(), def_id);
+                    let instance = Instance::mono(tcx, def_id);
                     self.output.push(TransItem::Fn(instance));
                 }
             }
@@ -871,37 +950,29 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.node {
-            hir::ImplItemKind::Method(hir::MethodSig {
-                ref generics,
-                ..
-            }, _) => {
-                let hir_map = &self.scx.tcx().hir;
-                let parent_node_id = hir_map.get_parent_node(ii.id);
-                let is_impl_generic = match hir_map.expect_item(parent_node_id) {
-                    &hir::Item {
-                        node: hir::ItemImpl(_, _, _, ref generics, ..),
-                        ..
-                    } => {
-                        generics.is_type_parameterized()
-                    }
-                    _ => {
-                        bug!()
-                    }
-                };
+            hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
+                let tcx = self.scx.tcx();
+                let def_id = tcx.hir.local_def_id(ii.id);
 
-                if !generics.is_type_parameterized() && !is_impl_generic {
-                    let def_id = self.scx.tcx().hir.local_def_id(ii.id);
-
+                if (self.mode == TransItemCollectionMode::Eager ||
+                    !tcx.is_const_fn(def_id) ||
+                    self.exported_symbols.local_exports().contains(&ii.id)) &&
+                   !item_has_type_parameters(tcx, def_id) {
                     debug!("RootCollector: MethodImplItem({})",
-                           def_id_to_string(self.scx.tcx(), def_id));
+                           def_id_to_string(tcx, def_id));
 
-                    let instance = Instance::mono(self.scx.tcx(), def_id);
+                    let instance = Instance::mono(tcx, def_id);
                     self.output.push(TransItem::Fn(instance));
                 }
             }
             _ => { /* Nothing to do here */ }
         }
     }
+}
+
+fn item_has_type_parameters<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    let generics = tcx.generics_of(def_id);
+    generics.parent_types as usize + generics.types.len() > 0
 }
 
 fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
@@ -958,6 +1029,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
 /// Scan the MIR in order to find function calls, closures, and drop-glue
 fn collect_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                                 instance: Instance<'tcx>,
+                                const_context: bool,
                                 output: &mut Vec<TransItem<'tcx>>)
 {
     let mir = scx.tcx().instance_mir(instance.def);
@@ -966,7 +1038,8 @@ fn collect_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         scx: scx,
         mir: &mir,
         output: output,
-        param_substs: instance.substs
+        param_substs: instance.substs,
+        const_context,
     };
 
     visitor.visit_mir(&mir);

@@ -27,8 +27,6 @@
 #![feature(link_args)]
 #![feature(static_nobundle)]
 
-#![cfg_attr(stage0, feature(associated_consts))]
-
 extern crate libc;
 #[macro_use]
 #[no_link]

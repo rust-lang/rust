@@ -34,7 +34,7 @@ use super::file_format;
 use super::work_product;
 
 pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                incremental_hashes_map: &IncrementalHashesMap,
+                                incremental_hashes_map: IncrementalHashesMap,
                                 metadata_hashes: &EncodedMetadataHashes,
                                 svh: Svh) {
     debug!("save_dep_graph()");
@@ -51,7 +51,7 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         eprintln!("incremental: {} edges in dep-graph", query.graph.len_edges());
     }
 
-    let mut hcx = HashContext::new(tcx, incremental_hashes_map);
+    let mut hcx = HashContext::new(tcx, &incremental_hashes_map);
     let preds = Predecessors::new(&query, &mut hcx);
     let mut current_metadata_hashes = FxHashMap();
 

@@ -11,7 +11,6 @@
 // Be sure that when a SIGPIPE would have been received that the entire process
 // doesn't die in a ball of fire, but rather it's gracefully handled.
 
-// ignore-aarch64
 // ignore-emscripten
 
 use std::env;

@@ -100,6 +100,7 @@ impl Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }
     }
 
+    /// Return true if `self` fully encloses `other`.
     pub fn contains(self, other: Span) -> bool {
         self.lo <= other.lo && other.hi <= self.hi
     }
@@ -184,15 +185,21 @@ impl Span {
         result
     }
 
+    /// Return a `Span` that would enclose both `self` and `end`.
     pub fn to(self, end: Span) -> Span {
-        // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
-        if self.ctxt == SyntaxContext::empty() {
-            Span { lo: self.lo, ..end }
-        } else {
-            Span { hi: end.hi, ..self }
+        Span {
+            lo: cmp::min(self.lo, end.lo),
+            hi: cmp::max(self.hi, end.hi),
+            // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
+            ctxt: if self.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                self.ctxt
+            },
         }
     }
 
+    /// Return a `Span` between the end of `self` to the beginning of `end`.
     pub fn between(self, end: Span) -> Span {
         Span {
             lo: self.hi,
@@ -205,6 +212,7 @@ impl Span {
         }
     }
 
+    /// Return a `Span` between the beginning of `self` to the beginning of `end`.
     pub fn until(self, end: Span) -> Span {
         Span {
             lo: self.lo,
@@ -229,6 +237,12 @@ pub struct SpanLabel {
 
     /// What label should we attach to this span (if any)?
     pub label: Option<String>,
+}
+
+impl Default for Span {
+    fn default() -> Self {
+        DUMMY_SP
+    }
 }
 
 impl serialize::UseSpecializedEncodable for Span {
@@ -304,7 +318,7 @@ impl MultiSpan {
         &self.primary_spans
     }
 
-    /// Replaces all occurances of one Span with another. Used to move Spans in areas that don't
+    /// Replaces all occurrences of one Span with another. Used to move Spans in areas that don't
     /// display well (like std macros). Returns true if replacements occurred.
     pub fn replace(&mut self, before: Span, after: Span) -> bool {
         let mut replacements_occurred = false;
@@ -604,8 +618,11 @@ impl FileMap {
     /// If the hash of the input doesn't match or no input is supplied via None,
     /// it is interpreted as an error and the corresponding enum variant is set.
     /// The return value signifies whether some kind of source is present.
-    pub fn add_external_src(&self, src: Option<String>) -> bool {
+    pub fn add_external_src<F>(&self, get_src: F) -> bool
+        where F: FnOnce() -> Option<String>
+    {
         if *self.external_src.borrow() == ExternalSource::AbsentOk {
+            let src = get_src();
             let mut external_src = self.external_src.borrow_mut();
             if let Some(src) = src {
                 let mut hasher: StableHasher<u128> = StableHasher::new();
@@ -852,6 +869,7 @@ pub struct FileLines {
 thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
                 Cell::new(default_span_debug));
 
+#[derive(Debug)]
 pub struct MacroBacktrace {
     /// span where macro was applied to generate this code
     pub call_site: Span,

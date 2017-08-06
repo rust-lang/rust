@@ -159,7 +159,7 @@ use time::Duration;
 #[macro_use] mod local;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{LocalKey, LocalKeyState};
+pub use self::local::{LocalKey, LocalKeyState, AccessError};
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key
@@ -190,7 +190,7 @@ pub use self::local::{LocalKey, LocalKeyState};
 /// - [`name`]: allows to give a name to the thread which is currently
 ///   only used in `panic` messages.
 /// - [`stack_size`]: specifies the desired stack size. Note that this can
-///   be overriden by the OS.
+///   be overridden by the OS.
 ///
 /// If the [`stack_size`] field is not specified, the stack size
 /// will be the `RUST_MIN_STACK` environment variable. If it is
@@ -413,7 +413,7 @@ impl Builder {
 ///   *by value* from the thread where it is spawned to the new thread. Its
 ///   return value will need to be passed from the new thread to the thread
 ///   where it is `join`ed.
-///   As a reminder, the [`Send`] marker trait, expresses that it is safe to be
+///   As a reminder, the [`Send`] marker trait expresses that it is safe to be
 ///   passed from thread to thread. [`Sync`] expresses that it is safe to have a
 ///   reference be passed from thread to thread.
 ///
@@ -529,7 +529,7 @@ pub fn current() -> Thread {
 /// Thus the pattern of `yield`ing after a failed poll is rather common when
 /// implementing low-level shared resources or synchronization primitives.
 ///
-/// However programmers will usualy prefer to use, [`channel`]s, [`Condvar`]s,
+/// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
 /// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
 /// thinking about thread schedulling.
 ///
@@ -770,7 +770,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// preemption or platform differences that may not cause the maximum
 /// amount of time waited to be precisely `dur` long.
 ///
-/// See the [park dococumentation][park] for more details.
+/// See the [park documentation][park] for more details.
 ///
 /// # Platform behavior
 ///
@@ -820,7 +820,8 @@ pub fn park_timeout(dur: Duration) {
 ///
 /// A `ThreadId` is an opaque object that has a unique value for each thread
 /// that creates one. `ThreadId`s are not guaranteed to correspond to a thread's
-/// system-designated identifier.
+/// system-designated identifier. A `ThreadId` can be retrieved from the [`id`]
+/// method on a [`Thread`].
 ///
 /// # Examples
 ///
@@ -834,6 +835,9 @@ pub fn park_timeout(dur: Duration) {
 /// let other_thread_id = other_thread.join().unwrap();
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
+///
+/// [`id`]: ../../std/thread/struct.Thread.html#method.id
+/// [`Thread`]: ../../std/thread/struct.Thread.html
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
@@ -891,11 +895,14 @@ struct Inner {
 /// The [`thread::current`] function is available even for threads not spawned
 /// by the APIs of this module.
 ///
-/// There is usualy no need to create a `Thread` struct yourself, one
+/// There is usually no need to create a `Thread` struct yourself, one
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
 /// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`thread::current`]: ../../std/thread/fn.current.html
 /// [`spawn`]: ../../std/thread/fn.spawn.html
 
 pub struct Thread {

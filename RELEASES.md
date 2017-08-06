@@ -1,3 +1,187 @@
+Version 1.19.0 (2017-07-20)
+===========================
+
+Language
+--------
+
+- [Numeric fields can now be used for creating tuple structs.][41145] [RFC 1506]
+  For example `struct Point(u32, u32); let x = Point { 0: 7, 1: 0 };`.
+- [Macro recursion limit increased to 1024 from 64.][41676]
+- [Added lint for detecting unused macros.][41907]
+- [`loop` can now return a value with `break`.][42016] [RFC 1624]
+  For example: `let x = loop { break 7; };`
+- [C compatible `union`s are now available.][42068] [RFC 1444] They can only
+  contain `Copy` types and cannot have a `Drop` implementation.
+  Example: `union Foo { bar: u8, baz: usize }`
+- [Non capturing closures can now be coerced into `fn`s,][42162] [RFC 1558]
+  Example: `let foo: fn(u8) -> u8 = |v: u8| { v };`
+
+Compiler
+--------
+
+- [Add support for bootstrapping the Rust compiler toolchain on Android.][41370]
+- [Change `arm-linux-androideabi` to correspond to the `armeabi`
+  official ABI.][41656] If you wish to continue targeting the `armeabi-v7a` ABI
+  you should use `--target armv7-linux-androideabi`.
+- [Fixed ICE when removing a source file between compilation sessions.][41873]
+- [Minor optimisation of string operations.][42037]
+- [Compiler error message is now `aborting due to previous error(s)` instead of
+  `aborting due to N previous errors`][42150] This was previously inaccurate and
+  would only count certain kinds of errors.
+- [The compiler now supports Visual Studio 2017][42225]
+- [The compiler is now built against LLVM 4.0.1 by default][42948]
+- [Added a lot][42264] of [new error codes][42302]
+- [Added `target-feature=+crt-static` option][37406] [RFC 1721] Which allows
+  libraries with C Run-time Libraries(CRT) to be statically linked.
+- [Fixed various ARM codegen bugs][42740]
+
+Libraries
+---------
+
+- [`String` now implements `FromIterator<Cow<'a, str>>` and
+  `Extend<Cow<'a, str>>`][41449]
+- [`Vec` now implements `From<&mut [T]>`][41530]
+- [`Box<[u8]>` now implements `From<Box<str>>`][41258]
+- [`SplitWhitespace` now implements `Clone`][41659]
+- [`[u8]::reverse` is now 5x faster and `[u16]::reverse` is now
+  1.5x faster][41764]
+- [`eprint!` and `eprintln!` macros added to prelude.][41192] Same as the `print!`
+  macros, but for printing to stderr.
+
+Stabilized APIs
+---------------
+
+- [`OsString::shrink_to_fit`]
+- [`cmp::Reverse`]
+- [`Command::envs`]
+- [`thread::ThreadId`]
+
+Cargo
+-----
+
+- [Build scripts can now add environment variables to the environment
+  the crate is being compiled in.
+  Example: `println!("cargo:rustc-env=FOO=bar");`][cargo/3929]
+- [Subcommands now replace the current process rather than spawning a new
+  child process][cargo/3970]
+- [Workspace members can now accept glob file patterns][cargo/3979]
+- [Added `--all` flag to the `cargo bench` subcommand to run benchmarks of all
+  the members in a given workspace.][cargo/3988]
+- [Updated `libssh2-sys` to 0.2.6][cargo/4008]
+- [Target directory path is now in the cargo metadata][cargo/4022]
+- [Cargo no longer checks out a local working directory for the
+  crates.io index][cargo/4026] This should provide smaller file size for the
+  registry, and improve cloning times, especially on Windows machines.
+- [Added an `--exclude` option for excluding certain packages when using the
+  `--all` option][cargo/4031]
+- [Cargo will now automatically retry when receiving a 5xx error
+  from crates.io][cargo/4032]
+- [The `--features` option now accepts multiple comma or space
+  delimited values.][cargo/4084]
+- [Added support for custom target specific runners][cargo/3954]
+
+Misc
+----
+
+- [Added `rust-windbg.cmd`][39983] for loading rust `.natvis` files in the
+  Windows Debugger.
+- [Rust will now release XZ compressed packages][rust-installer/57]
+- [rustup will now prefer to download rust packages with
+  XZ compression][rustup/1100] over GZip packages.
+- [Added the ability to escape `#` in rust documentation][41785] By adding
+  additional `#`'s ie. `##` is now `#`
+
+Compatibility Notes
+-------------------
+
+- [`MutexGuard<T>` may only be `Sync` if `T` is `Sync`.][41624]
+- [`-Z` flags are now no longer allowed to be used on the stable
+  compiler.][41751] This has been a warning for a year previous to this.
+- [As a result of the `-Z` flag change, the `cargo-check` plugin no
+  longer works][42844]. Users should migrate to the built-in `check`
+  command, which has been available since 1.16.
+- [Ending a float literal with `._` is now a hard error.
+  Example: `42._` .][41946]
+- [Any use of a private `extern crate` outside of its module is now a
+  hard error.][36886] This was previously a warning.
+- [`use ::self::foo;` is now a hard error.][36888] `self` paths are always
+  relative while the `::` prefix makes a path absolute, but was ignored and the
+  path was relative regardless.
+- [Floating point constants in match patterns is now a hard error][36890]
+  This was previously a warning.
+- [Struct or enum constants that don't derive `PartialEq` & `Eq` used
+  match patterns is now a hard error][36891] This was previously a warning.
+- [Lifetimes named `'_` are no longer allowed.][36892] This was previously
+  a warning.
+- [From the pound escape, lines consisting of multiple `#`s are
+  now visible][41785]
+- [It is an error to reexport private enum variants][42460]. This is
+  known to break a number of crates that depend on an older version of
+  mustache.
+- [On Windows, if `VCINSTALLDIR` is set incorrectly, `rustc` will try
+  to use it to find the linker, and the build will fail where it did
+  not previously][42607]
+
+[36886]: https://github.com/rust-lang/rust/issues/36886
+[36888]: https://github.com/rust-lang/rust/issues/36888
+[36890]: https://github.com/rust-lang/rust/issues/36890
+[36891]: https://github.com/rust-lang/rust/issues/36891
+[36892]: https://github.com/rust-lang/rust/issues/36892
+[37406]: https://github.com/rust-lang/rust/issues/37406
+[39983]: https://github.com/rust-lang/rust/pull/39983
+[41145]: https://github.com/rust-lang/rust/pull/41145
+[41192]: https://github.com/rust-lang/rust/pull/41192
+[41258]: https://github.com/rust-lang/rust/pull/41258
+[41370]: https://github.com/rust-lang/rust/pull/41370
+[41449]: https://github.com/rust-lang/rust/pull/41449
+[41530]: https://github.com/rust-lang/rust/pull/41530
+[41624]: https://github.com/rust-lang/rust/pull/41624
+[41656]: https://github.com/rust-lang/rust/pull/41656
+[41659]: https://github.com/rust-lang/rust/pull/41659
+[41676]: https://github.com/rust-lang/rust/pull/41676
+[41751]: https://github.com/rust-lang/rust/pull/41751
+[41764]: https://github.com/rust-lang/rust/pull/41764
+[41785]: https://github.com/rust-lang/rust/pull/41785
+[41873]: https://github.com/rust-lang/rust/pull/41873
+[41907]: https://github.com/rust-lang/rust/pull/41907
+[41946]: https://github.com/rust-lang/rust/pull/41946
+[42016]: https://github.com/rust-lang/rust/pull/42016
+[42037]: https://github.com/rust-lang/rust/pull/42037
+[42068]: https://github.com/rust-lang/rust/pull/42068
+[42150]: https://github.com/rust-lang/rust/pull/42150
+[42162]: https://github.com/rust-lang/rust/pull/42162
+[42225]: https://github.com/rust-lang/rust/pull/42225
+[42264]: https://github.com/rust-lang/rust/pull/42264
+[42302]: https://github.com/rust-lang/rust/pull/42302
+[42460]: https://github.com/rust-lang/rust/issues/42460
+[42607]: https://github.com/rust-lang/rust/issues/42607
+[42740]: https://github.com/rust-lang/rust/pull/42740
+[42844]: https://github.com/rust-lang/rust/issues/42844
+[42948]: https://github.com/rust-lang/rust/pull/42948
+[RFC 1444]: https://github.com/rust-lang/rfcs/pull/1444
+[RFC 1506]: https://github.com/rust-lang/rfcs/pull/1506
+[RFC 1558]: https://github.com/rust-lang/rfcs/pull/1558
+[RFC 1624]: https://github.com/rust-lang/rfcs/pull/1624
+[RFC 1721]: https://github.com/rust-lang/rfcs/pull/1721
+[`Command::envs`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.envs
+[`OsString::shrink_to_fit`]: https://doc.rust-lang.org/std/ffi/struct.OsString.html#method.shrink_to_fit
+[`cmp::Reverse`]: https://doc.rust-lang.org/std/cmp/struct.Reverse.html
+[`thread::ThreadId`]: https://doc.rust-lang.org/std/thread/struct.ThreadId.html
+[cargo/3929]: https://github.com/rust-lang/cargo/pull/3929
+[cargo/3954]: https://github.com/rust-lang/cargo/pull/3954
+[cargo/3970]: https://github.com/rust-lang/cargo/pull/3970
+[cargo/3979]: https://github.com/rust-lang/cargo/pull/3979
+[cargo/3988]: https://github.com/rust-lang/cargo/pull/3988
+[cargo/4008]: https://github.com/rust-lang/cargo/pull/4008
+[cargo/4022]: https://github.com/rust-lang/cargo/pull/4022
+[cargo/4026]: https://github.com/rust-lang/cargo/pull/4026
+[cargo/4031]: https://github.com/rust-lang/cargo/pull/4031
+[cargo/4032]: https://github.com/rust-lang/cargo/pull/4032
+[cargo/4084]: https://github.com/rust-lang/cargo/pull/4084
+[rust-installer/57]: https://github.com/rust-lang/rust-installer/pull/57
+[rustup/1100]: https://github.com/rust-lang-nursery/rustup.rs/pull/1100
+
+
 Version 1.18.0 (2017-06-08)
 ===========================
 

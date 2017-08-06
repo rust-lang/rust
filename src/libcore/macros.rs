@@ -462,7 +462,7 @@ macro_rules! writeln {
 ///
 /// # Panics
 ///
-/// This will always panic.
+/// This will always [panic!](macro.panic.html)
 ///
 /// # Examples
 ///
@@ -574,7 +574,7 @@ mod builtin {
     /// For more information, see the [RFC].
     ///
     /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
-    #[unstable(feature = "compile_error_macro", issue = "40872")]
+    #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     #[cfg(dox)]
     macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }

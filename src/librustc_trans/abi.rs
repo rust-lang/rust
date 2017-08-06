@@ -238,7 +238,7 @@ impl Uniform {
 
 pub trait LayoutExt<'tcx> {
     fn is_aggregate(&self) -> bool;
-    fn homogenous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg>;
+    fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg>;
 }
 
 impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
@@ -258,7 +258,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn homogenous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg> {
+    fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg> {
         match *self.layout {
             // The primitives for this algorithm.
             Layout::Scalar { value, .. } |
@@ -291,7 +291,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
 
             Layout::Array { count, .. } => {
                 if count > 0 {
-                    self.field(ccx, 0).homogenous_aggregate(ccx)
+                    self.field(ccx, 0).homogeneous_aggregate(ccx)
                 } else {
                     None
                 }
@@ -307,8 +307,8 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
                     }
 
                     let field = self.field(ccx, i);
-                    match (result, field.homogenous_aggregate(ccx)) {
-                        // The field itself must be a homogenous aggregate.
+                    match (result, field.homogeneous_aggregate(ccx)) {
+                        // The field itself must be a homogeneous aggregate.
                         (_, None) => return None,
                         // If this is the first field, record the unit.
                         (None, Some(unit)) => {
@@ -344,8 +344,8 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
 
                 for i in 0..self.field_count() {
                     let field = self.field(ccx, i);
-                    match (result, field.homogenous_aggregate(ccx)) {
-                        // The field itself must be a homogenous aggregate.
+                    match (result, field.homogeneous_aggregate(ccx)) {
+                        // The field itself must be a homogeneous aggregate.
                         (_, None) => return None,
                         // If this is the first field, record the unit.
                         (None, Some(unit)) => {
@@ -830,7 +830,7 @@ impl<'a, 'tcx> FnType<'tcx> {
 
                 let size = arg.layout.size(ccx);
 
-                if let Some(unit) = arg.layout.homogenous_aggregate(ccx) {
+                if let Some(unit) = arg.layout.homogeneous_aggregate(ccx) {
                     // Replace newtypes with their inner-most type.
                     if unit.size == size {
                         // Needs a cast as we've unpacked a newtype.

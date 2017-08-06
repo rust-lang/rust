@@ -19,7 +19,7 @@ use std::process::Command;
 use context::SharedCrateContext;
 
 use back::archive;
-use back::symbol_export::{self, ExportedSymbols};
+use back::symbol_export::ExportedSymbols;
 use rustc::middle::dependency_format::Linkage;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc_back::LinkerFlavor;
@@ -104,6 +104,8 @@ pub trait Linker {
     fn add_object(&mut self, path: &Path);
     fn gc_sections(&mut self, keep_metadata: bool);
     fn position_independent_executable(&mut self);
+    fn partial_relro(&mut self);
+    fn full_relro(&mut self);
     fn optimize(&mut self);
     fn debuginfo(&mut self);
     fn no_default_libraries(&mut self);
@@ -175,6 +177,8 @@ impl<'a> Linker for GccLinker<'a> {
     fn output_filename(&mut self, path: &Path) { self.cmd.arg("-o").arg(path); }
     fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
     fn position_independent_executable(&mut self) { self.cmd.arg("-pie"); }
+    fn partial_relro(&mut self) { self.linker_arg("-z,relro"); }
+    fn full_relro(&mut self) { self.linker_arg("-z,relro,-z,now"); }
     fn args(&mut self, args: &[String]) { self.cmd.args(args); }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
@@ -428,6 +432,14 @@ impl<'a> Linker for MsvcLinker<'a> {
         // noop
     }
 
+    fn partial_relro(&mut self) {
+        // noop
+    }
+
+    fn full_relro(&mut self) {
+        // noop
+    }
+
     fn no_default_libraries(&mut self) {
         // Currently we don't pass the /NODEFAULTLIB flag to the linker on MSVC
         // as there's been trouble in the past of linking the C++ standard
@@ -475,6 +487,27 @@ impl<'a> Linker for MsvcLinker<'a> {
         // This will cause the Microsoft linker to generate a PDB file
         // from the CodeView line tables in the object files.
         self.cmd.arg("/DEBUG");
+
+        // This will cause the Microsoft linker to embed .natvis info into the the PDB file
+        let sysroot = self.sess.sysroot();
+        let natvis_dir_path = sysroot.join("lib\\rustlib\\etc");
+        if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
+            for entry in natvis_dir {
+                match entry {
+                    Ok(entry) => {
+                        let path = entry.path();
+                        if path.extension() == Some("natvis".as_ref()) {
+                            let mut arg = OsString::from("/NATVIS:");
+                            arg.push(path);
+                            self.cmd.arg(arg);
+                        }
+                    },
+                    Err(err) => {
+                        self.sess.warn(&format!("error enumerating natvis directory: {}", err));
+                    },
+                }
+            }
+        }
     }
 
     // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
@@ -595,6 +628,14 @@ impl<'a> Linker for EmLinker<'a> {
         // noop
     }
 
+    fn partial_relro(&mut self) {
+        // noop
+    }
+
+    fn full_relro(&mut self) {
+        // noop
+    }
+
     fn args(&mut self, args: &[String]) {
         self.cmd.args(args);
     }
@@ -687,10 +728,8 @@ fn exported_symbols(scx: &SharedCrateContext,
                     exported_symbols: &ExportedSymbols,
                     crate_type: CrateType)
                     -> Vec<String> {
-    let export_threshold = symbol_export::crate_export_threshold(crate_type);
-
     let mut symbols = Vec::new();
-    exported_symbols.for_each_exported_symbol(LOCAL_CRATE, export_threshold, |name, _| {
+    exported_symbols.for_each_exported_symbol(LOCAL_CRATE, |name, _, _| {
         symbols.push(name.to_owned());
     });
 
@@ -702,7 +741,7 @@ fn exported_symbols(scx: &SharedCrateContext,
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             // ... we add its symbol list to our export list.
-            exported_symbols.for_each_exported_symbol(cnum, export_threshold, |name, _| {
+            exported_symbols.for_each_exported_symbol(cnum, |name, _, _| {
                 symbols.push(name.to_owned());
             })
         }

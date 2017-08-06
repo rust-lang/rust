@@ -37,7 +37,7 @@ The error levels that you can have are:
 Header commands specify something about the entire test file as a
 whole, instead of just a few lines inside the test.
 
-* `ignore-X` where `X` is an architecture, OS or stage will ignore the test accordingly
+* `ignore-X` where `X` is a target detail or stage will ignore the test accordingly (see below)
 * `ignore-pretty` will not compile the pretty-printed test (this is done to test the pretty-printer, but might not always work)
 * `ignore-test` always ignores the test
 * `ignore-lldb` and `ignore-gdb` will skip the debuginfo tests
@@ -49,6 +49,14 @@ whole, instead of just a few lines inside the test.
   Such tests are supposed to ensure that the compiler errors when usage of a gated
   feature is attempted without the proper `#![feature(X)]` tag.
   Each unstable lang feature is required to have a gate test.
+
+Some examples of `X` in `ignore-X`:
+
+* Architecture: `aarch64`, `arm`, `asmjs`, `mips`, `wasm32`, `x86_64`, `x86`, ...
+* OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`, ...
+* Environment (fourth word of the target triple): `gnu`, `msvc`, `musl`.
+* Pointer width: `32bit`, `64bit`.
+* Stage: `stage0`, `stage1`, `stage2`.
 
 ## Revisions
 
@@ -86,3 +94,66 @@ For example, the `ignore-test` header (and all "ignore" headers)
 currently only apply to the test as a whole, not to particular
 revisions. The only headers that are intended to really work when
 customized to a revision are error patterns and compiler flags.
+
+## Guide to the UI Tests
+
+The UI tests are intended to capture the compiler's complete output,
+so that we can test all aspects of the presentation. They work by
+compiling a file (e.g., `ui/hello_world/main.rs`), capturing the output,
+and then applying some normalization (see below). This normalized
+result is then compared against reference files named
+`ui/hello_world/main.stderr` and `ui/hello_world/main.stdout`. If either of
+those files doesn't exist, the output must be empty. If the test run
+fails, we will print out the current output, but it is also saved in
+`build/<target-triple>/test/ui/hello_world/main.stdout` (this path is
+printed as part of the test failure mesage), so you can run `diff` and
+so forth.
+
+### Editing and updating the reference files
+
+If you have changed the compiler's output intentionally, or you are
+making a new test, you can use the script `ui/update-references.sh` to
+update the references. When you run the test framework, it will report
+various errors: in those errors is a command you can use to run the
+`ui/update-references.sh` script, which will then copy over the files
+from the build directory and use them as the new reference. You can
+also just run `ui/update-all-references.sh`. In both cases, you can run
+the script with `--help` to get a help message.
+
+### Normalization
+
+The normalization applied is aimed at eliminating output difference
+between platforms, mainly about filenames:
+
+- the test directory is replaced with `$DIR`
+- all backslashes (`\`) are converted to forward slashes (`/`) (for Windows)
+- all CR LF newlines are converted to LF
+
+Sometimes these built-in normalizations are not enough. In such cases, you
+may provide custom normalization rules using the header commands, e.g.
+
+```
+// normalize-stderr-32bit: "fn() (32 bits)" -> "fn() ($PTR bits)"
+// normalize-stderr-64bit: "fn() (64 bits)" -> "fn() ($PTR bits)"
+```
+
+This tells the test, on 32-bit platforms, whenever the compiler writes
+`fn() (32 bits)` to stderr, it should be normalized to read `fn() ($PTR bits)`
+instead. Similar for 64-bit.
+
+The corresponding reference file will use the normalized output to test both
+32-bit and 64-bit platforms:
+
+```
+...
+   |
+   = note: source type: fn() ($PTR bits)
+   = note: target type: u16 (16 bits)
+...
+```
+
+Please see `ui/transmute/main.rs` and `.stderr` for a concrete usage example.
+
+Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
+information or stage supported by `ignore-X` here as well (e.g.
+`normalize-stderr-windows`).

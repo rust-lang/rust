@@ -121,31 +121,34 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
 }
 
 impl<'tcx> Lvalue<'tcx> {
-    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx> {
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx>
+        where D: HasLocalDecls<'tcx>
+    {
         match *self {
             Lvalue::Local(index) =>
-                LvalueTy::Ty { ty: mir.local_decls[index].ty },
+                LvalueTy::Ty { ty: local_decls.local_decls()[index].ty },
             Lvalue::Static(ref data) =>
                 LvalueTy::Ty { ty: data.ty },
             Lvalue::Projection(ref proj) =>
-                proj.base.ty(mir, tcx).projection_ty(tcx, &proj.elem),
+                proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
         }
     }
 }
 
 impl<'tcx> Rvalue<'tcx> {
-    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+        where D: HasLocalDecls<'tcx>
     {
         match *self {
-            Rvalue::Use(ref operand) => operand.ty(mir, tcx),
+            Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, ref count) => {
-                let op_ty = operand.ty(mir, tcx);
+                let op_ty = operand.ty(local_decls, tcx);
                 let count = count.as_u64(tcx.sess.target.uint_type);
                 assert_eq!(count as usize as u64, count);
                 tcx.mk_array(op_ty, count as usize)
             }
             Rvalue::Ref(reg, bk, ref lv) => {
-                let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
+                let lv_ty = lv.ty(local_decls, tcx).to_ty(tcx);
                 tcx.mk_ref(reg,
                     ty::TypeAndMut {
                         ty: lv_ty,
@@ -156,22 +159,22 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
             Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = lhs.ty(mir, tcx);
-                let rhs_ty = rhs.ty(mir, tcx);
+                let lhs_ty = lhs.ty(local_decls, tcx);
+                let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
             }
             Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
-                let lhs_ty = lhs.ty(mir, tcx);
-                let rhs_ty = rhs.ty(mir, tcx);
+                let lhs_ty = lhs.ty(local_decls, tcx);
+                let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 tcx.intern_tup(&[ty, tcx.types.bool], false)
             }
             Rvalue::UnaryOp(UnOp::Not, ref operand) |
             Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
-                operand.ty(mir, tcx)
+                operand.ty(local_decls, tcx)
             }
             Rvalue::Discriminant(ref lval) => {
-                let ty = lval.ty(mir, tcx).to_ty(tcx);
+                let ty = lval.ty(local_decls, tcx).to_ty(tcx);
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
@@ -189,7 +192,7 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                     AggregateKind::Tuple => {
                         tcx.mk_tup(
-                            ops.iter().map(|op| op.ty(mir, tcx)),
+                            ops.iter().map(|op| op.ty(local_decls, tcx)),
                             false
                         )
                     }
@@ -206,9 +209,11 @@ impl<'tcx> Rvalue<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
+        where D: HasLocalDecls<'tcx>
+    {
         match self {
-            &Operand::Consume(ref l) => l.ty(mir, tcx).to_ty(tcx),
+            &Operand::Consume(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
             &Operand::Constant(ref c) => c.ty,
         }
     }

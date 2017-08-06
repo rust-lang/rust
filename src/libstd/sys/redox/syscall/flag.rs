@@ -20,8 +20,10 @@ pub const EVENT_NONE: usize = 0;
 pub const EVENT_READ: usize = 1;
 pub const EVENT_WRITE: usize = 2;
 
-pub const F_GETFL: usize = 1;
-pub const F_SETFL: usize = 2;
+pub const F_GETFD: usize = 1;
+pub const F_SETFD: usize = 2;
+pub const F_GETFL: usize = 3;
+pub const F_SETFL: usize = 4;
 
 pub const FUTEX_WAIT: usize = 0;
 pub const FUTEX_WAKE: usize = 1;
@@ -55,6 +57,7 @@ pub const O_EXCL: usize =       0x0800_0000;
 pub const O_DIRECTORY: usize =  0x1000_0000;
 pub const O_STAT: usize =       0x2000_0000;
 pub const O_SYMLINK: usize =    0x4000_0000;
+pub const O_NOFOLLOW: usize =   0x8000_0000;
 pub const O_ACCMODE: usize =    O_RDONLY | O_WRONLY | O_RDWR;
 
 pub const SEEK_SET: usize = 0;

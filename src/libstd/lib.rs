@@ -249,7 +249,6 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_target_vendor)]
-#![feature(char_escape_debug)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
 #![feature(collections_range)]
@@ -277,6 +276,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(macro_reexport)]
+#![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
 #![feature(needs_drop)]
 #![feature(never_type)]
@@ -303,7 +303,6 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_char)]
 #![feature(str_internals)]
-#![feature(str_mut_extras)]
 #![feature(str_utf16)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
@@ -316,10 +315,8 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![cfg_attr(test, feature(update_panic_count))]
-#![cfg_attr(test, feature(float_bits_conv))]
 
-#![cfg_attr(not(stage0), default_lib_allocator)]
-#![cfg_attr(stage0, feature(associated_consts))]
+#![default_lib_allocator]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
