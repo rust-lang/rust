@@ -13,6 +13,7 @@ use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{AssociatedItem, Ty, TyCtxt};
 use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::Visibility;
 use rustc::ty::Visibility::Public;
 
 use semcheck::changes::ChangeType::*;
@@ -75,7 +76,19 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             old: DefId,
                             new: DefId) {
+    use rustc::middle::cstore::CrateStore;
     use rustc::hir::def::Def::*;
+
+    use std::rc::Rc;
+
+    // get the visibility of the inner item, given the outer item's visibility
+    fn get_vis(cstore: &Rc<CrateStore>, outer_vis: Visibility, def_id: DefId) -> Visibility {
+        if outer_vis == Public {
+            cstore.visibility(def_id)
+        } else {
+            outer_vis
+        }
+    }
 
     let cstore = &tcx.sess.cstore;
     let mut visited = HashSet::new();
@@ -98,16 +111,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                 (Some(o), Some(n)) => {
                     if let (Mod(o_def_id), Mod(n_def_id)) = (o.def, n.def) {
                         if visited.insert((o_def_id, n_def_id)) {
-                            let o_vis = if old_vis == Public {
-                                cstore.visibility(o_def_id)
-                            } else {
-                                old_vis
-                            };
-                            let n_vis = if new_vis == Public {
-                                cstore.visibility(n_def_id)
-                            } else {
-                                new_vis
-                            };
+                            let o_vis = get_vis(cstore, old_vis, o_def_id);
+                            let n_vis = get_vis(cstore, new_vis, n_def_id);
 
                             if o_vis != n_vis {
                                 changes.new_change(o_def_id,
@@ -134,16 +139,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
                         let o_def_id = o.def.def_id();
                         let n_def_id = n.def.def_id();
-                        let o_vis = if old_vis == Public {
-                            cstore.visibility(o_def_id)
-                        } else {
-                            old_vis
-                        };
-                        let n_vis = if new_vis == Public {
-                            cstore.visibility(n_def_id)
-                        } else {
-                            new_vis
-                        };
+                        let o_vis = get_vis(cstore, old_vis, o_def_id);
+                        let n_vis = get_vis(cstore, new_vis, n_def_id);
 
                         let output = o_vis == Public || n_vis == Public;
                         changes.new_change(o_def_id,
@@ -784,7 +781,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
           orig_def_id, target_def_id, orig, target);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping);
+        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, false);
 
         let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
         let orig = compcx.forward_trans.translate_item_type(orig_def_id, orig);
@@ -811,7 +808,6 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         compcx.check_bounds_bidirectional(changes,
                                           tcx,
-                                          false,
                                           orig_def_id,
                                           target_def_id,
                                           orig_substs,
@@ -828,14 +824,13 @@ fn cmp_bounds<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     info!("comparing bounds of {:?} / {:?}", orig_def_id, target_def_id);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping);
+        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, true);
 
         let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
         let target_substs = compcx.compute_target_default_substs(target_def_id);
 
         compcx.check_bounds_bidirectional(changes,
                                           tcx,
-                                          true,
                                           orig_def_id,
                                           target_def_id,
                                           orig_substs,
@@ -896,10 +891,10 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     tcx.infer_ctxt().enter(|infcx| {
         let (compcx, register_errors) = if id_mapping.in_old_crate(orig_impl_def_id) {
             id_mapping.register_current_match(orig_item_def_id, target_item_def_id);
-            (TypeComparisonContext::target_new(&infcx, id_mapping), true)
+            (TypeComparisonContext::target_new(&infcx, id_mapping, false), true)
         } else {
             id_mapping.register_current_match(target_item_def_id, orig_item_def_id);
-            (TypeComparisonContext::target_old(&infcx, id_mapping), false)
+            (TypeComparisonContext::target_old(&infcx, id_mapping, false), false)
         };
 
         let orig_substs = Substs::identity_for_item(infcx.tcx, target_item_def_id);
@@ -982,7 +977,6 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         compcx.check_bounds_bidirectional(changes,
                                           tcx,
-                                          false,
                                           orig_item_def_id,
                                           target_item_def_id,
                                           orig_substs,

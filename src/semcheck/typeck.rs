@@ -94,34 +94,50 @@ pub struct TypeComparisonContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     pub forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
     /// The translation context translating from target to original items.
     pub backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+    /// Whether we are checking a trait definition.
+    checking_trait_def: bool,
 }
 
 impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     /// Construct a new context where the original item is old.
-    pub fn target_new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping) -> Self {
+    pub fn target_new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                      id_mapping: &'a IdMapping,
+                      checking_trait_def: bool) -> Self {
         let forward_trans = TranslationContext::target_new(infcx.tcx, id_mapping, false);
         let backward_trans = TranslationContext::target_old(infcx.tcx, id_mapping, false);
-        TypeComparisonContext::from_trans(infcx, id_mapping, forward_trans, backward_trans)
+        TypeComparisonContext::from_trans(infcx,
+                                          id_mapping,
+                                          forward_trans,
+                                          backward_trans,
+                                          checking_trait_def)
     }
 
     /// Construct a new context where the original item is new.
-    pub fn target_old(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a IdMapping) -> Self {
+    pub fn target_old(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                      id_mapping: &'a IdMapping,
+                      checking_trait_def: bool) -> Self {
         let forward_trans = TranslationContext::target_old(infcx.tcx, id_mapping, false);
         let backward_trans = TranslationContext::target_new(infcx.tcx, id_mapping, false);
-        TypeComparisonContext::from_trans(infcx, id_mapping, forward_trans, backward_trans)
+        TypeComparisonContext::from_trans(infcx,
+                                          id_mapping,
+                                          forward_trans,
+                                          backward_trans,
+                                          checking_trait_def)
     }
 
     /// Construct a new context given a pair of translation contexts.
     fn from_trans(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                   id_mapping: &'a IdMapping,
                   forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
-                  backward_trans: TranslationContext<'a, 'gcx, 'tcx>) -> Self {
+                  backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+                  checking_trait_def: bool) -> Self {
         TypeComparisonContext {
             infcx: infcx,
             id_mapping: id_mapping,
             folder: InferenceCleanupFolder::new(infcx),
             forward_trans: forward_trans,
             backward_trans: backward_trans,
+            checking_trait_def: checking_trait_def,
         }
     }
 
@@ -230,7 +246,6 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     pub fn check_bounds_bidirectional<'b, 'tcx2>(&self,
                                                  changes: &mut ChangeSet<'tcx2>,
                                                  lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
-                                                 trait_def: bool,
                                                  orig_def_id: DefId,
                                                  target_def_id: DefId,
                                                  orig_substs: &Substs<'tcx>,
@@ -276,7 +291,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
             for err in errors {
                 let err_type = BoundsLoosened {
                     pred: err,
-                    trait_def: trait_def,
+                    trait_def: self.checking_trait_def,
                 };
 
                 changes.add_change(err_type, orig_def_id, None);
