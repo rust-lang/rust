@@ -250,13 +250,28 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = pos_after_last_use_item;
     }
 
-    pub fn format_import(&mut self, vis: &ast::Visibility, vp: &ast::ViewPath, span: Span) {
+    pub fn format_import(
+        &mut self,
+        vis: &ast::Visibility,
+        vp: &ast::ViewPath,
+        span: Span,
+        attrs: &[ast::Attribute],
+    ) {
         let vis = utils::format_visibility(vis);
         // 4 = `use `, 1 = `;`
         let rw = Shape::indented(self.block_indent, self.config)
             .offset_left(vis.len() + 4)
             .and_then(|shape| shape.sub_width(1))
-            .and_then(|shape| vp.rewrite(&self.get_context(), shape));
+            .and_then(|shape| match vp.node {
+                // If we have an empty path with attributes attached, we want to skip erasing it
+                ast::ViewPath_::ViewPathList(ref path, ref path_list)
+                    if path_list.is_empty() && !attrs.is_empty() =>
+                {
+                    rewrite_path(&self.get_context(), PathContext::Import, None, path, shape)
+                        .map(|path_str| format!("{}::{{}}", path_str))
+                }
+                _ => vp.rewrite(&self.get_context(), shape),
+            });
         match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
