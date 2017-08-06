@@ -247,9 +247,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             hir::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&lhs, idx.node);
             }
-            hir::ExprStruct(ref qpath, ref fields, _) => {
-                let def = self.tables.qpath_def(qpath, expr.id);
-                self.mark_as_used_if_union(def.def_id(), fields);
+            hir::ExprStruct(_, ref fields, _) => {
+                if let ty::TypeVariants::TyAdt(ref def, _) = self.tables.expr_ty(expr).sty {
+                    if def.is_union() {
+                        self.mark_as_used_if_union(def.did, fields);
+                    }
+                }
             }
             _ => ()
         }

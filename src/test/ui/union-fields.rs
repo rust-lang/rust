@@ -22,6 +22,13 @@ union U2 {
 }
 union NoDropLike { a: u8 } // should be reported as unused
 
+union U {
+    a: u8, // should not be reported
+    b: u8, // should not be reported
+    c: u8, // should be reported
+}
+type A = U;
+
 fn main() {
     let u = U1 { a: 0 };
     let _a = unsafe { u.b };
@@ -30,4 +37,6 @@ fn main() {
     let _b = unsafe { u.b };
 
     let _u = NoDropLike { a: 10 };
+    let u = A { a: 0 };
+    let _b = unsafe { u.b };
 }
