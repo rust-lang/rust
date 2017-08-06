@@ -407,7 +407,7 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
             FloatTy::F32 => {
                 let zero = ConstFloat {
                     ty: FloatTy::F32,
-                    bits: 0.0f32.to_bits() as u128,
+                    bits: 0.0_f32.to_bits() as u128,
                 };
 
                 let infinity = ConstFloat {
@@ -426,7 +426,7 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
             FloatTy::F64 => {
                 let zero = ConstFloat {
                     ty: FloatTy::F64,
-                    bits: 0.0f64.to_bits() as u128,
+                    bits: 0.0_f64.to_bits() as u128,
                 };
 
                 let infinity = ConstFloat {
