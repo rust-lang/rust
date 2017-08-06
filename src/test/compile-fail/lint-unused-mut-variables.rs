@@ -54,6 +54,12 @@ fn main() {
     let mut b = (&mut a,);
     *b.0 = 4; //~^ ERROR: variable does not need to be mutable
 
+    let mut x = &mut 1; //~ ERROR: variable does not need to be mutable
+    let mut f = || {
+      *x += 1;
+    };
+    f();
+
     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
         &mut arg[..] //~^ ERROR: variable does not need to be mutable
     }
