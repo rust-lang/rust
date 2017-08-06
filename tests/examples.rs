@@ -100,6 +100,7 @@ test!(addition, "tests/cases/addition");
 test!(addition_path, "tests/cases/addition_path");
 test!(addition_use, "tests/cases/addition_use");
 test!(bounds, "tests/cases/bounds");
+test!(consts, "tests/cases/consts");
 test!(enums, "tests/cases/enums");
 test!(func, "tests/cases/func");
 test!(infer, "tests/cases/infer");

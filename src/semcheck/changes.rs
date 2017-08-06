@@ -174,6 +174,8 @@ pub enum ChangeType<'tcx> {
     ItemMadePrivate,
     /// An item has changed it's kind.
     KindDifference,
+    /// A `static` item changed it's mutablity.
+    StaticMutabilityChanged { now_mut: bool },
     /// A region parameter has been added to an item.
     RegionParameterAdded,
     /// A region parameter has been removed from an item.
@@ -228,6 +230,7 @@ impl<'tcx> ChangeType<'tcx> {
         match *self {
             ItemMadePrivate |
             KindDifference |
+            StaticMutabilityChanged { now_mut: false } |
             RegionParameterAdded |
             RegionParameterRemoved |
             TypeParameterAdded { defaulted: false } |
@@ -254,6 +257,7 @@ impl<'tcx> ChangeType<'tcx> {
             TraitImplLoosened |
             AssociatedItemAdded |
             ItemMadePublic => TechnicallyBreaking,
+            StaticMutabilityChanged { now_mut: true } |
             TypeParameterAdded { defaulted: true } |
             FnConstChanged { now_const: true } => NonBreaking,
         }
@@ -266,6 +270,8 @@ impl<'a> fmt::Display for ChangeType<'a> {
             ItemMadePublic => "item made public",
             ItemMadePrivate => "item made private",
             KindDifference => "item kind changed",
+            StaticMutabilityChanged { now_mut: true } => "static item made mutable",
+            StaticMutabilityChanged { now_mut: false } => "static item made immutable",
             RegionParameterAdded => "region parameter added",
             RegionParameterRemoved => "region parameter removed",
             TypeParameterAdded { defaulted: true } => "defaulted type parameter added",
@@ -387,6 +393,7 @@ impl<'tcx> Change<'tcx> {
                 FnConstChanged { now_const: false } |
                 MethodSelfChanged { now_self: false } |
                 Unknown => return true,
+                StaticMutabilityChanged { .. } |
                 RegionParameterAdded |
                 MethodSelfChanged { now_self: true } |
                 TraitItemAdded { .. } |

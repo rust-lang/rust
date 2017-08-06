@@ -70,7 +70,6 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
 /// Traverse the two root modules in an interleaved manner, matching up pairs of modules
 /// from the two crate versions and compare for changes. Matching children get processed
 /// in the same fashion.
-// TODO: clean up and simplify.
 fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             id_mapping: &mut IdMapping,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -81,7 +80,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
     use std::rc::Rc;
 
-    // get the visibility of the inner item, given the outer item's visibility
+    // Get the visibility of the inner item, given the outer item's visibility.
     fn get_vis(cstore: &Rc<CrateStore>, outer_vis: Visibility, def_id: DefId) -> Visibility {
         if outer_vis == Public {
             cstore.visibility(def_id)
@@ -173,8 +172,16 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             (Macro(_, _), Macro(_, _)) |
                             (Variant(_), Variant(_)) |
                             (Const(_), Const(_)) |
-                            (Static(_, _), Static(_, _)) |
                             (Err, Err) => {},
+                            (Static(_, old_mut), Static(_, new_mut)) => {
+                                if old_mut != new_mut {
+                                    let change_type = StaticMutabilityChanged {
+                                        now_mut: new_mut,
+                                    };
+
+                                    changes.add_change(change_type, o_def_id, None);
+                                }
+                            },
                             (Fn(_), Fn(_)) |
                             (Method(_), Method(_)) => {
                                 diff_generics(changes,
@@ -621,7 +628,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 
     match old {
-        TyAlias(_) => {
+        TyAlias(_) | Const(_) | Static(_, _) => {
             cmp_types(changes,
                       id_mapping,
                       tcx,
