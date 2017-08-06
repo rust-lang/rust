@@ -7,7 +7,6 @@ use rustc::hir::def::{Def, Export};
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::ty::{AssociatedKind, TypeParameterDef};
 
-use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 
 use syntax::ast::Name;
@@ -53,8 +52,6 @@ pub struct IdMapping {
     type_params: HashMap<DefId, TypeParameterDef>,
     /// Map of items from inherent impls' descriptors to the impls they are declared in.
     inherent_items: HashMap<InherentEntry, InherentImplSet>,
-    /// A match that has been just found and needs to be temporarily added to the mapping.
-    current_match: Cell<Option<(DefId, DefId)>>,
 }
 
 impl IdMapping {
@@ -71,7 +68,6 @@ impl IdMapping {
             reverse_mapping: HashMap::new(),
             type_params: HashMap::new(),
             inherent_items: HashMap::new(),
-            current_match: Cell::new(None),
         }
     }
 
@@ -180,12 +176,6 @@ impl IdMapping {
                 Some(new.1.def_id())
             } else if let Some(new_def_id) = self.internal_mapping.get(&old) {
                 Some(*new_def_id)
-            } else if let Some(def_id_pair) = self.current_match.get() {
-                if def_id_pair.0 == old {
-                    Some(def_id_pair.1)
-                } else {
-                    None
-                }
             } else {
                 None
             }
@@ -202,10 +192,6 @@ impl IdMapping {
             self.reverse_mapping
                 .get(&new)
                 .cloned()
-                .or_else(||
-                    self.current_match
-                        .get()
-                        .and_then(|p| if p.1 == new { Some(p.0) } else { None }))
         } else {
             Some(new)
         }
@@ -226,11 +212,6 @@ impl IdMapping {
     /// Check whether a new `DefId` is present in the mappings.
     pub fn contains_new_id(&self, new: DefId) -> bool {
         self.reverse_mapping.contains_key(&new)
-    }
-
-    /// Temporarily register a `DefId` pair.
-    pub fn register_current_match(&self, old: DefId, new: DefId) {
-        self.current_match.set(Some((old, new)));
     }
 
     /// Construct a queue of toplevel item pairs' `DefId`s.

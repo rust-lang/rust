@@ -99,14 +99,17 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
     let mut removals = Vec::new();
     let mut additions = Vec::new();
 
+    // Start off with the root module pair.
     mod_queue.push_back((old, new, Public, Public));
 
+    // Pull a matched module pair from the queue, with the modules' global visibility.
     while let Some((old_def_id, new_def_id, old_vis, new_vis)) = mod_queue.pop_front() {
         children.add(cstore.item_children(old_def_id, tcx.sess),
                      cstore.item_children(new_def_id, tcx.sess));
 
         for items in children.drain() {
             match items {
+                // an item pair is found
                 (Some(o), Some(n)) => {
                     if let (Mod(o_def_id), Mod(n_def_id)) = (o.def, n.def) {
                         if visited.insert((o_def_id, n_def_id)) {
@@ -121,6 +124,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                                    tcx.def_span(n_def_id),
                                                    true);
 
+                                // FIXME: simplify these conditions ;)
                                 if o_vis == Public && n_vis != Public {
                                     changes.add_change(ItemMadePrivate, o_def_id, None);
                                 } else if o_vis != Public && n_vis == Public {
@@ -156,7 +160,12 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         }
 
                         match (o.def, n.def) {
-                            // (matching) things we don't care about (for now)
+                            // matching items we don't care about because they are either
+                            // impossible to encounter at this stage (Mod, AssociatedTy, PrimTy,
+                            // TyParam, SelfTy, StructCtor, VariantCtor, AssociatedConst, Local,
+                            // Upvar, Label, Variant, Err), whose analysis is out scope for us
+                            // (GlobalAsm, Macro), or which don't requite further analysis at
+                            // this stage (Const)
                             (Mod(_), Mod(_)) |
                             (AssociatedTy(_), AssociatedTy(_)) |
                             (PrimTy(_), PrimTy(_)) |
@@ -173,6 +182,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             (Variant(_), Variant(_)) |
                             (Const(_), Const(_)) |
                             (Err, Err) => {},
+                            // statics are subject to mutability comparison
                             (Static(_, old_mut), Static(_, new_mut)) => {
                                 if old_mut != new_mut {
                                     let change_type = StaticMutabilityChanged {
@@ -182,6 +192,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                     changes.add_change(change_type, o_def_id, None);
                                 }
                             },
+                            // functions can declare generics and have structural properties
+                            // that need to be compared
                             (Fn(_), Fn(_)) |
                             (Method(_), Method(_)) => {
                                 diff_generics(changes,
@@ -192,6 +204,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               n_def_id);
                                 diff_fn(changes, tcx, o.def, n.def);
                             },
+                            // type aliases can declare generics, too
                             (TyAlias(_), TyAlias(_)) => {
                                 diff_generics(changes,
                                               id_mapping,
@@ -200,6 +213,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               o_def_id,
                                               n_def_id);
                             },
+                            // ADTs can declare generics and have lots of structural properties
+                            // to check, most notably the number and name of variants and/or
+                            // fields
                             (Struct(_), Struct(_)) |
                             (Union(_), Union(_)) |
                             (Enum(_), Enum(_)) => {
@@ -211,6 +227,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               n_def_id);
                                 diff_adts(changes, id_mapping, tcx, o.def, n.def);
                             },
+                            // trait definitions can declare generics and require us to check
+                            // for trait item addition and removal, as well as changes to their
+                            // kinds and defaultness
                             (Trait(_), Trait(_)) => {
                                 diff_generics(changes,
                                               id_mapping,
@@ -225,13 +244,15 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                             n_def_id,
                                             output);
                             },
-                            // non-matching item pair - register the difference and abort
+                            // a non-matching item pair - register the change and abort further
+                            // analysis
                             _ => {
                                 changes.add_change(KindDifference, o_def_id, None);
                             },
                         }
                     }
                 }
+                // only an old item is found
                 (Some(o), None) => {
                     // struct constructors are weird/hard - let's go shopping!
                     if let StructCtor(_, _) = o.def {
@@ -245,6 +266,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         removals.push(o);
                     }
                 }
+                // only a new item is found
                 (None, Some(n)) => {
                     // struct constructors are weird/hard - let's go shopping!
                     if let StructCtor(_, _) = n.def {
@@ -327,7 +349,7 @@ fn diff_method(changes: &mut ChangeSet, tcx: TyCtxt, old: AssociatedItem, new: A
 /// Given two ADT items, perform structural checks.
 ///
 /// This establishes the needed correspondence between non-toplevel items such as enum variants,
-/// struct and enum fields etc.
+/// struct- and enum fields etc.
 fn diff_adts(changes: &mut ChangeSet,
              id_mapping: &mut IdMapping,
              tcx: TyCtxt,
@@ -596,8 +618,7 @@ fn diff_generics(changes: &mut ChangeSet,
 }
 
 // Below functions constitute the third pass of analysis, in which parameter bounds of matching
-// items are compared for changes and used to determine matching relationships between items not
-// being exported.
+// items are used to determine matching relationships between items not being exported.
 
 /// Given two items, compare the bounds on their type and region parameters.
 fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
@@ -607,8 +628,8 @@ fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
                          _new: Def) {
 }
 
-// Below functions constitute the fourth and last pass of analysis, in which the types of
-// matching items are compared for changes.
+// Below functions constitute the fourth and last pass of analysis, in which the types and/or
+// trait bounds of matching items are compared for changes.
 
 /// Given two items, compare their types.
 fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
@@ -621,6 +642,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
+    // bail out of analysis of already broken items
     if changes.item_breaking(old_def_id) ||
             id_mapping.get_trait_def(&old_def_id)
                 .map_or(false, |did| changes.trait_item_breaking(did)) {
@@ -628,6 +650,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 
     match old {
+        // type aliases, consts and statics just need their type to be checked
         TyAlias(_) | Const(_) | Static(_, _) => {
             cmp_types(changes,
                       id_mapping,
@@ -637,6 +660,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                       tcx.type_of(old_def_id),
                       tcx.type_of(new_def_id));
         },
+        // functions and methods require us to compare their signatures, not types
         Fn(_) | Method(_) => {
             let old_fn_sig = tcx.type_of(old_def_id).fn_sig(tcx);
             let new_fn_sig = tcx.type_of(new_def_id).fn_sig(tcx);
@@ -649,6 +673,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                       tcx.mk_fn_ptr(old_fn_sig),
                       tcx.mk_fn_ptr(new_fn_sig));
         },
+        // ADTs' types are compared field-wise
         Struct(_) | Enum(_) | Union(_) => {
             if let Some(children) = id_mapping.children_of(old_def_id) {
                 for (o_def_id, n_def_id) in children {
@@ -659,6 +684,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 }
             }
         },
+        // a trait definition has no type, so only it's trait bounds are compared
         Trait(_) => {
             cmp_bounds(changes, id_mapping, tcx, old_def_id, new_def_id);
         },
@@ -666,7 +692,7 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 }
 
-/// Compare the inherent implementations of items.
+/// Compare the inherent implementations of all matching items.
 fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                  id_mapping: &IdMapping,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -674,6 +700,7 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     let to_old = TranslationContext::target_old(tcx, id_mapping, false);
 
     for (orig_item, orig_impls) in id_mapping.inherent_impls() {
+        // determine where the item comes from
         let (forward_trans, err_type) =
             if id_mapping.in_old_crate(orig_item.parent_def_id) {
                 (&to_new, AssociatedItemRemoved)
@@ -683,8 +710,10 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 unreachable!()
             };
 
+        // determine item visibility
         let parent_output = changes.get_output(orig_item.parent_def_id);
 
+        // for each original impl the item is present in, ...
         for &(orig_impl_def_id, orig_item_def_id) in orig_impls {
             let orig_assoc_item = tcx.associated_item(orig_item_def_id);
 
@@ -696,6 +725,7 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                item_span,
                                parent_output && orig_assoc_item.vis == Public);
 
+            // ... determine the set of target impls that serve as candidates
             let target_impls = if let Some(impls) = forward_trans
                 .translate_inherent_entry(orig_item)
                 .and_then(|item| id_mapping.get_inherent_impls(&item))
@@ -706,6 +736,7 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 continue;
             };
 
+            // if any of the candidates matches, the item is compatible across versions
             let match_found = target_impls
                 .iter()
                 .any(|&(target_impl_def_id, target_item_def_id)| {
@@ -724,6 +755,7 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                         target_assoc_item)
                 });
 
+            // otherwise, it has been essentially added/removed
             if !match_found {
                 changes.add_change(err_type.clone(), orig_item_def_id, None);
             }
@@ -731,24 +763,26 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 }
 
-/// Compare the implementations of traits.
+/// Compare the implementations of all matching traits.
 fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                               id_mapping: &IdMapping,
                               tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let all_impls = tcx.sess.cstore.implementations_of_trait(None);
 
+    // for each trait impl in the old crate, ...
     for old_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_old_crate(*did)) {
         let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
         if id_mapping.get_new_id(old_trait_def_id).is_none() {
             continue;
         }
 
+        // ... try to match it with a new counterpart
         if !match_trait_impl(id_mapping, tcx, *old_impl_def_id) {
             let impl_span = tcx.def_span(*old_impl_def_id);
 
             changes.new_change(*old_impl_def_id,
                                *old_impl_def_id,
-                               Symbol::intern("impl"),
+                               Symbol::intern("impl"), // FIXME: find something more fitting
                                impl_span,
                                impl_span,
                                true);
@@ -756,18 +790,20 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         }
     }
 
+    // for each trait impl in the new crate, ...
     for new_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_new_crate(*did)) {
         let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
         if id_mapping.get_old_id(new_trait_def_id).is_none() {
             continue;
         }
 
+        // ... try to match it with an old counterpart
         if !match_trait_impl(id_mapping, tcx, *new_impl_def_id) {
             let impl_span = tcx.def_span(*new_impl_def_id);
 
             changes.new_change(*new_impl_def_id,
                                *new_impl_def_id,
-                               Symbol::intern("impl"),
+                               Symbol::intern("impl"), // FIXME: find something more fitting
                                impl_span,
                                impl_span,
                                true);
@@ -776,7 +812,7 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 }
 
-/// Compare two types and their trait bounds and possibly register the error.
+/// Compare two types and their trait bounds, possibly registering the resulting change.
 fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        id_mapping: &IdMapping,
                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -794,6 +830,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         let orig = compcx.forward_trans.translate_item_type(orig_def_id, orig);
         // let orig = orig.subst(infcx.tcx, orig_substs);
 
+        // functions need inference, other items can declare defaulted type parameters
         let target_substs = if target.is_fn() {
             compcx.compute_target_infer_substs(target_def_id)
         } else {
@@ -808,21 +845,19 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             compcx.check_type_error(tcx, target_def_id, target_param_env, orig, target)
         {
             changes.add_change(TypeChanged { error: err }, orig_def_id, None);
-
-            // bail out after a type error
-            return;
+        } else {
+            // check the bounds if no type error has been found
+            compcx.check_bounds_bidirectional(changes,
+                                              tcx,
+                                              orig_def_id,
+                                              target_def_id,
+                                              orig_substs,
+                                              target_substs);
         }
-
-        compcx.check_bounds_bidirectional(changes,
-                                          tcx,
-                                          orig_def_id,
-                                          target_def_id,
-                                          orig_substs,
-                                          target_substs);
     });
 }
 
-/// Compare two sets of trait bounds and possibly register the error.
+/// Compare the trait bounds of two items, possibly registering the resulting change.
 fn cmp_bounds<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                         id_mapping: &IdMapping,
                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -897,10 +932,10 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     tcx.infer_ctxt().enter(|infcx| {
         let (compcx, register_errors) = if id_mapping.in_old_crate(orig_impl_def_id) {
-            id_mapping.register_current_match(orig_item_def_id, target_item_def_id);
+            // id_mapping.register_current_match(orig_item_def_id, target_item_def_id);
             (TypeComparisonContext::target_new(&infcx, id_mapping, false), true)
         } else {
-            id_mapping.register_current_match(target_item_def_id, orig_item_def_id);
+            // id_mapping.register_current_match(target_item_def_id, orig_item_def_id);
             (TypeComparisonContext::target_old(&infcx, id_mapping, false), false)
         };
 
@@ -950,6 +985,7 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             return true;
         }
 
+        // prepare the item type for comparison, as we do for toplevel items' types
         let (orig, target) = match (orig_item.kind, target_item.kind) {
             (AssociatedKind::Const, AssociatedKind::Const) |
             (AssociatedKind::Type, AssociatedKind::Type) => {
@@ -977,17 +1013,15 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         if let Some(err) = error {
             changes.add_change(TypeChanged { error: err }, orig_item_def_id, None);
-
-            // bail out after a type error
-            return true;
+        } else {
+            // check the bounds if no type error has been found
+            compcx.check_bounds_bidirectional(changes,
+                                              tcx,
+                                              orig_item_def_id,
+                                              target_item_def_id,
+                                              orig_substs,
+                                              target_substs);
         }
-
-        compcx.check_bounds_bidirectional(changes,
-                                          tcx,
-                                          orig_item_def_id,
-                                          target_item_def_id,
-                                          orig_substs,
-                                          target_substs);
 
         true
     })

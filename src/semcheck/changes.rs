@@ -879,6 +879,7 @@ pub mod tests {
 
             let max = changes
                 .iter()
+                .filter(|change| change.4)
                 .flat_map(|change| change.5.iter())
                 .map(|&(ref type_, _)| type_.inner().to_category())
                 .max()
