@@ -12,7 +12,7 @@ use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integ
             span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment, iter_input_pats, in_constant,
             match_trait_method, paths};
 use utils::sugg::Sugg;
-use syntax::ast::{LitKind, CRATE_NODE_ID};
+use syntax::ast::{LitKind, CRATE_NODE_ID, FloatTy};
 
 /// **What it does:** Checks for function arguments and let bindings denoted as `ref`.
 ///
@@ -403,23 +403,41 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
     let res = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr);
     if let Ok(ConstVal::Float(val)) = res {
         use std::cmp::Ordering;
-        match val {
-            val @ ConstFloat::F32(_) => {
-                let zero = ConstFloat::F32(0.0);
+        match val.ty {
+            FloatTy::F32 => {
+                let zero = ConstFloat {
+                    ty: FloatTy::F32,
+                    bits: 0.0f32.to_bits() as u128,
+                };
 
-                let infinity = ConstFloat::F32(::std::f32::INFINITY);
+                let infinity = ConstFloat {
+                    ty: FloatTy::F32,
+                    bits: ::std::f32::INFINITY.to_bits() as u128,
+                };
 
-                let neg_infinity = ConstFloat::F32(::std::f32::NEG_INFINITY);
+                let neg_infinity = ConstFloat {
+                    ty: FloatTy::F32,
+                    bits: ::std::f32::NEG_INFINITY.to_bits() as u128,
+                };
 
                 val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
                 val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
             },
-            val @ ConstFloat::F64(_) => {
-                let zero = ConstFloat::F64(0.0);
+            FloatTy::F64 => {
+                let zero = ConstFloat {
+                    ty: FloatTy::F64,
+                    bits: 0.0f64.to_bits() as u128,
+                };
 
-                let infinity = ConstFloat::F64(::std::f64::INFINITY);
+                let infinity = ConstFloat {
+                    ty: FloatTy::F64,
+                    bits: ::std::f64::INFINITY.to_bits() as u128,
+                };
 
-                let neg_infinity = ConstFloat::F64(::std::f64::NEG_INFINITY);
+                let neg_infinity = ConstFloat {
+                    ty: FloatTy::F64,
+                    bits: ::std::f64::NEG_INFINITY.to_bits() as u128,
+                };
 
                 val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
                 val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
