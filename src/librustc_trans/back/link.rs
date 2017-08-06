@@ -1016,8 +1016,9 @@ fn link_args(cmd: &mut Linker,
 
     let used_link_args = sess.cstore.used_link_args();
 
+    let mut pie = false;
     if crate_type == config::CrateTypeExecutable &&
-       t.options.position_independent_executables {
+        t.options.position_independent_executables {
         let empty_vec = Vec::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
         let more_args = &sess.opts.cg.link_arg;
@@ -1025,8 +1026,13 @@ fn link_args(cmd: &mut Linker,
 
         if get_reloc_model(sess) == llvm::RelocMode::PIC
             && !args.any(|x| *x == "-static") {
-            cmd.position_independent_executable();
+            pie = true
         }
+    }
+    if pie {
+        cmd.position_independent_executable();
+    } else {
+        cmd.no_position_independent_executable();
     }
 
     let relro_level = match sess.opts.debugging_opts.relro_level {
