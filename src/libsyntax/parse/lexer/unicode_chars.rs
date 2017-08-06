@@ -39,7 +39,7 @@ const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
     ('﹍', "Dashed Low Line", '_'),
     ('﹎', "Centreline Low Line", '_'),
     ('﹏', "Wavy Low Line", '_'),
-    ('＿', "Fullwidth Low Line", '-'),
+    ('＿', "Fullwidth Low Line", '_'),
 
     ('‐', "Hyphen", '-'),
     ('‑', "Non-Breaking Hyphen", '-'),
