@@ -1,46 +1,56 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: breaking changes in `def`
-  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:27:5
+warning: breaking changes in `ghi`
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:14:5
    |
-27 | /     pub fn def(&self) -> u8 {
-28 | |         0
-29 | |     }
+14 | /     pub fn ghi<A>(&self, a: A) -> A {
+15 | |         a
+16 | |     }
+   | |_____^
+   |
+   = warning: type error: expected type parameter, found u8 (breaking)
+
+warning: breaking changes in `def`
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:26:5
+   |
+26 | /     pub fn def(&self) -> u8 {
+27 | |         0
+28 | |     }
    | |_____^
    |
    = warning: removed item in inherent impl (breaking)
 
 warning: breaking changes in `def`
-  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:34:5
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:33:5
    |
-34 | /     pub fn def(&self) -> u8 {
-35 | |         0
-36 | |     }
+33 | /     pub fn def(&self) -> u8 {
+34 | |         0
+35 | |     }
    | |_____^
    |
    = warning: type error: expected u8, found u16 (breaking)
 
 warning: breaking changes in `ghi`
-  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:38:5
+  --> $REPO_PATH/tests/cases/inherent_impls/old.rs:37:5
    |
-38 |     pub fn ghi() { }
+37 |     pub fn ghi() { }
    |     ^^^^^^^^^^^^^^^^
    |
    = warning: removed item in inherent impl (breaking)
 
 warning: technically breaking changes in `abc`
-  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:31:5
+  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:30:5
    |
-31 |     pub fn abc() { }
+30 |     pub fn abc() { }
    |     ^^^^^^^^^^^^^^^^
    |
    = note: added item in inherent impl (technically breaking)
 
 warning: technically breaking changes in `def`
-  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:38:5
+  --> $REPO_PATH/tests/cases/inherent_impls/new.rs:37:5
    |
-38 | /     pub fn def(&self) -> u8 {
-39 | |         0
-40 | |     }
+37 | /     pub fn def(&self) -> u8 {
+38 | |         0
+39 | |     }
    | |_____^
    |
    = note: added item in inherent impl (technically breaking)

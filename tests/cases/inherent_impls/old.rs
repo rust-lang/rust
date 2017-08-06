@@ -11,10 +11,9 @@ impl Abc {
 
     fn def(&self) { }
 
-    // TODO
-    /* pub fn ghi<A>(&self, a: A) -> A {
+    pub fn ghi<A>(&self, a: A) -> A {
         a
-    } */
+    }
 }
 
 #[allow(dead_code)]
