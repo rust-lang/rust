@@ -1,0 +1,28 @@
+<eddyb> we can't use the trait system for inherent impls
+    you have to basically have a (DefId, AssociatedKind, hir::Name) => Vec</*impl*/ DefId> map
+    and manually do what the trait system does for trait impls
+    namely, generate fresh infer vars for the impl you want to match *against*, substitute that
+    in its type_of (which is its Self) and then eq the type you want to check against that
+    if it didn't error, the substs containing infer vars which you substituted in type_of are
+    the params of the impl which you can then substitute in the associated items' signature
+    sooo example
+    old: impl Foo<u8> { fn foo() {} }
+    new: impl<T> Foo<T> { fn foo() {} }
+    (Foo, Method, "foo") => the one foo method in each
+    or rather
+    (old::Foo, Method, "foo") => old::...::foo
+    (new::Foo, Method, "foo") => new::...::foo
+    checking if old::...::foo is still valid means translating its "owner" (old::Foo), then
+    pairing it with the fact that it's a Method and its name, to get (new::Foo, Method, "foo")
+    which means for each in [new::...::foo] (well it's one element but you get the idea)
+    you generate fresh substs. in this case T => $1
+    substitute, so you get new::Foo<$1>
+    match that against translate(old::Foo<u8>), i.e. new::Foo<u8>
+    that will succeed and leave $1 equal to u8
+    which means your substs are now T => u8
+    oh I should've given it a signature. image it's -> u8 in old and -> T in new
+    so the signature of the new method, substituted, is still -> u8
+    and when you compare them that will succeed
+    but if the new method were -> Option<T> then for T => u8 it'd be -> Option<u8> which is wrong
+    and you'd notice the mismatch
+    it's not that hard as long as you keep your code modular

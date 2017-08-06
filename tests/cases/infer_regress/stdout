@@ -1,0 +1,17 @@
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: breaking changes in `abc`
+ --> $REPO_PATH/tests/cases/infer_regress/new.rs:1:1
+  |
+1 | pub fn abc<A>(_: A) { }
+  | ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: type error: expected type parameter, found () (breaking)
+
+warning: breaking changes in `Abc`
+ --> $REPO_PATH/tests/cases/infer_regress/new.rs:3:1
+  |
+3 | pub struct Abc<A>(A, ());
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = warning: type error: expected type parameter, found () (breaking)
+

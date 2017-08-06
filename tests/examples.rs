@@ -103,6 +103,7 @@ test!(bounds, "tests/cases/bounds");
 test!(enums, "tests/cases/enums");
 test!(func, "tests/cases/func");
 test!(infer, "tests/cases/infer");
+test!(infer_regress, "tests/cases/infer_regress");
 test!(inherent_impls, "tests/cases/inherent_impls");
 test!(kind_change, "tests/cases/kind_change");
 test!(macros, "tests/cases/macros");

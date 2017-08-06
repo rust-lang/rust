@@ -801,6 +801,9 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             compcx.check_type_error(tcx, target_def_id, target_param_env, orig, target)
         {
             changes.add_change(TypeChanged { error: err }, orig_def_id, None);
+
+            // bail out after a type error
+            return;
         }
 
         compcx.check_bounds_bidirectional(changes,
@@ -944,6 +947,9 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
         if let Some(err) = error {
             changes.add_change(TypeChanged { error: err }, orig_item_def_id, None);
+
+            // bail out after a type error
+            return true;
         }
 
         compcx.check_bounds_bidirectional(changes,

@@ -205,6 +205,10 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         -> Option<Vec<Predicate<'tcx2>>>
     {
         use rustc::ty::Lift;
+        debug!("check_bounds_error: orig env: {:?}, target did: {:?}, target substs: {:?}",
+               orig_param_env,
+               target_def_id,
+               target_substs);
 
         let mut bound_cx = BoundContext::new(self.infcx, orig_param_env);
         bound_cx.register(target_def_id, target_substs);
