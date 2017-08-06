@@ -20,7 +20,7 @@ use std::collections::{HashMap, VecDeque};
 /// Keeps track of item pairs found that way that correspond to item matchings not yet known.
 /// This allows to match up some items that aren't exported, and which possibly even differ in
 /// their names across versions.
-pub struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub struct MismatchRelation<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// The type context used.
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     /// The queue to append found item pairings.
@@ -29,12 +29,11 @@ pub struct Mismatch<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     id_mapping: &'a mut IdMapping,
 }
 
-impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
     /// Construct a new mismtach type relation.
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a mut IdMapping)
-        -> Mismatch<'a, 'gcx, 'tcx>
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a mut IdMapping) -> Self
     {
-        Mismatch {
+        MismatchRelation {
             tcx: tcx,
             item_queue: id_mapping.toplevel_queue(),
             id_mapping: id_mapping,
@@ -69,7 +68,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> Mismatch<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx, 'tcx> {
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
@@ -184,7 +183,7 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Mismatch<'a, 'gcx, 'tcx> {
             },
             (&TyInfer(_), _) | (_, &TyInfer(_)) => {
                 // As the original function this is ripped off of, we don't handle these cases.
-                panic!("var types encountered in Mismatch::tys")
+                panic!("var types encountered in MismatchRelation::tys")
             },
             _ => None,
         };

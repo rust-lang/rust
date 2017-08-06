@@ -95,6 +95,8 @@ impl<'a> WorkInfo<'a> {
     fn remote(config: &'a Config, source: &mut SourceInfo<'a>, info: NameAndVersion)
         -> CargoResult<WorkInfo<'a>>
     {
+        // TODO: fall back to locally cached package instance, or better yet, search for it
+        // first.
         let package_id = PackageId::new(info.name, info.version, &source.id)?;
         let package = source.registry.download(&package_id)?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;

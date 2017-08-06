@@ -32,12 +32,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             tcx: tcx,
             id_mapping: id_mapping,
             translate_params: translate_params,
-            needs_translation: |id_mapping, orig_def_id| {
-                id_mapping.in_old_crate(orig_def_id)
-            },
-            translate_orig: |id_mapping, orig_def_id| {
-                id_mapping.get_new_id(orig_def_id)
-            },
+            needs_translation: IdMapping::in_old_crate,
+            translate_orig: IdMapping::get_new_id,
         }
     }
 
@@ -49,12 +45,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             tcx: tcx,
             id_mapping: id_mapping,
             translate_params: translate_params,
-            needs_translation: |id_mapping, orig_def_id| {
-                id_mapping.in_new_crate(orig_def_id)
-            },
-            translate_orig: |id_mapping, orig_def_id| {
-                id_mapping.get_old_id(orig_def_id)
-            },
+            needs_translation: IdMapping::in_new_crate,
+            translate_orig: IdMapping::get_old_id,
         }
     }
 
@@ -243,7 +235,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     }
                 },
                 TyParam(param) => {
-                    // TODO: we should check `has_self`!
+                    // FIXME: we should check `has_self` if this gets used again!
                     if param.idx != 0 && self.translate_params { // `Self` is special
                         let orig_def_id = index_map[&param.idx];
                         if self.needs_translation(orig_def_id) {

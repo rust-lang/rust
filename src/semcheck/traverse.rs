@@ -19,7 +19,7 @@ use rustc::ty::Visibility::Public;
 use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
-use semcheck::mismatch::Mismatch;
+use semcheck::mismatch::MismatchRelation;
 use semcheck::translate::TranslationContext;
 use semcheck::typeck::{BoundContext, TypeComparisonContext};
 
@@ -41,7 +41,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
 
     // second pass
     {
-        let mut mismatch = Mismatch::new(tcx, &mut id_mapping);
+        let mut mismatch = MismatchRelation::new(tcx, &mut id_mapping);
         mismatch.process();
     }
 
