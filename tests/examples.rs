@@ -108,6 +108,7 @@ test!(infer_regress, "tests/cases/infer_regress");
 test!(inherent_impls, "tests/cases/inherent_impls");
 test!(kind_change, "tests/cases/kind_change");
 test!(macros, "tests/cases/macros");
+test!(max_priv, "tests/cases/max_priv");
 test!(mix, "tests/cases/mix");
 test!(pathologic_paths, "tests/cases/pathologic_paths");
 test!(pub_use, "tests/cases/pub_use");

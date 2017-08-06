@@ -537,7 +537,7 @@ impl<'tcx> ChangeSet<'tcx> {
     pub fn add_change(&mut self, type_: ChangeType<'tcx>, old: DefId, span: Option<Span>) {
         let cat = type_.to_category();
 
-        if cat > self.max {
+        if cat > self.max && self.get_output(old) {
             self.max = cat.clone();
         }
 
@@ -551,6 +551,7 @@ impl<'tcx> ChangeSet<'tcx> {
 
     /// Set up reporting for the changes associated with a given `DefId`.
     pub fn set_output(&mut self, old: DefId) {
+        // FIXME: possibly recompute the maximum change category too (just to be safe).
         self.changes.get_mut(&old).map(|change| change.output = true);
     }
 
