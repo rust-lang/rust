@@ -189,6 +189,24 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.struct_has_extern_repr = had_extern_repr;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
+
+    fn mark_as_used_if_union(&mut self, did: DefId) {
+        if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
+            match self.tcx.hir.find(node_id) {
+                Some(hir_map::NodeItem(item)) => match item.node {
+                    Item_::ItemUnion(ref variant, _) => {
+                        if variant.fields().len() > 1 {
+                            for field in variant.fields() {
+                                self.live_symbols.insert(field.id);
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
@@ -221,6 +239,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let def = self.tables.qpath_def(qpath, expr.id);
                 self.handle_definition(def);
+                self.mark_as_used_if_union(def.def_id());
+            }
+            hir::ExprPath(ref qpath @ hir::QPath::Resolved(..)) => {
+                let def = self.tables.qpath_def(qpath, expr.id);
+                self.mark_as_used_if_union(def.def_id());
             }
             hir::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id);
@@ -422,7 +445,6 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 struct DeadVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     live_symbols: Box<FxHashSet<ast::NodeId>>,
-    need_check_next_union_field: bool,
 }
 
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
@@ -538,16 +560,6 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_variant_data(&mut self,
-                          s: &'tcx hir::VariantData,
-                          _: ast::Name,
-                          _: &'tcx hir::Generics,
-                          _parent_id: ast::NodeId,
-                          _: syntax_pos::Span) {
-        self.need_check_next_union_field = true;
-        intravisit::walk_struct_def(self, s)
-    }
-
     fn visit_variant(&mut self,
                      variant: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
@@ -568,23 +580,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, field: &'tcx hir::StructField) {
-        if self.need_check_next_union_field {
-            if self.should_warn_about_field(&field) {
-                self.warn_dead_code(field.id, field.span, field.name, "field");
-            } else {
-                let did = self.tcx.hir.get_parent_did(field.id);
-                if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
-                    match self.tcx.hir.find(node_id) {
-                        Some(hir_map::NodeItem(item)) => match item.node {
-                            // If this is an union's field, it means all previous fields
-                            // have been used as well so no need to check further.
-                            Item_::ItemUnion(_, _) => self.need_check_next_union_field = false,
-                            _ => {}
-                        },
-                        _ => {}
-                    }
-                }
-            }
+        if self.should_warn_about_field(&field) {
+            self.warn_dead_code(field.id, field.span,
+                                field.name, "field");
         }
         intravisit::walk_struct_field(self, field);
     }
@@ -630,7 +628,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = DeadVisitor {
         tcx: tcx,
         live_symbols: live_symbols,
-        need_check_next_union_field: true,
     };
     intravisit::walk_crate(&mut visitor, krate);
 }

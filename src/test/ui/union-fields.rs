@@ -10,20 +10,24 @@
 
 #![deny(dead_code)]
 
-union U {
-    x: u32,
-    y: f32,
+union U1 {
+    a: u8, // should not be reported
+    b: u8, // should not be reported
+    c: u8, // should be reported
 }
-
-struct V {
-    x: u32,
-    y: u32,
+union U2 {
+    a: u8, // should be reported
+    b: u8, // should not be reported
+    c: u8, // should not be reported
 }
+union NoDropLike { a: u8 } // should be reported as unused
 
 fn main() {
-    let u = U { x: 0x3f800000 };
-    let _f = unsafe { u.y };
-    let v = V { x: 0, y: 0 };
-    println!("{}", v.x);
-}
+    let u = U1 { a: 0 };
+    let _a = unsafe { u.b };
 
+    let u = U2 { c: 0 };
+    let _b = unsafe { u.b };
+
+    let _u = NoDropLike { a: 10 };
+}
