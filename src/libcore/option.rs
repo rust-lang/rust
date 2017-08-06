@@ -774,6 +774,25 @@ impl<'a, T: Clone> Option<&'a T> {
     }
 }
 
+impl<'a, T: Clone> Option<&'a mut T> {
+    /// Maps an `Option<&mut T>` to an `Option<T>` by cloning the contents of the
+    /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = 12;
+    /// let opt_x = Some(&mut x);
+    /// assert_eq!(opt_x, Some(&mut 12));
+    /// let cloned = opt_x.cloned();
+    /// assert_eq!(cloned, Some(12));
+    /// ```
+    #[unstable(feature = "option_ref_mut_cloned", issue = "0")]
+    pub fn cloned(self) -> Option<T> {
+        self.map(|t| t.clone())
+    }
+}
+
 impl<T: Default> Option<T> {
     /// Returns the contained value or a default
     ///
