@@ -124,3 +124,35 @@ warning: added item to trait (breaking)
 39 |     type A;
    |     ^^^^^^^
 
+warning: breaking changes in `Klm`
+  --> $REPO_PATH/tests/cases/traits/new.rs:42:1
+   |
+42 | pub trait Klm : Clone { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: added bound: `Self: std::clone::Clone` (breaking)
+
+warning: technically breaking changes in `Nop`
+  --> $REPO_PATH/tests/cases/traits/new.rs:44:1
+   |
+44 | pub trait Nop { }
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: removed bound: `Self: std::clone::Clone` (technically breaking)
+
+warning: breaking changes in `Qrs`
+  --> $REPO_PATH/tests/cases/traits/new.rs:46:1
+   |
+46 | pub trait Qrs<A: Clone> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: added bound: `A: std::clone::Clone` (breaking)
+
+warning: technically breaking changes in `Tuv`
+  --> $REPO_PATH/tests/cases/traits/new.rs:48:1
+   |
+48 | pub trait Tuv<A> { }
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: removed bound: `A: std::clone::Clone` (technically breaking)
+

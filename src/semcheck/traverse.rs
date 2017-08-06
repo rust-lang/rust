@@ -54,7 +54,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
 
-    // fourth pass still
+    // fourth pass on impls
     diff_inherent_impls(&mut changes, &id_mapping, tcx);
     diff_trait_impls(&mut changes, &id_mapping, tcx);
 
@@ -655,6 +655,9 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 }
             }
         },
+        Trait(_) => {
+            cmp_bounds(changes, id_mapping, tcx, old_def_id, new_def_id);
+        },
         _ => (),
     }
 }
@@ -769,7 +772,7 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     }
 }
 
-/// Compare two types and possibly register the error.
+/// Compare two types and their trait bounds and possibly register the error.
 fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        id_mapping: &IdMapping,
                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -777,7 +780,7 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                        target_def_id: DefId,
                        orig: Ty<'tcx>,
                        target: Ty<'tcx>) {
-    info!("comparing types of {:?} / {:?}:\n  {:?} / {:?}",
+    info!("comparing types and bounds of {:?} / {:?}:\n  {:?} / {:?}",
           orig_def_id, target_def_id, orig, target);
 
     tcx.infer_ctxt().enter(|infcx| {
@@ -813,6 +816,29 @@ fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                           orig_substs,
                                           target_substs);
     });
+}
+
+/// Compare two sets of trait bounds and possibly register the error.
+fn cmp_bounds<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                        id_mapping: &IdMapping,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        orig_def_id: DefId,
+                        target_def_id: DefId) {
+    info!("comparing bounds of {:?} / {:?}", orig_def_id, target_def_id);
+
+    tcx.infer_ctxt().enter(|infcx| {
+        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping);
+
+        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
+        let target_substs = compcx.compute_target_default_substs(target_def_id);
+
+        compcx.check_bounds_bidirectional(changes,
+                                          tcx,
+                                          orig_def_id,
+                                          target_def_id,
+                                          orig_substs,
+                                          target_substs);
+    })
 }
 
 /// Compare two implementations and indicate whether the target one is compatible with the

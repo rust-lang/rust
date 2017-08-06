@@ -36,3 +36,11 @@ pub trait Ghi {
 }
 
 pub trait Hij { }
+
+pub trait Klm { }
+
+pub trait Nop : Clone { }
+
+pub trait Qrs<A> { }
+
+pub trait Tuv<A: Clone> { }

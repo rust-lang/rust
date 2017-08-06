@@ -38,3 +38,11 @@ pub trait Ghi { }
 pub trait Hij {
     type A;
 }
+
+pub trait Klm : Clone { }
+
+pub trait Nop { }
+
+pub trait Qrs<A: Clone> { }
+
+pub trait Tuv<A> { }
