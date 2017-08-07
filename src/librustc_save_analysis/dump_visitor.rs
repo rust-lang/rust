@@ -500,12 +500,14 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                                     item: &'l ast::Item,
                                     typ: &'l ast::Ty,
                                     expr: &'l ast::Expr) {
-        if let Some(var_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(var_data, DefData, item.span);
-            self.dumper.dump_def(item.vis == ast::Visibility::Public, var_data);
-        }
-        self.visit_ty(&typ);
-        self.visit_expr(expr);
+        self.nest_tables(item.id, |v| {
+            if let Some(var_data) = v.save_ctxt.get_item_data(item) {
+                down_cast_data!(var_data, DefData, item.span);
+                v.dumper.dump_def(item.vis == ast::Visibility::Public, var_data);
+            }
+            v.visit_ty(&typ);
+            v.visit_expr(expr);
+        });
     }
 
     fn process_assoc_const(&mut self,
