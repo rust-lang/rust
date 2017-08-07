@@ -39,3 +39,11 @@ warning: path changes to `Cde`
    |
    = note: removed definition (breaking)
 
+warning: breaking changes in `d`
+  --> $REPO_PATH/tests/cases/removal/new.rs:14:1
+   |
+14 | }
+   | ^
+   |
+   = warning: item made private (breaking)
+

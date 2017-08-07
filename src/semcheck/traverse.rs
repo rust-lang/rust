@@ -867,10 +867,8 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     tcx.infer_ctxt().enter(|infcx| {
         let (compcx, register_errors) = if id_mapping.in_old_crate(orig_impl_def_id) {
-            // id_mapping.register_current_match(orig_item_def_id, target_item_def_id);
             (TypeComparisonContext::target_new(&infcx, id_mapping, false), true)
         } else {
-            // id_mapping.register_current_match(target_item_def_id, orig_item_def_id);
             (TypeComparisonContext::target_old(&infcx, id_mapping, false), false)
         };
 

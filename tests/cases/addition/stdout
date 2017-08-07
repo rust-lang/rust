@@ -17,6 +17,14 @@ warning: technically breaking changes in `b`
    |
    = note: item made public (technically breaking)
 
+warning: technically breaking changes in `d`
+  --> $REPO_PATH/tests/cases/addition/new.rs:21:1
+   |
+21 | }
+   | ^
+   |
+   = note: item made public (technically breaking)
+
 warning: path changes to `Abc`
  --> $REPO_PATH/tests/cases/addition/new.rs:1:1
   |

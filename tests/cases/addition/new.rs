@@ -15,3 +15,7 @@ mod c {
     #[allow(dead_code)]
     pub struct Def;
 }
+
+pub mod d {
+
+}
