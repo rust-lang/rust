@@ -6007,7 +6007,9 @@ impl<'a> Parser<'a> {
         }
 
         if self.check_keyword(keywords::Const) {
-            return Err(self.span_fatal(self.span, "extern items cannot be `const`"));
+            let mut err = self.span_fatal(self.span, "extern items cannot be `const`");
+            err.help("use `static` instead");
+            return Err(err);
         }
 
         // FIXME #5668: this will occur for a macro invocation:
