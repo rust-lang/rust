@@ -294,7 +294,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         let item = match self.cx.resolver.resolve_macro(
                                 Mark::root(), path, MacroKind::Derive, false) {
                             Ok(ext) => match *ext {
-                                SyntaxExtension::BuiltinDerive(..) => item_with_markers.clone(),
+                                BuiltinDerive(..) => item_with_markers.clone(),
                                 _ => item.clone(),
                             },
                             _ => item.clone(),
@@ -427,7 +427,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 items.push(item);
                 kind.expect_from_annotatables(items)
             }
-            SyntaxExtension::AttrProcMacro(ref mac) => {
+            AttrProcMacro(ref mac) => {
                 let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.unwrap()),
@@ -436,7 +436,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let tok_result = mac.expand(self.cx, attr.span, attr.tokens, item_tok);
                 self.parse_expansion(tok_result, kind, &attr.path, attr.span)
             }
-            SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
+            ProcMacroDerive(..) | BuiltinDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive mode", attr.path));
                 kind.dummy(attr.span)
             }
@@ -474,7 +474,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         let opt_expanded = match *ext {
-            SyntaxExtension::DeclMacro(ref expand, def_span) => {
+            DeclMacro(ref expand, def_span) => {
                 if let Err(msg) = validate_and_set_expn_info(def_span.map(|(_, s)| s),
                                                              false) {
                     self.cx.span_err(path.span, &msg);
@@ -512,18 +512,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.make_from(expander.expand(self.cx, span, ident, input))
             }
 
-            MultiDecorator(..) | MultiModifier(..) | SyntaxExtension::AttrProcMacro(..) => {
+            MultiDecorator(..) | MultiModifier(..) | AttrProcMacro(..) => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", path));
                 return kind.dummy(span);
             }
 
-            SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
+            ProcMacroDerive(..) | BuiltinDerive(..) => {
                 self.cx.span_err(path.span, &format!("`{}` is a derive mode", path));
                 return kind.dummy(span);
             }
 
-            SyntaxExtension::ProcMacro(ref expandfun) => {
+            ProcMacro(ref expandfun) => {
                 if ident.name != keywords::Invalid.name() {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
@@ -582,7 +582,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         match *ext {
-            SyntaxExtension::ProcMacroDerive(ref ext, _) => {
+            ProcMacroDerive(ref ext, _) => {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = Span { ctxt: self.cx.backtrace(), ..span };
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
@@ -592,7 +592,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 };
                 kind.expect_from_annotatables(ext.expand(self.cx, span, &dummy, item))
             }
-            SyntaxExtension::BuiltinDerive(func) => {
+            BuiltinDerive(func) => {
                 expn_info.callee.allow_internal_unstable = true;
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = Span { ctxt: self.cx.backtrace(), ..span };
