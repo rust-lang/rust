@@ -8,16 +8,44 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// The `Deref` trait is used to specify the functionality of dereferencing
-/// operations, like `*v`.
+/// Used for immutable dereferencing operations, like `*v`.
 ///
-/// `Deref` also enables ['`Deref` coercions'][coercions].
+/// In addition to being used for explicit dereferencing operations with the
+/// (unary) `*` operator in immutable contexts, `Deref` is also used implicitly
+/// by the compiler in many circumstances. This mechanism is called
+/// ['`Deref` coercion'][more]. In mutable contexts, [`DerefMut`] is used.
 ///
-/// [coercions]: ../../book/first-edition/deref-coercions.html
+/// Implementing `Deref` for smart pointers makes accessing the data behind them
+/// convenient, which is why they implement `Deref`. On the other hand, the
+/// rules regarding `Deref` and [`DerefMut`] were designed specifically to
+/// accomodate smart pointers. Because of this, **`Deref` should only be
+/// implemented for smart pointers** to avoid confusion.
+///
+/// For similar reasons, **this trait should never fail**. Failure during
+/// dereferencing can be extremely confusing when `Deref` is invoked implicitly.
+///
+/// # More on `Deref` coercion
+///
+/// If `T` implements `Deref<Target = U>`, and `x` is a value of type `T`, then:
+/// * In immutable contexts, `*x` on non-pointer types is equivalent to
+///   `*Deref::deref(&x)`.
+/// * Values of type `&T` are coerced to values of type `&U`
+/// * `T` implicitly implements all the (immutable) methods of the type `U`.
+///
+/// For more details, visit [the chapter in *The Rust Programming Language*]
+/// [book] as well as the reference sections on [the dereference operator]
+/// [ref-deref-op], [the `Deref` trait][ref-deref-trait], and [type coercions].
+///
+/// [book]: ../../book/second-edition/ch15-02-deref.html
+/// [`DerefMut`]: trait.DerefMut.html
+/// [more]: #more-on-deref-coercion
+/// [ref-deref-op]: ../../reference/expressions.html#the-dereference-operator
+/// [ref-deref-trait]: ../../reference/the-deref-trait.html
+/// [type coercions]: ../../reference/type-coercions.html
 ///
 /// # Examples
 ///
-/// A struct with a single field which is accessible via dereferencing the
+/// A struct with a single field which is accessible by dereferencing the
 /// struct.
 ///
 /// ```
@@ -35,19 +63,17 @@
 ///     }
 /// }
 ///
-/// fn main() {
-///     let x = DerefExample { value: 'a' };
-///     assert_eq!('a', *x);
-/// }
+/// let x = DerefExample { value: 'a' };
+/// assert_eq!('a', *x);
 /// ```
 #[lang = "deref"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Deref {
-    /// The resulting type after dereferencing
+    /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Target: ?Sized;
 
-    /// The method called to dereference a value
+    /// Dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn deref(&self) -> &Self::Target;
 }
@@ -66,16 +92,46 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
     fn deref(&self) -> &T { *self }
 }
 
-/// The `DerefMut` trait is used to specify the functionality of dereferencing
-/// mutably like `*v = 1;`
+/// Used for mutable dereferencing operations, like in `*v = 1;`.
 ///
-/// `DerefMut` also enables ['`Deref` coercions'][coercions].
+/// In addition to being used for explicit dereferencing operations with the
+/// (unary) `*` operator in mutable contexts, `DerefMut` is also used implicitly
+/// by the compiler in many circumstances. This mechanism is called
+/// ['`Deref` coercion'][more]. In immutable contexts, [`Deref`] is used.
 ///
-/// [coercions]: ../../book/first-edition/deref-coercions.html
+/// Implementing `DerefMut` for smart pointers makes mutating the data behind
+/// them convenient, which is why they implement `DerefMut`. On the other hand,
+/// the rules regarding [`Deref`] and `DerefMut` were designed specifically to
+/// accomodate smart pointers. Because of this, **`DerefMut` should only be
+/// implemented for smart pointers** to avoid confusion.
+///
+/// For similar reasons, **this trait should never fail**. Failure during
+/// dereferencing can be extremely confusing when `DerefMut` is invoked
+/// implicitly.
+///
+/// # More on `Deref` coercion
+///
+/// If `T` implements `MutDeref<Target = U>`, and `x` is a value of type `T`,
+/// then:
+/// * In mutable contexts, `*x` on non-pointer types is equivalent to
+///   `*Deref::deref(&x)`.
+/// * Values of type `&mut T` are coerced to values of type `&mut U`
+/// * `T` implicitly implements all the (mutable) methods of the type `U`.
+///
+/// For more details, visit [the chapter in *The Rust Programming Language*]
+/// [book] as well as the reference sections on [the dereference operator]
+/// [ref-deref-op], [the `Deref` trait][ref-deref-trait], and [type coercions].
+///
+/// [book]: ../../book/second-edition/ch15-02-deref.html
+/// [`Deref`]: trait.Deref.html
+/// [more]: #more-on-deref-coercion
+/// [ref-deref-op]: ../../reference/expressions.html#the-dereference-operator
+/// [ref-deref-trait]: ../../reference/the-deref-trait.html
+/// [type coercions]: ../../reference/type-coercions.html
 ///
 /// # Examples
 ///
-/// A struct with a single field which is modifiable via dereferencing the
+/// A struct with a single field which is modifiable by dereferencing the
 /// struct.
 ///
 /// ```
@@ -99,16 +155,14 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 ///     }
 /// }
 ///
-/// fn main() {
-///     let mut x = DerefMutExample { value: 'a' };
-///     *x = 'b';
-///     assert_eq!('b', *x);
-/// }
+/// let mut x = DerefMutExample { value: 'a' };
+/// *x = 'b';
+/// assert_eq!('b', *x);
 /// ```
 #[lang = "deref_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DerefMut: Deref {
-    /// The method called to mutably dereference a value
+    /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn deref_mut(&mut self) -> &mut Self::Target;
 }
