@@ -1,5 +1,5 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: breaking changes in `Abc`
+error: breaking changes in `Abc`
   --> $REPO_PATH/tests/cases/traits/new.rs:1:1
    |
 1  | / pub trait Abc {
@@ -36,7 +36,7 @@ note: added defaulted item to trait (technically breaking)
 10 | |     }
    | |_____^
 
-warning: breaking changes in `test7`
+error: breaking changes in `test7`
   --> $REPO_PATH/tests/cases/traits/new.rs:11:5
    |
 11 |     fn test7() -> u16;
@@ -44,7 +44,7 @@ warning: breaking changes in `test7`
    |
    = warning: type error: expected u8, found u16 (breaking)
 
-warning: breaking changes in `test8`
+error: breaking changes in `test8`
   --> $REPO_PATH/tests/cases/traits/new.rs:12:5
    |
 12 |     fn test8(_: &Self) -> u8;
@@ -60,7 +60,7 @@ warning: technically breaking changes in `test9`
    |
    = note: added self-argument to method (technically breaking)
 
-warning: breaking changes in `Bcd`
+error: breaking changes in `Bcd`
   --> $REPO_PATH/tests/cases/traits/new.rs:16:1
    |
 16 | pub trait Bcd<A> {}
@@ -68,7 +68,7 @@ warning: breaking changes in `Bcd`
    |
    = warning: type parameter added (breaking)
 
-warning: breaking changes in `Cde`
+error: breaking changes in `Cde`
   --> $REPO_PATH/tests/cases/traits/new.rs:18:1
    |
 18 | pub trait Cde {}
@@ -76,7 +76,7 @@ warning: breaking changes in `Cde`
    |
    = warning: type parameter removed (breaking)
 
-warning: breaking changes in `Def`
+error: breaking changes in `Def`
   --> $REPO_PATH/tests/cases/traits/new.rs:20:1
    |
 20 | / pub trait Def<A, B> {
@@ -88,7 +88,7 @@ warning: breaking changes in `Def`
    |
    = warning: type parameter added (breaking)
 
-warning: breaking changes in `Efg`
+error: breaking changes in `Efg`
   --> $REPO_PATH/tests/cases/traits/new.rs:26:1
    |
 26 | / pub trait Efg<A> {
@@ -98,7 +98,7 @@ warning: breaking changes in `Efg`
    |
    = warning: type parameter removed (breaking)
 
-warning: breaking changes in `Ghi`
+error: breaking changes in `Ghi`
   --> $REPO_PATH/tests/cases/traits/new.rs:36:1
    |
 36 | pub trait Ghi { }
@@ -110,7 +110,7 @@ warning: removed item from trait (breaking)
 35 |     type A;
    |     ^^^^^^^
 
-warning: breaking changes in `Hij`
+error: breaking changes in `Hij`
   --> $REPO_PATH/tests/cases/traits/new.rs:38:1
    |
 38 | / pub trait Hij {
@@ -124,7 +124,7 @@ warning: added item to trait (breaking)
 39 |     type A;
    |     ^^^^^^^
 
-warning: breaking changes in `Klm`
+error: breaking changes in `Klm`
   --> $REPO_PATH/tests/cases/traits/new.rs:42:1
    |
 42 | pub trait Klm : Clone { }
@@ -132,7 +132,7 @@ warning: breaking changes in `Klm`
    |
    = warning: added bound: `Self: std::clone::Clone` (breaking)
 
-warning: breaking changes in `Nop`
+error: breaking changes in `Nop`
   --> $REPO_PATH/tests/cases/traits/new.rs:44:1
    |
 44 | pub trait Nop { }
@@ -140,7 +140,7 @@ warning: breaking changes in `Nop`
    |
    = warning: removed bound on trait definition: `Self: std::clone::Clone` (breaking)
 
-warning: breaking changes in `Qrs`
+error: breaking changes in `Qrs`
   --> $REPO_PATH/tests/cases/traits/new.rs:46:1
    |
 46 | pub trait Qrs<A: Clone> { }
@@ -148,7 +148,7 @@ warning: breaking changes in `Qrs`
    |
    = warning: added bound: `A: std::clone::Clone` (breaking)
 
-warning: breaking changes in `Tuv`
+error: breaking changes in `Tuv`
   --> $REPO_PATH/tests/cases/traits/new.rs:48:1
    |
 48 | pub trait Tuv<A> { }

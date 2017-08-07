@@ -1,5 +1,5 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: breaking changes in `ghi`
+error: breaking changes in `ghi`
   --> $REPO_PATH/tests/cases/inherent_impls/old.rs:14:5
    |
 14 | /     pub fn ghi<A>(&self, a: A) -> A {
@@ -9,7 +9,7 @@ warning: breaking changes in `ghi`
    |
    = warning: type error: expected type parameter, found u8 (breaking)
 
-warning: breaking changes in `def`
+error: breaking changes in `def`
   --> $REPO_PATH/tests/cases/inherent_impls/old.rs:26:5
    |
 26 | /     pub fn def(&self) -> u8 {
@@ -19,7 +19,7 @@ warning: breaking changes in `def`
    |
    = warning: removed item in inherent impl (breaking)
 
-warning: breaking changes in `def`
+error: breaking changes in `def`
   --> $REPO_PATH/tests/cases/inherent_impls/old.rs:33:5
    |
 33 | /     pub fn def(&self) -> u8 {
@@ -29,7 +29,7 @@ warning: breaking changes in `def`
    |
    = warning: type error: expected u8, found u16 (breaking)
 
-warning: breaking changes in `ghi`
+error: breaking changes in `ghi`
   --> $REPO_PATH/tests/cases/inherent_impls/old.rs:37:5
    |
 37 |     pub fn ghi() { }

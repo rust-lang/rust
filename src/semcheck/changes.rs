@@ -137,16 +137,21 @@ impl PathChange {
 
     /// Report the change in a structured manner.
     fn report(&self, session: &Session) {
-        if self.to_category() == Patch {
+        let cat = self.to_category();
+        if cat == Patch {
             return;
         }
 
         let msg = format!("path changes to `{}`", self.name);
-        let mut builder = session.struct_span_warn(self.def_span, &msg);
+        let mut builder = if cat == Breaking {
+            session.struct_span_err(self.def_span, &msg)
+        } else {
+            session.struct_span_warn(self.def_span, &msg)
+        };
 
         for removed_span in &self.removals {
             if *removed_span == self.def_span {
-                builder.note("removed definition (breaking)");
+                builder.warn("removed definition (breaking)");
             } else {
                 builder.span_warn(*removed_span, "removed path (breaking)");
             }
@@ -450,7 +455,11 @@ impl<'tcx> Change<'tcx> {
         }
 
         let msg = format!("{} changes in {}", self.max, self.name);
-        let mut builder = session.struct_span_warn(self.new_span, &msg);
+        let mut builder = if self.max == Breaking {
+            session.struct_span_err(self.new_span, &msg)
+        } else {
+            session.struct_span_warn(self.new_span, &msg)
+        };
 
         for change in &self.changes {
             let cat = change.0.to_category();

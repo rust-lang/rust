@@ -157,9 +157,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             // matching items we don't care about because they are either
                             // impossible to encounter at this stage (Mod, AssociatedTy, PrimTy,
                             // TyParam, SelfTy, StructCtor, VariantCtor, AssociatedConst, Local,
-                            // Upvar, Label, Variant, Err), whose analysis is out scope for us
-                            // (GlobalAsm, Macro), or which don't requite further analysis at
-                            // this stage (Const)
+                            // Upvar, Label, Variant, Method, Err), whose analysis is out scope
+                            // for us (GlobalAsm, Macro), or which don't requite further analysis
+                            // at this stage (Const)
                             (Mod(_), Mod(_)) |
                             (AssociatedTy(_), AssociatedTy(_)) |
                             (PrimTy(_), PrimTy(_)) |
@@ -175,6 +175,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             (Macro(_, _), Macro(_, _)) |
                             (Variant(_), Variant(_)) |
                             (Const(_), Const(_)) |
+                            (Method(_), Method(_)) |
                             (Err, Err) => {},
                             // statics are subject to mutability comparison
                             (Static(_, old_mut), Static(_, new_mut)) => {
@@ -188,8 +189,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             },
                             // functions can declare generics and have structural properties
                             // that need to be compared
-                            (Fn(_), Fn(_)) |
-                            (Method(_), Method(_)) => {
+                            (Fn(_), Fn(_)) => {
                                 diff_generics(changes,
                                               id_mapping,
                                               tcx,

@@ -1,5 +1,5 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: breaking changes in `Abc`
+error: breaking changes in `Abc`
  --> $REPO_PATH/tests/cases/enums/new.rs:1:1
   |
 1 | / pub enum Abc {
@@ -13,7 +13,7 @@ warning: enum variant added (breaking)
 2 |     Abc,
   |     ^^^
 
-warning: breaking changes in `Bcd`
+error: breaking changes in `Bcd`
  --> $REPO_PATH/tests/cases/enums/new.rs:5:1
   |
 5 | / pub enum Bcd {
@@ -27,7 +27,7 @@ warning: enum variant removed (breaking)
 6 |     Abc,
   |     ^^^
 
-warning: breaking changes in `Cde`
+error: breaking changes in `Cde`
   --> $REPO_PATH/tests/cases/enums/new.rs:9:1
    |
 9  | / pub enum Cde {
@@ -42,7 +42,7 @@ warning: enum variant added (breaking)
 11 |     Bcd,
    |     ^^^
 
-warning: breaking changes in `Def`
+error: breaking changes in `Def`
   --> $REPO_PATH/tests/cases/enums/new.rs:14:1
    |
 14 | / pub enum Def {
@@ -56,7 +56,7 @@ warning: enum variant removed (breaking)
 15 |     Bcd,
    |     ^^^
 
-warning: breaking changes in `Efg`
+error: breaking changes in `Efg`
   --> $REPO_PATH/tests/cases/enums/new.rs:18:1
    |
 18 | / pub enum Efg {

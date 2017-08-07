@@ -1,5 +1,5 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: breaking changes in `Abc`
+error: breaking changes in `Abc`
  --> $REPO_PATH/tests/cases/mix/new.rs:2:5
   |
 2 |     pub enum Abc {}
@@ -7,7 +7,7 @@ warning: breaking changes in `Abc`
   |
   = warning: item kind changed (breaking)
 
-warning: breaking changes in `Def`
+error: breaking changes in `Def`
  --> $REPO_PATH/tests/cases/mix/new.rs:3:5
   |
 3 |     pub struct Def;
@@ -15,7 +15,7 @@ warning: breaking changes in `Def`
   |
   = warning: item kind changed (breaking)
 
-warning: path changes to `Abc`
+error: path changes to `Abc`
  --> $REPO_PATH/tests/cases/mix/new.rs:2:5
   |
 2 |     pub enum Abc {}

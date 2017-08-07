@@ -1,5 +1,5 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: breaking changes in `<std::vec::Vec<T> as old::Abc>`
+error: breaking changes in `<std::vec::Vec<T> as old::Abc>`
  --> $REPO_PATH/tests/cases/trait_impls/old.rs:9:1
   |
 9 | impl<T> Abc for Vec<T> { }
@@ -7,7 +7,7 @@ warning: breaking changes in `<std::vec::Vec<T> as old::Abc>`
   |
   = warning: trait impl specialized or removed (breaking)
 
-warning: breaking changes in `<old::Def as std::clone::Clone>`
+error: breaking changes in `<old::Def as std::clone::Clone>`
   --> $REPO_PATH/tests/cases/trait_impls/old.rs:11:1
    |
 11 | / impl Clone for Def {

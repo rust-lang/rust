@@ -1,5 +1,5 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
-warning: breaking changes in `Abc`
+error: breaking changes in `Abc`
  --> $REPO_PATH/tests/cases/kind_change/new.rs:1:1
   |
 1 | / pub enum Abc {

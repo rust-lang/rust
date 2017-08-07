@@ -14,7 +14,7 @@ note: item made public (technically breaking)
 7 |     pub field: A,
   |     ^^^^^^^^^^^^
 
-warning: breaking changes in `Def2`
+error: breaking changes in `Def2`
   --> $REPO_PATH/tests/cases/structs/new.rs:10:1
    |
 10 | / pub struct Def2<A=u16> {
@@ -25,7 +25,7 @@ warning: breaking changes in `Def2`
    = note: defaulted type parameter added (non-breaking)
    = warning: type error: expected u8, found u16 (breaking)
 
-warning: breaking changes in `Efg`
+error: breaking changes in `Efg`
   --> $REPO_PATH/tests/cases/structs/new.rs:14:1
    |
 14 | / pub struct Efg {
@@ -49,7 +49,7 @@ note: item made public (technically breaking)
 19 |     pub field: u8,
    |     ^^^^^^^^^^^^^
 
-warning: breaking changes in `Ghi`
+error: breaking changes in `Ghi`
   --> $REPO_PATH/tests/cases/structs/new.rs:22:1
    |
 22 | / pub struct Ghi {
@@ -63,7 +63,7 @@ warning: item made private (breaking)
 23 |     field: u8,
    |     ^^^^^^^^^
 
-warning: breaking changes in `Hij`
+error: breaking changes in `Hij`
   --> $REPO_PATH/tests/cases/structs/new.rs:26:1
    |
 26 | / pub struct Hij {
