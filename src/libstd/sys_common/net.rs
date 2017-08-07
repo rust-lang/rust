@@ -165,16 +165,8 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     init();
 
     let c_host = CString::new(host)?;
-    let hints = c::addrinfo {
-        ai_flags: 0,
-        ai_family: 0,
-        ai_socktype: c::SOCK_STREAM,
-        ai_protocol: 0,
-        ai_addrlen: 0,
-        ai_addr: ptr::null_mut(),
-        ai_canonname: ptr::null_mut(),
-        ai_next: ptr::null_mut()
-    };
+    let mut hints: c::addrinfo = unsafe { mem::zeroed() };
+    hints.ai_socktype = c::SOCK_STREAM;
     let mut res = ptr::null_mut();
     unsafe {
         match cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), &hints, &mut res)) {
