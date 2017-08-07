@@ -216,13 +216,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::middle::const_val::ConstVal::*;
-        use rustc_const_math::ConstFloat;
 
         let primval = match *const_val {
             Integral(const_int) => PrimVal::Bytes(const_int.to_u128_unchecked()),
 
-            Float(ConstFloat::F32(f)) => PrimVal::from_f32(f),
-            Float(ConstFloat::F64(f)) => PrimVal::from_f64(f),
+            Float(val) => PrimVal::Bytes(val.bits),
 
             Bool(b) => PrimVal::from_bool(b),
             Char(c) => PrimVal::from_char(c),
