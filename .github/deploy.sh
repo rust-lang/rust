@@ -33,6 +33,19 @@ if [ -n "$TRAVIS_TAG" ]; then
     ln -s "$TRAVIS_TAG" out/current
 fi
 
+# Generate version index that is shown as root index page
+(
+    cp util/gh-pages/versions.html out/index.html
+
+    cd out
+    python -c '\
+        import os, json;\
+        print json.dumps([\
+            dir for dir in os.listdir(".")\
+            if not dir.startswith(".") and os.path.isdir(dir)\
+        ])' > versions.json
+)
+
 # Pull requests and commits to other branches shouldn't try to deploy, just build to verify
 if [ "$TRAVIS_PULL_REQUEST" != "false" ] || [ "$TRAVIS_BRANCH" != "$SOURCE_BRANCH" ]; then
     # Tags should deploy
