@@ -4,7 +4,16 @@ Hello fellow Rustacean! Great to see your interest in compiler internals and lin
 
 ## Getting started
 
-All issues on Clippy are mentored, if you want help with a bug just ask @Manishearth or @llogiq.
+High level approach:
+
+1. Find something to fix/improve
+2. Change code (likely some file in `clippy_lints/src/`)
+3. Run `cargo test` in the root directory and wiggle code until it passes
+4. Open a PR (also can be done between 2. and 3. if you run into problems)
+
+### Finding something to fix/improve
+
+All issues on Clippy are mentored, if you want help with a bug just ask @Manishearth, @llogiq, @mcarton or @oli-obk.
 
 Some issues are easier than others. The [E-easy](https://github.com/Manishearth/rust-clippy/labels/E-easy)
 label can be used to find the easy issues. If you want to work on an issue, please leave a comment
@@ -16,7 +25,8 @@ matching of the syntax tree structure, and are generally easier than
 and resolved paths.
 
 Issues marked [E-medium](https://github.com/Manishearth/rust-clippy/labels/E-medium) are generally
-pretty easy too, though it's recommended you work on an E-easy issue first.
+pretty easy too, though it's recommended you work on an E-easy issue first. They are mostly classified
+as `E-medium`, since they might be somewhat involved code wise, but not difficult per-se.
 
 [Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is a nice primer
 to lint-writing, though it does get into advanced stuff. Most lints consist of an implementation of
@@ -35,16 +45,14 @@ T-middle issues can be more involved and require verifying types. The
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 
+### Writing code
+
 Compiling clippy can take almost a minute or more depending on your machine.
 You can set the environment flag `CARGO_INCREMENTAL=1` to cut down that time to
 almost a third on average, depending on the influence your change has.
 
-Clippy uses UI tests. UI tests check that the output of the compiler is exactly as expected.
-Of course there's little sense in writing the output yourself or copying it around.
-Therefore you can simply run `tests/ui/update-all-references.sh` and check whether
-the output looks as you expect with `git diff`. Commit all `*.stderr` files, too.
+Please document your lint with a doc comment akin to the following:
 
-Also please document your lint with a doc comment akin to the following:
 ```rust
 /// **What it does:** Checks for ... (describe what the lint matches).
 ///
@@ -58,7 +66,12 @@ Also please document your lint with a doc comment akin to the following:
 /// ```
 ```
 
-Our `util/update_wiki.py` script can then add your lint docs to the wiki.
+### Running test suite
+
+Clippy uses UI tests. UI tests check that the output of the compiler is exactly as expected.
+Of course there's little sense in writing the output yourself or copying it around.
+Therefore you can simply run `tests/ui/update-all-references.sh` and check whether
+the output looks as you expect with `git diff`. Commit all `*.stderr` files, too.
 
 ## Contributions
 
