@@ -300,7 +300,8 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                                       -> Rc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
-    let mut trait_impls: Vec<DefId> = tcx.trait_impls_of(trait_id).iter().collect();
+    let mut trait_impls = Vec::new();
+    tcx.for_each_impl(trait_id, |impl_did| trait_impls.push(impl_did));
 
     // The coherence checking implementation seems to rely on impls being
     // iterated over (roughly) in definition order, so we are sorting by
