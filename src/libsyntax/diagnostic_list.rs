@@ -42,7 +42,7 @@ The `inline` attribute was malformed.
 
 Erroneous code example:
 
-```compile_fail,E0534
+```ignore (compile_fail not working here; see Issue #43707)
 #[inline()] // error: expected one argument
 pub fn something() {}
 
@@ -80,7 +80,7 @@ An unknown argument was given to the `inline` attribute.
 
 Erroneous code example:
 
-```compile_fail,E0535
+```ignore (compile_fail not working here; see Issue #43707)
 #[inline(unknown)] // error: invalid argument
 pub fn something() {}
 
@@ -190,7 +190,9 @@ A literal was used in an attribute that doesn't support literals.
 
 Erroneous code example:
 
-```compile_fail,E0565
+```ignore (compile_fail not working here; see Issue #43707)
+#![feature(attr_literals)]
+
 #[inline("always")] // error: unsupported literal
 pub fn something() {}
 ```
@@ -209,7 +211,7 @@ A file wasn't found for an out-of-line module.
 
 Erroneous code example:
 
-```compile_fail,E0583
+```ignore (compile_fail not working here; see Issue #43707)
 mod file_that_doesnt_exist; // error: file not found for module
 
 fn main() {}
@@ -251,23 +253,33 @@ An inclusive range was used with no end.
 Erroneous code example:
 
 ```compile_fail,E0586
-let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-let x = &tmp[1...]; // error: inclusive range was used with no end
+#![feature(inclusive_range_syntax)]
+
+fn main() {
+    let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+    let x = &tmp[1...]; // error: inclusive range was used with no end
+}
 ```
 
 An inclusive range needs an end in order to *include* it. If you just need a
 start and no end, use a non-inclusive range (with `..`):
 
 ```
-let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-let x = &tmp[1..]; // ok!
+fn main() {
+    let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+    let x = &tmp[1..]; // ok!
+}
 ```
 
 Or put an end to your inclusive range:
 
 ```
-let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-let x = &tmp[1...3]; // ok!
+#![feature(inclusive_range_syntax)]
+
+fn main() {
+    let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+    let x = &tmp[1...3]; // ok!
+}
 ```
 "##,
 

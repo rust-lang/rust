@@ -122,10 +122,8 @@ On the other hand, static and constant pointers can point either to
 a known numeric address or to the address of a symbol.
 
 ```
+static MY_STATIC: u32 = 42;
 static MY_STATIC_ADDR: &'static u32 = &MY_STATIC;
-// ... and also
-static MY_STATIC_ADDR2: *const u32 = &MY_STATIC;
-
 const CONST_ADDR: *const u8 = 0x5f3759df as *const u8;
 ```
 
@@ -160,6 +158,16 @@ Remember: you can't use a function call inside a const's initialization
 expression! However, you can totally use it anywhere else:
 
 ```
+enum Test {
+    V1
+}
+
+impl Test {
+    fn func(&self) -> i32 {
+        12
+    }
+}
+
 fn main() {
     const FOO: Test = Test::V1;
 
