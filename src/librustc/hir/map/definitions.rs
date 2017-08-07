@@ -466,7 +466,11 @@ impl Definitions {
     }
 
     pub fn find_node_for_hir_id(&self, hir_id: hir::HirId) -> ast::NodeId {
-        self.node_to_hir_id.binary_search(&hir_id).unwrap()
+        self.node_to_hir_id
+            .iter()
+            .position(|x| *x == hir_id)
+            .map(|idx| ast::NodeId::new(idx))
+            .unwrap()
     }
 
     /// Add a definition with a parent definition.
