@@ -1132,8 +1132,7 @@ impl<'a> ControlFlow<'a> {
 
             let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
             let expr = &self.block.stmts[0];
-            let if_str =
-                try_opt!(expr.rewrite(context, Shape::legacy(new_width, Indent::empty()),));
+            let if_str = try_opt!(expr.rewrite(context, Shape::legacy(new_width, Indent::empty())));
 
             let new_width = try_opt!(new_width.checked_sub(if_str.len()));
             let else_expr = &else_node.stmts[0];
