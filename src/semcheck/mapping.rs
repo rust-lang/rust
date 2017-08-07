@@ -312,12 +312,12 @@ impl NameMapping {
     }
 
     /// Add all items from two vectors of old/new exports.
-    pub fn add(&mut self, mut old_items: Vec<Export>, mut new_items: Vec<Export>) {
-        for item in old_items.drain(..) {
+    pub fn add(&mut self, old_items: Vec<Export>, new_items: Vec<Export>) {
+        for item in old_items {
             self.insert(item, true);
         }
 
-        for item in new_items.drain(..) {
+        for item in new_items {
             self.insert(item, false);
         }
     }

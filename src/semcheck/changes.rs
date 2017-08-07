@@ -797,13 +797,13 @@ pub mod tests {
     pub type Change_ = (DefId_, DefId_, Span_, Span_, bool, Vec<(ChangeType_, Option<Span_>)>);
 
     /// Construct `Change`s from things that can be generated.
-    fn build_change<'a>(s1: Span, output: bool, mut changes: Vec<(ChangeType_, Option<Span_>)>)
+    fn build_change<'a>(s1: Span, output: bool, changes: Vec<(ChangeType_, Option<Span_>)>)
         -> Change<'a>
     {
         let mut interner = Interner::new();
         let mut change = Change::new(Name::Symbol(interner.intern("test")), s1, output);
 
-        for (type_, span) in changes.drain(..) {
+        for (type_, span) in changes {
             change.insert(type_.inner(), span.map(|s| s.inner()));
         }
 
@@ -814,11 +814,11 @@ pub mod tests {
     pub type PathChange_ = (DefId_, Span_, Vec<(bool, Span_)>);
 
     /// Construct `PathChange`s from things that can be generated.
-    fn build_path_change(s1: Span, mut spans: Vec<(bool, Span)>) -> PathChange {
+    fn build_path_change(s1: Span, spans: Vec<(bool, Span)>) -> PathChange {
         let mut interner = Interner::new();
         let mut change = PathChange::new(interner.intern("test"), s1);
 
-        for (add, span) in spans.drain(..) {
+        for (add, span) in spans {
             change.insert(span, add);
         }
 
@@ -954,6 +954,7 @@ pub mod tests {
                 .map(|&(c, _)| if c { TechnicallyBreaking } else { Breaking })
                 .chain(changes
                     .iter()
+                    .filter(|change| change.4)
                     .flat_map(|change| change.5.iter())
                     .map(|&(ref type_, _)| type_.inner().to_category()))
                 .max()
