@@ -347,7 +347,20 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         loc
     };
 
+    let is_copy = !self_ty.moves_by_default(tcx, tcx.param_env(def_id), span);
+
     match self_ty.sty {
+        _ if is_copy => {
+            // `return *self;`
+            let statement = Statement {
+                source_info: source_info,
+                kind: StatementKind::Assign(
+                    Lvalue::Local(RETURN_POINTER),
+                    Rvalue::Use(Operand::Consume(rcvr))
+                )
+            };
+            block(&mut blocks, statement, TerminatorKind::Return);
+        }
         ty::TyArray(ty, len) => {
             let mut returns = Vec::new();
             for i in 0..len {
@@ -402,15 +415,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             block(&mut blocks, statement, TerminatorKind::Return);
         }
         _ => {
-            // `return *self;`
-            let statement = Statement {
-                source_info: source_info,
-                kind: StatementKind::Assign(
-                    Lvalue::Local(RETURN_POINTER),
-                    Rvalue::Use(Operand::Consume(rcvr))
-                )
-            };
-            block(&mut blocks, statement, TerminatorKind::Return);
+            bug!("builtin shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty);
         }
     };
 
